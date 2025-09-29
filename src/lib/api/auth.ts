@@ -26,6 +26,17 @@ export interface AuthResponse {
   token_type: string;
 }
 
+export interface UpdateProfileData {
+  name?: string;
+  username?: string;
+  email?: string;
+}
+
+export interface ChangePasswordData {
+  current_password: string;
+  new_password: string;
+}
+
 export const authAPI = {
   // Sign in
   async signIn(credentials: LoginCredentials): Promise<AuthResponse> {
@@ -65,6 +76,22 @@ export const authAPI = {
   async getCurrentUser(): Promise<User> {
     const response = await apiClient.get("/user/me/");
     return response.data;
+  },
+
+  // Update user profile
+  async updateProfile(
+    username: string,
+    profileData: UpdateProfileData,
+  ): Promise<void> {
+    await apiClient.patch(`/user/${username}`, profileData);
+  },
+
+  // Change password
+  async changePassword(
+    username: string,
+    passwordData: ChangePasswordData,
+  ): Promise<void> {
+    await apiClient.patch(`/user/${username}/password`, passwordData);
   },
 
   // Check if user is authenticated
