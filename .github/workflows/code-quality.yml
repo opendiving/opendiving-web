@@ -1,0 +1,159 @@
+name: Code Quality
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  code-quality:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Use Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Prettier check
+        run: npx prettier --check "src/**/*.{ts,tsx,js,jsx,json,css,scss,md}"
+        continue-on-error: true
+
+      - name: Run ESLint with detailed output
+        run: |
+          npx eslint src --ext .ts,.tsx,.js,.jsx --format=json --output-file=eslint-report.json || true
+          npx eslint src --ext .ts,.tsx,.js,.jsx
+
+      - name: TypeScript strict check
+        run: npx tsc --noEmit --strict
+
+      - name: Check for unused dependencies
+        run: npx depcheck --ignores="@types/*,eslint-config-*" || true
+
+      - name: Bundle size analysis
+        run: |
+          npm run build
+          npx @next/bundle-analyzer || true
+
+      - name: Check for circular dependencies
+        run: npx madge --circular --extensions ts,tsx,js,jsx src/ || true
+
+      # - name: Security scan with Snyk
+      #   uses: snyk/actions/node@master
+      #   continue-on-error: true
+      #   env:
+      #     SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+      #   with:
+      #     args: --severity-threshold=high
+
+      - name: Upload ESLint report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eslint-report
+          path: eslint-report.json
+          retention-days: 30
+
+      # - name: Comment PR with quality report
+      #   if: github.event_name == 'pull_request'
+      #   uses: actions/github-script@v7
+      #   with:
+      #     script: |
+      #       const fs = require('fs');
+      #       try {
+      #         const eslintReport = JSON.parse(fs.readFileSync('eslint-report.json', 'utf8'));
+      #         const errorCount = eslintReport.reduce((sum, file) => sum + file.errorCount, 0);
+      #         const warningCount = eslintReport.reduce((sum, file) => sum + file.warningCount, 0);
+
+      #         const comment = `## Code Quality Report 📊
+
+      #         **ESLint Results:**
+      #         - ❌ Errors: ${errorCount}
+      #         - ⚠️ Warnings: ${warningCount}
+
+      #         **Build Status:** ✅ Passed
+      #         **Type Check:** ✅ Passed
+
+      #         Full details available in the [Actions tab](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}).
+      #         `;
+
+      #         github.rest.issues.createComment({
+      #           issue_number: context.issue.number,
+      #           owner: context.repo.owner,
+      #           repo: context.repo.repo,
+      #           body: comment
+      #         });
+      #       } catch (error) {
+      #         console.log('Could not create quality report comment:', error.message);
+      #       }
+
+  # dependency-review:
+  #   runs-on: ubuntu-latest
+  #   if: github.event_name == 'pull_request'
+
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
+
+  #     - name: Dependency Review
+  #       uses: actions/dependency-review-action@v4
+  #       with:
+  #         fail-on-severity: moderate
+  #         allow-licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, 0BSD
+
+  accessibility-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+
+      - name: Start application
+        run: npm start &
+        env:
+          PORT: 3000
+
+      - name: Wait for application to be ready
+        run: |
+          timeout 60 bash -c 'until curl -f http://localhost:3000; do sleep 2; done'
+
+      - name: Run accessibility tests with axe
+        run: |
+          npx @axe-core/cli http://localhost:3000 \
+            --include="main" \
+            --exclude="iframe" \
+            --tags="wcag2a,wcag2aa,wcag21aa" \
+            --reporter=json \
+            --output-file=accessibility-report.json || true
+
+      - name: Upload accessibility report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: accessibility-report
+          path: accessibility-report.json
+          retention-days: 30
