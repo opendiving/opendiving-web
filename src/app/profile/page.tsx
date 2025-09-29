@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import {
   User,
   Mail,
@@ -61,9 +62,12 @@ export default function ProfilePage() {
         <div className="bg-white rounded-lg shadow-sm p-8 mb-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between">
             <div className="flex items-center space-x-6">
-              <div className="bg-blue-100 rounded-full p-6">
-                <User className="h-12 w-12 text-blue-600" />
-              </div>
+              <UserAvatar
+                email={user.email}
+                name={user.name}
+                size={96}
+                className="h-24 w-24"
+              />
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">
                   {user.name}
@@ -175,6 +179,19 @@ export default function ProfilePage() {
                 <div className="flex items-center justify-between">
                   <span className="text-gray-600">Tier</span>
                   <Badge variant="secondary">Free</Badge>
+                </div>
+                <div className="pt-3 border-t">
+                  <p className="text-xs text-gray-500">
+                    Avatar powered by{" "}
+                    <a
+                      href="https://gravatar.com"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-500"
+                    >
+                      Gravatar
+                    </a>
+                  </p>
                 </div>
               </CardContent>
             </Card>

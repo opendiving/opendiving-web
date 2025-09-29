@@ -4,6 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
+import { UserAvatar } from "@/components/ui/user-avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -175,9 +176,14 @@ export function Header({
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
-                      className="relative h-9 w-9 rounded-full"
+                      className="relative h-9 w-9 rounded-full p-0"
                     >
-                      <User className="h-5 w-5" />
+                      <UserAvatar
+                        email={user.email}
+                        name={user.name}
+                        size={36}
+                        className="h-9 w-9"
+                      />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
