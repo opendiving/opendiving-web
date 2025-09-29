@@ -64,38 +64,38 @@ jobs:
           path: eslint-report.json
           retention-days: 30
 
-      - name: Comment PR with quality report
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            try {
-              const eslintReport = JSON.parse(fs.readFileSync('eslint-report.json', 'utf8'));
-              const errorCount = eslintReport.reduce((sum, file) => sum + file.errorCount, 0);
-              const warningCount = eslintReport.reduce((sum, file) => sum + file.warningCount, 0);
+      # - name: Comment PR with quality report
+      #   if: github.event_name == 'pull_request'
+      #   uses: actions/github-script@v7
+      #   with:
+      #     script: |
+      #       const fs = require('fs');
+      #       try {
+      #         const eslintReport = JSON.parse(fs.readFileSync('eslint-report.json', 'utf8'));
+      #         const errorCount = eslintReport.reduce((sum, file) => sum + file.errorCount, 0);
+      #         const warningCount = eslintReport.reduce((sum, file) => sum + file.warningCount, 0);
 
-              const comment = `## Code Quality Report 📊
+      #         const comment = `## Code Quality Report 📊
 
-              **ESLint Results:**
-              - ❌ Errors: ${errorCount}
-              - ⚠️ Warnings: ${warningCount}
+      #         **ESLint Results:**
+      #         - ❌ Errors: ${errorCount}
+      #         - ⚠️ Warnings: ${warningCount}
 
-              **Build Status:** ✅ Passed
-              **Type Check:** ✅ Passed
+      #         **Build Status:** ✅ Passed
+      #         **Type Check:** ✅ Passed
 
-              Full details available in the [Actions tab](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}).
-              `;
+      #         Full details available in the [Actions tab](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}).
+      #         `;
 
-              github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: comment
-              });
-            } catch (error) {
-              console.log('Could not create quality report comment:', error.message);
-            }
+      #         github.rest.issues.createComment({
+      #           issue_number: context.issue.number,
+      #           owner: context.repo.owner,
+      #           repo: context.repo.repo,
+      #           body: comment
+      #         });
+      #       } catch (error) {
+      #         console.log('Could not create quality report comment:', error.message);
+      #       }
 
   dependency-review:
     runs-on: ubuntu-latest
