@@ -8,6 +8,7 @@ export interface Dive {
   max_depth?: number;
   avg_depth?: number;
   bottom_temperature?: number;
+  visibility?: number;
   notes: string;
   user_id: number;
   created_at: string;
@@ -20,6 +21,7 @@ export interface DiveCreate {
   max_depth?: number;
   avg_depth?: number;
   bottom_temperature?: number;
+  visibility?: number;
   notes?: string;
 }
 
@@ -30,6 +32,7 @@ export interface DiveUpdate {
   max_depth?: number;
   avg_depth?: number;
   bottom_temperature?: number;
+  visibility?: number;
   notes?: string;
 }
 

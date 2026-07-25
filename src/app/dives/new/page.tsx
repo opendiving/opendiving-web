@@ -71,6 +71,7 @@ export default function NewDivePage() {
       max_depth: undefined,
       avg_depth: undefined,
       bottom_temperature: undefined,
+      visibility: undefined,
       notes: "",
     },
   });
@@ -365,28 +366,52 @@ export default function NewDivePage() {
                 />
               </div>
 
-              {/* Temperature */}
-              <FormField
-                control={form.control}
-                name="bottom_temperature"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Bottom Temperature (°C)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min="-50"
-                        max="50"
-                        placeholder="e.g. 22"
-                        {...field}
-                        value={field.value || ""}
-                        onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {/* Temperature & Visibility */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="bottom_temperature"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Bottom Temperature (°C)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min="-50"
+                          max="50"
+                          placeholder="e.g. 22"
+                          {...field}
+                          value={field.value || ""}
+                          onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="visibility"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Visibility (m)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="1"
+                          min="0"
+                          placeholder="e.g. 15"
+                          {...field}
+                          value={field.value || ""}
+                          onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
               {/* Notes */}
               <FormField

@@ -28,6 +28,11 @@ export const diveCreateSchema = z
       .number()
       .int("Bottom temperature must be an integer")
       .optional(),
+    visibility: z
+      .number()
+      .int("Visibility must be an integer")
+      .positive("Visibility must be positive")
+      .optional(),
     notes: z
       .string()
       .max(63206, "Notes cannot exceed 63206 characters")
@@ -52,6 +57,11 @@ export const diveUpdateSchema = z
     bottom_temperature: z
       .number()
       .int("Bottom temperature must be an integer")
+      .optional(),
+    visibility: z
+      .number()
+      .int("Visibility must be an integer")
+      .positive("Visibility must be positive")
       .optional(),
     notes: z
       .string()

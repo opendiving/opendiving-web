@@ -45,6 +45,7 @@ export default function EditDivePage() {
       max_depth: undefined,
       avg_depth: undefined,
       bottom_temperature: undefined,
+      visibility: undefined,
       notes: "",
     },
   });
@@ -87,6 +88,7 @@ export default function EditDivePage() {
           max_depth: diveData.max_depth,
           avg_depth: diveData.avg_depth,
           bottom_temperature: diveData.bottom_temperature,
+          visibility: diveData.visibility,
           notes: diveData.notes || "",
         });
       } catch (error) {
@@ -138,6 +140,10 @@ export default function EditDivePage() {
 
       if (data.bottom_temperature !== undefined) {
         updateData.bottom_temperature = data.bottom_temperature;
+      }
+
+      if (data.visibility !== undefined) {
+        updateData.visibility = data.visibility;
       }
 
       if (data.notes !== undefined) {
@@ -347,28 +353,52 @@ export default function EditDivePage() {
                 />
               </div>
 
-              {/* Temperature */}
-              <FormField
-                control={form.control}
-                name="bottom_temperature"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Bottom Temperature (°C)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min="-50"
-                        max="50"
-                        placeholder="e.g. 22"
-                        {...field}
-                        value={field.value || ""}
-                        onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {/* Temperature & Visibility */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="bottom_temperature"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Bottom Temperature (°C)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min="-50"
+                          max="50"
+                          placeholder="e.g. 22"
+                          {...field}
+                          value={field.value || ""}
+                          onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="visibility"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Visibility (m)</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="1"
+                          min="0"
+                          placeholder="e.g. 15"
+                          {...field}
+                          value={field.value || ""}
+                          onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
               {/* Notes */}
               <FormField
