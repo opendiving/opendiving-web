@@ -115,7 +115,7 @@ export default function DiveSiteDetailPage() {
     return (
       <div className="min-h-screen bg-gray-50">
         <Header showDashboardActions={true} currentPage="sites" />
-        <div className="container mx-auto px-4 py-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin" />
           </div>
@@ -128,7 +128,7 @@ export default function DiveSiteDetailPage() {
     return (
       <div className="min-h-screen bg-gray-50">
         <Header showDashboardActions={true} currentPage="sites" />
-        <div className="container mx-auto px-4 py-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center py-12">
             <div className="text-muted-foreground mb-4">
               Dive site not found.
@@ -150,7 +150,7 @@ export default function DiveSiteDetailPage() {
     <div className="min-h-screen bg-gray-50">
       <Header showDashboardActions={true} currentPage="sites" />
 
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="sm" asChild>

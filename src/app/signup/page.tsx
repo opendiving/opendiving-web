@@ -1,8 +1,21 @@
+"use client";
+
 import { SignUpForm } from "@/components/auth/SignUpForm";
+import { useRedirectIfAuthenticated } from "@/hooks/useRedirectIfAuthenticated";
 import { Waves } from "lucide-react";
 import Link from "next/link";
 
 export default function SignUpPage() {
+  const { isAuthenticated, isLoading } = useRedirectIfAuthenticated();
+
+  if (isLoading || isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-blue-100 flex items-center justify-center p-4">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-blue-100 flex items-center justify-center p-4">
       <div className="w-full max-w-md">

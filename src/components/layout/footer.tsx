@@ -88,6 +88,11 @@ export function Footer() {
                   Privacy
                 </Link>
               </li>
+              <li>
+                <Link href="/terms" className="hover:text-white">
+                  Terms of Service
+                </Link>
+              </li>
             </ul>
           </div>
         </div>

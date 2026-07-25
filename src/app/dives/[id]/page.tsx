@@ -6,8 +6,18 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { divesAPI, Dive } from "@/lib/api/dives";
+import { tripsAPI, Trip } from "@/lib/api/trips";
+import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   ArrowLeft,
   Edit,
@@ -16,6 +26,10 @@ import {
   Clock,
   Gauge,
   Thermometer,
+  Eye,
+  Wind,
+  Luggage,
+  MapPin,
   FileText,
   Loader2,
 } from "lucide-react";
@@ -28,6 +42,8 @@ export default function DiveDetailPage() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const { toast } = useToast();
   const [dive, setDive] = useState<Dive | null>(null);
+  const [trip, setTrip] = useState<Trip | null>(null);
+  const [diveSite, setDiveSite] = useState<DiveSite | null>(null);
   const [isLoadingDive, setIsLoadingDive] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -67,6 +83,47 @@ export default function DiveDetailPage() {
       fetchDive();
     }
   }, [user?.username, diveId, toast, router]);
+
+  // Once the dive has loaded, resolve its trip/dive site names (the dive
+  // itself only stores their IDs). Failures here are non-fatal - the dive
+  // page still works, it just won't show that particular link.
+  useEffect(() => {
+    const fetchTrip = async () => {
+      if (!user?.username || !dive?.trip_id) {
+        setTrip(null);
+        return;
+      }
+
+      try {
+        const tripData = await tripsAPI.getTrip(user.username, dive.trip_id);
+        setTrip(tripData);
+      } catch (error) {
+        console.error('Failed to fetch trip:', error);
+        setTrip(null);
+      }
+    };
+
+    fetchTrip();
+  }, [user?.username, dive?.trip_id]);
+
+  useEffect(() => {
+    const fetchDiveSite = async () => {
+      if (!user?.username || !dive?.dive_site_id) {
+        setDiveSite(null);
+        return;
+      }
+
+      try {
+        const diveSiteData = await diveSitesAPI.getDiveSite(user.username, dive.dive_site_id);
+        setDiveSite(diveSiteData);
+      } catch (error) {
+        console.error('Failed to fetch dive site:', error);
+        setDiveSite(null);
+      }
+    };
+
+    fetchDiveSite();
+  }, [user?.username, dive?.dive_site_id]);
 
   // Handle dive deletion
   const handleDeleteDive = async () => {
@@ -147,7 +204,7 @@ export default function DiveDetailPage() {
     return (
       <div className="min-h-screen bg-gray-50">
         <Header showDashboardActions={true} currentPage="dives" />
-        <div className="container mx-auto px-4 py-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin" />
           </div>
@@ -160,7 +217,7 @@ export default function DiveDetailPage() {
     return (
       <div className="min-h-screen bg-gray-50">
         <Header showDashboardActions={true} currentPage="dives" />
-        <div className="container mx-auto px-4 py-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center py-12">
             <div className="text-muted-foreground mb-4">
               Dive not found.
@@ -178,11 +235,13 @@ export default function DiveDetailPage() {
     );
   }
 
+  const hasEnvironmentInfo = dive.bottom_temperature != null || dive.visibility != null;
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Header showDashboardActions={true} currentPage="dives" />
 
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="sm" asChild>
@@ -252,7 +311,7 @@ export default function DiveDetailPage() {
             </Card>
 
             {/* Depth Information */}
-            {(dive.max_depth || dive.avg_depth) && (
+            {(dive.max_depth != null || dive.avg_depth != null) && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -262,22 +321,68 @@ export default function DiveDetailPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {dive.max_depth && (
+                    {dive.max_depth != null && (
                       <div>
                         <div className="text-sm font-medium text-muted-foreground mb-1">Maximum Depth</div>
-                        <div className="text-2xl font-bold text-blue-600">
+                        <div className="text-2xl font-bold">
                           {dive.max_depth}m
                         </div>
                       </div>
                     )}
-                    {dive.avg_depth && (
+                    {dive.avg_depth != null && (
                       <div>
                         <div className="text-sm font-medium text-muted-foreground mb-1">Average Depth</div>
-                        <div className="text-2xl font-bold text-blue-500">
+                        <div className="text-2xl font-bold">
                           {dive.avg_depth}m
                         </div>
                       </div>
                     )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Gas Mixtures */}
+            {dive.mixtures && dive.mixtures.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Wind className="h-5 w-5" />
+                    Gas Mixtures
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Volume</TableHead>
+                          <TableHead>Start Pressure</TableHead>
+                          <TableHead>End Pressure</TableHead>
+                          <TableHead>O₂</TableHead>
+                          <TableHead>PO₂</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {dive.mixtures.map((mixture, index) => (
+                          <TableRow key={mixture.id ?? index}>
+                            <TableCell className="font-medium">
+                              {mixture.name || `Tank ${index + 1}`}
+                            </TableCell>
+                            <TableCell>{mixture.volume} L</TableCell>
+                            <TableCell>
+                              {mixture.start_pressure != null ? `${mixture.start_pressure} bar` : '-'}
+                            </TableCell>
+                            <TableCell>
+                              {mixture.end_pressure != null ? `${mixture.end_pressure} bar` : '-'}
+                            </TableCell>
+                            <TableCell>{mixture.oxygen}%</TableCell>
+                            <TableCell>{mixture.po2} bar</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   </div>
                 </CardContent>
               </Card>
@@ -305,8 +410,43 @@ export default function DiveDetailPage() {
 
           {/* Sidebar */}
           <div className="space-y-6">
+            {/* Trip & Dive Site */}
+            {(trip || diveSite) && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Trip & Dive Site</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {trip && (
+                    <div>
+                      <div className="text-sm font-medium text-muted-foreground mb-1">Trip</div>
+                      <Link
+                        href={`/trips/${trip.id}`}
+                        className="flex items-center gap-2 text-sm font-medium hover:underline"
+                      >
+                        <Luggage className="h-4 w-4 text-muted-foreground" />
+                        {trip.name}
+                      </Link>
+                    </div>
+                  )}
+                  {diveSite && (
+                    <div>
+                      <div className="text-sm font-medium text-muted-foreground mb-1">Dive Site</div>
+                      <Link
+                        href={`/sites/${diveSite.id}`}
+                        className="flex items-center gap-2 text-sm font-medium hover:underline"
+                      >
+                        <MapPin className="h-4 w-4 text-muted-foreground" />
+                        {diveSite.name}
+                      </Link>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
             {/* Environmental Conditions */}
-            {dive.bottom_temperature && (
+            {hasEnvironmentInfo && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
@@ -314,13 +454,25 @@ export default function DiveDetailPage() {
                     Environment
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div>
-                    <div className="text-sm font-medium text-muted-foreground mb-1">Bottom Temperature</div>
-                    <div className="text-xl font-semibold">
-                      {dive.bottom_temperature}°C
+                <CardContent className="space-y-4">
+                  {dive.bottom_temperature != null && (
+                    <div>
+                      <div className="text-sm font-medium text-muted-foreground mb-1">Bottom Temperature</div>
+                      <div className="flex items-center gap-2 text-xl font-semibold">
+                        <Thermometer className="h-4 w-4 text-muted-foreground" />
+                        {dive.bottom_temperature}°C
+                      </div>
                     </div>
-                  </div>
+                  )}
+                  {dive.visibility != null && (
+                    <div>
+                      <div className="text-sm font-medium text-muted-foreground mb-1">Visibility</div>
+                      <div className="flex items-center gap-2 text-xl font-semibold">
+                        <Eye className="h-4 w-4 text-muted-foreground" />
+                        {dive.visibility}m
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}

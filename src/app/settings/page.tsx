@@ -177,7 +177,7 @@ export default function SettingsPage() {
     <div className="min-h-screen bg-gray-50">
       <Header showDashboardActions={true} currentPage="settings" />
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Header Section */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">

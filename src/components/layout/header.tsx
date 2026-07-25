@@ -50,18 +50,18 @@ export function Header({
         <div className="flex justify-between items-center py-4">
           {/* Logo and Navigation */}
           <div className="flex items-center space-x-8">
-            <Link href="/" className="flex items-center space-x-2">
-              <Waves className="h-8 w-8 text-blue-600" />
-              <h1 className="text-2xl font-bold text-gray-900">OpenDiving</h1>
+            <Link href="/" className="flex flex-shrink-0 items-center space-x-2">
+              <Waves className="h-8 w-8 text-blue-600 flex-shrink-0" />
+              <h1 className="text-2xl font-bold text-gray-900 whitespace-nowrap">OpenDiving</h1>
             </Link>
 
             {/* Desktop Navigation - Show different nav based on auth status */}
-            <nav className="hidden md:flex space-x-6">
+            <nav className="hidden md:flex flex-shrink-0 items-center space-x-6">
               {isAuthenticated ? (
                 <>
                   <Link
                     href="/dashboard"
-                    className={`text-sm font-medium transition-colors hover:text-blue-600 ${
+                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-blue-600 ${
                       currentPage === "dashboard"
                         ? "text-blue-600"
                         : "text-gray-700"
@@ -71,7 +71,7 @@ export function Header({
                   </Link>
                   <Link
                     href="/trips"
-                    className={`text-sm font-medium transition-colors hover:text-blue-600 ${
+                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-blue-600 ${
                       currentPage === "trips"
                         ? "text-blue-600"
                         : "text-gray-700"
@@ -81,7 +81,7 @@ export function Header({
                   </Link>
                   <Link
                     href="/dives"
-                    className={`text-sm font-medium transition-colors hover:text-blue-600 ${
+                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-blue-600 ${
                       currentPage === "dives"
                         ? "text-blue-600"
                         : "text-gray-700"
@@ -91,7 +91,7 @@ export function Header({
                   </Link>
                   <Link
                     href="/sites"
-                    className={`text-sm font-medium transition-colors hover:text-blue-600 ${
+                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-blue-600 ${
                       currentPage === "sites"
                         ? "text-blue-600"
                         : "text-gray-700"
@@ -101,7 +101,7 @@ export function Header({
                   </Link>
                   <Link
                     href="/community"
-                    className={`text-sm font-medium transition-colors hover:text-blue-600 ${
+                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-blue-600 ${
                       currentPage === "community"
                         ? "text-blue-600"
                         : "text-gray-700"
@@ -114,19 +114,19 @@ export function Header({
                 <>
                   <Link
                     href="/#features"
-                    className="text-sm font-medium text-gray-700 hover:text-blue-600"
+                    className="whitespace-nowrap text-sm font-medium text-gray-700 hover:text-blue-600"
                   >
                     Features
                   </Link>
                   <Link
                     href="/#community"
-                    className="text-sm font-medium text-gray-700 hover:text-blue-600"
+                    className="whitespace-nowrap text-sm font-medium text-gray-700 hover:text-blue-600"
                   >
                     Community
                   </Link>
                   <Link
                     href="/#about"
-                    className="text-sm font-medium text-gray-700 hover:text-blue-600"
+                    className="whitespace-nowrap text-sm font-medium text-gray-700 hover:text-blue-600"
                   >
                     About
                   </Link>
@@ -136,7 +136,7 @@ export function Header({
           </div>
 
           {/* Actions */}
-          <div className="flex items-center space-x-3">
+          <div className="flex flex-shrink-0 items-center space-x-3">
             {isLoading ? (
               <div className="animate-pulse bg-gray-200 rounded-md h-9 w-20"></div>
             ) : isAuthenticated && user ? (
