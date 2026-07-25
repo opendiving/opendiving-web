@@ -39,11 +39,40 @@ function formatDiveDuration(durationSeconds: number) {
 
 export interface RecentDivesCardProps {
   username: string;
+  // Only show dives belonging to this trip. When omitted, shows the user's
+  // most recent dives across all trips.
+  tripId?: number;
+  // Maximum number of dives to fetch/display. Defaults to 5 for the
+  // dashboard/profile "recent dives" use case.
+  limit?: number;
+  title?: string;
+  description?: string;
+  // Href/label for the header's "view all" button. Pass `null` to hide it
+  // entirely (e.g. when the card already shows the full list).
+  viewAllHref?: string | null;
+  viewAllLabel?: string;
+  emptyTitle?: string;
+  emptyDescription?: string;
+  newDiveHref?: string;
+  newDiveLabel?: string;
 }
 
-// Shows the 5 most recent dives for a user (dive number, date, duration, max depth).
-// Used on both the dashboard and profile pages so they stay in sync.
-export function RecentDivesCard({ username }: RecentDivesCardProps) {
+// Shows a list of dives for a user (dive number, date, duration, max depth).
+// Used on the dashboard and profile pages (as the 5 most recent dives) and
+// on a trip's detail page (filtered to that trip's dives), so they stay in sync.
+export function RecentDivesCard({
+  username,
+  tripId,
+  limit = RECENT_DIVES_COUNT,
+  title = "Recent Dives",
+  description = "Your latest underwater adventures",
+  viewAllHref = "/dives",
+  viewAllLabel = "View All Dives",
+  emptyTitle = "No dives logged yet",
+  emptyDescription = "Start your diving journey by logging your first dive!",
+  newDiveHref = "/dives/new",
+  newDiveLabel = "Log Your First Dive",
+}: RecentDivesCardProps) {
   const [recentDives, setRecentDives] = useState<Dive[]>([]);
   const [isLoadingDives, setIsLoadingDives] = useState(true);
 
@@ -53,7 +82,7 @@ export function RecentDivesCard({ username }: RecentDivesCardProps) {
 
       try {
         setIsLoadingDives(true);
-        const response = await divesAPI.getDives(username, 1, RECENT_DIVES_COUNT);
+        const response = await divesAPI.getDives(username, 1, limit, tripId);
         setRecentDives(response.data);
       } catch (error) {
         console.error("Failed to fetch recent dives:", error);
@@ -63,7 +92,7 @@ export function RecentDivesCard({ username }: RecentDivesCardProps) {
     };
 
     fetchRecentDives();
-  }, [username]);
+  }, [username, tripId, limit]);
 
   return (
     <Card>
@@ -71,15 +100,15 @@ export function RecentDivesCard({ username }: RecentDivesCardProps) {
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center">
             <Fish className="h-5 w-5 mr-2" />
-            Recent Dives
+            {title}
           </CardTitle>
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/dives">View All Dives</Link>
-          </Button>
+          {viewAllHref && (
+            <Button variant="outline" size="sm" asChild>
+              <Link href={viewAllHref}>{viewAllLabel}</Link>
+            </Button>
+          )}
         </div>
-        <CardDescription>
-          Your latest underwater adventures
-        </CardDescription>
+        <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
         {isLoadingDives ? (
@@ -90,15 +119,15 @@ export function RecentDivesCard({ username }: RecentDivesCardProps) {
           <div className="text-center py-12">
             <Waves className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">
-              No dives logged yet
+              {emptyTitle}
             </h3>
             <p className="text-gray-500 mb-4">
-              Start your diving journey by logging your first dive!
+              {emptyDescription}
             </p>
             <Button asChild>
-              <Link href="/dives/new">
+              <Link href={newDiveHref}>
                 <Plus className="h-4 w-4 mr-2" />
-                Log Your First Dive
+                {newDiveLabel}
               </Link>
             </Button>
           </div>

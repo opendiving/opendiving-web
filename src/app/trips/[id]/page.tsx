@@ -1,0 +1,235 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
+import { Header } from "@/components/layout/header";
+import { Footer } from "@/components/layout/footer";
+import { tripsAPI, Trip } from "@/lib/api/trips";
+import { RecentDivesCard } from "@/components/dives/recent-dives-card";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ArrowLeft, Edit, Trash2, Plus, Calendar, Loader2 } from "lucide-react";
+import Link from "next/link";
+import { useToast } from "@/components/ui/use-toast";
+
+export default function TripDetailPage() {
+  const params = useParams();
+  const router = useRouter();
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const { toast } = useToast();
+  const [trip, setTrip] = useState<Trip | null>(null);
+  const [isLoadingTrip, setIsLoadingTrip] = useState(true);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const tripId = parseInt(params.id as string);
+
+  // Redirect to signin if not authenticated, but only once the auth check
+  // has actually finished.
+  useEffect(() => {
+    if (!isAuthLoading && !isAuthenticated) {
+      router.push('/signin');
+    }
+  }, [isAuthenticated, isAuthLoading, router]);
+
+  // Fetch trip details
+  useEffect(() => {
+    const fetchTrip = async () => {
+      if (!user?.username || !tripId) return;
+
+      try {
+        setIsLoadingTrip(true);
+        const tripData = await tripsAPI.getTrip(user.username, tripId);
+        setTrip(tripData);
+      } catch (error) {
+        console.error('Failed to fetch trip:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load trip details. Please try again.",
+          variant: "destructive",
+        });
+        router.push('/trips');
+      } finally {
+        setIsLoadingTrip(false);
+      }
+    };
+
+    if (user?.username) {
+      fetchTrip();
+    }
+  }, [user?.username, tripId, toast, router]);
+
+  // Handle trip deletion
+  const handleDeleteTrip = async () => {
+    if (!user?.username || !trip?.id || !confirm('Are you sure you want to delete this trip? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+      await tripsAPI.deleteTrip(user.username, trip.id);
+
+      toast({
+        title: "Success",
+        description: "Trip deleted successfully.",
+      });
+
+      router.push('/trips');
+    } catch (error) {
+      console.error('Failed to delete trip:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete trip. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+  };
+
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header showDashboardActions={true} currentPage="trips" />
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null; // Will redirect to signin
+  }
+
+  if (isLoadingTrip) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header showDashboardActions={true} currentPage="trips" />
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!trip) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header showDashboardActions={true} currentPage="trips" />
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center py-12">
+            <div className="text-muted-foreground mb-4">
+              Trip not found.
+            </div>
+            <Button asChild>
+              <Link href="/trips">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Trips
+              </Link>
+            </Button>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Header showDashboardActions={true} currentPage="trips" />
+
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/trips">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Trips
+              </Link>
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold">{trip.name}</h1>
+              <p className="text-muted-foreground mt-1">
+                Created {formatDate(trip.created_at)}
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" asChild>
+              <Link href={`/trips/${trip.id}/edit`}>
+                <Edit className="h-4 w-4 mr-2" />
+                Edit
+              </Link>
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteTrip}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-2" />
+              )}
+              Delete
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
+            <RecentDivesCard
+              username={user?.username ?? ""}
+              tripId={trip.id}
+              limit={100}
+              title="Dives in this Trip"
+              description="All dives logged as part of this trip"
+              viewAllHref={null}
+              emptyTitle="No dives logged for this trip yet"
+              emptyDescription="Log a dive and assign it to this trip to see it here."
+              newDiveHref={`/dives/new?trip_id=${trip.id}`}
+              newDiveLabel="Log a Dive for this Trip"
+            />
+          </div>
+
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="h-5 w-5" />
+                  Trip Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <div className="text-sm font-medium text-muted-foreground mb-1">Created on</div>
+                  <div className="text-sm">{formatDate(trip.created_at)}</div>
+                </div>
+                <Button className="w-full" asChild>
+                  <Link href={`/dives/new?trip_id=${trip.id}`}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Log a Dive for this Trip
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+
+      <Footer />
+    </div>
+  );
+}

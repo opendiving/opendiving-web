@@ -66,6 +66,7 @@ export const diveCreateSchema = z
       .int("Visibility must be an integer")
       .positive("Visibility must be positive")
       .optional(),
+    trip_id: z.number().int().positive().optional(),
     notes: z
       .string()
       .max(63206, "Notes cannot exceed 63206 characters")
@@ -97,6 +98,7 @@ export const diveUpdateSchema = z
       .int("Visibility must be an integer")
       .positive("Visibility must be positive")
       .optional(),
+    trip_id: z.number().int().positive().optional(),
     notes: z
       .string()
       .max(63206, "Notes cannot exceed 63206 characters")

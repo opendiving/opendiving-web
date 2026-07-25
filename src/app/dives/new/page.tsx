@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { divesAPI } from "@/lib/api/dives";
 import { diveCreateSchema, DiveCreateInput, normalizeMixtures } from "@/lib/validations/dive";
@@ -20,10 +20,30 @@ import { useToast } from "@/components/ui/use-toast";
 import { formatDateTimeForForm, parseFormDateTime } from "@/lib/date-time";
 
 export default function NewDivePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center min-h-screen">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      }
+    >
+      <NewDivePageContent />
+    </Suspense>
+  );
+}
+
+function NewDivePageContent() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Allow pre-selecting a trip via ?trip_id=123, e.g. when logging a dive
+  // from a trip's detail page.
+  const tripIdParam = searchParams.get("trip_id");
+  const initialTripId = tripIdParam ? parseInt(tripIdParam, 10) : undefined;
 
   const form = useForm<DiveCreateInput>({
     resolver: zodResolver(diveCreateSchema),
@@ -35,6 +55,7 @@ export default function NewDivePage() {
       avg_depth: undefined,
       bottom_temperature: undefined,
       visibility: undefined,
+      trip_id: initialTripId,
       notes: "",
       mixtures: [{ ...DEFAULT_MIXTURE, name: getDefaultMixtureName(0) }],
     },
@@ -128,7 +149,7 @@ export default function NewDivePage() {
               {/* Import from dive computer file */}
               <DiveFileImport form={form} />
 
-              <DiveFormFields control={form.control} mode="create" />
+              <DiveFormFields control={form.control} mode="create" username={user?.username ?? ""} />
 
               <DiveFormActions
                 cancelHref="/dives"

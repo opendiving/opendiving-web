@@ -12,6 +12,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { MixtureFields } from "@/components/dives/mixture-fields";
+import { TripCombobox } from "@/components/dives/trip-combobox";
 
 export interface DiveFormFieldsProps {
   // Using `any` here since this component is shared between the create and
@@ -23,14 +24,38 @@ export interface DiveFormFieldsProps {
   // so no asterisks are shown and a cleared value resolves to `undefined`
   // rather than falling back to a default.
   mode: "create" | "edit";
+  // Username of the currently signed-in user, used to fetch/create trips
+  // scoped to their account for the trip combobox.
+  username: string;
 }
 
-export function DiveFormFields({ control, mode }: DiveFormFieldsProps) {
+export function DiveFormFields({ control, mode, username }: DiveFormFieldsProps) {
   const required = mode === "create";
   const requiredMark = required ? " *" : "";
 
   return (
     <>
+      {/* Trip */}
+      <div className="grid grid-cols-1 gap-4">
+        <FormField
+          control={control}
+          name="trip_id"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Trip</FormLabel>
+              <FormControl>
+                <TripCombobox
+                  username={username}
+                  value={field.value}
+                  onChange={field.onChange}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
+
       {/* Basic Information */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <FormField

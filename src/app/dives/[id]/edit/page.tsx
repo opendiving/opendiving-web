@@ -40,6 +40,7 @@ export default function EditDivePage() {
       avg_depth: undefined,
       bottom_temperature: undefined,
       visibility: undefined,
+      trip_id: undefined,
       notes: "",
       mixtures: [{ ...DEFAULT_MIXTURE, name: getDefaultMixtureName(0) }],
     },
@@ -72,6 +73,7 @@ export default function EditDivePage() {
           avg_depth: diveData.avg_depth,
           bottom_temperature: diveData.bottom_temperature,
           visibility: diveData.visibility,
+          trip_id: diveData.trip_id,
           notes: diveData.notes || "",
           mixtures: diveData.mixtures?.length
             ? diveData.mixtures
@@ -130,6 +132,10 @@ export default function EditDivePage() {
 
       if (data.visibility !== undefined) {
         updateData.visibility = data.visibility;
+      }
+
+      if (data.trip_id !== undefined) {
+        updateData.trip_id = data.trip_id;
       }
 
       if (data.notes !== undefined) {
@@ -233,7 +239,7 @@ export default function EditDivePage() {
               {/* Import from dive computer file */}
               <DiveFileImport form={form} />
 
-              <DiveFormFields control={form.control} mode="edit" />
+              <DiveFormFields control={form.control} mode="edit" username={user?.username ?? ""} />
 
               <DiveFormActions
                 cancelHref={`/dives/${diveId}`}

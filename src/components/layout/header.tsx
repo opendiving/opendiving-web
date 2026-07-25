@@ -70,6 +70,16 @@ export function Header({
                     Dashboard
                   </Link>
                   <Link
+                    href="/trips"
+                    className={`text-sm font-medium transition-colors hover:text-blue-600 ${
+                      currentPage === "trips"
+                        ? "text-blue-600"
+                        : "text-gray-700"
+                    }`}
+                  >
+                    Trips
+                  </Link>
+                  <Link
                     href="/dives"
                     className={`text-sm font-medium transition-colors hover:text-blue-600 ${
                       currentPage === "dives"
@@ -77,7 +87,7 @@ export function Header({
                         : "text-gray-700"
                     }`}
                   >
-                    My Dives
+                    Dives
                   </Link>
                   <Link
                     href="/sites"
@@ -232,11 +242,18 @@ export function Header({
                     Dashboard
                   </Link>
                   <Link
+                    href="/trips"
+                    className="text-sm font-medium text-gray-700 hover:text-blue-600 py-2"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Trips
+                  </Link>
+                  <Link
                     href="/dives"
                     className="text-sm font-medium text-gray-700 hover:text-blue-600 py-2"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
-                    My Dives
+                    Dives
                   </Link>
                   <Link
                     href="/sites"
