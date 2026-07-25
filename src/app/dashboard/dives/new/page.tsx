@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { divesAPI } from "@/lib/api/dives";
+import { divesAPI, ParsedDive } from "@/lib/api/dives";
 import { diveCreateSchema, DiveCreateInput } from "@/lib/validations/dive";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,7 +21,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { ArrowLeft, Loader2, Save } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Upload } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -38,11 +38,29 @@ function getCurrentDateTime() {
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 }
 
+// Convert a parsed dive's start time (ISO-ish, e.g. "2021-04-06T12:31:34.45")
+// into the YYYY-MM-DD HH:mm:ss format used by the form.
+function formatParsedStartTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
+
 export default function NewDivePage() {
   const { user, isAuthenticated } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isParsingFile, setIsParsingFile] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<DiveCreateInput>({
     resolver: zodResolver(diveCreateSchema),
@@ -62,6 +80,62 @@ export default function NewDivePage() {
     router.push('/signin');
     return null;
   }
+
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsParsingFile(true);
+      const parsed: ParsedDive = await divesAPI.parseDiveFile(file);
+
+      if (parsed.dive_number != null) {
+        form.setValue("dive_number", parsed.dive_number, { shouldValidate: true, shouldDirty: true });
+      }
+      if (parsed.start_time) {
+        form.setValue("start_time", formatParsedStartTime(parsed.start_time), {
+          shouldValidate: true,
+          shouldDirty: true,
+        });
+      }
+      if (parsed.duration != null) {
+        form.setValue("duration", parsed.duration, { shouldValidate: true, shouldDirty: true });
+      }
+      if (parsed.max_depth != null) {
+        form.setValue("max_depth", parsed.max_depth, { shouldValidate: true, shouldDirty: true });
+      }
+      if (parsed.avg_depth != null) {
+        form.setValue("avg_depth", parsed.avg_depth, { shouldValidate: true, shouldDirty: true });
+      }
+      if (parsed.bottom_temperature != null) {
+        form.setValue("bottom_temperature", Math.round(parsed.bottom_temperature), {
+          shouldValidate: true,
+          shouldDirty: true,
+        });
+      }
+
+      toast({
+        title: "Dive file parsed",
+        description: "Form fields have been filled in from the uploaded file. Please review before saving.",
+      });
+    } catch (error: any) {
+      console.error('Failed to parse dive file:', error);
+
+      let errorMessage = "Failed to parse the dive file. Please check the file and try again.";
+      if (typeof error.response?.data?.detail === "string") {
+        errorMessage = error.response.data.detail;
+      }
+
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsParsingFile(false);
+      e.target.value = "";
+    }
+  };
 
   const onSubmit = async (data: DiveCreateInput) => {
     if (!user?.username) return;
@@ -126,6 +200,43 @@ export default function NewDivePage() {
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              {/* Import from dive computer file */}
+              <div className="rounded-lg border border-dashed p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-muted/40">
+                <div>
+                  <p className="font-medium text-sm">Import from a dive computer file</p>
+                  <p className="text-sm text-muted-foreground">
+                    Upload a dive log export (e.g. Suunto XML) to automatically fill in the fields below.
+                  </p>
+                </div>
+                <div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".xml"
+                    className="hidden"
+                    onChange={handleFileSelected}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isParsingFile}
+                  >
+                    {isParsingFile ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Parsing...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Upload Dive File
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+
               {/* Basic Information */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
@@ -203,9 +314,9 @@ export default function NewDivePage() {
                       <FormControl>
                         <Input
                           type="number"
-                          step="0.1"
+                          step="0.01"
                           min="0"
-                          placeholder="e.g. 30.5"
+                          placeholder="e.g. 30.52"
                           {...field}
                           value={field.value || ""}
                           onChange={(e) => field.onChange(parseFloat(e.target.value) || undefined)}
@@ -225,9 +336,9 @@ export default function NewDivePage() {
                       <FormControl>
                         <Input
                           type="number"
-                          step="0.1"
+                          step="0.01"
                           min="0"
-                          placeholder="e.g. 18.2"
+                          placeholder="e.g. 18.24"
                           {...field}
                           value={field.value || ""}
                           onChange={(e) => field.onChange(parseFloat(e.target.value) || undefined)}

@@ -306,9 +306,9 @@ export default function EditDivePage() {
                       <FormControl>
                         <Input
                           type="number"
-                          step="0.1"
+                          step="0.01"
                           min="0"
-                          placeholder="e.g. 30.5"
+                          placeholder="e.g. 30.52"
                           {...field}
                           value={field.value || ""}
                           onChange={(e) => field.onChange(parseFloat(e.target.value) || undefined)}
@@ -328,9 +328,9 @@ export default function EditDivePage() {
                       <FormControl>
                         <Input
                           type="number"
-                          step="0.1"
+                          step="0.01"
                           min="0"
-                          placeholder="e.g. 18.2"
+                          placeholder="e.g. 18.24"
                           {...field}
                           value={field.value || ""}
                           onChange={(e) => field.onChange(parseFloat(e.target.value) || undefined)}
