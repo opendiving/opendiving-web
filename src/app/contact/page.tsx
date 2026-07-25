@@ -1,4 +1,5 @@
 import { Header } from "@/components/layout/header";
+import { Footer } from "@/components/layout/footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,7 +31,7 @@ export const metadata: Metadata = {
 export default function ContactPage() {
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
+      <Header showDashboardActions={true} />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Header Section */}
@@ -243,7 +244,7 @@ export default function ContactPage() {
           </Card>
         </div>
 
-        {/* Footer */}
+        {/* Response Time Note */}
         <div className="mt-12 text-center">
           <p className="text-gray-600">
             OpenDiving is an open-source project maintained by volunteers from
@@ -255,6 +256,8 @@ export default function ContactPage() {
           </p>
         </div>
       </div>
+
+      <Footer />
     </div>
   );
 }

@@ -18,8 +18,6 @@ import {
   LogOut,
   Settings,
   BookOpen,
-  Users,
-  Plus,
   Menu,
   Bell,
   Search,
@@ -146,24 +144,6 @@ export function Header({
                   </span>
                 </Button>
 
-                {/* Dashboard specific actions */}
-                {showDashboardActions && (
-                  <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="hidden sm:flex"
-                    >
-                      <Users className="h-4 w-4 mr-2" />
-                      Find Buddies
-                    </Button>
-                    <Button size="sm">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Log Dive
-                    </Button>
-                  </>
-                )}
-
                 {/* Dashboard link for non-dashboard pages */}
                 {!showDashboardActions && (
                   <Link href="/dashboard">
@@ -194,12 +174,6 @@ export function Header({
                       @{user.username}
                     </div>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link href="/dashboard" className="flex items-center">
-                        <BookOpen className="mr-2 h-4 w-4" />
-                        Dashboard
-                      </Link>
-                    </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link href="/profile" className="flex items-center">
                         <User className="mr-2 h-4 w-4" />

@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/contexts/AuthContext";
 import { Header } from "@/components/layout/header";
+import { Footer } from "@/components/layout/footer";
 import {
   Card,
   CardContent,
@@ -163,7 +164,7 @@ export default function SettingsPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <Header currentPage="settings" />
+        <Header showDashboardActions={true} currentPage="settings" />
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
@@ -177,7 +178,7 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header currentPage="settings" />
+      <Header showDashboardActions={true} currentPage="settings" />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Header Section */}
@@ -490,6 +491,8 @@ export default function SettingsPage() {
           </Card>
         </div>
       </div>
+
+      <Footer />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Header } from "@/components/layout/header";
+import { Footer } from "@/components/layout/footer";
 import { divesAPI, Dive, PaginatedDivesResponse } from "@/lib/api/dives";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -109,6 +110,7 @@ export default function DivesPage() {
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
+      hour12: false,
     });
   };
 
@@ -197,7 +199,6 @@ export default function DivesPage() {
                       <TableHead>Max Depth</TableHead>
                       <TableHead>Avg Depth</TableHead>
                       <TableHead>Temperature</TableHead>
-                      <TableHead>Notes</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -208,16 +209,8 @@ export default function DivesPage() {
                           #{dive.dive_number}
                         </TableCell>
                         <TableCell>
-                          <div className="text-sm">
-                            <div className="font-medium">
-                              {formatDate(dive.start_time)}
-                            </div>
-                            <div className="text-muted-foreground text-xs">
-                              Started at {new Date(dive.start_time).toLocaleTimeString('en-US', {
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              })}
-                            </div>
+                          <div className="text-sm font-medium">
+                            {formatDate(dive.start_time)}
                           </div>
                         </TableCell>
                         <TableCell>
@@ -231,11 +224,6 @@ export default function DivesPage() {
                         </TableCell>
                         <TableCell>
                           {dive.bottom_temperature ? `${dive.bottom_temperature}°C` : '-'}
-                        </TableCell>
-                        <TableCell>
-                          <div className="max-w-32 truncate text-sm text-muted-foreground">
-                            {dive.notes || 'No notes'}
-                          </div>
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
@@ -307,6 +295,8 @@ export default function DivesPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Footer />
     </div>
   );
 }

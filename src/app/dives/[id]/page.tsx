@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { Header } from "@/components/layout/header";
+import { Footer } from "@/components/layout/footer";
 import { divesAPI, Dive } from "@/lib/api/dives";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -128,8 +130,11 @@ export default function DiveDetailPage() {
 
   if (isAuthLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="min-h-screen bg-gray-50">
+        <Header showDashboardActions={true} currentPage="dives" />
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
       </div>
     );
   }
@@ -140,9 +145,12 @@ export default function DiveDetailPage() {
 
   if (isLoadingDive) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="min-h-screen bg-gray-50">
+        <Header showDashboardActions={true} currentPage="dives" />
+        <div className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin" />
+          </div>
         </div>
       </div>
     );
@@ -150,188 +158,198 @@ export default function DiveDetailPage() {
 
   if (!dive) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center py-12">
-          <div className="text-muted-foreground mb-4">
-            Dive not found.
+      <div className="min-h-screen bg-gray-50">
+        <Header showDashboardActions={true} currentPage="dives" />
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center py-12">
+            <div className="text-muted-foreground mb-4">
+              Dive not found.
+            </div>
+            <Button asChild>
+              <Link href="/dives">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Dives
+              </Link>
+            </Button>
           </div>
-          <Button asChild>
-            <Link href="/dives">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dives
-            </Link>
-          </Button>
         </div>
+        <Footer />
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/dives">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dives
-            </Link>
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold">Dive #{dive.dive_number}</h1>
-            <p className="text-muted-foreground mt-1">
-              {formatDate(dive.start_time)}
-            </p>
+    <div className="min-h-screen bg-gray-50">
+      <Header showDashboardActions={true} currentPage="dives" />
+
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/dives">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Dives
+              </Link>
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold">Dive #{dive.dive_number}</h1>
+              <p className="text-muted-foreground mt-1">
+                {formatDate(dive.start_time)}
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" asChild>
+              <Link href={`/dives/${dive.id}/edit`}>
+                <Edit className="h-4 w-4 mr-2" />
+                Edit
+              </Link>
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteDive}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-2" />
+              )}
+              Delete
+            </Button>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" asChild>
-            <Link href={`/dives/${dive.id}/edit`}>
-              <Edit className="h-4 w-4 mr-2" />
-              Edit
-            </Link>
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={handleDeleteDive}
-            disabled={isDeleting}
-          >
-            {isDeleting ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Trash2 className="h-4 w-4 mr-2" />
-            )}
-            Delete
-          </Button>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Details */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Time & Duration */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
-                Time & Duration
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground mb-1">Start Time</div>
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    <span>{formatTime(dive.start_time)}</span>
-                  </div>
-                </div>
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground mb-1">Duration</div>
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    <span>{formatDuration(dive.duration)}</span>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Depth Information */}
-          {(dive.max_depth || dive.avg_depth) && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main Details */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Time & Duration */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Gauge className="h-5 w-5" />
-                  Depth Information
+                  <Calendar className="h-5 w-5" />
+                  Time & Duration
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {dive.max_depth && (
-                    <div>
-                      <div className="text-sm font-medium text-muted-foreground mb-1">Maximum Depth</div>
-                      <div className="text-2xl font-bold text-blue-600">
-                        {dive.max_depth}m
-                      </div>
+                  <div>
+                    <div className="text-sm font-medium text-muted-foreground mb-1">Start Time</div>
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <span>{formatTime(dive.start_time)}</span>
                     </div>
-                  )}
-                  {dive.avg_depth && (
-                    <div>
-                      <div className="text-sm font-medium text-muted-foreground mb-1">Average Depth</div>
-                      <div className="text-2xl font-bold text-blue-500">
-                        {dive.avg_depth}m
-                      </div>
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-muted-foreground mb-1">Duration</div>
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <span>{formatDuration(dive.duration)}</span>
                     </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Notes */}
-          {dive.notes && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  Notes
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="prose max-w-none">
-                  <p className="whitespace-pre-wrap text-muted-foreground leading-relaxed">
-                    {dive.notes}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Environmental Conditions */}
-          {dive.bottom_temperature && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Thermometer className="h-5 w-5" />
-                  Environment
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground mb-1">Bottom Temperature</div>
-                  <div className="text-xl font-semibold">
-                    {dive.bottom_temperature}°C
                   </div>
                 </div>
               </CardContent>
             </Card>
-          )}
 
-          {/* Dive Metadata */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Dive Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div>
-                <div className="text-sm font-medium text-muted-foreground">Logged on</div>
-                <div className="text-sm">
-                  {new Date(dive.created_at).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
+            {/* Depth Information */}
+            {(dive.max_depth || dive.avg_depth) && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Gauge className="h-5 w-5" />
+                    Depth Information
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {dive.max_depth && (
+                      <div>
+                        <div className="text-sm font-medium text-muted-foreground mb-1">Maximum Depth</div>
+                        <div className="text-2xl font-bold text-blue-600">
+                          {dive.max_depth}m
+                        </div>
+                      </div>
+                    )}
+                    {dive.avg_depth && (
+                      <div>
+                        <div className="text-sm font-medium text-muted-foreground mb-1">Average Depth</div>
+                        <div className="text-2xl font-bold text-blue-500">
+                          {dive.avg_depth}m
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Notes */}
+            {dive.notes && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Notes
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="prose max-w-none">
+                    <p className="whitespace-pre-wrap text-muted-foreground leading-relaxed">
+                      {dive.notes}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Environmental Conditions */}
+            {dive.bottom_temperature && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Thermometer className="h-5 w-5" />
+                    Environment
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div>
+                    <div className="text-sm font-medium text-muted-foreground mb-1">Bottom Temperature</div>
+                    <div className="text-xl font-semibold">
+                      {dive.bottom_temperature}°C
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Dive Metadata */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Dive Information</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div>
+                  <div className="text-sm font-medium text-muted-foreground">Logged on</div>
+                  <div className="text-sm">
+                    {new Date(dive.created_at).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
+
+      <Footer />
     </div>
   );
 }

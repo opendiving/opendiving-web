@@ -2,6 +2,8 @@
 
 import { useAuth } from "@/contexts/AuthContext";
 import { Header } from "@/components/layout/header";
+import { Footer } from "@/components/layout/footer";
+import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import {
   Card,
   CardContent,
@@ -19,8 +21,6 @@ import {
   Settings,
   MapPin,
   Waves,
-  Fish,
-  Clock,
   Award,
   Edit,
 } from "lucide-react";
@@ -41,7 +41,7 @@ export default function ProfilePage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <Header currentPage="profile" />
+        <Header showDashboardActions={true} currentPage="profile" />
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
@@ -55,7 +55,7 @@ export default function ProfilePage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header currentPage="profile" />
+      <Header showDashboardActions={true} currentPage="profile" />
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Profile Header */}
@@ -97,7 +97,7 @@ export default function ProfilePage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
-                  <Waves className="h-5 w-5 mr-2 text-blue-600" />
+                  <Waves className="h-5 w-5 mr-2" />
                   Diving Statistics
                 </CardTitle>
                 <CardDescription>
@@ -107,21 +107,21 @@ export default function ProfilePage() {
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-blue-600">0</div>
+                    <div className="text-2xl font-bold">0</div>
                     <div className="text-sm text-gray-600">Total Dives</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-green-600">0m</div>
+                    <div className="text-2xl font-bold">0m</div>
                     <div className="text-sm text-gray-600">Max Depth</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-purple-600">
+                    <div className="text-2xl font-bold">
                       0min
                     </div>
                     <div className="text-sm text-gray-600">Total Time</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-orange-600">0</div>
+                    <div className="text-2xl font-bold">0</div>
                     <div className="text-sm text-gray-600">Species Seen</div>
                   </div>
                 </div>
@@ -129,32 +129,7 @@ export default function ProfilePage() {
             </Card>
 
             {/* Recent Dives */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Fish className="h-5 w-5 mr-2 text-blue-600" />
-                  Recent Dives
-                </CardTitle>
-                <CardDescription>
-                  Your latest underwater adventures
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-12">
-                  <Waves className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                  <h3 className="text-xl font-medium text-gray-900 mb-2">
-                    No dives logged yet
-                  </h3>
-                  <p className="text-gray-500 mb-6">
-                    Start your diving journey by logging your first dive!
-                  </p>
-                  <Button>
-                    <Waves className="h-4 w-4 mr-2" />
-                    Log Your First Dive
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <RecentDivesCard username={user.username} />
           </div>
 
           {/* Sidebar */}
@@ -200,7 +175,7 @@ export default function ProfilePage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
-                  <Award className="h-5 w-5 mr-2 text-yellow-600" />
+                  <Award className="h-5 w-5 mr-2" />
                   Certifications
                 </CardTitle>
               </CardHeader>
@@ -221,7 +196,7 @@ export default function ProfilePage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
-                  <MapPin className="h-5 w-5 mr-2 text-red-600" />
+                  <MapPin className="h-5 w-5 mr-2" />
                   Favorite Dive Sites
                 </CardTitle>
               </CardHeader>
@@ -263,6 +238,8 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+
+      <Footer />
     </div>
   );
 }
