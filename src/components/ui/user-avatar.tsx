@@ -26,7 +26,7 @@ export function UserAvatar({
   const [imageError, setImageError] = React.useState(false);
   const [hasCustomGravatar, setHasCustomGravatar] = React.useState(false);
 
-  const gravatarUrl = getGravatarUrl(email, size);
+  const gravatarUrl = getGravatarUrl(email, size * 2);
   const strictGravatarUrl = getGravatarUrlStrict(email, size);
   const initials = getUserInitials(name);
 

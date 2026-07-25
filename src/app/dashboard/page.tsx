@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import Link from "next/link";
 
 export default function DashboardPage() {
   const { user, isAuthenticated, isLoading } = useAuth();
@@ -126,10 +127,15 @@ export default function DashboardPage() {
           <div className="lg:col-span-2">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center">
-                  <BookOpen className="h-5 w-5 mr-2" />
-                  Recent Dives
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center">
+                    <BookOpen className="h-5 w-5 mr-2" />
+                    Recent Dives
+                  </CardTitle>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href="/dashboard/dives">View All Dives</Link>
+                  </Button>
+                </div>
                 <CardDescription>
                   Your latest underwater adventures
                 </CardDescription>
@@ -143,9 +149,11 @@ export default function DashboardPage() {
                   <p className="text-gray-500 mb-4">
                     Start your diving journey by logging your first dive!
                   </p>
-                  <Button>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Log Your First Dive
+                  <Button asChild>
+                    <Link href="/dashboard/dives/new">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Log Your First Dive
+                    </Link>
                   </Button>
                 </div>
               </CardContent>
@@ -161,9 +169,11 @@ export default function DashboardPage() {
                 <CardDescription>Common diving activities</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button className="w-full justify-start">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Log New Dive
+                <Button className="w-full justify-start" asChild>
+                  <Link href="/dashboard/dives/new">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Log New Dive
+                  </Link>
                 </Button>
                 <Button variant="outline" className="w-full justify-start">
                   <MapPin className="h-4 w-4 mr-2" />
