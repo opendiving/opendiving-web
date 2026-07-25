@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { tripsAPI, Trip } from "@/lib/api/trips";
-import { tripUpdateSchema, TripUpdateInput } from "@/lib/validations/trip";
+import { tripUpdateSchema, TripUpdateInput, normalizeTripDates } from "@/lib/validations/trip";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,6 +38,8 @@ export default function EditTripPage() {
     resolver: zodResolver(tripUpdateSchema),
     defaultValues: {
       name: "",
+      start_date: "",
+      end_date: "",
     },
   });
 
@@ -61,6 +63,8 @@ export default function EditTripPage() {
 
         form.reset({
           name: tripData.name,
+          start_date: tripData.start_date ?? "",
+          end_date: tripData.end_date ?? "",
         });
       } catch (error) {
         console.error('Failed to fetch trip:', error);
@@ -86,7 +90,7 @@ export default function EditTripPage() {
     try {
       setIsSubmitting(true);
 
-      await tripsAPI.updateTrip(user.username, tripId, data);
+      await tripsAPI.updateTrip(user.username, tripId, normalizeTripDates(data));
 
       toast({
         title: "Success",
@@ -186,6 +190,36 @@ export default function EditTripPage() {
                   </FormItem>
                 )}
               />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="start_date"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Start Date</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="end_date"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>End Date</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
               <div className="flex justify-end gap-4 pt-4">
                 <Button type="button" variant="outline" asChild>

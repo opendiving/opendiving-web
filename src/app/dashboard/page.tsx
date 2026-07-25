@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
+import { RecentTripsCard } from "@/components/dives/recent-trips-card";
 import {
   Card,
   CardContent,
@@ -122,9 +123,10 @@ export default function DashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Recent Dives */}
-          <div className="lg:col-span-2">
+          {/* Recent Dives & Trips */}
+          <div className="lg:col-span-2 space-y-6">
             <RecentDivesCard username={user.username} />
+            <RecentTripsCard username={user.username} />
           </div>
 
           {/* Quick Actions & Upcoming */}

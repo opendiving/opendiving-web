@@ -3,16 +3,22 @@ import { apiClient } from './client';
 export interface Trip {
   id: number;
   name: string;
+  start_date?: string;
+  end_date?: string;
   user_id: number;
   created_at: string;
 }
 
 export interface TripCreate {
   name: string;
+  start_date?: string;
+  end_date?: string;
 }
 
 export interface TripUpdate {
   name?: string;
+  start_date?: string;
+  end_date?: string;
 }
 
 export interface PaginatedTripsResponse {

@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { tripsAPI, Trip, PaginatedTripsResponse } from "@/lib/api/trips";
+import { formatTripDateRange } from "@/lib/date-time";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -111,6 +112,10 @@ export default function TripsPage() {
     });
   };
 
+  const formatDateRange = (startDate?: string, endDate?: string) => {
+    return formatTripDateRange(startDate, endDate, { year: 'numeric', month: 'short', day: 'numeric' }) ?? '-';
+  };
+
   if (isAuthLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -178,6 +183,7 @@ export default function TripsPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Name</TableHead>
+                      <TableHead>Dates</TableHead>
                       <TableHead>Created</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -189,6 +195,9 @@ export default function TripsPage() {
                           <Link href={`/trips/${trip.id}`} className="hover:underline">
                             {trip.name}
                           </Link>
+                        </TableCell>
+                        <TableCell>
+                          {formatDateRange(trip.start_date, trip.end_date)}
                         </TableCell>
                         <TableCell>
                           {formatDate(trip.created_at)}

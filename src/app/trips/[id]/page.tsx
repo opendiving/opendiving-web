@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { tripsAPI, Trip } from "@/lib/api/trips";
+import { formatTripDateRange } from "@/lib/date-time";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -96,6 +97,10 @@ export default function TripDetailPage() {
     });
   };
 
+  const tripDateRange = trip
+    ? formatTripDateRange(trip.start_date, trip.end_date, { year: 'numeric', month: 'long', day: 'numeric' })
+    : undefined;
+
   if (isAuthLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -162,7 +167,7 @@ export default function TripDetailPage() {
             <div>
               <h1 className="text-3xl font-bold">{trip.name}</h1>
               <p className="text-muted-foreground mt-1">
-                Created {formatDate(trip.created_at)}
+                {tripDateRange ? tripDateRange : `Created ${formatDate(trip.created_at)}`}
               </p>
             </div>
           </div>
@@ -213,6 +218,12 @@ export default function TripDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                {tripDateRange && (
+                  <div>
+                    <div className="text-sm font-medium text-muted-foreground mb-1">Trip Dates</div>
+                    <div className="text-sm">{tripDateRange}</div>
+                  </div>
+                )}
                 <div>
                   <div className="text-sm font-medium text-muted-foreground mb-1">Created on</div>
                   <div className="text-sm">{formatDate(trip.created_at)}</div>

@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { tripsAPI } from "@/lib/api/trips";
-import { tripCreateSchema, TripCreateInput } from "@/lib/validations/trip";
+import { tripCreateSchema, TripCreateInput, normalizeTripDates } from "@/lib/validations/trip";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,6 +33,8 @@ export default function NewTripPage() {
     resolver: zodResolver(tripCreateSchema),
     defaultValues: {
       name: "",
+      start_date: "",
+      end_date: "",
     },
   });
 
@@ -63,7 +65,10 @@ export default function NewTripPage() {
     try {
       setIsSubmitting(true);
 
-      await tripsAPI.createTrip(user.username, data);
+      await tripsAPI.createTrip(user.username, {
+        ...normalizeTripDates(data),
+        name: data.name,
+      });
 
       toast({
         title: "Success",
@@ -123,6 +128,36 @@ export default function NewTripPage() {
                   </FormItem>
                 )}
               />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="start_date"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Start Date</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="end_date"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>End Date</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
               <div className="flex justify-end gap-4 pt-4">
                 <Button type="button" variant="outline" asChild>

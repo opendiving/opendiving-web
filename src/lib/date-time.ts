@@ -13,3 +13,29 @@ export function formatDateTimeForForm(date: Date): string {
 export function parseFormDateTime(value: string): Date {
   return new Date(value.replace(" ", "T"));
 }
+
+// Formats a plain "YYYY-MM-DD" date (no time component, e.g. a trip's start
+// or end date) without going through timezone-sensitive UTC parsing - using
+// `new Date(dateString)` directly can shift the displayed day by one in
+// negative-UTC-offset timezones since bare date strings parse as UTC midnight.
+export function formatDateOnly(dateString: string, options?: Intl.DateTimeFormatOptions): string {
+  const [year, month, day] = dateString.split("-").map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString(
+    "en-US",
+    options ?? { year: "numeric", month: "short", day: "numeric" }
+  );
+}
+
+// Formats a trip's start/end date range for display, e.g. "Jun 1 - Jun 8, 2024".
+// Returns `undefined` if neither date is set.
+export function formatTripDateRange(
+  startDate?: string,
+  endDate?: string,
+  options?: Intl.DateTimeFormatOptions
+): string | undefined {
+  if (!startDate && !endDate) return undefined;
+  if (startDate && endDate) {
+    return `${formatDateOnly(startDate, options)} - ${formatDateOnly(endDate, options)}`;
+  }
+  return formatDateOnly((startDate ?? endDate) as string, options);
+}
