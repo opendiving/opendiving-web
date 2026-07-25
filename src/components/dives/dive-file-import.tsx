@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { divesAPI, ParsedDive } from "@/lib/api/dives";
 import { formatDateTimeForForm } from "@/lib/date-time";
+import { getApiErrorMessage } from "@/lib/api/error";
 import { Loader2, Upload } from "lucide-react";
 
 // Applies the fields parsed from a dive-computer export file onto a dive
@@ -66,10 +67,10 @@ export function DiveFileImport({ form }: DiveFileImportProps) {
     } catch (error: any) {
       console.error('Failed to parse dive file:', error);
 
-      let errorMessage = "Failed to parse the dive file. Please check the file and try again.";
-      if (typeof error.response?.data?.detail === "string") {
-        errorMessage = error.response.data.detail;
-      }
+      const errorMessage = getApiErrorMessage(
+        error,
+        "Failed to parse the dive file. Please check the file and try again."
+      );
 
       toast({
         title: "Error",

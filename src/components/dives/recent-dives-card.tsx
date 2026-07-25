@@ -42,6 +42,9 @@ export interface RecentDivesCardProps {
   // Only show dives belonging to this trip. When omitted, shows the user's
   // most recent dives across all trips.
   tripId?: number;
+  // Only show dives made at this dive site. When omitted, shows dives
+  // regardless of dive site.
+  diveSiteId?: number;
   // Maximum number of dives to fetch/display. Defaults to 5 for the
   // dashboard/profile "recent dives" use case.
   limit?: number;
@@ -63,6 +66,7 @@ export interface RecentDivesCardProps {
 export function RecentDivesCard({
   username,
   tripId,
+  diveSiteId,
   limit = RECENT_DIVES_COUNT,
   title = "Recent Dives",
   description = "Your latest underwater adventures",
@@ -82,7 +86,7 @@ export function RecentDivesCard({
 
       try {
         setIsLoadingDives(true);
-        const response = await divesAPI.getDives(username, 1, limit, tripId);
+        const response = await divesAPI.getDives(username, 1, limit, tripId, diveSiteId);
         setRecentDives(response.data);
       } catch (error) {
         console.error("Failed to fetch recent dives:", error);
@@ -92,7 +96,7 @@ export function RecentDivesCard({
     };
 
     fetchRecentDives();
-  }, [username, tripId, limit]);
+  }, [username, tripId, diveSiteId, limit]);
 
   return (
     <Card>

@@ -21,6 +21,7 @@ export interface Dive {
   bottom_temperature?: number;
   visibility?: number;
   trip_id?: number;
+  dive_site_id?: number;
   notes: string;
   user_id: number;
   created_at: string;
@@ -36,6 +37,7 @@ export interface DiveCreate {
   bottom_temperature?: number;
   visibility?: number;
   trip_id?: number;
+  dive_site_id?: number;
   notes?: string;
   mixtures?: DiveMixture[];
 }
@@ -49,6 +51,7 @@ export interface DiveUpdate {
   bottom_temperature?: number;
   visibility?: number;
   trip_id?: number;
+  dive_site_id?: number;
   notes?: string;
   mixtures?: DiveMixture[];
 }
@@ -83,19 +86,21 @@ export const divesAPI = {
     return response.data;
   },
 
-  // Get all dives for a user (paginated). Pass `tripId` to only return
-  // dives that belong to a given trip.
+  // Get all dives for a user (paginated). Pass `tripId`/`diveSiteId` to only
+  // return dives that belong to a given trip / were made at a given site.
   async getDives(
     username: string,
     page: number = 1,
     items_per_page: number = 10,
-    tripId?: number
+    tripId?: number,
+    diveSiteId?: number
   ): Promise<PaginatedDivesResponse> {
     const response = await apiClient.get(`/${username}/dives`, {
       params: {
         page,
         items_per_page,
         ...(tripId !== undefined ? { trip_id: tripId } : {}),
+        ...(diveSiteId !== undefined ? { dive_site_id: diveSiteId } : {}),
       },
     });
     return response.data;

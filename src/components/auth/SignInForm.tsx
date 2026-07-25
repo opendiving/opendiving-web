@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
 import { signInSchema, SignInFormData } from "@/lib/validations/auth";
+import { getApiErrorMessage } from "@/lib/api/error";
 import { Eye, EyeOff, LogIn } from "lucide-react";
 
 export function SignInForm() {
@@ -39,9 +40,7 @@ export function SignInForm() {
       await signIn(data);
       router.push("/dashboard");
     } catch (err: any) {
-      setError(
-        err.response?.data?.detail || "An error occurred during sign in",
-      );
+      setError(getApiErrorMessage(err, "An error occurred during sign in"));
     }
   };
 

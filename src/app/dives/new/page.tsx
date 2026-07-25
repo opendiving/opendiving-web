@@ -18,6 +18,7 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
 import { formatDateTimeForForm, parseFormDateTime } from "@/lib/date-time";
+import { getApiErrorMessage } from "@/lib/api/error";
 
 export default function NewDivePage() {
   return (
@@ -40,10 +41,12 @@ function NewDivePageContent() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Allow pre-selecting a trip via ?trip_id=123, e.g. when logging a dive
-  // from a trip's detail page.
+  // Allow pre-selecting a trip/dive site via ?trip_id=123 / ?dive_site_id=456,
+  // e.g. when logging a dive from a trip's or dive site's detail page.
   const tripIdParam = searchParams.get("trip_id");
   const initialTripId = tripIdParam ? parseInt(tripIdParam, 10) : undefined;
+  const diveSiteIdParam = searchParams.get("dive_site_id");
+  const initialDiveSiteId = diveSiteIdParam ? parseInt(diveSiteIdParam, 10) : undefined;
 
   const form = useForm<DiveCreateInput>({
     resolver: zodResolver(diveCreateSchema),
@@ -56,6 +59,7 @@ function NewDivePageContent() {
       bottom_temperature: undefined,
       visibility: undefined,
       trip_id: initialTripId,
+      dive_site_id: initialDiveSiteId,
       notes: "",
       mixtures: [{ ...DEFAULT_MIXTURE, name: getDefaultMixtureName(0) }],
     },
@@ -107,10 +111,7 @@ function NewDivePageContent() {
     } catch (error: any) {
       console.error('Failed to create dive:', error);
 
-      let errorMessage = "Failed to log dive. Please try again.";
-      if (error.response?.data?.detail) {
-        errorMessage = error.response.data.detail;
-      }
+      const errorMessage = getApiErrorMessage(error, "Failed to log dive. Please try again.");
 
       toast({
         title: "Error",

@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
 import { signUpSchema, SignUpFormData } from "@/lib/validations/auth";
+import { getApiErrorMessage } from "@/lib/api/error";
 import { Eye, EyeOff, UserPlus } from "lucide-react";
 
 export function SignUpForm() {
@@ -40,9 +41,7 @@ export function SignUpForm() {
       await signUp(data);
       router.push("/dashboard");
     } catch (err: any) {
-      const errorMessage =
-        err.response?.data?.detail || "An error occurred during sign up";
-      setError(errorMessage);
+      setError(getApiErrorMessage(err, "An error occurred during sign up"));
     }
   };
 

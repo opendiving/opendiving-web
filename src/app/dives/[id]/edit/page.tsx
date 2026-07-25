@@ -18,6 +18,7 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
 import { formatDateTimeForForm, parseFormDateTime } from "@/lib/date-time";
+import { getApiErrorMessage } from "@/lib/api/error";
 
 export default function EditDivePage() {
   const params = useParams();
@@ -41,6 +42,7 @@ export default function EditDivePage() {
       bottom_temperature: undefined,
       visibility: undefined,
       trip_id: undefined,
+      dive_site_id: undefined,
       notes: "",
       mixtures: [{ ...DEFAULT_MIXTURE, name: getDefaultMixtureName(0) }],
     },
@@ -74,6 +76,7 @@ export default function EditDivePage() {
           bottom_temperature: diveData.bottom_temperature,
           visibility: diveData.visibility,
           trip_id: diveData.trip_id,
+          dive_site_id: diveData.dive_site_id,
           notes: diveData.notes || "",
           mixtures: diveData.mixtures?.length
             ? diveData.mixtures
@@ -138,6 +141,10 @@ export default function EditDivePage() {
         updateData.trip_id = data.trip_id;
       }
 
+      if (data.dive_site_id !== undefined) {
+        updateData.dive_site_id = data.dive_site_id;
+      }
+
       if (data.notes !== undefined) {
         updateData.notes = data.notes;
       }
@@ -157,10 +164,7 @@ export default function EditDivePage() {
     } catch (error: any) {
       console.error('Failed to update dive:', error);
 
-      let errorMessage = "Failed to update dive. Please try again.";
-      if (error.response?.data?.detail) {
-        errorMessage = error.response.data.detail;
-      }
+      const errorMessage = getApiErrorMessage(error, "Failed to update dive. Please try again.");
 
       toast({
         title: "Error",

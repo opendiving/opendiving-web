@@ -5,8 +5,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { tripsAPI } from "@/lib/api/trips";
-import { tripCreateSchema, TripCreateInput } from "@/lib/validations/trip";
+import { diveSitesAPI } from "@/lib/api/dive-sites";
+import { diveSiteCreateSchema, DiveSiteCreateInput } from "@/lib/validations/dive-site";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,14 +23,14 @@ import { ArrowLeft, Loader2, Save } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
 
-export default function NewTripPage() {
+export default function NewDiveSitePage() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const form = useForm<TripCreateInput>({
-    resolver: zodResolver(tripCreateSchema),
+  const form = useForm<DiveSiteCreateInput>({
+    resolver: zodResolver(diveSiteCreateSchema),
     defaultValues: {
       name: "",
     },
@@ -57,24 +57,24 @@ export default function NewTripPage() {
     return null; // Will redirect to signin
   }
 
-  const onSubmit = async (data: TripCreateInput) => {
+  const onSubmit = async (data: DiveSiteCreateInput) => {
     if (!user?.username) return;
 
     try {
       setIsSubmitting(true);
 
-      await tripsAPI.createTrip(user.username, data);
+      await diveSitesAPI.createDiveSite(user.username, data);
 
       toast({
         title: "Success",
-        description: "Trip created successfully!",
+        description: "Dive site created successfully!",
       });
 
-      router.push('/trips');
+      router.push('/sites');
     } catch (error: any) {
-      console.error('Failed to create trip:', error);
+      console.error('Failed to create dive site:', error);
 
-      const errorMessage = getApiErrorMessage(error, "Failed to create trip. Please try again.");
+      const errorMessage = getApiErrorMessage(error, "Failed to create dive site. Please try again.");
 
       toast({
         title: "Error",
@@ -90,22 +90,22 @@ export default function NewTripPage() {
     <div className="container mx-auto px-4 py-8 max-w-2xl">
       <div className="flex items-center gap-4 mb-6">
         <Button variant="ghost" size="sm" asChild>
-          <Link href="/trips">
+          <Link href="/sites">
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Trips
+            Back to Dive Sites
           </Link>
         </Button>
         <div>
-          <h1 className="text-3xl font-bold">New Trip</h1>
+          <h1 className="text-3xl font-bold">New Dive Site</h1>
           <p className="text-muted-foreground mt-1">
-            Create a trip to group dives together
+            Add a dive site to log your dives at
           </p>
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Trip Details</CardTitle>
+          <CardTitle>Dive Site Details</CardTitle>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -117,7 +117,7 @@ export default function NewTripPage() {
                   <FormItem>
                     <FormLabel>Name *</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g. Red Sea Liveaboard 2024" {...field} />
+                      <Input placeholder="e.g. Blue Hole" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -126,18 +126,18 @@ export default function NewTripPage() {
 
               <div className="flex justify-end gap-4 pt-4">
                 <Button type="button" variant="outline" asChild>
-                  <Link href="/trips">Cancel</Link>
+                  <Link href="/sites">Cancel</Link>
                 </Button>
                 <Button type="submit" disabled={isSubmitting}>
                   {isSubmitting ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Creating Trip...
+                      Creating Dive Site...
                     </>
                   ) : (
                     <>
                       <Save className="h-4 w-4 mr-2" />
-                      Create Trip
+                      Create Dive Site
                     </>
                   )}
                 </Button>

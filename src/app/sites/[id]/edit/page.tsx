@@ -5,8 +5,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { tripsAPI, Trip } from "@/lib/api/trips";
-import { tripUpdateSchema, TripUpdateInput } from "@/lib/validations/trip";
+import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
+import { diveSiteUpdateSchema, DiveSiteUpdateInput } from "@/lib/validations/dive-site";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,19 +23,19 @@ import { ArrowLeft, Loader2, Save } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
 
-export default function EditTripPage() {
+export default function EditDiveSitePage() {
   const params = useParams();
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
-  const [trip, setTrip] = useState<Trip | null>(null);
-  const [isLoadingTrip, setIsLoadingTrip] = useState(true);
+  const [diveSite, setDiveSite] = useState<DiveSite | null>(null);
+  const [isLoadingDiveSite, setIsLoadingDiveSite] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const tripId = parseInt(params.id as string);
+  const diveSiteId = parseInt(params.id as string);
 
-  const form = useForm<TripUpdateInput>({
-    resolver: zodResolver(tripUpdateSchema),
+  const form = useForm<DiveSiteUpdateInput>({
+    resolver: zodResolver(diveSiteUpdateSchema),
     defaultValues: {
       name: "",
     },
@@ -49,55 +49,55 @@ export default function EditTripPage() {
     }
   }, [isAuthenticated, isAuthLoading, router]);
 
-  // Fetch trip details and populate form
+  // Fetch dive site details and populate form
   useEffect(() => {
-    const fetchTrip = async () => {
-      if (!user?.username || !tripId) return;
+    const fetchDiveSite = async () => {
+      if (!user?.username || !diveSiteId) return;
 
       try {
-        setIsLoadingTrip(true);
-        const tripData = await tripsAPI.getTrip(user.username, tripId);
-        setTrip(tripData);
+        setIsLoadingDiveSite(true);
+        const diveSiteData = await diveSitesAPI.getDiveSite(user.username, diveSiteId);
+        setDiveSite(diveSiteData);
 
         form.reset({
-          name: tripData.name,
+          name: diveSiteData.name,
         });
       } catch (error) {
-        console.error('Failed to fetch trip:', error);
+        console.error('Failed to fetch dive site:', error);
         toast({
           title: "Error",
-          description: "Failed to load trip details. Please try again.",
+          description: "Failed to load dive site details. Please try again.",
           variant: "destructive",
         });
-        router.push('/trips');
+        router.push('/sites');
       } finally {
-        setIsLoadingTrip(false);
+        setIsLoadingDiveSite(false);
       }
     };
 
     if (user?.username) {
-      fetchTrip();
+      fetchDiveSite();
     }
-  }, [user?.username, tripId, form, toast, router]);
+  }, [user?.username, diveSiteId, form, toast, router]);
 
-  const onSubmit = async (data: TripUpdateInput) => {
-    if (!user?.username || !tripId) return;
+  const onSubmit = async (data: DiveSiteUpdateInput) => {
+    if (!user?.username || !diveSiteId) return;
 
     try {
       setIsSubmitting(true);
 
-      await tripsAPI.updateTrip(user.username, tripId, data);
+      await diveSitesAPI.updateDiveSite(user.username, diveSiteId, data);
 
       toast({
         title: "Success",
-        description: "Trip updated successfully!",
+        description: "Dive site updated successfully!",
       });
 
-      router.push('/trips');
+      router.push('/sites');
     } catch (error: any) {
-      console.error('Failed to update trip:', error);
+      console.error('Failed to update dive site:', error);
 
-      const errorMessage = getApiErrorMessage(error, "Failed to update trip. Please try again.");
+      const errorMessage = getApiErrorMessage(error, "Failed to update dive site. Please try again.");
 
       toast({
         title: "Error",
@@ -121,7 +121,7 @@ export default function EditTripPage() {
     return null; // Will redirect to signin
   }
 
-  if (isLoadingTrip) {
+  if (isLoadingDiveSite) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-center py-12">
@@ -131,17 +131,17 @@ export default function EditTripPage() {
     );
   }
 
-  if (!trip) {
+  if (!diveSite) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center py-12">
           <div className="text-muted-foreground mb-4">
-            Trip not found.
+            Dive site not found.
           </div>
           <Button asChild>
-            <Link href="/trips">
+            <Link href="/sites">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Trips
+              Back to Dive Sites
             </Link>
           </Button>
         </div>
@@ -153,22 +153,22 @@ export default function EditTripPage() {
     <div className="container mx-auto px-4 py-8 max-w-2xl">
       <div className="flex items-center gap-4 mb-6">
         <Button variant="ghost" size="sm" asChild>
-          <Link href="/trips">
+          <Link href="/sites">
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Trips
+            Back to Dive Sites
           </Link>
         </Button>
         <div>
-          <h1 className="text-3xl font-bold">Edit Trip</h1>
+          <h1 className="text-3xl font-bold">Edit Dive Site</h1>
           <p className="text-muted-foreground mt-1">
-            Update the trip details
+            Update the dive site details
           </p>
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Trip Details</CardTitle>
+          <CardTitle>Dive Site Details</CardTitle>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -180,7 +180,7 @@ export default function EditTripPage() {
                   <FormItem>
                     <FormLabel>Name *</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g. Red Sea Liveaboard 2024" {...field} />
+                      <Input placeholder="e.g. Blue Hole" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -189,18 +189,18 @@ export default function EditTripPage() {
 
               <div className="flex justify-end gap-4 pt-4">
                 <Button type="button" variant="outline" asChild>
-                  <Link href="/trips">Cancel</Link>
+                  <Link href="/sites">Cancel</Link>
                 </Button>
                 <Button type="submit" disabled={isSubmitting}>
                   {isSubmitting ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Updating Trip...
+                      Updating Dive Site...
                     </>
                   ) : (
                     <>
                       <Save className="h-4 w-4 mr-2" />
-                      Update Trip
+                      Update Dive Site
                     </>
                   )}
                 </Button>

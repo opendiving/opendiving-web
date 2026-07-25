@@ -32,15 +32,45 @@ export const diveMixtureSchema = z.object({
     .max(100, "Oxygen percentage must be at most 100"),
 });
 
+export interface NormalizedDiveMixture {
+  name?: string;
+  volume: number;
+  start_pressure?: number;
+  end_pressure?: number;
+  po2: number;
+  oxygen: number;
+}
+
 // Converts any "" placeholders (used to represent a cleared optional field
-// while editing) into `undefined` before sending mixtures to the API.
-export function normalizeMixtures<T extends { start_pressure?: number | ""; end_pressure?: number | "" }>(
-  mixtures: T[]
-) {
+// while editing) into `undefined` before sending mixtures to the API. Also
+// strips the client-side `id` field: the API replaces all of a dive's
+// mixtures wholesale on every save (delete-all + re-insert) and its create
+// schema doesn't accept an `id`, so echoing back an existing mixture's id
+// would be rejected as an unexpected field.
+//
+// Fields are listed out explicitly (rather than spreading the input and
+// overriding start_pressure/end_pressure) because TypeScript doesn't reliably
+// narrow a spread-then-overridden property away from its original generic
+// union type, which previously let the "" placeholder type leak into the
+// inferred return type.
+export function normalizeMixtures(
+  mixtures: {
+    id?: number;
+    name?: string;
+    volume: number;
+    start_pressure?: number | "";
+    end_pressure?: number | "";
+    po2: number;
+    oxygen: number;
+  }[]
+): NormalizedDiveMixture[] {
   return mixtures.map((mixture) => ({
-    ...mixture,
+    name: mixture.name,
+    volume: mixture.volume,
     start_pressure: mixture.start_pressure === "" ? undefined : mixture.start_pressure,
     end_pressure: mixture.end_pressure === "" ? undefined : mixture.end_pressure,
+    po2: mixture.po2,
+    oxygen: mixture.oxygen,
   }));
 }
 
@@ -67,6 +97,7 @@ export const diveCreateSchema = z
       .positive("Visibility must be positive")
       .optional(),
     trip_id: z.number().int().positive().optional(),
+    dive_site_id: z.number().int().positive().optional(),
     notes: z
       .string()
       .max(63206, "Notes cannot exceed 63206 characters")
@@ -99,6 +130,7 @@ export const diveUpdateSchema = z
       .positive("Visibility must be positive")
       .optional(),
     trip_id: z.number().int().positive().optional(),
+    dive_site_id: z.number().int().positive().optional(),
     notes: z
       .string()
       .max(63206, "Notes cannot exceed 63206 characters")

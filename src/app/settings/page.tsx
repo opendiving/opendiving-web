@@ -28,6 +28,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { getApiErrorMessage } from "@/lib/api/error";
 import { authAPI } from "@/lib/api/auth";
 
 // Validation schemas
@@ -136,9 +137,7 @@ export default function SettingsPage() {
       await refreshUser();
       setProfileSuccess("Profile updated successfully!");
     } catch (err: any) {
-      const errorMessage =
-        err.response?.data?.detail || "Failed to update profile";
-      setProfileError(errorMessage);
+      setProfileError(getApiErrorMessage(err, "Failed to update profile"));
     }
   };
 
@@ -155,9 +154,7 @@ export default function SettingsPage() {
       setPasswordSuccess("Password changed successfully!");
       resetPassword();
     } catch (err: any) {
-      const errorMessage =
-        err.response?.data?.detail || "Failed to change password";
-      setPasswordError(errorMessage);
+      setPasswordError(getApiErrorMessage(err, "Failed to change password"));
     }
   };
 

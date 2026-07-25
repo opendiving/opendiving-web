@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/form";
 import { MixtureFields } from "@/components/dives/mixture-fields";
 import { TripCombobox } from "@/components/dives/trip-combobox";
+import { DiveSiteCombobox } from "@/components/dives/dive-site-combobox";
 
 export interface DiveFormFieldsProps {
   // Using `any` here since this component is shared between the create and
@@ -24,8 +25,8 @@ export interface DiveFormFieldsProps {
   // so no asterisks are shown and a cleared value resolves to `undefined`
   // rather than falling back to a default.
   mode: "create" | "edit";
-  // Username of the currently signed-in user, used to fetch/create trips
-  // scoped to their account for the trip combobox.
+  // Username of the currently signed-in user, used to fetch/create trips and
+  // dive sites scoped to their account for the trip/dive site comboboxes.
   username: string;
 }
 
@@ -35,8 +36,8 @@ export function DiveFormFields({ control, mode, username }: DiveFormFieldsProps)
 
   return (
     <>
-      {/* Trip */}
-      <div className="grid grid-cols-1 gap-4">
+      {/* Trip & Dive Site */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <FormField
           control={control}
           name="trip_id"
@@ -45,6 +46,24 @@ export function DiveFormFields({ control, mode, username }: DiveFormFieldsProps)
               <FormLabel>Trip</FormLabel>
               <FormControl>
                 <TripCombobox
+                  username={username}
+                  value={field.value}
+                  onChange={field.onChange}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={control}
+          name="dive_site_id"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Dive Site</FormLabel>
+              <FormControl>
+                <DiveSiteCombobox
                   username={username}
                   value={field.value}
                   onChange={field.onChange}
