@@ -6,24 +6,18 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { divesAPI, Dive } from "@/lib/api/dives";
-import { diveUpdateSchema, DiveUpdateInput } from "@/lib/validations/dive";
+import { diveUpdateSchema, DiveUpdateInput, normalizeMixtures } from "@/lib/validations/dive";
+import { DEFAULT_MIXTURE, getDefaultMixtureName } from "@/components/dives/mixture-fields";
+import { DiveFormFields } from "@/components/dives/dive-form-fields";
+import { DiveFileImport } from "@/components/dives/dive-file-import";
+import { DiveFormActions } from "@/components/dives/dive-form-actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { DateTimePicker } from "@/components/ui/date-time-picker";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { ArrowLeft, Loader2, Save } from "lucide-react";
+import { Form } from "@/components/ui/form";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
+import { formatDateTimeForForm, parseFormDateTime } from "@/lib/date-time";
 
 export default function EditDivePage() {
   const params = useParams();
@@ -47,6 +41,7 @@ export default function EditDivePage() {
       bottom_temperature: undefined,
       visibility: undefined,
       notes: "",
+      mixtures: [{ ...DEFAULT_MIXTURE, name: getDefaultMixtureName(0) }],
     },
   });
 
@@ -68,28 +63,19 @@ export default function EditDivePage() {
         const diveData = await divesAPI.getDive(user.username, diveId);
         setDive(diveData);
 
-        // Convert datetime strings to YYYY-MM-DD HH:mm:ss for display/editing
-        const formatForDateTimeLocal = (dateString: string) => {
-          const date = new Date(dateString);
-          const year = date.getFullYear();
-          const month = String(date.getMonth() + 1).padStart(2, '0');
-          const day = String(date.getDate()).padStart(2, '0');
-          const hours = String(date.getHours()).padStart(2, '0');
-          const minutes = String(date.getMinutes()).padStart(2, '0');
-          const seconds = String(date.getSeconds()).padStart(2, '0');
-          return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-        };
-
         // Update form with dive data
         form.reset({
           dive_number: diveData.dive_number,
-          start_time: formatForDateTimeLocal(diveData.start_time),
+          start_time: formatDateTimeForForm(new Date(diveData.start_time)),
           duration: diveData.duration,
           max_depth: diveData.max_depth,
           avg_depth: diveData.avg_depth,
           bottom_temperature: diveData.bottom_temperature,
           visibility: diveData.visibility,
           notes: diveData.notes || "",
+          mixtures: diveData.mixtures?.length
+            ? diveData.mixtures
+            : [{ ...DEFAULT_MIXTURE, name: getDefaultMixtureName(0) }],
         });
       } catch (error) {
         console.error('Failed to fetch dive:', error);
@@ -123,7 +109,7 @@ export default function EditDivePage() {
       }
 
       if (data.start_time) {
-        updateData.start_time = new Date(data.start_time.replace(" ", "T")).toISOString();
+        updateData.start_time = parseFormDateTime(data.start_time).toISOString();
       }
 
       if (data.duration !== undefined) {
@@ -148,6 +134,10 @@ export default function EditDivePage() {
 
       if (data.notes !== undefined) {
         updateData.notes = data.notes;
+      }
+
+      if (data.mixtures !== undefined) {
+        updateData.mixtures = normalizeMixtures(data.mixtures);
       }
 
       await divesAPI.updateDive(user.username, diveId, updateData);
@@ -240,204 +230,17 @@ export default function EditDivePage() {
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              {/* Basic Information */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="dive_number"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Dive Number</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min="1"
-                          {...field}
-                          onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+              {/* Import from dive computer file */}
+              <DiveFileImport form={form} />
 
-              {/* Date and Time */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="start_time"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Start Time</FormLabel>
-                      <FormControl>
-                        <DateTimePicker
-                          value={field.value}
-                          onChange={field.onChange}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              <DiveFormFields control={form.control} mode="edit" />
 
-                <FormField
-                  control={form.control}
-                  name="duration"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Duration (minutes)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          step="1"
-                          min="1"
-                          placeholder="e.g. 45"
-                          value={field.value ? Math.round(field.value / 60) : ""}
-                          onChange={(e) => {
-                            const minutes = parseInt(e.target.value);
-                            field.onChange(Number.isNaN(minutes) ? undefined : minutes * 60);
-                          }}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {/* Depth Information */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="max_depth"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Maximum Depth (m)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          placeholder="e.g. 30.52"
-                          {...field}
-                          value={field.value || ""}
-                          onChange={(e) => field.onChange(parseFloat(e.target.value) || undefined)}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="avg_depth"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Average Depth (m)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          placeholder="e.g. 18.24"
-                          {...field}
-                          value={field.value || ""}
-                          onChange={(e) => field.onChange(parseFloat(e.target.value) || undefined)}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {/* Temperature & Visibility */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="bottom_temperature"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Bottom Temperature (°C)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          min="-50"
-                          max="50"
-                          placeholder="e.g. 22"
-                          {...field}
-                          value={field.value || ""}
-                          onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="visibility"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Visibility (m)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          step="1"
-                          min="0"
-                          placeholder="e.g. 15"
-                          {...field}
-                          value={field.value || ""}
-                          onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              {/* Notes */}
-              <FormField
-                control={form.control}
-                name="notes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Notes</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Enter any additional notes about your dive..."
-                        className="min-h-[100px]"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+              <DiveFormActions
+                cancelHref={`/dives/${diveId}`}
+                isSubmitting={isSubmitting}
+                submittingLabel="Updating Dive..."
+                submitLabel="Update Dive"
               />
-
-              {/* Submit Button */}
-              <div className="flex justify-end gap-4 pt-4">
-                <Button type="button" variant="outline" asChild>
-                  <Link href={`/dives/${diveId}`}>Cancel</Link>
-                </Button>
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Updating Dive...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="h-4 w-4 mr-2" />
-                      Update Dive
-                    </>
-                  )}
-                </Button>
-              </div>
             </form>
           </Form>
         </CardContent>

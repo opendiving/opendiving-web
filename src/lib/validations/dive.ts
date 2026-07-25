@@ -11,6 +11,39 @@ const dateTimeField = (message = "Start time must be in YYYY-MM-DD HH:mm:ss form
       message: "Start time must be a valid datetime",
     });
 
+// Optional numeric field that can also hold the literal empty string "" while
+// the user is editing. We deliberately never let the *live* form value become
+// `undefined` for these fields: react-hook-form falls back to re-displaying a
+// field's default value whenever its current value resolves to `undefined`,
+// which made these fields appear to "reset" the moment they were cleared.
+// Using "" as the empty state avoids that; callers are responsible for
+// converting "" to `undefined` right before sending data to the API (see
+// `normalizeMixtures` usage in the dive form pages).
+export const diveMixtureSchema = z.object({
+  id: z.number().optional(),
+  name: z.string().max(50, "Name cannot exceed 50 characters").optional(),
+  volume: z.number().positive("Volume must be positive"),
+  start_pressure: z.union([z.literal(""), z.number().positive("Start pressure must be positive")]).optional(),
+  end_pressure: z.union([z.literal(""), z.number().min(0, "End pressure must be zero or positive")]).optional(),
+  po2: z.number().positive("PO2 must be positive"),
+  oxygen: z
+    .number()
+    .min(0, "Oxygen percentage must be at least 0")
+    .max(100, "Oxygen percentage must be at most 100"),
+});
+
+// Converts any "" placeholders (used to represent a cleared optional field
+// while editing) into `undefined` before sending mixtures to the API.
+export function normalizeMixtures<T extends { start_pressure?: number | ""; end_pressure?: number | "" }>(
+  mixtures: T[]
+) {
+  return mixtures.map((mixture) => ({
+    ...mixture,
+    start_pressure: mixture.start_pressure === "" ? undefined : mixture.start_pressure,
+    end_pressure: mixture.end_pressure === "" ? undefined : mixture.end_pressure,
+  }));
+}
+
 export const diveCreateSchema = z
   .object({
     dive_number: z
@@ -37,6 +70,7 @@ export const diveCreateSchema = z
       .string()
       .max(63206, "Notes cannot exceed 63206 characters")
       .default(""),
+    mixtures: z.array(diveMixtureSchema).default([]),
   });
 
 export const diveUpdateSchema = z
@@ -67,6 +101,7 @@ export const diveUpdateSchema = z
       .string()
       .max(63206, "Notes cannot exceed 63206 characters")
       .optional(),
+    mixtures: z.array(diveMixtureSchema).optional(),
   });
 
 export type DiveCreateInput = z.input<typeof diveCreateSchema>;

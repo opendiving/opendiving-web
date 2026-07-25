@@ -1,5 +1,16 @@
 import { apiClient } from './client';
 
+// A single gas mixture / scuba tank used during a dive.
+export interface DiveMixture {
+  id?: number;
+  name?: string;
+  volume: number;
+  start_pressure?: number;
+  end_pressure?: number;
+  po2: number;
+  oxygen: number;
+}
+
 export interface Dive {
   id: number;
   dive_number: number;
@@ -12,6 +23,7 @@ export interface Dive {
   notes: string;
   user_id: number;
   created_at: string;
+  mixtures: DiveMixture[];
 }
 
 export interface DiveCreate {
@@ -23,6 +35,7 @@ export interface DiveCreate {
   bottom_temperature?: number;
   visibility?: number;
   notes?: string;
+  mixtures?: DiveMixture[];
 }
 
 export interface DiveUpdate {
@@ -34,6 +47,7 @@ export interface DiveUpdate {
   bottom_temperature?: number;
   visibility?: number;
   notes?: string;
+  mixtures?: DiveMixture[];
 }
 
 export interface PaginatedDivesResponse {
