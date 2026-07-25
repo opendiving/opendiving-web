@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { divesAPI, Dive } from "@/lib/api/dives";
-import { diveUpdateSchema, DiveUpdateInput } from "@/lib/validations/dive";
+import { divesAPI, ParsedDive } from "@/lib/api/dives";
+import { diveCreateSchema, DiveCreateInput } from "@/lib/validations/dive";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -21,26 +21,52 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { ArrowLeft, Loader2, Save } from "lucide-react";
+import { ArrowLeft, Loader2, Save, Upload } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
 
-export default function EditDivePage() {
-  const params = useParams();
-  const { user, isAuthenticated } = useAuth();
+// Get current date/time formatted as YYYY-MM-DD HH:mm:ss
+function getCurrentDateTime() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const hours = String(now.getHours()).padStart(2, '0');
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const seconds = String(now.getSeconds()).padStart(2, '0');
+
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
+
+// Convert a parsed dive's start time (ISO-ish, e.g. "2021-04-06T12:31:34.45")
+// into the YYYY-MM-DD HH:mm:ss format used by the form.
+function formatParsedStartTime(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
+
+export default function NewDivePage() {
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
-  const [dive, setDive] = useState<Dive | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isParsingFile, setIsParsingFile] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const diveId = parseInt(params.id as string);
-
-  const form = useForm<DiveUpdateInput>({
-    resolver: zodResolver(diveUpdateSchema),
+  const form = useForm<DiveCreateInput>({
+    resolver: zodResolver(diveCreateSchema),
     defaultValues: {
-      dive_number: undefined,
-      start_time: "",
+      dive_number: 1,
+      start_time: getCurrentDateTime(),
       duration: undefined,
       max_depth: undefined,
       avg_depth: undefined,
@@ -49,112 +75,108 @@ export default function EditDivePage() {
     },
   });
 
-  // Redirect to signin if not authenticated
+  // Redirect to signin if not authenticated, but only once the auth check has
+  // actually finished — otherwise a page refresh always looks "unauthenticated"
+  // for a moment and would incorrectly bounce the user away.
   useEffect(() => {
-    if (!isAuthenticated && !isLoading) {
+    if (!isAuthLoading && !isAuthenticated) {
       router.push('/signin');
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [isAuthenticated, isAuthLoading, router]);
 
-  // Fetch dive details and populate form
-  useEffect(() => {
-    const fetchDive = async () => {
-      if (!user?.username || !diveId) return;
+  if (isAuthLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
-      try {
-        setIsLoading(true);
-        const diveData = await divesAPI.getDive(user.username, diveId);
-        setDive(diveData);
+  if (!isAuthenticated) {
+    return null; // Will redirect to signin
+  }
 
-        // Convert datetime strings to YYYY-MM-DD HH:mm:ss for display/editing
-        const formatForDateTimeLocal = (dateString: string) => {
-          const date = new Date(dateString);
-          const year = date.getFullYear();
-          const month = String(date.getMonth() + 1).padStart(2, '0');
-          const day = String(date.getDate()).padStart(2, '0');
-          const hours = String(date.getHours()).padStart(2, '0');
-          const minutes = String(date.getMinutes()).padStart(2, '0');
-          const seconds = String(date.getSeconds()).padStart(2, '0');
-          return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-        };
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-        // Update form with dive data
-        form.reset({
-          dive_number: diveData.dive_number,
-          start_time: formatForDateTimeLocal(diveData.start_time),
-          duration: diveData.duration,
-          max_depth: diveData.max_depth,
-          avg_depth: diveData.avg_depth,
-          bottom_temperature: diveData.bottom_temperature,
-          notes: diveData.notes || "",
-        });
-      } catch (error) {
-        console.error('Failed to fetch dive:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load dive details. Please try again.",
-          variant: "destructive",
-        });
-        router.push('/dashboard/dives');
-      } finally {
-        setIsLoading(false);
+    try {
+      setIsParsingFile(true);
+      const parsed: ParsedDive = await divesAPI.parseDiveFile(file);
+
+      if (parsed.dive_number != null) {
+        form.setValue("dive_number", parsed.dive_number, { shouldValidate: true, shouldDirty: true });
       }
-    };
+      if (parsed.start_time) {
+        form.setValue("start_time", formatParsedStartTime(parsed.start_time), {
+          shouldValidate: true,
+          shouldDirty: true,
+        });
+      }
+      if (parsed.duration != null) {
+        form.setValue("duration", parsed.duration, { shouldValidate: true, shouldDirty: true });
+      }
+      if (parsed.max_depth != null) {
+        form.setValue("max_depth", parsed.max_depth, { shouldValidate: true, shouldDirty: true });
+      }
+      if (parsed.avg_depth != null) {
+        form.setValue("avg_depth", parsed.avg_depth, { shouldValidate: true, shouldDirty: true });
+      }
+      if (parsed.bottom_temperature != null) {
+        form.setValue("bottom_temperature", Math.round(parsed.bottom_temperature), {
+          shouldValidate: true,
+          shouldDirty: true,
+        });
+      }
 
-    if (user?.username) {
-      fetchDive();
+      toast({
+        title: "Dive file parsed",
+        description: "Form fields have been filled in from the uploaded file. Please review before saving.",
+      });
+    } catch (error: any) {
+      console.error('Failed to parse dive file:', error);
+
+      let errorMessage = "Failed to parse the dive file. Please check the file and try again.";
+      if (typeof error.response?.data?.detail === "string") {
+        errorMessage = error.response.data.detail;
+      }
+
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsParsingFile(false);
+      e.target.value = "";
     }
-  }, [user?.username, diveId, form, toast, router]);
+  };
 
-  const onSubmit = async (data: DiveUpdateInput) => {
-    if (!user?.username || !diveId) return;
+  const onSubmit = async (data: DiveCreateInput) => {
+    if (!user?.username) return;
 
     try {
       setIsSubmitting(true);
 
-      // Filter out undefined values and format dates
-      const updateData: any = {};
+      // Convert form data to API format
+      const diveData = {
+        ...data,
+        start_time: new Date(data.start_time.replace(" ", "T")).toISOString(),
+        notes: data.notes || "",
+      };
 
-      if (data.dive_number !== undefined) {
-        updateData.dive_number = data.dive_number;
-      }
-
-      if (data.start_time) {
-        updateData.start_time = new Date(data.start_time.replace(" ", "T")).toISOString();
-      }
-
-      if (data.duration !== undefined) {
-        updateData.duration = data.duration;
-      }
-
-      if (data.max_depth !== undefined) {
-        updateData.max_depth = data.max_depth;
-      }
-
-      if (data.avg_depth !== undefined) {
-        updateData.avg_depth = data.avg_depth;
-      }
-
-      if (data.bottom_temperature !== undefined) {
-        updateData.bottom_temperature = data.bottom_temperature;
-      }
-
-      if (data.notes !== undefined) {
-        updateData.notes = data.notes;
-      }
-
-      await divesAPI.updateDive(user.username, diveId, updateData);
+      await divesAPI.createDive(user.username, diveData);
 
       toast({
         title: "Success",
-        description: "Dive updated successfully!",
+        description: "Dive logged successfully!",
       });
 
-      router.push(`/dashboard/dives/${diveId}`);
+      router.push('/dives');
     } catch (error: any) {
-      console.error('Failed to update dive:', error);
+      console.error('Failed to create dive:', error);
 
-      let errorMessage = "Failed to update dive. Please try again.";
+      let errorMessage = "Failed to log dive. Please try again.";
       if (error.response?.data?.detail) {
         errorMessage = error.response.data.detail;
       }
@@ -169,55 +191,19 @@ export default function EditDivePage() {
     }
   };
 
-  if (!isAuthenticated) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
-
-  if (isLoading) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
-      </div>
-    );
-  }
-
-  if (!dive) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center py-12">
-          <div className="text-muted-foreground mb-4">
-            Dive not found.
-          </div>
-          <Button asChild>
-            <Link href="/dashboard/dives">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dives
-            </Link>
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
       <div className="flex items-center gap-4 mb-6">
         <Button variant="ghost" size="sm" asChild>
-          <Link href={`/dashboard/dives/${diveId}`}>
+          <Link href="/dives">
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Dive
+            Back to Dives
           </Link>
         </Button>
         <div>
-          <h1 className="text-3xl font-bold">Edit Dive #{dive.dive_number}</h1>
+          <h1 className="text-3xl font-bold">Log New Dive</h1>
           <p className="text-muted-foreground mt-1">
-            Update the details of your dive
+            Record the details of your dive
           </p>
         </div>
       </div>
@@ -229,6 +215,43 @@ export default function EditDivePage() {
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              {/* Import from dive computer file */}
+              <div className="rounded-lg border border-dashed p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-muted/40">
+                <div>
+                  <p className="font-medium text-sm">Import from a dive computer file</p>
+                  <p className="text-sm text-muted-foreground">
+                    Upload a dive log export (e.g. Suunto XML) to automatically fill in the fields below.
+                  </p>
+                </div>
+                <div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".xml"
+                    className="hidden"
+                    onChange={handleFileSelected}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isParsingFile}
+                  >
+                    {isParsingFile ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Parsing...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Upload Dive File
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+
               {/* Basic Information */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
@@ -236,13 +259,13 @@ export default function EditDivePage() {
                   name="dive_number"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Dive Number</FormLabel>
+                      <FormLabel>Dive Number *</FormLabel>
                       <FormControl>
                         <Input
                           type="number"
                           min="1"
                           {...field}
-                          onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)}
+                          onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
                         />
                       </FormControl>
                       <FormMessage />
@@ -258,7 +281,7 @@ export default function EditDivePage() {
                   name="start_time"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Start Time</FormLabel>
+                      <FormLabel>Start Time *</FormLabel>
                       <FormControl>
                         <DateTimePicker
                           value={field.value}
@@ -275,7 +298,7 @@ export default function EditDivePage() {
                   name="duration"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Duration (minutes)</FormLabel>
+                      <FormLabel>Duration (minutes) *</FormLabel>
                       <FormControl>
                         <Input
                           type="number"
@@ -387,18 +410,18 @@ export default function EditDivePage() {
               {/* Submit Button */}
               <div className="flex justify-end gap-4 pt-4">
                 <Button type="button" variant="outline" asChild>
-                  <Link href={`/dashboard/dives/${diveId}`}>Cancel</Link>
+                  <Link href="/dives">Cancel</Link>
                 </Button>
                 <Button type="submit" disabled={isSubmitting}>
                   {isSubmitting ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Updating Dive...
+                      Logging Dive...
                     </>
                   ) : (
                     <>
                       <Save className="h-4 w-4 mr-2" />
-                      Update Dive
+                      Log Dive
                     </>
                   )}
                 </Button>

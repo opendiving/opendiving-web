@@ -23,20 +23,21 @@ import { useToast } from "@/components/ui/use-toast";
 export default function DiveDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
   const { toast } = useToast();
   const [dive, setDive] = useState<Dive | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingDive, setIsLoadingDive] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const diveId = parseInt(params.id as string);
 
-  // Redirect to signin if not authenticated
+  // Redirect to signin if not authenticated, but only once the auth check
+  // has actually finished.
   useEffect(() => {
-    if (!isAuthenticated && !isLoading) {
+    if (!isAuthLoading && !isAuthenticated) {
       router.push('/signin');
     }
-  }, [isAuthenticated, isLoading, router]);
+  }, [isAuthenticated, isAuthLoading, router]);
 
   // Fetch dive details
   useEffect(() => {
@@ -44,7 +45,7 @@ export default function DiveDetailPage() {
       if (!user?.username || !diveId) return;
 
       try {
-        setIsLoading(true);
+        setIsLoadingDive(true);
         const diveData = await divesAPI.getDive(user.username, diveId);
         setDive(diveData);
       } catch (error) {
@@ -54,9 +55,9 @@ export default function DiveDetailPage() {
           description: "Failed to load dive details. Please try again.",
           variant: "destructive",
         });
-        router.push('/dashboard/dives');
+        router.push('/dives');
       } finally {
-        setIsLoading(false);
+        setIsLoadingDive(false);
       }
     };
 
@@ -80,7 +81,7 @@ export default function DiveDetailPage() {
         description: "Dive deleted successfully.",
       });
 
-      router.push('/dashboard/dives');
+      router.push('/dives');
     } catch (error) {
       console.error('Failed to delete dive:', error);
       toast({
@@ -125,7 +126,7 @@ export default function DiveDetailPage() {
     return minutes > 0 ? `${hours} hour${hours !== 1 ? 's' : ''} ${minutes} minute${minutes !== 1 ? 's' : ''}` : `${hours} hour${hours !== 1 ? 's' : ''}`;
   };
 
-  if (!isAuthenticated) {
+  if (isAuthLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -133,7 +134,11 @@ export default function DiveDetailPage() {
     );
   }
 
-  if (isLoading) {
+  if (!isAuthenticated) {
+    return null; // Will redirect to signin
+  }
+
+  if (isLoadingDive) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-center py-12">
@@ -151,7 +156,7 @@ export default function DiveDetailPage() {
             Dive not found.
           </div>
           <Button asChild>
-            <Link href="/dashboard/dives">
+            <Link href="/dives">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Dives
             </Link>
@@ -166,7 +171,7 @@ export default function DiveDetailPage() {
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" asChild>
-            <Link href="/dashboard/dives">
+            <Link href="/dives">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Dives
             </Link>
@@ -180,7 +185,7 @@ export default function DiveDetailPage() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" asChild>
-            <Link href={`/dashboard/dives/${dive.id}/edit`}>
+            <Link href={`/dives/${dive.id}/edit`}>
               <Edit className="h-4 w-4 mr-2" />
               Edit
             </Link>
