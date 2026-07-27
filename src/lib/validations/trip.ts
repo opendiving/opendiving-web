@@ -15,6 +15,10 @@ export const tripCreateSchema = z
       .string()
       .min(1, "Trip name is required")
       .max(255, "Trip name cannot exceed 255 characters"),
+    location: z
+      .string()
+      .max(255, "Location cannot exceed 255 characters")
+      .optional(),
     start_date: z.string().optional(),
     end_date: z.string().optional(),
   })
@@ -30,6 +34,10 @@ export const tripUpdateSchema = z
       .min(1, "Trip name is required")
       .max(255, "Trip name cannot exceed 255 characters")
       .optional(),
+    location: z
+      .string()
+      .max(255, "Location cannot exceed 255 characters")
+      .optional(),
     start_date: z.string().optional(),
     end_date: z.string().optional(),
   })
@@ -40,9 +48,15 @@ export const tripUpdateSchema = z
 
 // Converts "" placeholders (used to represent a cleared date field while
 // editing) into `undefined` before sending trip data to the API.
-export function normalizeTripDates(data: { name?: string; start_date?: string; end_date?: string }) {
+export function normalizeTripDates(data: {
+  name?: string;
+  location?: string;
+  start_date?: string;
+  end_date?: string;
+}) {
   return {
     name: data.name,
+    location: data.location,
     start_date: data.start_date ? data.start_date : undefined,
     end_date: data.end_date ? data.end_date : undefined,
   };

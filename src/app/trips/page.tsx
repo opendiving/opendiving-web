@@ -183,6 +183,7 @@ export default function TripsPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Name</TableHead>
+                      <TableHead>Location</TableHead>
                       <TableHead>Dates</TableHead>
                       <TableHead>Created</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
@@ -195,6 +196,9 @@ export default function TripsPage() {
                           <Link href={`/trips/${trip.id}`} className="hover:underline">
                             {trip.name}
                           </Link>
+                        </TableCell>
+                        <TableCell>
+                          {trip.location || '-'}
                         </TableCell>
                         <TableCell>
                           {formatDateRange(trip.start_date, trip.end_date)}

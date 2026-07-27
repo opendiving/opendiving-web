@@ -33,6 +33,7 @@ export default function NewTripPage() {
     resolver: zodResolver(tripCreateSchema),
     defaultValues: {
       name: "",
+      location: "",
       start_date: "",
       end_date: "",
     },
@@ -123,6 +124,20 @@ export default function NewTripPage() {
                     <FormLabel>Name *</FormLabel>
                     <FormControl>
                       <Input placeholder="e.g. Red Sea Liveaboard 2024" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="location"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Location</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. Koh Tao, Thailand" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

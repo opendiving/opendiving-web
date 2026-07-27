@@ -33,6 +33,7 @@ export default function NewDiveSitePage() {
     resolver: zodResolver(diveSiteCreateSchema),
     defaultValues: {
       name: "",
+      location: "",
     },
   });
 
@@ -118,6 +119,20 @@ export default function NewDiveSitePage() {
                     <FormLabel>Name *</FormLabel>
                     <FormControl>
                       <Input placeholder="e.g. Blue Hole" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="location"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Location</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. Koh Tao, Thailand" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

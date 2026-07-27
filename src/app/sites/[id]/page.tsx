@@ -162,7 +162,7 @@ export default function DiveSiteDetailPage() {
             <div>
               <h1 className="text-3xl font-bold">{diveSite.name}</h1>
               <p className="text-muted-foreground mt-1">
-                Added {formatDate(diveSite.created_at)}
+                {diveSite.location ? diveSite.location : `Added ${formatDate(diveSite.created_at)}`}
               </p>
             </div>
           </div>
@@ -213,6 +213,12 @@ export default function DiveSiteDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                {diveSite.location && (
+                  <div>
+                    <div className="text-sm font-medium text-muted-foreground mb-1">Location</div>
+                    <div className="text-sm">{diveSite.location}</div>
+                  </div>
+                )}
                 <div>
                   <div className="text-sm font-medium text-muted-foreground mb-1">Added on</div>
                   <div className="text-sm">{formatDate(diveSite.created_at)}</div>

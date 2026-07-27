@@ -178,6 +178,7 @@ export default function SitesPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Name</TableHead>
+                      <TableHead>Location</TableHead>
                       <TableHead>Created</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -189,6 +190,9 @@ export default function SitesPage() {
                           <Link href={`/sites/${diveSite.id}`} className="hover:underline">
                             {diveSite.name}
                           </Link>
+                        </TableCell>
+                        <TableCell>
+                          {diveSite.location || '-'}
                         </TableCell>
                         <TableCell>
                           {formatDate(diveSite.created_at)}

@@ -25,11 +25,13 @@ const VOLUME_OPTIONS = [
   { value: 22.2, label: "2x11.1 L" },
 ];
 
-// Default values pre-filled when a new mixture (tank) is added.
+// Default values pre-filled when a new mixture (tank) is added. Start/end
+// pressure are deliberately left blank ("") rather than defaulted, since
+// they vary per tank/fill and shouldn't be guessed.
 export const DEFAULT_MIXTURE = {
   volume: 11.1,
-  start_pressure: 207,
-  end_pressure: 50,
+  start_pressure: "" as const,
+  end_pressure: "" as const,
   po2: 1.4,
   oxygen: 21.0,
 };

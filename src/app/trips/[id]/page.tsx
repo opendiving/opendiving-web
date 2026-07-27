@@ -10,7 +10,7 @@ import { formatTripDateRange } from "@/lib/date-time";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Edit, Trash2, Plus, Calendar, Loader2 } from "lucide-react";
+import { ArrowLeft, Edit, Trash2, Plus, Calendar, MapPin, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -167,7 +167,13 @@ export default function TripDetailPage() {
             <div>
               <h1 className="text-3xl font-bold">{trip.name}</h1>
               <p className="text-muted-foreground mt-1">
-                {tripDateRange ? tripDateRange : `Created ${formatDate(trip.created_at)}`}
+                {trip.location && tripDateRange
+                  ? `${trip.location} · ${tripDateRange}`
+                  : trip.location
+                  ? trip.location
+                  : tripDateRange
+                  ? tripDateRange
+                  : `Created ${formatDate(trip.created_at)}`}
               </p>
             </div>
           </div>
@@ -218,6 +224,15 @@ export default function TripDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                {trip.location && (
+                  <div>
+                    <div className="text-sm font-medium text-muted-foreground mb-1">Location</div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <MapPin className="h-4 w-4 text-muted-foreground" />
+                      {trip.location}
+                    </div>
+                  </div>
+                )}
                 {tripDateRange && (
                   <div>
                     <div className="text-sm font-medium text-muted-foreground mb-1">Trip Dates</div>

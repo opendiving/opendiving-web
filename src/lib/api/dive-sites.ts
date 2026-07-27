@@ -3,16 +3,19 @@ import { apiClient } from './client';
 export interface DiveSite {
   id: number;
   name: string;
+  location?: string;
   user_id: number;
   created_at: string;
 }
 
 export interface DiveSiteCreate {
   name: string;
+  location?: string;
 }
 
 export interface DiveSiteUpdate {
   name?: string;
+  location?: string;
 }
 
 export interface PaginatedDiveSitesResponse {

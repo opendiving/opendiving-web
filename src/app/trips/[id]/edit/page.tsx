@@ -38,6 +38,7 @@ export default function EditTripPage() {
     resolver: zodResolver(tripUpdateSchema),
     defaultValues: {
       name: "",
+      location: "",
       start_date: "",
       end_date: "",
     },
@@ -63,6 +64,7 @@ export default function EditTripPage() {
 
         form.reset({
           name: tripData.name,
+          location: tripData.location ?? "",
           start_date: tripData.start_date ?? "",
           end_date: tripData.end_date ?? "",
         });
@@ -185,6 +187,20 @@ export default function EditTripPage() {
                     <FormLabel>Name *</FormLabel>
                     <FormControl>
                       <Input placeholder="e.g. Red Sea Liveaboard 2024" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="location"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Location</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. Koh Tao, Thailand" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

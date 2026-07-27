@@ -5,6 +5,10 @@ export const diveSiteCreateSchema = z.object({
     .string()
     .min(1, "Dive site name is required")
     .max(255, "Dive site name cannot exceed 255 characters"),
+  location: z
+    .string()
+    .max(255, "Location cannot exceed 255 characters")
+    .optional(),
 });
 
 export const diveSiteUpdateSchema = z.object({
@@ -12,6 +16,10 @@ export const diveSiteUpdateSchema = z.object({
     .string()
     .min(1, "Dive site name is required")
     .max(255, "Dive site name cannot exceed 255 characters")
+    .optional(),
+  location: z
+    .string()
+    .max(255, "Location cannot exceed 255 characters")
     .optional(),
 });
 

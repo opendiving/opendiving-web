@@ -3,6 +3,7 @@ import { apiClient } from './client';
 export interface Trip {
   id: number;
   name: string;
+  location?: string;
   start_date?: string;
   end_date?: string;
   user_id: number;
@@ -11,12 +12,14 @@ export interface Trip {
 
 export interface TripCreate {
   name: string;
+  location?: string;
   start_date?: string;
   end_date?: string;
 }
 
 export interface TripUpdate {
   name?: string;
+  location?: string;
   start_date?: string;
   end_date?: string;
 }
