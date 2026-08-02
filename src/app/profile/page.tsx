@@ -4,6 +4,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
+import { diveStatsAPI, UserDiveStats } from "@/lib/api/dive-stats";
+import { formatDurationHoursMinutes } from "@/lib/date-time";
 import {
   Card,
   CardContent,
@@ -25,18 +27,34 @@ import {
   Edit,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
 export default function ProfilePage() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
+  const [stats, setStats] = useState<UserDiveStats | null>(null);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       router.push("/signin");
     }
   }, [isAuthenticated, isLoading, router]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchStats = async () => {
+      try {
+        const data = await diveStatsAPI.getDiveStats(user.username);
+        setStats(data);
+      } catch (error) {
+        console.error("Failed to fetch dive stats:", error);
+      }
+    };
+
+    fetchStats();
+  }, [user]);
 
   if (isLoading) {
     return (
@@ -107,21 +125,21 @@ export default function ProfilePage() {
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="text-center">
-                    <div className="text-2xl font-bold">0</div>
+                    <div className="text-2xl font-bold">{stats?.total_dives ?? 0}</div>
                     <div className="text-sm text-gray-600">Total Dives</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold">0m</div>
+                    <div className="text-2xl font-bold">{stats?.max_depth ?? 0}m</div>
                     <div className="text-sm text-gray-600">Max Depth</div>
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold">
-                      0min
+                      {formatDurationHoursMinutes(stats?.total_time ?? 0)}
                     </div>
                     <div className="text-sm text-gray-600">Total Time</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold">0</div>
+                    <div className="text-2xl font-bold">{stats?.species_seen ?? 0}</div>
                     <div className="text-sm text-gray-600">Species Seen</div>
                   </div>
                 </div>

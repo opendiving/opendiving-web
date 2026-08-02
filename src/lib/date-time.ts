@@ -26,6 +26,19 @@ export function formatDateOnly(dateString: string, options?: Intl.DateTimeFormat
   );
 }
 
+// Formats a duration given in seconds as "Xh Ym" (or just "Ymin" under an hour).
+export function formatDurationHoursMinutes(durationSeconds: number): string {
+  const totalMinutes = Math.round(durationSeconds / 60);
+
+  if (totalMinutes < 60) {
+    return `${totalMinutes}min`;
+  }
+
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return minutes > 0 ? `${hours}h ${minutes}min` : `${hours}h`;
+}
+
 // Formats a trip's start/end date range for display, e.g. "Jun 1 - Jun 8, 2024".
 // Returns `undefined` if neither date is set.
 export function formatTripDateRange(

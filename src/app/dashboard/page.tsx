@@ -5,6 +5,8 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { RecentTripsCard } from "@/components/dives/recent-trips-card";
+import { diveStatsAPI, UserDiveStats } from "@/lib/api/dive-stats";
+import { formatDurationHoursMinutes } from "@/lib/date-time";
 import {
   Card,
   CardContent,
@@ -25,18 +27,34 @@ import {
   Activity,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
 export default function DashboardPage() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
+  const [stats, setStats] = useState<UserDiveStats | null>(null);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       router.push("/signin");
     }
   }, [isAuthenticated, isLoading, router]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchStats = async () => {
+      try {
+        const data = await diveStatsAPI.getDiveStats(user.username);
+        setStats(data);
+      } catch (error) {
+        console.error("Failed to fetch dive stats:", error);
+      }
+    };
+
+    fetchStats();
+  }, [user]);
 
   if (isLoading) {
     return (
@@ -77,7 +95,7 @@ export default function DashboardPage() {
               <Activity className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">0</div>
+              <div className="text-2xl font-bold">{stats?.total_dives ?? 0}</div>
               <p className="text-xs text-muted-foreground">
                 Start logging your dives!
               </p>
@@ -90,7 +108,7 @@ export default function DashboardPage() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">0m</div>
+              <div className="text-2xl font-bold">{stats?.max_depth ?? 0}m</div>
               <p className="text-xs text-muted-foreground">Personal best</p>
             </CardContent>
           </Card>
@@ -101,7 +119,9 @@ export default function DashboardPage() {
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">0min</div>
+              <div className="text-2xl font-bold">
+                {formatDurationHoursMinutes(stats?.total_time ?? 0)}
+              </div>
               <p className="text-xs text-muted-foreground">Underwater time</p>
             </CardContent>
           </Card>
@@ -114,7 +134,7 @@ export default function DashboardPage() {
               <Fish className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">0</div>
+              <div className="text-2xl font-bold">{stats?.species_seen ?? 0}</div>
               <p className="text-xs text-muted-foreground">
                 Marine life species
               </p>
