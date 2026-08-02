@@ -155,8 +155,11 @@ export function DiveFormFields({ control, mode, username }: DiveFormFieldsProps)
                   min="0"
                   placeholder="e.g. 30.52"
                   {...field}
-                  value={field.value || ""}
-                  onChange={(e) => field.onChange(parseFloat(e.target.value) || undefined)}
+                  value={field.value ?? ""}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    field.onChange(Number.isNaN(val) ? null : val);
+                  }}
                 />
               </FormControl>
               <FormMessage />
@@ -177,8 +180,11 @@ export function DiveFormFields({ control, mode, username }: DiveFormFieldsProps)
                   min="0"
                   placeholder="e.g. 18.24"
                   {...field}
-                  value={field.value || ""}
-                  onChange={(e) => field.onChange(parseFloat(e.target.value) || undefined)}
+                  value={field.value ?? ""}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    field.onChange(Number.isNaN(val) ? null : val);
+                  }}
                 />
               </FormControl>
               <FormMessage />
@@ -202,8 +208,11 @@ export function DiveFormFields({ control, mode, username }: DiveFormFieldsProps)
                   max="50"
                   placeholder="e.g. 22"
                   {...field}
-                  value={field.value || ""}
-                  onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)}
+                  value={field.value ?? ""}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    field.onChange(Number.isNaN(val) ? null : val);
+                  }}
                 />
               </FormControl>
               <FormMessage />
@@ -224,8 +233,11 @@ export function DiveFormFields({ control, mode, username }: DiveFormFieldsProps)
                   min="0"
                   placeholder="e.g. 15"
                   {...field}
-                  value={field.value || ""}
-                  onChange={(e) => field.onChange(parseInt(e.target.value) || undefined)}
+                  value={field.value ?? ""}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value);
+                    field.onChange(Number.isNaN(val) ? null : val);
+                  }}
                 />
               </FormControl>
               <FormMessage />

@@ -79,7 +79,11 @@ export default function EditDivePage() {
           dive_site_id: diveData.dive_site_id,
           notes: diveData.notes || "",
           mixtures: diveData.mixtures?.length
-            ? diveData.mixtures
+            ? diveData.mixtures.map((m) => ({
+                ...m,
+                start_pressure: m.start_pressure ?? "",
+                end_pressure: m.end_pressure ?? "",
+              }))
             : [{ ...DEFAULT_MIXTURE, name: getDefaultMixtureName(0) }],
         });
       } catch (error) {
