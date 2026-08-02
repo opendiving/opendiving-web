@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Plus } from "lucide-react";
+import { Loader2, Plus, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
@@ -119,6 +119,7 @@ export function CreatableCombobox({
         placeholder={placeholder}
         value={inputValue}
         disabled={disabled || isLoading}
+        className={cn(value !== undefined && "pr-7")}
         onChange={(e) => handleInputChange(e.target.value)}
         onFocus={() => setIsOpen(true)}
         onBlur={() => {
@@ -138,6 +139,21 @@ export function CreatableCombobox({
       />
       {isSaving && (
         <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+      )}
+      {!isSaving && value !== undefined && !disabled && !isLoading && (
+        <button
+          type="button"
+          aria-label="Clear"
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => {
+            setInputValue("");
+            onChange(undefined);
+            inputRef.current?.focus();
+          }}
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
       )}
       {isOpen && !isLoading && (
         <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md max-h-60 overflow-auto">
