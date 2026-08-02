@@ -156,7 +156,7 @@ export default function TripsPage() {
             <CardTitle className="flex items-center justify-between">
               <span>Trip List</span>
               <Badge variant="secondary">
-                {totalCount} total trip{totalCount !== 1 ? 's' : ''}
+                {totalCount} total trip{totalCount !== 1 ? "s" : ""}
               </Badge>
             </CardTitle>
           </CardHeader>
@@ -183,9 +183,8 @@ export default function TripsPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Name</TableHead>
-                      <TableHead>Location</TableHead>
                       <TableHead>Dates</TableHead>
-                      <TableHead>Created</TableHead>
+                      <TableHead>Location</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -193,35 +192,25 @@ export default function TripsPage() {
                     {trips.map((trip) => (
                       <TableRow key={trip.id}>
                         <TableCell className="font-medium">
-                          <Link href={`/trips/${trip.id}`} className="hover:underline">
+                          <Link
+                            href={`/trips/${trip.id}`}
+                            className="hover:underline"
+                          >
                             {trip.name}
                           </Link>
                         </TableCell>
                         <TableCell>
-                          {trip.location || '-'}
-                        </TableCell>
-                        <TableCell>
                           {formatDateRange(trip.start_date, trip.end_date)}
                         </TableCell>
-                        <TableCell>
-                          {formatDate(trip.created_at)}
-                        </TableCell>
+                        <TableCell>{trip.location || "-"}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              asChild
-                            >
+                            <Button variant="ghost" size="sm" asChild>
                               <Link href={`/trips/${trip.id}`}>
                                 <Eye className="h-4 w-4" />
                               </Link>
                             </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              asChild
-                            >
+                            <Button variant="ghost" size="sm" asChild>
                               <Link href={`/trips/${trip.id}/edit`}>
                                 <Edit className="h-4 w-4" />
                               </Link>
@@ -251,7 +240,9 @@ export default function TripsPage() {
             {totalCount > itemsPerPage && (
               <div className="flex items-center justify-between mt-6">
                 <div className="text-sm text-muted-foreground">
-                  Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount} trips
+                  Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
+                  {Math.min(currentPage * itemsPerPage, totalCount)} of{" "}
+                  {totalCount} trips
                 </div>
                 <div className="flex gap-2">
                   <Button

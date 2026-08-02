@@ -179,7 +179,6 @@ export default function SitesPage() {
                     <TableRow>
                       <TableHead>Name</TableHead>
                       <TableHead>Location</TableHead>
-                      <TableHead>Created</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -193,9 +192,6 @@ export default function SitesPage() {
                         </TableCell>
                         <TableCell>
                           {diveSite.location || '-'}
-                        </TableCell>
-                        <TableCell>
-                          {formatDate(diveSite.created_at)}
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">

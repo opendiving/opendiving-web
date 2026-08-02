@@ -122,6 +122,11 @@ export function DateTimePicker({
           mode="single"
           selected={selectedDate}
           onSelect={handleSelectDate}
+          captionLayout="dropdown-buttons"
+          fromYear={1900}
+          toYear={new Date().getFullYear() + 5}
+          classNames={{ caption_label: "hidden" }}
+          defaultMonth={selectedDate}
           initialFocus
         />
         <div className="flex items-center justify-center gap-1 border-t p-3">
