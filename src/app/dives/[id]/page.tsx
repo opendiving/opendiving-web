@@ -449,10 +449,7 @@ export default function DiveDetailPage() {
             {hasEnvironmentInfo && (
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Thermometer className="h-5 w-5" />
-                    Environment
-                  </CardTitle>
+                  <CardTitle>Environment</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {dive.bottom_temperature != null && (

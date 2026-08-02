@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
@@ -15,10 +15,13 @@ export interface CreatableComboboxProps {
   isLoading?: boolean;
   value?: number;
   onChange: (id: number | undefined) => void;
-  // Called when the committed text doesn't match any existing item. Should
-  // create the item via the API and return it; the returned item is then
-  // selected automatically.
-  onCreate: (name: string) => Promise<ComboboxItem>;
+  // When provided, shows an "Add…" footer item in the dropdown that calls this
+  // instead of the inline create-on-enter flow.
+  onAddNew?: () => void;
+  addNewLabel?: string;
+  // Legacy inline create: called when committed text doesn't match any item.
+  // Omit when using onAddNew instead.
+  onCreate?: (name: string) => Promise<ComboboxItem>;
   placeholder?: string;
   disabled?: boolean;
   noItemsLabel?: string;
@@ -34,9 +37,11 @@ export function CreatableCombobox({
   value,
   onChange,
   onCreate,
+  onAddNew,
+  addNewLabel = "Add new...",
   placeholder = "Select or type a new name...",
   disabled,
-  noItemsLabel = "No items yet. Start typing to create one.",
+  noItemsLabel = "No items.",
 }: CreatableComboboxProps) {
   const [inputValue, setInputValue] = useState("");
   const [isOpen, setIsOpen] = useState(false);
@@ -86,6 +91,13 @@ export function CreatableCombobox({
       return;
     }
 
+    if (!onCreate) {
+      // No inline creator — leave the selection unchanged and let the
+      // "Add…" button be the only way to create a new item.
+      onChange(undefined);
+      return;
+    }
+
     try {
       setIsSaving(true);
       const created = await onCreate(text);
@@ -129,6 +141,20 @@ export function CreatableCombobox({
       )}
       {isOpen && !isLoading && (
         <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md max-h-60 overflow-auto">
+          {onAddNew && (
+            <button
+              type="button"
+              className="w-full text-left px-3 py-2 text-sm text-primary hover:bg-accent hover:text-accent-foreground flex items-center gap-1.5 border-b"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                setIsOpen(false);
+                onAddNew();
+              }}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              {addNewLabel}
+            </button>
+          )}
           {filteredItems.length > 0 ? (
             filteredItems.map((item) => (
               <button
@@ -145,10 +171,6 @@ export function CreatableCombobox({
                 {item.name}
               </button>
             ))
-          ) : inputValue.trim() ? (
-            <div className="px-3 py-2 text-sm text-muted-foreground">
-              Press Enter to create &quot;{inputValue.trim()}&quot;
-            </div>
           ) : (
             <div className="px-3 py-2 text-sm text-muted-foreground">{noItemsLabel}</div>
           )}

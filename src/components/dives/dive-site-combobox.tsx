@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { CreatableCombobox } from "@/components/ui/creatable-combobox";
 import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
+import { NewDiveSiteDialog } from "@/components/dives/new-dive-site-dialog";
 
 export interface DiveSiteComboboxProps {
   username: string;
@@ -11,16 +12,11 @@ export interface DiveSiteComboboxProps {
   disabled?: boolean;
 }
 
-// A combobox for picking (or creating) the dive site a dive was made at.
-// Typing filters the user's existing dive sites; selecting one or typing its
-// exact name sets the dive's dive_site_id. Typing a name that doesn't match
-// any existing dive site creates a new one via the API once the field is
-// committed (blur / Enter).
 export function DiveSiteCombobox({ username, value, onChange, disabled }: DiveSiteComboboxProps) {
   const [diveSites, setDiveSites] = useState<DiveSite[]>([]);
   const [isLoadingDiveSites, setIsLoadingDiveSites] = useState(true);
+  const [showNewDialog, setShowNewDialog] = useState(false);
 
-  // Fetch the user's dive sites once on mount.
   useEffect(() => {
     let cancelled = false;
 
@@ -43,20 +39,31 @@ export function DiveSiteCombobox({ username, value, onChange, disabled }: DiveSi
     };
   }, [username]);
 
+  const handleCreated = (newDiveSite: DiveSite) => {
+    setDiveSites((prev) => [...prev, newDiveSite]);
+    onChange(newDiveSite.id);
+  };
+
   return (
-    <CreatableCombobox
-      items={diveSites}
-      isLoading={isLoadingDiveSites}
-      value={value}
-      onChange={onChange}
-      disabled={disabled}
-      placeholder="Select or type a new dive site name..."
-      noItemsLabel="No dive sites yet. Start typing to create one."
-      onCreate={async (name) => {
-        const newDiveSite = await diveSitesAPI.createDiveSite(username, { name });
-        setDiveSites((prev) => [...prev, newDiveSite]);
-        return newDiveSite;
-      }}
-    />
+    <>
+      <CreatableCombobox
+        items={diveSites}
+        isLoading={isLoadingDiveSites}
+        value={value}
+        onChange={onChange}
+        disabled={disabled}
+        placeholder="Select a dive site..."
+        noItemsLabel="No dive sites yet."
+        addNewLabel="Add dive site..."
+        onAddNew={() => setShowNewDialog(true)}
+      />
+
+      <NewDiveSiteDialog
+        username={username}
+        open={showNewDialog}
+        onOpenChange={setShowNewDialog}
+        onCreated={handleCreated}
+      />
+    </>
   );
 }

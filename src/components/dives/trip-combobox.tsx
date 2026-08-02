@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { CreatableCombobox } from "@/components/ui/creatable-combobox";
 import { tripsAPI, Trip } from "@/lib/api/trips";
+import { NewTripDialog } from "@/components/dives/new-trip-dialog";
 
 export interface TripComboboxProps {
   username: string;
@@ -11,16 +12,11 @@ export interface TripComboboxProps {
   disabled?: boolean;
 }
 
-// A combobox for picking (or creating) a trip to associate with a dive.
-// Typing filters the user's existing trips; selecting one or typing its
-// exact name sets the dive's trip_id. Typing a name that doesn't match any
-// existing trip creates a new one via the API once the field is committed
-// (blur / Enter).
 export function TripCombobox({ username, value, onChange, disabled }: TripComboboxProps) {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [isLoadingTrips, setIsLoadingTrips] = useState(true);
+  const [showNewDialog, setShowNewDialog] = useState(false);
 
-  // Fetch the user's trips once on mount.
   useEffect(() => {
     let cancelled = false;
 
@@ -43,20 +39,31 @@ export function TripCombobox({ username, value, onChange, disabled }: TripCombob
     };
   }, [username]);
 
+  const handleCreated = (newTrip: Trip) => {
+    setTrips((prev) => [...prev, newTrip]);
+    onChange(newTrip.id);
+  };
+
   return (
-    <CreatableCombobox
-      items={trips}
-      isLoading={isLoadingTrips}
-      value={value}
-      onChange={onChange}
-      disabled={disabled}
-      placeholder="Select or type a new trip name..."
-      noItemsLabel="No trips yet. Start typing to create one."
-      onCreate={async (name) => {
-        const newTrip = await tripsAPI.createTrip(username, { name });
-        setTrips((prev) => [...prev, newTrip]);
-        return newTrip;
-      }}
-    />
+    <>
+      <CreatableCombobox
+        items={trips}
+        isLoading={isLoadingTrips}
+        value={value}
+        onChange={onChange}
+        disabled={disabled}
+        placeholder="Select a trip..."
+        noItemsLabel="No trips yet."
+        addNewLabel="Add trip..."
+        onAddNew={() => setShowNewDialog(true)}
+      />
+
+      <NewTripDialog
+        username={username}
+        open={showNewDialog}
+        onOpenChange={setShowNewDialog}
+        onCreated={handleCreated}
+      />
+    </>
   );
 }
