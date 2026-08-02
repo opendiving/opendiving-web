@@ -74,6 +74,56 @@ function NewDivePageContent() {
     }
   }, [isAuthenticated, isAuthLoading, router]);
 
+  // Pre-fill trip and gas mixture defaults from the most recent dive so the
+  // user doesn't have to re-enter recurring values for every new log entry.
+  useEffect(() => {
+    if (!user?.username) return;
+
+    let cancelled = false;
+
+    const prefillFromLastDive = async () => {
+      try {
+        const response = await divesAPI.getDives(user.username, 1, 1);
+        if (cancelled || form.formState.isDirty) return;
+
+        const lastDive = response.data[0];
+        if (!lastDive) return;
+
+        form.reset({
+          dive_number: lastDive.dive_number + 1,
+          start_time: formatDateTimeForForm(new Date()),
+          duration: undefined,
+          max_depth: undefined,
+          avg_depth: undefined,
+          bottom_temperature: undefined,
+          visibility: undefined,
+          // URL param takes precedence over the last dive's trip.
+          trip_id: initialTripId ?? lastDive.trip_id,
+          dive_site_id: initialDiveSiteId,
+          notes: "",
+          mixtures: lastDive.mixtures?.length
+            ? lastDive.mixtures.map((m, i) => ({
+                name: m.name ?? getDefaultMixtureName(i),
+                volume: m.volume,
+                oxygen: m.oxygen,
+                po2: m.po2,
+                start_pressure: "" as const,
+                end_pressure: "" as const,
+              }))
+            : [{ ...DEFAULT_MIXTURE, name: getDefaultMixtureName(0) }],
+        });
+      } catch (error) {
+        console.error("Failed to fetch last dive for pre-fill:", error);
+      }
+    };
+
+    prefillFromLastDive();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.username, form, initialTripId, initialDiveSiteId]);
+
   if (isAuthLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
