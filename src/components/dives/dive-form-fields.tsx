@@ -204,15 +204,15 @@ export function DiveFormFields({ control, mode, username }: DiveFormFieldsProps)
               <FormControl>
                 <Input
                   type="number"
-                  step="0.1"
+                  step="0.01"
                   min="-50"
                   max="50"
-                  placeholder="e.g. 22.5"
+                  placeholder="e.g. 22.50"
                   {...field}
                   value={field.value ?? ""}
                   onChange={(e) => {
                     const val = parseFloat(e.target.value);
-                    field.onChange(Number.isNaN(val) ? null : Math.round(val * 10) / 10);
+                    field.onChange(Number.isNaN(val) ? null : Math.round(val * 100) / 100);
                   }}
                 />
               </FormControl>
