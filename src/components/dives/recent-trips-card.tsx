@@ -99,7 +99,12 @@ export function RecentTripsCard({ username }: RecentTripsCardProps) {
                 href={`/trips/${trip.id}`}
                 className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50 transition-colors"
               >
-                <div className="font-medium text-gray-900">{trip.name}</div>
+                <div>
+                  <div className="font-medium text-gray-900">{trip.name}</div>
+                  {trip.location && (
+                    <div className="text-sm text-gray-500">{trip.location}</div>
+                  )}
+                </div>
                 {formatTripDisplayDate(trip) && (
                   <div className="flex items-center gap-1 text-sm text-gray-600">
                     <Calendar className="h-4 w-4" />

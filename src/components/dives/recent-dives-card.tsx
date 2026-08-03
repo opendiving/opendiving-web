@@ -149,6 +149,12 @@ export function RecentDivesCard({
                   </div>
                   <div className="text-sm text-gray-500">
                     {formatDiveDate(dive.start_time)}
+                    {dive.dive_site && (
+                      <span>
+                        {" · "}{dive.dive_site.name}
+                        {dive.dive_site.location && `, ${dive.dive_site.location}`}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-4 text-sm text-gray-600">
