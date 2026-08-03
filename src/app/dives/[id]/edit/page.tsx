@@ -17,7 +17,7 @@ import { Form } from "@/components/ui/form";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
-import { formatDateTimeForForm, parseFormDateTime } from "@/lib/date-time";
+import { formatDateTimeForForm, parseFormDateTime, formatDurationForForm, parseFormDuration } from "@/lib/date-time";
 import { getApiErrorMessage } from "@/lib/api/error";
 
 export default function EditDivePage() {
@@ -36,13 +36,13 @@ export default function EditDivePage() {
     defaultValues: {
       dive_number: undefined,
       start_time: "",
-      duration: undefined,
+      duration: "",
       max_depth: undefined,
       avg_depth: undefined,
       bottom_temperature: undefined,
       visibility: undefined,
       trip_id: undefined,
-      dive_site_id: undefined,
+      dive_site_ids: [],
       notes: "",
       mixtures: [{ ...DEFAULT_MIXTURE, name: getDefaultMixtureName(0) }],
     },
@@ -70,13 +70,13 @@ export default function EditDivePage() {
         form.reset({
           dive_number: diveData.dive_number,
           start_time: formatDateTimeForForm(new Date(diveData.start_time)),
-          duration: diveData.duration,
+          duration: formatDurationForForm(diveData.duration),
           max_depth: diveData.max_depth,
           avg_depth: diveData.avg_depth,
           bottom_temperature: diveData.bottom_temperature,
           visibility: diveData.visibility,
           trip_id: diveData.trip_id,
-          dive_site_id: diveData.dive_site_id,
+          dive_site_ids: diveData.dive_sites?.map((site) => site.id) ?? [],
           notes: diveData.notes || "",
           mixtures: diveData.mixtures?.length
             ? diveData.mixtures.map((m) => ({
@@ -121,8 +121,8 @@ export default function EditDivePage() {
         updateData.start_time = parseFormDateTime(data.start_time).toISOString();
       }
 
-      if (data.duration !== undefined) {
-        updateData.duration = data.duration;
+      if (data.duration) {
+        updateData.duration = parseFormDuration(data.duration);
       }
 
       if (data.max_depth !== undefined) {
@@ -145,8 +145,8 @@ export default function EditDivePage() {
         updateData.trip_id = data.trip_id;
       }
 
-      if (data.dive_site_id !== undefined) {
-        updateData.dive_site_id = data.dive_site_id;
+      if (data.dive_site_ids !== undefined) {
+        updateData.dive_site_ids = data.dive_site_ids;
       }
 
       if (data.notes !== undefined) {

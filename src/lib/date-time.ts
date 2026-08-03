@@ -26,6 +26,22 @@ export function formatDateOnly(dateString: string, options?: Intl.DateTimeFormat
   );
 }
 
+// Formats a duration given in seconds as "MM:SS" (the format used in dive
+// forms - see `durationField()` in `lib/validations/dive.ts` for the matching
+// input validation).
+export function formatDurationForForm(durationSeconds: number): string {
+  const minutes = Math.floor(durationSeconds / 60);
+  const seconds = durationSeconds % 60;
+  return `${minutes}:${pad(seconds)}`;
+}
+
+// Parses the "MM:SS" form representation back into a duration in seconds.
+// Assumes `value` already matches `durationField()`'s format.
+export function parseFormDuration(value: string): number {
+  const [minutes, seconds] = value.split(":").map(Number);
+  return minutes * 60 + seconds;
+}
+
 // Formats a duration given in seconds as "Xh Ym" (or just "Ymin" under an hour).
 export function formatDurationHoursMinutes(durationSeconds: number): string {
   const totalMinutes = Math.round(durationSeconds / 60);

@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/form";
 import { MixtureFields } from "@/components/dives/mixture-fields";
 import { TripCombobox } from "@/components/dives/trip-combobox";
-import { DiveSiteCombobox } from "@/components/dives/dive-site-combobox";
+import { DiveSiteMultiSelect } from "@/components/dives/dive-site-multi-select";
 
 export interface DiveFormFieldsProps {
   // Using `any` here since this component is shared between the create and
@@ -58,14 +58,14 @@ export function DiveFormFields({ control, mode, username }: DiveFormFieldsProps)
 
         <FormField
           control={control}
-          name="dive_site_id"
+          name="dive_site_ids"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Dive Site</FormLabel>
+              <FormLabel>Dive Site(s)</FormLabel>
               <FormControl>
-                <DiveSiteCombobox
+                <DiveSiteMultiSelect
                   username={username}
-                  value={field.value}
+                  value={field.value ?? []}
                   onChange={field.onChange}
                 />
               </FormControl>
@@ -120,19 +120,9 @@ export function DiveFormFields({ control, mode, username }: DiveFormFieldsProps)
           name="duration"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Duration (minutes){requiredMark}</FormLabel>
+              <FormLabel>Duration (MM:SS){requiredMark}</FormLabel>
               <FormControl>
-                <Input
-                  type="number"
-                  step="1"
-                  min="1"
-                  placeholder="e.g. 45"
-                  value={field.value ? Math.round(field.value / 60) : ""}
-                  onChange={(e) => {
-                    const minutes = parseInt(e.target.value);
-                    field.onChange(Number.isNaN(minutes) ? undefined : minutes * 60);
-                  }}
-                />
+                <Input type="text" placeholder="e.g. 45:30" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

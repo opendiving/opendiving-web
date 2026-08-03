@@ -68,11 +68,38 @@ for any new API call, don't reach for `error.response?.data?.detail` directly.
 ## The generic `CreatableCombobox` pattern
 
 `components/ui/creatable-combobox.tsx` is a generic "pick existing or create new
-on the fly" combobox. `TripCombobox`/`DiveSiteCombobox` are thin wrappers that
-just supply the fetch/create API calls. If a third "pick or create" entity type is
-ever needed, wrap `CreatableCombobox` the same way rather than copy-pasting the
-interaction logic (filtering, commit-on-blur/Enter, mouse-down-prevents-blur for
-option clicks).
+on the fly" combobox. `TripCombobox` is a thin single-select wrapper that just
+supplies the fetch/create API calls. `DiveSiteMultiSelect` wraps it too, but for
+picking *several* dive sites (a dive can have more than one, e.g. a drift dive
+that crosses named sites) - it renders `CreatableCombobox` as the "add a site"
+input (always called with `value={undefined}` so it clears after each pick) plus
+its own reorderable list of already-added sites above it. If a third "pick or
+create" entity type is needed, wrap `CreatableCombobox` the same way rather than
+copy-pasting the interaction logic (filtering, commit-on-blur/Enter,
+mouse-down-prevents-blur for option clicks).
+
+## Duration is a free-typed, regex-validated "MM:SS" string in the form
+
+`Dive.duration` on the API/`Dive`/`DiveCreate`/`DiveUpdate` types is always
+seconds, but the dive **form** field holds a plain `"MM:SS"` string (e.g.
+`"45:30"`), exactly like `start_time` holds a `"YYYY-MM-DD HH:mm:ss"` string -
+see `dateTimeField()`/`durationField()` in `lib/validations/dive.ts` for the
+matching pattern (required, regex-validated, no `.transform()` per the Zod
+rule above). The user can type anything into the plain `<Input>`; Zod's
+`durationField()` regex (`^\d{1,3}:[0-5]\d$`) is the only validation, surfaced
+via the normal `<FormMessage />` - there's no live reformatting/auto-correction
+as they type (an earlier version tried that with a dedicated `DurationInput`
+component and local text-buffer state; it was simpler to just validate the raw
+string like every other form field).
+
+Conversion to/from the API's seconds representation happens right before
+submit / right after fetch via `parseFormDuration()`/`formatDurationForForm()`
+in `lib/date-time.ts` (mirroring `parseFormDateTime()`/`formatDateTimeForForm()`).
+If a duration ever needs editing elsewhere, reuse `durationField()` +
+those two helpers rather than re-deriving minutes from seconds inline (the
+dive form used to do that with a single "total minutes" number input, which
+lost sub-minute precision on read - e.g. a 45:30 dive displayed and
+round-tripped as 46 minutes).
 
 ## Occasional `.next` cache corruption during builds
 

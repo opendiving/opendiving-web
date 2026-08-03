@@ -17,7 +17,7 @@ import { Form } from "@/components/ui/form";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
-import { formatDateTimeForForm, parseFormDateTime } from "@/lib/date-time";
+import { formatDateTimeForForm, parseFormDateTime, parseFormDuration } from "@/lib/date-time";
 import { getApiErrorMessage } from "@/lib/api/error";
 
 export default function NewDivePage() {
@@ -53,13 +53,13 @@ function NewDivePageContent() {
     defaultValues: {
       dive_number: 1,
       start_time: formatDateTimeForForm(new Date()),
-      duration: undefined,
+      duration: "",
       max_depth: undefined,
       avg_depth: undefined,
       bottom_temperature: undefined,
       visibility: undefined,
       trip_id: initialTripId,
-      dive_site_id: initialDiveSiteId,
+      dive_site_ids: initialDiveSiteId !== undefined ? [initialDiveSiteId] : [],
       notes: "",
       mixtures: [{ ...DEFAULT_MIXTURE, name: getDefaultMixtureName(0) }],
     },
@@ -86,20 +86,25 @@ function NewDivePageContent() {
         const response = await divesAPI.getDives(user.username, 1, 1);
         if (cancelled || form.formState.isDirty) return;
 
-        const lastDive = response.data[0];
-        if (!lastDive) return;
+        const lastDiveSummary = response.data[0];
+        if (!lastDiveSummary) return;
+
+        // The list endpoint doesn't include gas mixtures (only the single-dive
+        // endpoint does), so fetch the full record to prefill them.
+        const lastDive = await divesAPI.getDive(user.username, lastDiveSummary.id);
+        if (cancelled || form.formState.isDirty) return;
 
         form.reset({
           dive_number: lastDive.dive_number + 1,
           start_time: formatDateTimeForForm(new Date()),
-          duration: undefined,
+          duration: "",
           max_depth: undefined,
           avg_depth: undefined,
           bottom_temperature: undefined,
           visibility: undefined,
           // URL param takes precedence over the last dive's trip.
           trip_id: initialTripId ?? lastDive.trip_id,
-          dive_site_id: initialDiveSiteId,
+          dive_site_ids: initialDiveSiteId !== undefined ? [initialDiveSiteId] : [],
           notes: "",
           mixtures: lastDive.mixtures?.length
             ? lastDive.mixtures.map((m, i) => ({
@@ -146,6 +151,7 @@ function NewDivePageContent() {
       const diveData = {
         ...data,
         start_time: parseFormDateTime(data.start_time).toISOString(),
+        duration: parseFormDuration(data.duration),
         notes: data.notes || "",
         mixtures: normalizeMixtures(data.mixtures ?? []),
       };

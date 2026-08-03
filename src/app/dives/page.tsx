@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { divesAPI, Dive, PaginatedDivesResponse } from "@/lib/api/dives";
+import { DiveSitesLabel } from "@/components/dives/dive-sites-label";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -213,7 +214,7 @@ export default function DivesPage() {
                           </div>
                         </TableCell>
                         <TableCell className="text-muted-foreground">
-                          {dive.dive_site?.name ?? '-'}
+                          <DiveSitesLabel sites={dive.dive_sites} />
                         </TableCell>
                         <TableCell>
                           {formatDuration(dive.duration)}

@@ -7,7 +7,7 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { divesAPI, Dive } from "@/lib/api/dives";
 import { tripsAPI, Trip } from "@/lib/api/trips";
-import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
+import { DiveSitesLabel } from "@/components/dives/dive-sites-label";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -43,7 +43,6 @@ export default function DiveDetailPage() {
   const { toast } = useToast();
   const [dive, setDive] = useState<Dive | null>(null);
   const [trip, setTrip] = useState<Trip | null>(null);
-  const [diveSite, setDiveSite] = useState<DiveSite | null>(null);
   const [isLoadingDive, setIsLoadingDive] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -84,9 +83,10 @@ export default function DiveDetailPage() {
     }
   }, [user?.username, diveId, toast, router]);
 
-  // Once the dive has loaded, resolve its trip/dive site names (the dive
-  // itself only stores their IDs). Failures here are non-fatal - the dive
-  // page still works, it just won't show that particular link.
+  // Once the dive has loaded, resolve its trip's name (the dive itself only
+  // stores the trip's ID; its dive site(s) come embedded on the dive already).
+  // Failures here are non-fatal - the dive page still works, it just won't
+  // show the trip link.
   useEffect(() => {
     const fetchTrip = async () => {
       if (!user?.username || !dive?.trip_id) {
@@ -105,25 +105,6 @@ export default function DiveDetailPage() {
 
     fetchTrip();
   }, [user?.username, dive?.trip_id]);
-
-  useEffect(() => {
-    const fetchDiveSite = async () => {
-      if (!user?.username || !dive?.dive_site_id) {
-        setDiveSite(null);
-        return;
-      }
-
-      try {
-        const diveSiteData = await diveSitesAPI.getDiveSite(user.username, dive.dive_site_id);
-        setDiveSite(diveSiteData);
-      } catch (error) {
-        console.error('Failed to fetch dive site:', error);
-        setDiveSite(null);
-      }
-    };
-
-    fetchDiveSite();
-  }, [user?.username, dive?.dive_site_id]);
 
   // Handle dive deletion
   const handleDeleteDive = async () => {
@@ -411,7 +392,7 @@ export default function DiveDetailPage() {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Trip & Dive Site */}
-            {(trip || diveSite) && (
+            {(trip || dive.dive_sites.length > 0) && (
               <Card>
                 <CardHeader>
                   <CardTitle>Trip & Dive Site</CardTitle>
@@ -429,16 +410,13 @@ export default function DiveDetailPage() {
                       </Link>
                     </div>
                   )}
-                  {diveSite && (
+                  {dive.dive_sites.length > 0 && (
                     <div>
                       <div className="text-sm font-medium text-muted-foreground mb-1">Dive Site</div>
-                      <Link
-                        href={`/sites/${diveSite.id}`}
-                        className="flex items-center gap-2 text-sm font-medium hover:underline"
-                      >
+                      <div className="flex items-center gap-2 text-sm font-medium">
                         <MapPin className="h-4 w-4 text-muted-foreground" />
-                        {diveSite.name}
-                      </Link>
+                        <DiveSitesLabel sites={dive.dive_sites} linked />
+                      </div>
                     </div>
                   )}
                 </CardContent>

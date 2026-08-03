@@ -11,6 +11,15 @@ export interface DiveMixture {
   oxygen: number;
 }
 
+// A dive site visited during a dive, as embedded in a `Dive`. Dives are
+// ordered by the sequence they were visited in - `dive_sites[0]` is the
+// primary/first site, shown wherever only one site can be displayed.
+export interface DiveSiteSummary {
+  id: number;
+  name: string;
+  location?: string;
+}
+
 export interface Dive {
   id: number;
   dive_number: number;
@@ -21,8 +30,7 @@ export interface Dive {
   bottom_temperature?: number;
   visibility?: number;
   trip_id?: number;
-  dive_site_id?: number;
-  dive_site?: { name: string; location?: string };
+  dive_sites: DiveSiteSummary[];
   notes: string;
   user_id: number;
   created_at: string;
@@ -38,7 +46,7 @@ export interface DiveCreate {
   bottom_temperature?: number | null;
   visibility?: number | null;
   trip_id?: number;
-  dive_site_id?: number;
+  dive_site_ids?: number[];
   notes?: string;
   mixtures?: DiveMixture[];
 }
@@ -52,7 +60,7 @@ export interface DiveUpdate {
   bottom_temperature?: number | null;
   visibility?: number | null;
   trip_id?: number;
-  dive_site_id?: number;
+  dive_site_ids?: number[];
   notes?: string;
   mixtures?: DiveMixture[];
 }

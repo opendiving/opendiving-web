@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { divesAPI, Dive } from "@/lib/api/dives";
+import { DiveSitesLabel } from "@/components/dives/dive-sites-label";
 import {
   Card,
   CardContent,
@@ -149,10 +150,10 @@ export function RecentDivesCard({
                   </div>
                   <div className="text-sm text-gray-500">
                     {formatDiveDate(dive.start_time)}
-                    {dive.dive_site && (
+                    {dive.dive_sites.length > 0 && (
                       <span>
-                        {" · "}{dive.dive_site.name}
-                        {dive.dive_site.location && `, ${dive.dive_site.location}`}
+                        {" · "}
+                        <DiveSitesLabel sites={dive.dive_sites} showLocation />
                       </span>
                     )}
                   </div>

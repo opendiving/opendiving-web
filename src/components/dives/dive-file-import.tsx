@@ -5,7 +5,7 @@ import { UseFormReturn } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { divesAPI, ParsedDive } from "@/lib/api/dives";
-import { formatDateTimeForForm } from "@/lib/date-time";
+import { formatDateTimeForForm, formatDurationForForm } from "@/lib/date-time";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { Loader2, Upload } from "lucide-react";
 
@@ -24,7 +24,7 @@ export function applyParsedDiveToForm(form: UseFormReturn<any>, parsed: ParsedDi
     form.setValue("start_time", formatted, { shouldValidate: true, shouldDirty: true });
   }
   if (parsed.duration != null) {
-    form.setValue("duration", parsed.duration, { shouldValidate: true, shouldDirty: true });
+    form.setValue("duration", formatDurationForForm(parsed.duration), { shouldValidate: true, shouldDirty: true });
   }
   if (parsed.max_depth != null) {
     form.setValue("max_depth", parsed.max_depth, { shouldValidate: true, shouldDirty: true });

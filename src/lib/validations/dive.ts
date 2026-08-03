@@ -11,6 +11,18 @@ const dateTimeField = (message = "Start time must be in YYYY-MM-DD HH:mm:ss form
       message: "Start time must be a valid datetime",
     });
 
+// "MM:SS", e.g. "45:30" - minutes can be 1-3 digits, seconds must be two
+// digits from 00-59. Converted to/from a plain seconds number right before
+// hitting the API via `parseFormDuration()`/`formatDurationForForm()` in
+// `lib/date-time.ts` - see `dateTimeField()` above for the same pattern.
+const DURATION_REGEX = /^\d{1,3}:[0-5]\d$/;
+
+const durationField = (message = "Duration must be in MM:SS format, e.g. 45:30") =>
+  z
+    .string()
+    .min(1, "Duration is required")
+    .regex(DURATION_REGEX, message);
+
 // Optional numeric field that can also hold the literal empty string "" while
 // the user is editing. We deliberately never let the *live* form value become
 // `undefined` for these fields: react-hook-form falls back to re-displaying a
@@ -81,10 +93,7 @@ export const diveCreateSchema = z
       .int()
       .positive("Dive number must be a positive integer"),
     start_time: dateTimeField(),
-    duration: z
-      .number()
-      .int("Duration must be an integer number of seconds")
-      .positive("Duration must be positive"),
+    duration: durationField(),
     max_depth: z.number().positive("Max depth must be positive").nullable().optional(),
     avg_depth: z.number().positive("Average depth must be positive").nullable().optional(),
     bottom_temperature: z.number().nullable().optional(),
@@ -95,7 +104,7 @@ export const diveCreateSchema = z
       .nullable()
       .optional(),
     trip_id: z.number().int().positive().optional(),
-    dive_site_id: z.number().int().positive().optional(),
+    dive_site_ids: z.array(z.number().int().positive()).default([]),
     notes: z
       .string()
       .max(63206, "Notes cannot exceed 63206 characters")
@@ -111,11 +120,7 @@ export const diveUpdateSchema = z
       .positive("Dive number must be a positive integer")
       .optional(),
     start_time: dateTimeField().optional(),
-    duration: z
-      .number()
-      .int("Duration must be an integer number of seconds")
-      .positive("Duration must be positive")
-      .optional(),
+    duration: durationField().optional(),
     max_depth: z.number().positive("Max depth must be positive").nullable().optional(),
     avg_depth: z.number().positive("Average depth must be positive").nullable().optional(),
     bottom_temperature: z.number().nullable().optional(),
@@ -126,7 +131,7 @@ export const diveUpdateSchema = z
       .nullable()
       .optional(),
     trip_id: z.number().int().positive().optional(),
-    dive_site_id: z.number().int().positive().optional(),
+    dive_site_ids: z.array(z.number().int().positive()).optional(),
     notes: z
       .string()
       .max(63206, "Notes cannot exceed 63206 characters")
