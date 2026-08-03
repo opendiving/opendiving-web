@@ -44,10 +44,15 @@ export function TripCombobox({ username, value, onChange, disabled }: TripCombob
     onChange(newTrip.id);
   };
 
+  // Trips have a `location` field too, but unlike dive sites it's not shown
+  // in this dropdown - map to bare `{id, name}` so `CreatableCombobox`'s
+  // optional location display (added for dive sites) doesn't pick it up.
+  const items = trips.map((trip) => ({ id: trip.id, name: trip.name }));
+
   return (
     <>
       <CreatableCombobox
-        items={trips}
+        items={items}
         isLoading={isLoadingTrips}
         value={value}
         onChange={onChange}

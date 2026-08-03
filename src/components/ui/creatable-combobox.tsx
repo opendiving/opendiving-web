@@ -8,6 +8,9 @@ import { cn } from "@/lib/utils";
 export interface ComboboxItem {
   id: number;
   name: string;
+  // Shown alongside the name in the dropdown list (e.g. a dive site's
+  // location) - purely cosmetic, doesn't affect matching/filtering.
+  location?: string;
 }
 
 export interface CreatableComboboxProps {
@@ -185,6 +188,7 @@ export function CreatableCombobox({
                 onClick={() => handleSelect(item)}
               >
                 {item.name}
+                {item.location && <span className="text-muted-foreground">, {item.location}</span>}
               </button>
             ))
           ) : (

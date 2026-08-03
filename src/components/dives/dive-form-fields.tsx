@@ -36,46 +36,7 @@ export function DiveFormFields({ control, mode, username }: DiveFormFieldsProps)
 
   return (
     <>
-      {/* Trip & Dive Site */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <FormField
-          control={control}
-          name="trip_id"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Trip</FormLabel>
-              <FormControl>
-                <TripCombobox
-                  username={username}
-                  value={field.value}
-                  onChange={field.onChange}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={control}
-          name="dive_site_ids"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Dive Site(s)</FormLabel>
-              <FormControl>
-                <DiveSiteMultiSelect
-                  username={username}
-                  value={field.value ?? []}
-                  onChange={field.onChange}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      </div>
-
-      {/* Basic Information */}
+      {/* Basic Information & Trip */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <FormField
           control={control}
@@ -97,7 +58,44 @@ export function DiveFormFields({ control, mode, username }: DiveFormFieldsProps)
             </FormItem>
           )}
         />
+
+        <FormField
+          control={control}
+          name="trip_id"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Trip</FormLabel>
+              <FormControl>
+                <TripCombobox
+                  username={username}
+                  value={field.value}
+                  onChange={field.onChange}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
       </div>
+
+      {/* Dive Site(s) */}
+      <FormField
+        control={control}
+        name="dive_site_ids"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Dive Site(s)</FormLabel>
+            <FormControl>
+              <DiveSiteMultiSelect
+                username={username}
+                value={field.value ?? []}
+                onChange={field.onChange}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
 
       {/* Date and Time */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
