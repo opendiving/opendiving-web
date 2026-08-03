@@ -58,12 +58,11 @@ export function NewTripDialog({
     setApiError(null);
     try {
       setIsSubmitting(true);
-      const { start_date, end_date } = normalizeTripDates(data);
       const newTrip = await tripsAPI.createTrip(username, {
         name: data.name,
         location: data.location || undefined,
-        start_date,
-        end_date,
+        start_date: data.start_date,
+        end_date: data.end_date || undefined,
       });
       form.reset();
       onCreated(newTrip);
@@ -120,7 +119,7 @@ export function NewTripDialog({
                 name="start_date"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Start Date</FormLabel>
+                    <FormLabel>Start Date *</FormLabel>
                     <FormControl>
                       <DatePicker value={field.value} onChange={field.onChange} />
                     </FormControl>

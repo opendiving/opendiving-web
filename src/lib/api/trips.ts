@@ -13,7 +13,7 @@ export interface Trip {
 export interface TripCreate {
   name: string;
   location?: string;
-  start_date?: string;
+  start_date: string;
   end_date?: string;
 }
 

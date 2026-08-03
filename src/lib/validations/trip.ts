@@ -19,7 +19,7 @@ export const tripCreateSchema = z
       .string()
       .max(255, "Location cannot exceed 255 characters")
       .optional(),
-    start_date: z.string().optional(),
+    start_date: z.string().min(1, "Start date is required"),
     end_date: z.string().optional(),
   })
   .refine(dateRangeRefinement, {

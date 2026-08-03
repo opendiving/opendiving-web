@@ -68,8 +68,10 @@ export default function NewTripPage() {
       setIsSubmitting(true);
 
       await tripsAPI.createTrip(user.username, {
-        ...normalizeTripDates(data),
         name: data.name,
+        location: data.location || undefined,
+        start_date: data.start_date,
+        end_date: data.end_date || undefined,
       });
 
       toast({
@@ -151,7 +153,7 @@ export default function NewTripPage() {
                   name="start_date"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Start Date</FormLabel>
+                      <FormLabel>Start Date *</FormLabel>
                       <FormControl>
                         <DatePicker value={field.value} onChange={field.onChange} />
                       </FormControl>
