@@ -32,8 +32,8 @@ export const DEFAULT_MIXTURE = {
   volume: 11.1,
   start_pressure: "" as const,
   end_pressure: "" as const,
-  po2: 1.4,
   oxygen: 21.0,
+  helium: 0,
 };
 
 // Default name for a mixture based on its position in the list: the first
@@ -173,15 +173,16 @@ export function MixtureFields({ control }: MixtureFieldsProps) {
 
             <FormField
               control={control}
-              name={`mixtures.${index}.po2`}
+              name={`mixtures.${index}.helium`}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>PO₂ (bar)</FormLabel>
+                  <FormLabel>He (%)</FormLabel>
                   <FormControl>
                     <Input
                       type="number"
                       step="0.1"
                       min="0"
+                      max="100"
                       {...field}
                       onChange={(e) =>
                         field.onChange(parseFloat(e.target.value))

@@ -111,7 +111,7 @@ function NewDivePageContent() {
                 name: m.name ?? getDefaultMixtureName(i),
                 volume: m.volume,
                 oxygen: m.oxygen,
-                po2: m.po2,
+                helium: m.helium,
                 start_pressure: "" as const,
                 end_pressure: "" as const,
               }))

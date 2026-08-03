@@ -37,11 +37,14 @@ export const diveMixtureSchema = z.object({
   volume: z.number().positive("Volume must be positive"),
   start_pressure: z.union([z.literal(""), z.number().positive("Start pressure must be positive")]).optional(),
   end_pressure: z.union([z.literal(""), z.number().min(0, "End pressure must be zero or positive")]).optional(),
-  po2: z.number().positive("PO2 must be positive"),
   oxygen: z
     .number()
     .min(0, "Oxygen percentage must be at least 0")
     .max(100, "Oxygen percentage must be at most 100"),
+  helium: z
+    .number()
+    .min(0, "Helium percentage must be at least 0")
+    .max(100, "Helium percentage must be at most 100"),
 });
 
 export interface NormalizedDiveMixture {
@@ -49,8 +52,8 @@ export interface NormalizedDiveMixture {
   volume: number;
   start_pressure?: number;
   end_pressure?: number;
-  po2: number;
   oxygen: number;
+  helium: number;
 }
 
 // Converts any "" placeholders (used to represent a cleared optional field
@@ -72,8 +75,8 @@ export function normalizeMixtures(
     volume: number;
     start_pressure?: number | "";
     end_pressure?: number | "";
-    po2: number;
     oxygen: number;
+    helium: number;
   }[]
 ): NormalizedDiveMixture[] {
   return mixtures.map((mixture) => ({
@@ -81,8 +84,8 @@ export function normalizeMixtures(
     volume: mixture.volume,
     start_pressure: mixture.start_pressure === "" ? undefined : mixture.start_pressure,
     end_pressure: mixture.end_pressure === "" ? undefined : mixture.end_pressure,
-    po2: mixture.po2,
     oxygen: mixture.oxygen,
+    helium: mixture.helium,
   }));
 }
 

@@ -342,7 +342,7 @@ export default function DiveDetailPage() {
                           <TableHead>Start Pressure</TableHead>
                           <TableHead>End Pressure</TableHead>
                           <TableHead>O₂</TableHead>
-                          <TableHead>PO₂</TableHead>
+                          <TableHead>He</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -359,7 +359,7 @@ export default function DiveDetailPage() {
                               {mixture.end_pressure != null ? `${mixture.end_pressure} bar` : '-'}
                             </TableCell>
                             <TableCell>{mixture.oxygen}%</TableCell>
-                            <TableCell>{mixture.po2} bar</TableCell>
+                            <TableCell>{mixture.helium}%</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>

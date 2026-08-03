@@ -7,8 +7,8 @@ export interface DiveMixture {
   volume: number;
   start_pressure?: number;
   end_pressure?: number;
-  po2: number;
   oxygen: number;
+  helium: number;
 }
 
 // A dive site visited during a dive, as embedded in a `Dive`. Dives are
