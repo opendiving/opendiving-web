@@ -87,11 +87,7 @@ export const diveCreateSchema = z
       .positive("Duration must be positive"),
     max_depth: z.number().positive("Max depth must be positive").nullable().optional(),
     avg_depth: z.number().positive("Average depth must be positive").nullable().optional(),
-    bottom_temperature: z
-      .number()
-      .int("Bottom temperature must be an integer")
-      .nullable()
-      .optional(),
+    bottom_temperature: z.number().nullable().optional(),
     visibility: z
       .number()
       .int("Visibility must be an integer")
@@ -122,11 +118,7 @@ export const diveUpdateSchema = z
       .optional(),
     max_depth: z.number().positive("Max depth must be positive").nullable().optional(),
     avg_depth: z.number().positive("Average depth must be positive").nullable().optional(),
-    bottom_temperature: z
-      .number()
-      .int("Bottom temperature must be an integer")
-      .nullable()
-      .optional(),
+    bottom_temperature: z.number().nullable().optional(),
     visibility: z
       .number()
       .int("Visibility must be an integer")
