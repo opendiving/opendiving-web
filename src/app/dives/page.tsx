@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { divesAPI, Dive, PaginatedDivesResponse } from "@/lib/api/dives";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -41,7 +42,8 @@ export default function DivesPage() {
     }
   }, [isAuthenticated, isAuthLoading, router]);
 
-  // Fetch dives
+  // Fetch dives, then resolve any dive site names on the page that haven't
+  // been loaded yet. At most one request per unique site per session.
   const fetchDives = async (page: number = 1) => {
     if (!user?.username) return;
 
@@ -70,9 +72,7 @@ export default function DivesPage() {
   };
 
   useEffect(() => {
-    if (user?.username) {
-      fetchDives();
-    }
+    if (user?.username) fetchDives();
   }, [user?.username]);
 
   // Handle dive deletion
@@ -195,10 +195,9 @@ export default function DivesPage() {
                     <TableRow>
                       <TableHead>#</TableHead>
                       <TableHead>Date & Time</TableHead>
+                      <TableHead>Dive Site</TableHead>
                       <TableHead>Duration</TableHead>
                       <TableHead>Max Depth</TableHead>
-                      <TableHead>Avg Depth</TableHead>
-                      <TableHead>Temperature</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -213,17 +212,14 @@ export default function DivesPage() {
                             {formatDate(dive.start_time)}
                           </div>
                         </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {dive.dive_site?.name ?? '-'}
+                        </TableCell>
                         <TableCell>
                           {formatDuration(dive.duration)}
                         </TableCell>
                         <TableCell>
                           {dive.max_depth ? `${dive.max_depth}m` : '-'}
-                        </TableCell>
-                        <TableCell>
-                          {dive.avg_depth ? `${dive.avg_depth}m` : '-'}
-                        </TableCell>
-                        <TableCell>
-                          {dive.bottom_temperature ? `${dive.bottom_temperature}°C` : '-'}
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">

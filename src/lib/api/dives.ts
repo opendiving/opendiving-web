@@ -22,6 +22,7 @@ export interface Dive {
   visibility?: number;
   trip_id?: number;
   dive_site_id?: number;
+  dive_site?: { name: string; location?: string };
   notes: string;
   user_id: number;
   created_at: string;
