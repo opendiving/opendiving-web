@@ -6,6 +6,7 @@ export interface Trip {
   location?: string;
   start_date?: string;
   end_date?: string;
+  notes?: string;
   user_id: number;
   created_at: string;
 }
@@ -15,6 +16,7 @@ export interface TripCreate {
   location?: string;
   start_date: string;
   end_date?: string;
+  notes?: string;
 }
 
 export interface TripUpdate {
@@ -22,6 +24,7 @@ export interface TripUpdate {
   location?: string;
   start_date?: string;
   end_date?: string;
+  notes?: string;
 }
 
 export interface PaginatedTripsResponse {

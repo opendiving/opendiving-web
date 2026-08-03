@@ -22,6 +22,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Button } from "@/components/ui/button";
 
@@ -43,7 +44,7 @@ export function NewTripDialog({
 
   const form = useForm<TripCreateInput>({
     resolver: zodResolver(tripCreateSchema),
-    defaultValues: { name: "", location: "", start_date: "", end_date: "" },
+    defaultValues: { name: "", location: "", start_date: "", end_date: "", notes: "" },
   });
 
   const handleOpenChange = (next: boolean) => {
@@ -63,6 +64,7 @@ export function NewTripDialog({
         location: data.location || undefined,
         start_date: data.start_date,
         end_date: data.end_date || undefined,
+        notes: data.notes || undefined,
       });
       form.reset();
       onCreated(newTrip);
@@ -142,6 +144,24 @@ export function NewTripDialog({
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="notes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Notes</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Any notes about this trip..."
+                      className="min-h-[80px]"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             {apiError && (
               <p className="text-sm text-destructive">{apiError}</p>

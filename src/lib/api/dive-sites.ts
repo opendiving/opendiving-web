@@ -4,6 +4,7 @@ export interface DiveSite {
   id: number;
   name: string;
   location?: string;
+  notes?: string;
   user_id: number;
   created_at: string;
 }
@@ -11,11 +12,13 @@ export interface DiveSite {
 export interface DiveSiteCreate {
   name: string;
   location?: string;
+  notes?: string;
 }
 
 export interface DiveSiteUpdate {
   name?: string;
   location?: string;
+  notes?: string;
 }
 
 export interface PaginatedDiveSitesResponse {

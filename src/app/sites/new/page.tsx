@@ -11,6 +11,7 @@ import { getApiErrorMessage } from "@/lib/api/error";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Form,
   FormControl,
@@ -34,6 +35,7 @@ export default function NewDiveSitePage() {
     defaultValues: {
       name: "",
       location: "",
+      notes: "",
     },
   });
 
@@ -133,6 +135,24 @@ export default function NewDiveSitePage() {
                     <FormLabel>Location</FormLabel>
                     <FormControl>
                       <Input placeholder="e.g. Koh Tao, Thailand" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Notes</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Any notes about this dive site..."
+                        className="min-h-[100px]"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

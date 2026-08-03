@@ -9,6 +9,7 @@ export const diveSiteCreateSchema = z.object({
     .string()
     .max(255, "Location cannot exceed 255 characters")
     .optional(),
+  notes: z.string().max(63206, "Notes cannot exceed 63206 characters").optional(),
 });
 
 export const diveSiteUpdateSchema = z.object({
@@ -21,6 +22,7 @@ export const diveSiteUpdateSchema = z.object({
     .string()
     .max(255, "Location cannot exceed 255 characters")
     .optional(),
+  notes: z.string().max(63206, "Notes cannot exceed 63206 characters").optional(),
 });
 
 export type DiveSiteCreateInput = z.input<typeof diveSiteCreateSchema>;

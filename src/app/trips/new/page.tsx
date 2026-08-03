@@ -11,6 +11,7 @@ import { getApiErrorMessage } from "@/lib/api/error";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/ui/date-picker";
 import {
   Form,
@@ -37,6 +38,7 @@ export default function NewTripPage() {
       location: "",
       start_date: "",
       end_date: "",
+      notes: "",
     },
   });
 
@@ -72,6 +74,7 @@ export default function NewTripPage() {
         location: data.location || undefined,
         start_date: data.start_date,
         end_date: data.end_date || undefined,
+        notes: data.notes || undefined,
       });
 
       toast({
@@ -176,6 +179,24 @@ export default function NewTripPage() {
                   )}
                 />
               </div>
+
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Notes</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Any notes about this trip..."
+                        className="min-h-[100px]"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <div className="flex justify-end gap-4 pt-4">
                 <Button type="button" variant="outline" asChild>

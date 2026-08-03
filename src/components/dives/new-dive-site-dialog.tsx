@@ -22,6 +22,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 
 interface NewDiveSiteDialogProps {
@@ -42,7 +43,7 @@ export function NewDiveSiteDialog({
 
   const form = useForm<DiveSiteCreateInput>({
     resolver: zodResolver(diveSiteCreateSchema),
-    defaultValues: { name: "", location: "" },
+    defaultValues: { name: "", location: "", notes: "" },
   });
 
   const handleOpenChange = (next: boolean) => {
@@ -60,6 +61,7 @@ export function NewDiveSiteDialog({
       const newDiveSite = await diveSitesAPI.createDiveSite(username, {
         name: data.name,
         location: data.location || undefined,
+        notes: data.notes || undefined,
       });
       form.reset();
       onCreated(newDiveSite);
@@ -104,6 +106,24 @@ export function NewDiveSiteDialog({
                   <FormLabel>Location</FormLabel>
                   <FormControl>
                     <Input placeholder="e.g. Dahab, Egypt" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="notes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Notes</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Any notes about this dive site..."
+                      className="min-h-[80px]"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

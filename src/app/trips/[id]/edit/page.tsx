@@ -11,6 +11,7 @@ import { getApiErrorMessage } from "@/lib/api/error";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/ui/date-picker";
 import {
   Form,
@@ -42,6 +43,7 @@ export default function EditTripPage() {
       location: "",
       start_date: "",
       end_date: "",
+      notes: "",
     },
   });
 
@@ -68,6 +70,7 @@ export default function EditTripPage() {
           location: tripData.location ?? "",
           start_date: tripData.start_date ?? "",
           end_date: tripData.end_date ?? "",
+          notes: tripData.notes ?? "",
         });
       } catch (error) {
         console.error('Failed to fetch trip:', error);
@@ -237,6 +240,24 @@ export default function EditTripPage() {
                   )}
                 />
               </div>
+
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Notes</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Any notes about this trip..."
+                        className="min-h-[100px]"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <div className="flex justify-end gap-4 pt-4">
                 <Button type="button" variant="outline" asChild>
