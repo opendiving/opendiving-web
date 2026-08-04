@@ -15,7 +15,10 @@ export default defineConfig({
     include: ["src/**/*.test.{ts,tsx}"],
     coverage: {
       provider: "v8",
-      reporter: ["text", "html"],
+      // "text"/"html" are for local/browsable reports; "json-summary" feeds
+      // scripts/coverage-summary.mjs, which renders the GitHub Actions job
+      // summary (see .github/workflows/ci.yml).
+      reporter: ["text", "html", "json-summary"],
       include: ["src/lib/**/*.{ts,tsx}"],
     },
   },
