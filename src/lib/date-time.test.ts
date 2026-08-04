@@ -1,0 +1,124 @@
+import { describe, expect, it } from "vitest";
+import {
+  formatDateOnly,
+  formatDateTimeForForm,
+  formatDurationForForm,
+  formatDurationHoursMinutes,
+  formatTripDateRange,
+  parseFormDateTime,
+  parseFormDuration,
+} from "./date-time";
+
+describe("formatDateTimeForForm", () => {
+  it("formats a Date as YYYY-MM-DD HH:mm:ss", () => {
+    const date = new Date(2024, 5, 1, 9, 5, 3); // June 1, 2024, 09:05:03
+    expect(formatDateTimeForForm(date)).toBe("2024-06-01 09:05:03");
+  });
+
+  it("zero-pads single-digit month/day/hour/minute/second", () => {
+    const date = new Date(2024, 0, 2, 3, 4, 5); // Jan 2, 2024, 03:04:05
+    expect(formatDateTimeForForm(date)).toBe("2024-01-02 03:04:05");
+  });
+});
+
+describe("parseFormDateTime", () => {
+  it("round-trips with formatDateTimeForForm", () => {
+    const original = new Date(2024, 5, 1, 9, 5, 3);
+    const formatted = formatDateTimeForForm(original);
+    const parsed = parseFormDateTime(formatted);
+    expect(parsed.getTime()).toBe(original.getTime());
+  });
+
+  it("replaces the space with a T before parsing", () => {
+    const parsed = parseFormDateTime("2024-06-01 09:05:03");
+    expect(parsed.getFullYear()).toBe(2024);
+    expect(parsed.getMonth()).toBe(5);
+    expect(parsed.getDate()).toBe(1);
+  });
+});
+
+describe("formatDateOnly", () => {
+  it("formats a bare YYYY-MM-DD string without timezone shifting", () => {
+    // Regression: new Date("2024-06-01") parses as UTC midnight, which can
+    // display as the previous day in negative-UTC-offset timezones.
+    expect(formatDateOnly("2024-06-01")).toBe("Jun 1, 2024");
+  });
+
+  it("respects custom Intl.DateTimeFormatOptions", () => {
+    expect(
+      formatDateOnly("2024-12-25", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }),
+    ).toBe("December 25, 2024");
+  });
+
+  it("handles the first and last days of a month", () => {
+    expect(formatDateOnly("2024-01-01")).toBe("Jan 1, 2024");
+    expect(formatDateOnly("2024-12-31")).toBe("Dec 31, 2024");
+  });
+});
+
+describe("formatDurationForForm", () => {
+  it("formats seconds as MM:SS", () => {
+    expect(formatDurationForForm(45 * 60 + 30)).toBe("45:30");
+  });
+
+  it("zero-pads seconds under 10", () => {
+    expect(formatDurationForForm(60 + 5)).toBe("1:05");
+  });
+
+  it("formats zero seconds", () => {
+    expect(formatDurationForForm(0)).toBe("0:00");
+  });
+});
+
+describe("parseFormDuration", () => {
+  it("parses MM:SS into total seconds", () => {
+    expect(parseFormDuration("45:30")).toBe(45 * 60 + 30);
+  });
+
+  it("round-trips with formatDurationForForm", () => {
+    const seconds = 125;
+    expect(parseFormDuration(formatDurationForForm(seconds))).toBe(seconds);
+  });
+});
+
+describe("formatDurationHoursMinutes", () => {
+  it("formats sub-hour durations as minutes only", () => {
+    expect(formatDurationHoursMinutes(45 * 60)).toBe("45min");
+  });
+
+  it("formats hour-plus durations with remaining minutes", () => {
+    expect(formatDurationHoursMinutes(90 * 60)).toBe("1h 30min");
+  });
+
+  it("omits minutes when the duration is an exact number of hours", () => {
+    expect(formatDurationHoursMinutes(120 * 60)).toBe("2h");
+  });
+
+  it("rounds to the nearest minute", () => {
+    expect(formatDurationHoursMinutes(59.6 * 60)).toBe("1h");
+  });
+});
+
+describe("formatTripDateRange", () => {
+  it("returns undefined when neither date is set", () => {
+    expect(formatTripDateRange(undefined, undefined)).toBeUndefined();
+  });
+
+  it("formats a full range when both dates are set", () => {
+    expect(formatTripDateRange("2024-06-01", "2024-06-08")).toBe(
+      "Jun 1, 2024 - Jun 8, 2024",
+    );
+  });
+
+  it("formats just the start date when only start_date is set", () => {
+    expect(formatTripDateRange("2024-06-01", undefined)).toBe("Jun 1, 2024");
+  });
+
+  it("formats just the end date when only end_date is set", () => {
+    expect(formatTripDateRange(undefined, "2024-06-08")).toBe("Jun 8, 2024");
+  });
+});

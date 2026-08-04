@@ -55,6 +55,9 @@ Before you begin, ensure you have the following installed:
 - `npm run start` - Start the production server
 - `npm run lint` - Run ESLint to check for code issues
 - `npm run type-check` - Run TypeScript type checking
+- `npm run test` - Run the unit test suite once
+- `npm run test:watch` - Run the unit test suite in watch mode
+- `npm run test:coverage` - Run the unit test suite with a coverage report
 
 ## Project Structure
 
