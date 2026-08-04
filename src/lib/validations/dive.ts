@@ -31,31 +31,45 @@ const durationField = (
 // Using "" as the empty state avoids that; callers are responsible for
 // converting "" to `undefined` right before sending data to the API (see
 // `normalizeMixtures` usage in the dive form pages).
-export const diveMixtureSchema = z.object({
-  id: z.number().optional(),
-  name: z.string().max(50, "Name cannot exceed 50 characters").optional(),
-  volume: z.number().positive("Volume must be positive"),
-  start_pressure: z
-    .union([
-      z.literal(""),
-      z.number().positive("Start pressure must be positive"),
-    ])
-    .optional(),
-  end_pressure: z
-    .union([
-      z.literal(""),
-      z.number().min(0, "End pressure must be zero or positive"),
-    ])
-    .optional(),
-  oxygen: z
-    .number()
-    .min(0, "Oxygen percentage must be at least 0")
-    .max(100, "Oxygen percentage must be at most 100"),
-  helium: z
-    .number()
-    .min(0, "Helium percentage must be at least 0")
-    .max(100, "Helium percentage must be at most 100"),
-});
+export const diveMixtureSchema = z
+  .object({
+    id: z.number().optional(),
+    name: z.string().max(50, "Name cannot exceed 50 characters").optional(),
+    volume: z.number().positive("Volume must be positive"),
+    start_pressure: z
+      .union([
+        z.literal(""),
+        z.number().positive("Start pressure must be positive"),
+      ])
+      .optional(),
+    end_pressure: z
+      .union([
+        z.literal(""),
+        z.number().min(0, "End pressure must be zero or positive"),
+      ])
+      .optional(),
+    oxygen: z
+      .number()
+      .min(0, "Oxygen percentage must be at least 0")
+      .max(100, "Oxygen percentage must be at most 100"),
+    helium: z
+      .number()
+      .min(0, "Helium percentage must be at least 0")
+      .max(100, "Helium percentage must be at most 100"),
+  })
+  .refine(
+    (mixture) => {
+      const start = mixture.start_pressure;
+      const end = mixture.end_pressure;
+      if (start === "" || start === undefined) return true;
+      if (end === "" || end === undefined) return true;
+      return end <= start;
+    },
+    {
+      message: "End pressure cannot be greater than start pressure",
+      path: ["end_pressure"],
+    },
+  );
 
 export interface NormalizedDiveMixture {
   name?: string;

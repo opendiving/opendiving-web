@@ -138,6 +138,41 @@ describe("diveMixtureSchema", () => {
     const result = diveMixtureSchema.safeParse({ ...validMixture, volume: 0 });
     expect(result.success).toBe(false);
   });
+
+  it("rejects end_pressure greater than start_pressure", () => {
+    const result = diveMixtureSchema.safeParse({
+      ...validMixture,
+      start_pressure: 50,
+      end_pressure: 200,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts end_pressure equal to start_pressure", () => {
+    const result = diveMixtureSchema.safeParse({
+      ...validMixture,
+      start_pressure: 200,
+      end_pressure: 200,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts end_pressure less than start_pressure", () => {
+    const result = diveMixtureSchema.safeParse({
+      ...validMixture,
+      start_pressure: 200,
+      end_pressure: 50,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts end_pressure greater than start_pressure when start_pressure is missing", () => {
+    const result = diveMixtureSchema.safeParse({
+      ...validMixture,
+      end_pressure: 200,
+    });
+    expect(result.success).toBe(true);
+  });
 });
 
 describe("normalizeMixtures", () => {
