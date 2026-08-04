@@ -67,7 +67,15 @@ export function formatTripDateRange(
 ): string | undefined {
   if (!startDate && !endDate) return undefined;
   if (startDate && endDate) {
-    return `${formatDateOnly(startDate, options)} - ${formatDateOnly(endDate, options)}`;
+    const resolvedOptions =
+      options ?? { year: "numeric", month: "short", day: "numeric" };
+    const sameYear = startDate.split("-")[0] === endDate.split("-")[0];
+    // Drop the year from the start date when both dates fall in the same
+    // year, e.g. "Jun 1 - Jun 8, 2024" instead of "Jun 1, 2024 - Jun 8, 2024".
+    const startOptions = sameYear
+      ? { ...resolvedOptions, year: undefined }
+      : resolvedOptions;
+    return `${formatDateOnly(startDate, startOptions)} - ${formatDateOnly(endDate, resolvedOptions)}`;
   }
   return formatDateOnly((startDate ?? endDate) as string, options);
 }

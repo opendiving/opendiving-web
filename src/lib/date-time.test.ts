@@ -108,9 +108,15 @@ describe("formatTripDateRange", () => {
     expect(formatTripDateRange(undefined, undefined)).toBeUndefined();
   });
 
-  it("formats a full range when both dates are set", () => {
+  it("omits the year from the start date when both dates share a year", () => {
     expect(formatTripDateRange("2024-06-01", "2024-06-08")).toBe(
-      "Jun 1, 2024 - Jun 8, 2024",
+      "Jun 1 - Jun 8, 2024",
+    );
+  });
+
+  it("includes the year on both dates when they span different years", () => {
+    expect(formatTripDateRange("2024-12-30", "2025-01-02")).toBe(
+      "Dec 30, 2024 - Jan 2, 2025",
     );
   });
 
