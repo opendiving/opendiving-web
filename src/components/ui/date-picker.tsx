@@ -71,12 +71,12 @@ export function DatePicker({
           mode="single"
           selected={selectedDate}
           onSelect={handleSelectDate}
-          captionLayout="dropdown-buttons"
-          fromYear={1900}
-          toYear={new Date().getFullYear() + 5}
+          captionLayout="dropdown"
+          startMonth={new Date(1900, 0)}
+          endMonth={new Date(new Date().getFullYear() + 5, 11)}
           classNames={{ caption_label: "hidden" }}
           defaultMonth={selectedDate}
-          initialFocus
+          autoFocus
         />
       </PopoverContent>
     </Popover>

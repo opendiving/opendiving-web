@@ -15,7 +15,7 @@ import { Metadata } from "next";
 import {
   Mail,
   MessageSquare,
-  Github,
+  Bug,
   Users,
   BookOpen,
   Shield,
@@ -75,7 +75,7 @@ export default function ContactPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
-                  <Github className="h-5 w-5 mr-2 text-gray-700" />
+                  <Bug className="h-5 w-5 mr-2 text-gray-700" />
                   Technical Issues
                 </CardTitle>
                 <CardDescription>

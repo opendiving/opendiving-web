@@ -18,7 +18,7 @@ import { DiveSiteMultiSelect } from "@/components/dives/dive-site-multi-select";
 export interface DiveFormFieldsProps {
   // Using `any` here since this component is shared between the create and
   // edit dive forms, which have distinct (but structurally compatible) form types.
-  control: Control<any>;
+  control: Control<any, any, any>;
   // In "create" mode, dive number/start time/duration are required by the
   // schema and marked with a "*" in the UI. In "edit" mode these fields are
   // optional at the schema level (a PATCH only needs to send what changed),

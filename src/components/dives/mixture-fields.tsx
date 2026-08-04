@@ -46,7 +46,7 @@ export function getDefaultMixtureName(index: number): string {
 export interface MixtureFieldsProps {
   // Using `any` here since this component is shared between the create and
   // edit dive forms, which have distinct (but structurally compatible) form types.
-  control: Control<any>;
+  control: Control<any, any, any>;
 }
 
 export function MixtureFields({ control }: MixtureFieldsProps) {

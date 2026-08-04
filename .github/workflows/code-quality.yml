@@ -16,10 +16,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Use Node.js 20.x
+      - name: Use Node.js 24.x
         uses: actions/setup-node@v4
         with:
-          node-version: 20.x
+          node-version: 24.x
           cache: "npm"
 
       - name: Install dependencies
@@ -31,8 +31,8 @@ jobs:
 
       - name: Run ESLint with detailed output
         run: |
-          npx eslint src --ext .ts,.tsx,.js,.jsx --format=json --output-file=eslint-report.json || true
-          npx eslint src --ext .ts,.tsx,.js,.jsx
+          npx eslint . --format=json --output-file=eslint-report.json || true
+          npx eslint .
 
       - name: TypeScript strict check
         run: npx tsc --noEmit --strict
@@ -118,10 +118,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Use Node.js 20.x
+      - name: Use Node.js 24.x
         uses: actions/setup-node@v4
         with:
-          node-version: 20.x
+          node-version: 24.x
           cache: "npm"
 
       - name: Install dependencies
