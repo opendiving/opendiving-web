@@ -59,11 +59,11 @@ export default function DiveDetailPage() {
   // Fetch dive details
   useEffect(() => {
     const fetchDive = async () => {
-      if (!user?.username || !diveId) return;
+      if (!user || !diveId) return;
 
       try {
         setIsLoadingDive(true);
-        const diveData = await divesAPI.getDive(user.username, diveId);
+        const diveData = await divesAPI.getDive(diveId);
         setDive(diveData);
       } catch (error) {
         console.error("Failed to fetch dive:", error);
@@ -78,10 +78,10 @@ export default function DiveDetailPage() {
       }
     };
 
-    if (user?.username) {
+    if (user) {
       fetchDive();
     }
-  }, [user?.username, diveId, toast, router]);
+  }, [user, diveId, toast, router]);
 
   // Once the dive has loaded, resolve its trip's name (the dive itself only
   // stores the trip's ID; its dive site(s) come embedded on the dive already).
@@ -89,13 +89,13 @@ export default function DiveDetailPage() {
   // show the trip link.
   useEffect(() => {
     const fetchTrip = async () => {
-      if (!user?.username || !dive?.trip_id) {
+      if (!user || !dive?.trip_id) {
         setTrip(null);
         return;
       }
 
       try {
-        const tripData = await tripsAPI.getTrip(user.username, dive.trip_id);
+        const tripData = await tripsAPI.getTrip(dive.trip_id);
         setTrip(tripData);
       } catch (error) {
         console.error("Failed to fetch trip:", error);
@@ -104,12 +104,12 @@ export default function DiveDetailPage() {
     };
 
     fetchTrip();
-  }, [user?.username, dive?.trip_id]);
+  }, [user, dive?.trip_id]);
 
   // Handle dive deletion
   const handleDeleteDive = async () => {
     if (
-      !user?.username ||
+      !user ||
       !dive?.id ||
       !confirm(
         "Are you sure you want to delete this dive? This action cannot be undone.",
@@ -120,7 +120,7 @@ export default function DiveDetailPage() {
 
     try {
       setIsDeleting(true);
-      await divesAPI.deleteDive(user.username, dive.id);
+      await divesAPI.deleteDive(dive.id);
 
       toast({
         title: "Success",

@@ -68,12 +68,13 @@ export default function NewTripPage() {
   }
 
   const onSubmit = async (data: TripCreateInput) => {
-    if (!user?.username) return;
+    if (!user) return;
 
     try {
       setIsSubmitting(true);
 
-      await tripsAPI.createTrip(user.username, {
+      await tripsAPI.createTrip({
+        user_id: user.id,
         name: data.name,
         location: data.location || undefined,
         start_date: data.start_date,

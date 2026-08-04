@@ -48,12 +48,12 @@ export default function SitesPage() {
   // Fetch dive sites
   const fetchDiveSites = useCallback(
     async (page: number = 1) => {
-      if (!user?.username) return;
+      if (!user) return;
 
       try {
         setIsLoadingDiveSites(true);
         const response: PaginatedDiveSitesResponse =
-          await diveSitesAPI.getDiveSites(user.username, page, itemsPerPage);
+          await diveSitesAPI.getDiveSites(user.id, page, itemsPerPage);
 
         setDiveSites(response.data);
         setTotalCount(response.total_count);
@@ -77,23 +77,20 @@ export default function SitesPage() {
     // Deliberate fetch-on-mount pattern (setIsLoadingDiveSites(true) runs synchronously
     // before the network await). This is a known, contentious false-positive for
     // react-hooks/set-state-in-effect - see https://github.com/facebook/react/issues/34743.
-    if (user?.username) {
+    if (user) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchDiveSites();
     }
-  }, [user?.username, fetchDiveSites]);
+  }, [user, fetchDiveSites]);
 
   // Handle dive site deletion
   const handleDeleteDiveSite = async (diveSiteId: number) => {
-    if (
-      !user?.username ||
-      !confirm("Are you sure you want to delete this dive site?")
-    )
+    if (!user || !confirm("Are you sure you want to delete this dive site?"))
       return;
 
     try {
       setDeletingId(diveSiteId);
-      await diveSitesAPI.deleteDiveSite(user.username, diveSiteId);
+      await diveSitesAPI.deleteDiveSite(diveSiteId);
 
       toast({
         title: "Success",

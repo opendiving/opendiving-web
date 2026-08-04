@@ -7,7 +7,7 @@ import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
 import { NewDiveSiteDialog } from "@/components/dives/new-dive-site-dialog";
 
 export interface DiveSiteMultiSelectProps {
-  username: string;
+  userId: number;
   // Ordered list of selected dive site ids - the first entry is the primary
   // site (e.g. shown as "Site Name +2" wherever only one site fits).
   value: number[];
@@ -20,7 +20,7 @@ export interface DiveSiteMultiSelectProps {
 // generic `CreatableCombobox` for the "add a site" input, plus a reorderable
 // list of the sites already added.
 export function DiveSiteMultiSelect({
-  username,
+  userId,
   value,
   onChange,
   disabled,
@@ -43,7 +43,7 @@ export function DiveSiteMultiSelect({
         let page = 1;
         let hasMore = true;
         while (hasMore) {
-          const response = await diveSitesAPI.getDiveSites(username, page, 100);
+          const response = await diveSitesAPI.getDiveSites(userId, page, 100);
           allSites.push(...response.data);
           hasMore = response.has_more;
           page += 1;
@@ -56,12 +56,12 @@ export function DiveSiteMultiSelect({
       }
     };
 
-    if (username) fetchDiveSites();
+    if (userId) fetchDiveSites();
 
     return () => {
       cancelled = true;
     };
-  }, [username]);
+  }, [userId]);
 
   const addSite = (id: number | undefined) => {
     if (id === undefined || value.includes(id)) return;
@@ -160,7 +160,7 @@ export function DiveSiteMultiSelect({
       />
 
       <NewDiveSiteDialog
-        username={username}
+        userId={userId}
         open={showNewDialog}
         onOpenChange={setShowNewDialog}
         onCreated={handleCreated}

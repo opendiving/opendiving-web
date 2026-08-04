@@ -58,14 +58,11 @@ export default function EditDiveSitePage() {
   // Fetch dive site details and populate form
   useEffect(() => {
     const fetchDiveSite = async () => {
-      if (!user?.username || !diveSiteId) return;
+      if (!user || !diveSiteId) return;
 
       try {
         setIsLoadingDiveSite(true);
-        const diveSiteData = await diveSitesAPI.getDiveSite(
-          user.username,
-          diveSiteId,
-        );
+        const diveSiteData = await diveSitesAPI.getDiveSite(diveSiteId);
         setDiveSite(diveSiteData);
 
         form.reset({
@@ -86,18 +83,18 @@ export default function EditDiveSitePage() {
       }
     };
 
-    if (user?.username) {
+    if (user) {
       fetchDiveSite();
     }
-  }, [user?.username, diveSiteId, form, toast, router]);
+  }, [user, diveSiteId, form, toast, router]);
 
   const onSubmit = async (data: DiveSiteUpdateInput) => {
-    if (!user?.username || !diveSiteId) return;
+    if (!user || !diveSiteId) return;
 
     try {
       setIsSubmitting(true);
 
-      await diveSitesAPI.updateDiveSite(user.username, diveSiteId, data);
+      await diveSitesAPI.updateDiveSite(diveSiteId, data);
 
       toast({
         title: "Success",

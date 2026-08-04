@@ -64,12 +64,12 @@ export default function NewDiveSitePage() {
   }
 
   const onSubmit = async (data: DiveSiteCreateInput) => {
-    if (!user?.username) return;
+    if (!user) return;
 
     try {
       setIsSubmitting(true);
 
-      await diveSitesAPI.createDiveSite(user.username, data);
+      await diveSitesAPI.createDiveSite({ user_id: user.id, ...data });
 
       toast({
         title: "Success",

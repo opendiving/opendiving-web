@@ -25,15 +25,15 @@ export interface DiveFormFieldsProps {
   // so no asterisks are shown and a cleared value resolves to `undefined`
   // rather than falling back to a default.
   mode: "create" | "edit";
-  // Username of the currently signed-in user, used to fetch/create trips and
+  // ID of the currently signed-in user, used to fetch/create trips and
   // dive sites scoped to their account for the trip/dive site comboboxes.
-  username: string;
+  userId: number;
 }
 
 export function DiveFormFields({
   control,
   mode,
-  username,
+  userId,
 }: DiveFormFieldsProps) {
   const required = mode === "create";
   const requiredMark = required ? " *" : "";
@@ -73,7 +73,7 @@ export function DiveFormFields({
               <FormLabel>Trip</FormLabel>
               <FormControl>
                 <TripCombobox
-                  username={username}
+                  userId={userId}
                   value={field.value}
                   onChange={field.onChange}
                 />
@@ -93,7 +93,7 @@ export function DiveFormFields({
             <FormLabel>Dive Site(s)</FormLabel>
             <FormControl>
               <DiveSiteMultiSelect
-                username={username}
+                userId={userId}
                 value={field.value ?? []}
                 onChange={field.onChange}
               />

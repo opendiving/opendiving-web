@@ -38,6 +38,7 @@ export interface Dive {
 }
 
 export interface DiveCreate {
+  user_id: number;
   dive_number: number;
   start_time: string;
   duration: number;
@@ -89,23 +90,24 @@ export interface ParsedDive {
 }
 
 export const divesAPI = {
-  // Create a new dive
-  async createDive(username: string, diveData: DiveCreate): Promise<Dive> {
-    const response = await apiClient.post(`/${username}/dive`, diveData);
+  // Create a new dive. `diveData.user_id` must be the currently signed-in user's id.
+  async createDive(diveData: DiveCreate): Promise<Dive> {
+    const response = await apiClient.post(`/dive`, diveData);
     return response.data;
   },
 
   // Get all dives for a user (paginated). Pass `tripId`/`diveSiteId` to only
   // return dives that belong to a given trip / were made at a given site.
   async getDives(
-    username: string,
+    userId: number,
     page: number = 1,
     items_per_page: number = 10,
     tripId?: number,
     diveSiteId?: number,
   ): Promise<PaginatedDivesResponse> {
-    const response = await apiClient.get(`/${username}/dives`, {
+    const response = await apiClient.get(`/dives`, {
       params: {
+        user_id: userId,
         page,
         items_per_page,
         ...(tripId !== undefined ? { trip_id: tripId } : {}),
@@ -116,30 +118,23 @@ export const divesAPI = {
   },
 
   // Get a specific dive by ID
-  async getDive(username: string, diveId: number): Promise<Dive> {
-    const response = await apiClient.get(`/${username}/dive/${diveId}`);
+  async getDive(diveId: number): Promise<Dive> {
+    const response = await apiClient.get(`/dive/${diveId}`);
     return response.data;
   },
 
   // Update a dive
   async updateDive(
-    username: string,
     diveId: number,
     updateData: DiveUpdate,
   ): Promise<{ message: string }> {
-    const response = await apiClient.patch(
-      `/${username}/dive/${diveId}`,
-      updateData,
-    );
+    const response = await apiClient.patch(`/dive/${diveId}`, updateData);
     return response.data;
   },
 
   // Delete a dive
-  async deleteDive(
-    username: string,
-    diveId: number,
-  ): Promise<{ message: string }> {
-    const response = await apiClient.delete(`/${username}/dive/${diveId}`);
+  async deleteDive(diveId: number): Promise<{ message: string }> {
+    const response = await apiClient.delete(`/dive/${diveId}`);
     return response.data;
   },
 

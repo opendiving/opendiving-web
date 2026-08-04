@@ -90,13 +90,13 @@ function NewDivePageContent() {
   // Pre-fill trip and gas mixture defaults from the most recent dive so the
   // user doesn't have to re-enter recurring values for every new log entry.
   useEffect(() => {
-    if (!user?.username) return;
+    if (!user) return;
 
     let cancelled = false;
 
     const prefillFromLastDive = async () => {
       try {
-        const response = await divesAPI.getDives(user.username, 1, 1);
+        const response = await divesAPI.getDives(user.id, 1, 1);
         if (cancelled || form.formState.isDirty) return;
 
         const lastDiveSummary = response.data[0];
@@ -104,10 +104,7 @@ function NewDivePageContent() {
 
         // The list endpoint doesn't include gas mixtures (only the single-dive
         // endpoint does), so fetch the full record to prefill them.
-        const lastDive = await divesAPI.getDive(
-          user.username,
-          lastDiveSummary.id,
-        );
+        const lastDive = await divesAPI.getDive(lastDiveSummary.id);
         if (cancelled || form.formState.isDirty) return;
 
         form.reset({
@@ -144,7 +141,7 @@ function NewDivePageContent() {
     return () => {
       cancelled = true;
     };
-  }, [user?.username, form, initialTripId, initialDiveSiteId]);
+  }, [user, form, initialTripId, initialDiveSiteId]);
 
   if (isAuthLoading) {
     return (
@@ -159,7 +156,7 @@ function NewDivePageContent() {
   }
 
   const onSubmit = async (data: DiveCreateInput) => {
-    if (!user?.username) return;
+    if (!user) return;
 
     try {
       setIsSubmitting(true);
@@ -167,13 +164,14 @@ function NewDivePageContent() {
       // Convert form data to API format
       const diveData = {
         ...data,
+        user_id: user.id,
         start_time: parseFormDateTime(data.start_time).toISOString(),
         duration: parseFormDuration(data.duration),
         notes: data.notes || "",
         mixtures: normalizeMixtures(data.mixtures ?? []),
       };
 
-      await divesAPI.createDive(user.username, diveData);
+      await divesAPI.createDive(diveData);
 
       toast({
         title: "Success",
@@ -229,7 +227,7 @@ function NewDivePageContent() {
               <DiveFormFields
                 control={form.control as unknown as Control<any, any, any>}
                 mode="create"
-                username={user?.username ?? ""}
+                userId={user?.id ?? 0}
               />
 
               <DiveFormActions

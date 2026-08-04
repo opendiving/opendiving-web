@@ -4,6 +4,34 @@ Notes on non-obvious choices and pitfalls hit while building out the web app, so
 the reasoning survives independently of any particular chat/agent session. Keep
 this updated as new gotchas are discovered.
 
+## Dive/trip/dive-site API calls take `userId`, not `username`
+
+`divesAPI`/`tripsAPI`/`diveSitesAPI`/`diveStatsAPI` (in `lib/api/*.ts`) used to take
+a `username: string` as their first argument, matching backend routes nested under
+`/{username}/...`. The backend flattened these to plain routes (`/dive`, `/dives`,
+`/dive/{id}`, etc., see the API's `DECISIONS.md`), so these functions - and every
+component that calls them (`RecentDivesCard`, `RecentTripsCard`, `TripCombobox`,
+`DiveSiteMultiSelect`, `NewTripDialog`, `NewDiveSiteDialog`, `DiveFormFields`, and
+every `dives/`/`sites/`/`trips/` page) - now take/forward a `userId: number` (from
+`user.id` in `AuthContext`, not `user.username`) instead:
+- Create calls (`createDive`/`createTrip`/`createDiveSite`) now take the full
+  request object as a single argument, with `user_id` included in its body -
+  there's no separate leading `username`/`userId` parameter for these.
+- List calls (`getDives`/`getTrips`/`getDiveSites`/`getDiveStats`) take `userId`
+  as their first argument and send it as a `user_id` query param.
+- Single-resource calls (`getDive`/`updateDive`/`deleteDive` and the trip/dive-site
+  equivalents) no longer take a user identifier at all - just the resource `id` -
+  since the backend now authorizes these by comparing the fetched object's owner
+  to the logged-in user, not by a username in the URL.
+
+The `/user/{username}` account-management endpoints (`authAPI.updateProfile`/
+`changePassword`) were changed the same way shortly after (backend routes are now
+`/user/{id}/...`, see the API's `DECISIONS.md`) - `authAPI.updateProfile`/
+`changePassword` now take a `userId: number` (`user.id`) as their first argument
+instead of `username`. `GET /user/me` (`authAPI.getCurrentUser`) is unaffected -
+it's an exact literal path, not a `{username}`/`{id}` placeholder, and always
+resolves the caller's own account from their auth token.
+
 ## Never use `z.preprocess()`/`.transform()` on fields feeding `z.input<>`-derived types
 
 Several form pages derive their form-data type from Zod via `z.input<typeof schema>`

@@ -62,11 +62,11 @@ export default function EditTripPage() {
   // Fetch trip details and populate form
   useEffect(() => {
     const fetchTrip = async () => {
-      if (!user?.username || !tripId) return;
+      if (!user || !tripId) return;
 
       try {
         setIsLoadingTrip(true);
-        const tripData = await tripsAPI.getTrip(user.username, tripId);
+        const tripData = await tripsAPI.getTrip(tripId);
         setTrip(tripData);
 
         form.reset({
@@ -89,22 +89,18 @@ export default function EditTripPage() {
       }
     };
 
-    if (user?.username) {
+    if (user) {
       fetchTrip();
     }
-  }, [user?.username, tripId, form, toast, router]);
+  }, [user, tripId, form, toast, router]);
 
   const onSubmit = async (data: TripUpdateInput) => {
-    if (!user?.username || !tripId) return;
+    if (!user || !tripId) return;
 
     try {
       setIsSubmitting(true);
 
-      await tripsAPI.updateTrip(
-        user.username,
-        tripId,
-        normalizeTripDates(data),
-      );
+      await tripsAPI.updateTrip(tripId, normalizeTripDates(data));
 
       toast({
         title: "Success",

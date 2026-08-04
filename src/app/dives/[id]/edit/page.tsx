@@ -71,11 +71,11 @@ export default function EditDivePage() {
   // Fetch dive details and populate form
   useEffect(() => {
     const fetchDive = async () => {
-      if (!user?.username || !diveId) return;
+      if (!user || !diveId) return;
 
       try {
         setIsLoadingDive(true);
-        const diveData = await divesAPI.getDive(user.username, diveId);
+        const diveData = await divesAPI.getDive(diveId);
         setDive(diveData);
 
         // Update form with dive data
@@ -111,13 +111,13 @@ export default function EditDivePage() {
       }
     };
 
-    if (user?.username) {
+    if (user) {
       fetchDive();
     }
-  }, [user?.username, diveId, form, toast, router]);
+  }, [user, diveId, form, toast, router]);
 
   const onSubmit = async (data: DiveUpdateInput) => {
-    if (!user?.username || !diveId) return;
+    if (!user || !diveId) return;
 
     try {
       setIsSubmitting(true);
@@ -171,7 +171,7 @@ export default function EditDivePage() {
         updateData.mixtures = normalizeMixtures(data.mixtures);
       }
 
-      await divesAPI.updateDive(user.username, diveId, updateData);
+      await divesAPI.updateDive(diveId, updateData);
 
       toast({
         title: "Success",
@@ -265,7 +265,7 @@ export default function EditDivePage() {
               <DiveFormFields
                 control={form.control as unknown as Control<any, any, any>}
                 mode="edit"
-                username={user?.username ?? ""}
+                userId={user?.id ?? 0}
               />
 
               <DiveFormActions

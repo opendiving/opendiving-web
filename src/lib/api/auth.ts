@@ -74,24 +74,24 @@ export const authAPI = {
 
   // Get current user
   async getCurrentUser(): Promise<User> {
-    const response = await apiClient.get("/user/me/");
+    const response = await apiClient.get("/user/me");
     return response.data;
   },
 
   // Update user profile
   async updateProfile(
-    username: string,
+    userId: number,
     profileData: UpdateProfileData,
   ): Promise<void> {
-    await apiClient.patch(`/user/${username}`, profileData);
+    await apiClient.patch(`/user/${userId}`, profileData);
   },
 
   // Change password
   async changePassword(
-    username: string,
+    userId: number,
     passwordData: ChangePasswordData,
   ): Promise<void> {
-    await apiClient.patch(`/user/${username}/password`, passwordData);
+    await apiClient.patch(`/user/${userId}/password`, passwordData);
   },
 
   // Check if user is authenticated

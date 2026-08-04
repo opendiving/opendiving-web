@@ -12,6 +12,7 @@ export interface Trip {
 }
 
 export interface TripCreate {
+  user_id: number;
   name: string;
   location?: string;
   start_date: string;
@@ -36,20 +37,21 @@ export interface PaginatedTripsResponse {
 }
 
 export const tripsAPI = {
-  // Create a new trip
-  async createTrip(username: string, tripData: TripCreate): Promise<Trip> {
-    const response = await apiClient.post(`/${username}/trip`, tripData);
+  // Create a new trip. `tripData.user_id` must be the currently signed-in user's id.
+  async createTrip(tripData: TripCreate): Promise<Trip> {
+    const response = await apiClient.post(`/trip`, tripData);
     return response.data;
   },
 
   // Get all trips for a user (paginated)
   async getTrips(
-    username: string,
+    userId: number,
     page: number = 1,
     items_per_page: number = 10,
   ): Promise<PaginatedTripsResponse> {
-    const response = await apiClient.get(`/${username}/trips`, {
+    const response = await apiClient.get(`/trips`, {
       params: {
+        user_id: userId,
         page,
         items_per_page,
       },
@@ -58,30 +60,23 @@ export const tripsAPI = {
   },
 
   // Get a specific trip by ID
-  async getTrip(username: string, tripId: number): Promise<Trip> {
-    const response = await apiClient.get(`/${username}/trip/${tripId}`);
+  async getTrip(tripId: number): Promise<Trip> {
+    const response = await apiClient.get(`/trip/${tripId}`);
     return response.data;
   },
 
   // Update a trip
   async updateTrip(
-    username: string,
     tripId: number,
     updateData: TripUpdate,
   ): Promise<{ message: string }> {
-    const response = await apiClient.patch(
-      `/${username}/trip/${tripId}`,
-      updateData,
-    );
+    const response = await apiClient.patch(`/trip/${tripId}`, updateData);
     return response.data;
   },
 
   // Delete a trip
-  async deleteTrip(
-    username: string,
-    tripId: number,
-  ): Promise<{ message: string }> {
-    const response = await apiClient.delete(`/${username}/trip/${tripId}`);
+  async deleteTrip(tripId: number): Promise<{ message: string }> {
+    const response = await apiClient.delete(`/trip/${tripId}`);
     return response.data;
   },
 };

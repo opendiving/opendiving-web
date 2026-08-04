@@ -35,14 +35,11 @@ export default function DiveSiteDetailPage() {
   // Fetch dive site details
   useEffect(() => {
     const fetchDiveSite = async () => {
-      if (!user?.username || !diveSiteId) return;
+      if (!user || !diveSiteId) return;
 
       try {
         setIsLoadingDiveSite(true);
-        const diveSiteData = await diveSitesAPI.getDiveSite(
-          user.username,
-          diveSiteId,
-        );
+        const diveSiteData = await diveSitesAPI.getDiveSite(diveSiteId);
         setDiveSite(diveSiteData);
       } catch (error) {
         console.error("Failed to fetch dive site:", error);
@@ -57,15 +54,15 @@ export default function DiveSiteDetailPage() {
       }
     };
 
-    if (user?.username) {
+    if (user) {
       fetchDiveSite();
     }
-  }, [user?.username, diveSiteId, toast, router]);
+  }, [user, diveSiteId, toast, router]);
 
   // Handle dive site deletion
   const handleDeleteDiveSite = async () => {
     if (
-      !user?.username ||
+      !user ||
       !diveSite?.id ||
       !confirm(
         "Are you sure you want to delete this dive site? This action cannot be undone.",
@@ -76,7 +73,7 @@ export default function DiveSiteDetailPage() {
 
     try {
       setIsDeleting(true);
-      await diveSitesAPI.deleteDiveSite(user.username, diveSite.id);
+      await diveSitesAPI.deleteDiveSite(diveSite.id);
 
       toast({
         title: "Success",
@@ -202,7 +199,7 @@ export default function DiveSiteDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
             <RecentDivesCard
-              username={user?.username ?? ""}
+              userId={user?.id ?? 0}
               diveSiteId={diveSite.id}
               limit={100}
               title="Dives at this Site"

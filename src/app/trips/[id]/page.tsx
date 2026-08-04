@@ -44,11 +44,11 @@ export default function TripDetailPage() {
   // Fetch trip details
   useEffect(() => {
     const fetchTrip = async () => {
-      if (!user?.username || !tripId) return;
+      if (!user || !tripId) return;
 
       try {
         setIsLoadingTrip(true);
-        const tripData = await tripsAPI.getTrip(user.username, tripId);
+        const tripData = await tripsAPI.getTrip(tripId);
         setTrip(tripData);
       } catch (error) {
         console.error("Failed to fetch trip:", error);
@@ -63,15 +63,15 @@ export default function TripDetailPage() {
       }
     };
 
-    if (user?.username) {
+    if (user) {
       fetchTrip();
     }
-  }, [user?.username, tripId, toast, router]);
+  }, [user, tripId, toast, router]);
 
   // Handle trip deletion
   const handleDeleteTrip = async () => {
     if (
-      !user?.username ||
+      !user ||
       !trip?.id ||
       !confirm(
         "Are you sure you want to delete this trip? This action cannot be undone.",
@@ -82,7 +82,7 @@ export default function TripDetailPage() {
 
     try {
       setIsDeleting(true);
-      await tripsAPI.deleteTrip(user.username, trip.id);
+      await tripsAPI.deleteTrip(trip.id);
 
       toast({
         title: "Success",
@@ -218,7 +218,7 @@ export default function TripDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
             <RecentDivesCard
-              username={user?.username ?? ""}
+              userId={user?.id ?? 0}
               tripId={trip.id}
               limit={100}
               title="Dives in this Trip"

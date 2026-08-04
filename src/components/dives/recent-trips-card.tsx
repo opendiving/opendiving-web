@@ -23,25 +23,25 @@ function formatTripDisplayDate(trip: Trip) {
 }
 
 export interface RecentTripsCardProps {
-  username: string;
+  userId: number;
 }
 
 // Shows the user's most recently created trips (up to 5). Used on the
 // dashboard so divers can quickly jump back into a trip they're logging dives for.
-export function RecentTripsCard({ username }: RecentTripsCardProps) {
+export function RecentTripsCard({ userId }: RecentTripsCardProps) {
   const [recentTrips, setRecentTrips] = useState<Trip[]>([]);
   const [isLoadingTrips, setIsLoadingTrips] = useState(true);
 
   useEffect(() => {
     const fetchRecentTrips = async () => {
-      if (!username) return;
+      if (!userId) return;
 
       try {
         setIsLoadingTrips(true);
         // The trips list endpoint sorts alphabetically by name, so fetch a
         // larger batch and sort by creation date client-side to surface the
         // most *recently created* trips here.
-        const response = await tripsAPI.getTrips(username, 1, 100);
+        const response = await tripsAPI.getTrips(userId, 1, 100);
         const sorted = [...response.data].sort(
           (a, b) =>
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
@@ -55,7 +55,7 @@ export function RecentTripsCard({ username }: RecentTripsCardProps) {
     };
 
     fetchRecentTrips();
-  }, [username]);
+  }, [userId]);
 
   return (
     <Card>

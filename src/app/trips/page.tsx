@@ -45,12 +45,12 @@ export default function TripsPage() {
   // Fetch trips
   const fetchTrips = useCallback(
     async (page: number = 1) => {
-      if (!user?.username) return;
+      if (!user) return;
 
       try {
         setIsLoadingTrips(true);
         const response: PaginatedTripsResponse = await tripsAPI.getTrips(
-          user.username,
+          user.id,
           page,
           itemsPerPage,
         );
@@ -77,23 +77,20 @@ export default function TripsPage() {
     // Deliberate fetch-on-mount pattern (setIsLoadingTrips(true) runs synchronously
     // before the network await). This is a known, contentious false-positive for
     // react-hooks/set-state-in-effect - see https://github.com/facebook/react/issues/34743.
-    if (user?.username) {
+    if (user) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchTrips();
     }
-  }, [user?.username, fetchTrips]);
+  }, [user, fetchTrips]);
 
   // Handle trip deletion
   const handleDeleteTrip = async (tripId: number) => {
-    if (
-      !user?.username ||
-      !confirm("Are you sure you want to delete this trip?")
-    )
+    if (!user || !confirm("Are you sure you want to delete this trip?"))
       return;
 
     try {
       setDeletingId(tripId);
-      await tripsAPI.deleteTrip(user.username, tripId);
+      await tripsAPI.deleteTrip(tripId);
 
       toast({
         title: "Success",

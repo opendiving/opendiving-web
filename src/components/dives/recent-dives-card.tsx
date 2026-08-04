@@ -39,7 +39,7 @@ function formatDiveDuration(durationSeconds: number) {
 }
 
 export interface RecentDivesCardProps {
-  username: string;
+  userId: number;
   // Only show dives belonging to this trip. When omitted, shows the user's
   // most recent dives across all trips.
   tripId?: number;
@@ -65,7 +65,7 @@ export interface RecentDivesCardProps {
 // Used on the dashboard and profile pages (as the 5 most recent dives) and
 // on a trip's detail page (filtered to that trip's dives), so they stay in sync.
 export function RecentDivesCard({
-  username,
+  userId,
   tripId,
   diveSiteId,
   limit = RECENT_DIVES_COUNT,
@@ -83,12 +83,12 @@ export function RecentDivesCard({
 
   useEffect(() => {
     const fetchRecentDives = async () => {
-      if (!username) return;
+      if (!userId) return;
 
       try {
         setIsLoadingDives(true);
         const response = await divesAPI.getDives(
-          username,
+          userId,
           1,
           limit,
           tripId,
@@ -103,7 +103,7 @@ export function RecentDivesCard({
     };
 
     fetchRecentDives();
-  }, [username, tripId, diveSiteId, limit]);
+  }, [userId, tripId, diveSiteId, limit]);
 
   return (
     <Card>

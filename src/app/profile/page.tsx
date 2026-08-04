@@ -46,7 +46,7 @@ export default function ProfilePage() {
 
     const fetchStats = async () => {
       try {
-        const data = await diveStatsAPI.getDiveStats(user.username);
+        const data = await diveStatsAPI.getDiveStats(user.id);
         setStats(data);
       } catch (error) {
         console.error("Failed to fetch dive stats:", error);
@@ -153,7 +153,7 @@ export default function ProfilePage() {
             </Card>
 
             {/* Recent Dives */}
-            <RecentDivesCard username={user.username} />
+            <RecentDivesCard userId={user.id} />
           </div>
 
           {/* Sidebar */}

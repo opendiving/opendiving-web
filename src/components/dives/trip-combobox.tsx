@@ -6,14 +6,14 @@ import { tripsAPI, Trip } from "@/lib/api/trips";
 import { NewTripDialog } from "@/components/dives/new-trip-dialog";
 
 export interface TripComboboxProps {
-  username: string;
+  userId: number;
   value?: number;
   onChange: (tripId: number | undefined) => void;
   disabled?: boolean;
 }
 
 export function TripCombobox({
-  username,
+  userId,
   value,
   onChange,
   disabled,
@@ -28,7 +28,7 @@ export function TripCombobox({
     const fetchTrips = async () => {
       try {
         setIsLoadingTrips(true);
-        const response = await tripsAPI.getTrips(username, 1, 100);
+        const response = await tripsAPI.getTrips(userId, 1, 100);
         if (!cancelled) setTrips(response.data);
       } catch (error) {
         console.error("Failed to fetch trips:", error);
@@ -37,12 +37,12 @@ export function TripCombobox({
       }
     };
 
-    if (username) fetchTrips();
+    if (userId) fetchTrips();
 
     return () => {
       cancelled = true;
     };
-  }, [username]);
+  }, [userId]);
 
   const handleCreated = (newTrip: Trip) => {
     setTrips((prev) => [...prev, newTrip]);
@@ -69,7 +69,7 @@ export function TripCombobox({
       />
 
       <NewTripDialog
-        username={username}
+        userId={userId}
         open={showNewDialog}
         onOpenChange={setShowNewDialog}
         onCreated={handleCreated}

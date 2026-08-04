@@ -47,12 +47,12 @@ export default function DivesPage() {
   // been loaded yet. At most one request per unique site per session.
   const fetchDives = useCallback(
     async (page: number = 1) => {
-      if (!user?.username) return;
+      if (!user) return;
 
       try {
         setIsLoadingDives(true);
         const response: PaginatedDivesResponse = await divesAPI.getDives(
-          user.username,
+          user.id,
           page,
           itemsPerPage,
         );
@@ -80,20 +80,16 @@ export default function DivesPage() {
     // before the network await). This is a known, contentious false-positive for
     // react-hooks/set-state-in-effect - see https://github.com/facebook/react/issues/34743.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (user?.username) fetchDives();
-  }, [user?.username, fetchDives]);
+    if (user) fetchDives();
+  }, [user, fetchDives]);
 
   // Handle dive deletion
   const handleDeleteDive = async (diveId: number) => {
-    if (
-      !user?.username ||
-      !confirm("Are you sure you want to delete this dive?")
-    )
-      return;
+    if (!user || !confirm("Are you sure you want to delete this dive?")) return;
 
     try {
       setDeletingId(diveId);
-      await divesAPI.deleteDive(user.username, diveId);
+      await divesAPI.deleteDive(diveId);
 
       toast({
         title: "Success",

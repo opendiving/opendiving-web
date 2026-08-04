@@ -133,7 +133,7 @@ export default function SettingsPage() {
       setProfileError(null);
       setProfileSuccess(null);
 
-      await authAPI.updateProfile(user?.username || "", data);
+      await authAPI.updateProfile(user?.id || 0, data);
       await refreshUser();
       setProfileSuccess("Profile updated successfully!");
     } catch (err: any) {
@@ -146,7 +146,7 @@ export default function SettingsPage() {
       setPasswordError(null);
       setPasswordSuccess(null);
 
-      await authAPI.changePassword(user?.username || "", {
+      await authAPI.changePassword(user?.id || 0, {
         current_password: data.currentPassword,
         new_password: data.newPassword,
       });
