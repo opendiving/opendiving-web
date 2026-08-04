@@ -34,7 +34,18 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // A 401 from these endpoints reflects bad credentials or a missing/
+    // invalid refresh token itself, not an expired access token - retrying
+    // them via a token refresh would replace the real "wrong username, email
+    // or password" (or similar) error with an unrelated refresh failure.
+    const isAuthEndpoint =
+      originalRequest?.url === "/login" || originalRequest?.url === "/refresh";
+
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !isAuthEndpoint
+    ) {
       originalRequest._retry = true;
 
       try {

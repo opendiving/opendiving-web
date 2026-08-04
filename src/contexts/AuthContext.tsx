@@ -63,32 +63,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
       );
   }, []);
 
+  // Note: `isLoading` intentionally isn't touched here. It reflects only the
+  // initial auth bootstrap check above (`initAuth`), which pages use to
+  // decide whether to render a full-page spinner instead of their content
+  // (see `useRedirectIfAuthenticated`). If `signIn`/`signUp` toggled it too,
+  // a failed sign in would briefly unmount `SignInForm` (its spinner takes
+  // over the page) and remount a fresh instance once the request settles,
+  // silently discarding the error message the form was about to show.
+  // Each form already tracks its own in-flight state via react-hook-form's
+  // `isSubmitting`, so this isn't needed for the button's loading UI either.
   const signIn = async (credentials: LoginCredentials) => {
-    try {
-      setIsLoading(true);
-      await authAPI.signIn(credentials);
-      const userData = await authAPI.getCurrentUser();
-      setUser(userData);
-    } catch (error) {
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
+    await authAPI.signIn(credentials);
+    const userData = await authAPI.getCurrentUser();
+    setUser(userData);
   };
 
   const signUp = async (userData: SignUpData) => {
-    try {
-      setIsLoading(true);
-      const newUser = await authAPI.signUp(userData);
-      // After signup, automatically sign in
-      await signIn({
-        username: userData.username,
-        password: userData.password,
-      });
-    } catch (error) {
-      setIsLoading(false);
-      throw error;
-    }
+    await authAPI.signUp(userData);
+    // After signup, automatically sign in
+    await signIn({
+      username: userData.username,
+      password: userData.password,
+    });
   };
 
   const signOut = async () => {
