@@ -25,9 +25,9 @@ export interface DiveFormFieldsProps {
   // so no asterisks are shown and a cleared value resolves to `undefined`
   // rather than falling back to a default.
   mode: "create" | "edit";
-  // ID of the currently signed-in user, used to fetch/create trips and
+  // UUID of the currently signed-in user, used to fetch/create trips and
   // dive sites scoped to their account for the trip/dive site comboboxes.
-  userId: number;
+  userId: string;
 }
 
 export function DiveFormFields({
@@ -67,7 +67,7 @@ export function DiveFormFields({
 
         <FormField
           control={control}
-          name="trip_id"
+          name="trip_uuid"
           render={({ field }) => (
             <FormItem>
               <FormLabel>Trip</FormLabel>
@@ -87,7 +87,7 @@ export function DiveFormFields({
       {/* Dive Site(s) */}
       <FormField
         control={control}
-        name="dive_site_ids"
+        name="dive_site_uuids"
         render={({ field }) => (
           <FormItem>
             <FormLabel>Dive Site(s)</FormLabel>

@@ -23,7 +23,7 @@ function formatTripDisplayDate(trip: Trip) {
 }
 
 export interface RecentTripsCardProps {
-  userId: number;
+  userId: string;
 }
 
 // Shows the user's most recently created trips (up to 5). Used on the
@@ -96,8 +96,8 @@ export function RecentTripsCard({ userId }: RecentTripsCardProps) {
           <div className="space-y-3">
             {recentTrips.map((trip) => (
               <Link
-                key={trip.id}
-                href={`/trips/${trip.id}`}
+                key={trip.uuid}
+                href={`/trips/${trip.uuid}`}
                 className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50 transition-colors"
               >
                 <div>

@@ -125,8 +125,8 @@ export const diveCreateSchema = z.object({
     .positive("Visibility must be positive")
     .nullable()
     .optional(),
-  trip_id: z.number().int().positive().optional(),
-  dive_site_ids: z.array(z.number().int().positive()).default([]),
+  trip_uuid: z.string().optional(),
+  dive_site_uuids: z.array(z.string()).default([]),
   notes: z
     .string()
     .max(63206, "Notes cannot exceed 63206 characters")
@@ -159,8 +159,8 @@ export const diveUpdateSchema = z.object({
     .positive("Visibility must be positive")
     .nullable()
     .optional(),
-  trip_id: z.number().int().positive().optional(),
-  dive_site_ids: z.array(z.number().int().positive()).optional(),
+  trip_uuid: z.string().optional(),
+  dive_site_uuids: z.array(z.string()).optional(),
   notes: z
     .string()
     .max(63206, "Notes cannot exceed 63206 characters")

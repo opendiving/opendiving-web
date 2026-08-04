@@ -39,13 +39,13 @@ function formatDiveDuration(durationSeconds: number) {
 }
 
 export interface RecentDivesCardProps {
-  userId: number;
+  userId: string;
   // Only show dives belonging to this trip. When omitted, shows the user's
   // most recent dives across all trips.
-  tripId?: number;
+  tripId?: string;
   // Only show dives made at this dive site. When omitted, shows dives
   // regardless of dive site.
-  diveSiteId?: number;
+  diveSiteId?: string;
   // Maximum number of dives to fetch/display. Defaults to 5 for the
   // dashboard/profile "recent dives" use case.
   limit?: number;
@@ -144,8 +144,8 @@ export function RecentDivesCard({
           <div className="space-y-3">
             {recentDives.map((dive) => (
               <Link
-                key={dive.id}
-                href={`/dives/${dive.id}`}
+                key={dive.uuid}
+                href={`/dives/${dive.uuid}`}
                 className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50 transition-colors"
               >
                 <div>

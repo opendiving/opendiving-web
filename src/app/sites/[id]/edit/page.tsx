@@ -36,7 +36,7 @@ export default function EditDiveSitePage() {
   const [isLoadingDiveSite, setIsLoadingDiveSite] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const diveSiteId = parseInt(params.id as string);
+  const diveSiteId = params.id as string;
 
   const form = useForm<DiveSiteUpdateInput>({
     resolver: zodResolver(diveSiteUpdateSchema),

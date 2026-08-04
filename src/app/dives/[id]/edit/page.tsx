@@ -41,7 +41,7 @@ export default function EditDivePage() {
   const [isLoadingDive, setIsLoadingDive] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const diveId = parseInt(params.id as string);
+  const diveId = params.id as string;
 
   const form = useForm<DiveUpdateInput>({
     resolver: zodResolver(diveUpdateSchema),
@@ -53,8 +53,8 @@ export default function EditDivePage() {
       avg_depth: undefined,
       bottom_temperature: undefined,
       visibility: undefined,
-      trip_id: undefined,
-      dive_site_ids: [],
+      trip_uuid: undefined,
+      dive_site_uuids: [],
       notes: "",
       mixtures: [{ ...DEFAULT_MIXTURE, name: getDefaultMixtureName(0) }],
     },
@@ -87,8 +87,8 @@ export default function EditDivePage() {
           avg_depth: diveData.avg_depth,
           bottom_temperature: diveData.bottom_temperature,
           visibility: diveData.visibility,
-          trip_id: diveData.trip_id,
-          dive_site_ids: diveData.dive_sites?.map((site) => site.id) ?? [],
+          trip_uuid: diveData.trip_uuid,
+          dive_site_uuids: diveData.dive_sites?.map((site) => site.uuid) ?? [],
           notes: diveData.notes || "",
           mixtures: diveData.mixtures?.length
             ? diveData.mixtures.map((m) => ({
@@ -155,12 +155,12 @@ export default function EditDivePage() {
         updateData.visibility = data.visibility;
       }
 
-      if (data.trip_id !== undefined) {
-        updateData.trip_id = data.trip_id;
+      if (data.trip_uuid !== undefined) {
+        updateData.trip_uuid = data.trip_uuid;
       }
 
-      if (data.dive_site_ids !== undefined) {
-        updateData.dive_site_ids = data.dive_site_ids;
+      if (data.dive_site_uuids !== undefined) {
+        updateData.dive_site_uuids = data.dive_site_uuids;
       }
 
       if (data.notes !== undefined) {
@@ -265,7 +265,7 @@ export default function EditDivePage() {
               <DiveFormFields
                 control={form.control as unknown as Control<any, any, any>}
                 mode="edit"
-                userId={user?.id ?? 0}
+                userId={user?.uuid ?? ""}
               />
 
               <DiveFormActions

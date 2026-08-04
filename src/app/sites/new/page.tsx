@@ -69,7 +69,7 @@ export default function NewDiveSitePage() {
     try {
       setIsSubmitting(true);
 
-      await diveSitesAPI.createDiveSite({ user_id: user.id, ...data });
+      await diveSitesAPI.createDiveSite({ user_uuid: user.uuid, ...data });
 
       toast({
         title: "Success",

@@ -35,7 +35,7 @@ export default function SitesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [hasMore, setHasMore] = useState(false);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Redirect to signin if not authenticated, but only once the auth check
   // has actually finished.
@@ -53,7 +53,7 @@ export default function SitesPage() {
       try {
         setIsLoadingDiveSites(true);
         const response: PaginatedDiveSitesResponse =
-          await diveSitesAPI.getDiveSites(user.id, page, itemsPerPage);
+          await diveSitesAPI.getDiveSites(user.uuid, page, itemsPerPage);
 
         setDiveSites(response.data);
         setTotalCount(response.total_count);
@@ -84,7 +84,7 @@ export default function SitesPage() {
   }, [user, fetchDiveSites]);
 
   // Handle dive site deletion
-  const handleDeleteDiveSite = async (diveSiteId: number) => {
+  const handleDeleteDiveSite = async (diveSiteId: string) => {
     if (!user || !confirm("Are you sure you want to delete this dive site?"))
       return;
 
@@ -194,10 +194,10 @@ export default function SitesPage() {
                   </TableHeader>
                   <TableBody>
                     {diveSites.map((diveSite) => (
-                      <TableRow key={diveSite.id}>
+                      <TableRow key={diveSite.uuid}>
                         <TableCell className="font-medium">
                           <Link
-                            href={`/sites/${diveSite.id}`}
+                            href={`/sites/${diveSite.uuid}`}
                             className="hover:underline"
                           >
                             {diveSite.name}
@@ -207,22 +207,24 @@ export default function SitesPage() {
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
                             <Button variant="ghost" size="sm" asChild>
-                              <Link href={`/sites/${diveSite.id}`}>
+                              <Link href={`/sites/${diveSite.uuid}`}>
                                 <Eye className="h-4 w-4" />
                               </Link>
                             </Button>
                             <Button variant="ghost" size="sm" asChild>
-                              <Link href={`/sites/${diveSite.id}/edit`}>
+                              <Link href={`/sites/${diveSite.uuid}/edit`}>
                                 <Edit className="h-4 w-4" />
                               </Link>
                             </Button>
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleDeleteDiveSite(diveSite.id)}
-                              disabled={deletingId === diveSite.id}
+                              onClick={() =>
+                                handleDeleteDiveSite(diveSite.uuid)
+                              }
+                              disabled={deletingId === diveSite.uuid}
                             >
-                              {deletingId === diveSite.id ? (
+                              {deletingId === diveSite.uuid ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                               ) : (
                                 <Trash2 className="h-4 w-4" />

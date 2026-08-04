@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
 export interface ComboboxItem {
-  id: number;
+  id: string;
   name: string;
   // Shown alongside the name in the dropdown list (e.g. a dive site's
   // location) - purely cosmetic, doesn't affect matching/filtering.
@@ -16,8 +16,8 @@ export interface ComboboxItem {
 export interface CreatableComboboxProps {
   items: ComboboxItem[];
   isLoading?: boolean;
-  value?: number;
-  onChange: (id: number | undefined) => void;
+  value?: string;
+  onChange: (id: string | undefined) => void;
   // When provided, shows an "Add…" footer item in the dropdown that calls this
   // instead of the inline create-on-enter flow.
   onAddNew?: () => void;

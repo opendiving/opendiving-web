@@ -46,7 +46,7 @@ export default function DiveDetailPage() {
   const [isLoadingDive, setIsLoadingDive] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const diveId = parseInt(params.id as string);
+  const diveId = params.id as string;
 
   // Redirect to signin if not authenticated, but only once the auth check
   // has actually finished.
@@ -89,13 +89,13 @@ export default function DiveDetailPage() {
   // show the trip link.
   useEffect(() => {
     const fetchTrip = async () => {
-      if (!user || !dive?.trip_id) {
+      if (!user || !dive?.trip_uuid) {
         setTrip(null);
         return;
       }
 
       try {
-        const tripData = await tripsAPI.getTrip(dive.trip_id);
+        const tripData = await tripsAPI.getTrip(dive.trip_uuid);
         setTrip(tripData);
       } catch (error) {
         console.error("Failed to fetch trip:", error);
@@ -104,13 +104,13 @@ export default function DiveDetailPage() {
     };
 
     fetchTrip();
-  }, [user, dive?.trip_id]);
+  }, [user, dive?.trip_uuid]);
 
   // Handle dive deletion
   const handleDeleteDive = async () => {
     if (
       !user ||
-      !dive?.id ||
+      !dive?.uuid ||
       !confirm(
         "Are you sure you want to delete this dive? This action cannot be undone.",
       )
@@ -120,7 +120,7 @@ export default function DiveDetailPage() {
 
     try {
       setIsDeleting(true);
-      await divesAPI.deleteDive(dive.id);
+      await divesAPI.deleteDive(dive.uuid);
 
       toast({
         title: "Success",
@@ -247,7 +247,7 @@ export default function DiveDetailPage() {
           </div>
           <div className="flex gap-2">
             <Button variant="outline" asChild>
-              <Link href={`/dives/${dive.id}/edit`}>
+              <Link href={`/dives/${dive.uuid}/edit`}>
                 <Edit className="h-4 w-4 mr-2" />
                 Edit
               </Link>
@@ -423,7 +423,7 @@ export default function DiveDetailPage() {
                         Trip
                       </div>
                       <Link
-                        href={`/trips/${trip.id}`}
+                        href={`/trips/${trip.uuid}`}
                         className="flex items-center gap-2 text-sm font-medium hover:underline"
                       >
                         <Luggage className="h-4 w-4 text-muted-foreground" />

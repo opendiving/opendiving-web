@@ -22,7 +22,7 @@ export default function DiveSiteDetailPage() {
   const [isLoadingDiveSite, setIsLoadingDiveSite] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const diveSiteId = parseInt(params.id as string);
+  const diveSiteId = params.id as string;
 
   // Redirect to signin if not authenticated, but only once the auth check
   // has actually finished.
@@ -63,7 +63,7 @@ export default function DiveSiteDetailPage() {
   const handleDeleteDiveSite = async () => {
     if (
       !user ||
-      !diveSite?.id ||
+      !diveSite?.uuid ||
       !confirm(
         "Are you sure you want to delete this dive site? This action cannot be undone.",
       )
@@ -73,7 +73,7 @@ export default function DiveSiteDetailPage() {
 
     try {
       setIsDeleting(true);
-      await diveSitesAPI.deleteDiveSite(diveSite.id);
+      await diveSitesAPI.deleteDiveSite(diveSite.uuid);
 
       toast({
         title: "Success",
@@ -176,7 +176,7 @@ export default function DiveSiteDetailPage() {
           </div>
           <div className="flex gap-2">
             <Button variant="outline" asChild>
-              <Link href={`/sites/${diveSite.id}/edit`}>
+              <Link href={`/sites/${diveSite.uuid}/edit`}>
                 <Edit className="h-4 w-4 mr-2" />
                 Edit
               </Link>
@@ -199,15 +199,15 @@ export default function DiveSiteDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
             <RecentDivesCard
-              userId={user?.id ?? 0}
-              diveSiteId={diveSite.id}
+              userId={user?.uuid ?? ""}
+              diveSiteId={diveSite.uuid}
               limit={100}
               title="Dives at this Site"
               description="All dives logged at this dive site"
               viewAllHref={null}
               emptyTitle="No dives logged at this site yet"
               emptyDescription="Log a dive and assign it to this dive site to see it here."
-              newDiveHref={`/dives/new?dive_site_id=${diveSite.id}`}
+              newDiveHref={`/dives/new?dive_site_uuid=${diveSite.uuid}`}
               newDiveLabel="Log a Dive at this Site"
             />
           </div>
@@ -238,7 +238,7 @@ export default function DiveSiteDetailPage() {
                   </div>
                 </div>
                 <Button className="w-full" asChild>
-                  <Link href={`/dives/new?dive_site_id=${diveSite.id}`}>
+                  <Link href={`/dives/new?dive_site_uuid=${diveSite.uuid}`}>
                     <Plus className="h-4 w-4 mr-2" />
                     Log a Dive at this Site
                   </Link>

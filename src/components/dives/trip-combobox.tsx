@@ -6,9 +6,9 @@ import { tripsAPI, Trip } from "@/lib/api/trips";
 import { NewTripDialog } from "@/components/dives/new-trip-dialog";
 
 export interface TripComboboxProps {
-  userId: number;
-  value?: number;
-  onChange: (tripId: number | undefined) => void;
+  userId: string;
+  value?: string;
+  onChange: (tripId: string | undefined) => void;
   disabled?: boolean;
 }
 
@@ -46,13 +46,13 @@ export function TripCombobox({
 
   const handleCreated = (newTrip: Trip) => {
     setTrips((prev) => [...prev, newTrip]);
-    onChange(newTrip.id);
+    onChange(newTrip.uuid);
   };
 
   // Trips have a `location` field too, but unlike dive sites it's not shown
   // in this dropdown - map to bare `{id, name}` so `CreatableCombobox`'s
   // optional location display (added for dive sites) doesn't pick it up.
-  const items = trips.map((trip) => ({ id: trip.id, name: trip.name }));
+  const items = trips.map((trip) => ({ id: trip.uuid, name: trip.name }));
 
   return (
     <>

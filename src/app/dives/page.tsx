@@ -33,7 +33,7 @@ export default function DivesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [hasMore, setHasMore] = useState(false);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Redirect to signin if not authenticated, but only once the auth check
   // has actually finished.
@@ -52,7 +52,7 @@ export default function DivesPage() {
       try {
         setIsLoadingDives(true);
         const response: PaginatedDivesResponse = await divesAPI.getDives(
-          user.id,
+          user.uuid,
           page,
           itemsPerPage,
         );
@@ -84,7 +84,7 @@ export default function DivesPage() {
   }, [user, fetchDives]);
 
   // Handle dive deletion
-  const handleDeleteDive = async (diveId: number) => {
+  const handleDeleteDive = async (diveId: string) => {
     if (!user || !confirm("Are you sure you want to delete this dive?")) return;
 
     try {
@@ -211,7 +211,7 @@ export default function DivesPage() {
                   </TableHeader>
                   <TableBody>
                     {dives.map((dive) => (
-                      <TableRow key={dive.id}>
+                      <TableRow key={dive.uuid}>
                         <TableCell className="font-medium">
                           #{dive.dive_number}
                         </TableCell>
@@ -230,22 +230,22 @@ export default function DivesPage() {
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
                             <Button variant="ghost" size="sm" asChild>
-                              <Link href={`/dives/${dive.id}`}>
+                              <Link href={`/dives/${dive.uuid}`}>
                                 <Eye className="h-4 w-4" />
                               </Link>
                             </Button>
                             <Button variant="ghost" size="sm" asChild>
-                              <Link href={`/dives/${dive.id}/edit`}>
+                              <Link href={`/dives/${dive.uuid}/edit`}>
                                 <Edit className="h-4 w-4" />
                               </Link>
                             </Button>
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleDeleteDive(dive.id)}
-                              disabled={deletingId === dive.id}
+                              onClick={() => handleDeleteDive(dive.uuid)}
+                              disabled={deletingId === dive.uuid}
                             >
-                              {deletingId === dive.id ? (
+                              {deletingId === dive.uuid ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                               ) : (
                                 <Trash2 className="h-4 w-4" />

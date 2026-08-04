@@ -46,7 +46,7 @@ export default function DashboardPage() {
 
     const fetchStats = async () => {
       try {
-        const data = await diveStatsAPI.getDiveStats(user.id);
+        const data = await diveStatsAPI.getDiveStats(user.uuid);
         setStats(data);
       } catch (error) {
         console.error("Failed to fetch dive stats:", error);
@@ -149,8 +149,8 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Recent Dives & Trips */}
           <div className="lg:col-span-2 space-y-6">
-            <RecentDivesCard userId={user.id} />
-            <RecentTripsCard userId={user.id} />
+            <RecentDivesCard userId={user.uuid} />
+            <RecentTripsCard userId={user.uuid} />
           </div>
 
           {/* Quick Actions & Upcoming */}

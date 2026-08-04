@@ -7,11 +7,11 @@ import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
 import { NewDiveSiteDialog } from "@/components/dives/new-dive-site-dialog";
 
 export interface DiveSiteMultiSelectProps {
-  userId: number;
-  // Ordered list of selected dive site ids - the first entry is the primary
+  userId: string;
+  // Ordered list of selected dive site uuids - the first entry is the primary
   // site (e.g. shown as "Site Name +2" wherever only one site fits).
-  value: number[];
-  onChange: (diveSiteIds: number[]) => void;
+  value: string[];
+  onChange: (diveSiteUuids: string[]) => void;
   disabled?: boolean;
 }
 
@@ -63,12 +63,12 @@ export function DiveSiteMultiSelect({
     };
   }, [userId]);
 
-  const addSite = (id: number | undefined) => {
+  const addSite = (id: string | undefined) => {
     if (id === undefined || value.includes(id)) return;
     onChange([...value, id]);
   };
 
-  const removeSite = (id: number) => onChange(value.filter((v) => v !== id));
+  const removeSite = (id: string) => onChange(value.filter((v) => v !== id));
 
   const moveSite = (index: number, direction: -1 | 1) => {
     const swapIndex = index + direction;
@@ -80,13 +80,13 @@ export function DiveSiteMultiSelect({
 
   const handleCreated = (newDiveSite: DiveSite) => {
     setDiveSites((prev) => [...prev, newDiveSite]);
-    addSite(newDiveSite.id);
+    addSite(newDiveSite.uuid);
   };
 
   // Already-selected sites are hidden from the "add a site" dropdown so the
   // same site can't be added twice.
   const selectableDiveSites = diveSites.filter(
-    (site) => !value.includes(site.id),
+    (site) => !value.includes(site.uuid),
   );
 
   return (
@@ -94,7 +94,7 @@ export function DiveSiteMultiSelect({
       {value.length > 0 && (
         <ul className="space-y-1">
           {value.map((id, index) => {
-            const site = diveSites.find((s) => s.id === id);
+            const site = diveSites.find((s) => s.uuid === id);
             return (
               <li
                 key={id}
@@ -146,7 +146,11 @@ export function DiveSiteMultiSelect({
       )}
 
       <CreatableCombobox
-        items={selectableDiveSites}
+        items={selectableDiveSites.map((site) => ({
+          id: site.uuid,
+          name: site.name,
+          location: site.location,
+        }))}
         isLoading={isLoadingDiveSites}
         value={undefined}
         onChange={addSite}

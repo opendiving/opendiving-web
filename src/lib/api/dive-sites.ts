@@ -1,16 +1,16 @@
 import { apiClient } from "./client";
 
 export interface DiveSite {
-  id: number;
+  uuid: string;
   name: string;
   location?: string;
   notes?: string;
-  user_id: number;
+  user_uuid: string;
   created_at: string;
 }
 
 export interface DiveSiteCreate {
-  user_id: number;
+  user_uuid: string;
   name: string;
   location?: string;
   notes?: string;
@@ -31,7 +31,7 @@ export interface PaginatedDiveSitesResponse {
 }
 
 export const diveSitesAPI = {
-  // Create a new dive site. `data.user_id` must be the currently signed-in user's id.
+  // Create a new dive site. `data.user_uuid` must be the currently signed-in user's uuid.
   async createDiveSite(data: DiveSiteCreate): Promise<DiveSite> {
     const response = await apiClient.post(`/dive-site`, data);
     return response.data;
@@ -39,13 +39,13 @@ export const diveSitesAPI = {
 
   // Get all dive sites for a user (paginated)
   async getDiveSites(
-    userId: number,
+    userUuid: string,
     page: number = 1,
     items_per_page: number = 10,
   ): Promise<PaginatedDiveSitesResponse> {
     const response = await apiClient.get(`/dive-sites`, {
       params: {
-        user_id: userId,
+        user_uuid: userUuid,
         page,
         items_per_page,
       },
@@ -53,27 +53,27 @@ export const diveSitesAPI = {
     return response.data;
   },
 
-  // Get a specific dive site by ID
-  async getDiveSite(diveSiteId: number): Promise<DiveSite> {
-    const response = await apiClient.get(`/dive-site/${diveSiteId}`);
+  // Get a specific dive site by uuid
+  async getDiveSite(diveSiteUuid: string): Promise<DiveSite> {
+    const response = await apiClient.get(`/dive-site/${diveSiteUuid}`);
     return response.data;
   },
 
   // Update a dive site
   async updateDiveSite(
-    diveSiteId: number,
+    diveSiteUuid: string,
     updateData: DiveSiteUpdate,
   ): Promise<{ message: string }> {
     const response = await apiClient.patch(
-      `/dive-site/${diveSiteId}`,
+      `/dive-site/${diveSiteUuid}`,
       updateData,
     );
     return response.data;
   },
 
   // Delete a dive site
-  async deleteDiveSite(diveSiteId: number): Promise<{ message: string }> {
-    const response = await apiClient.delete(`/dive-site/${diveSiteId}`);
+  async deleteDiveSite(diveSiteUuid: string): Promise<{ message: string }> {
+    const response = await apiClient.delete(`/dive-site/${diveSiteUuid}`);
     return response.data;
   },
 };

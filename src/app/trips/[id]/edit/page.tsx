@@ -38,7 +38,7 @@ export default function EditTripPage() {
   const [isLoadingTrip, setIsLoadingTrip] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const tripId = parseInt(params.id as string);
+  const tripId = params.id as string;
 
   const form = useForm<TripUpdateInput>({
     resolver: zodResolver(tripUpdateSchema),

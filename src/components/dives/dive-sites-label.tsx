@@ -29,7 +29,7 @@ export function DiveSitesLabel({
   return (
     <span className={className}>
       {linked ? (
-        <Link href={`/sites/${primary.id}`} className="hover:underline">
+        <Link href={`/sites/${primary.uuid}`} className="hover:underline">
           {primary.name}
         </Link>
       ) : (

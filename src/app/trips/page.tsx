@@ -32,7 +32,7 @@ export default function TripsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [hasMore, setHasMore] = useState(false);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Redirect to signin if not authenticated, but only once the auth check
   // has actually finished.
@@ -50,7 +50,7 @@ export default function TripsPage() {
       try {
         setIsLoadingTrips(true);
         const response: PaginatedTripsResponse = await tripsAPI.getTrips(
-          user.id,
+          user.uuid,
           page,
           itemsPerPage,
         );
@@ -84,7 +84,7 @@ export default function TripsPage() {
   }, [user, fetchTrips]);
 
   // Handle trip deletion
-  const handleDeleteTrip = async (tripId: number) => {
+  const handleDeleteTrip = async (tripId: string) => {
     if (!user || !confirm("Are you sure you want to delete this trip?"))
       return;
 
@@ -204,10 +204,10 @@ export default function TripsPage() {
                   </TableHeader>
                   <TableBody>
                     {trips.map((trip) => (
-                      <TableRow key={trip.id}>
+                      <TableRow key={trip.uuid}>
                         <TableCell className="font-medium">
                           <Link
-                            href={`/trips/${trip.id}`}
+                            href={`/trips/${trip.uuid}`}
                             className="hover:underline"
                           >
                             {trip.name}
@@ -220,22 +220,22 @@ export default function TripsPage() {
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
                             <Button variant="ghost" size="sm" asChild>
-                              <Link href={`/trips/${trip.id}`}>
+                              <Link href={`/trips/${trip.uuid}`}>
                                 <Eye className="h-4 w-4" />
                               </Link>
                             </Button>
                             <Button variant="ghost" size="sm" asChild>
-                              <Link href={`/trips/${trip.id}/edit`}>
+                              <Link href={`/trips/${trip.uuid}/edit`}>
                                 <Edit className="h-4 w-4" />
                               </Link>
                             </Button>
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleDeleteTrip(trip.id)}
-                              disabled={deletingId === trip.id}
+                              onClick={() => handleDeleteTrip(trip.uuid)}
+                              disabled={deletingId === trip.uuid}
                             >
-                              {deletingId === trip.id ? (
+                              {deletingId === trip.uuid ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                               ) : (
                                 <Trash2 className="h-4 w-4" />

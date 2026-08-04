@@ -52,14 +52,10 @@ function NewDivePageContent() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Allow pre-selecting a trip/dive site via ?trip_id=123 / ?dive_site_id=456,
+  // Allow pre-selecting a trip/dive site via ?trip_uuid=... / ?dive_site_uuid=...,
   // e.g. when logging a dive from a trip's or dive site's detail page.
-  const tripIdParam = searchParams.get("trip_id");
-  const initialTripId = tripIdParam ? parseInt(tripIdParam, 10) : undefined;
-  const diveSiteIdParam = searchParams.get("dive_site_id");
-  const initialDiveSiteId = diveSiteIdParam
-    ? parseInt(diveSiteIdParam, 10)
-    : undefined;
+  const initialTripId = searchParams.get("trip_uuid") ?? undefined;
+  const initialDiveSiteId = searchParams.get("dive_site_uuid") ?? undefined;
 
   const form = useForm<DiveCreateInput>({
     resolver: zodResolver(diveCreateSchema),
@@ -71,8 +67,9 @@ function NewDivePageContent() {
       avg_depth: undefined,
       bottom_temperature: undefined,
       visibility: undefined,
-      trip_id: initialTripId,
-      dive_site_ids: initialDiveSiteId !== undefined ? [initialDiveSiteId] : [],
+      trip_uuid: initialTripId,
+      dive_site_uuids:
+        initialDiveSiteId !== undefined ? [initialDiveSiteId] : [],
       notes: "",
       mixtures: [{ ...DEFAULT_MIXTURE, name: getDefaultMixtureName(0) }],
     },
@@ -96,7 +93,7 @@ function NewDivePageContent() {
 
     const prefillFromLastDive = async () => {
       try {
-        const response = await divesAPI.getDives(user.id, 1, 1);
+        const response = await divesAPI.getDives(user.uuid, 1, 1);
         if (cancelled || form.formState.isDirty) return;
 
         const lastDiveSummary = response.data[0];
@@ -104,7 +101,7 @@ function NewDivePageContent() {
 
         // The list endpoint doesn't include gas mixtures (only the single-dive
         // endpoint does), so fetch the full record to prefill them.
-        const lastDive = await divesAPI.getDive(lastDiveSummary.id);
+        const lastDive = await divesAPI.getDive(lastDiveSummary.uuid);
         if (cancelled || form.formState.isDirty) return;
 
         form.reset({
@@ -116,8 +113,8 @@ function NewDivePageContent() {
           bottom_temperature: undefined,
           visibility: undefined,
           // URL param takes precedence over the last dive's trip.
-          trip_id: initialTripId ?? lastDive.trip_id,
-          dive_site_ids:
+          trip_uuid: initialTripId ?? lastDive.trip_uuid,
+          dive_site_uuids:
             initialDiveSiteId !== undefined ? [initialDiveSiteId] : [],
           notes: "",
           mixtures: lastDive.mixtures?.length
@@ -164,7 +161,7 @@ function NewDivePageContent() {
       // Convert form data to API format
       const diveData = {
         ...data,
-        user_id: user.id,
+        user_uuid: user.uuid,
         start_time: parseFormDateTime(data.start_time).toISOString(),
         duration: parseFormDuration(data.duration),
         notes: data.notes || "",
@@ -227,7 +224,7 @@ function NewDivePageContent() {
               <DiveFormFields
                 control={form.control as unknown as Control<any, any, any>}
                 mode="create"
-                userId={user?.id ?? 0}
+                userId={user?.uuid ?? ""}
               />
 
               <DiveFormActions

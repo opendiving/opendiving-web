@@ -15,13 +15,13 @@ export interface DiveMixture {
 // ordered by the sequence they were visited in - `dive_sites[0]` is the
 // primary/first site, shown wherever only one site can be displayed.
 export interface DiveSiteSummary {
-  id: number;
+  uuid: string;
   name: string;
   location?: string;
 }
 
 export interface Dive {
-  id: number;
+  uuid: string;
   dive_number: number;
   start_time: string;
   duration: number;
@@ -29,16 +29,16 @@ export interface Dive {
   avg_depth?: number;
   bottom_temperature?: number;
   visibility?: number;
-  trip_id?: number;
+  trip_uuid?: string;
   dive_sites: DiveSiteSummary[];
   notes: string;
-  user_id: number;
+  user_uuid: string;
   created_at: string;
   mixtures: DiveMixture[];
 }
 
 export interface DiveCreate {
-  user_id: number;
+  user_uuid: string;
   dive_number: number;
   start_time: string;
   duration: number;
@@ -46,8 +46,8 @@ export interface DiveCreate {
   avg_depth?: number | null;
   bottom_temperature?: number | null;
   visibility?: number | null;
-  trip_id?: number;
-  dive_site_ids?: number[];
+  trip_uuid?: string;
+  dive_site_uuids?: string[];
   notes?: string;
   mixtures?: DiveMixture[];
 }
@@ -60,8 +60,8 @@ export interface DiveUpdate {
   avg_depth?: number | null;
   bottom_temperature?: number | null;
   visibility?: number | null;
-  trip_id?: number;
-  dive_site_ids?: number[];
+  trip_uuid?: string;
+  dive_site_uuids?: string[];
   notes?: string;
   mixtures?: DiveMixture[];
 }
@@ -90,51 +90,53 @@ export interface ParsedDive {
 }
 
 export const divesAPI = {
-  // Create a new dive. `diveData.user_id` must be the currently signed-in user's id.
+  // Create a new dive. `diveData.user_uuid` must be the currently signed-in user's uuid.
   async createDive(diveData: DiveCreate): Promise<Dive> {
     const response = await apiClient.post(`/dive`, diveData);
     return response.data;
   },
 
-  // Get all dives for a user (paginated). Pass `tripId`/`diveSiteId` to only
+  // Get all dives for a user (paginated). Pass `tripUuid`/`diveSiteUuid` to only
   // return dives that belong to a given trip / were made at a given site.
   async getDives(
-    userId: number,
+    userUuid: string,
     page: number = 1,
     items_per_page: number = 10,
-    tripId?: number,
-    diveSiteId?: number,
+    tripUuid?: string,
+    diveSiteUuid?: string,
   ): Promise<PaginatedDivesResponse> {
     const response = await apiClient.get(`/dives`, {
       params: {
-        user_id: userId,
+        user_uuid: userUuid,
         page,
         items_per_page,
-        ...(tripId !== undefined ? { trip_id: tripId } : {}),
-        ...(diveSiteId !== undefined ? { dive_site_id: diveSiteId } : {}),
+        ...(tripUuid !== undefined ? { trip_uuid: tripUuid } : {}),
+        ...(diveSiteUuid !== undefined
+          ? { dive_site_uuid: diveSiteUuid }
+          : {}),
       },
     });
     return response.data;
   },
 
-  // Get a specific dive by ID
-  async getDive(diveId: number): Promise<Dive> {
-    const response = await apiClient.get(`/dive/${diveId}`);
+  // Get a specific dive by uuid
+  async getDive(diveUuid: string): Promise<Dive> {
+    const response = await apiClient.get(`/dive/${diveUuid}`);
     return response.data;
   },
 
   // Update a dive
   async updateDive(
-    diveId: number,
+    diveUuid: string,
     updateData: DiveUpdate,
   ): Promise<{ message: string }> {
-    const response = await apiClient.patch(`/dive/${diveId}`, updateData);
+    const response = await apiClient.patch(`/dive/${diveUuid}`, updateData);
     return response.data;
   },
 
   // Delete a dive
-  async deleteDive(diveId: number): Promise<{ message: string }> {
-    const response = await apiClient.delete(`/dive/${diveId}`);
+  async deleteDive(diveUuid: string): Promise<{ message: string }> {
+    const response = await apiClient.delete(`/dive/${diveUuid}`);
     return response.data;
   },
 

@@ -1,7 +1,7 @@
 import { apiClient } from "./client";
 
 export interface UserDiveStats {
-  user_id: number;
+  user_uuid: string;
   total_dives: number;
   max_depth: number;
   total_time: number; // seconds
@@ -11,9 +11,9 @@ export interface UserDiveStats {
 
 export const diveStatsAPI = {
   // Get a user's aggregate dive stats (total dives, max depth, total time, species seen)
-  async getDiveStats(userId: number): Promise<UserDiveStats> {
+  async getDiveStats(userUuid: string): Promise<UserDiveStats> {
     const response = await apiClient.get(`/dive-stats`, {
-      params: { user_id: userId },
+      params: { user_uuid: userUuid },
     });
     return response.data;
   },

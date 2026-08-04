@@ -5,7 +5,7 @@ const validDive = {
   dive_number: 1,
   start_time: "2024-06-01 09:05:03",
   duration: "45:30",
-  dive_site_ids: [],
+  dive_site_uuids: [],
   notes: "",
   mixtures: [],
 };

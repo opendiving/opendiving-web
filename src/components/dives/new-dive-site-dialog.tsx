@@ -29,7 +29,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 
 interface NewDiveSiteDialogProps {
-  userId: number;
+  userId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated: (diveSite: DiveSite) => void;
@@ -62,7 +62,7 @@ export function NewDiveSiteDialog({
     try {
       setIsSubmitting(true);
       const newDiveSite = await diveSitesAPI.createDiveSite({
-        user_id: userId,
+        user_uuid: userId,
         name: data.name,
         location: data.location || undefined,
         notes: data.notes || undefined,

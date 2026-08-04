@@ -1,18 +1,18 @@
 import { apiClient } from "./client";
 
 export interface Trip {
-  id: number;
+  uuid: string;
   name: string;
   location?: string;
   start_date?: string;
   end_date?: string;
   notes?: string;
-  user_id: number;
+  user_uuid: string;
   created_at: string;
 }
 
 export interface TripCreate {
-  user_id: number;
+  user_uuid: string;
   name: string;
   location?: string;
   start_date: string;
@@ -37,7 +37,7 @@ export interface PaginatedTripsResponse {
 }
 
 export const tripsAPI = {
-  // Create a new trip. `tripData.user_id` must be the currently signed-in user's id.
+  // Create a new trip. `tripData.user_uuid` must be the currently signed-in user's uuid.
   async createTrip(tripData: TripCreate): Promise<Trip> {
     const response = await apiClient.post(`/trip`, tripData);
     return response.data;
@@ -45,13 +45,13 @@ export const tripsAPI = {
 
   // Get all trips for a user (paginated)
   async getTrips(
-    userId: number,
+    userUuid: string,
     page: number = 1,
     items_per_page: number = 10,
   ): Promise<PaginatedTripsResponse> {
     const response = await apiClient.get(`/trips`, {
       params: {
-        user_id: userId,
+        user_uuid: userUuid,
         page,
         items_per_page,
       },
@@ -59,24 +59,24 @@ export const tripsAPI = {
     return response.data;
   },
 
-  // Get a specific trip by ID
-  async getTrip(tripId: number): Promise<Trip> {
-    const response = await apiClient.get(`/trip/${tripId}`);
+  // Get a specific trip by uuid
+  async getTrip(tripUuid: string): Promise<Trip> {
+    const response = await apiClient.get(`/trip/${tripUuid}`);
     return response.data;
   },
 
   // Update a trip
   async updateTrip(
-    tripId: number,
+    tripUuid: string,
     updateData: TripUpdate,
   ): Promise<{ message: string }> {
-    const response = await apiClient.patch(`/trip/${tripId}`, updateData);
+    const response = await apiClient.patch(`/trip/${tripUuid}`, updateData);
     return response.data;
   },
 
   // Delete a trip
-  async deleteTrip(tripId: number): Promise<{ message: string }> {
-    const response = await apiClient.delete(`/trip/${tripId}`);
+  async deleteTrip(tripUuid: string): Promise<{ message: string }> {
+    const response = await apiClient.delete(`/trip/${tripUuid}`);
     return response.data;
   },
 };

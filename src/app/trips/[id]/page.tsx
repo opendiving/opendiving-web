@@ -31,7 +31,7 @@ export default function TripDetailPage() {
   const [isLoadingTrip, setIsLoadingTrip] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const tripId = parseInt(params.id as string);
+  const tripId = params.id as string;
 
   // Redirect to signin if not authenticated, but only once the auth check
   // has actually finished.
@@ -72,7 +72,7 @@ export default function TripDetailPage() {
   const handleDeleteTrip = async () => {
     if (
       !user ||
-      !trip?.id ||
+      !trip?.uuid ||
       !confirm(
         "Are you sure you want to delete this trip? This action cannot be undone.",
       )
@@ -82,7 +82,7 @@ export default function TripDetailPage() {
 
     try {
       setIsDeleting(true);
-      await tripsAPI.deleteTrip(trip.id);
+      await tripsAPI.deleteTrip(trip.uuid);
 
       toast({
         title: "Success",
@@ -195,7 +195,7 @@ export default function TripDetailPage() {
           </div>
           <div className="flex gap-2">
             <Button variant="outline" asChild>
-              <Link href={`/trips/${trip.id}/edit`}>
+              <Link href={`/trips/${trip.uuid}/edit`}>
                 <Edit className="h-4 w-4 mr-2" />
                 Edit
               </Link>
@@ -218,15 +218,15 @@ export default function TripDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
             <RecentDivesCard
-              userId={user?.id ?? 0}
-              tripId={trip.id}
+              userId={user?.uuid ?? ""}
+              tripId={trip.uuid}
               limit={100}
               title="Dives in this Trip"
               description="All dives logged as part of this trip"
               viewAllHref={null}
               emptyTitle="No dives logged for this trip yet"
               emptyDescription="Log a dive and assign it to this trip to see it here."
-              newDiveHref={`/dives/new?trip_id=${trip.id}`}
+              newDiveHref={`/dives/new?trip_uuid=${trip.uuid}`}
               newDiveLabel="Log a Dive for this Trip"
             />
           </div>
@@ -266,7 +266,7 @@ export default function TripDetailPage() {
                   <div className="text-sm">{formatDate(trip.created_at)}</div>
                 </div>
                 <Button className="w-full" asChild>
-                  <Link href={`/dives/new?trip_id=${trip.id}`}>
+                  <Link href={`/dives/new?trip_uuid=${trip.uuid}`}>
                     <Plus className="h-4 w-4 mr-2" />
                     Log a Dive for this Trip
                   </Link>

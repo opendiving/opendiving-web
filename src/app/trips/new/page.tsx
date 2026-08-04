@@ -74,7 +74,7 @@ export default function NewTripPage() {
       setIsSubmitting(true);
 
       await tripsAPI.createTrip({
-        user_id: user.id,
+        user_uuid: user.uuid,
         name: data.name,
         location: data.location || undefined,
         start_date: data.start_date,

@@ -13,12 +13,11 @@ export interface SignUpData {
 }
 
 export interface User {
-  id: number;
+  uuid: string;
   name: string;
   username: string;
   email: string;
   profile_image_url: string;
-  tier_id: number | null;
 }
 
 export interface AuthResponse {
@@ -80,18 +79,18 @@ export const authAPI = {
 
   // Update user profile
   async updateProfile(
-    userId: number,
+    userUuid: string,
     profileData: UpdateProfileData,
   ): Promise<void> {
-    await apiClient.patch(`/user/${userId}`, profileData);
+    await apiClient.patch(`/user/${userUuid}`, profileData);
   },
 
   // Change password
   async changePassword(
-    userId: number,
+    userUuid: string,
     passwordData: ChangePasswordData,
   ): Promise<void> {
-    await apiClient.patch(`/user/${userId}/password`, passwordData);
+    await apiClient.patch(`/user/${userUuid}/password`, passwordData);
   },
 
   // Check if user is authenticated

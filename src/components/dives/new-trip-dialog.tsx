@@ -31,7 +31,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Button } from "@/components/ui/button";
 
 interface NewTripDialogProps {
-  userId: number;
+  userId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated: (trip: Trip) => void;
@@ -70,7 +70,7 @@ export function NewTripDialog({
     try {
       setIsSubmitting(true);
       const newTrip = await tripsAPI.createTrip({
-        user_id: userId,
+        user_uuid: userId,
         name: data.name,
         location: data.location || undefined,
         start_date: data.start_date,
