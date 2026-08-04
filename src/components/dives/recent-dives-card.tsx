@@ -169,7 +169,7 @@ export function RecentDivesCard({
                   </div>
                   <div className="flex items-center gap-1">
                     <Gauge className="h-4 w-4" />
-                    {dive.max_depth ? `${dive.max_depth}m` : "-"}
+                    {dive.max_depth ? `${Math.round(dive.max_depth)}m` : "-"}
                   </div>
                 </div>
               </Link>
