@@ -8,6 +8,7 @@ import React, {
   ReactNode,
 } from "react";
 import { authAPI, User, LoginCredentials, SignUpData } from "@/lib/api/auth";
+import { AUTH_SESSION_EXPIRED_EVENT } from "@/lib/api/client";
 
 interface AuthContextType {
   user: User | null;
@@ -47,6 +48,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
 
     initAuth();
+  }, []);
+
+  // Clear the (now stale) user when a token refresh fails elsewhere in the
+  // app (see client.ts). Existing per-page "redirect if unauthenticated"
+  // guards then handle navigating to /signin via the Next.js router.
+  useEffect(() => {
+    const handleSessionExpired = () => setUser(null);
+    window.addEventListener(AUTH_SESSION_EXPIRED_EVENT, handleSessionExpired);
+    return () =>
+      window.removeEventListener(
+        AUTH_SESSION_EXPIRED_EVENT,
+        handleSessionExpired,
+      );
   }, []);
 
   const signIn = async (credentials: LoginCredentials) => {

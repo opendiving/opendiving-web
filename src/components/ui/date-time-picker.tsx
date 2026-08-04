@@ -71,9 +71,12 @@ export function DateTimePicker({
   );
 
   // Keep the time fields in sync whenever the underlying value changes externally.
+  // Not derived purely during render because handleTimeChange formats/clamps input
+  // digit-by-digit locally before the parent's `value` reflects the committed change.
   React.useEffect(() => {
     const date = parseDateTime(value);
     if (date) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setHours(pad(date.getHours()));
       setMinutes(pad(date.getMinutes()));
       setSeconds(pad(date.getSeconds()));

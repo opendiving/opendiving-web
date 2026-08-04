@@ -56,7 +56,12 @@ export function CreatableCombobox({
   // the user isn't actively editing the field.
   useEffect(() => {
     if (isOpen) return;
+    // Deliberate sync-from-external-value pattern: `inputValue` doubles as both the
+    // user's in-progress typed text (while open) and a mirror of the externally
+    // selected `value` (once closed/committed), so it can't be purely derived during
+    // render without losing in-progress edits.
     const match = items.find((item) => item.id === value);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setInputValue(match ? match.name : "");
   }, [value, items, isOpen]);
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Header } from "@/components/layout/header";
@@ -43,38 +43,45 @@ export default function TripsPage() {
   }, [isAuthenticated, isAuthLoading, router]);
 
   // Fetch trips
-  const fetchTrips = async (page: number = 1) => {
-    if (!user?.username) return;
+  const fetchTrips = useCallback(
+    async (page: number = 1) => {
+      if (!user?.username) return;
 
-    try {
-      setIsLoadingTrips(true);
-      const response: PaginatedTripsResponse = await tripsAPI.getTrips(
-        user.username,
-        page,
-        itemsPerPage,
-      );
+      try {
+        setIsLoadingTrips(true);
+        const response: PaginatedTripsResponse = await tripsAPI.getTrips(
+          user.username,
+          page,
+          itemsPerPage,
+        );
 
-      setTrips(response.data);
-      setTotalCount(response.total_count);
-      setHasMore(response.has_more);
-      setCurrentPage(page);
-    } catch (error) {
-      console.error("Failed to fetch trips:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load trips. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoadingTrips(false);
-    }
-  };
+        setTrips(response.data);
+        setTotalCount(response.total_count);
+        setHasMore(response.has_more);
+        setCurrentPage(page);
+      } catch (error) {
+        console.error("Failed to fetch trips:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load trips. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoadingTrips(false);
+      }
+    },
+    [user, itemsPerPage, toast],
+  );
 
   useEffect(() => {
+    // Deliberate fetch-on-mount pattern (setIsLoadingTrips(true) runs synchronously
+    // before the network await). This is a known, contentious false-positive for
+    // react-hooks/set-state-in-effect - see https://github.com/facebook/react/issues/34743.
     if (user?.username) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchTrips();
     }
-  }, [user?.username]);
+  }, [user?.username, fetchTrips]);
 
   // Handle trip deletion
   const handleDeleteTrip = async (tripId: number) => {

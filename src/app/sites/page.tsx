@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Header } from "@/components/layout/header";
@@ -46,35 +46,42 @@ export default function SitesPage() {
   }, [isAuthenticated, isAuthLoading, router]);
 
   // Fetch dive sites
-  const fetchDiveSites = async (page: number = 1) => {
-    if (!user?.username) return;
+  const fetchDiveSites = useCallback(
+    async (page: number = 1) => {
+      if (!user?.username) return;
 
-    try {
-      setIsLoadingDiveSites(true);
-      const response: PaginatedDiveSitesResponse =
-        await diveSitesAPI.getDiveSites(user.username, page, itemsPerPage);
+      try {
+        setIsLoadingDiveSites(true);
+        const response: PaginatedDiveSitesResponse =
+          await diveSitesAPI.getDiveSites(user.username, page, itemsPerPage);
 
-      setDiveSites(response.data);
-      setTotalCount(response.total_count);
-      setHasMore(response.has_more);
-      setCurrentPage(page);
-    } catch (error) {
-      console.error("Failed to fetch dive sites:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load dive sites. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoadingDiveSites(false);
-    }
-  };
+        setDiveSites(response.data);
+        setTotalCount(response.total_count);
+        setHasMore(response.has_more);
+        setCurrentPage(page);
+      } catch (error) {
+        console.error("Failed to fetch dive sites:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load dive sites. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoadingDiveSites(false);
+      }
+    },
+    [user, itemsPerPage, toast],
+  );
 
   useEffect(() => {
+    // Deliberate fetch-on-mount pattern (setIsLoadingDiveSites(true) runs synchronously
+    // before the network await). This is a known, contentious false-positive for
+    // react-hooks/set-state-in-effect - see https://github.com/facebook/react/issues/34743.
     if (user?.username) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchDiveSites();
     }
-  }, [user?.username]);
+  }, [user?.username, fetchDiveSites]);
 
   // Handle dive site deletion
   const handleDeleteDiveSite = async (diveSiteId: number) => {

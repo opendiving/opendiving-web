@@ -30,8 +30,12 @@ export function UserAvatar({
   const strictGravatarUrl = getGravatarUrlStrict(email, size);
   const initials = getUserInitials(name);
 
-  // Check if user has a custom Gravatar
+  // Check if user has a custom Gravatar. Resets local state for the new email, then
+  // subscribes to the browser's Image load/error events - the latter is an explicitly
+  // sanctioned use of an effect ("subscribe to an external system"); the reset just
+  // ensures stale state from a previous `email` isn't shown while that check runs.
   React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setImageLoaded(false);
     setImageError(false);
     setHasCustomGravatar(false);

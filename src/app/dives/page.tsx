@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Header } from "@/components/layout/header";
@@ -45,36 +45,43 @@ export default function DivesPage() {
 
   // Fetch dives, then resolve any dive site names on the page that haven't
   // been loaded yet. At most one request per unique site per session.
-  const fetchDives = async (page: number = 1) => {
-    if (!user?.username) return;
+  const fetchDives = useCallback(
+    async (page: number = 1) => {
+      if (!user?.username) return;
 
-    try {
-      setIsLoadingDives(true);
-      const response: PaginatedDivesResponse = await divesAPI.getDives(
-        user.username,
-        page,
-        itemsPerPage,
-      );
+      try {
+        setIsLoadingDives(true);
+        const response: PaginatedDivesResponse = await divesAPI.getDives(
+          user.username,
+          page,
+          itemsPerPage,
+        );
 
-      setDives(response.data);
-      setTotalCount(response.total_count);
-      setHasMore(response.has_more);
-      setCurrentPage(page);
-    } catch (error) {
-      console.error("Failed to fetch dives:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load dives. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoadingDives(false);
-    }
-  };
+        setDives(response.data);
+        setTotalCount(response.total_count);
+        setHasMore(response.has_more);
+        setCurrentPage(page);
+      } catch (error) {
+        console.error("Failed to fetch dives:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load dives. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoadingDives(false);
+      }
+    },
+    [user, itemsPerPage, toast],
+  );
 
   useEffect(() => {
+    // Deliberate fetch-on-mount pattern (setIsLoadingDives(true) runs synchronously
+    // before the network await). This is a known, contentious false-positive for
+    // react-hooks/set-state-in-effect - see https://github.com/facebook/react/issues/34743.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (user?.username) fetchDives();
-  }, [user?.username]);
+  }, [user?.username, fetchDives]);
 
   // Handle dive deletion
   const handleDeleteDive = async (diveId: number) => {

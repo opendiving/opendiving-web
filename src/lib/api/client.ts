@@ -1,5 +1,10 @@
 import axios from "axios";
 
+// Dispatched when a token refresh fails so `AuthContext` can clear the stale
+// user; existing per-page "redirect to /signin when unauthenticated" guards
+// then handle navigation via Next's router instead of a hard page reload.
+export const AUTH_SESSION_EXPIRED_EVENT = "auth:session-expired";
+
 // API client configuration
 export const apiClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000",
@@ -46,9 +51,11 @@ apiClient.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${access_token}`;
         return apiClient(originalRequest);
       } catch (refreshError) {
-        // Refresh failed, redirect to login
+        // Refresh failed - clear the token and let AuthContext know the
+        // session expired so it can clear its user state; the app's existing
+        // per-page auth guards will then redirect via the Next.js router.
         localStorage.removeItem("access_token");
-        window.location.href = "/signin";
+        window.dispatchEvent(new Event(AUTH_SESSION_EXPIRED_EVENT));
         return Promise.reject(refreshError);
       }
     }
