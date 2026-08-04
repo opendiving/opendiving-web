@@ -6,8 +6,15 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { divesAPI, Dive } from "@/lib/api/dives";
-import { diveUpdateSchema, DiveUpdateInput, normalizeMixtures } from "@/lib/validations/dive";
-import { DEFAULT_MIXTURE, getDefaultMixtureName } from "@/components/dives/mixture-fields";
+import {
+  diveUpdateSchema,
+  DiveUpdateInput,
+  normalizeMixtures,
+} from "@/lib/validations/dive";
+import {
+  DEFAULT_MIXTURE,
+  getDefaultMixtureName,
+} from "@/components/dives/mixture-fields";
 import { DiveFormFields } from "@/components/dives/dive-form-fields";
 import { DiveFileImport } from "@/components/dives/dive-file-import";
 import { DiveFormActions } from "@/components/dives/dive-form-actions";
@@ -17,7 +24,12 @@ import { Form } from "@/components/ui/form";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
-import { formatDateTimeForForm, parseFormDateTime, formatDurationForForm, parseFormDuration } from "@/lib/date-time";
+import {
+  formatDateTimeForForm,
+  parseFormDateTime,
+  formatDurationForForm,
+  parseFormDuration,
+} from "@/lib/date-time";
 import { getApiErrorMessage } from "@/lib/api/error";
 
 export default function EditDivePage() {
@@ -52,7 +64,7 @@ export default function EditDivePage() {
   // has actually finished.
   useEffect(() => {
     if (!isAuthLoading && !isAuthenticated) {
-      router.push('/signin');
+      router.push("/signin");
     }
   }, [isAuthenticated, isAuthLoading, router]);
 
@@ -87,13 +99,13 @@ export default function EditDivePage() {
             : [{ ...DEFAULT_MIXTURE, name: getDefaultMixtureName(0) }],
         });
       } catch (error) {
-        console.error('Failed to fetch dive:', error);
+        console.error("Failed to fetch dive:", error);
         toast({
           title: "Error",
           description: "Failed to load dive details. Please try again.",
           variant: "destructive",
         });
-        router.push('/dives');
+        router.push("/dives");
       } finally {
         setIsLoadingDive(false);
       }
@@ -118,7 +130,9 @@ export default function EditDivePage() {
       }
 
       if (data.start_time) {
-        updateData.start_time = parseFormDateTime(data.start_time).toISOString();
+        updateData.start_time = parseFormDateTime(
+          data.start_time,
+        ).toISOString();
       }
 
       if (data.duration) {
@@ -166,9 +180,12 @@ export default function EditDivePage() {
 
       router.push(`/dives/${diveId}`);
     } catch (error: any) {
-      console.error('Failed to update dive:', error);
+      console.error("Failed to update dive:", error);
 
-      const errorMessage = getApiErrorMessage(error, "Failed to update dive. Please try again.");
+      const errorMessage = getApiErrorMessage(
+        error,
+        "Failed to update dive. Please try again.",
+      );
 
       toast({
         title: "Error",
@@ -206,9 +223,7 @@ export default function EditDivePage() {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center py-12">
-          <div className="text-muted-foreground mb-4">
-            Dive not found.
-          </div>
+          <div className="text-muted-foreground mb-4">Dive not found.</div>
           <Button asChild>
             <Link href="/dives">
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -247,7 +262,11 @@ export default function EditDivePage() {
               {/* Import from dive computer file */}
               <DiveFileImport form={form} />
 
-              <DiveFormFields control={form.control as unknown as Control<any, any, any>} mode="edit" username={user?.username ?? ""} />
+              <DiveFormFields
+                control={form.control as unknown as Control<any, any, any>}
+                mode="edit"
+                username={user?.username ?? ""}
+              />
 
               <DiveFormActions
                 cancelHref={`/dives/${diveId}`}

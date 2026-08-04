@@ -6,8 +6,15 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { divesAPI } from "@/lib/api/dives";
-import { diveCreateSchema, DiveCreateInput, normalizeMixtures } from "@/lib/validations/dive";
-import { DEFAULT_MIXTURE, getDefaultMixtureName } from "@/components/dives/mixture-fields";
+import {
+  diveCreateSchema,
+  DiveCreateInput,
+  normalizeMixtures,
+} from "@/lib/validations/dive";
+import {
+  DEFAULT_MIXTURE,
+  getDefaultMixtureName,
+} from "@/components/dives/mixture-fields";
 import { DiveFormFields } from "@/components/dives/dive-form-fields";
 import { DiveFileImport } from "@/components/dives/dive-file-import";
 import { DiveFormActions } from "@/components/dives/dive-form-actions";
@@ -17,7 +24,11 @@ import { Form } from "@/components/ui/form";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
-import { formatDateTimeForForm, parseFormDateTime, parseFormDuration } from "@/lib/date-time";
+import {
+  formatDateTimeForForm,
+  parseFormDateTime,
+  parseFormDuration,
+} from "@/lib/date-time";
 import { getApiErrorMessage } from "@/lib/api/error";
 
 export default function NewDivePage() {
@@ -46,7 +57,9 @@ function NewDivePageContent() {
   const tripIdParam = searchParams.get("trip_id");
   const initialTripId = tripIdParam ? parseInt(tripIdParam, 10) : undefined;
   const diveSiteIdParam = searchParams.get("dive_site_id");
-  const initialDiveSiteId = diveSiteIdParam ? parseInt(diveSiteIdParam, 10) : undefined;
+  const initialDiveSiteId = diveSiteIdParam
+    ? parseInt(diveSiteIdParam, 10)
+    : undefined;
 
   const form = useForm<DiveCreateInput>({
     resolver: zodResolver(diveCreateSchema),
@@ -70,7 +83,7 @@ function NewDivePageContent() {
   // for a moment and would incorrectly bounce the user away.
   useEffect(() => {
     if (!isAuthLoading && !isAuthenticated) {
-      router.push('/signin');
+      router.push("/signin");
     }
   }, [isAuthenticated, isAuthLoading, router]);
 
@@ -91,7 +104,10 @@ function NewDivePageContent() {
 
         // The list endpoint doesn't include gas mixtures (only the single-dive
         // endpoint does), so fetch the full record to prefill them.
-        const lastDive = await divesAPI.getDive(user.username, lastDiveSummary.id);
+        const lastDive = await divesAPI.getDive(
+          user.username,
+          lastDiveSummary.id,
+        );
         if (cancelled || form.formState.isDirty) return;
 
         form.reset({
@@ -104,7 +120,8 @@ function NewDivePageContent() {
           visibility: undefined,
           // URL param takes precedence over the last dive's trip.
           trip_id: initialTripId ?? lastDive.trip_id,
-          dive_site_ids: initialDiveSiteId !== undefined ? [initialDiveSiteId] : [],
+          dive_site_ids:
+            initialDiveSiteId !== undefined ? [initialDiveSiteId] : [],
           notes: "",
           mixtures: lastDive.mixtures?.length
             ? lastDive.mixtures.map((m, i) => ({
@@ -163,11 +180,14 @@ function NewDivePageContent() {
         description: "Dive logged successfully!",
       });
 
-      router.push('/dives');
+      router.push("/dives");
     } catch (error: any) {
-      console.error('Failed to create dive:', error);
+      console.error("Failed to create dive:", error);
 
-      const errorMessage = getApiErrorMessage(error, "Failed to log dive. Please try again.");
+      const errorMessage = getApiErrorMessage(
+        error,
+        "Failed to log dive. Please try again.",
+      );
 
       toast({
         title: "Error",
@@ -206,7 +226,11 @@ function NewDivePageContent() {
               {/* Import from dive computer file */}
               <DiveFileImport form={form} />
 
-              <DiveFormFields control={form.control as unknown as Control<any, any, any>} mode="create" username={user?.username ?? ""} />
+              <DiveFormFields
+                control={form.control as unknown as Control<any, any, any>}
+                mode="create"
+                username={user?.username ?? ""}
+              />
 
               <DiveFormActions
                 cancelHref="/dives"

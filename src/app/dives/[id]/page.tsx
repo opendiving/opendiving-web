@@ -52,7 +52,7 @@ export default function DiveDetailPage() {
   // has actually finished.
   useEffect(() => {
     if (!isAuthLoading && !isAuthenticated) {
-      router.push('/signin');
+      router.push("/signin");
     }
   }, [isAuthenticated, isAuthLoading, router]);
 
@@ -66,13 +66,13 @@ export default function DiveDetailPage() {
         const diveData = await divesAPI.getDive(user.username, diveId);
         setDive(diveData);
       } catch (error) {
-        console.error('Failed to fetch dive:', error);
+        console.error("Failed to fetch dive:", error);
         toast({
           title: "Error",
           description: "Failed to load dive details. Please try again.",
           variant: "destructive",
         });
-        router.push('/dives');
+        router.push("/dives");
       } finally {
         setIsLoadingDive(false);
       }
@@ -98,7 +98,7 @@ export default function DiveDetailPage() {
         const tripData = await tripsAPI.getTrip(user.username, dive.trip_id);
         setTrip(tripData);
       } catch (error) {
-        console.error('Failed to fetch trip:', error);
+        console.error("Failed to fetch trip:", error);
         setTrip(null);
       }
     };
@@ -108,7 +108,13 @@ export default function DiveDetailPage() {
 
   // Handle dive deletion
   const handleDeleteDive = async () => {
-    if (!user?.username || !dive?.id || !confirm('Are you sure you want to delete this dive? This action cannot be undone.')) {
+    if (
+      !user?.username ||
+      !dive?.id ||
+      !confirm(
+        "Are you sure you want to delete this dive? This action cannot be undone.",
+      )
+    ) {
       return;
     }
 
@@ -121,9 +127,9 @@ export default function DiveDetailPage() {
         description: "Dive deleted successfully.",
       });
 
-      router.push('/dives');
+      router.push("/dives");
     } catch (error) {
-      console.error('Failed to delete dive:', error);
+      console.error("Failed to delete dive:", error);
       toast({
         title: "Error",
         description: "Failed to delete dive. Please try again.",
@@ -136,19 +142,19 @@ export default function DiveDetailPage() {
 
   // Format date for display
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
+    return new Date(dateString).toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
   };
 
   // Format time for display
   const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
+    return new Date(dateString).toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
       hour12: true,
     });
   };
@@ -158,12 +164,14 @@ export default function DiveDetailPage() {
     const totalMinutes = Math.round(durationSeconds / 60);
 
     if (totalMinutes < 60) {
-      return `${totalMinutes} minute${totalMinutes !== 1 ? 's' : ''}`;
+      return `${totalMinutes} minute${totalMinutes !== 1 ? "s" : ""}`;
     }
 
     const hours = Math.floor(totalMinutes / 60);
     const minutes = totalMinutes % 60;
-    return minutes > 0 ? `${hours} hour${hours !== 1 ? 's' : ''} ${minutes} minute${minutes !== 1 ? 's' : ''}` : `${hours} hour${hours !== 1 ? 's' : ''}`;
+    return minutes > 0
+      ? `${hours} hour${hours !== 1 ? "s" : ""} ${minutes} minute${minutes !== 1 ? "s" : ""}`
+      : `${hours} hour${hours !== 1 ? "s" : ""}`;
   };
 
   if (isAuthLoading) {
@@ -200,9 +208,7 @@ export default function DiveDetailPage() {
         <Header showDashboardActions={true} currentPage="dives" />
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center py-12">
-            <div className="text-muted-foreground mb-4">
-              Dive not found.
-            </div>
+            <div className="text-muted-foreground mb-4">Dive not found.</div>
             <Button asChild>
               <Link href="/dives">
                 <ArrowLeft className="h-4 w-4 mr-2" />
@@ -216,7 +222,8 @@ export default function DiveDetailPage() {
     );
   }
 
-  const hasEnvironmentInfo = dive.bottom_temperature != null || dive.visibility != null;
+  const hasEnvironmentInfo =
+    dive.bottom_temperature != null || dive.visibility != null;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -274,14 +281,18 @@ export default function DiveDetailPage() {
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <div className="text-sm font-medium text-muted-foreground mb-1">Start Time</div>
+                    <div className="text-sm font-medium text-muted-foreground mb-1">
+                      Start Time
+                    </div>
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4 text-muted-foreground" />
                       <span>{formatTime(dive.start_time)}</span>
                     </div>
                   </div>
                   <div>
-                    <div className="text-sm font-medium text-muted-foreground mb-1">Duration</div>
+                    <div className="text-sm font-medium text-muted-foreground mb-1">
+                      Duration
+                    </div>
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4 text-muted-foreground" />
                       <span>{formatDuration(dive.duration)}</span>
@@ -304,7 +315,9 @@ export default function DiveDetailPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {dive.max_depth != null && (
                       <div>
-                        <div className="text-sm font-medium text-muted-foreground mb-1">Maximum Depth</div>
+                        <div className="text-sm font-medium text-muted-foreground mb-1">
+                          Maximum Depth
+                        </div>
                         <div className="text-2xl font-bold">
                           {dive.max_depth}m
                         </div>
@@ -312,7 +325,9 @@ export default function DiveDetailPage() {
                     )}
                     {dive.avg_depth != null && (
                       <div>
-                        <div className="text-sm font-medium text-muted-foreground mb-1">Average Depth</div>
+                        <div className="text-sm font-medium text-muted-foreground mb-1">
+                          Average Depth
+                        </div>
                         <div className="text-2xl font-bold">
                           {dive.avg_depth}m
                         </div>
@@ -353,10 +368,14 @@ export default function DiveDetailPage() {
                             </TableCell>
                             <TableCell>{mixture.volume} L</TableCell>
                             <TableCell>
-                              {mixture.start_pressure != null ? `${mixture.start_pressure} bar` : '-'}
+                              {mixture.start_pressure != null
+                                ? `${mixture.start_pressure} bar`
+                                : "-"}
                             </TableCell>
                             <TableCell>
-                              {mixture.end_pressure != null ? `${mixture.end_pressure} bar` : '-'}
+                              {mixture.end_pressure != null
+                                ? `${mixture.end_pressure} bar`
+                                : "-"}
                             </TableCell>
                             <TableCell>{mixture.oxygen}%</TableCell>
                             <TableCell>{mixture.helium}%</TableCell>
@@ -400,7 +419,9 @@ export default function DiveDetailPage() {
                 <CardContent className="space-y-4">
                   {trip && (
                     <div>
-                      <div className="text-sm font-medium text-muted-foreground mb-1">Trip</div>
+                      <div className="text-sm font-medium text-muted-foreground mb-1">
+                        Trip
+                      </div>
                       <Link
                         href={`/trips/${trip.id}`}
                         className="flex items-center gap-2 text-sm font-medium hover:underline"
@@ -412,7 +433,9 @@ export default function DiveDetailPage() {
                   )}
                   {dive.dive_sites.length > 0 && (
                     <div>
-                      <div className="text-sm font-medium text-muted-foreground mb-1">Dive Site</div>
+                      <div className="text-sm font-medium text-muted-foreground mb-1">
+                        Dive Site
+                      </div>
                       <div className="flex items-center gap-2 text-sm font-medium">
                         <MapPin className="h-4 w-4 text-muted-foreground" />
                         <DiveSitesLabel sites={dive.dive_sites} linked />
@@ -432,7 +455,9 @@ export default function DiveDetailPage() {
                 <CardContent className="space-y-4">
                   {dive.bottom_temperature != null && (
                     <div>
-                      <div className="text-sm font-medium text-muted-foreground mb-1">Bottom Temperature</div>
+                      <div className="text-sm font-medium text-muted-foreground mb-1">
+                        Bottom Temperature
+                      </div>
                       <div className="flex items-center gap-2 text-xl font-semibold">
                         <Thermometer className="h-4 w-4 text-muted-foreground" />
                         {dive.bottom_temperature}°C
@@ -441,7 +466,9 @@ export default function DiveDetailPage() {
                   )}
                   {dive.visibility != null && (
                     <div>
-                      <div className="text-sm font-medium text-muted-foreground mb-1">Visibility</div>
+                      <div className="text-sm font-medium text-muted-foreground mb-1">
+                        Visibility
+                      </div>
                       <div className="flex items-center gap-2 text-xl font-semibold">
                         <Eye className="h-4 w-4 text-muted-foreground" />
                         {dive.visibility}m
@@ -459,14 +486,16 @@ export default function DiveDetailPage() {
               </CardHeader>
               <CardContent className="space-y-2">
                 <div>
-                  <div className="text-sm font-medium text-muted-foreground">Logged on</div>
+                  <div className="text-sm font-medium text-muted-foreground">
+                    Logged on
+                  </div>
                   <div className="text-sm">
-                    {new Date(dive.created_at).toLocaleDateString('en-US', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit',
+                    {new Date(dive.created_at).toLocaleDateString("en-US", {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
                     })}
                   </div>
                 </div>

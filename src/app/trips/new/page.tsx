@@ -6,7 +6,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { tripsAPI } from "@/lib/api/trips";
-import { tripCreateSchema, TripCreateInput, normalizeTripDates } from "@/lib/validations/trip";
+import {
+  tripCreateSchema,
+  TripCreateInput,
+  normalizeTripDates,
+} from "@/lib/validations/trip";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,7 +51,7 @@ export default function NewTripPage() {
   // for a moment and would incorrectly bounce the user away.
   useEffect(() => {
     if (!isAuthLoading && !isAuthenticated) {
-      router.push('/signin');
+      router.push("/signin");
     }
   }, [isAuthenticated, isAuthLoading, router]);
 
@@ -82,11 +86,14 @@ export default function NewTripPage() {
         description: "Trip created successfully!",
       });
 
-      router.push('/trips');
+      router.push("/trips");
     } catch (error: any) {
-      console.error('Failed to create trip:', error);
+      console.error("Failed to create trip:", error);
 
-      const errorMessage = getApiErrorMessage(error, "Failed to create trip. Please try again.");
+      const errorMessage = getApiErrorMessage(
+        error,
+        "Failed to create trip. Please try again.",
+      );
 
       toast({
         title: "Error",
@@ -129,7 +136,10 @@ export default function NewTripPage() {
                   <FormItem>
                     <FormLabel>Name *</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g. Red Sea Liveaboard 2024" {...field} />
+                      <Input
+                        placeholder="e.g. Red Sea Liveaboard 2024"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -158,7 +168,10 @@ export default function NewTripPage() {
                     <FormItem>
                       <FormLabel>Start Date *</FormLabel>
                       <FormControl>
-                        <DatePicker value={field.value} onChange={field.onChange} />
+                        <DatePicker
+                          value={field.value}
+                          onChange={field.onChange}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -172,7 +185,10 @@ export default function NewTripPage() {
                     <FormItem>
                       <FormLabel>End Date</FormLabel>
                       <FormControl>
-                        <DatePicker value={field.value} onChange={field.onChange} />
+                        <DatePicker
+                          value={field.value}
+                          onChange={field.onChange}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

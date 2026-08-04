@@ -15,7 +15,8 @@ interface ValidationErrorDetail {
 // since plain objects aren't valid React children - this normalizes both
 // shapes into a single displayable string.
 export function getApiErrorMessage(error: unknown, fallback: string): string {
-  const detail = (error as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail;
+  const detail = (error as { response?: { data?: { detail?: unknown } } })
+    ?.response?.data?.detail;
 
   if (typeof detail === "string" && detail.trim()) {
     return detail;

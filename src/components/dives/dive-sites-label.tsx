@@ -14,7 +14,12 @@ export interface DiveSitesLabelProps {
 // "+N" suffix when the dive includes additional sites (e.g. a drift dive that
 // crosses several named sites). The extra sites' names are available as a
 // hover tooltip on the "+N" badge.
-export function DiveSitesLabel({ sites, linked = false, showLocation = false, className }: DiveSitesLabelProps) {
+export function DiveSitesLabel({
+  sites,
+  linked = false,
+  showLocation = false,
+  className,
+}: DiveSitesLabelProps) {
   if (sites.length === 0) {
     return <span className={className}>-</span>;
   }

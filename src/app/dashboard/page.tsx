@@ -95,7 +95,9 @@ export default function DashboardPage() {
               <Activity className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.total_dives ?? 0}</div>
+              <div className="text-2xl font-bold">
+                {stats?.total_dives ?? 0}
+              </div>
               <p className="text-xs text-muted-foreground">
                 Start logging your dives!
               </p>
@@ -134,7 +136,9 @@ export default function DashboardPage() {
               <Fish className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.species_seen ?? 0}</div>
+              <div className="text-2xl font-bold">
+                {stats?.species_seen ?? 0}
+              </div>
               <p className="text-xs text-muted-foreground">
                 Marine life species
               </p>

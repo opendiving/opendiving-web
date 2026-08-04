@@ -39,7 +39,7 @@ export default function DivesPage() {
   // has actually finished.
   useEffect(() => {
     if (!isAuthLoading && !isAuthenticated) {
-      router.push('/signin');
+      router.push("/signin");
     }
   }, [isAuthenticated, isAuthLoading, router]);
 
@@ -53,7 +53,7 @@ export default function DivesPage() {
       const response: PaginatedDivesResponse = await divesAPI.getDives(
         user.username,
         page,
-        itemsPerPage
+        itemsPerPage,
       );
 
       setDives(response.data);
@@ -61,7 +61,7 @@ export default function DivesPage() {
       setHasMore(response.has_more);
       setCurrentPage(page);
     } catch (error) {
-      console.error('Failed to fetch dives:', error);
+      console.error("Failed to fetch dives:", error);
       toast({
         title: "Error",
         description: "Failed to load dives. Please try again.",
@@ -78,7 +78,11 @@ export default function DivesPage() {
 
   // Handle dive deletion
   const handleDeleteDive = async (diveId: number) => {
-    if (!user?.username || !confirm('Are you sure you want to delete this dive?')) return;
+    if (
+      !user?.username ||
+      !confirm("Are you sure you want to delete this dive?")
+    )
+      return;
 
     try {
       setDeletingId(diveId);
@@ -92,7 +96,7 @@ export default function DivesPage() {
       // Refresh the list
       await fetchDives(currentPage);
     } catch (error) {
-      console.error('Failed to delete dive:', error);
+      console.error("Failed to delete dive:", error);
       toast({
         title: "Error",
         description: "Failed to delete dive. Please try again.",
@@ -105,12 +109,12 @@ export default function DivesPage() {
 
   // Format date for display
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
       hour12: false,
     });
   };
@@ -168,7 +172,7 @@ export default function DivesPage() {
             <CardTitle className="flex items-center justify-between">
               <span>Dive Log</span>
               <Badge variant="secondary">
-                {totalCount} total dive{totalCount !== 1 ? 's' : ''}
+                {totalCount} total dive{totalCount !== 1 ? "s" : ""}
               </Badge>
             </CardTitle>
           </CardHeader>
@@ -216,28 +220,18 @@ export default function DivesPage() {
                         <TableCell className="text-muted-foreground">
                           <DiveSitesLabel sites={dive.dive_sites} />
                         </TableCell>
+                        <TableCell>{formatDuration(dive.duration)}</TableCell>
                         <TableCell>
-                          {formatDuration(dive.duration)}
-                        </TableCell>
-                        <TableCell>
-                          {dive.max_depth ? `${dive.max_depth}m` : '-'}
+                          {dive.max_depth ? `${dive.max_depth}m` : "-"}
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              asChild
-                            >
+                            <Button variant="ghost" size="sm" asChild>
                               <Link href={`/dives/${dive.id}`}>
                                 <Eye className="h-4 w-4" />
                               </Link>
                             </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              asChild
-                            >
+                            <Button variant="ghost" size="sm" asChild>
                               <Link href={`/dives/${dive.id}/edit`}>
                                 <Edit className="h-4 w-4" />
                               </Link>
@@ -267,7 +261,9 @@ export default function DivesPage() {
             {totalCount > itemsPerPage && (
               <div className="flex items-center justify-between mt-6">
                 <div className="text-sm text-muted-foreground">
-                  Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount} dives
+                  Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
+                  {Math.min(currentPage * itemsPerPage, totalCount)} of{" "}
+                  {totalCount} dives
                 </div>
                 <div className="flex gap-2">
                   <Button

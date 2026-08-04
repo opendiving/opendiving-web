@@ -64,7 +64,7 @@ export function CreatableCombobox({
     items.find((item) => item.name.toLowerCase() === text.trim().toLowerCase());
 
   const filteredItems = items.filter((item) =>
-    item.name.toLowerCase().includes(inputValue.trim().toLowerCase())
+    item.name.toLowerCase().includes(inputValue.trim().toLowerCase()),
   );
 
   const handleInputChange = (text: string) => {
@@ -181,18 +181,24 @@ export function CreatableCombobox({
                 type="button"
                 className={cn(
                   "w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground",
-                  item.id === value && "bg-accent/50"
+                  item.id === value && "bg-accent/50",
                 )}
                 // Prevent the input's onBlur from firing before this click is registered.
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => handleSelect(item)}
               >
                 {item.name}
-                {item.location && <span className="text-muted-foreground">, {item.location}</span>}
+                {item.location && (
+                  <span className="text-muted-foreground">
+                    , {item.location}
+                  </span>
+                )}
               </button>
             ))
           ) : (
-            <div className="px-3 py-2 text-sm text-muted-foreground">{noItemsLabel}</div>
+            <div className="px-3 py-2 text-sm text-muted-foreground">
+              {noItemsLabel}
+            </div>
           )}
         </div>
       )}

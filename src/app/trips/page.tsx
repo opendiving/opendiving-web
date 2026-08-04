@@ -38,7 +38,7 @@ export default function TripsPage() {
   // has actually finished.
   useEffect(() => {
     if (!isAuthLoading && !isAuthenticated) {
-      router.push('/signin');
+      router.push("/signin");
     }
   }, [isAuthenticated, isAuthLoading, router]);
 
@@ -51,7 +51,7 @@ export default function TripsPage() {
       const response: PaginatedTripsResponse = await tripsAPI.getTrips(
         user.username,
         page,
-        itemsPerPage
+        itemsPerPage,
       );
 
       setTrips(response.data);
@@ -59,7 +59,7 @@ export default function TripsPage() {
       setHasMore(response.has_more);
       setCurrentPage(page);
     } catch (error) {
-      console.error('Failed to fetch trips:', error);
+      console.error("Failed to fetch trips:", error);
       toast({
         title: "Error",
         description: "Failed to load trips. Please try again.",
@@ -78,7 +78,11 @@ export default function TripsPage() {
 
   // Handle trip deletion
   const handleDeleteTrip = async (tripId: number) => {
-    if (!user?.username || !confirm('Are you sure you want to delete this trip?')) return;
+    if (
+      !user?.username ||
+      !confirm("Are you sure you want to delete this trip?")
+    )
+      return;
 
     try {
       setDeletingId(tripId);
@@ -92,7 +96,7 @@ export default function TripsPage() {
       // Refresh the list
       await fetchTrips(currentPage);
     } catch (error) {
-      console.error('Failed to delete trip:', error);
+      console.error("Failed to delete trip:", error);
       toast({
         title: "Error",
         description: "Failed to delete trip. Please try again.",
@@ -105,15 +109,21 @@ export default function TripsPage() {
 
   // Format date for display
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-GB', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
+    return new Date(dateString).toLocaleDateString("en-GB", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
     });
   };
 
   const formatDateRange = (startDate?: string, endDate?: string) => {
-    return formatTripDateRange(startDate, endDate, { year: 'numeric', month: 'short', day: 'numeric' }) ?? '-';
+    return (
+      formatTripDateRange(startDate, endDate, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      }) ?? "-"
+    );
   };
 
   if (isAuthLoading) {

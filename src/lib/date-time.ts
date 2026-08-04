@@ -5,7 +5,7 @@ function pad(value: number): string {
 // Formats a Date as "YYYY-MM-DD HH:mm:ss", the format used throughout the dive forms.
 export function formatDateTimeForForm(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(
-    date.getHours()
+    date.getHours(),
   )}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 }
 
@@ -18,11 +18,14 @@ export function parseFormDateTime(value: string): Date {
 // or end date) without going through timezone-sensitive UTC parsing - using
 // `new Date(dateString)` directly can shift the displayed day by one in
 // negative-UTC-offset timezones since bare date strings parse as UTC midnight.
-export function formatDateOnly(dateString: string, options?: Intl.DateTimeFormatOptions): string {
+export function formatDateOnly(
+  dateString: string,
+  options?: Intl.DateTimeFormatOptions,
+): string {
   const [year, month, day] = dateString.split("-").map(Number);
   return new Date(year, month - 1, day).toLocaleDateString(
     "en-US",
-    options ?? { year: "numeric", month: "short", day: "numeric" }
+    options ?? { year: "numeric", month: "short", day: "numeric" },
   );
 }
 
@@ -60,7 +63,7 @@ export function formatDurationHoursMinutes(durationSeconds: number): string {
 export function formatTripDateRange(
   startDate?: string,
   endDate?: string,
-  options?: Intl.DateTimeFormatOptions
+  options?: Intl.DateTimeFormatOptions,
 ): string | undefined {
   if (!startDate && !endDate) return undefined;
   if (startDate && endDate) {

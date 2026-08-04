@@ -50,9 +50,14 @@ export function Header({
         <div className="flex justify-between items-center py-4">
           {/* Logo and Navigation */}
           <div className="flex items-center space-x-8">
-            <Link href="/" className="flex flex-shrink-0 items-center space-x-2">
+            <Link
+              href="/"
+              className="flex flex-shrink-0 items-center space-x-2"
+            >
               <Waves className="h-8 w-8 text-blue-600 flex-shrink-0" />
-              <h1 className="text-2xl font-bold text-gray-900 whitespace-nowrap">OpenDiving</h1>
+              <h1 className="text-2xl font-bold text-gray-900 whitespace-nowrap">
+                OpenDiving
+              </h1>
             </Link>
 
             {/* Desktop Navigation - Show different nav based on auth status */}

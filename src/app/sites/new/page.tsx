@@ -6,7 +6,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { diveSitesAPI } from "@/lib/api/dive-sites";
-import { diveSiteCreateSchema, DiveSiteCreateInput } from "@/lib/validations/dive-site";
+import {
+  diveSiteCreateSchema,
+  DiveSiteCreateInput,
+} from "@/lib/validations/dive-site";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,7 +47,7 @@ export default function NewDiveSitePage() {
   // for a moment and would incorrectly bounce the user away.
   useEffect(() => {
     if (!isAuthLoading && !isAuthenticated) {
-      router.push('/signin');
+      router.push("/signin");
     }
   }, [isAuthenticated, isAuthLoading, router]);
 
@@ -73,11 +76,14 @@ export default function NewDiveSitePage() {
         description: "Dive site created successfully!",
       });
 
-      router.push('/sites');
+      router.push("/sites");
     } catch (error: any) {
-      console.error('Failed to create dive site:', error);
+      console.error("Failed to create dive site:", error);
 
-      const errorMessage = getApiErrorMessage(error, "Failed to create dive site. Please try again.");
+      const errorMessage = getApiErrorMessage(
+        error,
+        "Failed to create dive site. Please try again.",
+      );
 
       toast({
         title: "Error",

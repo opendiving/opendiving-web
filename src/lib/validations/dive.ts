@@ -2,7 +2,9 @@ import { z } from "zod";
 
 const DATE_TIME_REGEX = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
 
-const dateTimeField = (message = "Start time must be in YYYY-MM-DD HH:mm:ss format") =>
+const dateTimeField = (
+  message = "Start time must be in YYYY-MM-DD HH:mm:ss format",
+) =>
   z
     .string()
     .min(1, "Start time is required")
@@ -17,11 +19,9 @@ const dateTimeField = (message = "Start time must be in YYYY-MM-DD HH:mm:ss form
 // `lib/date-time.ts` - see `dateTimeField()` above for the same pattern.
 const DURATION_REGEX = /^\d{1,3}:[0-5]\d$/;
 
-const durationField = (message = "Duration must be in MM:SS format, e.g. 45:30") =>
-  z
-    .string()
-    .min(1, "Duration is required")
-    .regex(DURATION_REGEX, message);
+const durationField = (
+  message = "Duration must be in MM:SS format, e.g. 45:30",
+) => z.string().min(1, "Duration is required").regex(DURATION_REGEX, message);
 
 // Optional numeric field that can also hold the literal empty string "" while
 // the user is editing. We deliberately never let the *live* form value become
@@ -35,8 +35,18 @@ export const diveMixtureSchema = z.object({
   id: z.number().optional(),
   name: z.string().max(50, "Name cannot exceed 50 characters").optional(),
   volume: z.number().positive("Volume must be positive"),
-  start_pressure: z.union([z.literal(""), z.number().positive("Start pressure must be positive")]).optional(),
-  end_pressure: z.union([z.literal(""), z.number().min(0, "End pressure must be zero or positive")]).optional(),
+  start_pressure: z
+    .union([
+      z.literal(""),
+      z.number().positive("Start pressure must be positive"),
+    ])
+    .optional(),
+  end_pressure: z
+    .union([
+      z.literal(""),
+      z.number().min(0, "End pressure must be zero or positive"),
+    ])
+    .optional(),
   oxygen: z
     .number()
     .min(0, "Oxygen percentage must be at least 0")
@@ -77,70 +87,86 @@ export function normalizeMixtures(
     end_pressure?: number | "";
     oxygen: number;
     helium: number;
-  }[]
+  }[],
 ): NormalizedDiveMixture[] {
   return mixtures.map((mixture) => ({
     name: mixture.name,
     volume: mixture.volume,
-    start_pressure: mixture.start_pressure === "" ? undefined : mixture.start_pressure,
-    end_pressure: mixture.end_pressure === "" ? undefined : mixture.end_pressure,
+    start_pressure:
+      mixture.start_pressure === "" ? undefined : mixture.start_pressure,
+    end_pressure:
+      mixture.end_pressure === "" ? undefined : mixture.end_pressure,
     oxygen: mixture.oxygen,
     helium: mixture.helium,
   }));
 }
 
-export const diveCreateSchema = z
-  .object({
-    dive_number: z
-      .number()
-      .int()
-      .positive("Dive number must be a positive integer"),
-    start_time: dateTimeField(),
-    duration: durationField(),
-    max_depth: z.number().positive("Max depth must be positive").nullable().optional(),
-    avg_depth: z.number().positive("Average depth must be positive").nullable().optional(),
-    bottom_temperature: z.number().nullable().optional(),
-    visibility: z
-      .number()
-      .int("Visibility must be an integer")
-      .positive("Visibility must be positive")
-      .nullable()
-      .optional(),
-    trip_id: z.number().int().positive().optional(),
-    dive_site_ids: z.array(z.number().int().positive()).default([]),
-    notes: z
-      .string()
-      .max(63206, "Notes cannot exceed 63206 characters")
-      .default(""),
-    mixtures: z.array(diveMixtureSchema).default([]),
-  });
+export const diveCreateSchema = z.object({
+  dive_number: z
+    .number()
+    .int()
+    .positive("Dive number must be a positive integer"),
+  start_time: dateTimeField(),
+  duration: durationField(),
+  max_depth: z
+    .number()
+    .positive("Max depth must be positive")
+    .nullable()
+    .optional(),
+  avg_depth: z
+    .number()
+    .positive("Average depth must be positive")
+    .nullable()
+    .optional(),
+  bottom_temperature: z.number().nullable().optional(),
+  visibility: z
+    .number()
+    .int("Visibility must be an integer")
+    .positive("Visibility must be positive")
+    .nullable()
+    .optional(),
+  trip_id: z.number().int().positive().optional(),
+  dive_site_ids: z.array(z.number().int().positive()).default([]),
+  notes: z
+    .string()
+    .max(63206, "Notes cannot exceed 63206 characters")
+    .default(""),
+  mixtures: z.array(diveMixtureSchema).default([]),
+});
 
-export const diveUpdateSchema = z
-  .object({
-    dive_number: z
-      .number()
-      .int()
-      .positive("Dive number must be a positive integer")
-      .optional(),
-    start_time: dateTimeField().optional(),
-    duration: durationField().optional(),
-    max_depth: z.number().positive("Max depth must be positive").nullable().optional(),
-    avg_depth: z.number().positive("Average depth must be positive").nullable().optional(),
-    bottom_temperature: z.number().nullable().optional(),
-    visibility: z
-      .number()
-      .int("Visibility must be an integer")
-      .positive("Visibility must be positive")
-      .nullable()
-      .optional(),
-    trip_id: z.number().int().positive().optional(),
-    dive_site_ids: z.array(z.number().int().positive()).optional(),
-    notes: z
-      .string()
-      .max(63206, "Notes cannot exceed 63206 characters")
-      .optional(),
-    mixtures: z.array(diveMixtureSchema).optional(),
-  });
+export const diveUpdateSchema = z.object({
+  dive_number: z
+    .number()
+    .int()
+    .positive("Dive number must be a positive integer")
+    .optional(),
+  start_time: dateTimeField().optional(),
+  duration: durationField().optional(),
+  max_depth: z
+    .number()
+    .positive("Max depth must be positive")
+    .nullable()
+    .optional(),
+  avg_depth: z
+    .number()
+    .positive("Average depth must be positive")
+    .nullable()
+    .optional(),
+  bottom_temperature: z.number().nullable().optional(),
+  visibility: z
+    .number()
+    .int("Visibility must be an integer")
+    .positive("Visibility must be positive")
+    .nullable()
+    .optional(),
+  trip_id: z.number().int().positive().optional(),
+  dive_site_ids: z.array(z.number().int().positive()).optional(),
+  notes: z
+    .string()
+    .max(63206, "Notes cannot exceed 63206 characters")
+    .optional(),
+  mixtures: z.array(diveMixtureSchema).optional(),
+});
 
 export type DiveCreateInput = z.input<typeof diveCreateSchema>;
 export type DiveUpdateInput = z.input<typeof diveUpdateSchema>;

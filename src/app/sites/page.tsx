@@ -5,7 +5,11 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
-import { diveSitesAPI, DiveSite, PaginatedDiveSitesResponse } from "@/lib/api/dive-sites";
+import {
+  diveSitesAPI,
+  DiveSite,
+  PaginatedDiveSitesResponse,
+} from "@/lib/api/dive-sites";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -37,7 +41,7 @@ export default function SitesPage() {
   // has actually finished.
   useEffect(() => {
     if (!isAuthLoading && !isAuthenticated) {
-      router.push('/signin');
+      router.push("/signin");
     }
   }, [isAuthenticated, isAuthLoading, router]);
 
@@ -47,18 +51,15 @@ export default function SitesPage() {
 
     try {
       setIsLoadingDiveSites(true);
-      const response: PaginatedDiveSitesResponse = await diveSitesAPI.getDiveSites(
-        user.username,
-        page,
-        itemsPerPage
-      );
+      const response: PaginatedDiveSitesResponse =
+        await diveSitesAPI.getDiveSites(user.username, page, itemsPerPage);
 
       setDiveSites(response.data);
       setTotalCount(response.total_count);
       setHasMore(response.has_more);
       setCurrentPage(page);
     } catch (error) {
-      console.error('Failed to fetch dive sites:', error);
+      console.error("Failed to fetch dive sites:", error);
       toast({
         title: "Error",
         description: "Failed to load dive sites. Please try again.",
@@ -77,7 +78,11 @@ export default function SitesPage() {
 
   // Handle dive site deletion
   const handleDeleteDiveSite = async (diveSiteId: number) => {
-    if (!user?.username || !confirm('Are you sure you want to delete this dive site?')) return;
+    if (
+      !user?.username ||
+      !confirm("Are you sure you want to delete this dive site?")
+    )
+      return;
 
     try {
       setDeletingId(diveSiteId);
@@ -91,7 +96,7 @@ export default function SitesPage() {
       // Refresh the list
       await fetchDiveSites(currentPage);
     } catch (error) {
-      console.error('Failed to delete dive site:', error);
+      console.error("Failed to delete dive site:", error);
       toast({
         title: "Error",
         description: "Failed to delete dive site. Please try again.",
@@ -104,10 +109,10 @@ export default function SitesPage() {
 
   // Format date for display
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-GB', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
+    return new Date(dateString).toLocaleDateString("en-GB", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
     });
   };
 
@@ -151,7 +156,7 @@ export default function SitesPage() {
             <CardTitle className="flex items-center justify-between">
               <span>Dive Site List</span>
               <Badge variant="secondary">
-                {totalCount} total dive site{totalCount !== 1 ? 's' : ''}
+                {totalCount} total dive site{totalCount !== 1 ? "s" : ""}
               </Badge>
             </CardTitle>
           </CardHeader>
@@ -163,7 +168,8 @@ export default function SitesPage() {
             ) : diveSites.length === 0 ? (
               <div className="text-center py-12">
                 <div className="text-muted-foreground mb-4">
-                  No dive sites yet. Add your first dive site to start tracking your favorite spots!
+                  No dive sites yet. Add your first dive site to start tracking
+                  your favorite spots!
                 </div>
                 <Button asChild>
                   <Link href="/sites/new">
@@ -186,29 +192,22 @@ export default function SitesPage() {
                     {diveSites.map((diveSite) => (
                       <TableRow key={diveSite.id}>
                         <TableCell className="font-medium">
-                          <Link href={`/sites/${diveSite.id}`} className="hover:underline">
+                          <Link
+                            href={`/sites/${diveSite.id}`}
+                            className="hover:underline"
+                          >
                             {diveSite.name}
                           </Link>
                         </TableCell>
-                        <TableCell>
-                          {diveSite.location || '-'}
-                        </TableCell>
+                        <TableCell>{diveSite.location || "-"}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              asChild
-                            >
+                            <Button variant="ghost" size="sm" asChild>
                               <Link href={`/sites/${diveSite.id}`}>
                                 <Eye className="h-4 w-4" />
                               </Link>
                             </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              asChild
-                            >
+                            <Button variant="ghost" size="sm" asChild>
                               <Link href={`/sites/${diveSite.id}/edit`}>
                                 <Edit className="h-4 w-4" />
                               </Link>
@@ -238,7 +237,9 @@ export default function SitesPage() {
             {totalCount > itemsPerPage && (
               <div className="flex items-center justify-between mt-6">
                 <div className="text-sm text-muted-foreground">
-                  Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalCount)} of {totalCount} dive sites
+                  Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
+                  {Math.min(currentPage * itemsPerPage, totalCount)} of{" "}
+                  {totalCount} dive sites
                 </div>
                 <div className="flex gap-2">
                   <Button

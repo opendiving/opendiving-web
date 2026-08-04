@@ -6,7 +6,11 @@ export interface ComingSoonProps {
   description: string;
 }
 
-export function ComingSoon({ icon: Icon, title, description }: ComingSoonProps) {
+export function ComingSoon({
+  icon: Icon,
+  title,
+  description,
+}: ComingSoonProps) {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-24 text-center">
       <Icon className="h-16 w-16 text-gray-400 mx-auto mb-6" />

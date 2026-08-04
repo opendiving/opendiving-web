@@ -87,7 +87,13 @@ export function RecentDivesCard({
 
       try {
         setIsLoadingDives(true);
-        const response = await divesAPI.getDives(username, 1, limit, tripId, diveSiteId);
+        const response = await divesAPI.getDives(
+          username,
+          1,
+          limit,
+          tripId,
+          diveSiteId,
+        );
         setRecentDives(response.data);
       } catch (error) {
         console.error("Failed to fetch recent dives:", error);
@@ -126,9 +132,7 @@ export function RecentDivesCard({
             <h3 className="text-lg font-medium text-gray-900 mb-2">
               {emptyTitle}
             </h3>
-            <p className="text-gray-500 mb-4">
-              {emptyDescription}
-            </p>
+            <p className="text-gray-500 mb-4">{emptyDescription}</p>
             <Button asChild>
               <Link href={newDiveHref}>
                 <Plus className="h-4 w-4 mr-2" />
@@ -165,7 +169,7 @@ export function RecentDivesCard({
                   </div>
                   <div className="flex items-center gap-1">
                     <Gauge className="h-4 w-4" />
-                    {dive.max_depth ? `${dive.max_depth}m` : '-'}
+                    {dive.max_depth ? `${dive.max_depth}m` : "-"}
                   </div>
                 </div>
               </Link>

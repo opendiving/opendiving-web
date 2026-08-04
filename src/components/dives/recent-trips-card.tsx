@@ -43,7 +43,8 @@ export function RecentTripsCard({ username }: RecentTripsCardProps) {
         // most *recently created* trips here.
         const response = await tripsAPI.getTrips(username, 1, 100);
         const sorted = [...response.data].sort(
-          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          (a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
         );
         setRecentTrips(sorted.slice(0, RECENT_TRIPS_COUNT));
       } catch (error) {

@@ -30,7 +30,11 @@ export interface DiveFormFieldsProps {
   username: string;
 }
 
-export function DiveFormFields({ control, mode, username }: DiveFormFieldsProps) {
+export function DiveFormFields({
+  control,
+  mode,
+  username,
+}: DiveFormFieldsProps) {
   const required = mode === "create";
   const requiredMark = required ? " *" : "";
 
@@ -50,7 +54,9 @@ export function DiveFormFields({ control, mode, username }: DiveFormFieldsProps)
                   min="1"
                   {...field}
                   onChange={(e) =>
-                    field.onChange(parseInt(e.target.value) || (required ? 1 : undefined))
+                    field.onChange(
+                      parseInt(e.target.value) || (required ? 1 : undefined),
+                    )
                   }
                 />
               </FormControl>
@@ -200,7 +206,9 @@ export function DiveFormFields({ control, mode, username }: DiveFormFieldsProps)
                   value={field.value ?? ""}
                   onChange={(e) => {
                     const val = parseFloat(e.target.value);
-                    field.onChange(Number.isNaN(val) ? null : Math.round(val * 100) / 100);
+                    field.onChange(
+                      Number.isNaN(val) ? null : Math.round(val * 100) / 100,
+                    );
                   }}
                 />
               </FormControl>

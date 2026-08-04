@@ -12,7 +12,12 @@ export interface TripComboboxProps {
   disabled?: boolean;
 }
 
-export function TripCombobox({ username, value, onChange, disabled }: TripComboboxProps) {
+export function TripCombobox({
+  username,
+  value,
+  onChange,
+  disabled,
+}: TripComboboxProps) {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [isLoadingTrips, setIsLoadingTrips] = useState(true);
   const [showNewDialog, setShowNewDialog] = useState(false);

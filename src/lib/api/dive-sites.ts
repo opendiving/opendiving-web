@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import { apiClient } from "./client";
 
 export interface DiveSite {
   id: number;
@@ -31,7 +31,10 @@ export interface PaginatedDiveSitesResponse {
 
 export const diveSitesAPI = {
   // Create a new dive site
-  async createDiveSite(username: string, data: DiveSiteCreate): Promise<DiveSite> {
+  async createDiveSite(
+    username: string,
+    data: DiveSiteCreate,
+  ): Promise<DiveSite> {
     const response = await apiClient.post(`/${username}/dive-site`, data);
     return response.data;
   },
@@ -40,7 +43,7 @@ export const diveSitesAPI = {
   async getDiveSites(
     username: string,
     page: number = 1,
-    items_per_page: number = 10
+    items_per_page: number = 10,
   ): Promise<PaginatedDiveSitesResponse> {
     const response = await apiClient.get(`/${username}/dive-sites`, {
       params: {
@@ -53,7 +56,9 @@ export const diveSitesAPI = {
 
   // Get a specific dive site by ID
   async getDiveSite(username: string, diveSiteId: number): Promise<DiveSite> {
-    const response = await apiClient.get(`/${username}/dive-site/${diveSiteId}`);
+    const response = await apiClient.get(
+      `/${username}/dive-site/${diveSiteId}`,
+    );
     return response.data;
   },
 
@@ -61,11 +66,11 @@ export const diveSitesAPI = {
   async updateDiveSite(
     username: string,
     diveSiteId: number,
-    updateData: DiveSiteUpdate
+    updateData: DiveSiteUpdate,
   ): Promise<{ message: string }> {
     const response = await apiClient.patch(
       `/${username}/dive-site/${diveSiteId}`,
-      updateData
+      updateData,
     );
     return response.data;
   },
@@ -73,9 +78,11 @@ export const diveSitesAPI = {
   // Delete a dive site
   async deleteDiveSite(
     username: string,
-    diveSiteId: number
+    diveSiteId: number,
   ): Promise<{ message: string }> {
-    const response = await apiClient.delete(`/${username}/dive-site/${diveSiteId}`);
+    const response = await apiClient.delete(
+      `/${username}/dive-site/${diveSiteId}`,
+    );
     return response.data;
   },
 };

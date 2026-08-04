@@ -4,7 +4,10 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
-import { diveSiteCreateSchema, DiveSiteCreateInput } from "@/lib/validations/dive-site";
+import {
+  diveSiteCreateSchema,
+  DiveSiteCreateInput,
+} from "@/lib/validations/dive-site";
 import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
 import {
   Dialog,
@@ -68,8 +71,11 @@ export function NewDiveSiteDialog({
       onOpenChange(false);
     } catch (error: any) {
       const message =
-        error?.response?.data?.detail ?? "Failed to create dive site. Please try again.";
-      setApiError(typeof message === "string" ? message : JSON.stringify(message));
+        error?.response?.data?.detail ??
+        "Failed to create dive site. Please try again.";
+      setApiError(
+        typeof message === "string" ? message : JSON.stringify(message),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -130,9 +136,7 @@ export function NewDiveSiteDialog({
               )}
             />
 
-            {apiError && (
-              <p className="text-sm text-destructive">{apiError}</p>
-            )}
+            {apiError && <p className="text-sm text-destructive">{apiError}</p>}
 
             <DialogFooter>
               <Button

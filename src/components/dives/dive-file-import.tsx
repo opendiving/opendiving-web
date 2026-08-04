@@ -12,25 +12,43 @@ import { Loader2, Upload } from "lucide-react";
 // Applies the fields parsed from a dive-computer export file onto a dive
 // form. Shared between the "new dive" and "edit dive" forms since both
 // expose the same importable field set.
-export function applyParsedDiveToForm(form: UseFormReturn<any>, parsed: ParsedDive) {
+export function applyParsedDiveToForm(
+  form: UseFormReturn<any>,
+  parsed: ParsedDive,
+) {
   if (parsed.dive_number != null) {
-    form.setValue("dive_number", parsed.dive_number, { shouldValidate: true, shouldDirty: true });
+    form.setValue("dive_number", parsed.dive_number, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
   }
   if (parsed.start_time) {
     const date = new Date(parsed.start_time);
     const formatted = Number.isNaN(date.getTime())
       ? parsed.start_time
       : formatDateTimeForForm(date);
-    form.setValue("start_time", formatted, { shouldValidate: true, shouldDirty: true });
+    form.setValue("start_time", formatted, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
   }
   if (parsed.duration != null) {
-    form.setValue("duration", formatDurationForForm(parsed.duration), { shouldValidate: true, shouldDirty: true });
+    form.setValue("duration", formatDurationForForm(parsed.duration), {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
   }
   if (parsed.max_depth != null) {
-    form.setValue("max_depth", parsed.max_depth, { shouldValidate: true, shouldDirty: true });
+    form.setValue("max_depth", parsed.max_depth, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
   }
   if (parsed.avg_depth != null) {
-    form.setValue("avg_depth", parsed.avg_depth, { shouldValidate: true, shouldDirty: true });
+    form.setValue("avg_depth", parsed.avg_depth, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
   }
   if (parsed.bottom_temperature != null) {
     form.setValue("bottom_temperature", Math.round(parsed.bottom_temperature), {
@@ -62,14 +80,15 @@ export function DiveFileImport({ form }: DiveFileImportProps) {
 
       toast({
         title: "Dive file parsed",
-        description: "Form fields have been filled in from the uploaded file. Please review before saving.",
+        description:
+          "Form fields have been filled in from the uploaded file. Please review before saving.",
       });
     } catch (error: any) {
-      console.error('Failed to parse dive file:', error);
+      console.error("Failed to parse dive file:", error);
 
       const errorMessage = getApiErrorMessage(
         error,
-        "Failed to parse the dive file. Please check the file and try again."
+        "Failed to parse the dive file. Please check the file and try again.",
       );
 
       toast({
@@ -88,7 +107,8 @@ export function DiveFileImport({ form }: DiveFileImportProps) {
       <div>
         <p className="font-medium text-sm">Import from a dive computer file</p>
         <p className="text-sm text-muted-foreground">
-          Upload a dive log export (e.g. Suunto XML) to automatically fill in the fields below.
+          Upload a dive log export (e.g. Suunto XML) to automatically fill in
+          the fields below.
         </p>
       </div>
       <div>

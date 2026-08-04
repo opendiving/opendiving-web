@@ -19,7 +19,12 @@ export interface DiveSiteMultiSelectProps {
 // crosses several named sites), in the order they were visited. Wraps the
 // generic `CreatableCombobox` for the "add a site" input, plus a reorderable
 // list of the sites already added.
-export function DiveSiteMultiSelect({ username, value, onChange, disabled }: DiveSiteMultiSelectProps) {
+export function DiveSiteMultiSelect({
+  username,
+  value,
+  onChange,
+  disabled,
+}: DiveSiteMultiSelectProps) {
   const [diveSites, setDiveSites] = useState<DiveSite[]>([]);
   const [isLoadingDiveSites, setIsLoadingDiveSites] = useState(true);
   const [showNewDialog, setShowNewDialog] = useState(false);
@@ -80,7 +85,9 @@ export function DiveSiteMultiSelect({ username, value, onChange, disabled }: Div
 
   // Already-selected sites are hidden from the "add a site" dropdown so the
   // same site can't be added twice.
-  const selectableDiveSites = diveSites.filter((site) => !value.includes(site.id));
+  const selectableDiveSites = diveSites.filter(
+    (site) => !value.includes(site.id),
+  );
 
   return (
     <div className="space-y-2">
@@ -96,7 +103,9 @@ export function DiveSiteMultiSelect({ username, value, onChange, disabled }: Div
                 <span className="flex-1 truncate">
                   {site ? site.name : `Dive site #${id}`}
                   {site?.location && (
-                    <span className="text-muted-foreground">, {site.location}</span>
+                    <span className="text-muted-foreground">
+                      , {site.location}
+                    </span>
                   )}
                 </span>
                 {value.length > 1 && (
@@ -142,7 +151,9 @@ export function DiveSiteMultiSelect({ username, value, onChange, disabled }: Div
         value={undefined}
         onChange={addSite}
         disabled={disabled}
-        placeholder={value.length ? "Add another dive site..." : "Select a dive site..."}
+        placeholder={
+          value.length ? "Add another dive site..." : "Select a dive site..."
+        }
         noItemsLabel="No dive sites yet."
         addNewLabel="Add dive site..."
         onAddNew={() => setShowNewDialog(true)}

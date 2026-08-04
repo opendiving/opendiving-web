@@ -6,8 +6,11 @@ import { z } from "zod";
 // live "empty" value (never `undefined`) so react-hook-form doesn't fall
 // back to re-displaying the field's default value. `normalizeTripDates`
 // converts "" to `undefined` right before sending data to the API.
-const dateRangeRefinement = <T extends { start_date?: string; end_date?: string }>(data: T) =>
-  !data.start_date || !data.end_date || data.end_date >= data.start_date;
+const dateRangeRefinement = <
+  T extends { start_date?: string; end_date?: string },
+>(
+  data: T,
+) => !data.start_date || !data.end_date || data.end_date >= data.start_date;
 
 export const tripCreateSchema = z
   .object({
@@ -21,7 +24,10 @@ export const tripCreateSchema = z
       .optional(),
     start_date: z.string().min(1, "Start date is required"),
     end_date: z.string().optional(),
-    notes: z.string().max(63206, "Notes cannot exceed 63206 characters").optional(),
+    notes: z
+      .string()
+      .max(63206, "Notes cannot exceed 63206 characters")
+      .optional(),
   })
   .refine(dateRangeRefinement, {
     message: "End date must be on or after start date",
@@ -41,7 +47,10 @@ export const tripUpdateSchema = z
       .optional(),
     start_date: z.string().optional(),
     end_date: z.string().optional(),
-    notes: z.string().max(63206, "Notes cannot exceed 63206 characters").optional(),
+    notes: z
+      .string()
+      .max(63206, "Notes cannot exceed 63206 characters")
+      .optional(),
   })
   .refine(dateRangeRefinement, {
     message: "End date must be on or after start date",

@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import { apiClient } from "./client";
 
 export interface Trip {
   id: number;
@@ -46,7 +46,7 @@ export const tripsAPI = {
   async getTrips(
     username: string,
     page: number = 1,
-    items_per_page: number = 10
+    items_per_page: number = 10,
   ): Promise<PaginatedTripsResponse> {
     const response = await apiClient.get(`/${username}/trips`, {
       params: {
@@ -67,11 +67,11 @@ export const tripsAPI = {
   async updateTrip(
     username: string,
     tripId: number,
-    updateData: TripUpdate
+    updateData: TripUpdate,
   ): Promise<{ message: string }> {
     const response = await apiClient.patch(
       `/${username}/trip/${tripId}`,
-      updateData
+      updateData,
     );
     return response.data;
   },
@@ -79,7 +79,7 @@ export const tripsAPI = {
   // Delete a trip
   async deleteTrip(
     username: string,
-    tripId: number
+    tripId: number,
   ): Promise<{ message: string }> {
     const response = await apiClient.delete(`/${username}/trip/${tripId}`);
     return response.data;

@@ -10,7 +10,15 @@ import { formatTripDateRange } from "@/lib/date-time";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Edit, Trash2, Plus, Calendar, MapPin, Loader2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Edit,
+  Trash2,
+  Plus,
+  Calendar,
+  MapPin,
+  Loader2,
+} from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -29,7 +37,7 @@ export default function TripDetailPage() {
   // has actually finished.
   useEffect(() => {
     if (!isAuthLoading && !isAuthenticated) {
-      router.push('/signin');
+      router.push("/signin");
     }
   }, [isAuthenticated, isAuthLoading, router]);
 
@@ -43,13 +51,13 @@ export default function TripDetailPage() {
         const tripData = await tripsAPI.getTrip(user.username, tripId);
         setTrip(tripData);
       } catch (error) {
-        console.error('Failed to fetch trip:', error);
+        console.error("Failed to fetch trip:", error);
         toast({
           title: "Error",
           description: "Failed to load trip details. Please try again.",
           variant: "destructive",
         });
-        router.push('/trips');
+        router.push("/trips");
       } finally {
         setIsLoadingTrip(false);
       }
@@ -62,7 +70,13 @@ export default function TripDetailPage() {
 
   // Handle trip deletion
   const handleDeleteTrip = async () => {
-    if (!user?.username || !trip?.id || !confirm('Are you sure you want to delete this trip? This action cannot be undone.')) {
+    if (
+      !user?.username ||
+      !trip?.id ||
+      !confirm(
+        "Are you sure you want to delete this trip? This action cannot be undone.",
+      )
+    ) {
       return;
     }
 
@@ -75,9 +89,9 @@ export default function TripDetailPage() {
         description: "Trip deleted successfully.",
       });
 
-      router.push('/trips');
+      router.push("/trips");
     } catch (error) {
-      console.error('Failed to delete trip:', error);
+      console.error("Failed to delete trip:", error);
       toast({
         title: "Error",
         description: "Failed to delete trip. Please try again.",
@@ -90,15 +104,19 @@ export default function TripDetailPage() {
 
   // Format date for display
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
   };
 
   const tripDateRange = trip
-    ? formatTripDateRange(trip.start_date, trip.end_date, { year: 'numeric', month: 'long', day: 'numeric' })
+    ? formatTripDateRange(trip.start_date, trip.end_date, {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })
     : undefined;
 
   if (isAuthLoading) {
@@ -135,9 +153,7 @@ export default function TripDetailPage() {
         <Header showDashboardActions={true} currentPage="trips" />
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center py-12">
-            <div className="text-muted-foreground mb-4">
-              Trip not found.
-            </div>
+            <div className="text-muted-foreground mb-4">Trip not found.</div>
             <Button asChild>
               <Link href="/trips">
                 <ArrowLeft className="h-4 w-4 mr-2" />
@@ -170,10 +186,10 @@ export default function TripDetailPage() {
                 {trip.location && tripDateRange
                   ? `${trip.location} · ${tripDateRange}`
                   : trip.location
-                  ? trip.location
-                  : tripDateRange
-                  ? tripDateRange
-                  : `Created ${formatDate(trip.created_at)}`}
+                    ? trip.location
+                    : tripDateRange
+                      ? tripDateRange
+                      : `Created ${formatDate(trip.created_at)}`}
               </p>
             </div>
           </div>
@@ -226,7 +242,9 @@ export default function TripDetailPage() {
               <CardContent className="space-y-4">
                 {trip.location && (
                   <div>
-                    <div className="text-sm font-medium text-muted-foreground mb-1">Location</div>
+                    <div className="text-sm font-medium text-muted-foreground mb-1">
+                      Location
+                    </div>
                     <div className="flex items-center gap-2 text-sm">
                       <MapPin className="h-4 w-4 text-muted-foreground" />
                       {trip.location}
@@ -235,12 +253,16 @@ export default function TripDetailPage() {
                 )}
                 {tripDateRange && (
                   <div>
-                    <div className="text-sm font-medium text-muted-foreground mb-1">Trip Dates</div>
+                    <div className="text-sm font-medium text-muted-foreground mb-1">
+                      Trip Dates
+                    </div>
                     <div className="text-sm">{tripDateRange}</div>
                   </div>
                 )}
                 <div>
-                  <div className="text-sm font-medium text-muted-foreground mb-1">Created on</div>
+                  <div className="text-sm font-medium text-muted-foreground mb-1">
+                    Created on
+                  </div>
                   <div className="text-sm">{formatDate(trip.created_at)}</div>
                 </div>
                 <Button className="w-full" asChild>

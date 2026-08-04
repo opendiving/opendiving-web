@@ -125,11 +125,15 @@ export default function ProfilePage() {
               <CardContent>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="text-center">
-                    <div className="text-2xl font-bold">{stats?.total_dives ?? 0}</div>
+                    <div className="text-2xl font-bold">
+                      {stats?.total_dives ?? 0}
+                    </div>
                     <div className="text-sm text-gray-600">Total Dives</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold">{stats?.max_depth ?? 0}m</div>
+                    <div className="text-2xl font-bold">
+                      {stats?.max_depth ?? 0}m
+                    </div>
                     <div className="text-sm text-gray-600">Max Depth</div>
                   </div>
                   <div className="text-center">
@@ -139,7 +143,9 @@ export default function ProfilePage() {
                     <div className="text-sm text-gray-600">Total Time</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-2xl font-bold">{stats?.species_seen ?? 0}</div>
+                    <div className="text-2xl font-bold">
+                      {stats?.species_seen ?? 0}
+                    </div>
                     <div className="text-sm text-gray-600">Species Seen</div>
                   </div>
                 </div>

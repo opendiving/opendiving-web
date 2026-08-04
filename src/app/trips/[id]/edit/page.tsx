@@ -6,7 +6,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { tripsAPI, Trip } from "@/lib/api/trips";
-import { tripUpdateSchema, TripUpdateInput, normalizeTripDates } from "@/lib/validations/trip";
+import {
+  tripUpdateSchema,
+  TripUpdateInput,
+  normalizeTripDates,
+} from "@/lib/validations/trip";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -51,7 +55,7 @@ export default function EditTripPage() {
   // has actually finished.
   useEffect(() => {
     if (!isAuthLoading && !isAuthenticated) {
-      router.push('/signin');
+      router.push("/signin");
     }
   }, [isAuthenticated, isAuthLoading, router]);
 
@@ -73,13 +77,13 @@ export default function EditTripPage() {
           notes: tripData.notes ?? "",
         });
       } catch (error) {
-        console.error('Failed to fetch trip:', error);
+        console.error("Failed to fetch trip:", error);
         toast({
           title: "Error",
           description: "Failed to load trip details. Please try again.",
           variant: "destructive",
         });
-        router.push('/trips');
+        router.push("/trips");
       } finally {
         setIsLoadingTrip(false);
       }
@@ -96,18 +100,25 @@ export default function EditTripPage() {
     try {
       setIsSubmitting(true);
 
-      await tripsAPI.updateTrip(user.username, tripId, normalizeTripDates(data));
+      await tripsAPI.updateTrip(
+        user.username,
+        tripId,
+        normalizeTripDates(data),
+      );
 
       toast({
         title: "Success",
         description: "Trip updated successfully!",
       });
 
-      router.push('/trips');
+      router.push("/trips");
     } catch (error: any) {
-      console.error('Failed to update trip:', error);
+      console.error("Failed to update trip:", error);
 
-      const errorMessage = getApiErrorMessage(error, "Failed to update trip. Please try again.");
+      const errorMessage = getApiErrorMessage(
+        error,
+        "Failed to update trip. Please try again.",
+      );
 
       toast({
         title: "Error",
@@ -145,9 +156,7 @@ export default function EditTripPage() {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center py-12">
-          <div className="text-muted-foreground mb-4">
-            Trip not found.
-          </div>
+          <div className="text-muted-foreground mb-4">Trip not found.</div>
           <Button asChild>
             <Link href="/trips">
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -170,9 +179,7 @@ export default function EditTripPage() {
         </Button>
         <div>
           <h1 className="text-3xl font-bold">Edit Trip</h1>
-          <p className="text-muted-foreground mt-1">
-            Update the trip details
-          </p>
+          <p className="text-muted-foreground mt-1">Update the trip details</p>
         </div>
       </div>
 
@@ -190,7 +197,10 @@ export default function EditTripPage() {
                   <FormItem>
                     <FormLabel>Name *</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g. Red Sea Liveaboard 2024" {...field} />
+                      <Input
+                        placeholder="e.g. Red Sea Liveaboard 2024"
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -219,7 +229,10 @@ export default function EditTripPage() {
                     <FormItem>
                       <FormLabel>Start Date</FormLabel>
                       <FormControl>
-                        <DatePicker value={field.value} onChange={field.onChange} />
+                        <DatePicker
+                          value={field.value}
+                          onChange={field.onChange}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -233,7 +246,10 @@ export default function EditTripPage() {
                     <FormItem>
                       <FormLabel>End Date</FormLabel>
                       <FormControl>
-                        <DatePicker value={field.value} onChange={field.onChange} />
+                        <DatePicker
+                          value={field.value}
+                          onChange={field.onChange}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

@@ -28,7 +28,7 @@ export default function DiveSiteDetailPage() {
   // has actually finished.
   useEffect(() => {
     if (!isAuthLoading && !isAuthenticated) {
-      router.push('/signin');
+      router.push("/signin");
     }
   }, [isAuthenticated, isAuthLoading, router]);
 
@@ -39,16 +39,19 @@ export default function DiveSiteDetailPage() {
 
       try {
         setIsLoadingDiveSite(true);
-        const diveSiteData = await diveSitesAPI.getDiveSite(user.username, diveSiteId);
+        const diveSiteData = await diveSitesAPI.getDiveSite(
+          user.username,
+          diveSiteId,
+        );
         setDiveSite(diveSiteData);
       } catch (error) {
-        console.error('Failed to fetch dive site:', error);
+        console.error("Failed to fetch dive site:", error);
         toast({
           title: "Error",
           description: "Failed to load dive site details. Please try again.",
           variant: "destructive",
         });
-        router.push('/sites');
+        router.push("/sites");
       } finally {
         setIsLoadingDiveSite(false);
       }
@@ -61,7 +64,13 @@ export default function DiveSiteDetailPage() {
 
   // Handle dive site deletion
   const handleDeleteDiveSite = async () => {
-    if (!user?.username || !diveSite?.id || !confirm('Are you sure you want to delete this dive site? This action cannot be undone.')) {
+    if (
+      !user?.username ||
+      !diveSite?.id ||
+      !confirm(
+        "Are you sure you want to delete this dive site? This action cannot be undone.",
+      )
+    ) {
       return;
     }
 
@@ -74,9 +83,9 @@ export default function DiveSiteDetailPage() {
         description: "Dive site deleted successfully.",
       });
 
-      router.push('/sites');
+      router.push("/sites");
     } catch (error) {
-      console.error('Failed to delete dive site:', error);
+      console.error("Failed to delete dive site:", error);
       toast({
         title: "Error",
         description: "Failed to delete dive site. Please try again.",
@@ -89,10 +98,10 @@ export default function DiveSiteDetailPage() {
 
   // Format date for display
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
   };
 
@@ -162,7 +171,9 @@ export default function DiveSiteDetailPage() {
             <div>
               <h1 className="text-3xl font-bold">{diveSite.name}</h1>
               <p className="text-muted-foreground mt-1">
-                {diveSite.location ? diveSite.location : `Added ${formatDate(diveSite.created_at)}`}
+                {diveSite.location
+                  ? diveSite.location
+                  : `Added ${formatDate(diveSite.created_at)}`}
               </p>
             </div>
           </div>
@@ -215,13 +226,19 @@ export default function DiveSiteDetailPage() {
               <CardContent className="space-y-4">
                 {diveSite.location && (
                   <div>
-                    <div className="text-sm font-medium text-muted-foreground mb-1">Location</div>
+                    <div className="text-sm font-medium text-muted-foreground mb-1">
+                      Location
+                    </div>
                     <div className="text-sm">{diveSite.location}</div>
                   </div>
                 )}
                 <div>
-                  <div className="text-sm font-medium text-muted-foreground mb-1">Added on</div>
-                  <div className="text-sm">{formatDate(diveSite.created_at)}</div>
+                  <div className="text-sm font-medium text-muted-foreground mb-1">
+                    Added on
+                  </div>
+                  <div className="text-sm">
+                    {formatDate(diveSite.created_at)}
+                  </div>
                 </div>
                 <Button className="w-full" asChild>
                   <Link href={`/dives/new?dive_site_id=${diveSite.id}`}>

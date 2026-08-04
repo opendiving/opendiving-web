@@ -6,7 +6,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
-import { diveSiteUpdateSchema, DiveSiteUpdateInput } from "@/lib/validations/dive-site";
+import {
+  diveSiteUpdateSchema,
+  DiveSiteUpdateInput,
+} from "@/lib/validations/dive-site";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,7 +51,7 @@ export default function EditDiveSitePage() {
   // has actually finished.
   useEffect(() => {
     if (!isAuthLoading && !isAuthenticated) {
-      router.push('/signin');
+      router.push("/signin");
     }
   }, [isAuthenticated, isAuthLoading, router]);
 
@@ -59,7 +62,10 @@ export default function EditDiveSitePage() {
 
       try {
         setIsLoadingDiveSite(true);
-        const diveSiteData = await diveSitesAPI.getDiveSite(user.username, diveSiteId);
+        const diveSiteData = await diveSitesAPI.getDiveSite(
+          user.username,
+          diveSiteId,
+        );
         setDiveSite(diveSiteData);
 
         form.reset({
@@ -68,13 +74,13 @@ export default function EditDiveSitePage() {
           notes: diveSiteData.notes ?? "",
         });
       } catch (error) {
-        console.error('Failed to fetch dive site:', error);
+        console.error("Failed to fetch dive site:", error);
         toast({
           title: "Error",
           description: "Failed to load dive site details. Please try again.",
           variant: "destructive",
         });
-        router.push('/sites');
+        router.push("/sites");
       } finally {
         setIsLoadingDiveSite(false);
       }
@@ -98,11 +104,14 @@ export default function EditDiveSitePage() {
         description: "Dive site updated successfully!",
       });
 
-      router.push('/sites');
+      router.push("/sites");
     } catch (error: any) {
-      console.error('Failed to update dive site:', error);
+      console.error("Failed to update dive site:", error);
 
-      const errorMessage = getApiErrorMessage(error, "Failed to update dive site. Please try again.");
+      const errorMessage = getApiErrorMessage(
+        error,
+        "Failed to update dive site. Please try again.",
+      );
 
       toast({
         title: "Error",
@@ -140,9 +149,7 @@ export default function EditDiveSitePage() {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="text-center py-12">
-          <div className="text-muted-foreground mb-4">
-            Dive site not found.
-          </div>
+          <div className="text-muted-foreground mb-4">Dive site not found.</div>
           <Button asChild>
             <Link href="/sites">
               <ArrowLeft className="h-4 w-4 mr-2" />

@@ -4,7 +4,11 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
-import { tripCreateSchema, TripCreateInput, normalizeTripDates } from "@/lib/validations/trip";
+import {
+  tripCreateSchema,
+  TripCreateInput,
+  normalizeTripDates,
+} from "@/lib/validations/trip";
 import { tripsAPI, Trip } from "@/lib/api/trips";
 import {
   Dialog,
@@ -44,7 +48,13 @@ export function NewTripDialog({
 
   const form = useForm<TripCreateInput>({
     resolver: zodResolver(tripCreateSchema),
-    defaultValues: { name: "", location: "", start_date: "", end_date: "", notes: "" },
+    defaultValues: {
+      name: "",
+      location: "",
+      start_date: "",
+      end_date: "",
+      notes: "",
+    },
   });
 
   const handleOpenChange = (next: boolean) => {
@@ -71,8 +81,11 @@ export function NewTripDialog({
       onOpenChange(false);
     } catch (error: any) {
       const message =
-        error?.response?.data?.detail ?? "Failed to create trip. Please try again.";
-      setApiError(typeof message === "string" ? message : JSON.stringify(message));
+        error?.response?.data?.detail ??
+        "Failed to create trip. Please try again.";
+      setApiError(
+        typeof message === "string" ? message : JSON.stringify(message),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -94,7 +107,11 @@ export function NewTripDialog({
                 <FormItem>
                   <FormLabel>Name *</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. Red Sea Liveaboard 2024" autoFocus {...field} />
+                    <Input
+                      placeholder="e.g. Red Sea Liveaboard 2024"
+                      autoFocus
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -123,7 +140,10 @@ export function NewTripDialog({
                   <FormItem>
                     <FormLabel>Start Date *</FormLabel>
                     <FormControl>
-                      <DatePicker value={field.value} onChange={field.onChange} />
+                      <DatePicker
+                        value={field.value}
+                        onChange={field.onChange}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -137,7 +157,10 @@ export function NewTripDialog({
                   <FormItem>
                     <FormLabel>End Date</FormLabel>
                     <FormControl>
-                      <DatePicker value={field.value} onChange={field.onChange} />
+                      <DatePicker
+                        value={field.value}
+                        onChange={field.onChange}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -163,9 +186,7 @@ export function NewTripDialog({
               )}
             />
 
-            {apiError && (
-              <p className="text-sm text-destructive">{apiError}</p>
-            )}
+            {apiError && <p className="text-sm text-destructive">{apiError}</p>}
 
             <DialogFooter>
               <Button

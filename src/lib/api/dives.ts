@@ -1,4 +1,4 @@
-import { apiClient } from './client';
+import { apiClient } from "./client";
 
 // A single gas mixture / scuba tank used during a dive.
 export interface DiveMixture {
@@ -102,7 +102,7 @@ export const divesAPI = {
     page: number = 1,
     items_per_page: number = 10,
     tripId?: number,
-    diveSiteId?: number
+    diveSiteId?: number,
   ): Promise<PaginatedDivesResponse> {
     const response = await apiClient.get(`/${username}/dives`, {
       params: {
@@ -125,11 +125,11 @@ export const divesAPI = {
   async updateDive(
     username: string,
     diveId: number,
-    updateData: DiveUpdate
+    updateData: DiveUpdate,
   ): Promise<{ message: string }> {
     const response = await apiClient.patch(
       `/${username}/dive/${diveId}`,
-      updateData
+      updateData,
     );
     return response.data;
   },
@@ -137,7 +137,7 @@ export const divesAPI = {
   // Delete a dive
   async deleteDive(
     username: string,
-    diveId: number
+    diveId: number,
   ): Promise<{ message: string }> {
     const response = await apiClient.delete(`/${username}/dive/${diveId}`);
     return response.data;
@@ -146,13 +146,13 @@ export const divesAPI = {
   // Parse a dive-computer export file (e.g. Suunto XML) into structured dive data
   async parseDiveFile(file: File): Promise<ParsedDive> {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append("file", file);
 
     // The apiClient instance has a fixed default "Content-Type: application/json" header.
     // For multipart uploads we must clear it so the browser can set the correct
     // "multipart/form-data; boundary=..." header itself.
-    const response = await apiClient.post('/dive/parse-xml', formData, {
-      headers: { 'Content-Type': undefined },
+    const response = await apiClient.post("/dive/parse-xml", formData, {
+      headers: { "Content-Type": undefined },
     });
     return response.data;
   },
