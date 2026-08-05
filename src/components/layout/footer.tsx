@@ -1,4 +1,4 @@
-import { Waves } from "lucide-react";
+import { Logo } from "@/components/logo";
 import Link from "next/link";
 
 export function Footer() {
@@ -8,7 +8,7 @@ export function Footer() {
         <div className="grid md:grid-cols-4 gap-8">
           <div>
             <div className="flex items-center space-x-2 mb-4">
-              <Waves className="h-6 w-6" />
+              <Logo className="h-6 w-6" />
               <span className="text-lg font-semibold">OpenDiving</span>
             </div>
             <p className="text-gray-400 text-sm">

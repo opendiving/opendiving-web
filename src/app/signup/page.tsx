@@ -2,7 +2,7 @@
 
 import { SignUpForm } from "@/components/auth/SignUpForm";
 import { useRedirectIfAuthenticated } from "@/hooks/useRedirectIfAuthenticated";
-import { Waves } from "lucide-react";
+import { Logo } from "@/components/logo";
 import Link from "next/link";
 
 export default function SignUpPage() {
@@ -22,7 +22,7 @@ export default function SignUpPage() {
         {/* Logo */}
         <div className="flex justify-center mb-8">
           <Link href="/" className="flex items-center space-x-2">
-            <Waves className="h-8 w-8 text-primary" />
+            <Logo className="h-8 w-8 text-primary" />
             <span className="text-2xl font-bold text-foreground">OpenDiving</span>
           </Link>
         </div>

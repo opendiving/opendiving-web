@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Logo } from "@/components/logo";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,7 +16,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Waves,
   User,
   LogOut,
   Settings,
@@ -66,7 +66,7 @@ export function Header() {
               href="/"
               className="flex flex-shrink-0 items-center space-x-2"
             >
-              <Waves className="h-8 w-8 text-primary flex-shrink-0" />
+              <Logo className="h-8 w-8 text-primary flex-shrink-0" />
               <h1 className="text-2xl font-bold text-foreground whitespace-nowrap">
                 OpenDiving
               </h1>
