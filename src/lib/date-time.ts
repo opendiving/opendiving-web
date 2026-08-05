@@ -29,6 +29,40 @@ export function formatDateOnly(
   );
 }
 
+// Formats a full ISO datetime string (e.g. a dive's `start_time` or any
+// record's `created_at`) for display. Unlike `formatDateOnly()`, this goes
+// through `new Date(dateString)` directly since the input already carries a
+// time component (and, typically, a timezone offset) - only bare
+// `YYYY-MM-DD` dates need the manual local-construction workaround.
+export function formatDateTime(
+  dateString: string,
+  options?: Intl.DateTimeFormatOptions,
+): string {
+  return new Date(dateString).toLocaleDateString(
+    "en-US",
+    options ?? {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    },
+  );
+}
+
+// Formats a full ISO datetime string's time-of-day component, e.g. a dive's
+// `start_time`, for display on its own (see `formatDateTime()` above for the
+// combined date+time case).
+export function formatTimeOnly(
+  dateString: string,
+  options?: Intl.DateTimeFormatOptions,
+): string {
+  return new Date(dateString).toLocaleTimeString(
+    "en-US",
+    options ?? { hour: "2-digit", minute: "2-digit" },
+  );
+}
+
 // Formats a duration given in seconds as "MM:SS" (the format used in dive
 // forms - see `durationField()` in `lib/validations/dive.ts` for the matching
 // input validation).

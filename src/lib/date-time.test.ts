@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   formatDateOnly,
+  formatDateTime,
   formatDateTimeForForm,
   formatDurationForForm,
   formatDurationHoursMinutes,
+  formatTimeOnly,
   formatTripDateRange,
   parseFormDateTime,
   parseFormDuration,
@@ -57,6 +59,32 @@ describe("formatDateOnly", () => {
   it("handles the first and last days of a month", () => {
     expect(formatDateOnly("2024-01-01")).toBe("Jan 1, 2024");
     expect(formatDateOnly("2024-12-31")).toBe("Dec 31, 2024");
+  });
+});
+
+describe("formatDateTime", () => {
+  it("formats a full ISO datetime string with date and time by default", () => {
+    expect(formatDateTime("2024-06-01T09:05:00")).toMatch(
+      /^Jun 1, 2024, \d{1,2}:\d{2} (AM|PM)$/,
+    );
+  });
+
+  it("respects custom Intl.DateTimeFormatOptions", () => {
+    expect(
+      formatDateTime("2024-06-01T09:05:00", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }),
+    ).toBe("June 1, 2024");
+  });
+});
+
+describe("formatTimeOnly", () => {
+  it("formats a full ISO datetime string's time-of-day component", () => {
+    expect(formatTimeOnly("2024-06-01T09:05:00")).toMatch(
+      /^\d{1,2}:\d{2} (AM|PM)$/,
+    );
   });
 });
 

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { tripsAPI, Trip } from "@/lib/api/trips";
-import { formatTripDateRange } from "@/lib/date-time";
+import { formatDateTime, formatTripDateRange } from "@/lib/date-time";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -92,14 +92,12 @@ export default function TripDetailPage() {
     }
   };
 
-  // Format date for display
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+  const formatDate = (dateString: string) =>
+    formatDateTime(dateString, {
       year: "numeric",
       month: "long",
       day: "numeric",
     });
-  };
 
   const tripDateRange = trip
     ? formatTripDateRange(trip.start_date, trip.end_date, {

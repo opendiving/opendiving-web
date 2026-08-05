@@ -56,16 +56,6 @@ export default function TripsPage() {
     },
   );
 
-  const formatDateRange = (startDate?: string, endDate?: string) => {
-    return (
-      formatTripDateRange(startDate, endDate, {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      }) ?? "-"
-    );
-  };
-
   if (isAuthLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -144,7 +134,8 @@ export default function TripsPage() {
                           </Link>
                         </TableCell>
                         <TableCell>
-                          {formatDateRange(trip.start_date, trip.end_date)}
+                          {formatTripDateRange(trip.start_date, trip.end_date) ??
+                            "-"}
                         </TableCell>
                         <TableCell>{trip.location || "-"}</TableCell>
                         <TableCell className="text-right">

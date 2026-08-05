@@ -6,6 +6,7 @@ import { usePaginatedResource } from "@/hooks/usePaginatedResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { divesAPI, Dive } from "@/lib/api/dives";
 import { DiveSitesLabel } from "@/components/dives/dive-sites-label";
+import { formatDateTime, formatDurationHoursMinutes } from "@/lib/date-time";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -56,31 +57,6 @@ export default function DivesPage() {
       onDeleted: refetch,
     },
   );
-
-  // Format date for display
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: false,
-    });
-  };
-
-  // Format dive duration (given in seconds)
-  const formatDuration = (durationSeconds: number) => {
-    const totalMinutes = Math.round(durationSeconds / 60);
-
-    if (totalMinutes < 60) {
-      return `${totalMinutes}m`;
-    }
-
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-    return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
-  };
 
   if (isAuthLoading) {
     return (
@@ -161,13 +137,15 @@ export default function DivesPage() {
                             href={`/dives/${dive.uuid}`}
                             className="text-sm font-medium hover:underline"
                           >
-                            {formatDate(dive.start_time)}
+                            {formatDateTime(dive.start_time)}
                           </Link>
                         </TableCell>
                         <TableCell className="text-muted-foreground">
                           <DiveSitesLabel sites={dive.dive_sites} />
                         </TableCell>
-                        <TableCell>{formatDuration(dive.duration)}</TableCell>
+                        <TableCell>
+                          {formatDurationHoursMinutes(dive.duration)}
+                        </TableCell>
                         <TableCell>
                           {dive.max_depth ? `${dive.max_depth}m` : "-"}
                         </TableCell>

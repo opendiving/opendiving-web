@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { divesAPI, Dive } from "@/lib/api/dives";
 import { DiveSitesLabel } from "@/components/dives/dive-sites-label";
+import { formatDateTime, formatDurationHoursMinutes } from "@/lib/date-time";
 import {
   Card,
   CardContent,
@@ -15,28 +16,6 @@ import { Button } from "@/components/ui/button";
 import { Fish, Waves, Plus, Clock, Gauge, Loader2 } from "lucide-react";
 
 const RECENT_DIVES_COUNT = 5;
-
-// Format a dive's start time for display
-function formatDiveDate(dateString: string) {
-  return new Date(dateString).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
-
-// Format a dive duration (given in seconds)
-function formatDiveDuration(durationSeconds: number) {
-  const totalMinutes = Math.round(durationSeconds / 60);
-
-  if (totalMinutes < 60) {
-    return `${totalMinutes}m`;
-  }
-
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
-}
 
 export interface RecentDivesCardProps {
   userId: string;
@@ -153,7 +132,11 @@ export function RecentDivesCard({
                     Dive #{dive.dive_number}
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    {formatDiveDate(dive.start_time)}
+                    {formatDateTime(dive.start_time, {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                    })}
                     {dive.dive_sites.length > 0 && (
                       <span>
                         {" \u00b7 "}
@@ -165,7 +148,7 @@ export function RecentDivesCard({
                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
                   <div className="flex items-center gap-1">
                     <Clock className="h-4 w-4" />
-                    {formatDiveDuration(dive.duration)}
+                    {formatDurationHoursMinutes(dive.duration)}
                   </div>
                   <div className="flex items-center gap-1">
                     <Gauge className="h-4 w-4" />

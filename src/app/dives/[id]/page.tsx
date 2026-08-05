@@ -6,6 +6,11 @@ import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { divesAPI, Dive } from "@/lib/api/dives";
 import { tripsAPI, Trip } from "@/lib/api/trips";
 import { DiveSitesLabel } from "@/components/dives/dive-sites-label";
+import {
+  formatDateTime,
+  formatDurationHoursMinutes,
+  formatTimeOnly,
+} from "@/lib/date-time";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -130,40 +135,6 @@ export default function DiveDetailPage() {
     }
   };
 
-  // Format date for display
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
-
-  // Format time for display
-  const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString("en-US", {
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    });
-  };
-
-  // Format dive duration (given in seconds)
-  const formatDuration = (durationSeconds: number) => {
-    const totalMinutes = Math.round(durationSeconds / 60);
-
-    if (totalMinutes < 60) {
-      return `${totalMinutes} minute${totalMinutes !== 1 ? "s" : ""}`;
-    }
-
-    const hours = Math.floor(totalMinutes / 60);
-    const minutes = totalMinutes % 60;
-    return minutes > 0
-      ? `${hours} hour${hours !== 1 ? "s" : ""} ${minutes} minute${minutes !== 1 ? "s" : ""}`
-      : `${hours} hour${hours !== 1 ? "s" : ""}`;
-  };
-
   if (isAuthLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -218,7 +189,12 @@ export default function DiveDetailPage() {
             <div>
               <h1 className="text-3xl font-bold">Dive #{dive.dive_number}</h1>
               <p className="text-muted-foreground mt-1">
-                {formatDate(dive.start_time)}
+                {formatDateTime(dive.start_time, {
+                  weekday: "long",
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
               </p>
             </div>
           </div>
@@ -263,7 +239,7 @@ export default function DiveDetailPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4 text-muted-foreground" />
-                      <span>{formatTime(dive.start_time)}</span>
+                      <span>{formatTimeOnly(dive.start_time)}</span>
                     </div>
                   </div>
                   <div>
@@ -272,7 +248,7 @@ export default function DiveDetailPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4 text-muted-foreground" />
-                      <span>{formatDuration(dive.duration)}</span>
+                      <span>{formatDurationHoursMinutes(dive.duration)}</span>
                     </div>
                   </div>
                 </div>
@@ -467,7 +443,7 @@ export default function DiveDetailPage() {
                     Logged on
                   </div>
                   <div className="text-sm">
-                    {new Date(dive.created_at).toLocaleDateString("en-US", {
+                    {formatDateTime(dive.created_at, {
                       year: "numeric",
                       month: "long",
                       day: "numeric",
