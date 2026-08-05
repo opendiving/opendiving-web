@@ -143,13 +143,69 @@ made, try this before assuming the code is broken.
 
 ## Layout width convention
 
-Every page using the shared `Header`/`Footer` uses `max-w-6xl mx-auto px-4
+Every page rendered inside the shared chrome uses `max-w-6xl mx-auto px-4
 sm:px-6 lg:px-8` for its content container width (matching the profile page,
 which was the reference chosen). The landing page (`/`) is exempt - it's built
 from several full-bleed alternating sections, a fundamentally different layout
 pattern. The dive/trip/dive-site "new"/"edit" forms are also exempt - they
-intentionally use a narrower `max-w-2xl` since they're single-column forms, and
-they don't render `Header`/`Footer` at all.
+intentionally use a narrower `max-w-2xl` since they're single-column forms.
+
+This is purely a content-width choice, not a chrome one: `Header`/`Footer` are
+no longer rendered per-page (see the `AppShell` entry below), so the
+"new"/"edit" forms *do* sit inside the shared header/footer now - they just
+constrain their own inner content to `max-w-2xl` instead of `max-w-6xl`.
+
+## `Header`/`Footer` live once in `AppShell`, not per-page
+
+`components/layout/app-shell.tsx`, mounted near the root of `app/layout.tsx`,
+renders `Header`/`Footer` around `children` for every route except a hardcoded
+`NO_CHROME_ROUTES` list (currently just `/signin`/`/signup`, which render
+their own standalone centered-card layout). Pages used to each import and
+render `Header`/`Footer` themselves, passing `currentPage`/
+`showDashboardActions` props - that duplicated the chrome JSX on every page
+and, worse, meant `Header`/`Footer` fully unmounted and remounted on every
+navigation (visible jank, plus any header-local state resetting).
+
+`Header` no longer takes `currentPage`/`showDashboardActions` props - it calls
+`usePathname()` itself and derives the active nav item from the
+`NAV_SECTIONS` prefix table in `header.tsx`. Adding a new top-level nav item
+means adding a `{ prefix, page }` entry there, not threading a new prop
+through every page.
+
+If a new route needs to opt out of the shared chrome (e.g. another
+standalone/full-bleed page like `/signin`), add its path to
+`NO_CHROME_ROUTES` in `app-shell.tsx` rather than trying to suppress
+`Header`/`Footer` from within the page itself - there's no longer a per-page
+mechanism for that.
+
+## Shared list-page pattern: `useAuthGuard` + `usePaginatedResource` + `useDeleteResource`
+
+The dives/trips/dive-sites list pages (`app/dives/page.tsx`,
+`app/trips/page.tsx`, `app/sites/page.tsx`) used to each hand-roll the same
+~100 lines: an auth-redirect effect, fetch-on-mount + pagination state, a
+native `confirm()` + delete + toast + refetch flow, and a "Showing X to Y of
+Z" footer. That's now factored into three hooks plus two shared components -
+any new paginated/deletable resource list should reuse them rather than
+re-deriving the pattern:
+
+- `hooks/useAuthGuard.ts` - redirects to `/signin` once the auth check
+  settles and the user isn't signed in (mirrors `useRedirectIfAuthenticated`
+  for the opposite case: public-only pages redirecting *signed-in* users
+  away).
+- `hooks/usePaginatedResource.ts` - takes a `(page, perPage) =>
+  Promise<{data, total_count, has_more}>` fetcher and returns
+  `items`/`isLoading`/`totalCount`/`currentPage`/`hasMore`/`fetchPage`/
+  `refetch`. Pair with `components/ui/pagination-footer.tsx`
+  (`<PaginationFooter />`) for the "Showing X to Y of Z" + Previous/Next UI -
+  it renders nothing if everything fits on one page.
+- `hooks/useDeleteResource.ts` - takes a `(id) => Promise<...>` delete
+  function and returns `deletingId`/`pendingId`/`requestDelete`/
+  `cancelDelete`/`confirmDelete`. Pair with `components/ui/confirm-dialog.tsx`
+  (`<ConfirmDialog open={pendingId !== null} ... />`) instead of the blocking
+  native `confirm()` - it's stylable, testable, and doesn't freeze the tab.
+
+Wire `usePaginatedResource`'s `refetch` as `useDeleteResource`'s `onDeleted`
+so a successful delete refreshes the current page.
 
 ## Access token lives in memory only, never in `localStorage`
 
