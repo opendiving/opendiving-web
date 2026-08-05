@@ -220,3 +220,39 @@ touching this:
   is the actual first line of defense), and any future use of it needs an
   explicit `eslint-disable` plus a sanitizer (DOMPurify/`rehype-sanitize`),
   not an unreviewed add.
+- `style-src-attr` is intentionally its own directive with plain
+  `'unsafe-inline'` (no nonce), separate from the nonce-gated `style-src`.
+  Per the CSP spec, a nonce/hash in a directive disables that directive's
+  `'unsafe-inline'` fallback, and inline `style="..."` attributes set by
+  UI libraries (Radix's `pointer-events`/positioning styles, etc.) can't
+  practically carry a matching nonce - there's no way to tag every element
+  a third-party component renders. Inline style *attributes* can't execute
+  script in any modern browser (unlike injected `<style>`/`<script>`
+  elements), so this is a narrow, deliberate relaxation; `style-src` (which
+  governs actual `<style>` blocks) stays nonce-only in production.
+- `style-src` itself only carries the nonce in production; in dev it falls
+  back to plain `'unsafe-inline'`. Next's own dev-mode tooling - Fast
+  Refresh, the dev/error overlay, webpack/Turbopack's CSS hot-injection -
+  injects inline `<style>` tags with no nonce at all, unrelated to any app
+  code (documented upstream, e.g. vercel/next.js#87343); a strict nonce
+  here just breaks dev styling for reasons outside this app's control.
+  Production never inline-injects CSS - it ships static, hashed
+  `<link rel="stylesheet">` files covered by `'self'`, so the nonce
+  requirement costs nothing there.
+- Radix components that lock body scroll (`Dialog`, `Popover`,
+  `DropdownMenu`, ...) pull in `react-remove-scroll` ->
+  `react-style-singleton`, which injects a `<style>` tag straight into
+  `document.head` via raw DOM APIs - completely outside React/Next's own
+  nonce propagation. It looks up a nonce via the `get-nonce` package's
+  `getNonce()`, which only returns one if something already called
+  `setNonce()` (or set the webpack-specific `__webpack_nonce__` global) in
+  the browser. `src/components/nonce-provider.tsx` is a tiny client
+  component, mounted near the root of `app/layout.tsx`, that calls
+  `setNonce(nonce)` synchronously in its render body (not a `useEffect`) so
+  it's guaranteed to run before any descendant's mount-time effects -
+  React finishes calling every component function in the tree before
+  committing and running effects, so this ordering is reliable even though
+  the scroll lock itself only activates later (e.g. when a dialog opens).
+  Without this, opening the first `Dialog`/`Popover`/etc. throws a
+  `style-src-elem` CSP violation for react-remove-scroll's un-nonced style
+  tag.

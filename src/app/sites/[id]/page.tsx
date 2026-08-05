@@ -8,6 +8,7 @@ import { formatDateTime } from "@/lib/date-time";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ArrowLeft, Edit, Trash2, Plus, MapPin, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
@@ -20,6 +21,7 @@ export default function DiveSiteDetailPage() {
   const [diveSite, setDiveSite] = useState<DiveSite | null>(null);
   const [isLoadingDiveSite, setIsLoadingDiveSite] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   const diveSiteId = params.id as string;
 
@@ -52,15 +54,7 @@ export default function DiveSiteDetailPage() {
 
   // Handle dive site deletion
   const handleDeleteDiveSite = async () => {
-    if (
-      !user ||
-      !diveSite?.uuid ||
-      !confirm(
-        "Are you sure you want to delete this dive site? This action cannot be undone.",
-      )
-    ) {
-      return;
-    }
+    if (!user || !diveSite?.uuid) return;
 
     try {
       setIsDeleting(true);
@@ -81,6 +75,7 @@ export default function DiveSiteDetailPage() {
       });
     } finally {
       setIsDeleting(false);
+      setIsConfirmOpen(false);
     }
   };
 
@@ -159,7 +154,7 @@ export default function DiveSiteDetailPage() {
             </Button>
             <Button
               variant="destructive"
-              onClick={handleDeleteDiveSite}
+              onClick={() => setIsConfirmOpen(true)}
               disabled={isDeleting}
             >
               {isDeleting ? (
@@ -171,6 +166,16 @@ export default function DiveSiteDetailPage() {
             </Button>
           </div>
         </div>
+
+        <ConfirmDialog
+          open={isConfirmOpen}
+          onOpenChange={setIsConfirmOpen}
+          title="Delete dive site"
+          description="Are you sure you want to delete this dive site? This action cannot be undone."
+          confirmText="Delete"
+          isLoading={isDeleting}
+          onConfirm={handleDeleteDiveSite}
+        />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">

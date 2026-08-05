@@ -11,16 +11,24 @@ interface UseDeleteResourceOptions {
 }
 
 // Shared "confirm, delete, toast, refresh" flow used by the dives/trips/sites
-// list and detail pages' delete actions.
+// list and detail pages' delete actions. Confirmation is driven by a
+// `ConfirmDialog` (see `useDeleteResource`'s `pendingId`/`requestDelete`)
+// rather than the blocking native `confirm()`.
 export function useDeleteResource(
   deleteFn: (id: string) => Promise<unknown>,
   { confirmMessage, successMessage, errorMessage, onDeleted }: UseDeleteResourceOptions,
 ) {
   const { toast } = useToast();
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [pendingId, setPendingId] = useState<string | null>(null);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm(confirmMessage)) return;
+  const requestDelete = (id: string) => setPendingId(id);
+  const cancelDelete = () => setPendingId(null);
+
+  const confirmDelete = async () => {
+    if (!pendingId) return;
+    const id = pendingId;
+    setPendingId(null);
 
     try {
       setDeletingId(id);
@@ -44,5 +52,12 @@ export function useDeleteResource(
     }
   };
 
-  return { deletingId, handleDelete };
+  return {
+    deletingId,
+    pendingId,
+    confirmMessage,
+    requestDelete,
+    cancelDelete,
+    confirmDelete,
+  };
 }

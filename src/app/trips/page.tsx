@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { PaginationFooter } from "@/components/ui/pagination-footer";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Plus, Eye, Edit, Trash2, Loader2 } from "lucide-react";
 import Link from "next/link";
 
@@ -46,15 +47,20 @@ export default function TripsPage() {
     errorMessage: "Failed to load trips. Please try again.",
   });
 
-  const { deletingId, handleDelete: handleDeleteTrip } = useDeleteResource(
-    tripsAPI.deleteTrip,
-    {
-      confirmMessage: "Are you sure you want to delete this trip?",
-      successMessage: "Trip deleted successfully.",
-      errorMessage: "Failed to delete trip. Please try again.",
-      onDeleted: refetch,
-    },
-  );
+  const {
+    deletingId,
+    pendingId,
+    confirmMessage,
+    requestDelete: requestDeleteTrip,
+    cancelDelete: cancelDeleteTrip,
+    confirmDelete: confirmDeleteTrip,
+  } = useDeleteResource(tripsAPI.deleteTrip, {
+    confirmMessage:
+      "Are you sure you want to delete this trip? This action cannot be undone.",
+    successMessage: "Trip deleted successfully.",
+    errorMessage: "Failed to delete trip. Please try again.",
+    onDeleted: refetch,
+  });
 
   if (isAuthLoading) {
     return (
@@ -153,7 +159,7 @@ export default function TripsPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleDeleteTrip(trip.uuid)}
+                              onClick={() => requestDeleteTrip(trip.uuid)}
                               disabled={deletingId === trip.uuid}
                             >
                               {deletingId === trip.uuid ? (
@@ -182,6 +188,16 @@ export default function TripsPage() {
             />
           </CardContent>
         </Card>
+
+        <ConfirmDialog
+          open={pendingId !== null}
+          onOpenChange={(open) => !open && cancelDeleteTrip()}
+          title="Delete trip"
+          description={confirmMessage}
+          confirmText="Delete"
+          isLoading={deletingId === pendingId}
+          onConfirm={confirmDeleteTrip}
+        />
     </div>
   );
 }

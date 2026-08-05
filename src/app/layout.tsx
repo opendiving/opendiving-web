@@ -5,6 +5,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AppShell } from "@/components/layout/app-shell";
 import { Toaster } from "@/components/ui/toaster";
+import { NonceProvider } from "@/components/nonce-provider";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -27,17 +28,19 @@ export default async function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          nonce={nonce}
-        >
-          <AuthProvider>
-            <AppShell>{children}</AppShell>
-            <Toaster />
-          </AuthProvider>
-        </ThemeProvider>
+        <NonceProvider nonce={nonce}>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            nonce={nonce}
+          >
+            <AuthProvider>
+              <AppShell>{children}</AppShell>
+              <Toaster />
+            </AuthProvider>
+          </ThemeProvider>
+        </NonceProvider>
       </body>
     </html>
   );

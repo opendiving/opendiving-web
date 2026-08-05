@@ -8,6 +8,7 @@ import { formatDateTime, formatTripDateRange } from "@/lib/date-time";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   ArrowLeft,
   Edit,
@@ -28,6 +29,7 @@ export default function TripDetailPage() {
   const [trip, setTrip] = useState<Trip | null>(null);
   const [isLoadingTrip, setIsLoadingTrip] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   const tripId = params.id as string;
 
@@ -60,15 +62,7 @@ export default function TripDetailPage() {
 
   // Handle trip deletion
   const handleDeleteTrip = async () => {
-    if (
-      !user ||
-      !trip?.uuid ||
-      !confirm(
-        "Are you sure you want to delete this trip? This action cannot be undone.",
-      )
-    ) {
-      return;
-    }
+    if (!user || !trip?.uuid) return;
 
     try {
       setIsDeleting(true);
@@ -89,6 +83,7 @@ export default function TripDetailPage() {
       });
     } finally {
       setIsDeleting(false);
+      setIsConfirmOpen(false);
     }
   };
 
@@ -177,7 +172,7 @@ export default function TripDetailPage() {
             </Button>
             <Button
               variant="destructive"
-              onClick={handleDeleteTrip}
+              onClick={() => setIsConfirmOpen(true)}
               disabled={isDeleting}
             >
               {isDeleting ? (
@@ -189,6 +184,16 @@ export default function TripDetailPage() {
             </Button>
           </div>
         </div>
+
+        <ConfirmDialog
+          open={isConfirmOpen}
+          onOpenChange={setIsConfirmOpen}
+          title="Delete trip"
+          description="Are you sure you want to delete this trip? This action cannot be undone."
+          confirmText="Delete"
+          isLoading={isDeleting}
+          onConfirm={handleDeleteTrip}
+        />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">

@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { PaginationFooter } from "@/components/ui/pagination-footer";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Plus, Eye, Edit, Trash2, Loader2 } from "lucide-react";
 import Link from "next/link";
 
@@ -45,15 +46,20 @@ export default function SitesPage() {
     errorMessage: "Failed to load dive sites. Please try again.",
   });
 
-  const { deletingId, handleDelete: handleDeleteDiveSite } = useDeleteResource(
-    diveSitesAPI.deleteDiveSite,
-    {
-      confirmMessage: "Are you sure you want to delete this dive site?",
-      successMessage: "Dive site deleted successfully.",
-      errorMessage: "Failed to delete dive site. Please try again.",
-      onDeleted: refetch,
-    },
-  );
+  const {
+    deletingId,
+    pendingId,
+    confirmMessage,
+    requestDelete: requestDeleteDiveSite,
+    cancelDelete: cancelDeleteDiveSite,
+    confirmDelete: confirmDeleteDiveSite,
+  } = useDeleteResource(diveSitesAPI.deleteDiveSite, {
+    confirmMessage:
+      "Are you sure you want to delete this dive site? This action cannot be undone.",
+    successMessage: "Dive site deleted successfully.",
+    errorMessage: "Failed to delete dive site. Please try again.",
+    onDeleted: refetch,
+  });
 
   if (isAuthLoading) {
     return (
@@ -149,7 +155,7 @@ export default function SitesPage() {
                               variant="ghost"
                               size="sm"
                               onClick={() =>
-                                handleDeleteDiveSite(diveSite.uuid)
+                                requestDeleteDiveSite(diveSite.uuid)
                               }
                               disabled={deletingId === diveSite.uuid}
                             >
@@ -179,6 +185,16 @@ export default function SitesPage() {
             />
           </CardContent>
         </Card>
+
+        <ConfirmDialog
+          open={pendingId !== null}
+          onOpenChange={(open) => !open && cancelDeleteDiveSite()}
+          title="Delete dive site"
+          description={confirmMessage}
+          confirmText="Delete"
+          isLoading={deletingId === pendingId}
+          onConfirm={confirmDeleteDiveSite}
+        />
     </div>
   );
 }

@@ -13,6 +13,7 @@ import {
 } from "@/lib/date-time";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Table,
   TableBody,
@@ -48,6 +49,7 @@ export default function DiveDetailPage() {
   const [trip, setTrip] = useState<Trip | null>(null);
   const [isLoadingDive, setIsLoadingDive] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   const diveId = params.id as string;
 
@@ -103,15 +105,7 @@ export default function DiveDetailPage() {
 
   // Handle dive deletion
   const handleDeleteDive = async () => {
-    if (
-      !user ||
-      !dive?.uuid ||
-      !confirm(
-        "Are you sure you want to delete this dive? This action cannot be undone.",
-      )
-    ) {
-      return;
-    }
+    if (!user || !dive?.uuid) return;
 
     try {
       setIsDeleting(true);
@@ -132,6 +126,7 @@ export default function DiveDetailPage() {
       });
     } finally {
       setIsDeleting(false);
+      setIsConfirmOpen(false);
     }
   };
 
@@ -207,7 +202,7 @@ export default function DiveDetailPage() {
             </Button>
             <Button
               variant="destructive"
-              onClick={handleDeleteDive}
+              onClick={() => setIsConfirmOpen(true)}
               disabled={isDeleting}
             >
               {isDeleting ? (
@@ -219,6 +214,16 @@ export default function DiveDetailPage() {
             </Button>
           </div>
         </div>
+
+        <ConfirmDialog
+          open={isConfirmOpen}
+          onOpenChange={setIsConfirmOpen}
+          title="Delete dive"
+          description="Are you sure you want to delete this dive? This action cannot be undone."
+          confirmText="Delete"
+          isLoading={isDeleting}
+          onConfirm={handleDeleteDive}
+        />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Details */}

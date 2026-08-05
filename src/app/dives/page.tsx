@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { PaginationFooter } from "@/components/ui/pagination-footer";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Plus, Eye, Edit, Trash2, Loader2 } from "lucide-react";
 import Link from "next/link";
 
@@ -48,15 +49,19 @@ export default function DivesPage() {
     errorMessage: "Failed to load dives. Please try again.",
   });
 
-  const { deletingId, handleDelete: handleDeleteDive } = useDeleteResource(
-    divesAPI.deleteDive,
-    {
-      confirmMessage: "Are you sure you want to delete this dive?",
-      successMessage: "Dive deleted successfully.",
-      errorMessage: "Failed to delete dive. Please try again.",
-      onDeleted: refetch,
-    },
-  );
+  const {
+    deletingId,
+    pendingId,
+    confirmMessage,
+    requestDelete: requestDeleteDive,
+    cancelDelete: cancelDeleteDive,
+    confirmDelete: confirmDeleteDive,
+  } = useDeleteResource(divesAPI.deleteDive, {
+    confirmMessage: "Are you sure you want to delete this dive? This action cannot be undone.",
+    successMessage: "Dive deleted successfully.",
+    errorMessage: "Failed to delete dive. Please try again.",
+    onDeleted: refetch,
+  });
 
   if (isAuthLoading) {
     return (
@@ -164,7 +169,7 @@ export default function DivesPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleDeleteDive(dive.uuid)}
+                              onClick={() => requestDeleteDive(dive.uuid)}
                               disabled={deletingId === dive.uuid}
                             >
                               {deletingId === dive.uuid ? (
@@ -193,6 +198,16 @@ export default function DivesPage() {
             />
           </CardContent>
         </Card>
+
+        <ConfirmDialog
+          open={pendingId !== null}
+          onOpenChange={(open) => !open && cancelDeleteDive()}
+          title="Delete dive"
+          description={confirmMessage}
+          confirmText="Delete"
+          isLoading={deletingId === pendingId}
+          onConfirm={confirmDeleteDive}
+        />
     </div>
   );
 }

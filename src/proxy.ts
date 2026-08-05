@@ -16,8 +16,15 @@ import { NextRequest, NextResponse } from "next/server";
 export function proxy(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
   const isDev = process.env.NODE_ENV !== "production";
-  const apiOrigin =
-    process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  // CSP source expressions match by *origin*, not by prefix - a source with
+  // a path (e.g. `http://localhost:8000/api/v1`) only matches requests to
+  // that exact path, not `/api/v1/login` or anything else under it. Since
+  // `NEXT_PUBLIC_API_URL` may include a path prefix (it's also used
+  // directly as axios' `baseURL` in `lib/api/client.ts`), strip it down to
+  // just the origin here.
+  const apiOrigin = new URL(
+    process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000",
+  ).origin;
 
   const cspDirectives = [
     "default-src 'self'",
@@ -27,8 +34,29 @@ export function proxy(request: NextRequest) {
     // older browsers that don't. This is the "strict CSP with graceful
     // fallback" pattern from Google's CSP guide, not a real weakening.
     `script-src 'nonce-${nonce}' 'strict-dynamic' https: 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
-    `style-src 'self' 'nonce-${nonce}' 'unsafe-inline'`,
-    `img-src 'self' data: ${apiOrigin}`,
+    // `style-src` (governs `<style>`/`<link>` elements) is nonce-gated in
+    // production only. In dev, Next's own tooling - Fast Refresh, the
+    // dev/error overlay, and webpack/Turbopack's CSS hot-injection - injects
+    // inline `<style>` tags with no nonce at all (a documented Next.js
+    // limitation, e.g. vercel/next.js#87343), so a strict nonce here just
+    // breaks dev-mode styling. Production doesn't do any of that: real CSS
+    // ships as static, hashed `<link rel="stylesheet">` files (covered by
+    // `'self'`), so the nonce requirement costs nothing there.
+    // `style-src-attr` is deliberately its own, non-nonce'd directive: per
+    // spec, listing a nonce/hash in a directive disables the `'unsafe-inline'`
+    // fallback for *that* directive, and inline `style="..."` attributes from
+    // Radix/Floating UI/etc. (positioning, `pointer-events`, animation state)
+    // can't practically carry a matching nonce - there's no way to tag every
+    // element a third-party library renders. CSS-attribute injection can't
+    // execute script in any modern browser, so this is a deliberate, narrow
+    // relaxation - `style-src-elem`/`style-src` (actual `<style>` blocks,
+    // where CSS-exfiltration attacks are more feasible) remain nonce-only
+    // in production.
+    isDev ? "style-src 'self' 'unsafe-inline'" : `style-src 'self' 'nonce-${nonce}'`,
+    "style-src-attr 'unsafe-inline'",
+    // `www.gravatar.com` - `UserAvatar` (`lib/utils.ts`'s `getGravatarUrl`)
+    // loads user avatars from there.
+    `img-src 'self' data: ${apiOrigin} https://www.gravatar.com`,
     "font-src 'self' data:",
     `connect-src 'self' ${apiOrigin}`,
     "object-src 'none'",

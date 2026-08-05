@@ -80,11 +80,13 @@ export default function SettingsPage() {
   }, [user, resetProfile]);
 
   const onProfileSubmit = async (data: ProfileFormData) => {
+    if (!user) return;
+
     try {
       setProfileError(null);
       setProfileSuccess(null);
 
-      await authAPI.updateProfile(user?.uuid || "", data);
+      await authAPI.updateProfile(user.uuid, data);
       await refreshUser();
       setProfileSuccess("Profile updated successfully!");
     } catch (err) {
@@ -93,11 +95,13 @@ export default function SettingsPage() {
   };
 
   const onPasswordSubmit = async (data: PasswordFormData) => {
+    if (!user) return;
+
     try {
       setPasswordError(null);
       setPasswordSuccess(null);
 
-      await authAPI.changePassword(user?.uuid || "", {
+      await authAPI.changePassword(user.uuid, {
         current_password: data.currentPassword,
         new_password: data.newPassword,
       });
