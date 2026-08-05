@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/ui/user-avatar";
@@ -25,16 +26,26 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 
-interface HeaderProps {
-  showDashboardActions?: boolean;
-  currentPage?: string;
+// Maps URL path prefixes to the nav item that should be highlighted as active.
+const NAV_SECTIONS: { prefix: string; page: string }[] = [
+  { prefix: "/dashboard", page: "dashboard" },
+  { prefix: "/trips", page: "trips" },
+  { prefix: "/dives", page: "dives" },
+  { prefix: "/sites", page: "sites" },
+  { prefix: "/community", page: "community" },
+];
+
+function getCurrentPage(pathname: string | null): string | undefined {
+  if (!pathname) return undefined;
+  return NAV_SECTIONS.find(
+    ({ prefix }) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  )?.page;
 }
 
-export function Header({
-  showDashboardActions = false,
-  currentPage,
-}: HeaderProps) {
+export function Header() {
   const { user, isAuthenticated, signOut, isLoading } = useAuth();
+  const pathname = usePathname();
+  const currentPage = getCurrentPage(pathname);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleSignOut = async () => {
@@ -160,13 +171,6 @@ export function Header({
                     3
                   </span>
                 </Button>
-
-                {/* Dashboard link for non-dashboard pages */}
-                {!showDashboardActions && (
-                  <Link href="/dashboard">
-                    <Button variant="outline">Dashboard</Button>
-                  </Link>
-                )}
 
                 {/* User dropdown */}
                 <DropdownMenu>

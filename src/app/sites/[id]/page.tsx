@@ -3,8 +3,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { Header } from "@/components/layout/header";
-import { Footer } from "@/components/layout/footer";
 import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { Button } from "@/components/ui/button";
@@ -104,11 +102,8 @@ export default function DiveSiteDetailPage() {
 
   if (isAuthLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <Header showDashboardActions={true} currentPage="sites" />
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
   }
@@ -119,12 +114,9 @@ export default function DiveSiteDetailPage() {
 
   if (isLoadingDiveSite) {
     return (
-      <div className="min-h-screen bg-background">
-        <Header showDashboardActions={true} currentPage="sites" />
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin" />
-          </div>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin" />
         </div>
       </div>
     );
@@ -132,31 +124,24 @@ export default function DiveSiteDetailPage() {
 
   if (!diveSite) {
     return (
-      <div className="min-h-screen bg-background">
-        <Header showDashboardActions={true} currentPage="sites" />
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="text-center py-12">
-            <div className="text-muted-foreground mb-4">
-              Dive site not found.
-            </div>
-            <Button asChild>
-              <Link href="/sites">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Dive Sites
-              </Link>
-            </Button>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="text-center py-12">
+          <div className="text-muted-foreground mb-4">
+            Dive site not found.
           </div>
+          <Button asChild>
+            <Link href="/sites">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Dive Sites
+            </Link>
+          </Button>
         </div>
-        <Footer />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header showDashboardActions={true} currentPage="sites" />
-
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="sm" asChild>
@@ -247,9 +232,6 @@ export default function DiveSiteDetailPage() {
             </Card>
           </div>
         </div>
-      </div>
-
-      <Footer />
     </div>
   );
 }

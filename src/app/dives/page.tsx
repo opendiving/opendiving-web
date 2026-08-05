@@ -3,8 +3,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { Header } from "@/components/layout/header";
-import { Footer } from "@/components/layout/footer";
 import { divesAPI, Dive, PaginatedDivesResponse } from "@/lib/api/dives";
 import { DiveSitesLabel } from "@/components/dives/dive-sites-label";
 
@@ -137,11 +135,8 @@ export default function DivesPage() {
 
   if (isAuthLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <Header showDashboardActions={true} currentPage="dives" />
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
   }
@@ -151,10 +146,7 @@ export default function DivesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header showDashboardActions={true} currentPage="dives" />
-
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-3xl font-bold">Dives</h1>
@@ -293,9 +285,6 @@ export default function DivesPage() {
             )}
           </CardContent>
         </Card>
-      </div>
-
-      <Footer />
     </div>
   );
 }

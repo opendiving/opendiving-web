@@ -3,8 +3,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { Header } from "@/components/layout/header";
-import { Footer } from "@/components/layout/footer";
 import { tripsAPI, Trip, PaginatedTripsResponse } from "@/lib/api/trips";
 import { formatTripDateRange } from "@/lib/date-time";
 import { Button } from "@/components/ui/button";
@@ -132,11 +130,8 @@ export default function TripsPage() {
 
   if (isAuthLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <Header showDashboardActions={true} currentPage="trips" />
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
   }
@@ -146,10 +141,7 @@ export default function TripsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header showDashboardActions={true} currentPage="trips" />
-
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-3xl font-bold">Trips</h1>
@@ -280,9 +272,6 @@ export default function TripsPage() {
             )}
           </CardContent>
         </Card>
-      </div>
-
-      <Footer />
     </div>
   );
 }

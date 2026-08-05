@@ -3,8 +3,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { Header } from "@/components/layout/header";
-import { Footer } from "@/components/layout/footer";
 import {
   diveSitesAPI,
   DiveSite,
@@ -122,11 +120,8 @@ export default function SitesPage() {
 
   if (isAuthLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <Header showDashboardActions={true} currentPage="sites" />
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
   }
@@ -136,10 +131,7 @@ export default function SitesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header showDashboardActions={true} currentPage="sites" />
-
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-3xl font-bold">Dive Sites</h1>
@@ -269,9 +261,6 @@ export default function SitesPage() {
             )}
           </CardContent>
         </Card>
-      </div>
-
-      <Footer />
     </div>
   );
 }

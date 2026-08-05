@@ -1,5 +1,3 @@
-import { Header } from "@/components/layout/header";
-import { Footer } from "@/components/layout/footer";
 import Link from "next/link";
 import { Metadata } from "next";
 
@@ -11,10 +9,7 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <div className="min-h-screen bg-background">
-      <Header showDashboardActions={true} />
-
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="bg-card rounded-lg shadow-sm p-8">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-foreground mb-2">
@@ -283,9 +278,6 @@ export default function TermsPage() {
             </div>
           </div>
         </div>
-      </div>
-
-      <Footer />
     </div>
   );
 }

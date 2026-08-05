@@ -3,8 +3,6 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { Header } from "@/components/layout/header";
-import { Footer } from "@/components/layout/footer";
 import { divesAPI, Dive } from "@/lib/api/dives";
 import { tripsAPI, Trip } from "@/lib/api/trips";
 import { DiveSitesLabel } from "@/components/dives/dive-sites-label";
@@ -176,11 +174,8 @@ export default function DiveDetailPage() {
 
   if (isAuthLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <Header showDashboardActions={true} currentPage="dives" />
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
   }
@@ -191,12 +186,9 @@ export default function DiveDetailPage() {
 
   if (isLoadingDive) {
     return (
-      <div className="min-h-screen bg-background">
-        <Header showDashboardActions={true} currentPage="dives" />
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin" />
-          </div>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin" />
         </div>
       </div>
     );
@@ -204,20 +196,16 @@ export default function DiveDetailPage() {
 
   if (!dive) {
     return (
-      <div className="min-h-screen bg-background">
-        <Header showDashboardActions={true} currentPage="dives" />
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="text-center py-12">
-            <div className="text-muted-foreground mb-4">Dive not found.</div>
-            <Button asChild>
-              <Link href="/dives">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Dives
-              </Link>
-            </Button>
-          </div>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="text-center py-12">
+          <div className="text-muted-foreground mb-4">Dive not found.</div>
+          <Button asChild>
+            <Link href="/dives">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Dives
+            </Link>
+          </Button>
         </div>
-        <Footer />
       </div>
     );
   }
@@ -226,10 +214,7 @@ export default function DiveDetailPage() {
     dive.bottom_temperature != null || dive.visibility != null;
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header showDashboardActions={true} currentPage="dives" />
-
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="sm" asChild>
@@ -503,9 +488,6 @@ export default function DiveDetailPage() {
             </Card>
           </div>
         </div>
-      </div>
-
-      <Footer />
     </div>
   );
 }

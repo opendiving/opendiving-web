@@ -1,7 +1,5 @@
 "use client";
 
-import { Header } from "@/components/layout/header";
-import { Footer } from "@/components/layout/footer";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -27,10 +25,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-blue-100 dark:from-background dark:to-blue-950/40">
-      {/* Header */}
-      <Header showDashboardActions={true} />
-
+    <div className="bg-gradient-to-b from-blue-50 to-blue-100 dark:from-background dark:to-blue-950/40">
       {/* Hero Section */}
       <section className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -173,9 +168,6 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-
-      {/* Footer */}
-      <Footer />
     </div>
   );
 }

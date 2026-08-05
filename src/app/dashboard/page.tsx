@@ -1,8 +1,6 @@
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
-import { Header } from "@/components/layout/header";
-import { Footer } from "@/components/layout/footer";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { RecentTripsCard } from "@/components/dives/recent-trips-card";
 import { diveStatsAPI, UserDiveStats } from "@/lib/api/dive-stats";
@@ -58,11 +56,8 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background">
-        <Header showDashboardActions={true} currentPage="dashboard" />
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-        </div>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
   }
@@ -72,10 +67,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Header showDashboardActions={true} currentPage="dashboard" />
-
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Welcome Section */}
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-foreground mb-2">
@@ -243,9 +235,6 @@ export default function DashboardPage() {
             </Card>
           </div>
         </div>
-      </div>
-
-      <Footer />
     </div>
   );
 }
