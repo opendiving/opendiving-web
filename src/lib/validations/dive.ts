@@ -71,6 +71,8 @@ export const diveMixtureSchema = z
     },
   );
 
+export type DiveMixtureInput = z.input<typeof diveMixtureSchema>;
+
 export interface NormalizedDiveMixture {
   name?: string;
   volume: number;

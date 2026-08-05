@@ -1,6 +1,6 @@
 "use client";
 
-import { Control } from "react-hook-form";
+import { Control, FieldValues, Path } from "react-hook-form";
 import { Clock, Gauge, Thermometer, Eye } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,11 +15,31 @@ import {
 import { MixtureFields } from "@/components/dives/mixture-fields";
 import { TripCombobox } from "@/components/dives/trip-combobox";
 import { DiveSiteMultiSelect } from "@/components/dives/dive-site-multi-select";
+import { DiveMixtureInput } from "@/lib/validations/dive";
 
-export interface DiveFormFieldsProps {
-  // Using `any` here since this component is shared between the create and
-  // edit dive forms, which have distinct (but structurally compatible) form types.
-  control: Control<any, any, any>;
+// The field shape shared by both `DiveCreateInput` and `DiveUpdateInput`
+// (see `lib/validations/dive.ts`): the create schema's fields, all optional
+// (the update schema optionalizes every field, since a PATCH only needs to
+// send what changed). Both concrete form input types are structurally
+// assignable to this, so `DiveFormFields`/`MixtureFields` can stay generic
+// over `TFieldValues` instead of falling back to `Control<any, any, any>`,
+// which erased type safety between the create/update form shapes entirely.
+export interface DiveFormValues extends FieldValues {
+  dive_number?: number;
+  start_time?: string;
+  duration?: string;
+  max_depth?: number | null;
+  avg_depth?: number | null;
+  bottom_temperature?: number | null;
+  visibility?: number | null;
+  trip_uuid?: string;
+  dive_site_uuids?: string[];
+  notes?: string;
+  mixtures?: DiveMixtureInput[];
+}
+
+export interface DiveFormFieldsProps<TFieldValues extends DiveFormValues> {
+  control: Control<TFieldValues>;
   // In "create" mode, dive number/start time/duration are required by the
   // schema and marked with a "*" in the UI. In "edit" mode these fields are
   // optional at the schema level (a PATCH only needs to send what changed),
@@ -31,11 +51,11 @@ export interface DiveFormFieldsProps {
   userId: string;
 }
 
-export function DiveFormFields({
+export function DiveFormFields<TFieldValues extends DiveFormValues>({
   control,
   mode,
   userId,
-}: DiveFormFieldsProps) {
+}: DiveFormFieldsProps<TFieldValues>) {
   const required = mode === "create";
   const requiredMark = required ? " *" : "";
 
@@ -45,7 +65,7 @@ export function DiveFormFields({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <FormField
           control={control}
-          name="dive_number"
+          name={"dive_number" as Path<TFieldValues>}
           render={({ field }) => (
             <FormItem>
               <FormLabel>Dive Number{requiredMark}</FormLabel>
@@ -68,7 +88,7 @@ export function DiveFormFields({
 
         <FormField
           control={control}
-          name="trip_uuid"
+          name={"trip_uuid" as Path<TFieldValues>}
           render={({ field }) => (
             <FormItem>
               <FormLabel>Trip</FormLabel>
@@ -88,7 +108,7 @@ export function DiveFormFields({
       {/* Dive Site(s) */}
       <FormField
         control={control}
-        name="dive_site_uuids"
+        name={"dive_site_uuids" as Path<TFieldValues>}
         render={({ field }) => (
           <FormItem>
             <FormLabel>Dive Site(s)</FormLabel>
@@ -108,7 +128,7 @@ export function DiveFormFields({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <FormField
           control={control}
-          name="start_time"
+          name={"start_time" as Path<TFieldValues>}
           render={({ field }) => (
             <FormItem>
               <FormLabel>Start Time{requiredMark}</FormLabel>
@@ -122,7 +142,7 @@ export function DiveFormFields({
 
         <FormField
           control={control}
-          name="duration"
+          name={"duration" as Path<TFieldValues>}
           render={({ field }) => (
             <FormItem>
               <FormLabel>Duration (MM:SS){requiredMark}</FormLabel>
@@ -147,7 +167,7 @@ export function DiveFormFields({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <FormField
           control={control}
-          name="max_depth"
+          name={"max_depth" as Path<TFieldValues>}
           render={({ field }) => (
             <FormItem>
               <FormLabel>Maximum Depth (m)</FormLabel>
@@ -176,7 +196,7 @@ export function DiveFormFields({
 
         <FormField
           control={control}
-          name="avg_depth"
+          name={"avg_depth" as Path<TFieldValues>}
           render={({ field }) => (
             <FormItem>
               <FormLabel>Average Depth (m)</FormLabel>
@@ -208,7 +228,7 @@ export function DiveFormFields({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <FormField
           control={control}
-          name="bottom_temperature"
+          name={"bottom_temperature" as Path<TFieldValues>}
           render={({ field }) => (
             <FormItem>
               <FormLabel>Bottom Temperature (°C)</FormLabel>
@@ -240,7 +260,7 @@ export function DiveFormFields({
 
         <FormField
           control={control}
-          name="visibility"
+          name={"visibility" as Path<TFieldValues>}
           render={({ field }) => (
             <FormItem>
               <FormLabel>Visibility (m)</FormLabel>
@@ -269,12 +289,12 @@ export function DiveFormFields({
       </div>
 
       {/* Gas Mixtures */}
-      <MixtureFields control={control} />
+      <MixtureFields<TFieldValues> control={control} />
 
       {/* Notes */}
       <FormField
         control={control}
-        name="notes"
+        name={"notes" as Path<TFieldValues>}
         render={({ field }) => (
           <FormItem>
             <FormLabel>Notes</FormLabel>

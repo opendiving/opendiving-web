@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { Control, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
@@ -213,7 +213,7 @@ function NewDivePageContent() {
               <DiveFileImport form={form} />
 
               <DiveFormFields
-                control={form.control as unknown as Control<any, any, any>}
+                control={form.control}
                 mode="create"
                 userId={user?.uuid ?? ""}
               />

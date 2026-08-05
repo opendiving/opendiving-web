@@ -1,70 +1,82 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { UseFormReturn } from "react-hook-form";
+import { FieldPathValue, Path, UseFormReturn } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { divesAPI, ParsedDive } from "@/lib/api/dives";
 import { formatDateTimeForForm, formatDurationForForm } from "@/lib/date-time";
 import { getApiErrorMessage } from "@/lib/api/error";
+import { DiveFormValues } from "@/components/dives/dive-form-fields";
 import { Loader2, Upload } from "lucide-react";
 
 // Applies the fields parsed from a dive-computer export file onto a dive
 // form. Shared between the "new dive" and "edit dive" forms since both
-// expose the same importable field set.
-export function applyParsedDiveToForm(
-  form: UseFormReturn<any>,
+// expose the same importable field set. Generic over `TFieldValues` (rather
+// than `UseFormReturn<any>`) so the concrete create/edit form type is
+// checked at the call site; field name literals below are cast to
+// `Path<TFieldValues>` since react-hook-form can't verify a literal string
+// against a still-generic `TFieldValues`.
+// Sets a single named field on the form. `name`/`value` are checked against
+// `DiveFormValues` (a known, closed set of fields/types) rather than the
+// still-generic `TFieldValues`, so callers get real type safety on both the
+// field name and the value they pass in; only the final `form.setValue` call
+// needs a narrow cast, since react-hook-form can't verify a `DiveFormValues`
+// key/value pair against a still-unresolved `TFieldValues` type parameter.
+function setDiveFormValue<
+  TFieldValues extends DiveFormValues,
+  TName extends keyof DiveFormValues & string,
+>(
+  form: UseFormReturn<TFieldValues>,
+  name: TName,
+  value: DiveFormValues[TName],
+) {
+  form.setValue(
+    name as unknown as Path<TFieldValues>,
+    value as unknown as FieldPathValue<TFieldValues, Path<TFieldValues>>,
+    { shouldValidate: true, shouldDirty: true },
+  );
+}
+
+export function applyParsedDiveToForm<TFieldValues extends DiveFormValues>(
+  form: UseFormReturn<TFieldValues>,
   parsed: ParsedDive,
 ) {
   if (parsed.dive_number != null) {
-    form.setValue("dive_number", parsed.dive_number, {
-      shouldValidate: true,
-      shouldDirty: true,
-    });
+    setDiveFormValue(form, "dive_number", parsed.dive_number);
   }
   if (parsed.start_time) {
     const date = new Date(parsed.start_time);
     const formatted = Number.isNaN(date.getTime())
       ? parsed.start_time
       : formatDateTimeForForm(date);
-    form.setValue("start_time", formatted, {
-      shouldValidate: true,
-      shouldDirty: true,
-    });
+    setDiveFormValue(form, "start_time", formatted);
   }
   if (parsed.duration != null) {
-    form.setValue("duration", formatDurationForForm(parsed.duration), {
-      shouldValidate: true,
-      shouldDirty: true,
-    });
+    setDiveFormValue(form, "duration", formatDurationForForm(parsed.duration));
   }
   if (parsed.max_depth != null) {
-    form.setValue("max_depth", parsed.max_depth, {
-      shouldValidate: true,
-      shouldDirty: true,
-    });
+    setDiveFormValue(form, "max_depth", parsed.max_depth);
   }
   if (parsed.avg_depth != null) {
-    form.setValue("avg_depth", parsed.avg_depth, {
-      shouldValidate: true,
-      shouldDirty: true,
-    });
+    setDiveFormValue(form, "avg_depth", parsed.avg_depth);
   }
   if (parsed.bottom_temperature != null) {
-    form.setValue("bottom_temperature", Math.round(parsed.bottom_temperature), {
-      shouldValidate: true,
-      shouldDirty: true,
-    });
+    setDiveFormValue(
+      form,
+      "bottom_temperature",
+      Math.round(parsed.bottom_temperature),
+    );
   }
 }
 
-export interface DiveFileImportProps {
-  // Using `any` here since this component is shared between the create and
-  // edit dive forms, which have distinct (but structurally compatible) form types.
-  form: UseFormReturn<any>;
+export interface DiveFileImportProps<TFieldValues extends DiveFormValues> {
+  form: UseFormReturn<TFieldValues>;
 }
 
-export function DiveFileImport({ form }: DiveFileImportProps) {
+export function DiveFileImport<TFieldValues extends DiveFormValues>({
+  form,
+}: DiveFileImportProps<TFieldValues>) {
   const { toast } = useToast();
   const [isParsingFile, setIsParsingFile] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);

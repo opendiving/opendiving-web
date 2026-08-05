@@ -1,6 +1,6 @@
 "use client";
 
-import { Control, useFieldArray } from "react-hook-form";
+import { Control, FieldValues, Path, useFieldArray } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -18,6 +18,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Plus, Trash2 } from "lucide-react";
+import { DiveMixtureInput } from "@/lib/validations/dive";
 
 const VOLUME_OPTIONS = [
   { value: 11.1, label: "11.1 L" },
@@ -43,15 +44,32 @@ export function getDefaultMixtureName(index: number): string {
   return index === 0 ? "Back Gas" : `Deco Gas ${index}`;
 }
 
-export interface MixtureFieldsProps {
-  // Using `any` here since this component is shared between the create and
-  // edit dive forms, which have distinct (but structurally compatible) form types.
-  control: Control<any, any, any>;
+// The minimal field shape `MixtureFields` needs: any form values type that
+// has a `mixtures` array (both `DiveCreateInput` and `DiveUpdateInput` from
+// `lib/validations/dive.ts` qualify). Keeping this generic - rather than
+// falling back to `Control<any, any, any>` - preserves type safety between
+// the create/update form shapes at the `control` prop boundary.
+export interface MixtureFieldsValues extends FieldValues {
+  mixtures?: DiveMixtureInput[];
 }
 
-export function MixtureFields({ control }: MixtureFieldsProps) {
-  const { fields, append, remove } = useFieldArray({
-    control,
+export interface MixtureFieldsProps<TFieldValues extends MixtureFieldsValues> {
+  control: Control<TFieldValues>;
+}
+
+export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
+  control,
+}: MixtureFieldsProps<TFieldValues>) {
+  // `useFieldArray`'s generic inference needs a concrete field-array name to
+  // type `append`'s argument. Narrowing `control` to `MixtureFieldsValues`
+  // here is sound: it's exactly the shape `TFieldValues` is constrained to
+  // extend, and only affects this hook's internal typing, not what callers
+  // may pass in as `control`.
+  const { fields, append, remove } = useFieldArray<
+    MixtureFieldsValues,
+    "mixtures"
+  >({
+    control: control as unknown as Control<MixtureFieldsValues>,
     name: "mixtures",
   });
 
@@ -96,7 +114,7 @@ export function MixtureFields({ control }: MixtureFieldsProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               control={control}
-              name={`mixtures.${index}.name`}
+              name={`mixtures.${index}.name` as Path<TFieldValues>}
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Name</FormLabel>
@@ -115,7 +133,7 @@ export function MixtureFields({ control }: MixtureFieldsProps) {
 
             <FormField
               control={control}
-              name={`mixtures.${index}.volume`}
+              name={`mixtures.${index}.volume` as Path<TFieldValues>}
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Volume (L)</FormLabel>
@@ -150,7 +168,7 @@ export function MixtureFields({ control }: MixtureFieldsProps) {
 
             <FormField
               control={control}
-              name={`mixtures.${index}.oxygen`}
+              name={`mixtures.${index}.oxygen` as Path<TFieldValues>}
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>O₂ (%)</FormLabel>
@@ -173,7 +191,7 @@ export function MixtureFields({ control }: MixtureFieldsProps) {
 
             <FormField
               control={control}
-              name={`mixtures.${index}.helium`}
+              name={`mixtures.${index}.helium` as Path<TFieldValues>}
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>He (%)</FormLabel>
@@ -196,7 +214,7 @@ export function MixtureFields({ control }: MixtureFieldsProps) {
 
             <FormField
               control={control}
-              name={`mixtures.${index}.start_pressure`}
+              name={`mixtures.${index}.start_pressure` as Path<TFieldValues>}
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Start Pressure (bar)</FormLabel>
@@ -220,7 +238,7 @@ export function MixtureFields({ control }: MixtureFieldsProps) {
 
             <FormField
               control={control}
-              name={`mixtures.${index}.end_pressure`}
+              name={`mixtures.${index}.end_pressure` as Path<TFieldValues>}
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>End Pressure (bar)</FormLabel>

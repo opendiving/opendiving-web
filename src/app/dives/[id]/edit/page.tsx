@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Control, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useParams, useRouter } from "next/navigation";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
@@ -255,7 +255,7 @@ export default function EditDivePage() {
               <DiveFileImport form={form} />
 
               <DiveFormFields
-                control={form.control as unknown as Control<any, any, any>}
+                control={form.control}
                 mode="edit"
                 userId={user?.uuid ?? ""}
               />
