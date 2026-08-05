@@ -5,9 +5,50 @@ import axios from "axios";
 // then handle navigation via Next's router instead of a hard page reload.
 export const AUTH_SESSION_EXPIRED_EVENT = "auth:session-expired";
 
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+// The access token is intentionally kept in memory only, never in
+// localStorage/sessionStorage: those are readable by any JS running on the
+// page (XSS payloads, compromised third-party scripts, browser extensions,
+// error-reporting SDKs that serialize storage, ...), so keeping the token
+// out of them shrinks the exfiltration surface even though it can't fully
+// defend against a live XSS payload calling the API directly. Being
+// in-memory-only means it doesn't survive a hard reload/new tab; those
+// re-derive it from the httpOnly refresh cookie via `refreshAccessToken`
+// (see `AuthContext`'s bootstrap effect).
+let accessToken: string | null = null;
+
+export function getAccessToken(): string | null {
+  return accessToken;
+}
+
+export function setAccessToken(token: string | null): void {
+  accessToken = token;
+}
+
+export function clearAccessToken(): void {
+  accessToken = null;
+}
+
+// Exchanges the httpOnly refresh cookie for a new access token, storing it
+// in memory. Used both on page load and by the response interceptor below
+// when a request comes back 401. Uses a bare `axios` call rather than
+// `apiClient` to avoid recursing into these same interceptors.
+export async function refreshAccessToken(): Promise<string> {
+  const response = await axios.post(
+    `${API_BASE_URL}/refresh`,
+    {},
+    { withCredentials: true },
+  );
+  const { access_token } = response.data;
+  setAccessToken(access_token);
+  return access_token;
+}
+
 // API client configuration
 export const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000",
+  baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
@@ -17,7 +58,7 @@ export const apiClient = axios.create({
 // Request interceptor to add auth token
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("access_token");
+    const token = getAccessToken();
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -49,14 +90,7 @@ apiClient.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        const response = await axios.post(
-          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/refresh`,
-          {},
-          { withCredentials: true },
-        );
-
-        const { access_token } = response.data;
-        localStorage.setItem("access_token", access_token);
+        const access_token = await refreshAccessToken();
 
         // Retry original request with new token
         originalRequest.headers.Authorization = `Bearer ${access_token}`;
@@ -65,7 +99,7 @@ apiClient.interceptors.response.use(
         // Refresh failed - clear the token and let AuthContext know the
         // session expired so it can clear its user state; the app's existing
         // per-page auth guards will then redirect via the Next.js router.
-        localStorage.removeItem("access_token");
+        clearAccessToken();
         window.dispatchEvent(new Event(AUTH_SESSION_EXPIRED_EVENT));
         return Promise.reject(refreshError);
       }

@@ -8,7 +8,11 @@ import React, {
   ReactNode,
 } from "react";
 import { authAPI, User, LoginCredentials, SignUpData } from "@/lib/api/auth";
-import { AUTH_SESSION_EXPIRED_EVENT } from "@/lib/api/client";
+import {
+  AUTH_SESSION_EXPIRED_EVENT,
+  clearAccessToken,
+  refreshAccessToken,
+} from "@/lib/api/client";
 
 interface AuthContextType {
   user: User | null;
@@ -30,18 +34,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Check if user is authenticated and fetch user data
+  // The access token lives in memory only (see lib/api/client.ts), so it's
+  // never persisted across a page load - re-derive it here from the
+  // httpOnly refresh cookie before fetching the current user. A failure
+  // here (e.g. no cookie, or an expired/invalid one) just means the visitor
+  // isn't signed in, which is the normal case and not worth logging.
   useEffect(() => {
     const initAuth = async () => {
       try {
-        if (authAPI.isAuthenticated()) {
-          const userData = await authAPI.getCurrentUser();
-          setUser(userData);
-        }
-      } catch (error) {
-        console.error("Auth initialization error:", error);
-        // If token is invalid, remove it
-        localStorage.removeItem("access_token");
+        await refreshAccessToken();
+        const userData = await authAPI.getCurrentUser();
+        setUser(userData);
+      } catch {
+        clearAccessToken();
       } finally {
         setIsLoading(false);
       }

@@ -1,4 +1,4 @@
-import { apiClient } from "./client";
+import { apiClient, clearAccessToken, getAccessToken, setAccessToken } from "./client";
 
 export interface LoginCredentials {
   username: string;
@@ -49,8 +49,9 @@ export const authAPI = {
       },
     });
 
-    // Store the access token
-    localStorage.setItem("access_token", response.data.access_token);
+    // Keep the access token in memory only (see client.ts) rather than
+    // persisting it client-side.
+    setAccessToken(response.data.access_token);
 
     return response.data;
   },
@@ -66,8 +67,8 @@ export const authAPI = {
     try {
       await apiClient.post("/logout");
     } finally {
-      // Always remove token from localStorage
-      localStorage.removeItem("access_token");
+      // Always drop the in-memory token, even if the logout request failed
+      clearAccessToken();
     }
   },
 
@@ -93,8 +94,11 @@ export const authAPI = {
     await apiClient.patch(`/user/${userUuid}/password`, passwordData);
   },
 
-  // Check if user is authenticated
+  // Whether we currently hold an access token in memory. Note this only
+  // reflects the current tab/page load - use `refreshAccessToken` (from
+  // `./client`) to re-derive a token from the httpOnly refresh cookie, e.g.
+  // on initial page load.
   isAuthenticated(): boolean {
-    return !!localStorage.getItem("access_token");
+    return !!getAccessToken();
   },
 };
