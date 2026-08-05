@@ -125,6 +125,7 @@ export function formatDiveDateTime(
   options?: Intl.DateTimeFormatOptions,
 ): string {
   return shiftByEmbeddedOffset(startTime).shifted.toLocaleDateString("en-US", {
+    hour12: false,
     ...(options ?? {
       year: "numeric",
       month: "short",
@@ -142,6 +143,7 @@ export function formatDiveTimeOnly(
   options?: Intl.DateTimeFormatOptions,
 ): string {
   return shiftByEmbeddedOffset(startTime).shifted.toLocaleTimeString("en-US", {
+    hour12: false,
     ...(options ?? { hour: "2-digit", minute: "2-digit" }),
     timeZone: "UTC",
   });
@@ -175,16 +177,16 @@ export function formatDateTime(
   dateString: string,
   options?: Intl.DateTimeFormatOptions,
 ): string {
-  return new Date(dateString).toLocaleDateString(
-    "en-US",
-    options ?? {
+  return new Date(dateString).toLocaleDateString("en-US", {
+    hour12: false,
+    ...(options ?? {
       year: "numeric",
       month: "short",
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
-    },
-  );
+    }),
+  });
 }
 
 // Time-of-day counterpart to `formatDateTime()` above - same caveat applies:
@@ -194,10 +196,10 @@ export function formatTimeOnly(
   dateString: string,
   options?: Intl.DateTimeFormatOptions,
 ): string {
-  return new Date(dateString).toLocaleTimeString(
-    "en-US",
-    options ?? { hour: "2-digit", minute: "2-digit" },
-  );
+  return new Date(dateString).toLocaleTimeString("en-US", {
+    hour12: false,
+    ...(options ?? { hour: "2-digit", minute: "2-digit" }),
+  });
 }
 
 // Formats a duration given in seconds as "MM:SS" (the format used in dive

@@ -70,10 +70,8 @@ describe("formatDateOnly", () => {
 });
 
 describe("formatDateTime", () => {
-  it("formats a full ISO datetime string with date and time by default", () => {
-    expect(formatDateTime("2024-06-01T09:05:00")).toMatch(
-      /^Jun 1, 2024, \d{1,2}:\d{2} (AM|PM)$/,
-    );
+  it("formats a full ISO datetime string with date and time in 24h format by default", () => {
+    expect(formatDateTime("2024-06-01T09:05:00")).toBe("Jun 1, 2024, 09:05");
   });
 
   it("respects custom Intl.DateTimeFormatOptions", () => {
@@ -88,10 +86,12 @@ describe("formatDateTime", () => {
 });
 
 describe("formatTimeOnly", () => {
-  it("formats a full ISO datetime string's time-of-day component", () => {
-    expect(formatTimeOnly("2024-06-01T09:05:00")).toMatch(
-      /^\d{1,2}:\d{2} (AM|PM)$/,
-    );
+  it("formats a full ISO datetime string's time-of-day component in 24h format", () => {
+    expect(formatTimeOnly("2024-06-01T09:05:00")).toBe("09:05");
+  });
+
+  it("formats an afternoon time in 24h format, not AM/PM", () => {
+    expect(formatTimeOnly("2024-06-01T15:30:00")).toBe("15:30");
   });
 });
 
