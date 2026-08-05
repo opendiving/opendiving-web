@@ -103,7 +103,9 @@ export function RecentTripsCard({ userId }: RecentTripsCardProps) {
                 <div>
                   <div className="font-medium text-foreground">{trip.name}</div>
                   {trip.location && (
-                    <div className="text-sm text-muted-foreground">{trip.location}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {trip.location}
+                    </div>
                   )}
                 </div>
                 {formatTripDisplayDate(trip) && (

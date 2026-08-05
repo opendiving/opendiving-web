@@ -5,8 +5,7 @@ import axios from "axios";
 // then handle navigation via Next's router instead of a hard page reload.
 export const AUTH_SESSION_EXPIRED_EVENT = "auth:session-expired";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 // The access token is intentionally kept in memory only, never in
 // localStorage/sessionStorage: those are readable by any JS running on the

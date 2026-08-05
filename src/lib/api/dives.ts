@@ -111,9 +111,7 @@ export const divesAPI = {
         page,
         items_per_page,
         ...(tripUuid !== undefined ? { trip_uuid: tripUuid } : {}),
-        ...(diveSiteUuid !== undefined
-          ? { dive_site_uuid: diveSiteUuid }
-          : {}),
+        ...(diveSiteUuid !== undefined ? { dive_site_uuid: diveSiteUuid } : {}),
       },
     });
     return response.data;

@@ -57,7 +57,8 @@ export default function DivesPage() {
     cancelDelete: cancelDeleteDive,
     confirmDelete: confirmDeleteDive,
   } = useDeleteResource(divesAPI.deleteDive, {
-    confirmMessage: "Are you sure you want to delete this dive? This action cannot be undone.",
+    confirmMessage:
+      "Are you sure you want to delete this dive? This action cannot be undone.",
     successMessage: "Dive deleted successfully.",
     errorMessage: "Failed to delete dive. Please try again.",
     onDeleted: refetch,
@@ -77,137 +78,137 @@ export default function DivesPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-3xl font-bold">Dives</h1>
-            <p className="text-muted-foreground mt-2">
-              Manage and track your diving activities
-            </p>
-          </div>
-          <Button asChild>
-            <Link href="/dives/new">
-              <Plus className="h-4 w-4 mr-2" />
-              Log New Dive
-            </Link>
-          </Button>
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-3xl font-bold">Dives</h1>
+          <p className="text-muted-foreground mt-2">
+            Manage and track your diving activities
+          </p>
         </div>
+        <Button asChild>
+          <Link href="/dives/new">
+            <Plus className="h-4 w-4 mr-2" />
+            Log New Dive
+          </Link>
+        </Button>
+      </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>Dive Log</span>
-              <Badge variant="secondary">
-                {totalCount} total dive{totalCount !== 1 ? "s" : ""}
-              </Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoadingDives && dives.length === 0 ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin" />
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span>Dive Log</span>
+            <Badge variant="secondary">
+              {totalCount} total dive{totalCount !== 1 ? "s" : ""}
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoadingDives && dives.length === 0 ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+          ) : dives.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-muted-foreground mb-4">
+                No dives logged yet. Start by adding your first dive!
               </div>
-            ) : dives.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="text-muted-foreground mb-4">
-                  No dives logged yet. Start by adding your first dive!
-                </div>
-                <Button asChild>
-                  <Link href="/dives/new">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Log Your First Dive
-                  </Link>
-                </Button>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>#</TableHead>
-                      <TableHead>Date & Time</TableHead>
-                      <TableHead>Dive Site</TableHead>
-                      <TableHead>Duration</TableHead>
-                      <TableHead>Max Depth</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {dives.map((dive) => (
-                      <TableRow key={dive.uuid}>
-                        <TableCell className="font-medium">
-                          #{dive.dive_number}
-                        </TableCell>
-                        <TableCell>
-                          <Link
-                            href={`/dives/${dive.uuid}`}
-                            className="text-sm font-medium hover:underline"
+              <Button asChild>
+                <Link href="/dives/new">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Log Your First Dive
+                </Link>
+              </Button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>#</TableHead>
+                    <TableHead>Date & Time</TableHead>
+                    <TableHead>Dive Site</TableHead>
+                    <TableHead>Duration</TableHead>
+                    <TableHead>Max Depth</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {dives.map((dive) => (
+                    <TableRow key={dive.uuid}>
+                      <TableCell className="font-medium">
+                        #{dive.dive_number}
+                      </TableCell>
+                      <TableCell>
+                        <Link
+                          href={`/dives/${dive.uuid}`}
+                          className="text-sm font-medium hover:underline"
+                        >
+                          {formatDateTime(dive.start_time)}
+                        </Link>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        <DiveSitesLabel sites={dive.dive_sites} />
+                      </TableCell>
+                      <TableCell>
+                        {formatDurationHoursMinutes(dive.duration)}
+                      </TableCell>
+                      <TableCell>
+                        {dive.max_depth ? `${dive.max_depth}m` : "-"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button variant="ghost" size="sm" asChild>
+                            <Link href={`/dives/${dive.uuid}`}>
+                              <Eye className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                          <Button variant="ghost" size="sm" asChild>
+                            <Link href={`/dives/${dive.uuid}/edit`}>
+                              <Edit className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => requestDeleteDive(dive.uuid)}
+                            disabled={deletingId === dive.uuid}
                           >
-                            {formatDateTime(dive.start_time)}
-                          </Link>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          <DiveSitesLabel sites={dive.dive_sites} />
-                        </TableCell>
-                        <TableCell>
-                          {formatDurationHoursMinutes(dive.duration)}
-                        </TableCell>
-                        <TableCell>
-                          {dive.max_depth ? `${dive.max_depth}m` : "-"}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="sm" asChild>
-                              <Link href={`/dives/${dive.uuid}`}>
-                                <Eye className="h-4 w-4" />
-                              </Link>
-                            </Button>
-                            <Button variant="ghost" size="sm" asChild>
-                              <Link href={`/dives/${dive.uuid}/edit`}>
-                                <Edit className="h-4 w-4" />
-                              </Link>
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => requestDeleteDive(dive.uuid)}
-                              disabled={deletingId === dive.uuid}
-                            >
-                              {deletingId === dive.uuid ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Trash2 className="h-4 w-4" />
-                              )}
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
+                            {deletingId === dive.uuid ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
 
-            <PaginationFooter
-              currentPage={currentPage}
-              itemsPerPage={itemsPerPage}
-              totalCount={totalCount}
-              hasMore={hasMore}
-              isLoading={isLoadingDives}
-              itemLabel="dives"
-              onPageChange={fetchDivesPage}
-            />
-          </CardContent>
-        </Card>
+          <PaginationFooter
+            currentPage={currentPage}
+            itemsPerPage={itemsPerPage}
+            totalCount={totalCount}
+            hasMore={hasMore}
+            isLoading={isLoadingDives}
+            itemLabel="dives"
+            onPageChange={fetchDivesPage}
+          />
+        </CardContent>
+      </Card>
 
-        <ConfirmDialog
-          open={pendingId !== null}
-          onOpenChange={(open) => !open && cancelDeleteDive()}
-          title="Delete dive"
-          description={confirmMessage}
-          confirmText="Delete"
-          isLoading={deletingId === pendingId}
-          onConfirm={confirmDeleteDive}
-        />
+      <ConfirmDialog
+        open={pendingId !== null}
+        onOpenChange={(open) => !open && cancelDeleteDive()}
+        title="Delete dive"
+        description={confirmMessage}
+        confirmText="Delete"
+        isLoading={deletingId === pendingId}
+        onConfirm={confirmDeleteDive}
+      />
     </div>
   );
 }

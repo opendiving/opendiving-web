@@ -16,7 +16,12 @@ interface UseDeleteResourceOptions {
 // rather than the blocking native `confirm()`.
 export function useDeleteResource(
   deleteFn: (id: string) => Promise<unknown>,
-  { confirmMessage, successMessage, errorMessage, onDeleted }: UseDeleteResourceOptions,
+  {
+    confirmMessage,
+    successMessage,
+    errorMessage,
+    onDeleted,
+  }: UseDeleteResourceOptions,
 ) {
   const { toast } = useToast();
   const [deletingId, setDeletingId] = useState<string | null>(null);

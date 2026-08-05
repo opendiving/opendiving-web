@@ -101,8 +101,11 @@ export function formatTripDateRange(
 ): string | undefined {
   if (!startDate && !endDate) return undefined;
   if (startDate && endDate) {
-    const resolvedOptions =
-      options ?? { year: "numeric", month: "short", day: "numeric" };
+    const resolvedOptions = options ?? {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    };
     const sameYear = startDate.split("-")[0] === endDate.split("-")[0];
     // Drop the year from the start date when both dates fall in the same
     // year, e.g. "Jun 1 - Jun 8, 2024" instead of "Jun 1, 2024 - Jun 8, 2024".

@@ -1,4 +1,9 @@
-import { apiClient, clearAccessToken, getAccessToken, setAccessToken } from "./client";
+import {
+  apiClient,
+  clearAccessToken,
+  getAccessToken,
+  setAccessToken,
+} from "./client";
 
 export interface LoginCredentials {
   username: string;

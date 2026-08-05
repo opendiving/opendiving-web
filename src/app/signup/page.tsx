@@ -23,7 +23,9 @@ export default function SignUpPage() {
         <div className="flex justify-center mb-8">
           <Link href="/" className="flex items-center space-x-2">
             <Logo className="h-8 w-8 text-primary" />
-            <span className="text-2xl font-bold text-foreground">OpenDiving</span>
+            <span className="text-2xl font-bold text-foreground">
+              OpenDiving
+            </span>
           </Link>
         </div>
 
@@ -38,7 +40,10 @@ export default function SignUpPage() {
               Terms of Service
             </Link>{" "}
             and{" "}
-            <Link href="/privacy" className="text-primary hover:text-primary/80">
+            <Link
+              href="/privacy"
+              className="text-primary hover:text-primary/80"
+            >
               Privacy Policy
             </Link>
           </p>

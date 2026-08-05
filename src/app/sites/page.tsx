@@ -75,126 +75,124 @@ export default function SitesPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-3xl font-bold">Dive Sites</h1>
-            <p className="text-muted-foreground mt-2">
-              Keep track of the dive sites you&apos;ve visited
-            </p>
-          </div>
-          <Button asChild>
-            <Link href="/sites/new">
-              <Plus className="h-4 w-4 mr-2" />
-              New Dive Site
-            </Link>
-          </Button>
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-3xl font-bold">Dive Sites</h1>
+          <p className="text-muted-foreground mt-2">
+            Keep track of the dive sites you&apos;ve visited
+          </p>
         </div>
+        <Button asChild>
+          <Link href="/sites/new">
+            <Plus className="h-4 w-4 mr-2" />
+            New Dive Site
+          </Link>
+        </Button>
+      </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>Dive Site List</span>
-              <Badge variant="secondary">
-                {totalCount} total dive site{totalCount !== 1 ? "s" : ""}
-              </Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoadingDiveSites && diveSites.length === 0 ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin" />
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span>Dive Site List</span>
+            <Badge variant="secondary">
+              {totalCount} total dive site{totalCount !== 1 ? "s" : ""}
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoadingDiveSites && diveSites.length === 0 ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin" />
+            </div>
+          ) : diveSites.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-muted-foreground mb-4">
+                No dive sites yet. Add your first dive site to start tracking
+                your favorite spots!
               </div>
-            ) : diveSites.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="text-muted-foreground mb-4">
-                  No dive sites yet. Add your first dive site to start tracking
-                  your favorite spots!
-                </div>
-                <Button asChild>
-                  <Link href="/sites/new">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Your First Dive Site
-                  </Link>
-                </Button>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Location</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {diveSites.map((diveSite) => (
-                      <TableRow key={diveSite.uuid}>
-                        <TableCell className="font-medium">
-                          <Link
-                            href={`/sites/${diveSite.uuid}`}
-                            className="hover:underline"
+              <Button asChild>
+                <Link href="/sites/new">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Your First Dive Site
+                </Link>
+              </Button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Location</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {diveSites.map((diveSite) => (
+                    <TableRow key={diveSite.uuid}>
+                      <TableCell className="font-medium">
+                        <Link
+                          href={`/sites/${diveSite.uuid}`}
+                          className="hover:underline"
+                        >
+                          {diveSite.name}
+                        </Link>
+                      </TableCell>
+                      <TableCell>{diveSite.location || "-"}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button variant="ghost" size="sm" asChild>
+                            <Link href={`/sites/${diveSite.uuid}`}>
+                              <Eye className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                          <Button variant="ghost" size="sm" asChild>
+                            <Link href={`/sites/${diveSite.uuid}/edit`}>
+                              <Edit className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => requestDeleteDiveSite(diveSite.uuid)}
+                            disabled={deletingId === diveSite.uuid}
                           >
-                            {diveSite.name}
-                          </Link>
-                        </TableCell>
-                        <TableCell>{diveSite.location || "-"}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="sm" asChild>
-                              <Link href={`/sites/${diveSite.uuid}`}>
-                                <Eye className="h-4 w-4" />
-                              </Link>
-                            </Button>
-                            <Button variant="ghost" size="sm" asChild>
-                              <Link href={`/sites/${diveSite.uuid}/edit`}>
-                                <Edit className="h-4 w-4" />
-                              </Link>
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() =>
-                                requestDeleteDiveSite(diveSite.uuid)
-                              }
-                              disabled={deletingId === diveSite.uuid}
-                            >
-                              {deletingId === diveSite.uuid ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Trash2 className="h-4 w-4" />
-                              )}
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
+                            {deletingId === diveSite.uuid ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
 
-            <PaginationFooter
-              currentPage={currentPage}
-              itemsPerPage={itemsPerPage}
-              totalCount={totalCount}
-              hasMore={hasMore}
-              isLoading={isLoadingDiveSites}
-              itemLabel="dive sites"
-              onPageChange={fetchDiveSitesPage}
-            />
-          </CardContent>
-        </Card>
+          <PaginationFooter
+            currentPage={currentPage}
+            itemsPerPage={itemsPerPage}
+            totalCount={totalCount}
+            hasMore={hasMore}
+            isLoading={isLoadingDiveSites}
+            itemLabel="dive sites"
+            onPageChange={fetchDiveSitesPage}
+          />
+        </CardContent>
+      </Card>
 
-        <ConfirmDialog
-          open={pendingId !== null}
-          onOpenChange={(open) => !open && cancelDeleteDiveSite()}
-          title="Delete dive site"
-          description={confirmMessage}
-          confirmText="Delete"
-          isLoading={deletingId === pendingId}
-          onConfirm={confirmDeleteDiveSite}
-        />
+      <ConfirmDialog
+        open={pendingId !== null}
+        onOpenChange={(open) => !open && cancelDeleteDiveSite()}
+        title="Delete dive site"
+        description={confirmMessage}
+        confirmText="Delete"
+        isLoading={deletingId === pendingId}
+        onConfirm={confirmDeleteDiveSite}
+      />
     </div>
   );
 }

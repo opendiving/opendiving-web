@@ -112,9 +112,7 @@ export default function DiveSiteDetailPage() {
     return (
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="text-center py-12">
-          <div className="text-muted-foreground mb-4">
-            Dive site not found.
-          </div>
+          <div className="text-muted-foreground mb-4">Dive site not found.</div>
           <Button asChild>
             <Link href="/sites">
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -128,106 +126,104 @@ export default function DiveSiteDetailPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/sites">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Dive Sites
-              </Link>
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold">{diveSite.name}</h1>
-              <p className="text-muted-foreground mt-1">
-                {diveSite.location
-                  ? diveSite.location
-                  : `Added ${formatDate(diveSite.created_at)}`}
-              </p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" asChild>
-              <Link href={`/sites/${diveSite.uuid}/edit`}>
-                <Edit className="h-4 w-4 mr-2" />
-                Edit
-              </Link>
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => setIsConfirmOpen(true)}
-              disabled={isDeleting}
-            >
-              {isDeleting ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Trash2 className="h-4 w-4 mr-2" />
-              )}
-              Delete
-            </Button>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/sites">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Dive Sites
+            </Link>
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold">{diveSite.name}</h1>
+            <p className="text-muted-foreground mt-1">
+              {diveSite.location
+                ? diveSite.location
+                : `Added ${formatDate(diveSite.created_at)}`}
+            </p>
           </div>
         </div>
+        <div className="flex gap-2">
+          <Button variant="outline" asChild>
+            <Link href={`/sites/${diveSite.uuid}/edit`}>
+              <Edit className="h-4 w-4 mr-2" />
+              Edit
+            </Link>
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={() => setIsConfirmOpen(true)}
+            disabled={isDeleting}
+          >
+            {isDeleting ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Trash2 className="h-4 w-4 mr-2" />
+            )}
+            Delete
+          </Button>
+        </div>
+      </div>
 
-        <ConfirmDialog
-          open={isConfirmOpen}
-          onOpenChange={setIsConfirmOpen}
-          title="Delete dive site"
-          description="Are you sure you want to delete this dive site? This action cannot be undone."
-          confirmText="Delete"
-          isLoading={isDeleting}
-          onConfirm={handleDeleteDiveSite}
-        />
+      <ConfirmDialog
+        open={isConfirmOpen}
+        onOpenChange={setIsConfirmOpen}
+        title="Delete dive site"
+        description="Are you sure you want to delete this dive site? This action cannot be undone."
+        confirmText="Delete"
+        isLoading={isDeleting}
+        onConfirm={handleDeleteDiveSite}
+      />
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <RecentDivesCard
-              userId={user?.uuid ?? ""}
-              diveSiteId={diveSite.uuid}
-              limit={100}
-              title="Dives at this Site"
-              description="All dives logged at this dive site"
-              viewAllHref={null}
-              emptyTitle="No dives logged at this site yet"
-              emptyDescription="Log a dive and assign it to this dive site to see it here."
-              newDiveHref={`/dives/new?dive_site_uuid=${diveSite.uuid}`}
-              newDiveLabel="Log a Dive at this Site"
-            />
-          </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <RecentDivesCard
+            userId={user?.uuid ?? ""}
+            diveSiteId={diveSite.uuid}
+            limit={100}
+            title="Dives at this Site"
+            description="All dives logged at this dive site"
+            viewAllHref={null}
+            emptyTitle="No dives logged at this site yet"
+            emptyDescription="Log a dive and assign it to this dive site to see it here."
+            newDiveHref={`/dives/new?dive_site_uuid=${diveSite.uuid}`}
+            newDiveLabel="Log a Dive at this Site"
+          />
+        </div>
 
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MapPin className="h-5 w-5" />
-                  Dive Site Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {diveSite.location && (
-                  <div>
-                    <div className="text-sm font-medium text-muted-foreground mb-1">
-                      Location
-                    </div>
-                    <div className="text-sm">{diveSite.location}</div>
-                  </div>
-                )}
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="h-5 w-5" />
+                Dive Site Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {diveSite.location && (
                 <div>
                   <div className="text-sm font-medium text-muted-foreground mb-1">
-                    Added on
+                    Location
                   </div>
-                  <div className="text-sm">
-                    {formatDate(diveSite.created_at)}
-                  </div>
+                  <div className="text-sm">{diveSite.location}</div>
                 </div>
-                <Button className="w-full" asChild>
-                  <Link href={`/dives/new?dive_site_uuid=${diveSite.uuid}`}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Log a Dive at this Site
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
+              )}
+              <div>
+                <div className="text-sm font-medium text-muted-foreground mb-1">
+                  Added on
+                </div>
+                <div className="text-sm">{formatDate(diveSite.created_at)}</div>
+              </div>
+              <Button className="w-full" asChild>
+                <Link href={`/dives/new?dive_site_uuid=${diveSite.uuid}`}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Log a Dive at this Site
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
         </div>
+      </div>
     </div>
   );
 }

@@ -69,7 +69,10 @@ export function usePaginatedResource<T>(
     }
   }, [enabled, fetchPage]);
 
-  const refetch = useCallback(() => fetchPage(currentPage), [fetchPage, currentPage]);
+  const refetch = useCallback(
+    () => fetchPage(currentPage),
+    [fetchPage, currentPage],
+  );
 
   return {
     items,

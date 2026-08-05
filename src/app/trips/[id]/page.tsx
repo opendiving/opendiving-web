@@ -142,119 +142,119 @@ export default function TripDetailPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/trips">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Trips
-              </Link>
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold">{trip.name}</h1>
-              <p className="text-muted-foreground mt-1">
-                {trip.location && tripDateRange
-                  ? `${trip.location} · ${tripDateRange}`
-                  : trip.location
-                    ? trip.location
-                    : tripDateRange
-                      ? tripDateRange
-                      : `Created ${formatDate(trip.created_at)}`}
-              </p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" asChild>
-              <Link href={`/trips/${trip.uuid}/edit`}>
-                <Edit className="h-4 w-4 mr-2" />
-                Edit
-              </Link>
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={() => setIsConfirmOpen(true)}
-              disabled={isDeleting}
-            >
-              {isDeleting ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Trash2 className="h-4 w-4 mr-2" />
-              )}
-              Delete
-            </Button>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/trips">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Trips
+            </Link>
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold">{trip.name}</h1>
+            <p className="text-muted-foreground mt-1">
+              {trip.location && tripDateRange
+                ? `${trip.location} · ${tripDateRange}`
+                : trip.location
+                  ? trip.location
+                  : tripDateRange
+                    ? tripDateRange
+                    : `Created ${formatDate(trip.created_at)}`}
+            </p>
           </div>
         </div>
+        <div className="flex gap-2">
+          <Button variant="outline" asChild>
+            <Link href={`/trips/${trip.uuid}/edit`}>
+              <Edit className="h-4 w-4 mr-2" />
+              Edit
+            </Link>
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={() => setIsConfirmOpen(true)}
+            disabled={isDeleting}
+          >
+            {isDeleting ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Trash2 className="h-4 w-4 mr-2" />
+            )}
+            Delete
+          </Button>
+        </div>
+      </div>
 
-        <ConfirmDialog
-          open={isConfirmOpen}
-          onOpenChange={setIsConfirmOpen}
-          title="Delete trip"
-          description="Are you sure you want to delete this trip? This action cannot be undone."
-          confirmText="Delete"
-          isLoading={isDeleting}
-          onConfirm={handleDeleteTrip}
-        />
+      <ConfirmDialog
+        open={isConfirmOpen}
+        onOpenChange={setIsConfirmOpen}
+        title="Delete trip"
+        description="Are you sure you want to delete this trip? This action cannot be undone."
+        confirmText="Delete"
+        isLoading={isDeleting}
+        onConfirm={handleDeleteTrip}
+      />
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <RecentDivesCard
-              userId={user?.uuid ?? ""}
-              tripId={trip.uuid}
-              limit={100}
-              title="Dives in this Trip"
-              description="All dives logged as part of this trip"
-              viewAllHref={null}
-              emptyTitle="No dives logged for this trip yet"
-              emptyDescription="Log a dive and assign it to this trip to see it here."
-              newDiveHref={`/dives/new?trip_uuid=${trip.uuid}`}
-              newDiveLabel="Log a Dive for this Trip"
-            />
-          </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <RecentDivesCard
+            userId={user?.uuid ?? ""}
+            tripId={trip.uuid}
+            limit={100}
+            title="Dives in this Trip"
+            description="All dives logged as part of this trip"
+            viewAllHref={null}
+            emptyTitle="No dives logged for this trip yet"
+            emptyDescription="Log a dive and assign it to this trip to see it here."
+            newDiveHref={`/dives/new?trip_uuid=${trip.uuid}`}
+            newDiveLabel="Log a Dive for this Trip"
+          />
+        </div>
 
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Calendar className="h-5 w-5" />
-                  Trip Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {trip.location && (
-                  <div>
-                    <div className="text-sm font-medium text-muted-foreground mb-1">
-                      Location
-                    </div>
-                    <div className="flex items-center gap-2 text-sm">
-                      <MapPin className="h-4 w-4 text-muted-foreground" />
-                      {trip.location}
-                    </div>
-                  </div>
-                )}
-                {tripDateRange && (
-                  <div>
-                    <div className="text-sm font-medium text-muted-foreground mb-1">
-                      Trip Dates
-                    </div>
-                    <div className="text-sm">{tripDateRange}</div>
-                  </div>
-                )}
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                Trip Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {trip.location && (
                 <div>
                   <div className="text-sm font-medium text-muted-foreground mb-1">
-                    Created on
+                    Location
                   </div>
-                  <div className="text-sm">{formatDate(trip.created_at)}</div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <MapPin className="h-4 w-4 text-muted-foreground" />
+                    {trip.location}
+                  </div>
                 </div>
-                <Button className="w-full" asChild>
-                  <Link href={`/dives/new?trip_uuid=${trip.uuid}`}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Log a Dive for this Trip
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
+              )}
+              {tripDateRange && (
+                <div>
+                  <div className="text-sm font-medium text-muted-foreground mb-1">
+                    Trip Dates
+                  </div>
+                  <div className="text-sm">{tripDateRange}</div>
+                </div>
+              )}
+              <div>
+                <div className="text-sm font-medium text-muted-foreground mb-1">
+                  Created on
+                </div>
+                <div className="text-sm">{formatDate(trip.created_at)}</div>
+              </div>
+              <Button className="w-full" asChild>
+                <Link href={`/dives/new?trip_uuid=${trip.uuid}`}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Log a Dive for this Trip
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
         </div>
+      </div>
     </div>
   );
 }

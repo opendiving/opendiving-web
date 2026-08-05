@@ -19,22 +19,34 @@ export function Footer() {
             <h4 className="font-semibold mb-4">Platform</h4>
             <ul className="space-y-2 text-sm text-neutral-600 dark:text-neutral-400">
               <li>
-                <a href="#" className="hover:text-neutral-900 dark:hover:text-white">
+                <a
+                  href="#"
+                  className="hover:text-neutral-900 dark:hover:text-white"
+                >
                   Dive Log
                 </a>
               </li>
               <li>
-                <a href="#" className="hover:text-neutral-900 dark:hover:text-white">
+                <a
+                  href="#"
+                  className="hover:text-neutral-900 dark:hover:text-white"
+                >
                   Community
                 </a>
               </li>
               <li>
-                <a href="#" className="hover:text-neutral-900 dark:hover:text-white">
+                <a
+                  href="#"
+                  className="hover:text-neutral-900 dark:hover:text-white"
+                >
                   Dive Sites
                 </a>
               </li>
               <li>
-                <a href="#" className="hover:text-neutral-900 dark:hover:text-white">
+                <a
+                  href="#"
+                  className="hover:text-neutral-900 dark:hover:text-white"
+                >
                   Equipment
                 </a>
               </li>
@@ -44,22 +56,34 @@ export function Footer() {
             <h4 className="font-semibold mb-4">Resources</h4>
             <ul className="space-y-2 text-sm text-neutral-600 dark:text-neutral-400">
               <li>
-                <a href="#" className="hover:text-neutral-900 dark:hover:text-white">
+                <a
+                  href="#"
+                  className="hover:text-neutral-900 dark:hover:text-white"
+                >
                   Documentation
                 </a>
               </li>
               <li>
-                <a href="#" className="hover:text-neutral-900 dark:hover:text-white">
+                <a
+                  href="#"
+                  className="hover:text-neutral-900 dark:hover:text-white"
+                >
                   API
                 </a>
               </li>
               <li>
-                <a href="#" className="hover:text-neutral-900 dark:hover:text-white">
+                <a
+                  href="#"
+                  className="hover:text-neutral-900 dark:hover:text-white"
+                >
                   GitHub
                 </a>
               </li>
               <li>
-                <a href="#" className="hover:text-neutral-900 dark:hover:text-white">
+                <a
+                  href="#"
+                  className="hover:text-neutral-900 dark:hover:text-white"
+                >
                   Contributing
                 </a>
               </li>
@@ -69,27 +93,42 @@ export function Footer() {
             <h4 className="font-semibold mb-4">Support</h4>
             <ul className="space-y-2 text-sm text-neutral-600 dark:text-neutral-400">
               <li>
-                <a href="#" className="hover:text-neutral-900 dark:hover:text-white">
+                <a
+                  href="#"
+                  className="hover:text-neutral-900 dark:hover:text-white"
+                >
                   Help Center
                 </a>
               </li>
               <li>
-                <a href="#" className="hover:text-neutral-900 dark:hover:text-white">
+                <a
+                  href="#"
+                  className="hover:text-neutral-900 dark:hover:text-white"
+                >
                   Safety Guidelines
                 </a>
               </li>
               <li>
-                <Link href="/contact" className="hover:text-neutral-900 dark:hover:text-white">
+                <Link
+                  href="/contact"
+                  className="hover:text-neutral-900 dark:hover:text-white"
+                >
                   Contact
                 </Link>
               </li>
               <li>
-                <Link href="/privacy" className="hover:text-neutral-900 dark:hover:text-white">
+                <Link
+                  href="/privacy"
+                  className="hover:text-neutral-900 dark:hover:text-white"
+                >
                   Privacy
                 </Link>
               </li>
               <li>
-                <Link href="/terms" className="hover:text-neutral-900 dark:hover:text-white">
+                <Link
+                  href="/terms"
+                  className="hover:text-neutral-900 dark:hover:text-white"
+                >
                   Terms of Service
                 </Link>
               </li>
