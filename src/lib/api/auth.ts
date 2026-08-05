@@ -1,4 +1,9 @@
-import { apiClient } from "./client";
+import {
+  apiClient,
+  clearAccessToken,
+  getAccessToken,
+  setAccessToken,
+} from "./client";
 
 export interface LoginCredentials {
   username: string;
@@ -13,12 +18,11 @@ export interface SignUpData {
 }
 
 export interface User {
-  id: number;
+  uuid: string;
   name: string;
   username: string;
   email: string;
   profile_image_url: string;
-  tier_id: number | null;
 }
 
 export interface AuthResponse {
@@ -50,8 +54,9 @@ export const authAPI = {
       },
     });
 
-    // Store the access token
-    localStorage.setItem("access_token", response.data.access_token);
+    // Keep the access token in memory only (see client.ts) rather than
+    // persisting it client-side.
+    setAccessToken(response.data.access_token);
 
     return response.data;
   },
@@ -67,35 +72,38 @@ export const authAPI = {
     try {
       await apiClient.post("/logout");
     } finally {
-      // Always remove token from localStorage
-      localStorage.removeItem("access_token");
+      // Always drop the in-memory token, even if the logout request failed
+      clearAccessToken();
     }
   },
 
   // Get current user
   async getCurrentUser(): Promise<User> {
-    const response = await apiClient.get("/user/me/");
+    const response = await apiClient.get("/user/me");
     return response.data;
   },
 
   // Update user profile
   async updateProfile(
-    username: string,
+    userUuid: string,
     profileData: UpdateProfileData,
   ): Promise<void> {
-    await apiClient.patch(`/user/${username}`, profileData);
+    await apiClient.patch(`/user/${userUuid}`, profileData);
   },
 
   // Change password
   async changePassword(
-    username: string,
+    userUuid: string,
     passwordData: ChangePasswordData,
   ): Promise<void> {
-    await apiClient.patch(`/user/${username}/password`, passwordData);
+    await apiClient.patch(`/user/${userUuid}/password`, passwordData);
   },
 
-  // Check if user is authenticated
+  // Whether we currently hold an access token in memory. Note this only
+  // reflects the current tab/page load - use `refreshAccessToken` (from
+  // `./client`) to re-derive a token from the httpOnly refresh cookie, e.g.
+  // on initial page load.
   isAuthenticated(): boolean {
-    return !!localStorage.getItem("access_token");
+    return !!getAccessToken();
   },
 };

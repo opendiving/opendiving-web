@@ -26,12 +26,16 @@ export function UserAvatar({
   const [imageError, setImageError] = React.useState(false);
   const [hasCustomGravatar, setHasCustomGravatar] = React.useState(false);
 
-  const gravatarUrl = getGravatarUrl(email, size);
+  const gravatarUrl = getGravatarUrl(email, size * 2);
   const strictGravatarUrl = getGravatarUrlStrict(email, size);
   const initials = getUserInitials(name);
 
-  // Check if user has a custom Gravatar
+  // Check if user has a custom Gravatar. Resets local state for the new email, then
+  // subscribes to the browser's Image load/error events - the latter is an explicitly
+  // sanctioned use of an effect ("subscribe to an external system"); the reset just
+  // ensures stale state from a previous `email` isn't shown while that check runs.
   React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setImageLoaded(false);
     setImageError(false);
     setHasCustomGravatar(false);
@@ -67,7 +71,7 @@ export function UserAvatar({
           onError={handleImageError}
         />
       )}
-      <AvatarFallback className="bg-blue-100 text-blue-600 font-medium text-sm">
+      <AvatarFallback className="bg-primary/10 text-primary font-medium text-sm">
         {initials.length >= 2 ? initials : <User className="h-1/2 w-1/2" />}
       </AvatarFallback>
     </Avatar>

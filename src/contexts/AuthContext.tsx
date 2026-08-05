@@ -8,6 +8,11 @@ import React, {
   ReactNode,
 } from "react";
 import { authAPI, User, LoginCredentials, SignUpData } from "@/lib/api/auth";
+import {
+  AUTH_SESSION_EXPIRED_EVENT,
+  clearAccessToken,
+  refreshAccessToken,
+} from "@/lib/api/client";
 
 interface AuthContextType {
   user: User | null;
@@ -29,18 +34,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Check if user is authenticated and fetch user data
+  // The access token lives in memory only (see lib/api/client.ts), so it's
+  // never persisted across a page load - re-derive it here from the
+  // httpOnly refresh cookie before fetching the current user. A failure
+  // here (e.g. no cookie, or an expired/invalid one) just means the visitor
+  // isn't signed in, which is the normal case and not worth logging.
   useEffect(() => {
     const initAuth = async () => {
       try {
-        if (authAPI.isAuthenticated()) {
-          const userData = await authAPI.getCurrentUser();
-          setUser(userData);
-        }
-      } catch (error) {
-        console.error("Auth initialization error:", error);
-        // If token is invalid, remove it
-        localStorage.removeItem("access_token");
+        await refreshAccessToken();
+        const userData = await authAPI.getCurrentUser();
+        setUser(userData);
+      } catch {
+        clearAccessToken();
       } finally {
         setIsLoading(false);
       }
@@ -49,32 +55,41 @@ export function AuthProvider({ children }: AuthProviderProps) {
     initAuth();
   }, []);
 
+  // Clear the (now stale) user when a token refresh fails elsewhere in the
+  // app (see client.ts). Existing per-page "redirect if unauthenticated"
+  // guards then handle navigating to /signin via the Next.js router.
+  useEffect(() => {
+    const handleSessionExpired = () => setUser(null);
+    window.addEventListener(AUTH_SESSION_EXPIRED_EVENT, handleSessionExpired);
+    return () =>
+      window.removeEventListener(
+        AUTH_SESSION_EXPIRED_EVENT,
+        handleSessionExpired,
+      );
+  }, []);
+
+  // Note: `isLoading` intentionally isn't touched here. It reflects only the
+  // initial auth bootstrap check above (`initAuth`), which pages use to
+  // decide whether to render a full-page spinner instead of their content
+  // (see `useRedirectIfAuthenticated`). If `signIn`/`signUp` toggled it too,
+  // a failed sign in would briefly unmount `SignInForm` (its spinner takes
+  // over the page) and remount a fresh instance once the request settles,
+  // silently discarding the error message the form was about to show.
+  // Each form already tracks its own in-flight state via react-hook-form's
+  // `isSubmitting`, so this isn't needed for the button's loading UI either.
   const signIn = async (credentials: LoginCredentials) => {
-    try {
-      setIsLoading(true);
-      await authAPI.signIn(credentials);
-      const userData = await authAPI.getCurrentUser();
-      setUser(userData);
-    } catch (error) {
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
+    await authAPI.signIn(credentials);
+    const userData = await authAPI.getCurrentUser();
+    setUser(userData);
   };
 
   const signUp = async (userData: SignUpData) => {
-    try {
-      setIsLoading(true);
-      const newUser = await authAPI.signUp(userData);
-      // After signup, automatically sign in
-      await signIn({
-        username: userData.username,
-        password: userData.password,
-      });
-    } catch (error) {
-      setIsLoading(false);
-      throw error;
-    }
+    await authAPI.signUp(userData);
+    // After signup, automatically sign in
+    await signIn({
+      username: userData.username,
+      password: userData.password,
+    });
   };
 
   const signOut = async () => {
