@@ -4,7 +4,7 @@ Notes on non-obvious choices and pitfalls hit while building out the web app, so
 the reasoning survives independently of any particular chat/agent session. Keep
 this updated as new gotchas are discovered.
 
-## Dive/trip/dive-site API calls take `userId`, not `username`
+## Dive/trip/dive-site API calls take `uuid` strings, not `username`/numeric ids
 
 `divesAPI`/`tripsAPI`/`diveSitesAPI`/`diveStatsAPI` (in `lib/api/*.ts`) used to take
 a `username: string` as their first argument, matching backend routes nested under
@@ -12,24 +12,27 @@ a `username: string` as their first argument, matching backend routes nested und
 `/dive/{id}`, etc., see the API's `DECISIONS.md`), so these functions - and every
 component that calls them (`RecentDivesCard`, `RecentTripsCard`, `TripCombobox`,
 `DiveSiteMultiSelect`, `NewTripDialog`, `NewDiveSiteDialog`, `DiveFormFields`, and
-every `dives/`/`sites/`/`trips/` page) - now take/forward a `userId: number` (from
-`user.id` in `AuthContext`, not `user.username`) instead:
-- Create calls (`createDive`/`createTrip`/`createDiveSite`) now take the full
-  request object as a single argument, with `user_id` included in its body -
-  there's no separate leading `username`/`userId` parameter for these.
-- List calls (`getDives`/`getTrips`/`getDiveSites`/`getDiveStats`) take `userId`
-  as their first argument and send it as a `user_id` query param.
+every `dives/`/`sites/`/`trips/` page) - took/forwarded a `userId: number` (from
+`user.id` in `AuthContext`, not `user.username`) for a while instead. The backend
+then moved from numeric ids to string `uuid`s everywhere (see the API's
+`DECISIONS.md`), so as of the frontend's `uuid` commit these functions take a
+`userUuid: string` (from `user.uuid`) instead of `userId: number`:
+- Create calls (`createDive`/`createTrip`/`createDiveSite`) take the full request
+  object as a single argument, with `user_uuid` included in its body - there's no
+  separate leading `username`/`userId`/`userUuid` parameter for these.
+- List calls (`getDives`/`getTrips`/`getDiveSites`/`getDiveStats`) take `userUuid`
+  as their first argument and send it as a `user_uuid` query param.
 - Single-resource calls (`getDive`/`updateDive`/`deleteDive` and the trip/dive-site
-  equivalents) no longer take a user identifier at all - just the resource `id` -
-  since the backend now authorizes these by comparing the fetched object's owner
-  to the logged-in user, not by a username in the URL.
+  equivalents) don't take a user identifier at all - just the resource `uuid` - since
+  the backend authorizes these by comparing the fetched object's owner to the
+  logged-in user, not by an identifier in the URL.
 
 The `/user/{username}` account-management endpoints (`authAPI.updateProfile`/
-`changePassword`) were changed the same way shortly after (backend routes are now
-`/user/{id}/...`, see the API's `DECISIONS.md`) - `authAPI.updateProfile`/
-`changePassword` now take a `userId: number` (`user.id`) as their first argument
-instead of `username`. `GET /user/me` (`authAPI.getCurrentUser`) is unaffected -
-it's an exact literal path, not a `{username}`/`{id}` placeholder, and always
+`changePassword`) were changed the same way, ending up on the backend's `/user/{uuid}/...`
+routes (see the API's `DECISIONS.md`) - `authAPI.updateProfile`/`changePassword`
+now take a `userUuid: string` (`user.uuid`) as their first argument instead of
+`username`/`userId`. `GET /user/me` (`authAPI.getCurrentUser`) is unaffected - it's
+an exact literal path, not a `{username}`/`{id}`/`{uuid}` placeholder, and always
 resolves the caller's own account from their auth token.
 
 ## Never use `z.preprocess()`/`.transform()` on fields feeding `z.input<>`-derived types
