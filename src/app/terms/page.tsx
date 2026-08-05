@@ -79,8 +79,8 @@ export default function TermsPage() {
               <h2 className="text-2xl font-semibold text-foreground mb-4">
                 4. Safety and Diving Responsibilities
               </h2>
-              <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-4">
-                <p className="text-yellow-800 font-medium">
+              <div className="bg-yellow-50 dark:bg-yellow-950/40 border border-yellow-200 dark:border-yellow-900 rounded-md p-4 mb-4">
+                <p className="text-yellow-800 dark:text-yellow-300 font-medium">
                   <strong>Important Safety Notice:</strong> OpenDiving is a
                   platform for logging and sharing diving experiences. It does
                   not provide diving instruction, safety advice, or emergency
@@ -148,7 +148,7 @@ export default function TermsPage() {
                 Your privacy is important to us. Please review our{" "}
                 <Link
                   href="/privacy"
-                  className="text-blue-600 hover:text-blue-500 underline"
+                  className="text-primary hover:text-primary/80 underline"
                 >
                   Privacy Policy
                 </Link>
@@ -271,7 +271,7 @@ export default function TermsPage() {
               </p>
               <Link
                 href="/"
-                className="mt-4 sm:mt-0 text-blue-600 hover:text-blue-500 text-sm font-medium"
+                className="mt-4 sm:mt-0 text-primary hover:text-primary/80 text-sm font-medium"
               >
                 Back to OpenDiving
               </Link>

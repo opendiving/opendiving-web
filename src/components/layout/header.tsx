@@ -66,7 +66,7 @@ export function Header() {
               href="/"
               className="flex flex-shrink-0 items-center space-x-2"
             >
-              <Waves className="h-8 w-8 text-blue-600 flex-shrink-0" />
+              <Waves className="h-8 w-8 text-primary flex-shrink-0" />
               <h1 className="text-2xl font-bold text-foreground whitespace-nowrap">
                 OpenDiving
               </h1>
@@ -78,9 +78,9 @@ export function Header() {
                 <>
                   <Link
                     href="/dashboard"
-                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-blue-600 ${
+                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-primary ${
                       currentPage === "dashboard"
-                        ? "text-blue-600"
+                        ? "text-primary"
                         : "text-foreground"
                     }`}
                   >
@@ -88,9 +88,9 @@ export function Header() {
                   </Link>
                   <Link
                     href="/trips"
-                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-blue-600 ${
+                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-primary ${
                       currentPage === "trips"
-                        ? "text-blue-600"
+                        ? "text-primary"
                         : "text-foreground"
                     }`}
                   >
@@ -98,9 +98,9 @@ export function Header() {
                   </Link>
                   <Link
                     href="/dives"
-                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-blue-600 ${
+                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-primary ${
                       currentPage === "dives"
-                        ? "text-blue-600"
+                        ? "text-primary"
                         : "text-foreground"
                     }`}
                   >
@@ -108,9 +108,9 @@ export function Header() {
                   </Link>
                   <Link
                     href="/sites"
-                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-blue-600 ${
+                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-primary ${
                       currentPage === "sites"
-                        ? "text-blue-600"
+                        ? "text-primary"
                         : "text-foreground"
                     }`}
                   >
@@ -118,9 +118,9 @@ export function Header() {
                   </Link>
                   <Link
                     href="/community"
-                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-blue-600 ${
+                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-primary ${
                       currentPage === "community"
-                        ? "text-blue-600"
+                        ? "text-primary"
                         : "text-foreground"
                     }`}
                   >
@@ -131,19 +131,19 @@ export function Header() {
                 <>
                   <Link
                     href="/#features"
-                    className="whitespace-nowrap text-sm font-medium text-foreground hover:text-blue-600"
+                    className="whitespace-nowrap text-sm font-medium text-foreground hover:text-primary"
                   >
                     Features
                   </Link>
                   <Link
                     href="/#community"
-                    className="whitespace-nowrap text-sm font-medium text-foreground hover:text-blue-600"
+                    className="whitespace-nowrap text-sm font-medium text-foreground hover:text-primary"
                   >
                     Community
                   </Link>
                   <Link
                     href="/#about"
-                    className="whitespace-nowrap text-sm font-medium text-foreground hover:text-blue-600"
+                    className="whitespace-nowrap text-sm font-medium text-foreground hover:text-primary"
                   >
                     About
                   </Link>
@@ -247,35 +247,35 @@ export function Header() {
                 <>
                   <Link
                     href="/dashboard"
-                    className="text-sm font-medium text-foreground hover:text-blue-600 py-2"
+                    className="text-sm font-medium text-foreground hover:text-primary py-2"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Dashboard
                   </Link>
                   <Link
                     href="/trips"
-                    className="text-sm font-medium text-foreground hover:text-blue-600 py-2"
+                    className="text-sm font-medium text-foreground hover:text-primary py-2"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Trips
                   </Link>
                   <Link
                     href="/dives"
-                    className="text-sm font-medium text-foreground hover:text-blue-600 py-2"
+                    className="text-sm font-medium text-foreground hover:text-primary py-2"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Dives
                   </Link>
                   <Link
                     href="/sites"
-                    className="text-sm font-medium text-foreground hover:text-blue-600 py-2"
+                    className="text-sm font-medium text-foreground hover:text-primary py-2"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Dive Sites
                   </Link>
                   <Link
                     href="/community"
-                    className="text-sm font-medium text-foreground hover:text-blue-600 py-2"
+                    className="text-sm font-medium text-foreground hover:text-primary py-2"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Community
@@ -300,21 +300,21 @@ export function Header() {
                 <>
                   <Link
                     href="/#features"
-                    className="text-sm font-medium text-foreground hover:text-blue-600 py-2"
+                    className="text-sm font-medium text-foreground hover:text-primary py-2"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Features
                   </Link>
                   <Link
                     href="/#community"
-                    className="text-sm font-medium text-foreground hover:text-blue-600 py-2"
+                    className="text-sm font-medium text-foreground hover:text-primary py-2"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Community
                   </Link>
                   <Link
                     href="/#about"
-                    className="text-sm font-medium text-foreground hover:text-blue-600 py-2"
+                    className="text-sm font-medium text-foreground hover:text-primary py-2"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     About

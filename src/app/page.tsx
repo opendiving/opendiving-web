@@ -18,20 +18,20 @@ export default function HomePage() {
 
   if (isLoading || isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-blue-100 dark:from-background dark:to-blue-950/40 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
 
   return (
-    <div className="bg-gradient-to-b from-blue-50 to-blue-100 dark:from-background dark:to-blue-950/40">
+    <div className="bg-background">
       {/* Hero Section */}
       <section className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-4xl md:text-6xl font-bold text-foreground mb-6">
             Dive into the
-            <span className="text-blue-600"> Open Ocean</span>
+            <span className="text-primary"> Open Ocean</span>
           </h2>
           <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
             Join the open source diving community. Track your dives, share
@@ -66,7 +66,7 @@ export default function HomePage() {
           <div className="grid md:grid-cols-3 gap-8">
             <Card>
               <CardHeader>
-                <Fish className="h-12 w-12 text-blue-600 mb-4" />
+                <Fish className="h-12 w-12 text-primary mb-4" />
                 <CardTitle>Dive Log</CardTitle>
                 <CardDescription>
                   Track your underwater adventures with detailed dive logs
@@ -84,7 +84,7 @@ export default function HomePage() {
 
             <Card>
               <CardHeader>
-                <Users className="h-12 w-12 text-blue-600 mb-4" />
+                <Users className="h-12 w-12 text-primary mb-4" />
                 <CardTitle>Community</CardTitle>
                 <CardDescription>
                   Connect with divers worldwide and share experiences
@@ -102,7 +102,7 @@ export default function HomePage() {
 
             <Card>
               <CardHeader>
-                <Anchor className="h-12 w-12 text-blue-600 mb-4" />
+                <Anchor className="h-12 w-12 text-primary mb-4" />
                 <CardTitle>Open Source</CardTitle>
                 <CardDescription>
                   Built by divers, for divers, completely open source
@@ -122,24 +122,24 @@ export default function HomePage() {
       </section>
 
       {/* Stats Section */}
-      <section className="py-20 bg-blue-600 text-white">
+      <section className="py-20 bg-primary text-primary-foreground">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-4 gap-8 text-center">
             <div>
               <div className="text-4xl font-bold mb-2">1,000+</div>
-              <div className="text-blue-200">Active Divers</div>
+              <div className="text-primary-foreground/70">Active Divers</div>
             </div>
             <div>
               <div className="text-4xl font-bold mb-2">5,000+</div>
-              <div className="text-blue-200">Logged Dives</div>
+              <div className="text-primary-foreground/70">Logged Dives</div>
             </div>
             <div>
               <div className="text-4xl font-bold mb-2">50+</div>
-              <div className="text-blue-200">Countries</div>
+              <div className="text-primary-foreground/70">Countries</div>
             </div>
             <div>
               <div className="text-4xl font-bold mb-2">100%</div>
-              <div className="text-blue-200">Open Source</div>
+              <div className="text-primary-foreground/70">Open Source</div>
             </div>
           </div>
         </div>

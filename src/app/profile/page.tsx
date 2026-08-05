@@ -57,7 +57,7 @@ export default function ProfilePage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -178,7 +178,7 @@ export default function ProfilePage() {
                       href="https://gravatar.com"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-500"
+                      className="text-primary hover:text-primary/80"
                     >
                       Gravatar
                     </a>

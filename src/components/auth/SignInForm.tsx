@@ -121,7 +121,7 @@ export function SignInForm() {
             <span className="text-muted-foreground">Don't have an account? </span>
             <Link
               href="/signup"
-              className="text-blue-600 hover:text-blue-500 font-medium"
+              className="text-primary hover:text-primary/80 font-medium"
             >
               Sign up
             </Link>

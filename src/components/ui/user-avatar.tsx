@@ -71,7 +71,7 @@ export function UserAvatar({
           onError={handleImageError}
         />
       )}
-      <AvatarFallback className="bg-blue-100 text-blue-600 font-medium text-sm">
+      <AvatarFallback className="bg-primary/10 text-primary font-medium text-sm">
         {initials.length >= 2 ? initials : <User className="h-1/2 w-1/2" />}
       </AvatarFallback>
     </Avatar>

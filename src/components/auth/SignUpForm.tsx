@@ -150,7 +150,7 @@ export function SignUpForm() {
             <span className="text-muted-foreground">Already have an account? </span>
             <Link
               href="/signin"
-              className="text-blue-600 hover:text-blue-500 font-medium"
+              className="text-primary hover:text-primary/80 font-medium"
             >
               Sign in
             </Link>

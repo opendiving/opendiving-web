@@ -238,8 +238,8 @@ export default function PrivacyPage() {
                   security breaches
                 </li>
               </ul>
-              <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-4">
-                <p className="text-blue-800">
+              <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 rounded-md p-4 mb-4">
+                <p className="text-blue-800 dark:text-blue-300">
                   <strong>Note:</strong> As an open-source project, our security
                   measures are transparent and can be reviewed in our public
                   repository. We welcome security reports and contributions from
@@ -465,7 +465,7 @@ export default function PrivacyPage() {
               </p>
               <Link
                 href="/"
-                className="mt-4 sm:mt-0 text-blue-600 hover:text-blue-500 text-sm font-medium"
+                className="mt-4 sm:mt-0 text-primary hover:text-primary/80 text-sm font-medium"
               >
                 Back to OpenDiving
               </Link>

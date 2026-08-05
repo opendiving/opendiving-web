@@ -12,8 +12,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+const ACTIVE_ICONS = {
+  light: Sun,
+  dark: Moon,
+} as const;
+
 export function ThemeToggle() {
-  const { setTheme } = useTheme();
+  const { setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
 
   // Avoid rendering theme-dependent UI until mounted, since the resolved
@@ -24,23 +29,16 @@ export function ThemeToggle() {
     setMounted(true);
   }, []);
 
+  const ActiveIcon =
+    mounted && resolvedTheme && resolvedTheme in ACTIVE_ICONS
+      ? ACTIVE_ICONS[resolvedTheme as keyof typeof ACTIVE_ICONS]
+      : Sun;
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="relative"
-          aria-label="Toggle theme"
-        >
-          {mounted ? (
-            <>
-              <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-              <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-            </>
-          ) : (
-            <Sun className="h-4 w-4" />
-          )}
+        <Button variant="ghost" size="sm" aria-label="Toggle theme">
+          <ActiveIcon className="h-4 w-4" />
           <span className="sr-only">Toggle theme</span>
         </Button>
       </DropdownMenuTrigger>

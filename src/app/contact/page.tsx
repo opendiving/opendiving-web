@@ -47,7 +47,7 @@ export default function ContactPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
-                  <MessageSquare className="h-5 w-5 mr-2 text-blue-600" />
+                  <MessageSquare className="h-5 w-5 mr-2 text-primary" />
                   Community Support
                 </CardTitle>
                 <CardDescription>
@@ -117,7 +117,7 @@ export default function ContactPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
-                  <Mail className="h-5 w-5 mr-2 text-blue-600" />
+                  <Mail className="h-5 w-5 mr-2 text-primary" />
                   Send Us a Message
                 </CardTitle>
                 <CardDescription>
@@ -203,7 +203,7 @@ export default function ContactPage() {
           <Card>
             <CardContent className="pt-6">
               <div className="text-center">
-                <Users className="h-12 w-12 text-blue-600 mx-auto mb-4" />
+                <Users className="h-12 w-12 text-primary mx-auto mb-4" />
                 <h3 className="font-semibold text-foreground mb-2">
                   Community Managers
                 </h3>
