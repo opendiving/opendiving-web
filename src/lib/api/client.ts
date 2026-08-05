@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
 
 // Dispatched when a token refresh fails so `AuthContext` can clear the stale
 // user; existing per-page "redirect to /signin when unauthenticated" guards
@@ -30,19 +30,38 @@ export function clearAccessToken(): void {
   accessToken = null;
 }
 
+// Tracks an in-flight `/refresh` call so concurrent callers (e.g. React
+// Strict Mode's double-invoked effects in development, or several requests
+// 401-ing at once) share a single request/response instead of each firing
+// their own - the httpOnly refresh cookie is typically single-use, so
+// racing requests could otherwise invalidate each other.
+let pendingRefresh: Promise<string> | null = null;
+
 // Exchanges the httpOnly refresh cookie for a new access token, storing it
 // in memory. Used both on page load and by the response interceptor below
 // when a request comes back 401. Uses a bare `axios` call rather than
 // `apiClient` to avoid recursing into these same interceptors.
 export async function refreshAccessToken(): Promise<string> {
-  const response = await axios.post(
-    `${API_BASE_URL}/refresh`,
-    {},
-    { withCredentials: true },
-  );
-  const { access_token } = response.data;
-  setAccessToken(access_token);
-  return access_token;
+  if (pendingRefresh) {
+    return pendingRefresh;
+  }
+
+  pendingRefresh = (async () => {
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/refresh`,
+        {},
+        { withCredentials: true },
+      );
+      const { access_token } = response.data;
+      setAccessToken(access_token);
+      return access_token;
+    } finally {
+      pendingRefresh = null;
+    }
+  })();
+
+  return pendingRefresh;
 }
 
 // API client configuration
@@ -107,3 +126,34 @@ apiClient.interceptors.response.use(
     return Promise.reject(error);
   },
 );
+
+// De-duplicates concurrent, identical in-flight GET requests so callers
+// (e.g. two components independently fetching the same data, or React
+// Strict Mode's double-invoked effects in development) share a single
+// network request/response instead of each firing their own. Safe for GETs
+// since they're idempotent; mutating verbs (POST/PATCH/DELETE) intentionally
+// aren't touched here.
+const pendingGetRequests = new Map<string, Promise<AxiosResponse>>();
+
+function getRequestKey(url: string, config?: AxiosRequestConfig): string {
+  return `${url}?${JSON.stringify(config?.params ?? {})}`;
+}
+
+const rawGet: (
+  url: string,
+  config?: AxiosRequestConfig,
+) => Promise<AxiosResponse> = apiClient.get.bind(apiClient);
+
+apiClient.get = ((url: string, config?: AxiosRequestConfig) => {
+  const key = getRequestKey(url, config);
+  const pending = pendingGetRequests.get(key);
+  if (pending) {
+    return pending;
+  }
+
+  const request = rawGet(url, config).finally(() => {
+    pendingGetRequests.delete(key);
+  });
+  pendingGetRequests.set(key, request);
+  return request;
+}) as typeof apiClient.get;
