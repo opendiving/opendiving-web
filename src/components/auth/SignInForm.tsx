@@ -39,7 +39,7 @@ export function SignInForm() {
       setError(null);
       await signIn(data);
       router.push("/dashboard");
-    } catch (err: any) {
+    } catch (err) {
       setError(getApiErrorMessage(err, "An error occurred during sign in"));
     }
   };

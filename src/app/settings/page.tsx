@@ -25,55 +25,14 @@ import {
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { authAPI } from "@/lib/api/auth";
-
-// Validation schemas
-const profileSchema = z.object({
-  name: z
-    .string()
-    .min(2, "Name must be at least 2 characters")
-    .max(30, "Name must not exceed 30 characters"),
-  username: z
-    .string()
-    .min(2, "Username must be at least 2 characters")
-    .max(20, "Username must not exceed 20 characters")
-    .regex(
-      /^[a-z0-9]+$/,
-      "Username can only contain lowercase letters and numbers",
-    ),
-  email: z.string().email("Please enter a valid email address"),
-});
-
-const passwordSchema = z
-  .object({
-    currentPassword: z.string().min(1, "Current password is required"),
-    newPassword: z
-      .string()
-      .min(8, "Password must be at least 8 characters")
-      .regex(/^.*[0-9].*$/, "Password must contain at least one number")
-      .regex(
-        /^.*[A-Z].*$/,
-        "Password must contain at least one uppercase letter",
-      )
-      .regex(
-        /^.*[a-z].*$/,
-        "Password must contain at least one lowercase letter",
-      )
-      .regex(
-        /^.*[^a-zA-Z0-9].*$/,
-        "Password must contain at least one special character",
-      ),
-    confirmPassword: z.string(),
-  })
-  .refine((data) => data.newPassword === data.confirmPassword, {
-    message: "Passwords don't match",
-    path: ["confirmPassword"],
-  });
-
-type ProfileFormData = z.infer<typeof profileSchema>;
-type PasswordFormData = z.infer<typeof passwordSchema>;
+import {
+  profileSchema,
+  passwordSchema,
+  type ProfileFormData,
+  type PasswordFormData,
+} from "@/lib/validations/settings";
 
 export default function SettingsPage() {
   const { isAuthenticated, isLoading } = useAuthGuard();
@@ -128,7 +87,7 @@ export default function SettingsPage() {
       await authAPI.updateProfile(user?.uuid || "", data);
       await refreshUser();
       setProfileSuccess("Profile updated successfully!");
-    } catch (err: any) {
+    } catch (err) {
       setProfileError(getApiErrorMessage(err, "Failed to update profile"));
     }
   };
@@ -145,7 +104,7 @@ export default function SettingsPage() {
 
       setPasswordSuccess("Password changed successfully!");
       resetPassword();
-    } catch (err: any) {
+    } catch (err) {
       setPasswordError(getApiErrorMessage(err, "Failed to change password"));
     }
   };

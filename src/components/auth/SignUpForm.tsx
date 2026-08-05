@@ -40,7 +40,7 @@ export function SignUpForm() {
       setError(null);
       await signUp(data);
       router.push("/dashboard");
-    } catch (err: any) {
+    } catch (err) {
       setError(getApiErrorMessage(err, "An error occurred during sign up"));
     }
   };
