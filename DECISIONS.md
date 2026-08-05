@@ -150,3 +150,73 @@ from several full-bleed alternating sections, a fundamentally different layout
 pattern. The dive/trip/dive-site "new"/"edit" forms are also exempt - they
 intentionally use a narrower `max-w-2xl` since they're single-column forms, and
 they don't render `Header`/`Footer` at all.
+
+## Access token lives in memory only, never in `localStorage`
+
+`lib/api/client.ts` used to store `access_token` in `localStorage`, which any JS
+running on the page (XSS, a compromised dependency, a browser extension, an
+error-reporting SDK that serializes storage) can read directly via
+`localStorage.getItem`. The refresh token was already safe (`httponly`,
+`secure`, `samesite=lax` cookie set by the API - see `login.py`), so only the
+access token needed fixing.
+
+It's now a plain module-scoped variable in `client.ts`, exposed via
+`getAccessToken`/`setAccessToken`/`clearAccessToken` - not React state/context,
+since the request interceptor just needs the latest value at request time, not
+a re-render. Because it's in-memory only, it doesn't survive a page reload, so
+`AuthContext`'s bootstrap effect calls `refreshAccessToken()` (POST `/refresh`,
+re-deriving a token from the httpOnly cookie) on every mount instead of
+checking `localStorage` for a cached token. `authAPI.isAuthenticated()` now
+just reflects whether the current tab happens to hold a token in memory right
+now, not whether the user has a valid session overall - use
+`refreshAccessToken()` for that.
+
+Note this only protects against *passive*/out-of-band token exfiltration
+(storage-scraping malware, other scripts reading storage later, etc.) - a
+*live* XSS payload executing in the page can still just call `/refresh`
+itself and ride the session for as long as the page stays open, since the
+browser attaches the httpOnly cookie automatically. Actual XSS prevention
+(escaping, CSP - see below) is what closes that gap, not token storage
+choice alone.
+
+## Strict, nonce-based CSP via `src/proxy.ts` - Node server only
+
+`src/proxy.ts` (Next.js 16 renamed the `middleware` file convention to
+`proxy` - see https://nextjs.org/docs/messages/middleware-to-proxy; the
+exported function is named `proxy`, not `middleware`) generates a fresh,
+unpredictable nonce on every request and sets a `script-src 'nonce-...'
+'strict-dynamic'` CSP - no unqualified `'unsafe-inline'` in any browser that
+understands nonces. The nonce is threaded to Server Components via the
+`x-nonce` request header; `app/layout.tsx` reads it via `headers()` and
+passes it to `next-themes`' `ThemeProvider` (its no-flash-of-wrong-theme
+bootstrap `<script>` needs a matching nonce to be allowed to run). Next.js
+automatically propagates the same nonce into its own internal
+hydration/RSC-payload `<script>` tags and the CSS/font preload `Link`
+headers once the request header is set this way - no extra wiring needed
+beyond the one `nonce={nonce}` prop.
+
+This only works because the app runs as a persistent Node server
+(`output: "standalone"`, see the `Dockerfile`). Two things to know before
+touching this:
+
+- Reading `headers()` in the root layout forces every route to render
+  dynamically (`ƒ` instead of `○` in the `next build` output) - there is no
+  statically-prerendered page anymore. This is an accepted, deliberate
+  trade-off for the stronger CSP, not a regression to "fix".
+- If the app ever moves to a static export (`output: "export"`), this
+  entire mechanism breaks: `next build` explicitly lists `Proxy`, `Headers`,
+  and dynamic APIs like `headers()` as unsupported there (confirmed by
+  actually trying it - the build fails immediately, first on the `[id]`
+  routes missing `generateStaticParams()`, and would fail again on `proxy.ts`
+  even after fixing that). A nonce also fundamentally can't work against a
+  static file anyway, since it must be unique per response and a static
+  export serves the same bytes to everyone. If/when static hosting happens,
+  this needs to be replaced with a build-time hash-based CSP or a CDN/host-level
+  static header config instead - see chat history from the security-hardening
+  session for the explored options (query-param/rewrite-based routing for the
+  `[id]` pages, hash-generation postbuild script for CSP).
+- `eslint.config.mjs` has `"react/no-danger": "error"` as a guardrail - the
+  codebase has no `dangerouslySetInnerHTML` today (React's default escaping
+  is the actual first line of defense), and any future use of it needs an
+  explicit `eslint-disable` plus a sanitizer (DOMPurify/`rehype-sanitize`),
+  not an unreviewed add.
