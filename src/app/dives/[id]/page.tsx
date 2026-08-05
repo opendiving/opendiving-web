@@ -347,7 +347,7 @@ export default function DiveDetailPage() {
                               ? `${mixture.end_pressure} bar`
                               : "-"}
                           </TableCell>
-                          <TableCell>{mixture.oxygen}%</TableCell>
+                          <TableCell>{mixture.oxygen.toFixed(1)}%</TableCell>
                           <TableCell>{mixture.helium}%</TableCell>
                         </TableRow>
                       ))}
