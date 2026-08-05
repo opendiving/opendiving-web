@@ -216,9 +216,12 @@ export default function DivesPage() {
                           #{dive.dive_number}
                         </TableCell>
                         <TableCell>
-                          <div className="text-sm font-medium">
+                          <Link
+                            href={`/dives/${dive.uuid}`}
+                            className="text-sm font-medium hover:underline"
+                          >
                             {formatDate(dive.start_time)}
-                          </div>
+                          </Link>
                         </TableCell>
                         <TableCell className="text-muted-foreground">
                           <DiveSitesLabel sites={dive.dive_sites} />
