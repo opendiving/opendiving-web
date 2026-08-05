@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
-import { tripsAPI, Trip, PaginatedTripsResponse } from "@/lib/api/trips";
+import { useCallback } from "react";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
+import { usePaginatedResource } from "@/hooks/usePaginatedResource";
+import { useDeleteResource } from "@/hooks/useDeleteResource";
+import { tripsAPI, Trip } from "@/lib/api/trips";
 import { formatTripDateRange } from "@/lib/date-time";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,107 +17,44 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { PaginationFooter } from "@/components/ui/pagination-footer";
 import { Plus, Eye, Edit, Trash2, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { useToast } from "@/components/ui/use-toast";
 
 export default function TripsPage() {
-  const router = useRouter();
-  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
-  const { toast } = useToast();
-  const [trips, setTrips] = useState<Trip[]>([]);
-  const [isLoadingTrips, setIsLoadingTrips] = useState(true);
-  const [totalCount, setTotalCount] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
-  const [hasMore, setHasMore] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
 
-  // Redirect to signin if not authenticated, but only once the auth check
-  // has actually finished.
-  useEffect(() => {
-    if (!isAuthLoading && !isAuthenticated) {
-      router.push("/signin");
-    }
-  }, [isAuthenticated, isAuthLoading, router]);
-
-  // Fetch trips
   const fetchTrips = useCallback(
-    async (page: number = 1) => {
-      if (!user) return;
-
-      try {
-        setIsLoadingTrips(true);
-        const response: PaginatedTripsResponse = await tripsAPI.getTrips(
-          user.uuid,
-          page,
-          itemsPerPage,
-        );
-
-        setTrips(response.data);
-        setTotalCount(response.total_count);
-        setHasMore(response.has_more);
-        setCurrentPage(page);
-      } catch (error) {
-        console.error("Failed to fetch trips:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load trips. Please try again.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoadingTrips(false);
-      }
+    (page: number, perPage: number) => {
+      if (!user) return Promise.reject(new Error("Not authenticated"));
+      return tripsAPI.getTrips(user.uuid, page, perPage);
     },
-    [user, itemsPerPage, toast],
+    [user],
   );
 
-  useEffect(() => {
-    // Deliberate fetch-on-mount pattern (setIsLoadingTrips(true) runs synchronously
-    // before the network await). This is a known, contentious false-positive for
-    // react-hooks/set-state-in-effect - see https://github.com/facebook/react/issues/34743.
-    if (user) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      fetchTrips();
-    }
-  }, [user, fetchTrips]);
+  const {
+    items: trips,
+    isLoading: isLoadingTrips,
+    totalCount,
+    currentPage,
+    itemsPerPage,
+    hasMore,
+    fetchPage: fetchTripsPage,
+    refetch,
+  } = usePaginatedResource<Trip>(fetchTrips, {
+    enabled: !!user,
+    errorMessage: "Failed to load trips. Please try again.",
+  });
 
-  // Handle trip deletion
-  const handleDeleteTrip = async (tripId: string) => {
-    if (!user || !confirm("Are you sure you want to delete this trip?"))
-      return;
-
-    try {
-      setDeletingId(tripId);
-      await tripsAPI.deleteTrip(tripId);
-
-      toast({
-        title: "Success",
-        description: "Trip deleted successfully.",
-      });
-
-      // Refresh the list
-      await fetchTrips(currentPage);
-    } catch (error) {
-      console.error("Failed to delete trip:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete trip. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
-  // Format date for display
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-GB", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
+  const { deletingId, handleDelete: handleDeleteTrip } = useDeleteResource(
+    tripsAPI.deleteTrip,
+    {
+      confirmMessage: "Are you sure you want to delete this trip?",
+      successMessage: "Trip deleted successfully.",
+      errorMessage: "Failed to delete trip. Please try again.",
+      onDeleted: refetch,
+    },
+  );
 
   const formatDateRange = (startDate?: string, endDate?: string) => {
     return (
@@ -242,34 +180,15 @@ export default function TripsPage() {
               </div>
             )}
 
-            {/* Pagination */}
-            {totalCount > itemsPerPage && (
-              <div className="flex items-center justify-between mt-6">
-                <div className="text-sm text-muted-foreground">
-                  Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
-                  {Math.min(currentPage * itemsPerPage, totalCount)} of{" "}
-                  {totalCount} trips
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => fetchTrips(currentPage - 1)}
-                    disabled={currentPage === 1 || isLoadingTrips}
-                  >
-                    Previous
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => fetchTrips(currentPage + 1)}
-                    disabled={!hasMore || isLoadingTrips}
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
-            )}
+            <PaginationFooter
+              currentPage={currentPage}
+              itemsPerPage={itemsPerPage}
+              totalCount={totalCount}
+              hasMore={hasMore}
+              isLoading={isLoadingTrips}
+              itemLabel="trips"
+              onPageChange={fetchTripsPage}
+            />
           </CardContent>
         </Card>
     </div>

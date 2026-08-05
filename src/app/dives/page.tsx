@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
-import { divesAPI, Dive, PaginatedDivesResponse } from "@/lib/api/dives";
+import { useCallback } from "react";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
+import { usePaginatedResource } from "@/hooks/usePaginatedResource";
+import { useDeleteResource } from "@/hooks/useDeleteResource";
+import { divesAPI, Dive } from "@/lib/api/dives";
 import { DiveSitesLabel } from "@/components/dives/dive-sites-label";
 
 import { Button } from "@/components/ui/button";
@@ -17,96 +18,44 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { PaginationFooter } from "@/components/ui/pagination-footer";
 import { Plus, Eye, Edit, Trash2, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { useToast } from "@/components/ui/use-toast";
 
 export default function DivesPage() {
-  const router = useRouter();
-  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
-  const { toast } = useToast();
-  const [dives, setDives] = useState<Dive[]>([]);
-  const [isLoadingDives, setIsLoadingDives] = useState(true);
-  const [totalCount, setTotalCount] = useState(0);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
-  const [hasMore, setHasMore] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
 
-  // Redirect to signin if not authenticated, but only once the auth check
-  // has actually finished.
-  useEffect(() => {
-    if (!isAuthLoading && !isAuthenticated) {
-      router.push("/signin");
-    }
-  }, [isAuthenticated, isAuthLoading, router]);
-
-  // Fetch dives, then resolve any dive site names on the page that haven't
-  // been loaded yet. At most one request per unique site per session.
   const fetchDives = useCallback(
-    async (page: number = 1) => {
-      if (!user) return;
-
-      try {
-        setIsLoadingDives(true);
-        const response: PaginatedDivesResponse = await divesAPI.getDives(
-          user.uuid,
-          page,
-          itemsPerPage,
-        );
-
-        setDives(response.data);
-        setTotalCount(response.total_count);
-        setHasMore(response.has_more);
-        setCurrentPage(page);
-      } catch (error) {
-        console.error("Failed to fetch dives:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load dives. Please try again.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoadingDives(false);
-      }
+    (page: number, perPage: number) => {
+      if (!user) return Promise.reject(new Error("Not authenticated"));
+      return divesAPI.getDives(user.uuid, page, perPage);
     },
-    [user, itemsPerPage, toast],
+    [user],
   );
 
-  useEffect(() => {
-    // Deliberate fetch-on-mount pattern (setIsLoadingDives(true) runs synchronously
-    // before the network await). This is a known, contentious false-positive for
-    // react-hooks/set-state-in-effect - see https://github.com/facebook/react/issues/34743.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (user) fetchDives();
-  }, [user, fetchDives]);
+  const {
+    items: dives,
+    isLoading: isLoadingDives,
+    totalCount,
+    currentPage,
+    itemsPerPage,
+    hasMore,
+    fetchPage: fetchDivesPage,
+    refetch,
+  } = usePaginatedResource<Dive>(fetchDives, {
+    enabled: !!user,
+    errorMessage: "Failed to load dives. Please try again.",
+  });
 
-  // Handle dive deletion
-  const handleDeleteDive = async (diveId: string) => {
-    if (!user || !confirm("Are you sure you want to delete this dive?")) return;
-
-    try {
-      setDeletingId(diveId);
-      await divesAPI.deleteDive(diveId);
-
-      toast({
-        title: "Success",
-        description: "Dive deleted successfully.",
-      });
-
-      // Refresh the list
-      await fetchDives(currentPage);
-    } catch (error) {
-      console.error("Failed to delete dive:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete dive. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setDeletingId(null);
-    }
-  };
+  const { deletingId, handleDelete: handleDeleteDive } = useDeleteResource(
+    divesAPI.deleteDive,
+    {
+      confirmMessage: "Are you sure you want to delete this dive?",
+      successMessage: "Dive deleted successfully.",
+      errorMessage: "Failed to delete dive. Please try again.",
+      onDeleted: refetch,
+    },
+  );
 
   // Format date for display
   const formatDate = (dateString: string) => {
@@ -255,34 +204,15 @@ export default function DivesPage() {
               </div>
             )}
 
-            {/* Pagination */}
-            {totalCount > itemsPerPage && (
-              <div className="flex items-center justify-between mt-6">
-                <div className="text-sm text-muted-foreground">
-                  Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
-                  {Math.min(currentPage * itemsPerPage, totalCount)} of{" "}
-                  {totalCount} dives
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => fetchDives(currentPage - 1)}
-                    disabled={currentPage === 1 || isLoadingDives}
-                  >
-                    Previous
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => fetchDives(currentPage + 1)}
-                    disabled={!hasMore || isLoadingDives}
-                  >
-                    Next
-                  </Button>
-                </div>
-              </div>
-            )}
+            <PaginationFooter
+              currentPage={currentPage}
+              itemsPerPage={itemsPerPage}
+              totalCount={totalCount}
+              hasMore={hasMore}
+              isLoading={isLoadingDives}
+              itemLabel="dives"
+              onPageChange={fetchDivesPage}
+            />
           </CardContent>
         </Card>
     </div>

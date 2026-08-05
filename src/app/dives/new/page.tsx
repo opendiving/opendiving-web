@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { Control, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { divesAPI } from "@/lib/api/dives";
 import {
   diveCreateSchema,
@@ -46,7 +46,7 @@ export default function NewDivePage() {
 }
 
 function NewDivePageContent() {
-  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
@@ -74,15 +74,6 @@ function NewDivePageContent() {
       mixtures: [{ ...DEFAULT_MIXTURE, name: getDefaultMixtureName(0) }],
     },
   });
-
-  // Redirect to signin if not authenticated, but only once the auth check has
-  // actually finished — otherwise a page refresh always looks "unauthenticated"
-  // for a moment and would incorrectly bounce the user away.
-  useEffect(() => {
-    if (!isAuthLoading && !isAuthenticated) {
-      router.push("/signin");
-    }
-  }, [isAuthenticated, isAuthLoading, router]);
 
   // Pre-fill trip and gas mixture defaults from the most recent dive so the
   // user doesn't have to re-enter recurring values for every new log entry.

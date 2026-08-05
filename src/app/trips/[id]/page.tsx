@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { tripsAPI, Trip } from "@/lib/api/trips";
 import { formatTripDateRange } from "@/lib/date-time";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
@@ -23,21 +23,13 @@ import { useToast } from "@/components/ui/use-toast";
 export default function TripDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
   const { toast } = useToast();
   const [trip, setTrip] = useState<Trip | null>(null);
   const [isLoadingTrip, setIsLoadingTrip] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const tripId = params.id as string;
-
-  // Redirect to signin if not authenticated, but only once the auth check
-  // has actually finished.
-  useEffect(() => {
-    if (!isAuthLoading && !isAuthenticated) {
-      router.push("/signin");
-    }
-  }, [isAuthenticated, isAuthLoading, router]);
 
   // Fetch trip details
   useEffect(() => {

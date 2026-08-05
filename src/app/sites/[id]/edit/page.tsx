@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useParams, useRouter } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
 import {
   diveSiteUpdateSchema,
@@ -29,7 +29,7 @@ import { useToast } from "@/components/ui/use-toast";
 
 export default function EditDiveSitePage() {
   const params = useParams();
-  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
   const router = useRouter();
   const { toast } = useToast();
   const [diveSite, setDiveSite] = useState<DiveSite | null>(null);
@@ -46,14 +46,6 @@ export default function EditDiveSitePage() {
       notes: "",
     },
   });
-
-  // Redirect to signin if not authenticated, but only once the auth check
-  // has actually finished.
-  useEffect(() => {
-    if (!isAuthLoading && !isAuthenticated) {
-      router.push("/signin");
-    }
-  }, [isAuthenticated, isAuthLoading, router]);
 
   // Fetch dive site details and populate form
   useEffect(() => {

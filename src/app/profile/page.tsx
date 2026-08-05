@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { diveStatsAPI, UserDiveStats } from "@/lib/api/dive-stats";
 import { formatDurationHoursMinutes } from "@/lib/date-time";
@@ -24,20 +24,12 @@ import {
   Award,
   Edit,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
 export default function ProfilePage() {
-  const { user, isAuthenticated, isLoading } = useAuth();
-  const router = useRouter();
+  const { user, isAuthenticated, isLoading } = useAuthGuard();
   const [stats, setStats] = useState<UserDiveStats | null>(null);
-
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.push("/signin");
-    }
-  }, [isAuthenticated, isLoading, router]);
 
   useEffect(() => {
     if (!user) return;

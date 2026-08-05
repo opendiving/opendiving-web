@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { Button } from "@/components/ui/button";
@@ -14,21 +14,13 @@ import { useToast } from "@/components/ui/use-toast";
 export default function DiveSiteDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
   const { toast } = useToast();
   const [diveSite, setDiveSite] = useState<DiveSite | null>(null);
   const [isLoadingDiveSite, setIsLoadingDiveSite] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const diveSiteId = params.id as string;
-
-  // Redirect to signin if not authenticated, but only once the auth check
-  // has actually finished.
-  useEffect(() => {
-    if (!isAuthLoading && !isAuthenticated) {
-      router.push("/signin");
-    }
-  }, [isAuthenticated, isAuthLoading, router]);
 
   // Fetch dive site details
   useEffect(() => {

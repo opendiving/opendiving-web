@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useParams, useRouter } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { tripsAPI, Trip } from "@/lib/api/trips";
 import {
   tripUpdateSchema,
@@ -31,7 +31,7 @@ import { useToast } from "@/components/ui/use-toast";
 
 export default function EditTripPage() {
   const params = useParams();
-  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
   const router = useRouter();
   const { toast } = useToast();
   const [trip, setTrip] = useState<Trip | null>(null);
@@ -50,14 +50,6 @@ export default function EditTripPage() {
       notes: "",
     },
   });
-
-  // Redirect to signin if not authenticated, but only once the auth check
-  // has actually finished.
-  useEffect(() => {
-    if (!isAuthLoading && !isAuthenticated) {
-      router.push("/signin");
-    }
-  }, [isAuthenticated, isAuthLoading, router]);
 
   // Fetch trip details and populate form
   useEffect(() => {

@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { tripsAPI } from "@/lib/api/trips";
 import {
   tripCreateSchema,
@@ -30,7 +30,7 @@ import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
 
 export default function NewTripPage() {
-  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -45,15 +45,6 @@ export default function NewTripPage() {
       notes: "",
     },
   });
-
-  // Redirect to signin if not authenticated, but only once the auth check has
-  // actually finished — otherwise a page refresh always looks "unauthenticated"
-  // for a moment and would incorrectly bounce the user away.
-  useEffect(() => {
-    if (!isAuthLoading && !isAuthenticated) {
-      router.push("/signin");
-    }
-  }, [isAuthenticated, isAuthLoading, router]);
 
   if (isAuthLoading) {
     return (

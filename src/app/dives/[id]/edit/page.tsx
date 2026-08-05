@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Control, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useParams, useRouter } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { divesAPI, Dive } from "@/lib/api/dives";
 import {
   diveUpdateSchema,
@@ -34,7 +34,7 @@ import { getApiErrorMessage } from "@/lib/api/error";
 
 export default function EditDivePage() {
   const params = useParams();
-  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuth();
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
   const router = useRouter();
   const { toast } = useToast();
   const [dive, setDive] = useState<Dive | null>(null);
@@ -59,14 +59,6 @@ export default function EditDivePage() {
       mixtures: [{ ...DEFAULT_MIXTURE, name: getDefaultMixtureName(0) }],
     },
   });
-
-  // Redirect to signin if not authenticated, but only once the auth check
-  // has actually finished.
-  useEffect(() => {
-    if (!isAuthLoading && !isAuthenticated) {
-      router.push("/signin");
-    }
-  }, [isAuthenticated, isAuthLoading, router]);
 
   // Fetch dive details and populate form
   useEffect(() => {
