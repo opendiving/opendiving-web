@@ -158,7 +158,7 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                 <Clock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
                 <Input
                   type="text"
-                  placeholder="e.g. 45:30"
+                  placeholder="e.g. 45 or 67:30"
                   className="pl-9"
                   {...field}
                 />

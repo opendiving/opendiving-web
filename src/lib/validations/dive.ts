@@ -24,7 +24,7 @@ const dateTimeField = (
 const DURATION_REGEX = /^\d{1,3}:[0-5]\d$/;
 
 const durationField = (
-  message = "Duration must be in MM:SS format, e.g. 45:30",
+  message = "Duration must be in MM:SS format, e.g. 67:30",
 ) => z.string().min(1, "Duration is required").regex(DURATION_REGEX, message);
 
 // Optional numeric field that can also hold the literal empty string "" while
