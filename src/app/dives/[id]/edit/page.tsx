@@ -24,12 +24,7 @@ import { Form } from "@/components/ui/form";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
-import {
-  formatDateTimeForForm,
-  parseFormDateTime,
-  formatDurationForForm,
-  parseFormDuration,
-} from "@/lib/date-time";
+import { formatDurationForForm, parseFormDuration } from "@/lib/date-time";
 import { getApiErrorMessage } from "@/lib/api/error";
 
 export default function EditDivePage() {
@@ -70,10 +65,12 @@ export default function EditDivePage() {
         const diveData = await divesAPI.getDive(diveId);
         setDive(diveData);
 
-        // Update form with dive data
+        // Update form with dive data. `start_time` is already the same
+        // offset-aware shape the form's `DiveStartTimeField` edits, so it
+        // carries straight over - no conversion needed.
         form.reset({
           dive_number: diveData.dive_number,
-          start_time: formatDateTimeForForm(new Date(diveData.start_time)),
+          start_time: diveData.start_time,
           duration: formatDurationForForm(diveData.duration),
           max_depth: diveData.max_depth,
           avg_depth: diveData.avg_depth,
@@ -122,9 +119,7 @@ export default function EditDivePage() {
       }
 
       if (data.start_time) {
-        updateData.start_time = parseFormDateTime(
-          data.start_time,
-        ).toISOString();
+        updateData.start_time = data.start_time;
       }
 
       if (data.duration) {

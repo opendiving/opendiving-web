@@ -4,7 +4,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { divesAPI, Dive } from "@/lib/api/dives";
 import { DiveSitesLabel } from "@/components/dives/dive-sites-label";
-import { formatDateTime, formatDurationHoursMinutes } from "@/lib/date-time";
+import {
+  formatDiveDateTime,
+  formatDurationHoursMinutes,
+} from "@/lib/date-time";
 import {
   Card,
   CardContent,
@@ -132,7 +135,7 @@ export function RecentDivesCard({
                     Dive #{dive.dive_number}
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    {formatDateTime(dive.start_time, {
+                    {formatDiveDateTime(dive.start_time, {
                       year: "numeric",
                       month: "short",
                       day: "numeric",

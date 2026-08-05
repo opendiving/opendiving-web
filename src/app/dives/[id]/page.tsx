@@ -8,8 +8,11 @@ import { tripsAPI, Trip } from "@/lib/api/trips";
 import { DiveSitesLabel } from "@/components/dives/dive-sites-label";
 import {
   formatDateTime,
+  formatDiveDateTime,
+  formatDiveTimeOnly,
   formatDurationHoursMinutes,
-  formatTimeOnly,
+  formatUtcOffset,
+  parseUtcOffsetMinutes,
 } from "@/lib/date-time";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -184,7 +187,7 @@ export default function DiveDetailPage() {
           <div>
             <h1 className="text-3xl font-bold">Dive #{dive.dive_number}</h1>
             <p className="text-muted-foreground mt-1">
-              {formatDateTime(dive.start_time, {
+              {formatDiveDateTime(dive.start_time, {
                 weekday: "long",
                 year: "numeric",
                 month: "long",
@@ -244,7 +247,16 @@ export default function DiveDetailPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4 text-muted-foreground" />
-                    <span>{formatTimeOnly(dive.start_time)}</span>
+                    <span>
+                      {formatDiveTimeOnly(dive.start_time)}{" "}
+                      <span className="text-muted-foreground">
+                        (UTC
+                        {formatUtcOffset(
+                          parseUtcOffsetMinutes(dive.start_time) ?? 0,
+                        )}
+                        )
+                      </span>
+                    </span>
                   </div>
                 </div>
                 <div>

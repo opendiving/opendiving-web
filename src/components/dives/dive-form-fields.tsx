@@ -4,7 +4,7 @@ import { Control, FieldValues, Path } from "react-hook-form";
 import { Clock, Gauge, Thermometer, Eye } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { DateTimePicker } from "@/components/ui/date-time-picker";
+import { DiveStartTimeField } from "@/components/dives/dive-start-time-field";
 import {
   FormControl,
   FormField,
@@ -26,6 +26,11 @@ import { DiveMixtureInput } from "@/lib/validations/dive";
 // which erased type safety between the create/update form shapes entirely.
 export interface DiveFormValues extends FieldValues {
   dive_number?: number;
+  // Offset-aware ISO 8601, e.g. "2021-04-04T10:04:47+02:00" - the dive's own
+  // original timezone, not the viewer's browser. Edited via
+  // `DiveStartTimeField`, which is the only place that splits/recombines it
+  // into the wall-clock + offset pair its two underlying inputs actually
+  // edit - see `lib/date-time.ts`.
   start_time?: string;
   duration?: string;
   max_depth?: number | null;
@@ -125,43 +130,44 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
       />
 
       {/* Date and Time */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <FormField
-          control={control}
-          name={"start_time" as Path<TFieldValues>}
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Start Time{requiredMark}</FormLabel>
-              <FormControl>
-                <DateTimePicker value={field.value} onChange={field.onChange} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+      <FormField
+        control={control}
+        name={"start_time" as Path<TFieldValues>}
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Start Time{requiredMark}</FormLabel>
+            <FormControl>
+              <DiveStartTimeField
+                value={field.value}
+                onChange={field.onChange}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
 
-        <FormField
-          control={control}
-          name={"duration" as Path<TFieldValues>}
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Duration (MM:SS){requiredMark}</FormLabel>
-              <FormControl>
-                <div className="relative">
-                  <Clock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
-                  <Input
-                    type="text"
-                    placeholder="e.g. 45:30"
-                    className="pl-9"
-                    {...field}
-                  />
-                </div>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      </div>
+      <FormField
+        control={control}
+        name={"duration" as Path<TFieldValues>}
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Duration (MM:SS){requiredMark}</FormLabel>
+            <FormControl>
+              <div className="relative">
+                <Clock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                <Input
+                  type="text"
+                  placeholder="e.g. 45:30"
+                  className="pl-9"
+                  {...field}
+                />
+              </div>
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
 
       {/* Depth Information */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

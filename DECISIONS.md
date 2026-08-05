@@ -84,8 +84,55 @@ negative-UTC-offset timezone (most of the Americas) can show the *previous* day.
 Any date-only field (trip `start_date`/`end_date`) is formatted via
 `formatDateOnly()`/`formatTripDateRange()` in `lib/date-time.ts`, which manually
 splits the string and constructs a *local* `Date(year, month-1, day)` instead.
-`Dive.start_time` is a full ISO datetime and doesn't have this problem - only pass
-bare date-only strings through the manual-construction helpers.
+`Dive.start_time` is a full ISO datetime, so it doesn't have *this specific*
+off-by-one-day problem - but see the next section, since displaying/editing it
+correctly still can't just go through `new Date(dateString)` and local getters.
+
+## A dive's `start_time` displays/edits in its own timezone, never the browser's
+
+`Dive.start_time` is always an offset-aware ISO 8601 string, e.g.
+`"2021-04-04T10:04:47.910+02:00"` - the offset is the dive's *own* original
+timezone (wherever/whatever logged it), not the viewer's. A dive logged at
+09:00 in Thailand should always show 09:00, whether it's viewed from Thailand,
+the US, or anywhere else.
+
+The naive approach - `new Date(start_time)` then `.getHours()`/`toLocaleString()`
+- is wrong here: those always convert to the *browser's* timezone, silently
+showing a different wall-clock time than what was actually logged. All of the
+helpers in `lib/date-time.ts` avoid this by working with the offset embedded
+in the string directly, never through browser-local getters:
+- `parseUtcOffsetMinutes()` extracts the embedded offset (or `null` for a
+  naive string with none).
+- `formatDiveDateTime()`/`formatDiveTimeOnly()` (display) shift the
+  underlying instant by that offset and format with `timeZone: "UTC"`, so
+  `Intl`/`toLocaleDateString` reads the shifted instant back as the original
+  wall-clock time regardless of the browser's own zone.
+- `splitStartTime()`/`combineStartTime()` convert between that single string
+  and a "YYYY-MM-DD HH:mm:ss" wall-clock string + a UTC offset in minutes -
+  the two pieces the underlying `DateTimePicker`/`UtcOffsetSelect` inputs
+  actually edit.
+
+`formatDateTime()`/`formatTimeOnly()` (plain, no `Dive`-prefix) are unaffected
+and still show the *viewer's* browser-local time - correct for `created_at`
+and any other plain metadata timestamp, just not for a dive's `start_time`.
+
+**The form only ever has one `start_time` field**, in the exact offset-aware
+shape the API uses - there's no separate `start_time_utc_offset_minutes` form
+field to keep in sync with it. `DiveStartTimeField`
+(`components/dives/dive-start-time-field.tsx`) is the *only* place that calls
+`splitStartTime()`/`combineStartTime()`: it renders the `DateTimePicker` +
+`UtcOffsetSelect` pair, splitting its single `value` prop for them to display
+and recombining their changes back into one string via `onChange`. Every
+caller - the create/edit forms, `dive-file-import.tsx`, `lib/validations/dive.ts`
+- only ever reads/writes that one string, identical to `Dive.start_time` over
+the API. New dives default it to `nowStartTime()` (now, in the browser's own
+offset via `getBrowserUtcOffsetMinutes()` - the negation of
+`Date.prototype.getTimezoneOffset()`) - the best available guess for someone
+logging a dive shortly after diving it. Importing a dive-computer file
+(`normalizeParsedStartTime()` in `dive-file-import.tsx`) uses the file's own
+embedded offset if it has one, and falls back to that same browser default if
+the file's `start_time` is naive (e.g. Suunto XML's `StartTime`, which has no
+offset at all).
 
 ## FastAPI 422 errors can be an array, not a string - never render `detail` directly
 

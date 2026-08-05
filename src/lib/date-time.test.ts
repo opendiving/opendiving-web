@@ -1,14 +1,21 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
+  combineStartTime,
   formatDateOnly,
   formatDateTime,
   formatDateTimeForForm,
+  formatDiveDateTime,
+  formatDiveTimeOnly,
   formatDurationForForm,
   formatDurationHoursMinutes,
   formatTimeOnly,
   formatTripDateRange,
+  formatUtcOffset,
+  getBrowserUtcOffsetMinutes,
   parseFormDateTime,
   parseFormDuration,
+  parseUtcOffsetMinutes,
+  splitStartTime,
 } from "./date-time";
 
 describe("formatDateTimeForForm", () => {
@@ -85,6 +92,125 @@ describe("formatTimeOnly", () => {
     expect(formatTimeOnly("2024-06-01T09:05:00")).toMatch(
       /^\d{1,2}:\d{2} (AM|PM)$/,
     );
+  });
+});
+
+describe("parseUtcOffsetMinutes", () => {
+  it("parses a positive +HH:MM offset", () => {
+    expect(parseUtcOffsetMinutes("2021-04-04T10:04:47.910+02:00")).toBe(120);
+  });
+
+  it("parses a negative -HH:MM offset", () => {
+    expect(parseUtcOffsetMinutes("2024-01-01T06:00:00-05:00")).toBe(-300);
+  });
+
+  it("parses a non-hour-aligned offset", () => {
+    expect(parseUtcOffsetMinutes("2024-01-01T06:00:00+05:45")).toBe(345);
+  });
+
+  it('parses a "Z" suffix as a zero offset', () => {
+    expect(parseUtcOffsetMinutes("2024-01-01T06:00:00Z")).toBe(0);
+  });
+
+  it("returns null for a naive datetime with no offset", () => {
+    expect(parseUtcOffsetMinutes("2025-06-03T12:15:33.8")).toBeNull();
+    expect(parseUtcOffsetMinutes("2024-05-01T09:00:00")).toBeNull();
+  });
+});
+
+describe("formatUtcOffset", () => {
+  it("formats a positive offset", () => {
+    expect(formatUtcOffset(120)).toBe("+02:00");
+  });
+
+  it("formats a negative offset", () => {
+    expect(formatUtcOffset(-300)).toBe("-05:00");
+  });
+
+  it("formats a zero offset", () => {
+    expect(formatUtcOffset(0)).toBe("+00:00");
+  });
+
+  it("formats a non-hour-aligned offset", () => {
+    expect(formatUtcOffset(345)).toBe("+05:45");
+  });
+});
+
+describe("getBrowserUtcOffsetMinutes", () => {
+  it("negates Date.prototype.getTimezoneOffset()", () => {
+    const spy = vi
+      .spyOn(Date.prototype, "getTimezoneOffset")
+      .mockReturnValue(-120); // e.g. UTC+02:00
+    expect(getBrowserUtcOffsetMinutes()).toBe(120);
+    spy.mockRestore();
+  });
+});
+
+describe("splitStartTime/combineStartTime", () => {
+  it("splits an offset-aware ISO string into wall-clock + offset", () => {
+    const { localDateTime, offsetMinutes } = splitStartTime(
+      "2021-04-04T10:04:47+02:00",
+    );
+    expect(localDateTime).toBe("2021-04-04 10:04:47");
+    expect(offsetMinutes).toBe(120);
+  });
+
+  it("never converts through the browser's own timezone", () => {
+    // Regardless of what Date.prototype.getTimezoneOffset() the environment
+    // running this test happens to report, the *wall-clock* digits read back
+    // out must exactly match what was embedded in the string.
+    const spy = vi
+      .spyOn(Date.prototype, "getTimezoneOffset")
+      .mockReturnValue(300); // e.g. UTC-05:00
+    const { localDateTime, offsetMinutes } = splitStartTime(
+      "2021-04-04T10:04:47+02:00",
+    );
+    expect(localDateTime).toBe("2021-04-04 10:04:47");
+    expect(offsetMinutes).toBe(120);
+    spy.mockRestore();
+  });
+
+  it("defaults to a UTC offset for a naive string with none", () => {
+    const { offsetMinutes } = splitStartTime("2024-05-01T09:00:00");
+    expect(offsetMinutes).toBe(0);
+  });
+
+  it("combineStartTime is the inverse of splitStartTime", () => {
+    expect(combineStartTime("2021-04-04 10:04:47", 120)).toBe(
+      "2021-04-04T10:04:47+02:00",
+    );
+  });
+
+  it("round-trips split -> combine", () => {
+    const original = "2024-01-01T06:00:00-05:00";
+    const { localDateTime, offsetMinutes } = splitStartTime(original);
+    expect(combineStartTime(localDateTime, offsetMinutes)).toBe(original);
+  });
+});
+
+describe("formatDiveDateTime/formatDiveTimeOnly", () => {
+  it("displays a dive's own offset, not the browser's", () => {
+    const spy = vi
+      .spyOn(Date.prototype, "getTimezoneOffset")
+      .mockReturnValue(300); // e.g. UTC-05:00
+    expect(
+      formatDiveTimeOnly("2021-04-04T10:04:47+02:00", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      }),
+    ).toBe("10:04");
+    spy.mockRestore();
+  });
+
+  it("formats the date component in the dive's own timezone", () => {
+    expect(
+      formatDiveDateTime("2021-04-04T23:30:00+02:00", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      }),
+    ).toBe("Apr 4, 2021");
   });
 });
 

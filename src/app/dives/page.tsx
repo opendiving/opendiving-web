@@ -6,7 +6,10 @@ import { usePaginatedResource } from "@/hooks/usePaginatedResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { divesAPI, Dive } from "@/lib/api/dives";
 import { DiveSitesLabel } from "@/components/dives/dive-sites-label";
-import { formatDateTime, formatDurationHoursMinutes } from "@/lib/date-time";
+import {
+  formatDiveDateTime,
+  formatDurationHoursMinutes,
+} from "@/lib/date-time";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -143,7 +146,7 @@ export default function DivesPage() {
                           href={`/dives/${dive.uuid}`}
                           className="text-sm font-medium hover:underline"
                         >
-                          {formatDateTime(dive.start_time)}
+                          {formatDiveDateTime(dive.start_time)}
                         </Link>
                       </TableCell>
                       <TableCell className="text-muted-foreground">

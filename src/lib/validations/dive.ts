@@ -1,15 +1,19 @@
 import { z } from "zod";
+import { parseUtcOffsetMinutes } from "@/lib/date-time";
 
-const DATE_TIME_REGEX = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
-
+// Same offset-aware ISO 8601 shape as the API's `Dive.start_time`, e.g.
+// "2021-04-04T10:04:47+02:00" - produced/consumed by `DiveStartTimeField`
+// (`components/dives/dive-start-time-field.tsx`), so the form and the API
+// always agree on a single `start_time` value with no separate offset field
+// to keep in sync.
 const dateTimeField = (
-  message = "Start time must be in YYYY-MM-DD HH:mm:ss format",
+  message = "Start time must include a UTC offset, e.g. 2021-04-04T10:04:47+02:00",
 ) =>
   z
     .string()
     .min(1, "Start time is required")
-    .regex(DATE_TIME_REGEX, message)
-    .refine((val) => !Number.isNaN(new Date(val.replace(" ", "T")).getTime()), {
+    .refine((val) => parseUtcOffsetMinutes(val) !== null, { message })
+    .refine((val) => !Number.isNaN(new Date(val).getTime()), {
       message: "Start time must be a valid datetime",
     });
 

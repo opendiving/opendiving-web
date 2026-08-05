@@ -24,11 +24,7 @@ import { Form } from "@/components/ui/form";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
-import {
-  formatDateTimeForForm,
-  parseFormDateTime,
-  parseFormDuration,
-} from "@/lib/date-time";
+import { nowStartTime, parseFormDuration } from "@/lib/date-time";
 import { getApiErrorMessage } from "@/lib/api/error";
 
 export default function NewDivePage() {
@@ -61,7 +57,7 @@ function NewDivePageContent() {
     resolver: zodResolver(diveCreateSchema),
     defaultValues: {
       dive_number: 1,
-      start_time: formatDateTimeForForm(new Date()),
+      start_time: nowStartTime(),
       duration: "",
       max_depth: undefined,
       avg_depth: undefined,
@@ -97,7 +93,7 @@ function NewDivePageContent() {
 
         form.reset({
           dive_number: lastDive.dive_number + 1,
-          start_time: formatDateTimeForForm(new Date()),
+          start_time: nowStartTime(),
           duration: "",
           max_depth: undefined,
           avg_depth: undefined,
@@ -153,7 +149,6 @@ function NewDivePageContent() {
       const diveData = {
         ...data,
         user_uuid: user.uuid,
-        start_time: parseFormDateTime(data.start_time).toISOString(),
         duration: parseFormDuration(data.duration),
         notes: data.notes || "",
         mixtures: normalizeMixtures(data.mixtures ?? []),

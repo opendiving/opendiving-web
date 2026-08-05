@@ -3,7 +3,7 @@ import { diveCreateSchema, diveMixtureSchema, normalizeMixtures } from "./dive";
 
 const validDive = {
   dive_number: 1,
-  start_time: "2024-06-01 09:05:03",
+  start_time: "2024-06-01T09:05:03+02:00",
   duration: "45:30",
   dive_site_uuids: [],
   notes: "",
@@ -11,14 +11,30 @@ const validDive = {
 };
 
 describe("diveCreateSchema start_time", () => {
-  it("accepts a valid YYYY-MM-DD HH:mm:ss datetime", () => {
+  it("accepts a valid offset-aware ISO 8601 datetime", () => {
     expect(diveCreateSchema.safeParse(validDive).success).toBe(true);
   });
 
-  it("rejects a datetime missing the time component", () => {
+  it("accepts a 'Z' suffix as a zero offset", () => {
     const result = diveCreateSchema.safeParse({
       ...validDive,
-      start_time: "2024-06-01",
+      start_time: "2024-06-01T09:05:03Z",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts a non-hour-aligned offset (e.g. +05:45)", () => {
+    const result = diveCreateSchema.safeParse({
+      ...validDive,
+      start_time: "2024-06-01T09:05:03+05:45",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a datetime with no UTC offset at all", () => {
+    const result = diveCreateSchema.safeParse({
+      ...validDive,
+      start_time: "2024-06-01 09:05:03",
     });
     expect(result.success).toBe(false);
   });
@@ -28,10 +44,10 @@ describe("diveCreateSchema start_time", () => {
     expect(result.success).toBe(false);
   });
 
-  it("rejects a start_time that matches the format but isn't a real date", () => {
+  it("rejects a start_time that matches the offset format but isn't a real date", () => {
     const result = diveCreateSchema.safeParse({
       ...validDive,
-      start_time: "2024-13-40 25:99:99",
+      start_time: "2024-13-40T25:99:99+02:00",
     });
     expect(result.success).toBe(false);
   });

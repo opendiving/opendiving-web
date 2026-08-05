@@ -5,7 +5,13 @@ import { FieldPathValue, Path, UseFormReturn } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { divesAPI, ParsedDive } from "@/lib/api/dives";
-import { formatDateTimeForForm, formatDurationForForm } from "@/lib/date-time";
+import {
+  combineStartTime,
+  formatDateTimeForForm,
+  formatDurationForForm,
+  getBrowserUtcOffsetMinutes,
+  parseUtcOffsetMinutes,
+} from "@/lib/date-time";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { DiveFormValues } from "@/components/dives/dive-form-fields";
 import { Loader2, Upload } from "lucide-react";
@@ -38,6 +44,31 @@ function setDiveFormValue<
   );
 }
 
+// Normalizes a dive-computer file's raw `start_time` string into the single
+// offset-aware `start_time` string the form (`DiveStartTimeField`) and the
+// API both expect. Dive computers export this in two shapes:
+// - With an explicit offset, e.g. "2021-04-04T10:04:47.910+02:00" - already
+//   the shape we want, so it's used as-is.
+// - Naive/local, e.g. "2025-06-03T12:15:33.8" (no offset at all) - its
+//   literal date/time digits are kept (parsing a naive string with `Date`
+//   and reading back local getters is a no-op transformation: no timezone
+//   conversion happens since there's nothing to convert from) and combined
+//   with the *browser's* current UTC offset, the best available default -
+//   it's on the user to correct it if the dive computer's clock was
+//   actually set to a different zone than wherever they are right now.
+function normalizeParsedStartTime(rawStartTime: string): string | undefined {
+  if (parseUtcOffsetMinutes(rawStartTime) !== null) {
+    return rawStartTime;
+  }
+
+  const date = new Date(rawStartTime);
+  if (Number.isNaN(date.getTime())) return undefined;
+  return combineStartTime(
+    formatDateTimeForForm(date),
+    getBrowserUtcOffsetMinutes(),
+  );
+}
+
 export function applyParsedDiveToForm<TFieldValues extends DiveFormValues>(
   form: UseFormReturn<TFieldValues>,
   parsed: ParsedDive,
@@ -45,12 +76,11 @@ export function applyParsedDiveToForm<TFieldValues extends DiveFormValues>(
   if (parsed.dive_number != null) {
     setDiveFormValue(form, "dive_number", parsed.dive_number);
   }
-  if (parsed.start_time) {
-    const date = new Date(parsed.start_time);
-    const formatted = Number.isNaN(date.getTime())
-      ? parsed.start_time
-      : formatDateTimeForForm(date);
-    setDiveFormValue(form, "start_time", formatted);
+  const normalizedStartTime = parsed.start_time
+    ? normalizeParsedStartTime(parsed.start_time)
+    : undefined;
+  if (normalizedStartTime) {
+    setDiveFormValue(form, "start_time", normalizedStartTime);
   }
   if (parsed.duration != null) {
     setDiveFormValue(form, "duration", formatDurationForForm(parsed.duration));

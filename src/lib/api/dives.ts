@@ -23,6 +23,9 @@ export interface DiveSiteSummary {
 export interface Dive {
   uuid: string;
   dive_number: number;
+  // Offset-aware ISO 8601, e.g. "2021-04-04T10:04:47.910+02:00" - the offset
+  // is the dive's own original timezone (see `lib/date-time.ts`'s
+  // "UTC-offset-aware dive `start_time` helpers"), not the viewer's.
   start_time: string;
   duration: number;
   max_depth?: number;
@@ -40,6 +43,9 @@ export interface Dive {
 export interface DiveCreate {
   user_uuid: string;
   dive_number: number;
+  // Must be an offset-aware ISO 8601 string, e.g.
+  // "2021-04-04T10:04:47.910+02:00" - see `Dive.start_time` above. Build one
+  // with `combineStartTime()` from `lib/date-time.ts`.
   start_time: string;
   duration: number;
   max_depth?: number | null;
@@ -54,6 +60,7 @@ export interface DiveCreate {
 
 export interface DiveUpdate {
   dive_number?: number;
+  // Same offset-aware ISO 8601 format as `Dive.start_time`/`DiveCreate.start_time`.
   start_time?: string;
   duration?: number;
   max_depth?: number | null;
@@ -78,6 +85,12 @@ export interface PaginatedDivesResponse {
 // Most fields are nullable since not every dive-computer format populates every field.
 export interface ParsedDive {
   dive_number: number | null;
+  // The dive computer's raw exported timestamp - unlike `Dive.start_time`,
+  // this may or may not carry an explicit UTC offset (e.g.
+  // "2025-06-03T12:15:33.8" vs. "2021-04-04T10:04:47.910+02:00"), since not
+  // every dive-computer format records one. See `applyParsedStartTime()` in
+  // `dive-file-import.tsx` for how this is normalized before it ever reaches
+  // the create/edit form.
   start_time: string | null;
   duration: number | null;
   max_depth: number | null;
