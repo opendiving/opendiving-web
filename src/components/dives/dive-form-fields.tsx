@@ -1,6 +1,7 @@
 "use client";
 
 import { Control } from "react-hook-form";
+import { Clock, Gauge, Thermometer, Eye } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
@@ -126,7 +127,15 @@ export function DiveFormFields({
             <FormItem>
               <FormLabel>Duration (MM:SS){requiredMark}</FormLabel>
               <FormControl>
-                <Input type="text" placeholder="e.g. 45:30" {...field} />
+                <div className="relative">
+                  <Clock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                  <Input
+                    type="text"
+                    placeholder="e.g. 45:30"
+                    className="pl-9"
+                    {...field}
+                  />
+                </div>
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -143,18 +152,22 @@ export function DiveFormFields({
             <FormItem>
               <FormLabel>Maximum Depth (m)</FormLabel>
               <FormControl>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="e.g. 30.52"
-                  {...field}
-                  value={field.value ?? ""}
-                  onChange={(e) => {
-                    const val = parseFloat(e.target.value);
-                    field.onChange(Number.isNaN(val) ? null : val);
-                  }}
-                />
+                <div className="relative">
+                  <Gauge className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="e.g. 30.52"
+                    className="pl-9"
+                    {...field}
+                    value={field.value ?? ""}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value);
+                      field.onChange(Number.isNaN(val) ? null : val);
+                    }}
+                  />
+                </div>
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -168,18 +181,22 @@ export function DiveFormFields({
             <FormItem>
               <FormLabel>Average Depth (m)</FormLabel>
               <FormControl>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  placeholder="e.g. 18.24"
-                  {...field}
-                  value={field.value ?? ""}
-                  onChange={(e) => {
-                    const val = parseFloat(e.target.value);
-                    field.onChange(Number.isNaN(val) ? null : val);
-                  }}
-                />
+                <div className="relative">
+                  <Gauge className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="e.g. 18.24"
+                    className="pl-9"
+                    {...field}
+                    value={field.value ?? ""}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value);
+                      field.onChange(Number.isNaN(val) ? null : val);
+                    }}
+                  />
+                </div>
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -196,21 +213,25 @@ export function DiveFormFields({
             <FormItem>
               <FormLabel>Bottom Temperature (°C)</FormLabel>
               <FormControl>
-                <Input
-                  type="number"
-                  step="0.01"
-                  min="-50"
-                  max="50"
-                  placeholder="e.g. 22.50"
-                  {...field}
-                  value={field.value ?? ""}
-                  onChange={(e) => {
-                    const val = parseFloat(e.target.value);
-                    field.onChange(
-                      Number.isNaN(val) ? null : Math.round(val * 100) / 100,
-                    );
-                  }}
-                />
+                <div className="relative">
+                  <Thermometer className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="-50"
+                    max="50"
+                    placeholder="e.g. 22.50"
+                    className="pl-9"
+                    {...field}
+                    value={field.value ?? ""}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value);
+                      field.onChange(
+                        Number.isNaN(val) ? null : Math.round(val * 100) / 100,
+                      );
+                    }}
+                  />
+                </div>
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -224,18 +245,22 @@ export function DiveFormFields({
             <FormItem>
               <FormLabel>Visibility (m)</FormLabel>
               <FormControl>
-                <Input
-                  type="number"
-                  step="1"
-                  min="0"
-                  placeholder="e.g. 15"
-                  {...field}
-                  value={field.value ?? ""}
-                  onChange={(e) => {
-                    const val = parseInt(e.target.value);
-                    field.onChange(Number.isNaN(val) ? null : val);
-                  }}
-                />
+                <div className="relative">
+                  <Eye className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                  <Input
+                    type="number"
+                    step="1"
+                    min="0"
+                    placeholder="e.g. 15"
+                    className="pl-9"
+                    {...field}
+                    value={field.value ?? ""}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value);
+                      field.onChange(Number.isNaN(val) ? null : val);
+                    }}
+                  />
+                </div>
               </FormControl>
               <FormMessage />
             </FormItem>
