@@ -20,25 +20,25 @@ export default function HomePage() {
 
   if (isLoading || isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-blue-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-blue-100 dark:from-background dark:to-blue-950/40 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-blue-100">
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-blue-100 dark:from-background dark:to-blue-950/40">
       {/* Header */}
       <Header showDashboardActions={true} />
 
       {/* Hero Section */}
       <section className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
+          <h2 className="text-4xl md:text-6xl font-bold text-foreground mb-6">
             Dive into the
             <span className="text-blue-600"> Open Ocean</span>
           </h2>
-          <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
+          <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
             Join the open source diving community. Track your dives, share
             experiences, and explore the underwater world with fellow divers
             around the globe.
@@ -57,13 +57,13 @@ export default function HomePage() {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-20 bg-white">
+      <section id="features" className="py-20 bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h3 className="text-3xl font-bold text-gray-900 mb-4">
+            <h3 className="text-3xl font-bold text-foreground mb-4">
               Everything You Need for Diving
             </h3>
-            <p className="text-lg text-gray-600">
+            <p className="text-lg text-muted-foreground">
               Comprehensive tools for the modern diver
             </p>
           </div>
@@ -78,7 +78,7 @@ export default function HomePage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <ul className="space-y-2 text-sm text-gray-600">
+                <ul className="space-y-2 text-sm text-muted-foreground">
                   <li>• Depth and time tracking</li>
                   <li>• Marine life observations</li>
                   <li>• Equipment management</li>
@@ -96,7 +96,7 @@ export default function HomePage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <ul className="space-y-2 text-sm text-gray-600">
+                <ul className="space-y-2 text-sm text-muted-foreground">
                   <li>• Share dive photos</li>
                   <li>• Find dive buddies</li>
                   <li>• Local dive sites</li>
@@ -114,7 +114,7 @@ export default function HomePage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <ul className="space-y-2 text-sm text-gray-600">
+                <ul className="space-y-2 text-sm text-muted-foreground">
                   <li>• Transparent development</li>
                   <li>• Community contributions</li>
                   <li>• Data ownership</li>
@@ -153,10 +153,10 @@ export default function HomePage() {
       {/* CTA Section */}
       <section id="community" className="py-20">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h3 className="text-3xl font-bold text-gray-900 mb-6">
+          <h3 className="text-3xl font-bold text-foreground mb-6">
             Ready to Dive In?
           </h3>
-          <p className="text-lg text-gray-600 mb-8">
+          <p className="text-lg text-muted-foreground mb-8">
             Join thousands of divers who are already using OpenDiving to track
             their underwater adventures and connect with the global diving
             community.

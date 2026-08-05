@@ -176,7 +176,7 @@ export default function DiveDetailPage() {
 
   if (isAuthLoading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-background">
         <Header showDashboardActions={true} currentPage="dives" />
         <div className="flex items-center justify-center min-h-[60vh]">
           <Loader2 className="h-8 w-8 animate-spin" />
@@ -191,7 +191,7 @@ export default function DiveDetailPage() {
 
   if (isLoadingDive) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-background">
         <Header showDashboardActions={true} currentPage="dives" />
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-center py-12">
@@ -204,7 +204,7 @@ export default function DiveDetailPage() {
 
   if (!dive) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-background">
         <Header showDashboardActions={true} currentPage="dives" />
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center py-12">
@@ -226,7 +226,7 @@ export default function DiveDetailPage() {
     dive.bottom_temperature != null || dive.visibility != null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <Header showDashboardActions={true} currentPage="dives" />
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

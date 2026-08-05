@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { ThemeToggle } from "@/components/theme-toggle";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,7 +46,7 @@ export function Header({
   };
 
   return (
-    <header className="bg-white shadow-sm border-b">
+    <header className="bg-background shadow-sm border-b">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-4">
           {/* Logo and Navigation */}
@@ -55,7 +56,7 @@ export function Header({
               className="flex flex-shrink-0 items-center space-x-2"
             >
               <Waves className="h-8 w-8 text-blue-600 flex-shrink-0" />
-              <h1 className="text-2xl font-bold text-gray-900 whitespace-nowrap">
+              <h1 className="text-2xl font-bold text-foreground whitespace-nowrap">
                 OpenDiving
               </h1>
             </Link>
@@ -69,7 +70,7 @@ export function Header({
                     className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-blue-600 ${
                       currentPage === "dashboard"
                         ? "text-blue-600"
-                        : "text-gray-700"
+                        : "text-foreground"
                     }`}
                   >
                     Dashboard
@@ -79,7 +80,7 @@ export function Header({
                     className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-blue-600 ${
                       currentPage === "trips"
                         ? "text-blue-600"
-                        : "text-gray-700"
+                        : "text-foreground"
                     }`}
                   >
                     Trips
@@ -89,7 +90,7 @@ export function Header({
                     className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-blue-600 ${
                       currentPage === "dives"
                         ? "text-blue-600"
-                        : "text-gray-700"
+                        : "text-foreground"
                     }`}
                   >
                     Dives
@@ -99,7 +100,7 @@ export function Header({
                     className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-blue-600 ${
                       currentPage === "sites"
                         ? "text-blue-600"
-                        : "text-gray-700"
+                        : "text-foreground"
                     }`}
                   >
                     Dive Sites
@@ -109,7 +110,7 @@ export function Header({
                     className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-blue-600 ${
                       currentPage === "community"
                         ? "text-blue-600"
-                        : "text-gray-700"
+                        : "text-foreground"
                     }`}
                   >
                     Community
@@ -119,19 +120,19 @@ export function Header({
                 <>
                   <Link
                     href="/#features"
-                    className="whitespace-nowrap text-sm font-medium text-gray-700 hover:text-blue-600"
+                    className="whitespace-nowrap text-sm font-medium text-foreground hover:text-blue-600"
                   >
                     Features
                   </Link>
                   <Link
                     href="/#community"
-                    className="whitespace-nowrap text-sm font-medium text-gray-700 hover:text-blue-600"
+                    className="whitespace-nowrap text-sm font-medium text-foreground hover:text-blue-600"
                   >
                     Community
                   </Link>
                   <Link
                     href="/#about"
-                    className="whitespace-nowrap text-sm font-medium text-gray-700 hover:text-blue-600"
+                    className="whitespace-nowrap text-sm font-medium text-foreground hover:text-blue-600"
                   >
                     About
                   </Link>
@@ -142,8 +143,9 @@ export function Header({
 
           {/* Actions */}
           <div className="flex flex-shrink-0 items-center space-x-3">
+            <ThemeToggle />
             {isLoading ? (
-              <div className="animate-pulse bg-gray-200 rounded-md h-9 w-20"></div>
+              <div className="animate-pulse bg-muted rounded-md h-9 w-20"></div>
             ) : isAuthenticated && user ? (
               <>
                 {/* Search - Desktop - Only show when authenticated */}
@@ -185,7 +187,7 @@ export function Header({
                     <div className="px-2 py-1.5 text-sm font-medium">
                       {user.name}
                     </div>
-                    <div className="px-2 py-1.5 text-xs text-gray-500">
+                    <div className="px-2 py-1.5 text-xs text-muted-foreground">
                       @{user.username}
                     </div>
                     <DropdownMenuSeparator />
@@ -241,35 +243,35 @@ export function Header({
                 <>
                   <Link
                     href="/dashboard"
-                    className="text-sm font-medium text-gray-700 hover:text-blue-600 py-2"
+                    className="text-sm font-medium text-foreground hover:text-blue-600 py-2"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Dashboard
                   </Link>
                   <Link
                     href="/trips"
-                    className="text-sm font-medium text-gray-700 hover:text-blue-600 py-2"
+                    className="text-sm font-medium text-foreground hover:text-blue-600 py-2"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Trips
                   </Link>
                   <Link
                     href="/dives"
-                    className="text-sm font-medium text-gray-700 hover:text-blue-600 py-2"
+                    className="text-sm font-medium text-foreground hover:text-blue-600 py-2"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Dives
                   </Link>
                   <Link
                     href="/sites"
-                    className="text-sm font-medium text-gray-700 hover:text-blue-600 py-2"
+                    className="text-sm font-medium text-foreground hover:text-blue-600 py-2"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Dive Sites
                   </Link>
                   <Link
                     href="/community"
-                    className="text-sm font-medium text-gray-700 hover:text-blue-600 py-2"
+                    className="text-sm font-medium text-foreground hover:text-blue-600 py-2"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Community
@@ -294,21 +296,21 @@ export function Header({
                 <>
                   <Link
                     href="/#features"
-                    className="text-sm font-medium text-gray-700 hover:text-blue-600 py-2"
+                    className="text-sm font-medium text-foreground hover:text-blue-600 py-2"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Features
                   </Link>
                   <Link
                     href="/#community"
-                    className="text-sm font-medium text-gray-700 hover:text-blue-600 py-2"
+                    className="text-sm font-medium text-foreground hover:text-blue-600 py-2"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Community
                   </Link>
                   <Link
                     href="/#about"
-                    className="text-sm font-medium text-gray-700 hover:text-blue-600 py-2"
+                    className="text-sm font-medium text-foreground hover:text-blue-600 py-2"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     About

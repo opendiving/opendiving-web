@@ -74,15 +74,15 @@ export function RecentTripsCard({ userId }: RecentTripsCardProps) {
       <CardContent>
         {isLoadingTrips ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         ) : recentTrips.length === 0 ? (
           <div className="text-center py-8">
-            <Luggage className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <Luggage className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-foreground mb-2">
               No trips yet
             </h3>
-            <p className="text-gray-500 mb-4">
+            <p className="text-muted-foreground mb-4">
               Create a trip to group your dives together!
             </p>
             <Button asChild>
@@ -98,16 +98,16 @@ export function RecentTripsCard({ userId }: RecentTripsCardProps) {
               <Link
                 key={trip.uuid}
                 href={`/trips/${trip.uuid}`}
-                className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50 transition-colors"
+                className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted transition-colors"
               >
                 <div>
-                  <div className="font-medium text-gray-900">{trip.name}</div>
+                  <div className="font-medium text-foreground">{trip.name}</div>
                   {trip.location && (
-                    <div className="text-sm text-gray-500">{trip.location}</div>
+                    <div className="text-sm text-muted-foreground">{trip.location}</div>
                   )}
                 </div>
                 {formatTripDisplayDate(trip) && (
-                  <div className="flex items-center gap-1 text-sm text-gray-600">
+                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
                     <Calendar className="h-4 w-4" />
                     {formatTripDisplayDate(trip)}
                   </div>

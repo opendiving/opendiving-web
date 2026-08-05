@@ -23,7 +23,7 @@ export default function SignUpPage() {
         <div className="flex justify-center mb-8">
           <Link href="/" className="flex items-center space-x-2">
             <Waves className="h-8 w-8 text-blue-600" />
-            <span className="text-2xl font-bold text-gray-900">OpenDiving</span>
+            <span className="text-2xl font-bold text-foreground">OpenDiving</span>
           </Link>
         </div>
 
@@ -31,7 +31,7 @@ export default function SignUpPage() {
         <SignUpForm />
 
         {/* Footer */}
-        <div className="mt-8 text-center text-sm text-gray-500">
+        <div className="mt-8 text-center text-sm text-muted-foreground">
           <p>
             By creating an account, you agree to our{" "}
             <Link href="/terms" className="text-blue-600 hover:text-blue-500">

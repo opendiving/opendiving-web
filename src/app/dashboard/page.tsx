@@ -58,7 +58,7 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-background">
         <Header showDashboardActions={true} currentPage="dashboard" />
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -72,16 +72,16 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <Header showDashboardActions={true} currentPage="dashboard" />
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Welcome Section */}
         <div className="mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">
+          <h2 className="text-3xl font-bold text-foreground mb-2">
             Welcome back, {user.name}! 🤿
           </h2>
-          <p className="text-gray-600">
+          <p className="text-muted-foreground">
             Track your underwater adventures and connect with the diving
             community
           </p>
@@ -193,13 +193,13 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="p-3 bg-blue-50 dark:bg-blue-950/40 rounded-lg border border-blue-200 dark:border-blue-900">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h5 className="font-medium text-blue-900">
+                        <h5 className="font-medium text-blue-900 dark:text-blue-300">
                           Complete Profile
                         </h5>
-                        <p className="text-sm text-blue-700">
+                        <p className="text-sm text-blue-700 dark:text-blue-300">
                           Add your certification details
                         </p>
                       </div>
@@ -207,13 +207,13 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
-                  <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                  <div className="p-3 bg-green-50 dark:bg-green-950/40 rounded-lg border border-green-200 dark:border-green-900">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h5 className="font-medium text-green-900">
+                        <h5 className="font-medium text-green-900 dark:text-green-300">
                           Log First Dive
                         </h5>
-                        <p className="text-sm text-green-700">
+                        <p className="text-sm text-green-700 dark:text-green-300">
                           Start tracking your adventures
                         </p>
                       </div>
@@ -221,13 +221,13 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
-                  <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
+                  <div className="p-3 bg-orange-50 dark:bg-orange-950/40 rounded-lg border border-orange-200 dark:border-orange-900">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h5 className="font-medium text-orange-900">
+                        <h5 className="font-medium text-orange-900 dark:text-orange-300">
                           Join Community
                         </h5>
-                        <p className="text-sm text-orange-700">
+                        <p className="text-sm text-orange-700 dark:text-orange-300">
                           Connect with other divers
                         </p>
                       </div>

@@ -58,7 +58,7 @@ export default function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-background">
         <Header showDashboardActions={true} currentPage="profile" />
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -72,12 +72,12 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <Header showDashboardActions={true} currentPage="profile" />
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Profile Header */}
-        <div className="bg-white rounded-lg shadow-sm p-8 mb-8">
+        <div className="bg-card rounded-lg shadow-sm p-8 mb-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between">
             <div className="flex items-center space-x-6">
               <UserAvatar
@@ -87,11 +87,11 @@ export default function ProfilePage() {
                 className="h-24 w-24"
               />
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">
+                <h1 className="text-3xl font-bold text-foreground">
                   {user.name}
                 </h1>
-                <p className="text-gray-600 text-lg">@{user.username}</p>
-                <div className="flex items-center mt-2 text-gray-500">
+                <p className="text-muted-foreground text-lg">@{user.username}</p>
+                <div className="flex items-center mt-2 text-muted-foreground">
                   <Mail className="h-4 w-4 mr-2" />
                   <span className="text-sm">{user.email}</span>
                 </div>
@@ -128,25 +128,25 @@ export default function ProfilePage() {
                     <div className="text-2xl font-bold">
                       {stats?.total_dives ?? 0}
                     </div>
-                    <div className="text-sm text-gray-600">Total Dives</div>
+                    <div className="text-sm text-muted-foreground">Total Dives</div>
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold">
                       {stats?.max_depth ?? 0}m
                     </div>
-                    <div className="text-sm text-gray-600">Max Depth</div>
+                    <div className="text-sm text-muted-foreground">Max Depth</div>
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold">
                       {formatDurationHoursMinutes(stats?.total_time ?? 0)}
                     </div>
-                    <div className="text-sm text-gray-600">Total Time</div>
+                    <div className="text-sm text-muted-foreground">Total Time</div>
                   </div>
                   <div className="text-center">
                     <div className="text-2xl font-bold">
                       {stats?.species_seen ?? 0}
                     </div>
-                    <div className="text-sm text-gray-600">Species Seen</div>
+                    <div className="text-sm text-muted-foreground">Species Seen</div>
                   </div>
                 </div>
               </CardContent>
@@ -165,22 +165,22 @@ export default function ProfilePage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Member since</span>
-                  <div className="flex items-center text-sm text-gray-900">
+                  <span className="text-muted-foreground">Member since</span>
+                  <div className="flex items-center text-sm text-foreground">
                     <Calendar className="h-4 w-4 mr-1" />
                     Dec 2024
                   </div>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Profile views</span>
-                  <span className="text-sm text-gray-900">0</span>
+                  <span className="text-muted-foreground">Profile views</span>
+                  <span className="text-sm text-foreground">0</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Tier</span>
+                  <span className="text-muted-foreground">Tier</span>
                   <Badge variant="secondary">Free</Badge>
                 </div>
                 <div className="pt-3 border-t">
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-muted-foreground">
                     Avatar powered by{" "}
                     <a
                       href="https://gravatar.com"
@@ -205,8 +205,8 @@ export default function ProfilePage() {
               </CardHeader>
               <CardContent>
                 <div className="text-center py-8">
-                  <Award className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500 text-sm mb-4">
+                  <Award className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-muted-foreground text-sm mb-4">
                     No certifications added yet
                   </p>
                   <Button variant="outline" size="sm">
@@ -226,8 +226,8 @@ export default function ProfilePage() {
               </CardHeader>
               <CardContent>
                 <div className="text-center py-8">
-                  <MapPin className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500 text-sm mb-4">
+                  <MapPin className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-muted-foreground text-sm mb-4">
                     No favorite sites yet
                   </p>
                   <Button variant="outline" size="sm">

@@ -160,7 +160,7 @@ export default function SettingsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-background">
         <Header showDashboardActions={true} currentPage="settings" />
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -174,16 +174,16 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <Header showDashboardActions={true} currentPage="settings" />
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Header Section */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          <h1 className="text-3xl font-bold text-foreground mb-2">
             Account Settings
           </h1>
-          <p className="text-gray-600">
+          <p className="text-muted-foreground">
             Manage your account information and security settings.
           </p>
         </div>
@@ -206,14 +206,14 @@ export default function SettingsPage() {
                 className="space-y-4"
               >
                 {profileSuccess && (
-                  <div className="flex items-center p-3 text-sm text-green-600 bg-green-50 rounded-md border border-green-200">
+                  <div className="flex items-center p-3 text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/40 rounded-md border border-green-200 dark:border-green-900">
                     <CheckCircle className="h-4 w-4 mr-2" />
                     {profileSuccess}
                   </div>
                 )}
 
                 {profileError && (
-                  <div className="flex items-center p-3 text-sm text-red-600 bg-red-50 rounded-md border border-red-200">
+                  <div className="flex items-center p-3 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 rounded-md border border-red-200 dark:border-red-900">
                     <AlertCircle className="h-4 w-4 mr-2" />
                     {profileError}
                   </div>
@@ -249,7 +249,7 @@ export default function SettingsPage() {
                       {profileErrors.username.message}
                     </p>
                   )}
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-muted-foreground">
                     Your username is used in your profile URL and for mentions.
                   </p>
                 </div>
@@ -308,14 +308,14 @@ export default function SettingsPage() {
                 className="space-y-4"
               >
                 {passwordSuccess && (
-                  <div className="flex items-center p-3 text-sm text-green-600 bg-green-50 rounded-md border border-green-200">
+                  <div className="flex items-center p-3 text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/40 rounded-md border border-green-200 dark:border-green-900">
                     <CheckCircle className="h-4 w-4 mr-2" />
                     {passwordSuccess}
                   </div>
                 )}
 
                 {passwordError && (
-                  <div className="flex items-center p-3 text-sm text-red-600 bg-red-50 rounded-md border border-red-200">
+                  <div className="flex items-center p-3 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 rounded-md border border-red-200 dark:border-red-900">
                     <AlertCircle className="h-4 w-4 mr-2" />
                     {passwordError}
                   </div>
@@ -340,7 +340,7 @@ export default function SettingsPage() {
                       onClick={() =>
                         setShowCurrentPassword(!showCurrentPassword)
                       }
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
                       {showCurrentPassword ? (
                         <EyeOff size={16} />
@@ -373,7 +373,7 @@ export default function SettingsPage() {
                     <button
                       type="button"
                       onClick={() => setShowNewPassword(!showNewPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
                       {showNewPassword ? (
                         <EyeOff size={16} />
@@ -408,7 +408,7 @@ export default function SettingsPage() {
                       onClick={() =>
                         setShowConfirmPassword(!showConfirmPassword)
                       }
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
                       {showConfirmPassword ? (
                         <EyeOff size={16} />
@@ -470,11 +470,11 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="bg-red-50 border border-red-200 rounded-md p-4">
-                  <h4 className="font-medium text-red-800 mb-2">
+                <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 rounded-md p-4">
+                  <h4 className="font-medium text-red-800 dark:text-red-300 mb-2">
                     Delete Account
                   </h4>
-                  <p className="text-sm text-red-700 mb-3">
+                  <p className="text-sm text-red-700 dark:text-red-400 mb-3">
                     Once you delete your account, there is no going back. This
                     will permanently delete your profile, dive logs, and remove
                     all associations with projects and teams.

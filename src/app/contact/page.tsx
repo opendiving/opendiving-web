@@ -30,16 +30,16 @@ export const metadata: Metadata = {
 
 export default function ContactPage() {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <Header showDashboardActions={true} />
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Header Section */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
+          <h1 className="text-4xl font-bold text-foreground mb-4">
             Get in Touch
           </h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+          <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
             OpenDiving is built by the community, for the community. Whether you
             need help, want to contribute, or have feedback, we'd love to hear
             from you.
@@ -60,7 +60,7 @@ export default function ContactPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-700 mb-4">
+                <p className="text-foreground mb-4">
                   Join our community discussions for general questions, diving
                   tips, and platform support.
                 </p>
@@ -75,7 +75,7 @@ export default function ContactPage() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
-                  <Bug className="h-5 w-5 mr-2 text-gray-700" />
+                  <Bug className="h-5 w-5 mr-2 text-foreground" />
                   Technical Issues
                 </CardTitle>
                 <CardDescription>
@@ -83,7 +83,7 @@ export default function ContactPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-700 mb-4">
+                <p className="text-foreground mb-4">
                   Found a bug or have a feature request? Create an issue on our
                   GitHub repository.
                 </p>
@@ -104,7 +104,7 @@ export default function ContactPage() {
                 <CardDescription>Help make OpenDiving better</CardDescription>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-700 mb-4">
+                <p className="text-foreground mb-4">
                   Want to contribute code, documentation, or translations? Check
                   out our contributing guide.
                 </p>
@@ -185,8 +185,8 @@ export default function ContactPage() {
                     />
                   </div>
 
-                  <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-                    <p className="text-blue-800 text-sm">
+                  <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 rounded-md p-4">
+                    <p className="text-blue-800 dark:text-blue-300 text-sm">
                       <strong>Note:</strong> For urgent safety concerns or
                       emergencies, please contact your local emergency services
                       immediately. OpenDiving is not an emergency service.
@@ -209,10 +209,10 @@ export default function ContactPage() {
             <CardContent className="pt-6">
               <div className="text-center">
                 <Users className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-                <h3 className="font-semibold text-gray-900 mb-2">
+                <h3 className="font-semibold text-foreground mb-2">
                   Community Managers
                 </h3>
-                <p className="text-gray-600 text-sm">
+                <p className="text-muted-foreground text-sm">
                   community@opendiving.app
                 </p>
               </div>
@@ -223,10 +223,10 @@ export default function ContactPage() {
             <CardContent className="pt-6">
               <div className="text-center">
                 <Shield className="h-12 w-12 text-green-600 mx-auto mb-4" />
-                <h3 className="font-semibold text-gray-900 mb-2">
+                <h3 className="font-semibold text-foreground mb-2">
                   Security Issues
                 </h3>
-                <p className="text-gray-600 text-sm">security@opendiving.app</p>
+                <p className="text-muted-foreground text-sm">security@opendiving.app</p>
               </div>
             </CardContent>
           </Card>
@@ -235,10 +235,10 @@ export default function ContactPage() {
             <CardContent className="pt-6">
               <div className="text-center">
                 <BookOpen className="h-12 w-12 text-purple-600 mx-auto mb-4" />
-                <h3 className="font-semibold text-gray-900 mb-2">
+                <h3 className="font-semibold text-foreground mb-2">
                   Documentation
                 </h3>
-                <p className="text-gray-600 text-sm">docs@opendiving.app</p>
+                <p className="text-muted-foreground text-sm">docs@opendiving.app</p>
               </div>
             </CardContent>
           </Card>
@@ -246,11 +246,11 @@ export default function ContactPage() {
 
         {/* Response Time Note */}
         <div className="mt-12 text-center">
-          <p className="text-gray-600">
+          <p className="text-muted-foreground">
             OpenDiving is an open-source project maintained by volunteers from
             the diving community.
           </p>
-          <p className="text-gray-600 mt-2">
+          <p className="text-muted-foreground mt-2">
             Response times may vary, but we typically respond within 48-72
             hours.
           </p>

@@ -124,15 +124,15 @@ export function RecentDivesCard({
       <CardContent>
         {isLoadingDives ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
         ) : recentDives.length === 0 ? (
           <div className="text-center py-12">
-            <Waves className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+            <Waves className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-foreground mb-2">
               {emptyTitle}
             </h3>
-            <p className="text-gray-500 mb-4">{emptyDescription}</p>
+            <p className="text-muted-foreground mb-4">{emptyDescription}</p>
             <Button asChild>
               <Link href={newDiveHref}>
                 <Plus className="h-4 w-4 mr-2" />
@@ -146,23 +146,23 @@ export function RecentDivesCard({
               <Link
                 key={dive.uuid}
                 href={`/dives/${dive.uuid}`}
-                className="flex items-center justify-between p-3 rounded-lg border hover:bg-gray-50 transition-colors"
+                className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted transition-colors"
               >
                 <div>
-                  <div className="font-medium text-gray-900">
+                  <div className="font-medium text-foreground">
                     Dive #{dive.dive_number}
                   </div>
-                  <div className="text-sm text-gray-500">
+                  <div className="text-sm text-muted-foreground">
                     {formatDiveDate(dive.start_time)}
                     {dive.dive_sites.length > 0 && (
                       <span>
-                        {" · "}
+                        {" \u00b7 "}
                         <DiveSitesLabel sites={dive.dive_sites} showLocation />
                       </span>
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-4 text-sm text-gray-600">
+                <div className="flex items-center gap-4 text-sm text-muted-foreground">
                   <div className="flex items-center gap-1">
                     <Clock className="h-4 w-4" />
                     {formatDiveDuration(dive.duration)}
