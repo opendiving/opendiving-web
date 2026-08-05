@@ -10,14 +10,14 @@ export default function SignInPage() {
 
   if (isLoading || isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-blue-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-blue-100 dark:from-background dark:to-blue-950/40 flex items-center justify-center p-4">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-blue-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-blue-100 dark:from-background dark:to-blue-950/40 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="flex justify-center mb-8">
