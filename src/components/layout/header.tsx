@@ -2,9 +2,12 @@
 
 import React from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { Logo } from "@/components/logo";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,29 +16,36 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  Waves,
   User,
   LogOut,
   Settings,
   BookOpen,
-  Users,
-  Plus,
   Menu,
   Bell,
   Search,
 } from "lucide-react";
 import { useState } from "react";
 
-interface HeaderProps {
-  showDashboardActions?: boolean;
-  currentPage?: string;
+// Maps URL path prefixes to the nav item that should be highlighted as active.
+const NAV_SECTIONS: { prefix: string; page: string }[] = [
+  { prefix: "/dashboard", page: "dashboard" },
+  { prefix: "/trips", page: "trips" },
+  { prefix: "/dives", page: "dives" },
+  { prefix: "/sites", page: "sites" },
+  { prefix: "/community", page: "community" },
+];
+
+function getCurrentPage(pathname: string | null): string | undefined {
+  if (!pathname) return undefined;
+  return NAV_SECTIONS.find(
+    ({ prefix }) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  )?.page;
 }
 
-export function Header({
-  showDashboardActions = false,
-  currentPage,
-}: HeaderProps) {
+export function Header() {
   const { user, isAuthenticated, signOut, isLoading } = useAuth();
+  const pathname = usePathname();
+  const currentPage = getCurrentPage(pathname);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleSignOut = async () => {
@@ -47,56 +57,71 @@ export function Header({
   };
 
   return (
-    <header className="bg-white shadow-sm border-b">
+    <header className="sticky top-0 z-50 bg-background shadow-sm border-b">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-4">
           {/* Logo and Navigation */}
           <div className="flex items-center space-x-8">
-            <Link href="/" className="flex items-center space-x-2">
-              <Waves className="h-8 w-8 text-blue-600" />
-              <h1 className="text-2xl font-bold text-gray-900">OpenDiving</h1>
+            <Link
+              href="/"
+              className="flex flex-shrink-0 items-center space-x-2"
+            >
+              <Logo className="h-8 w-8 text-primary flex-shrink-0" />
+              <h1 className="text-2xl font-bold text-foreground whitespace-nowrap">
+                OpenDiving
+              </h1>
             </Link>
 
             {/* Desktop Navigation - Show different nav based on auth status */}
-            <nav className="hidden md:flex space-x-6">
+            <nav className="hidden md:flex flex-shrink-0 items-center space-x-6">
               {isAuthenticated ? (
                 <>
                   <Link
                     href="/dashboard"
-                    className={`text-sm font-medium transition-colors hover:text-blue-600 ${
+                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-primary ${
                       currentPage === "dashboard"
-                        ? "text-blue-600"
-                        : "text-gray-700"
+                        ? "text-primary"
+                        : "text-foreground"
                     }`}
                   >
                     Dashboard
                   </Link>
                   <Link
-                    href="/dives"
-                    className={`text-sm font-medium transition-colors hover:text-blue-600 ${
-                      currentPage === "dives"
-                        ? "text-blue-600"
-                        : "text-gray-700"
+                    href="/trips"
+                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-primary ${
+                      currentPage === "trips"
+                        ? "text-primary"
+                        : "text-foreground"
                     }`}
                   >
-                    My Dives
+                    Trips
+                  </Link>
+                  <Link
+                    href="/dives"
+                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-primary ${
+                      currentPage === "dives"
+                        ? "text-primary"
+                        : "text-foreground"
+                    }`}
+                  >
+                    Dives
                   </Link>
                   <Link
                     href="/sites"
-                    className={`text-sm font-medium transition-colors hover:text-blue-600 ${
+                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-primary ${
                       currentPage === "sites"
-                        ? "text-blue-600"
-                        : "text-gray-700"
+                        ? "text-primary"
+                        : "text-foreground"
                     }`}
                   >
                     Dive Sites
                   </Link>
                   <Link
                     href="/community"
-                    className={`text-sm font-medium transition-colors hover:text-blue-600 ${
+                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-primary ${
                       currentPage === "community"
-                        ? "text-blue-600"
-                        : "text-gray-700"
+                        ? "text-primary"
+                        : "text-foreground"
                     }`}
                   >
                     Community
@@ -106,19 +131,19 @@ export function Header({
                 <>
                   <Link
                     href="/#features"
-                    className="text-sm font-medium text-gray-700 hover:text-blue-600"
+                    className="whitespace-nowrap text-sm font-medium text-foreground hover:text-primary"
                   >
                     Features
                   </Link>
                   <Link
                     href="/#community"
-                    className="text-sm font-medium text-gray-700 hover:text-blue-600"
+                    className="whitespace-nowrap text-sm font-medium text-foreground hover:text-primary"
                   >
                     Community
                   </Link>
                   <Link
                     href="/#about"
-                    className="text-sm font-medium text-gray-700 hover:text-blue-600"
+                    className="whitespace-nowrap text-sm font-medium text-foreground hover:text-primary"
                   >
                     About
                   </Link>
@@ -128,9 +153,10 @@ export function Header({
           </div>
 
           {/* Actions */}
-          <div className="flex items-center space-x-3">
+          <div className="flex flex-shrink-0 items-center space-x-3">
+            <ThemeToggle />
             {isLoading ? (
-              <div className="animate-pulse bg-gray-200 rounded-md h-9 w-20"></div>
+              <div className="animate-pulse bg-muted rounded-md h-9 w-20"></div>
             ) : isAuthenticated && user ? (
               <>
                 {/* Search - Desktop - Only show when authenticated */}
@@ -145,31 +171,6 @@ export function Header({
                     3
                   </span>
                 </Button>
-
-                {/* Dashboard specific actions */}
-                {showDashboardActions && (
-                  <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="hidden sm:flex"
-                    >
-                      <Users className="h-4 w-4 mr-2" />
-                      Find Buddies
-                    </Button>
-                    <Button size="sm">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Log Dive
-                    </Button>
-                  </>
-                )}
-
-                {/* Dashboard link for non-dashboard pages */}
-                {!showDashboardActions && (
-                  <Link href="/dashboard">
-                    <Button variant="outline">Dashboard</Button>
-                  </Link>
-                )}
 
                 {/* User dropdown */}
                 <DropdownMenu>
@@ -190,16 +191,10 @@ export function Header({
                     <div className="px-2 py-1.5 text-sm font-medium">
                       {user.name}
                     </div>
-                    <div className="px-2 py-1.5 text-xs text-gray-500">
+                    <div className="px-2 py-1.5 text-xs text-muted-foreground">
                       @{user.username}
                     </div>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link href="/dashboard" className="flex items-center">
-                        <BookOpen className="mr-2 h-4 w-4" />
-                        Dashboard
-                      </Link>
-                    </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link href="/profile" className="flex items-center">
                         <User className="mr-2 h-4 w-4" />
@@ -252,28 +247,35 @@ export function Header({
                 <>
                   <Link
                     href="/dashboard"
-                    className="text-sm font-medium text-gray-700 hover:text-blue-600 py-2"
+                    className="text-sm font-medium text-foreground hover:text-primary py-2"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Dashboard
                   </Link>
                   <Link
-                    href="/dives"
-                    className="text-sm font-medium text-gray-700 hover:text-blue-600 py-2"
+                    href="/trips"
+                    className="text-sm font-medium text-foreground hover:text-primary py-2"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
-                    My Dives
+                    Trips
+                  </Link>
+                  <Link
+                    href="/dives"
+                    className="text-sm font-medium text-foreground hover:text-primary py-2"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Dives
                   </Link>
                   <Link
                     href="/sites"
-                    className="text-sm font-medium text-gray-700 hover:text-blue-600 py-2"
+                    className="text-sm font-medium text-foreground hover:text-primary py-2"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Dive Sites
                   </Link>
                   <Link
                     href="/community"
-                    className="text-sm font-medium text-gray-700 hover:text-blue-600 py-2"
+                    className="text-sm font-medium text-foreground hover:text-primary py-2"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Community
@@ -298,21 +300,21 @@ export function Header({
                 <>
                   <Link
                     href="/#features"
-                    className="text-sm font-medium text-gray-700 hover:text-blue-600 py-2"
+                    className="text-sm font-medium text-foreground hover:text-primary py-2"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Features
                   </Link>
                   <Link
                     href="/#community"
-                    className="text-sm font-medium text-gray-700 hover:text-blue-600 py-2"
+                    className="text-sm font-medium text-foreground hover:text-primary py-2"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Community
                   </Link>
                   <Link
                     href="/#about"
-                    className="text-sm font-medium text-gray-700 hover:text-blue-600 py-2"
+                    className="text-sm font-medium text-foreground hover:text-primary py-2"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     About

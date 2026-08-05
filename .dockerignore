@@ -64,8 +64,9 @@ Dockerfile*
 .dockerignore
 docker-compose*.yml
 
-# Lock files (optional - comment out if you want to include them)
-package-lock.json
+# Lock files
+# NOTE: package-lock.json is intentionally NOT ignored - the Dockerfile uses
+# `npm ci`, which requires the lockfile to be present in the build context.
 yarn.lock
 pnpm-lock.yaml
 

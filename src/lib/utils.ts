@@ -1,6 +1,6 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
-import CryptoJS from "crypto-js";
+import MD5 from "crypto-js/md5";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -10,7 +10,7 @@ export function cn(...inputs: ClassValue[]) {
  * Generate MD5 hash of email for Gravatar
  */
 function md5(input: string): string {
-  return CryptoJS.MD5(input).toString();
+  return MD5(input).toString();
 }
 
 /**

@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/card";
 import { useAuth } from "@/contexts/AuthContext";
 import { signInSchema, SignInFormData } from "@/lib/validations/auth";
+import { getApiErrorMessage } from "@/lib/api/error";
 import { Eye, EyeOff, LogIn } from "lucide-react";
 
 export function SignInForm() {
@@ -38,10 +39,8 @@ export function SignInForm() {
       setError(null);
       await signIn(data);
       router.push("/dashboard");
-    } catch (err: any) {
-      setError(
-        err.response?.data?.detail || "An error occurred during sign in",
-      );
+    } catch (err) {
+      setError(getApiErrorMessage(err, "An error occurred during sign in"));
     }
   };
 
@@ -58,7 +57,7 @@ export function SignInForm() {
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {error && (
-            <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md border border-red-200">
+            <div className="p-3 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 rounded-md border border-red-200 dark:border-red-900">
               {error}
             </div>
           )}
@@ -90,7 +89,7 @@ export function SignInForm() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
@@ -119,10 +118,12 @@ export function SignInForm() {
           </Button>
 
           <div className="text-center text-sm">
-            <span className="text-gray-600">Don't have an account? </span>
+            <span className="text-muted-foreground">
+              Don't have an account?{" "}
+            </span>
             <Link
               href="/signup"
-              className="text-blue-600 hover:text-blue-500 font-medium"
+              className="text-primary hover:text-primary/80 font-medium"
             >
               Sign up
             </Link>

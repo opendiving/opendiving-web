@@ -12,14 +12,14 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      - name: Use Node.js 20.x
-        uses: actions/setup-node@v4
+      - name: Use Node.js 24.x
+        uses: actions/setup-node@v7
         with:
-          node-version: 20.x
+          node-version: 24.x
           cache: "npm"
 
       - name: Install dependencies
@@ -31,22 +31,22 @@ jobs:
 
       - name: Run ESLint with detailed output
         run: |
-          npx eslint src --ext .ts,.tsx,.js,.jsx --format=json --output-file=eslint-report.json || true
-          npx eslint src --ext .ts,.tsx,.js,.jsx
+          npx eslint . --format=json --output-file=eslint-report.json || true
+          npx eslint .
 
       - name: TypeScript strict check
         run: npx tsc --noEmit --strict
 
       - name: Check for unused dependencies
-        run: npx depcheck --ignores="@types/*,eslint-config-*" || true
+        run: npx --yes depcheck@1.4.7 --ignores="@types/*,eslint-config-*" || true
 
       - name: Bundle size analysis
         run: |
           npm run build
-          npx @next/bundle-analyzer || true
+          npx --yes @next/bundle-analyzer@16.3.0 || true
 
       - name: Check for circular dependencies
-        run: npx madge --circular --extensions ts,tsx,js,jsx src/ || true
+        run: npx --yes madge@8.0.0 --circular --extensions ts,tsx,js,jsx src/ || true
 
       # - name: Security scan with Snyk
       #   uses: snyk/actions/node@master
@@ -57,7 +57,7 @@ jobs:
       #     args: --severity-threshold=high
 
       - name: Upload ESLint report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: eslint-report
@@ -66,7 +66,7 @@ jobs:
 
       # - name: Comment PR with quality report
       #   if: github.event_name == 'pull_request'
-      #   uses: actions/github-script@v7
+      #   uses: actions/github-script@v9
       #   with:
       #     script: |
       #       const fs = require('fs');
@@ -103,10 +103,10 @@ jobs:
 
   #   steps:
   #     - name: Checkout code
-  #       uses: actions/checkout@v4
+  #       uses: actions/checkout@v7
 
   #     - name: Dependency Review
-  #       uses: actions/dependency-review-action@v4
+  #       uses: actions/dependency-review-action@v5
   #       with:
   #         fail-on-severity: moderate
   #         allow-licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, 0BSD
@@ -116,12 +116,12 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
-      - name: Use Node.js 20.x
-        uses: actions/setup-node@v4
+      - name: Use Node.js 24.x
+        uses: actions/setup-node@v7
         with:
-          node-version: 20.x
+          node-version: 24.x
           cache: "npm"
 
       - name: Install dependencies
@@ -143,7 +143,7 @@ jobs:
 
       - name: Run accessibility tests with axe
         run: |
-          npx @axe-core/cli http://localhost:3000 \
+          npx --yes @axe-core/cli@4.12.1 http://localhost:3000 \
             --include="main" \
             --exclude="iframe" \
             --tags="wcag2a,wcag2aa,wcag21aa" \
@@ -151,7 +151,7 @@ jobs:
             --output-file=accessibility-report.json || true
 
       - name: Upload accessibility report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: accessibility-report
