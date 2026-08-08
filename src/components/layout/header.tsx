@@ -66,7 +66,7 @@ export function Header() {
               href="/"
               className="flex flex-shrink-0 items-center space-x-2"
             >
-              <Logo className="h-8 w-8 text-primary flex-shrink-0" />
+              <Logo className="h-8 w-8 text-coral flex-shrink-0" />
               <h1 className="text-2xl font-bold text-foreground whitespace-nowrap">
                 OpenDiving
               </h1>
@@ -78,9 +78,9 @@ export function Header() {
                 <>
                   <Link
                     href="/dashboard"
-                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-primary ${
+                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-coral ${
                       currentPage === "dashboard"
-                        ? "text-primary"
+                        ? "text-coral"
                         : "text-foreground"
                     }`}
                   >
@@ -88,9 +88,9 @@ export function Header() {
                   </Link>
                   <Link
                     href="/trips"
-                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-primary ${
+                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-coral ${
                       currentPage === "trips"
-                        ? "text-primary"
+                        ? "text-coral"
                         : "text-foreground"
                     }`}
                   >
@@ -98,9 +98,9 @@ export function Header() {
                   </Link>
                   <Link
                     href="/dives"
-                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-primary ${
+                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-coral ${
                       currentPage === "dives"
-                        ? "text-primary"
+                        ? "text-coral"
                         : "text-foreground"
                     }`}
                   >
@@ -108,9 +108,9 @@ export function Header() {
                   </Link>
                   <Link
                     href="/sites"
-                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-primary ${
+                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-coral ${
                       currentPage === "sites"
-                        ? "text-primary"
+                        ? "text-coral"
                         : "text-foreground"
                     }`}
                   >
@@ -118,9 +118,9 @@ export function Header() {
                   </Link>
                   <Link
                     href="/community"
-                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-primary ${
+                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-coral ${
                       currentPage === "community"
-                        ? "text-primary"
+                        ? "text-coral"
                         : "text-foreground"
                     }`}
                   >
@@ -215,17 +215,7 @@ export function Header() {
                   </DropdownMenuContent>
                 </DropdownMenu>
               </>
-            ) : (
-              <>
-                {/* Unauthenticated state */}
-                <Link href="/signin">
-                  <Button variant="ghost">Sign In</Button>
-                </Link>
-                <Link href="/signup">
-                  <Button>Sign Up</Button>
-                </Link>
-              </>
-            )}
+            ) : null}
 
             {/* Mobile menu button */}
             <Button
@@ -247,35 +237,35 @@ export function Header() {
                 <>
                   <Link
                     href="/dashboard"
-                    className="text-sm font-medium text-foreground hover:text-primary py-2"
+                    className={`text-sm font-medium hover:text-coral py-2 ${currentPage === "dashboard" ? "text-coral" : "text-foreground"}`}
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Dashboard
                   </Link>
                   <Link
                     href="/trips"
-                    className="text-sm font-medium text-foreground hover:text-primary py-2"
+                    className={`text-sm font-medium hover:text-coral py-2 ${currentPage === "trips" ? "text-coral" : "text-foreground"}`}
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Trips
                   </Link>
                   <Link
                     href="/dives"
-                    className="text-sm font-medium text-foreground hover:text-primary py-2"
+                    className={`text-sm font-medium hover:text-coral py-2 ${currentPage === "dives" ? "text-coral" : "text-foreground"}`}
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Dives
                   </Link>
                   <Link
                     href="/sites"
-                    className="text-sm font-medium text-foreground hover:text-primary py-2"
+                    className={`text-sm font-medium hover:text-coral py-2 ${currentPage === "sites" ? "text-coral" : "text-foreground"}`}
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Dive Sites
                   </Link>
                   <Link
                     href="/community"
-                    className="text-sm font-medium text-foreground hover:text-primary py-2"
+                    className={`text-sm font-medium hover:text-coral py-2 ${currentPage === "community" ? "text-coral" : "text-foreground"}`}
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Community
@@ -319,27 +309,6 @@ export function Header() {
                   >
                     About
                   </Link>
-                  <div className="pt-3 border-t">
-                    <Link href="/signin">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full mb-2"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                      >
-                        Sign In
-                      </Button>
-                    </Link>
-                    <Link href="/signup">
-                      <Button
-                        size="sm"
-                        className="w-full"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                      >
-                        Sign Up
-                      </Button>
-                    </Link>
-                  </div>
                 </>
               )}
             </nav>

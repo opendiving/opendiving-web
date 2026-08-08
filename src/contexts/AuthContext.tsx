@@ -7,19 +7,39 @@ import React, {
   useState,
   ReactNode,
 } from "react";
-import { authAPI, User, LoginCredentials, SignUpData } from "@/lib/api/auth";
+import { authAPI, AuthOutcome, User } from "@/lib/api/auth";
 import {
   AUTH_SESSION_EXPIRED_EVENT,
   clearAccessToken,
   refreshAccessToken,
 } from "@/lib/api/client";
 
+// Carried from `/auth/verify` or the Google button to the profile-completion page
+// when no account exists yet for a verified identity - see `OnboardingRequired` on
+// the backend. Deliberately in-memory only (React state), never persisted: it's a
+// short-lived hop between two pages within the same SPA session, not a durable
+// session of its own.
+export interface OnboardingSession {
+  onboardingToken: string;
+  email: string;
+  name?: string;
+  avatar?: string;
+}
+
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  signIn: (credentials: LoginCredentials) => Promise<void>;
-  signUp: (userData: SignUpData) => Promise<void>;
+  onboarding: OnboardingSession | null;
+  // Step 1 of the email flow - always resolves with the same generic message,
+  // regardless of whether `email` belongs to an existing account.
+  requestEmailLink: (email: string) => Promise<{ message: string }>;
+  // Step 2 of the email flow - returns `true` if the caller was signed in, `false`
+  // if onboarding started instead (see `onboarding` above).
+  verifyEmailLink: (token: string) => Promise<boolean>;
+  signInWithGoogle: (credential: string) => Promise<boolean>;
+  completeProfile: (name: string, username: string) => Promise<void>;
+  clearOnboarding: () => void;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -33,6 +53,7 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [onboarding, setOnboarding] = useState<OnboardingSession | null>(null);
 
   // The access token lives in memory only (see lib/api/client.ts), so it's
   // never persisted across a page load - re-derive it here from the
@@ -57,7 +78,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Clear the (now stale) user when a token refresh fails elsewhere in the
   // app (see client.ts). Existing per-page "redirect if unauthenticated"
-  // guards then handle navigating to /signin via the Next.js router.
+  // guards then handle navigating to the landing page via the Next.js router.
   useEffect(() => {
     const handleSessionExpired = () => setUser(null);
     window.addEventListener(AUTH_SESSION_EXPIRED_EVENT, handleSessionExpired);
@@ -68,29 +89,58 @@ export function AuthProvider({ children }: AuthProviderProps) {
       );
   }, []);
 
-  // Note: `isLoading` intentionally isn't touched here. It reflects only the
-  // initial auth bootstrap check above (`initAuth`), which pages use to
-  // decide whether to render a full-page spinner instead of their content
-  // (see `useRedirectIfAuthenticated`). If `signIn`/`signUp` toggled it too,
-  // a failed sign in would briefly unmount `SignInForm` (its spinner takes
-  // over the page) and remount a fresh instance once the request settles,
-  // silently discarding the error message the form was about to show.
-  // Each form already tracks its own in-flight state via react-hook-form's
-  // `isSubmitting`, so this isn't needed for the button's loading UI either.
-  const signIn = async (credentials: LoginCredentials) => {
-    await authAPI.signIn(credentials);
-    const userData = await authAPI.getCurrentUser();
-    setUser(userData);
+  // Applies an `AuthOutcome` returned by any of the three entry points
+  // (email verify, Google, profile completion): either fetches and stores the
+  // now-signed-in user, or stashes the onboarding session for the profile
+  // completion page to pick up. Returns whether the caller was signed in.
+  const applyOutcome = async (outcome: AuthOutcome): Promise<boolean> => {
+    if (outcome.status === "authenticated") {
+      const userData = await authAPI.getCurrentUser();
+      setUser(userData);
+      setOnboarding(null);
+      return true;
+    }
+
+    setOnboarding({
+      onboardingToken: outcome.onboarding_token!,
+      email: outcome.email!,
+      name: outcome.name,
+      avatar: outcome.avatar,
+    });
+    return false;
   };
 
-  const signUp = async (userData: SignUpData) => {
-    await authAPI.signUp(userData);
-    // After signup, automatically sign in
-    await signIn({
-      username: userData.username,
-      password: userData.password,
-    });
+  // Note: `isLoading` intentionally isn't touched by any of the methods below.
+  // It reflects only the initial auth bootstrap check above (`initAuth`),
+  // which pages use to decide whether to render a full-page spinner instead
+  // of their content. Each form already tracks its own in-flight state via
+  // react-hook-form's `isSubmitting`, so this isn't needed for button loading
+  // UI either.
+  const requestEmailLink = (email: string) => authAPI.requestEmailLink(email);
+
+  const verifyEmailLink = async (token: string) => {
+    const outcome = await authAPI.verifyEmailLink(token);
+    return applyOutcome(outcome);
   };
+
+  const signInWithGoogle = async (credential: string) => {
+    const outcome = await authAPI.signInWithGoogle(credential);
+    return applyOutcome(outcome);
+  };
+
+  const completeProfile = async (name: string, username: string) => {
+    if (!onboarding) {
+      throw new Error("No onboarding session in progress.");
+    }
+    const outcome = await authAPI.completeProfile(
+      onboarding.onboardingToken,
+      name,
+      username,
+    );
+    await applyOutcome(outcome);
+  };
+
+  const clearOnboarding = () => setOnboarding(null);
 
   const signOut = async () => {
     try {
@@ -118,8 +168,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     user,
     isLoading,
     isAuthenticated: !!user,
-    signIn,
-    signUp,
+    onboarding,
+    requestEmailLink,
+    verifyEmailLink,
+    signInWithGoogle,
+    completeProfile,
+    clearOnboarding,
     signOut,
     refreshUser,
   };

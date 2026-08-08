@@ -8,7 +8,7 @@ export function Footer() {
         <div className="grid md:grid-cols-4 gap-8">
           <div>
             <div className="flex items-center space-x-2 mb-4">
-              <Logo className="h-6 w-6" />
+              <Logo className="h-6 w-6 text-coral" />
               <span className="text-lg font-semibold">OpenDiving</span>
             </div>
             <p className="text-neutral-600 dark:text-neutral-400 text-sm">

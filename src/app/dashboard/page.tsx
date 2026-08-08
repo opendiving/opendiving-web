@@ -36,7 +36,7 @@ export default function DashboardPage() {
 
     const fetchStats = async () => {
       try {
-        const data = await diveStatsAPI.getDiveStats(user.uuid);
+        const data = await diveStatsAPI.getDiveStats();
         setStats(data);
       } catch (error) {
         console.error("Failed to fetch dive stats:", error);

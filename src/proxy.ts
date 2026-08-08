@@ -60,7 +60,15 @@ export function proxy(request: NextRequest) {
     // loads user avatars from there.
     `img-src 'self' data: ${apiOrigin} https://www.gravatar.com`,
     "font-src 'self' data:",
-    `connect-src 'self' ${apiOrigin}`,
+    // `accounts.google.com` - the "Continue with Google" button
+    // (`components/auth/GoogleAuthButton.tsx`) renders Google's own iframe
+    // there, and its client-side JS calls it directly to complete sign-in.
+    // The script itself (`https://accounts.google.com/gsi/client?hl=en`)
+    // doesn't need a dedicated `script-src` entry - it's injected by our own
+    // already-trusted bundle, which `'strict-dynamic'` (above) automatically
+    // extends trust to.
+    `connect-src 'self' ${apiOrigin} https://accounts.google.com`,
+    "frame-src 'self' https://accounts.google.com",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

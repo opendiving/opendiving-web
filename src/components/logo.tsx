@@ -5,7 +5,7 @@ import * as React from "react";
  * exactly (same viewBox, paths, and default stroke attributes), just as
  * a self-contained SVG so it doesn't depend on the lucide-react package.
  * Drawn with `currentColor`, so it drops in anywhere an icon would (e.g.
- * `<Logo className="h-8 w-8 text-primary" />`) and follows the active
+ * `<Logo className="h-8 w-8 text-coral" />`) and follows the active
  * theme's color automatically.
  */
 export function Logo({ className, ...props }: React.SVGProps<SVGSVGElement>) {
