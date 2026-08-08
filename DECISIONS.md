@@ -35,6 +35,10 @@ now take a `userUuid: string` (`user.uuid`) as their first argument instead of
 an exact literal path, not a `{username}`/`{id}`/`{uuid}` placeholder, and always
 resolves the caller's own account from their auth token.
 
+(This no longer reflects `updateProfile`'s or `getDiveStats`'s current signatures -
+see "Current-user endpoints moved off `/user/me`/`/user/{uuid}` onto a bare
+`/user`" below.)
+
 ## Never use `z.preprocess()`/`.transform()` on fields feeding `z.input<>`-derived types
 
 Several form pages derive their form-data type from Zod via `z.input<typeof schema>`
@@ -267,7 +271,7 @@ It's now a plain module-scoped variable in `client.ts`, exposed via
 `getAccessToken`/`setAccessToken`/`clearAccessToken` - not React state/context,
 since the request interceptor just needs the latest value at request time, not
 a re-render. Because it's in-memory only, it doesn't survive a page reload, so
-`AuthContext`'s bootstrap effect calls `refreshAccessToken()` (POST `/refresh`,
+`AuthContext`'s bootstrap effect calls `refreshAccessToken()` (POST `/auth/refresh`,
 re-deriving a token from the httpOnly cookie) on every mount instead of
 checking `localStorage` for a cached token. `authAPI.isAuthenticated()` now
 just reflects whether the current tab happens to hold a token in memory right
@@ -276,7 +280,7 @@ now, not whether the user has a valid session overall - use
 
 Note this only protects against *passive*/out-of-band token exfiltration
 (storage-scraping malware, other scripts reading storage later, etc.) - a
-*live* XSS payload executing in the page can still just call `/refresh`
+*live* XSS payload executing in the page can still just call `/auth/refresh`
 itself and ride the session for as long as the page stays open, since the
 browser attaches the httpOnly cookie automatically. Actual XSS prevention
 (escaping, CSP - see below) is what closes that gap, not token storage
@@ -359,3 +363,479 @@ touching this:
   Without this, opening the first `Dialog`/`Popover`/etc. throws a
   `style-src-elem` CSP violation for react-remove-scroll's un-nonced style
   tag.
+
+## Unified auth flow: `/signin`/`/signup` are gone, replaced by `AuthForm` on the landing page
+
+The password-based `SignInForm`/`SignUpForm` (and their `/signin`/`/signup` pages)
+were removed entirely, matching the API's move to a passwordless, single-entry-point
+auth flow (see the API's `DECISIONS.md`). There is now exactly one form,
+`components/auth/AuthForm.tsx` - an email field, a "Continue" button, and "Continue
+with Google" - and it lives directly in the landing page's hero section
+(`app/page.tsx`, `#get-started`), not behind a dedicated route or a modal. `Header`'s
+authenticated-out state is now a single "Sign In" button linking to `/#get-started`
+rather than separate Sign In/Sign Up buttons.
+
+Three new routes carry the rest of the flow:
+- **`app/auth/verify/page.tsx`** - what the emailed magic link actually points to
+  (`{FRONTEND_URL}/auth/verify?token=...`). Deliberately a page that *calls* `POST
+  /auth/email/verify` from a `useEffect`, rather than the link target being that API
+  call directly - an email client or link-scanner prefetching the URL only ever
+  loads this page (a harmless GET), it never runs the app's JS, so it can't
+  accidentally burn the single-use token before the real user clicks it. A `useRef`
+  guard (`hasRun`) stops React Strict Mode's double-invoked effects in development
+  from doing the same.
+- **`app/onboarding/page.tsx`** - profile completion (name + username, email
+  read-only), shared by both auth methods. It reads from `AuthContext`'s
+  `onboarding` state, which only ever exists in memory (set by `verifyEmailLink`/
+  `signInWithGoogle` when the backend returns `status: "onboarding_required"`) and
+  is never persisted - a direct page load/refresh has nothing to recover, so the
+  page bounces back to `/` instead of erroring.
+- **`AuthContext`** grew `onboarding`/`completeProfile`/`clearOnboarding` alongside
+  the rewritten `requestEmailLink`/`verifyEmailLink`/`signInWithGoogle` - the latter
+  two now return a `boolean` (`true` = signed in, `false` = onboarding started)
+  instead of `void`, since the caller (the verify page, or `GoogleAuthButton`) needs
+  to decide whether to route to `/dashboard` or `/onboarding`.
+
+`useAuthGuard`'s default `redirectTo` changed from `/signin` to `/` - the landing
+page *is* the sign-in surface now, so there's no separate page to send signed-out
+visitors to. `NO_CHROME_ROUTES` in `app-shell.tsx` changed from `/signin`/`/signup`
+to `/onboarding`/`/auth/verify` (the two remaining standalone, chrome-free pages).
+
+Settings' "Change Password" card was deleted outright (`app/settings/page.tsx`,
+`lib/validations/settings.ts`'s `passwordSchema`) - there's no password anywhere
+to change. Profile editing (name/username/email) is unaffected; it was never part
+of the auth flow itself, just a `PATCH /user/{uuid}`.
+
+### `GoogleAuthButton` talks to `google.accounts.id` directly - `@react-oauth/google` was removed
+
+This app used to render Google's button through the `@react-oauth/google` package
+(`GoogleOAuthProvider` in `app/layout.tsx`, `GoogleLogin` in `GoogleAuthButton`).
+It's no longer a dependency at all - removed (`npm uninstall @react-oauth/google`)
+after it turned out to make one specific, real requirement impossible to satisfy
+cleanly: forcing the button's language to English regardless of the visitor's
+browser/Google account locale (a real bug report: a German-locale browser saw "Mit
+Google anmelden", while every other string in this app - which has no i18n at all -
+is always English).
+
+The first attempt was to pass `locale="en"` to `GoogleLogin`. That did nothing.
+Per Google's own docs (Sign In With Google → Display the button → "Button
+Language"): the button's language is only reliably overridden by adding an `hl`
+query parameter to the **script URL itself**
+(`https://accounts.google.com/gsi/client?hl=en`) - the `locale`/`data-locale`
+config value is documented as a companion to that, not a substitute for it; the
+actual translated strings are baked into the script response at load time, based
+on the request's `hl` param (or failing that, the browser's `Accept-Language`/the
+signed-in Google session's own language). `@react-oauth/google`'s script loader
+(`GoogleOAuthProvider`'s internal `useLoadGsiScript`) hardcodes the plain,
+un-parameterized URL with no prop to add a query string to it - so there was no way
+to get the `hl` parameter in via that library at all, short of loading a *second*
+copy of the same script with `?hl=en` ourselves alongside it. That second option
+was considered and rejected: both scripts would race to define the same
+`window.google.accounts.id` global, and whichever `onload` fired last would win -
+inherently non-deterministic, and liable to silently regress back to the wrong
+language depending on network timing.
+
+So `GoogleAuthButton` now calls the vanilla `google.accounts.id.initialize()`/
+`renderButton()` JS API itself, after loading `.../gsi/client?hl=en` with its own
+(deduplicated - see `loadGsiScript`'s module-level promise) `<script>` tag - the
+same API `@react-oauth/google` was itself a thin wrapper around, so nothing was
+lost by dropping it; this app only ever used its single, simplest feature (a
+standard `GoogleLogin` button, not one-tap/auto-sign-in/the custom-button hooks).
+This also has a nice side effect on the unrelated `[GSI_LOGGER]` "initialize() is
+called multiple times" dev warning `@react-oauth/google` used to cause (see the
+previous version of this entry, and `git log` for the full story of why
+`reactStrictMode` was briefly toggled off and then back on over it): this
+hand-rolled version calls `initialize()` from its own effect exactly once (guarded
+by `[clientId, onError]` deps and a ref for the actual callback logic, so it never
+needs to re-run), and calls `renderButton()` - which is *meant* to be called
+repeatedly, once per desired appearance change - from a separate effect keyed on
+`[ready, width, resolvedTheme]`. The warning simply doesn't apply to code that only
+ever calls `initialize()` once per script load.
+
+Google's Sign-In button renders inside its own iframe, so it can't be reached with
+our own CSS at all - only through `renderButton`'s own config options.
+`GoogleAuthButton` sets:
+- **`theme`** - tracks `next-themes`' `resolvedTheme`: `"outline"` (a white
+  button with a gray border) in light mode, matching the white card it sits on;
+  `"filled_black"` in dark mode, matching the near-black card background
+  (`--card` in `globals.css`). Using the same `"outline"` theme in dark mode would
+  render a stray white box that doesn't match anything else on the page.
+- **`shape="rectangular"`** - the closest of GSI's four shapes to `Button`'s own
+  `rounded-md` corners; `"pill"` (fully rounded) would stand out as visibly more
+  rounded than every other button on the page.
+- **`text="continue_with"`** - renders "Continue with Google", matching this
+  form's own "Continue"/"Continue with Google" copy instead of GSI's default
+  "Sign in with Google" (which would be an odd thing to show a new user, given
+  this one button covers both sign-in and sign-up - see above).
+- **`logo_alignment="center"`** - centers the Google logo + text as a unit,
+  matching how the icon and label center together inside our own `Button`s
+  (e.g. the `ArrowRight` next to "Continue"), instead of GSI's default of
+  pinning the logo to the left edge.
+
+Width needed more than a static config value: GSI's `width` is a fixed pixel
+number (clamped by Google itself to 200-400px), not a CSS percentage, so it can't
+just be told `w-full` the way the "Continue" button above it can.
+`GoogleAuthButton` measures its own wrapping `<div>` (which - being an ordinary
+block box in the same padded card as the "Continue" button - is exactly as wide as
+it, and also `renderButton`'s own target element) via a `ResizeObserver`, and feeds
+that measured width (clamped to GSI's 200-400 range) into the next
+`renderButton()` call, so the two buttons end up pixel-width-matched and stay in
+sync if that width ever changes (e.g. the viewport being resized).
+
+A minimal `declare global { interface Window { google?: ... } }` augmentation
+covers just the two methods actually used (`initialize`, `renderButton`) - no need
+to pull in `@react-oauth/google`'s (or `@types/gapi.auth2`-style) full type
+definitions for a two-method surface.
+
+### The button's border radius and dark-mode outline aren't config options - GSI's own pixels can't be reached, so a wrapper draws the missing edge instead
+
+A follow-on request: match the button's corner radius to `Button`'s own
+`rounded-md`, and fix how the button visually disappears in dark mode (the
+`filled_black` theme has no border of its own, and blends into the near-black
+`--card` background it sits on).
+
+The first idea - reaching for a *fully* custom-graphic button, along the lines of
+[Google's "Building a button with a custom graphic" guide](https://developers.google.com/identity/sign-in/web/build-button)
+- turned out to be a dead end: that guide is for the **deprecated** `gapi.auth2`
+library (the page says so explicitly), not the Google Identity Services library
+this app actually uses. GIS deliberately has no equivalent of `gapi.auth2`'s
+`attachClickHandler(anyElement, ...)` for the ID-token/credential flow - only
+`renderButton()` can trigger it, and it only exposes the config already listed
+above (`theme`/`shape`/`text`/`logo_alignment`/`width`) - no border-radius, and no
+way to remove the light backing chip GSI always puts behind the multicolor "G"
+logo on dark themes (it's there so the logo stays legible against a dark fill).
+
+A fully pixel-perfect custom button *is* still technically achievable by
+overlaying an invisible (`opacity: 0`) real `renderButton()` output on top of a
+fully custom-styled visible button, so clicks land on the real, invisible one -
+but that was set aside for now: making the real interactive button invisible also
+makes its native keyboard-focus ring invisible, a real accessibility regression
+that would need extra work to paper over convincingly.
+
+What shipped instead, as the safer option: a `border border-input rounded-md
+overflow-hidden` wrapper around GSI's own rendered button (`GoogleAuthButton`),
+matching `Button`'s own outline styling. This doesn't touch GSI's own pixels at
+all - it just draws a visible edge around whatever GSI renders inside (fixing the
+actual dark-mode complaint: the button having no boundary at all against the
+card), and `overflow-hidden` neatly clips GSI's own (very slightly rounded
+"rectangular"-shape) corners flush with our own `rounded-md` corner underneath.
+The light logo-backing chip in dark mode is unaffected either way - it's GSI's own
+pixels, inside the border, not something a wrapper can reach - and is left as an
+accepted, common trait of Google's own dark-themed button (see plenty of other
+sites' dark modes) rather than something worth the accessibility trade-off above
+to fully eliminate.
+
+### `colorScheme` on the render target, kept in sync with `resolvedTheme` (not hardcoded to `"light"`)
+
+A reasonable follow-up question, prompted by [a Medium post](https://medium.com/@ludvig.flyckt/fixing-the-react-google-auth-button-background-in-dark-mode-150e12220256)
+describing a real `@react-oauth/google` dark-mode fix: wrapping the button in a
+`<div style={{ colorScheme: "light" }}>`. That post's fix is for a *different*
+symptom than the logo-backing chip above, though: it's for sites that always want
+a light-styled Google button (`theme="outline"`/`"filled_blue"`) but see the
+surrounding iframe/UA chrome pick up a stray dark background regardless - `color-
+scheme` is a real CSS property (distinct from GSI's own `theme` config) that hints
+to the browser which UA-native rendering defaults (initial/unstyled backgrounds,
+form-control chrome, etc.) to use, and this app set it nowhere at all, leaving it
+to the browser's default OS-preference-based inference - which has no guaranteed
+relationship to *this app's own* manually-toggled dark/light state (`next-themes`
+is a `class`-based toggle, entirely independent of the OS's `prefers-color-scheme`,
+so a visitor's OS could easily disagree with what this app is currently showing).
+
+At the time, `GoogleAuthButton`'s render target was set to
+`colorScheme: resolvedTheme === "dark" ? "dark" : "light"` - kept explicit and in
+sync with the same `resolvedTheme` driving GSI's `theme` config then, rather than
+left to a browser/OS guess that may or may not agree with it (a reasonable change
+to make regardless of what it does or doesn't fix visually, since there's no
+reason for a UA-level rendering hint to ever disagree with what the app already
+knows), while flagging that it wasn't expected to touch the logo-backing chip -
+that's an explicit background GSI's script draws for contrast against a solid
+fill, not an unstyled/transparent region deferring to a UA color-scheme default.
+
+That prediction held: the chip was still there after shipping it. See the next
+entry for what actually resolved this.
+
+### Resolution: `theme` is always `"outline"`, regardless of the app's own light/dark mode
+
+With the logo-backing chip confirmed as genuinely unreachable (not a CSS/config
+issue - see both entries above), the two remaining options were: (1) accept a
+fully custom button via the invisible-`renderButton()`-overlay trick from above,
+accessibility trade-off included, or (2) stop trying to make GSI's button itself
+look dark at all, and just show the same clean, fully-`"outline"` (light) button
+in both of this app's themes - trading an exact dark-mode match for a button
+that's simply, consistently correct-looking everywhere. Option 2 shipped first,
+as the cheaper, zero-risk change - `GoogleAuthButton` no longer reads
+`resolvedTheme`/`next-themes` at all, since `theme: "outline"` and
+`colorScheme: "light"` are now both unconditional. This is a genuinely common
+pattern - plenty of sites keep Google's button light regardless of their own
+site's theme, rather than fight GSI's limited dark-theme options.
+
+The `border border-input rounded-md overflow-hidden` wrapper (see above) still
+earns its keep even with an all-light button: `outline` theme's own border color
+is a fixed light gray that would otherwise contrast poorly against this app's
+dark `--card` background at the seam where GSI's iframe meets our own layout;
+the wrapper's border (drawn in our own `--input` color, which *does* adapt to
+dark mode) keeps that edge visible and consistent in both themes.
+
+If a truly dark-native button (no light patches anywhere) becomes worth the
+accessibility trade-off later, the fully custom overlay approach from above is
+still the one documented path to get there.
+
+### Resolution, take two: the fully custom overlay button, with the focus-ring trade-off actually mitigated
+
+The all-`"outline"` button above shipped first as the cheap, zero-risk fix, but
+was revisited in favor of the fully custom button after all: `GoogleAuthButton`
+now renders its own `Button`-styled visual (own inlined "G" logo -
+`components/google-icon.tsx`, see the next entry for exactly where that came
+from - exact `rounded-md` corners, follows the app's theme like any other
+button) with GSI's *real* `renderButton()` output stacked exactly on top of it at
+`opacity: 0`. Clicks land on the real, invisible button; nobody ever sees its
+actual pixels, so none of GSI's theme/shape/logo-chip limitations matter anymore -
+only its *size* (via `width`, still measured the same way as every earlier
+version) and its role as the click/keyboard target.
+
+The accessibility concern flagged when this option was first raised - making the
+real interactive element invisible also hides its native focus ring - turned out
+to have a clean, pure-CSS mitigation: `:focus-within`/`:hover` (and `:has()`)
+match an ancestor whenever *any* descendant matches, including a descendant
+that's a focused/hovered cross-origin `<iframe>` (browsers treat a focused iframe
+as matching `:focus`/`:focus-visible` on the iframe element itself, which is
+enough for these ancestor-matching pseudo-classes to pick it up, no JS required).
+So the visible and invisible buttons share one `group`-marked wrapper, and the
+*visible* decorative button's hover/focus-ring styling is driven by Tailwind's
+`group-hover:`/`group-has-[:focus-visible]:` variants - reacting correctly to
+interaction with the real (invisible) button, without ever touching it directly.
+
+The first version of this used `group-focus-within:`, not `group-has-
+[:focus-visible]:`, for the ring - and immediately showed an unwanted bright ring
+after an ordinary *mouse click*, not just keyboard Tab navigation. That's exactly
+what `:focus-within` is defined to do (match on *any* focus, mouse- or
+keyboard-triggered alike) - the same thing `:focus` (as opposed to
+`:focus-visible`) does on a plain element, and precisely why native `<button>`s
+use `focus-visible:` rather than `focus:` for their own ring in this codebase
+(see `buttonVariants` in `components/ui/button.tsx`). `group-has-[:focus-visible]:`
+(Tailwind's `has-*` arbitrary-variant syntax, generating `.group:has(:focus-
+visible) *`) is the ancestor-matching equivalent of that same distinction - it
+only matches when the browser judges the underlying focus as keyboard-driven,
+rather than on every focus. The ring classes (`group-has-[:focus-visible]:ring-2
+group-has-[:focus-visible]:ring-ring group-has-[:focus-visible]:ring-offset-2`)
+otherwise intentionally mirror `Button`'s own `focus-visible:` styling exactly,
+for the same visual result.
+
+The decorative visual button is `aria-hidden="true"` with `pointer-events-none`
+(defensive - the real button's higher `z-10` already guarantees it receives every
+click regardless) - only the real button is ever exposed to assistive tech, and
+it carries its own correct accessible name from GSI's `text: "continue_with"`
+config, matching what's shown visually.
+
+### `google-icon.tsx`'s "G" mark is extracted directly from Google's own pre-approved asset download - not hand-reconstructed
+
+The first version of `components/google-icon.tsx` used the classic, flat
+4-quadrant "G" (solid `#4285F4`/`#34A853`/`#FBBC05`/`#EA4335` fills) - the
+long-standing mark, and still byte-accurate for *that* version of the logo. But
+Google's current [Sign in with Google branding guidelines](https://developers.google.com/identity/branding-guidelines)
+specifically require "the standard color **gradient** super G logo" - Google
+refreshed the mark itself on May 12, 2025 from flat quadrant fills to an actual
+gradient blend between them, and the branding guidelines page mandates that
+current version specifically ("Don't ... use an outdated Google 'G' for the
+button").
+
+Getting the *exact* current asset mattered enough here to not guess: this tool's
+`fetch` can extract readable text from HTML pages, but not raw SVG/binary file
+contents (tried several direct asset URLs first - all came back as unparseable/
+empty), so there was no way to byte-verify a hand-reconstructed gradient against
+Google's real one from this environment alone. The actual fix: the user
+downloaded Google's own pre-approved icon bundle directly from the branding
+guidelines page ("Download Pre-Approved Brand Icons") and pasted one of the
+SVGs in - the dark-theme, pill-shaped, icon-only, Android+Web variant.
+
+That file is a full pre-styled *button* (pill-shaped `#131314` background,
+`#8E918F` stroke, plus the "G" mark), not just the logo mark alone - only the
+logo needed extracting, since this app's button already supplies its own
+background/border/shape (and per the guidelines, the "G" mark's own color is
+fixed regardless of button theme, so pulling it from the dark-theme download
+specifically doesn't matter - light/dark/neutral variants all use the identical
+mark). What got kept, verbatim: the mask path that traces the actual "G"
+letterform, and the entire gradient-producing layer it masks - a CSS
+`conic-gradient()` (rendered via a `<foreignObject>`, since SVG has no native
+conic/angular gradient paint server) plus several soft, blurred colored
+ellipses layered on top for the same painterly color blending Google's own
+asset uses, rather than a flat conic sweep. What got dropped: the pill
+background/stroke paths, and Figma-export-only metadata
+(`data-figma-gradient-fill`, `data-figma-skip-parse`) that browsers never read
+and JSX can't cleanly hold anyway. The outer `viewBox` was cropped from the
+original `0 0 40 40` (the whole button, mostly empty space around the mark) down
+to `10 10 20 20` (the mark's own bounding box) - safe to do without recomputing
+any of the inner coordinates, since a `viewBox` change only changes which
+region of the same coordinate space is visible/scaled, and the mask already
+confines everything to the "G" shape regardless of how far the gradient/blur
+layers extend past it.
+
+The original file hardcodes its mask/clip-path/filter `id`s (safe only because
+it's a lone, standalone SVG file, never composed with anything else) - since
+`GoogleIcon` is a React component that could in principle render more than once
+on a page, every one of those ids is namespaced through `React.useId()` instead,
+so multiple instances (however unlikely in practice) can never collide.
+
+One real bug from the first pass at this extraction: the icon rendered as almost
+solid black, with only a sliver of color peeking through at the edges. Root
+cause - the root `<svg>` in Google's original file carries `fill="none"` as a
+presentation attribute, and `fill` is inheritable in SVG; that root-level `none`
+is the only reason the small fallback `<path>` sitting alongside the
+conic-gradient `<foreignObject>` (present purely for Figma's own re-import -
+its `data-figma-gradient-fill` attribute is metadata Figma reads, not something
+any browser renders) stays invisible. Rewriting this as a React component and
+dropping that root `fill="none"` (along with the Figma-only metadata
+attributes) left that fallback path with no `fill` of its own, so it fell back
+to SVG's actual initial value - solid black - and painted right over the
+gradient beneath it, in document order. Restored by adding `fill="none"` to
+`GoogleIcon`'s own root `<svg>`, matching the original.
+
+Remaining trade-offs, accepted: this relies on the real and decorative layers
+staying pixel-aligned (both simply fill the same `relative` wrapper via
+`inset-0`, so this only breaks if that structure changes), and on browsers'
+focused-iframe-matches-:focus behavior, which is old, stable, and consistently
+implemented, but still an assumption about GSI's internals rather than a
+documented contract with Google.
+
+## Changing your account email is a request/confirm flow, not a plain field edit
+
+`lib/validations/settings.ts`'s `profileSchema` no longer has an `email` field -
+matching the API dropping it from `UserUpdate` entirely (see the API's
+`DECISIONS.md`). `app/settings/page.tsx`'s profile form only ever touches
+name/username now; email lives in its own `components/settings/EmailChangeCard.tsx`,
+a small request/confirm UI: enter a new address, submit
+(`authAPI.requestEmailChange`), get back the same generic "check your new email"
+message regardless of whether that address is already taken by someone else, and the
+change only actually applies once the emailed link is confirmed.
+`requestEmailChange` takes only `newEmail` - the backend's `POST
+/user/email-change/request` always operates on the caller's own account (from the
+access token), so `EmailChangeCard` doesn't need (and no longer takes) a `userUuid`
+prop.
+
+`EmailChangeCard` used to hide the "new email" field behind a "Change email" button
+(an `isEditing` toggle) - removed in favor of always showing the field and a single
+full-width "Send confirmation link" button, matching the Profile Information card's
+always-visible form (and its full-width "Save Changes" button) next to it, and
+avoiding an extra click for what's usually a rarely-used but still one-step action.
+There's no separate "Cancel" button either - with the field always visible, there's
+no edit mode to cancel out of; a mis-typed address is just overwritten or left as-is.
+Both settings cards (`app/settings/page.tsx`'s Profile Information card and
+`EmailChangeCard`) use the same `flex flex-col h-full` (card) / `flex flex-col
+flex-1` (content/form) / `flex-1` (fields wrapper) structure so their action buttons
+land at the same vertical position regardless of how much taller one card's field
+list or inline alerts make it - the fields wrapper absorbs the extra height and the
+button stays pinned to the bottom of the (grid-stretched, so equal-height) card,
+rather than trailing directly after the last field the way it did before.
+
+That confirmation link points at `app/settings/confirm-email/page.tsx` - structurally
+similar to `app/auth/verify/page.tsx`. It's in `NO_CHROME_ROUTES` for the same reason
+`/auth/verify` and `/onboarding` are - a standalone, centered-card confirmation
+screen, not a page meant to sit inside the normal app chrome. On success it calls
+`refreshUser()`, which is a harmless no-op unless the visitor happens to still be
+signed in on that same browser/tab (the link is just as likely to be opened
+elsewhere, e.g. a different device's mail app).
+
+### Both magic-link pages require an explicit click before the verifying `POST` fires
+
+A real user reported clicking a confirmation link and seeing "invalid or expired",
+despite their email having actually changed in the DB. Root cause: many mail clients
+(Outlook/Microsoft Defender "Safe Links", iOS Mail's rich link previews) render links
+using a real, JS-executing browser to generate a preview/security-scan *before* a
+human clicks them, which - when both pages auto-verified from a `useEffect` on load -
+silently consumed the token first.
+
+Two other fixes were tried and abandoned before landing here:
+- A same-browser "pairing" cookie (paired at request time, checked at verify time) to
+  tell a scanner apart from the real user - rejected because requesting a link on one
+  device/browser and opening it from another (e.g. laptop -> phone's mail app) is a
+  completely normal, common flow, not a corner case; pairing would've punished it as
+  if it were suspicious.
+- Auto-verifying unconditionally on load, relying solely on the backend's
+  idempotent-reuse handling (see below) to paper over a scanner having already
+  consumed the token - genuinely zero-click, but still lets automation silently
+  trigger the *real* sign-in/email-change before a human ever acts, which is the
+  actual thing being protected against, not just the confusing error message.
+
+The fix that stuck mirrors what the sign-up flow already gets "for free": completing
+a *new* account requires a real person to fill in and submit the profile-completion
+form (`/onboarding`) - something automation won't do - so no sign-in/account-creation
+ever happens without genuine user interaction. `/auth/verify` and
+`/settings/confirm-email` now apply the same principle to the other two flows: both
+render a `"ready"` state with a plain button ("Sign in" / "Confirm email change") and
+only call `verifyEmailLink`/`verifyEmailChange` from that button's `onClick`, never
+automatically. A preview/scan can load and render the page, but it can't fake a real
+click, so the token isn't touched - and no session is issued, no email is changed -
+until an actual person acts.
+
+The backend's idempotent handling of an already-used-but-not-invalidated token (see
+the API's `DECISIONS.md` - `AuthenticationRequest.used_at` vs. `invalidated_at`) is
+still in place and still useful (e.g. a double click, or a slow network retry), but
+is defense-in-depth layered under the click requirement, not a substitute for it.
+
+Once `/settings/confirm-email` reaches its `"success"` state, it auto-redirects to
+`/settings` after a 3s `setTimeout` (cleaned up on unmount/state change) - there's
+nothing more to do on this standalone confirmation page once the change is applied,
+so it sends the user back on its own rather than leaving them stranded there. The
+"Back to settings" link stays visible too, for anyone who wants to leave sooner.
+`/auth/verify` doesn't need this: a successful sign-in already navigates itself, via
+`router.replace("/dashboard")`/`"/onboarding"`, right after `verifyEmailLink` resolves.
+
+### The button itself shouldn't show for a link that's already been used
+
+Follow-on report: pressing the browser's **back** button after already confirming
+an email change lands back on `/settings/confirm-email` with the "Confirm email
+change" button still there, and clicking it again "succeeds" (the backend's
+idempotent-reuse leniency treats it as a harmless repeat - see the API's
+`DECISIONS.md`). That leniency is meant for races, not for making a stale,
+already-actioned link look repeatedly actionable to a human revisiting it.
+
+Both pages now call a new, side-effect-free precheck on mount - `authAPI.checkEmailLink`/
+`checkEmailChangeLink` (`GET /auth/email/verify/check` / `GET
+/user/email-change/verify/check`) - *before* ever showing the confirm button. A new
+`"checking"` state (distinct from `"verifying"`, which is what happens *after* the
+button is pressed) covers this brief lookup. If the link is already used,
+invalidated, or expired, the page goes straight to the `"error"` state - the button
+never appears at all. Only a still-live token reaches `"ready"`. A `useRef` guard
+(`checkedRef`) keeps this check from firing twice under React Strict Mode's
+double-invoked effects - harmless either way since the check has no side effects,
+but wasteful to double up on.
+
+The check response also carries the token's target email, which both pages now
+surface: `/auth/verify`'s `"ready"` state reads "Click below to sign in as
+`{email}`", and `/settings/confirm-email`'s reads "...change your account's email to
+`{email}`". The confirm-email page also shows the new email in its `"success"`
+state ("Your email address has been updated to `{email}`"), taken from
+`verifyEmailChange`'s response rather than the precheck (the precheck's `email` isn't
+re-read at that point).
+
+`AuthForm`'s "Check your email" screen has a "Resend link" button gated by a
+client-side, per-component 30s countdown (`RESEND_COOLDOWN_SECONDS`) - implemented
+as a `setTimeout` that reschedules itself and decrements `cooldown` by one each
+second, rather than a mount-tied `setInterval`, so it naturally stops at zero and
+restarts cleanly if a resend bumps `cooldown` back up. This is purely a UX nicety
+(immediate, friendly feedback instead of a dead button) - the real limit is
+server-side (`MagicLinkSettings` in the API's `core/config.py`) and is what actually
+prevents abuse; a resend that races past the countdown still just surfaces
+whatever generic message `RateLimitException` returns.
+
+## Current-user endpoints moved off `/user/me`/`/user/{uuid}` onto a bare `/user`
+
+The backend consolidated its current-user-only routes onto a bare `/user` (no
+`/me`, no `{uuid}` - see the API's `DECISIONS.md`), as a first step toward
+separating "my account" (full data, always the signed-in caller) from a future
+public-profile endpoint for *other* users (limited fields, no `email`, not built
+yet). `lib/api/auth.ts` was updated to match:
+- `authAPI.getCurrentUser()` now calls `GET /user` instead of `GET /user/me`.
+- `authAPI.updateProfile(profileData)` now calls `PATCH /user` and no longer takes
+  a `userUuid` argument - it always operates on the signed-in caller, so the
+  `settings/page.tsx` call site dropped the `user.uuid` it used to pass.
+
+`lib/api/dive-stats.ts`'s `diveStatsAPI.getDiveStats()` was missed in the initial
+pass (it kept calling the old `GET /user/${userUuid}/dive-stats`, which now 404s,
+rather than the new `GET /user/dive-stats`) and was fixed afterward along with its
+two call sites (`dashboard/page.tsx`, `profile/page.tsx`) - `getDiveStats()` no
+longer takes a `userUuid` argument either, for the same reason `updateProfile`
+doesn't.
+
+There is currently no way to fetch or manage another user's data through this API
+at all - that's deliberate until the public-profile endpoint exists.

@@ -10,11 +10,11 @@ export interface UserDiveStats {
 }
 
 export const diveStatsAPI = {
-  // Get a user's aggregate dive stats (total dives, max depth, total time, species seen)
-  async getDiveStats(userUuid: string): Promise<UserDiveStats> {
-    const response = await apiClient.get(`/dive-stats`, {
-      params: { user_uuid: userUuid },
-    });
+  // Get the signed-in caller's own aggregate dive stats (total dives, max depth,
+  // total time, species seen). Always operates on the caller's own account - no
+  // uuid parameter.
+  async getDiveStats(): Promise<UserDiveStats> {
+    const response = await apiClient.get("/user/dive-stats");
     return response.data;
   },
 };

@@ -1,6 +1,5 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -8,10 +7,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { useRedirectIfAuthenticated } from "@/hooks/useRedirectIfAuthenticated";
+import { AuthForm } from "@/components/auth/AuthForm";
 import { Fish, Anchor, Users } from "lucide-react";
-import Link from "next/link";
+import { AppleLogo } from "@/components/icons/apple-logo";
+import { GooglePlayLogo } from "@/components/icons/google-play-logo";
 
 export default function HomePage() {
   const { isAuthenticated, isLoading } = useRedirectIfAuthenticated();
@@ -27,46 +27,65 @@ export default function HomePage() {
   return (
     <div className="bg-background">
       {/* Hero Section */}
-      <section className="py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-4xl md:text-6xl font-bold text-foreground mb-6">
-            Dive into the
-            <span className="text-primary"> Open Ocean</span>
-          </h2>
-          <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
-            Join the open source diving community. Track your dives, share
-            experiences, and explore the underwater world with fellow divers
-            around the globe.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/signup">
-              <Button size="lg" className="px-8">
-                Start Diving
-              </Button>
-            </Link>
-            <Button variant="outline" size="lg" className="px-8">
-              Learn More
-            </Button>
+      <section id="get-started" className="relative overflow-x-hidden py-20">
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
+            <div className="text-center">
+              <h2 className="text-4xl md:text-6xl font-extrabold uppercase tracking-tight text-foreground mb-6 leading-tight">
+                The Ultimate
+                <br />
+                <span className="text-coral text-[0.8em]">Diving App</span>
+              </h2>
+              <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+                Join the global diving community. Track your dives, share
+                experiences, and explore the underwater world with fellow
+                divers around the world.
+              </p>
+            </div>
+
+            <div className="flex justify-center">
+              <AuthForm />
+            </div>
+          </div>
+
+          <div className="mt-20 flex flex-col items-center justify-center gap-4 sm:flex-row">
+            <a
+              href="#"
+              className="inline-flex h-13 items-center gap-2.5 rounded-xl bg-foreground px-4 text-background transition-opacity hover:opacity-90"
+            >
+              <AppleLogo className="h-8 w-8 shrink-0" />
+              <span className="flex flex-col leading-none">
+                <span className="text-[11px] leading-none">Download on the</span>
+                <span className="mt-0.5 text-2xl font-semibold leading-none tracking-tight">
+                  App Store
+                </span>
+              </span>
+            </a>
+            <a
+              href="#"
+              className="inline-flex h-13 items-center gap-2.5 rounded-xl bg-foreground px-4 text-background transition-opacity hover:opacity-90"
+            >
+              <GooglePlayLogo className="h-8 w-8 shrink-0" />
+              <span className="flex flex-col leading-none">
+                <span className="text-[11px] leading-none tracking-wide">
+                  GET IT ON
+                </span>
+                <span className="mt-0.5 text-2xl font-semibold leading-none tracking-tight">
+                  Google Play
+                </span>
+              </span>
+            </a>
           </div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section id="features" className="py-20 bg-background">
+      <section id="features" className="pb-20 bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h3 className="text-3xl font-bold text-foreground mb-4">
-              Everything You Need for Diving
-            </h3>
-            <p className="text-lg text-muted-foreground">
-              Comprehensive tools for the modern diver
-            </p>
-          </div>
-
           <div className="grid md:grid-cols-3 gap-8">
             <Card>
               <CardHeader>
-                <Fish className="h-12 w-12 text-primary mb-4" />
+                <Fish className="h-12 w-12 text-teal mb-4" />
                 <CardTitle>Dive Log</CardTitle>
                 <CardDescription>
                   Track your underwater adventures with detailed dive logs
@@ -74,17 +93,17 @@ export default function HomePage() {
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li>• Depth and time tracking</li>
+                  <li>• Import data from dive computers</li>
                   <li>• Marine life observations</li>
                   <li>• Equipment management</li>
-                  <li>• Safety information</li>
+                  <li>• Diving statistics at a glance</li>
                 </ul>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <Users className="h-12 w-12 text-primary mb-4" />
+                <Users className="h-12 w-12 text-teal mb-4" />
                 <CardTitle>Community</CardTitle>
                 <CardDescription>
                   Connect with divers worldwide and share experiences
@@ -102,10 +121,10 @@ export default function HomePage() {
 
             <Card>
               <CardHeader>
-                <Anchor className="h-12 w-12 text-primary mb-4" />
+                <Anchor className="h-12 w-12 text-teal mb-4" />
                 <CardTitle>Open Source</CardTitle>
                 <CardDescription>
-                  Built by divers, for divers, completely open source
+                  Built by divers, for divers, completely open source and free forever
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -156,16 +175,12 @@ export default function HomePage() {
             their underwater adventures and connect with the global diving
             community.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Link href="/signup">
-              <Button size="lg" className="px-8">
-                Create Account
-              </Button>
-            </Link>
-            <Badge variant="secondary" className="ml-4">
-              Free Forever
-            </Badge>
-          </div>
+          <a
+            href="#get-started"
+            className="inline-flex items-center justify-center rounded-md bg-primary px-8 py-3 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
+          >
+            Get Started - It's Free
+          </a>
         </div>
       </section>
     </div>

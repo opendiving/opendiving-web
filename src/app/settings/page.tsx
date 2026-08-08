@@ -12,38 +12,20 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  User,
-  Mail,
-  Lock,
-  Save,
-  AlertCircle,
-  CheckCircle,
-  Eye,
-  EyeOff,
-} from "lucide-react";
+import { EmailChangeCard } from "@/components/settings/EmailChangeCard";
+import { User, Save, AlertCircle, CheckCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { authAPI } from "@/lib/api/auth";
-import {
-  profileSchema,
-  passwordSchema,
-  type ProfileFormData,
-  type PasswordFormData,
-} from "@/lib/validations/settings";
+import { profileSchema, type ProfileFormData } from "@/lib/validations/settings";
 
 export default function SettingsPage() {
   const { isAuthenticated, isLoading } = useAuthGuard();
   const { user, refreshUser } = useAuth();
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [profileSuccess, setProfileSuccess] = useState<string | null>(null);
-  const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
   const [profileError, setProfileError] = useState<string | null>(null);
-  const [passwordError, setPasswordError] = useState<string | null>(null);
 
   const {
     register: registerProfile,
@@ -55,17 +37,7 @@ export default function SettingsPage() {
     defaultValues: {
       name: "",
       username: "",
-      email: "",
     },
-  });
-
-  const {
-    register: registerPassword,
-    handleSubmit: handlePasswordSubmit,
-    formState: { errors: passwordErrors, isSubmitting: isPasswordSubmitting },
-    reset: resetPassword,
-  } = useForm<PasswordFormData>({
-    resolver: zodResolver(passwordSchema),
   });
 
   // Set form defaults when user data loads
@@ -74,7 +46,6 @@ export default function SettingsPage() {
       resetProfile({
         name: user.name || "",
         username: user.username || "",
-        email: user.email || "",
       });
     }
   }, [user, resetProfile]);
@@ -86,30 +57,11 @@ export default function SettingsPage() {
       setProfileError(null);
       setProfileSuccess(null);
 
-      await authAPI.updateProfile(user.uuid, data);
+      await authAPI.updateProfile(data);
       await refreshUser();
       setProfileSuccess("Profile updated successfully!");
     } catch (err) {
       setProfileError(getApiErrorMessage(err, "Failed to update profile"));
-    }
-  };
-
-  const onPasswordSubmit = async (data: PasswordFormData) => {
-    if (!user) return;
-
-    try {
-      setPasswordError(null);
-      setPasswordSuccess(null);
-
-      await authAPI.changePassword(user.uuid, {
-        current_password: data.currentPassword,
-        new_password: data.newPassword,
-      });
-
-      setPasswordSuccess("Password changed successfully!");
-      resetPassword();
-    } catch (err) {
-      setPasswordError(getApiErrorMessage(err, "Failed to change password"));
     }
   };
 
@@ -133,13 +85,13 @@ export default function SettingsPage() {
           Account Settings
         </h1>
         <p className="text-muted-foreground">
-          Manage your account information and security settings.
+          Manage your account information.
         </p>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-8">
         {/* Profile Information */}
-        <Card>
+        <Card className="flex flex-col h-full">
           <CardHeader>
             <CardTitle className="flex items-center">
               <User className="h-5 w-5 mr-2 text-primary" />
@@ -149,79 +101,66 @@ export default function SettingsPage() {
               Update your personal information and account details.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex flex-col flex-1">
             <form
               onSubmit={handleProfileSubmit(onProfileSubmit)}
-              className="space-y-4"
+              className="flex flex-col flex-1"
             >
-              {profileSuccess && (
-                <div className="flex items-center p-3 text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/40 rounded-md border border-green-200 dark:border-green-900">
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  {profileSuccess}
+              <div className="space-y-4 flex-1">
+                {profileSuccess && (
+                  <div className="flex items-center p-3 text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/40 rounded-md border border-green-200 dark:border-green-900">
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    {profileSuccess}
+                  </div>
+                )}
+
+                {profileError && (
+                  <div className="flex items-center p-3 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 rounded-md border border-red-200 dark:border-red-900">
+                    <AlertCircle className="h-4 w-4 mr-2" />
+                    {profileError}
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="name">Full Name</Label>
+                  <Input
+                    id="name"
+                    type="text"
+                    placeholder="Enter your full name"
+                    {...registerProfile("name")}
+                    className={profileErrors.name ? "border-red-500" : ""}
+                  />
+                  {profileErrors.name && (
+                    <p className="text-sm text-red-600">
+                      {profileErrors.name.message}
+                    </p>
+                  )}
                 </div>
-              )}
 
-              {profileError && (
-                <div className="flex items-center p-3 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 rounded-md border border-red-200 dark:border-red-900">
-                  <AlertCircle className="h-4 w-4 mr-2" />
-                  {profileError}
+                <div className="space-y-2">
+                  <Label htmlFor="username">Username</Label>
+                  <Input
+                    id="username"
+                    type="text"
+                    placeholder="Choose a username"
+                    {...registerProfile("username")}
+                    className={profileErrors.username ? "border-red-500" : ""}
+                  />
+                  {profileErrors.username && (
+                    <p className="text-sm text-red-600">
+                      {profileErrors.username.message}
+                    </p>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Your username is used in your profile URL and for
+                    mentions.
+                  </p>
                 </div>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="Enter your full name"
-                  {...registerProfile("name")}
-                  className={profileErrors.name ? "border-red-500" : ""}
-                />
-                {profileErrors.name && (
-                  <p className="text-sm text-red-600">
-                    {profileErrors.name.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
-                <Input
-                  id="username"
-                  type="text"
-                  placeholder="Choose a username"
-                  {...registerProfile("username")}
-                  className={profileErrors.username ? "border-red-500" : ""}
-                />
-                {profileErrors.username && (
-                  <p className="text-sm text-red-600">
-                    {profileErrors.username.message}
-                  </p>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  Your username is used in your profile URL and for mentions.
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="Enter your email address"
-                  {...registerProfile("email")}
-                  className={profileErrors.email ? "border-red-500" : ""}
-                />
-                {profileErrors.email && (
-                  <p className="text-sm text-red-600">
-                    {profileErrors.email.message}
-                  </p>
-                )}
               </div>
 
               <Button
                 type="submit"
-                className="w-full"
+                className="w-full mt-4"
                 disabled={isProfileSubmitting}
               >
                 {isProfileSubmitting ? (
@@ -240,164 +179,7 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        {/* Password Change */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Lock className="h-5 w-5 mr-2 text-green-600" />
-              Change Password
-            </CardTitle>
-            <CardDescription>
-              Update your password to keep your account secure.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form
-              onSubmit={handlePasswordSubmit(onPasswordSubmit)}
-              className="space-y-4"
-            >
-              {passwordSuccess && (
-                <div className="flex items-center p-3 text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/40 rounded-md border border-green-200 dark:border-green-900">
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  {passwordSuccess}
-                </div>
-              )}
-
-              {passwordError && (
-                <div className="flex items-center p-3 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 rounded-md border border-red-200 dark:border-red-900">
-                  <AlertCircle className="h-4 w-4 mr-2" />
-                  {passwordError}
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <Label htmlFor="currentPassword">Current Password</Label>
-                <div className="relative">
-                  <Input
-                    id="currentPassword"
-                    type={showCurrentPassword ? "text" : "password"}
-                    placeholder="Enter your current password"
-                    {...registerPassword("currentPassword")}
-                    className={
-                      passwordErrors.currentPassword
-                        ? "border-red-500 pr-10"
-                        : "pr-10"
-                    }
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showCurrentPassword ? (
-                      <EyeOff size={16} />
-                    ) : (
-                      <Eye size={16} />
-                    )}
-                  </button>
-                </div>
-                {passwordErrors.currentPassword && (
-                  <p className="text-sm text-red-600">
-                    {passwordErrors.currentPassword.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="newPassword">New Password</Label>
-                <div className="relative">
-                  <Input
-                    id="newPassword"
-                    type={showNewPassword ? "text" : "password"}
-                    placeholder="Enter your new password"
-                    {...registerPassword("newPassword")}
-                    className={
-                      passwordErrors.newPassword
-                        ? "border-red-500 pr-10"
-                        : "pr-10"
-                    }
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowNewPassword(!showNewPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-                {passwordErrors.newPassword && (
-                  <p className="text-sm text-red-600">
-                    {passwordErrors.newPassword.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                <div className="relative">
-                  <Input
-                    id="confirmPassword"
-                    type={showConfirmPassword ? "text" : "password"}
-                    placeholder="Confirm your new password"
-                    {...registerPassword("confirmPassword")}
-                    className={
-                      passwordErrors.confirmPassword
-                        ? "border-red-500 pr-10"
-                        : "pr-10"
-                    }
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                  >
-                    {showConfirmPassword ? (
-                      <EyeOff size={16} />
-                    ) : (
-                      <Eye size={16} />
-                    )}
-                  </button>
-                </div>
-                {passwordErrors.confirmPassword && (
-                  <p className="text-sm text-red-600">
-                    {passwordErrors.confirmPassword.message}
-                  </p>
-                )}
-              </div>
-
-              <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
-                <p className="text-sm text-blue-800">
-                  <strong>Password Requirements:</strong>
-                </p>
-                <ul className="text-xs text-blue-700 mt-1 space-y-1">
-                  <li>• At least 8 characters long</li>
-                  <li>• Contains at least one number</li>
-                  <li>• Contains at least one uppercase letter</li>
-                  <li>• Contains at least one lowercase letter</li>
-                  <li>• Contains at least one special character</li>
-                </ul>
-              </div>
-
-              <Button
-                type="submit"
-                className="w-full"
-                disabled={isPasswordSubmitting}
-              >
-                {isPasswordSubmitting ? (
-                  <div className="flex items-center space-x-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                    <span>Changing Password...</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center space-x-2">
-                    <Lock className="h-4 w-4" />
-                    <span>Change Password</span>
-                  </div>
-                )}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+        <EmailChangeCard currentEmail={user.email} />
       </div>
 
       {/* Account Actions */}

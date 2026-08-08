@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+// Note: no `email` field here - changing an account's email requires confirming
+// ownership of the new address first (see `emailChangeSchema` below, and
+// `authAPI.requestEmailChange`/`verifyEmailChange`), not a plain field edit.
 export const profileSchema = z.object({
   name: z
     .string()
@@ -13,34 +16,11 @@ export const profileSchema = z.object({
       /^[a-z0-9]+$/,
       "Username can only contain lowercase letters and numbers",
     ),
-  email: z.string().email("Please enter a valid email address"),
 });
 
-export const passwordSchema = z
-  .object({
-    currentPassword: z.string().min(1, "Current password is required"),
-    newPassword: z
-      .string()
-      .min(8, "Password must be at least 8 characters")
-      .regex(/^.*[0-9].*$/, "Password must contain at least one number")
-      .regex(
-        /^.*[A-Z].*$/,
-        "Password must contain at least one uppercase letter",
-      )
-      .regex(
-        /^.*[a-z].*$/,
-        "Password must contain at least one lowercase letter",
-      )
-      .regex(
-        /^.*[^a-zA-Z0-9].*$/,
-        "Password must contain at least one special character",
-      ),
-    confirmPassword: z.string(),
-  })
-  .refine((data) => data.newPassword === data.confirmPassword, {
-    message: "Passwords don't match",
-    path: ["confirmPassword"],
-  });
+export const emailChangeSchema = z.object({
+  newEmail: z.string().email("Please enter a valid email address"),
+});
 
 export type ProfileFormData = z.infer<typeof profileSchema>;
-export type PasswordFormData = z.infer<typeof passwordSchema>;
+export type EmailChangeFormData = z.infer<typeof emailChangeSchema>;

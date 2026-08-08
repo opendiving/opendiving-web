@@ -1,8 +1,8 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
 
 // Dispatched when a token refresh fails so `AuthContext` can clear the stale
-// user; existing per-page "redirect to /signin when unauthenticated" guards
-// then handle navigation via Next's router instead of a hard page reload.
+// user; existing per-page "redirect to the landing page when unauthenticated"
+// guards then handle navigation via Next's router instead of a hard page reload.
 export const AUTH_SESSION_EXPIRED_EVENT = "auth:session-expired";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -30,7 +30,7 @@ export function clearAccessToken(): void {
   accessToken = null;
 }
 
-// Tracks an in-flight `/refresh` call so concurrent callers (e.g. React
+// Tracks an in-flight `/auth/refresh` call so concurrent callers (e.g. React
 // Strict Mode's double-invoked effects in development, or several requests
 // 401-ing at once) share a single request/response instead of each firing
 // their own - the httpOnly refresh cookie is typically single-use, so
@@ -49,7 +49,7 @@ export async function refreshAccessToken(): Promise<string> {
   pendingRefresh = (async () => {
     try {
       const response = await axios.post(
-        `${API_BASE_URL}/refresh`,
+        `${API_BASE_URL}/auth/refresh`,
         {},
         { withCredentials: true },
       );
@@ -93,12 +93,10 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // A 401 from these endpoints reflects bad credentials or a missing/
-    // invalid refresh token itself, not an expired access token - retrying
-    // them via a token refresh would replace the real "wrong username, email
-    // or password" (or similar) error with an unrelated refresh failure.
-    const isAuthEndpoint =
-      originalRequest?.url === "/login" || originalRequest?.url === "/refresh";
+    // A 401 from this endpoint reflects a missing/invalid refresh token itself,
+    // not an expired access token - retrying it via a token refresh would just
+    // recurse into the same failure.
+    const isAuthEndpoint = originalRequest?.url === "/auth/refresh";
 
     if (
       error.response?.status === 401 &&

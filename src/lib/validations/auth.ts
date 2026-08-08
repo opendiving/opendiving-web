@@ -1,11 +1,15 @@
 import { z } from "zod";
 
-export const signInSchema = z.object({
-  username: z.string().min(1, "Username or email is required"),
-  password: z.string().min(1, "Password is required"),
+// The single "how do I get in?" form - just an email address, no password. See
+// `components/auth/AuthForm.tsx`.
+export const emailAuthSchema = z.object({
+  email: z.string().email("Please enter a valid email address"),
 });
 
-export const signUpSchema = z.object({
+// Profile completion (`components/auth/ProfileCompletionForm.tsx`) - shown once for
+// a verified identity (email or Google) with no existing account. No password field:
+// identity was already proven by the email-magic-link or Google flow.
+export const profileCompletionSchema = z.object({
   name: z
     .string()
     .min(2, "Name must be at least 2 characters")
@@ -18,18 +22,7 @@ export const signUpSchema = z.object({
       /^[a-z0-9]+$/,
       "Username can only contain lowercase letters and numbers",
     ),
-  email: z.string().email("Please enter a valid email address"),
-  password: z
-    .string()
-    .min(8, "Password must be at least 8 characters")
-    .regex(/^.*[0-9].*$/, "Password must contain at least one number")
-    .regex(/^.*[A-Z].*$/, "Password must contain at least one uppercase letter")
-    .regex(/^.*[a-z].*$/, "Password must contain at least one lowercase letter")
-    .regex(
-      /^.*[^a-zA-Z0-9].*$/,
-      "Password must contain at least one special character",
-    ),
 });
 
-export type SignInFormData = z.infer<typeof signInSchema>;
-export type SignUpFormData = z.infer<typeof signUpSchema>;
+export type EmailAuthFormData = z.infer<typeof emailAuthSchema>;
+export type ProfileCompletionFormData = z.infer<typeof profileCompletionSchema>;

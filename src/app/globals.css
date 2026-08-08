@@ -31,6 +31,18 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 240 2% 15%;
 
+    /* Brand accent used for the logo, favicon, and the active/selected
+       state of primary navigation items. Intentionally constant across
+       light/dark (not redeclared under .dark) so the brand color reads
+       the same in both themes. */
+    --coral: 16 100% 66%;
+
+    /* Secondary brand accent - a teal that sits across the color wheel from
+       coral, used for feature icons and other spots that want a cooler
+       counterpoint to coral. Same rationale as --coral: kept constant across
+       light/dark so it reads consistently in both themes. */
+    --teal: 187 60% 45%;
+
     --radius: 0.5rem;
   }
 

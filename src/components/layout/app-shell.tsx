@@ -5,7 +5,7 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 
 // Routes that render their own standalone, chrome-free layout.
-const NO_CHROME_ROUTES = ["/signin", "/signup"];
+const NO_CHROME_ROUTES = ["/onboarding", "/auth/verify", "/settings/confirm-email"];
 
 function isChromeFree(pathname: string | null): boolean {
   if (!pathname) return false;
