@@ -21,8 +21,10 @@ import {
   Settings,
   BookOpen,
   Menu,
-  Bell,
-  Search,
+  Plus,
+  Waves,
+  MapPin,
+  Luggage,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -66,8 +68,8 @@ export function Header() {
               href="/"
               className="flex flex-shrink-0 items-center space-x-2"
             >
-              <Logo className="h-8 w-8 text-coral flex-shrink-0" />
-              <h1 className="text-2xl font-bold text-foreground whitespace-nowrap">
+              <Logo className="h-7 w-7 sm:h-8 sm:w-8 text-coral flex-shrink-0" />
+              <h1 className="text-lg sm:text-2xl font-bold text-foreground whitespace-nowrap">
                 OpenDiving
               </h1>
             </Link>
@@ -154,24 +156,44 @@ export function Header() {
 
           {/* Actions */}
           <div className="flex flex-shrink-0 items-center space-x-3">
+            {isAuthenticated && user && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="hidden sm:inline-flex"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem asChild>
+                    <Link href="/dives/new" className="flex items-center">
+                      <Waves className="mr-2 h-4 w-4" />
+                      New Dive
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/trips/new" className="flex items-center">
+                      <Luggage className="mr-2 h-4 w-4" />
+                      New Trip
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/sites/new" className="flex items-center">
+                      <MapPin className="mr-2 h-4 w-4" />
+                      New Dive Site
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
             <ThemeToggle />
             {isLoading ? (
               <div className="animate-pulse bg-muted rounded-md h-9 w-20"></div>
             ) : isAuthenticated && user ? (
               <>
-                {/* Search - Desktop - Only show when authenticated */}
-                <Button variant="ghost" size="sm" className="hidden md:flex">
-                  <Search className="h-4 w-4" />
-                </Button>
-
-                {/* Notifications - Only show when authenticated */}
-                <Button variant="ghost" size="sm" className="relative">
-                  <Bell className="h-4 w-4" />
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full text-xs w-5 h-5 flex items-center justify-center">
-                    3
-                  </span>
-                </Button>
-
                 {/* User dropdown */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -221,7 +243,7 @@ export function Header() {
             <Button
               variant="ghost"
               size="sm"
-              className="md:hidden"
+              className="md:hidden px-2 sm:px-3"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             >
               <Menu className="h-4 w-4" />
@@ -270,20 +292,34 @@ export function Header() {
                   >
                     Community
                   </Link>
-                  <div className="pt-3 border-t">
-                    <Button variant="outline" size="sm" className="w-full mb-2">
-                      <Search className="h-4 w-4 mr-2" />
-                      Search
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      className="w-full"
-                      onClick={handleSignOut}
+                  <div className="pt-3 border-t space-y-3">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                      Create New
+                    </p>
+                    <Link
+                      href="/dives/new"
+                      className="flex items-center text-sm font-medium text-foreground hover:text-coral py-2"
+                      onClick={() => setIsMobileMenuOpen(false)}
                     >
-                      <LogOut className="h-4 w-4 mr-2" />
-                      Sign Out
-                    </Button>
+                      <Waves className="mr-2 h-4 w-4" />
+                      New Dive
+                    </Link>
+                    <Link
+                      href="/trips/new"
+                      className="flex items-center text-sm font-medium text-foreground hover:text-coral py-2"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      <Luggage className="mr-2 h-4 w-4" />
+                      New Trip
+                    </Link>
+                    <Link
+                      href="/sites/new"
+                      className="flex items-center text-sm font-medium text-foreground hover:text-coral py-2"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      <MapPin className="mr-2 h-4 w-4" />
+                      New Dive Site
+                    </Link>
                   </div>
                 </>
               ) : (
