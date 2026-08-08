@@ -12,7 +12,10 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { MixtureFields } from "@/components/dives/mixture-fields";
+import {
+  MixtureFieldArray,
+  MixtureFields,
+} from "@/components/dives/mixture-fields";
 import { TripCombobox } from "@/components/dives/trip-combobox";
 import { DiveSiteMultiSelect } from "@/components/dives/dive-site-multi-select";
 import { DiveMixtureInput } from "@/lib/validations/dive";
@@ -54,12 +57,17 @@ export interface DiveFormFieldsProps<TFieldValues extends DiveFormValues> {
   // UUID of the currently signed-in user, used to fetch/create trips and
   // dive sites scoped to their account for the trip/dive site comboboxes.
   userId: string;
+  // Created once by the page (alongside `form`/`control`) and also passed to
+  // `DiveFileImport` - see `MixtureFieldArray`'s own doc comment for why this
+  // can't just be created internally by `MixtureFields`.
+  mixtureFieldArray: MixtureFieldArray;
 }
 
 export function DiveFormFields<TFieldValues extends DiveFormValues>({
   control,
   mode,
   userId,
+  mixtureFieldArray,
 }: DiveFormFieldsProps<TFieldValues>) {
   const required = mode === "create";
   const requiredMark = required ? " *" : "";
@@ -295,7 +303,10 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
       </div>
 
       {/* Gas Mixtures */}
-      <MixtureFields<TFieldValues> control={control} />
+      <MixtureFields<TFieldValues>
+        control={control}
+        fieldArray={mixtureFieldArray}
+      />
 
       {/* Notes */}
       <FormField

@@ -23,7 +23,11 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { ArrowLeft, Loader2, Save } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
+import { PageSpinner } from "@/components/ui/page-spinner";
+import { SectionSpinner } from "@/components/ui/section-spinner";
+import { NotFoundState } from "@/components/ui/not-found-state";
+import { Loader2, Save } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -113,11 +117,7 @@ export default function EditDiveSitePage() {
   };
 
   if (isAuthLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
+    return <PageSpinner />;
   }
 
   if (!isAuthenticated) {
@@ -127,9 +127,7 @@ export default function EditDiveSitePage() {
   if (isLoadingDiveSite) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
+        <SectionSpinner />
       </div>
     );
   }
@@ -137,35 +135,23 @@ export default function EditDiveSitePage() {
   if (!diveSite) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="text-center py-12">
-          <div className="text-muted-foreground mb-4">Dive site not found.</div>
-          <Button asChild>
-            <Link href="/sites">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dive Sites
-            </Link>
-          </Button>
-        </div>
+        <NotFoundState
+          message="Dive site not found."
+          backHref="/sites"
+          backLabel="Back to Dive Sites"
+        />
       </div>
     );
   }
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
-      <div className="flex items-center gap-4 mb-6">
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/sites">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Dive Sites
-          </Link>
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold">Edit Dive Site</h1>
-          <p className="text-muted-foreground mt-1">
-            Update the dive site details
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        backHref="/sites"
+        backLabel="Back to Dive Sites"
+        title="Edit Dive Site"
+        subtitle="Update the dive site details"
+      />
 
       <Card>
         <CardHeader>

@@ -17,6 +17,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { PageHeader } from "@/components/ui/page-header";
+import { SectionSpinner } from "@/components/ui/section-spinner";
+import { NotFoundState } from "@/components/ui/not-found-state";
 import {
   Table,
   TableBody,
@@ -26,7 +29,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  ArrowLeft,
   Edit,
   Trash2,
   Calendar,
@@ -148,9 +150,7 @@ export default function DiveDetailPage() {
   if (isLoadingDive) {
     return (
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
+        <SectionSpinner />
       </div>
     );
   }
@@ -158,15 +158,11 @@ export default function DiveDetailPage() {
   if (!dive) {
     return (
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="text-center py-12">
-          <div className="text-muted-foreground mb-4">Dive not found.</div>
-          <Button asChild>
-            <Link href="/dives">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dives
-            </Link>
-          </Button>
-        </div>
+        <NotFoundState
+          message="Dive not found."
+          backHref="/dives"
+          backLabel="Back to Dives"
+        />
       </div>
     );
   }
@@ -176,47 +172,39 @@ export default function DiveDetailPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/dives">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dives
-            </Link>
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold">Dive #{dive.dive_number}</h1>
-            <p className="text-muted-foreground mt-1">
-              {formatDiveDateTime(dive.start_time, {
-                weekday: "long",
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
-            </p>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" asChild>
-            <Link href={`/dives/${dive.uuid}/edit`}>
-              <Edit className="h-4 w-4 mr-2" />
-              Edit
-            </Link>
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={() => setIsConfirmOpen(true)}
-            disabled={isDeleting}
-          >
-            {isDeleting ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Trash2 className="h-4 w-4 mr-2" />
-            )}
-            Delete
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        backHref="/dives"
+        backLabel="Back to Dives"
+        title={`Dive #${dive.dive_number}`}
+        subtitle={formatDiveDateTime(dive.start_time, {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        })}
+        actions={
+          <>
+            <Button variant="outline" asChild>
+              <Link href={`/dives/${dive.uuid}/edit`}>
+                <Edit className="h-4 w-4 mr-2" />
+                Edit
+              </Link>
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => setIsConfirmOpen(true)}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-2" />
+              )}
+              Delete
+            </Button>
+          </>
+        }
+      />
 
       <ConfirmDialog
         open={isConfirmOpen}
@@ -347,7 +335,7 @@ export default function DiveDetailPage() {
                               ? `${mixture.end_pressure} bar`
                               : "-"}
                           </TableCell>
-                          <TableCell>{mixture.oxygen.toFixed(1)}%</TableCell>
+                          <TableCell>{mixture.oxygen}%</TableCell>
                           <TableCell>{mixture.helium}%</TableCell>
                         </TableRow>
                       ))}

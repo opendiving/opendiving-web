@@ -25,7 +25,9 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { ArrowLeft, Loader2, Save } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
+import { PageSpinner } from "@/components/ui/page-spinner";
+import { Loader2, Save } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -47,11 +49,7 @@ export default function NewTripPage() {
   });
 
   if (isAuthLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
+    return <PageSpinner />;
   }
 
   if (!isAuthenticated) {
@@ -99,20 +97,12 @@ export default function NewTripPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
-      <div className="flex items-center gap-4 mb-6">
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/trips">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Trips
-          </Link>
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold">New Trip</h1>
-          <p className="text-muted-foreground mt-1">
-            Create a trip to group dives together
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        backHref="/trips"
+        backLabel="Back to Trips"
+        title="New Trip"
+        subtitle="Create a trip to group dives together"
+      />
 
       <Card>
         <CardHeader>

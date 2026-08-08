@@ -9,7 +9,10 @@ import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { ArrowLeft, Edit, Trash2, Plus, MapPin, Loader2 } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
+import { SectionSpinner } from "@/components/ui/section-spinner";
+import { NotFoundState } from "@/components/ui/not-found-state";
+import { Edit, Trash2, Plus, MapPin, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -101,9 +104,7 @@ export default function DiveSiteDetailPage() {
   if (isLoadingDiveSite) {
     return (
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
+        <SectionSpinner />
       </div>
     );
   }
@@ -111,59 +112,49 @@ export default function DiveSiteDetailPage() {
   if (!diveSite) {
     return (
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="text-center py-12">
-          <div className="text-muted-foreground mb-4">Dive site not found.</div>
-          <Button asChild>
-            <Link href="/sites">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dive Sites
-            </Link>
-          </Button>
-        </div>
+        <NotFoundState
+          message="Dive site not found."
+          backHref="/sites"
+          backLabel="Back to Dive Sites"
+        />
       </div>
     );
   }
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/sites">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dive Sites
-            </Link>
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold">{diveSite.name}</h1>
-            <p className="text-muted-foreground mt-1">
-              {diveSite.location
-                ? diveSite.location
-                : `Added ${formatDate(diveSite.created_at)}`}
-            </p>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" asChild>
-            <Link href={`/sites/${diveSite.uuid}/edit`}>
-              <Edit className="h-4 w-4 mr-2" />
-              Edit
-            </Link>
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={() => setIsConfirmOpen(true)}
-            disabled={isDeleting}
-          >
-            {isDeleting ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Trash2 className="h-4 w-4 mr-2" />
-            )}
-            Delete
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        backHref="/sites"
+        backLabel="Back to Dive Sites"
+        title={diveSite.name}
+        subtitle={
+          diveSite.location
+            ? diveSite.location
+            : `Added ${formatDate(diveSite.created_at)}`
+        }
+        actions={
+          <>
+            <Button variant="outline" asChild>
+              <Link href={`/sites/${diveSite.uuid}/edit`}>
+                <Edit className="h-4 w-4 mr-2" />
+                Edit
+              </Link>
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => setIsConfirmOpen(true)}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-2" />
+              )}
+              Delete
+            </Button>
+          </>
+        }
+      />
 
       <ConfirmDialog
         open={isConfirmOpen}
