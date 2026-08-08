@@ -130,7 +130,7 @@ export default function DiveSiteDetailPage() {
         subtitle={
           diveSite.location
             ? diveSite.location
-            : `Added ${formatDate(diveSite.created_at)}`
+            : undefined
         }
         actions={
           <>

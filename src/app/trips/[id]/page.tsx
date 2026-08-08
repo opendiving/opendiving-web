@@ -144,12 +144,12 @@ export default function TripDetailPage() {
         title={trip.name}
         subtitle={
           trip.location && tripDateRange
-            ? `${trip.location} · ${tripDateRange}`
+            ? `${tripDateRange} · ${trip.location}`
             : trip.location
               ? trip.location
               : tripDateRange
                 ? tripDateRange
-                : `Created ${formatDate(trip.created_at)}`
+                : undefined
         }
         actions={
           <>

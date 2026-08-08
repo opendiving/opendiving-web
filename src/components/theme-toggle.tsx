@@ -17,7 +17,7 @@ const ACTIVE_ICONS = {
   dark: Moon,
 } as const;
 
-export function ThemeToggle() {
+export function ThemeToggle({ className }: { className?: string }) {
   const { setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = React.useState(false);
 
@@ -37,7 +37,12 @@ export function ThemeToggle() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" aria-label="Toggle theme">
+        <Button
+          variant="ghost"
+          size="sm"
+          aria-label="Toggle theme"
+          className={className}
+        >
           <ActiveIcon className="h-4 w-4" />
           <span className="sr-only">Toggle theme</span>
         </Button>

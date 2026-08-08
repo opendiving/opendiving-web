@@ -15,7 +15,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import {
-  User,
   Mail,
   Calendar,
   Settings,
@@ -23,6 +22,7 @@ import {
   Waves,
   Award,
   Edit,
+  TrendingUp,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -99,7 +99,7 @@ export default function ProfilePage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
-                <Waves className="h-5 w-5 mr-2" />
+                <TrendingUp className="h-5 w-5 mr-2" />
                 Diving Statistics
               </CardTitle>
               <CardDescription>
@@ -151,7 +151,7 @@ export default function ProfilePage() {
           {/* Account Info */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Account Information</CardTitle>
+              <CardTitle>Account Information</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
@@ -188,10 +188,7 @@ export default function ProfilePage() {
           {/* Certifications */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center">
-                <Award className="h-5 w-5 mr-2" />
-                Certifications
-              </CardTitle>
+              <CardTitle>Certifications</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-center py-8">
@@ -209,10 +206,7 @@ export default function ProfilePage() {
           {/* Favorite Dive Sites */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center">
-                <MapPin className="h-5 w-5 mr-2" />
-                Favorite Dive Sites
-              </CardTitle>
+              <CardTitle>Favorite Dive Sites</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-center py-8">

@@ -92,7 +92,7 @@ export function RecentDivesCard({
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center">
-            <Fish className="h-5 w-5 mr-2" />
+            <Waves className="h-5 w-5 mr-2" />
             {title}
           </CardTitle>
           {viewAllHref && (
@@ -128,21 +128,25 @@ export function RecentDivesCard({
               <Link
                 key={dive.uuid}
                 href={`/dives/${dive.uuid}`}
-                className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted transition-colors"
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0 p-3 rounded-lg border hover:bg-muted transition-colors"
               >
                 <div>
                   <div className="font-medium text-foreground">
                     Dive #{dive.dive_number}
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    {formatDiveDateTime(dive.start_time, {
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                    })}
+                    <span className="block sm:inline">
+                      {formatDiveDateTime(dive.start_time, {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </span>
                     {dive.dive_sites.length > 0 && (
-                      <span>
-                        {" \u00b7 "}
+                      <span className="block sm:inline">
+                        <span className="hidden sm:inline">
+                          {" \u00b7 "}
+                        </span>
                         <DiveSitesLabel sites={dive.dive_sites} showLocation />
                       </span>
                     )}
