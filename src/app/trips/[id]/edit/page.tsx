@@ -25,7 +25,11 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { ArrowLeft, Loader2, Save } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
+import { PageSpinner } from "@/components/ui/page-spinner";
+import { SectionSpinner } from "@/components/ui/section-spinner";
+import { NotFoundState } from "@/components/ui/not-found-state";
+import { Loader2, Save } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -119,11 +123,7 @@ export default function EditTripPage() {
   };
 
   if (isAuthLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
+    return <PageSpinner />;
   }
 
   if (!isAuthenticated) {
@@ -133,9 +133,7 @@ export default function EditTripPage() {
   if (isLoadingTrip) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
+        <SectionSpinner />
       </div>
     );
   }
@@ -143,33 +141,23 @@ export default function EditTripPage() {
   if (!trip) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <div className="text-center py-12">
-          <div className="text-muted-foreground mb-4">Trip not found.</div>
-          <Button asChild>
-            <Link href="/trips">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Trips
-            </Link>
-          </Button>
-        </div>
+        <NotFoundState
+          message="Trip not found."
+          backHref="/trips"
+          backLabel="Back to Trips"
+        />
       </div>
     );
   }
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
-      <div className="flex items-center gap-4 mb-6">
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/trips">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Trips
-          </Link>
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold">Edit Trip</h1>
-          <p className="text-muted-foreground mt-1">Update the trip details</p>
-        </div>
-      </div>
+      <PageHeader
+        backHref="/trips"
+        backLabel="Back to Trips"
+        title="Edit Trip"
+        subtitle="Update the trip details"
+      />
 
       <Card>
         <CardHeader>

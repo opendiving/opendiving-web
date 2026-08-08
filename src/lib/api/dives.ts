@@ -81,7 +81,22 @@ export interface PaginatedDivesResponse {
   items_per_page: number;
 }
 
-// Result of parsing a dive-computer export file (e.g. Suunto XML) via /dive/parse-xml.
+// A gas mixture parsed from a dive-computer export file. Mirrors the API's
+// `DiveMixtureSchema` - `name` is always `null` (mixture names aren't parsed,
+// even when the source file has one - see DECISIONS.md - so the diver fills
+// it in themselves), and `start_pressure`/`end_pressure` are nullable since
+// not every gas in a file has recorded pressures (e.g. an untransmitted
+// backup/deco cylinder).
+export interface ParsedDiveMixture {
+  name: string | null;
+  volume: number;
+  start_pressure: number | null;
+  end_pressure: number | null;
+  oxygen: number;
+  helium: number;
+}
+
+// Result of parsing a dive-computer export file (e.g. Suunto XML or JSON) via /dive/parse.
 // Most fields are nullable since not every dive-computer format populates every field.
 export interface ParsedDive {
   dive_number: number | null;
@@ -96,9 +111,7 @@ export interface ParsedDive {
   max_depth: number | null;
   avg_depth: number | null;
   bottom_temperature: number | null;
-  source: string | null;
-  serial_number: string | null;
-  software: string | null;
+  mixtures: ParsedDiveMixture[];
   [key: string]: unknown;
 }
 
@@ -151,7 +164,7 @@ export const divesAPI = {
     return response.data;
   },
 
-  // Parse a dive-computer export file (e.g. Suunto XML) into structured dive data
+  // Parse a dive-computer export file (e.g. Suunto XML or JSON) into structured dive data
   async parseDiveFile(file: File): Promise<ParsedDive> {
     const formData = new FormData();
     formData.append("file", file);
@@ -159,7 +172,7 @@ export const divesAPI = {
     // The apiClient instance has a fixed default "Content-Type: application/json" header.
     // For multipart uploads we must clear it so the browser can set the correct
     // "multipart/form-data; boundary=..." header itself.
-    const response = await apiClient.post("/dive/parse-xml", formData, {
+    const response = await apiClient.post("/dive/parse", formData, {
       headers: { "Content-Type": undefined },
     });
     return response.data;

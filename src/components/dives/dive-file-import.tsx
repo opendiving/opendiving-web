@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { FieldPathValue, Path, UseFormReturn } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { divesAPI, ParsedDive } from "@/lib/api/dives";
+import { divesAPI, ParsedDive, ParsedDiveMixture } from "@/lib/api/dives";
 import {
   combineStartTime,
   formatDateTimeForForm,
@@ -14,6 +14,7 @@ import {
 } from "@/lib/date-time";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { DiveFormValues } from "@/components/dives/dive-form-fields";
+import { DiveMixtureInput } from "@/lib/validations/dive";
 import { Loader2, Upload } from "lucide-react";
 
 // Applies the fields parsed from a dive-computer export file onto a dive
@@ -69,9 +70,34 @@ function normalizeParsedStartTime(rawStartTime: string): string | undefined {
   );
 }
 
+// Converts a parsed mixture (nullable fields, no `id`) into the shape the
+// mixture form fields expect: `start_pressure`/`end_pressure` use "" (not
+// `undefined`) as their "unset" placeholder, matching `DEFAULT_MIXTURE`'s
+// convention in `mixture-fields.tsx`, and `name` is left `undefined` so the
+// field shows blank rather than the literal string "null".
+function toMixtureFormValue(mixture: ParsedDiveMixture): DiveMixtureInput {
+  return {
+    name: mixture.name ?? undefined,
+    volume: mixture.volume,
+    start_pressure: mixture.start_pressure ?? "",
+    end_pressure: mixture.end_pressure ?? "",
+    oxygen: mixture.oxygen,
+    helium: mixture.helium,
+  };
+}
+
 export function applyParsedDiveToForm<TFieldValues extends DiveFormValues>(
   form: UseFormReturn<TFieldValues>,
   parsed: ParsedDive,
+  // Replaces the `mixtures` field array wholesale. Must come from the *same*
+  // `useFieldArray({ name: "mixtures" })` instance `MixtureFields` renders
+  // with (passed down from the page - see `DiveFileImportProps.replaceMixtures`)
+  // rather than a separate one created here: react-hook-form doesn't reliably
+  // keep multiple separate `useFieldArray` instances on the same `control`/
+  // `name` in sync (e.g. `replace()` on one instance doesn't shrink another
+  // instance's `fields` when the new array is shorter - see DECISIONS.md),
+  // and plain `form.setValue("mixtures", ...)` has the same problem.
+  replaceMixtures: (mixtures: DiveMixtureInput[]) => void,
 ) {
   if (parsed.dive_number != null) {
     setDiveFormValue(form, "dive_number", parsed.dive_number);
@@ -92,20 +118,25 @@ export function applyParsedDiveToForm<TFieldValues extends DiveFormValues>(
     setDiveFormValue(form, "avg_depth", parsed.avg_depth);
   }
   if (parsed.bottom_temperature != null) {
-    setDiveFormValue(
-      form,
-      "bottom_temperature",
-      Math.round(parsed.bottom_temperature),
-    );
+    setDiveFormValue(form, "bottom_temperature", parsed.bottom_temperature);
+  }
+  if (parsed.mixtures.length > 0) {
+    replaceMixtures(parsed.mixtures.map(toMixtureFormValue));
   }
 }
 
 export interface DiveFileImportProps<TFieldValues extends DiveFormValues> {
   form: UseFormReturn<TFieldValues>;
+  // Must come from the same `useFieldArray` instance passed to `DiveFormFields`
+  // as `mixtureFieldArray` (i.e. `replace` destructured from it) - see the
+  // `applyParsedDiveToForm` doc comment above for why a separate instance
+  // created here wouldn't work.
+  replaceMixtures: (mixtures: DiveMixtureInput[]) => void;
 }
 
 export function DiveFileImport<TFieldValues extends DiveFormValues>({
   form,
+  replaceMixtures,
 }: DiveFileImportProps<TFieldValues>) {
   const { toast } = useToast();
   const [isParsingFile, setIsParsingFile] = useState(false);
@@ -118,7 +149,7 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
     try {
       setIsParsingFile(true);
       const parsed: ParsedDive = await divesAPI.parseDiveFile(file);
-      applyParsedDiveToForm(form, parsed);
+      applyParsedDiveToForm(form, parsed, replaceMixtures);
 
       toast({
         title: "Dive file parsed",
@@ -149,15 +180,15 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
       <div>
         <p className="font-medium text-sm">Import from a dive computer file</p>
         <p className="text-sm text-muted-foreground">
-          Upload a dive log export (e.g. Suunto XML) to automatically fill in
-          the fields below.
+          Upload a dive log export (e.g. Suunto XML or JSON) to automatically
+          fill in the fields below.
         </p>
       </div>
       <div>
         <input
           ref={fileInputRef}
           type="file"
-          accept=".xml"
+          accept=".xml,.json"
           className="hidden"
           onChange={handleFileSelected}
         />

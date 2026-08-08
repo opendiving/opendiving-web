@@ -9,8 +9,10 @@ import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { PageHeader } from "@/components/ui/page-header";
+import { SectionSpinner } from "@/components/ui/section-spinner";
+import { NotFoundState } from "@/components/ui/not-found-state";
 import {
-  ArrowLeft,
   Edit,
   Trash2,
   Plus,
@@ -117,9 +119,7 @@ export default function TripDetailPage() {
   if (isLoadingTrip) {
     return (
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
+        <SectionSpinner />
       </div>
     );
   }
@@ -127,63 +127,53 @@ export default function TripDetailPage() {
   if (!trip) {
     return (
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="text-center py-12">
-          <div className="text-muted-foreground mb-4">Trip not found.</div>
-          <Button asChild>
-            <Link href="/trips">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Trips
-            </Link>
-          </Button>
-        </div>
+        <NotFoundState
+          message="Trip not found."
+          backHref="/trips"
+          backLabel="Back to Trips"
+        />
       </div>
     );
   }
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/trips">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Trips
-            </Link>
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold">{trip.name}</h1>
-            <p className="text-muted-foreground mt-1">
-              {trip.location && tripDateRange
-                ? `${trip.location} · ${tripDateRange}`
-                : trip.location
-                  ? trip.location
-                  : tripDateRange
-                    ? tripDateRange
-                    : `Created ${formatDate(trip.created_at)}`}
-            </p>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" asChild>
-            <Link href={`/trips/${trip.uuid}/edit`}>
-              <Edit className="h-4 w-4 mr-2" />
-              Edit
-            </Link>
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={() => setIsConfirmOpen(true)}
-            disabled={isDeleting}
-          >
-            {isDeleting ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Trash2 className="h-4 w-4 mr-2" />
-            )}
-            Delete
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        backHref="/trips"
+        backLabel="Back to Trips"
+        title={trip.name}
+        subtitle={
+          trip.location && tripDateRange
+            ? `${trip.location} · ${tripDateRange}`
+            : trip.location
+              ? trip.location
+              : tripDateRange
+                ? tripDateRange
+                : `Created ${formatDate(trip.created_at)}`
+        }
+        actions={
+          <>
+            <Button variant="outline" asChild>
+              <Link href={`/trips/${trip.uuid}/edit`}>
+                <Edit className="h-4 w-4 mr-2" />
+                Edit
+              </Link>
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => setIsConfirmOpen(true)}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-2" />
+              )}
+              Delete
+            </Button>
+          </>
+        }
+      />
 
       <ConfirmDialog
         open={isConfirmOpen}

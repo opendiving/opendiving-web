@@ -1,15 +1,14 @@
 "use client";
 
-import { Control, FieldValues, Path, useFieldArray } from "react-hook-form";
+import {
+  Control,
+  FieldValues,
+  Path,
+  UseFieldArrayReturn,
+  useFieldArray,
+} from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   FormControl,
   FormField,
@@ -19,12 +18,7 @@ import {
 } from "@/components/ui/form";
 import { Plus, Trash2 } from "lucide-react";
 import { DiveMixtureInput } from "@/lib/validations/dive";
-
-const VOLUME_OPTIONS = [
-  { value: 11.1, label: "11.1 L" },
-  { value: 12, label: "12 L" },
-  { value: 22.2, label: "2x11.1 L" },
-];
+import { VolumeCombobox } from "@/components/dives/volume-combobox";
 
 // Default values pre-filled when a new mixture (tank) is added. Start/end
 // pressure are deliberately left blank ("") rather than defaulted, since
@@ -53,25 +47,47 @@ export interface MixtureFieldsValues extends FieldValues {
   mixtures?: DiveMixtureInput[];
 }
 
+// The `useFieldArray` return type for `mixtures`, keyed to `MixtureFieldsValues`
+// rather than any particular concrete form type. Exported so a single instance
+// can be created once at a common ancestor (the create/edit dive pages) and
+// passed down to both `MixtureFields` and `DiveFileImport` - `useFieldArray`
+// doesn't reliably keep multiple separate instances watching the same
+// `control`/`name` in sync with each other (e.g. `replace()` called on one
+// instance doesn't shrink another instance's `fields` when the new array is
+// shorter - see DECISIONS.md), so there must only ever be one.
+export type MixtureFieldArray = UseFieldArrayReturn<
+  MixtureFieldsValues,
+  "mixtures"
+>;
+
+// Creates the single `mixtures` field array instance a page needs, already
+// cast to `MixtureFieldArray` - pass `form.control` in directly. Call this
+// once per form, at the same level as the `useForm()` call, and pass the
+// result down to both `DiveFormFields`/`MixtureFields` and `DiveFileImport`
+// (e.g. via `DiveFormCard`) - see `MixtureFieldArray`'s doc comment above for
+// why there must only ever be one instance per form.
+export function useMixtureFieldArray<TFieldValues extends MixtureFieldsValues>(
+  control: Control<TFieldValues>,
+): MixtureFieldArray {
+  // Narrowing `control` to `MixtureFieldsValues` is sound: it's exactly the
+  // shape `TFieldValues` is constrained to extend, and only affects this
+  // hook's internal typing, not what callers pass in.
+  return useFieldArray<MixtureFieldsValues, "mixtures">({
+    control: control as unknown as Control<MixtureFieldsValues>,
+    name: "mixtures",
+  });
+}
+
 export interface MixtureFieldsProps<TFieldValues extends MixtureFieldsValues> {
   control: Control<TFieldValues>;
+  fieldArray: MixtureFieldArray;
 }
 
 export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
   control,
+  fieldArray,
 }: MixtureFieldsProps<TFieldValues>) {
-  // `useFieldArray`'s generic inference needs a concrete field-array name to
-  // type `append`'s argument. Narrowing `control` to `MixtureFieldsValues`
-  // here is sound: it's exactly the shape `TFieldValues` is constrained to
-  // extend, and only affects this hook's internal typing, not what callers
-  // may pass in as `control`.
-  const { fields, append, remove } = useFieldArray<
-    MixtureFieldsValues,
-    "mixtures"
-  >({
-    control: control as unknown as Control<MixtureFieldsValues>,
-    name: "mixtures",
-  });
+  const { fields, append, remove } = fieldArray;
 
   return (
     <div className="space-y-4">
@@ -137,30 +153,12 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Volume (L)</FormLabel>
-                  <Select
-                    value={
-                      field.value !== undefined
-                        ? String(field.value)
-                        : undefined
-                    }
-                    onValueChange={(value) => field.onChange(parseFloat(value))}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select volume" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {VOLUME_OPTIONS.map((option) => (
-                        <SelectItem
-                          key={option.value}
-                          value={String(option.value)}
-                        >
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FormControl>
+                    <VolumeCombobox
+                      value={field.value}
+                      onChange={field.onChange}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -175,7 +173,7 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                   <FormControl>
                     <Input
                       type="number"
-                      step="0.1"
+                      step="0.01"
                       min="0"
                       max="100"
                       {...field}
@@ -198,7 +196,7 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                   <FormControl>
                     <Input
                       type="number"
-                      step="0.1"
+                      step="0.01"
                       min="0"
                       max="100"
                       {...field}
@@ -221,7 +219,7 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                   <FormControl>
                     <Input
                       type="number"
-                      step="0.1"
+                      step="0.01"
                       min="0"
                       {...field}
                       value={field.value ?? ""}
@@ -245,7 +243,7 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                   <FormControl>
                     <Input
                       type="number"
-                      step="0.1"
+                      step="0.01"
                       min="0"
                       {...field}
                       value={field.value ?? ""}

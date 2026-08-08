@@ -14,28 +14,18 @@ import {
 import {
   DEFAULT_MIXTURE,
   getDefaultMixtureName,
+  useMixtureFieldArray,
 } from "@/components/dives/mixture-fields";
-import { DiveFormFields } from "@/components/dives/dive-form-fields";
-import { DiveFileImport } from "@/components/dives/dive-file-import";
-import { DiveFormActions } from "@/components/dives/dive-form-actions";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form } from "@/components/ui/form";
-import { ArrowLeft, Loader2 } from "lucide-react";
-import Link from "next/link";
+import { DiveFormCard } from "@/components/dives/dive-form-card";
+import { PageHeader } from "@/components/ui/page-header";
+import { PageSpinner } from "@/components/ui/page-spinner";
 import { useToast } from "@/components/ui/use-toast";
 import { nowStartTime, parseFormDuration } from "@/lib/date-time";
 import { getApiErrorMessage } from "@/lib/api/error";
 
 export default function NewDivePage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex items-center justify-center min-h-screen">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
-      }
-    >
+    <Suspense fallback={<PageSpinner />}>
       <NewDivePageContent />
     </Suspense>
   );
@@ -70,6 +60,7 @@ function NewDivePageContent() {
       mixtures: [{ ...DEFAULT_MIXTURE, name: getDefaultMixtureName(0) }],
     },
   });
+  const mixtureFieldArray = useMixtureFieldArray(form.control);
 
   // Pre-fill trip and gas mixture defaults from the most recent dive so the
   // user doesn't have to re-enter recurring values for every new log entry.
@@ -128,11 +119,7 @@ function NewDivePageContent() {
   }, [user, form, initialTripId, initialDiveSiteId]);
 
   if (isAuthLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
+    return <PageSpinner />;
   }
 
   if (!isAuthenticated) {
@@ -182,47 +169,24 @@ function NewDivePageContent() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
-      <div className="flex items-center gap-4 mb-6">
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/dives">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Dives
-          </Link>
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold">Log New Dive</h1>
-          <p className="text-muted-foreground mt-1">
-            Record the details of your dive
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        backHref="/dives"
+        backLabel="Back to Dives"
+        title="Log New Dive"
+        subtitle="Record the details of your dive"
+      />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Dive Details</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              {/* Import from dive computer file */}
-              <DiveFileImport form={form} />
-
-              <DiveFormFields
-                control={form.control}
-                mode="create"
-                userId={user?.uuid ?? ""}
-              />
-
-              <DiveFormActions
-                cancelHref="/dives"
-                isSubmitting={isSubmitting}
-                submittingLabel="Logging Dive..."
-                submitLabel="Log Dive"
-              />
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+      <DiveFormCard
+        form={form}
+        mixtureFieldArray={mixtureFieldArray}
+        mode="create"
+        userId={user?.uuid ?? ""}
+        onSubmit={onSubmit}
+        isSubmitting={isSubmitting}
+        cancelHref="/dives"
+        submittingLabel="Logging Dive..."
+        submitLabel="Log Dive"
+      />
     </div>
   );
 }

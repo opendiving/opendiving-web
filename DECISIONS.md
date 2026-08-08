@@ -839,3 +839,176 @@ doesn't.
 
 There is currently no way to fetch or manage another user's data through this API
 at all - that's deliberate until the public-profile endpoint exists.
+
+## Parsed dive-file mixtures need `useFieldArray().replace()`, not `form.setValue()`
+
+`applyParsedDiveToForm` (`dive-file-import.tsx`) filled in every top-level field
+from `/dive/parse`'s response via a plain `form.setValue(...)`, but the API's
+`ParsedDiveSchema.mixtures` was never applied to the form's `mixtures` field
+array at all - parsed gas mixtures were silently dropped even though the
+backend now returns them (see the API's `DECISIONS.md` on `SuuntoJsonParser`
+gas mixtures).
+
+The fix isn't just adding a `setDiveFormValue(form, "mixtures", ...)` call:
+`MixtureFields` (`mixture-fields.tsx`) renders the array via its own
+`useFieldArray({ name: "mixtures" })` call, which tracks its own `fields`
+state (each row keyed by a generated `id`) independently of the underlying
+form value. Overwriting the value directly with `setValue` doesn't reliably
+keep that row-key bookkeeping in sync, so `applyParsedDiveToForm` now takes an
+explicit `replaceMixtures` parameter and calls it with the parsed mixtures
+(converted from the API's nullable/no-`id` shape to `DiveMixtureInput` via a
+small `toMixtureFormValue` mapper) instead of replacing the array's contents
+wholesale.
+
+`ParsedDive` (`lib/api/dives.ts`) also gained a proper `ParsedDiveMixture`
+interface/`mixtures` field - it was previously only implicitly typed via the
+catch-all `[key: string]: unknown` index signature, which meant nothing caught
+this at the type level.
+
+**Follow-up bug, and the actual fix**: the first version of `replaceMixtures`
+came from a *second*, separate `useFieldArray({ name: "mixtures" })` call made
+directly inside `DiveFileImport`, on the assumption that react-hook-form keeps
+multiple field-array subscriptions on the same `control`/`name` in sync with
+each other. That assumption is wrong for shrinking: calling `replace()` on one
+`useFieldArray` instance does **not** reliably shrink another separate
+instance's `fields` when the new array is shorter - confirmed with an isolated
+repro (two `useFieldArray({ name: "mixtures" })` calls sharing one `control`;
+calling `replace()` via one instance's handle left the other instance's
+`fields.length` unchanged). In practice this meant: importing a parsed file
+with *fewer* mixtures than the form currently had left the extra trailing
+row(s) behind instead of removing them (growing or exactly-matching counts
+happened to work, which is why it wasn't caught earlier).
+
+The real fix: there must be only **one** `useFieldArray({ name: "mixtures" })`
+call for the whole form, created once at the nearest common ancestor of
+everything that needs it. `mixture-fields.tsx` exports a `MixtureFieldArray`
+type (`UseFieldArrayReturn<MixtureFieldsValues, "mixtures">`) and a
+`useMixtureFieldArray(control)` hook that creates one, already cast to that
+type (see the next section for why the cast is needed and where it now lives).
+The two page components (`dives/new/page.tsx`, `dives/[id]/edit/page.tsx`)
+call `useMixtureFieldArray(form.control)` once, right next to their
+`useForm()` call, and pass the result down (now via `DiveFormCard`, see
+below) to both `DiveFormFields`/`MixtureFields` and `DiveFileImport`. Neither
+of those two ever creates its own `useFieldArray` anymore.
+
+## `dives/new`/`dives/[id]/edit` pages' shared structure extracted into `DiveFormCard`/`DiveFormPageHeader`/`PageSpinner`
+
+The two dive form pages had a lot of identical structure wrapped around the
+genuinely page-specific logic (loading the existing dive vs. pre-filling from
+the last one, the create vs. partial-update payload shape, different
+labels/routes). Extracted the parts that were byte-for-byte identical (or
+identical modulo a handful of string/callback props) into shared components,
+rather than leaving each page to re-assemble the same JSX:
+
+- `useMixtureFieldArray(control)` (`mixture-fields.tsx`) replaces the
+  `useFieldArray<TConcreteFormType, "mixtures">({...}) as unknown as
+  MixtureFieldArray` block (plus its explanatory comment) that was duplicated
+  verbatim in both pages - the generic parameter and the cast now live in one
+  place instead of two.
+- `DiveFormCard` (`dive-form-card.tsx`) wraps the `Card`/`Form`/`form` +
+  `DiveFileImport` + `DiveFormFields` + `DiveFormActions` block, which was
+  identical between the two pages apart from `mode`, `userId`, `onSubmit`, and
+  the three action-row strings (`cancelHref`/`submittingLabel`/`submitLabel`) -
+  now the only per-page inputs left.
+- `DiveFormPageHeader` (`dive-form-page-header.tsx`) wraps the back-button +
+  title/subtitle block above the card, parameterized by `backHref`/
+  `backLabel`/`title`/`subtitle`.
+- `PageSpinner` (`components/ui/page-spinner.tsx`) wraps the full-viewport
+  `<Loader2>` spinner used for the auth-loading state in both pages (and
+  `new`'s `Suspense` fallback). This exact markup is also duplicated across
+  several other pages (`sites/new`, `sites/[id]/edit`, `trips/new`,
+  `trips/[id]/edit`) that weren't touched here since they were out of scope -
+  worth switching them to `PageSpinner` too next time one of them is touched
+  anyway.
+
+Each page now reduces to: its own data-loading effect(s), its own `onSubmit`,
+and a handful of early-return loading/error states, followed by one
+`DiveFormPageHeader` + one `DiveFormCard`. The edit page's dive-not-found and
+in-card loading states were left as page-local JSX (not extracted) since
+they're not shared with the create page at all.
+
+**Follow-up:** this was later generalized. `DiveFormPageHeader`'s markup
+moved into a resource-agnostic `PageHeader` (`components/ui/page-header.tsx`,
+adding an optional `actions` slot for right-aligned buttons); `dive-form-page-header.tsx`
+was deleted and both dive pages now import `PageHeader` directly instead.
+`sites/new`, `sites/[id]/edit`, `trips/new`, `trips/[id]/edit` were switched
+to `PageSpinner` + `PageHeader` (their auth-loading spinner markup was
+byte-for-byte identical to `PageSpinner`, so this is a no-op visually), and
+the detail pages (`dives/[id]`, `sites/[id]`, `trips/[id]`) had their
+back-button + title/subtitle + Edit/Delete-button header rows switched to
+`PageHeader` with `actions`. Note: the list pages (`dives`/`sites`/`trips`)
+and detail pages' auth/data-loading spinners intentionally use
+`min-h-[60vh]` (they render below `AppShell`'s header/footer) rather than
+`PageSpinner`'s `min-h-screen`, so those were left alone.
+
+The same six pages (the three `[id]/edit` pages and the three `[id]` detail
+pages) also had two more duplicated inline blocks: the `isLoading<Resource>`
+spinner (`<div className="flex items-center justify-center py-12"><Loader2 .../></div>`)
+and the `!<resource>` not-found state (centered message + "Back to X" button).
+These were extracted into `SectionSpinner` (`components/ui/section-spinner.tsx`)
+and `NotFoundState` (`components/ui/not-found-state.tsx`, taking
+`message`/`backHref`/`backLabel`) respectively - both intentionally don't
+include the outer container `div`, since its class differs slightly between
+edit pages (`container mx-auto px-4 py-8`) and detail pages
+(`max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8`). `SectionSpinner` is distinct
+from `PageSpinner`: the former is for a loading section within an
+already-rendered page shell, the latter is full-viewport for the top-level
+auth-loading gate.
+
+## Mixture form/display numbers needed updating to match the API's 2-decimal precision
+
+Once the backend started rounding parsed mixture `oxygen`/`helium`/
+`start_pressure`/`end_pressure` to 2 decimal places (see the API's
+`DECISIONS.md`), a few spots in the frontend that assumed coarser precision
+needed fixing to actually display/accept it correctly:
+
+- `mixture-fields.tsx`'s O₂/He/start-pressure/end-pressure `<Input
+  type="number">`s used `step="0.1"`, inconsistent with `max_depth`/`avg_depth`/
+  `bottom_temperature` in `dive-form-fields.tsx` (`step="0.01"`) and the API's
+  actual precision. Changed to `step="0.01"` to match.
+- The "Volume (L)" field was a `<Select>` over 3 hardcoded tank-size presets
+  (11.1/12/22.2 L). A parsed value that doesn't match one exactly (e.g. a
+  D5-style JSON export's `22.0 L`, one tenth of a liter off from the `22.2`
+  preset) left the select showing empty/unselected despite the underlying
+  field holding a valid value. First attempted fix: inject the field's
+  current value as a one-off extra `<SelectItem>` when it doesn't match a
+  preset - this actually made things worse, showing a literal "NaN L" for
+  exactly this case. Root cause: shadcn/Radix `Select`'s `SelectContent`/
+  `SelectItem`s are portal-rendered and only registered once the dropdown has
+  actually been opened, so the closed trigger's `SelectValue` has no item to
+  resolve a label from for a value it's never "seen" - which some path in
+  that resolution turns into `NaN` rather than falling back to the
+  placeholder.
+
+  Fixed for good by extracting the field into its own `VolumeCombobox`
+  component (`volume-combobox.tsx`), built the same way `CreatableCombobox`
+  already is (a plain `<input>` + a manually-rendered absolute-positioned
+  dropdown of `<button>`s, not Radix `Select`) - so there's no item-registration
+  step to go wrong for an arbitrary value in the first place. It supports
+  picking one of a curated list of common cylinder water capacities (metric
+  steel sizes, plus common US aluminum cylinders labeled with both their
+  liter capacity and familiar cu-ft-based size, e.g. `11.1 L (S80)`), or
+  typing/committing any other number directly - covering parsed values that
+  don't match a preset without losing the one-click convenience of the
+  presets for the common case. Unlike `CreatableCombobox`, the dropdown
+  always shows every preset regardless of what's typed (no filter-as-you-type)
+  - there are few enough of them that filtering only gets in the way of
+  browsing/comparing them, and the field also just as commonly gets its value
+  from a click as from typing a custom number.
+
+  Simplified further: the input is a plain `type="number"` (matching the
+  other mixture fields) showing only the bare value (e.g. `11.1`, never
+  `"11.1 L (S80)"`) - a preset's descriptive label is only ever shown in the
+  dropdown, as a hint for *picking* a preset, not echoed back into the input
+  once selected. This dropped the separate text-vs-number `inputValue` state
+  and the label-parsing branch in `commit()` entirely, since the displayed
+  value is now always just `value` itself with no text-based round-tripping.
+  The old custom "Clear" (X) button was also dropped once the input became a
+  plain native `type="number"` - clearing via select-all+delete/backspace
+  already works out of the box, so a bespoke clear affordance was redundant.
+- `dives/[id]/page.tsx`'s dive-detail view displayed `mixture.oxygen.toFixed(1)}%`
+  but `mixture.helium}%` with no formatting at all - inconsistent with each
+  other, and the `toFixed(1)` actively hid a second decimal digit that's now a
+  real, meaningful value (e.g. `20.99%` rendering as `21.0%`). Both now render
+  the raw number, matching how `volume`/`start_pressure`/`end_pressure` are
+  already displayed elsewhere in the same table.
