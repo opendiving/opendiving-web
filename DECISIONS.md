@@ -891,7 +891,7 @@ call `useMixtureFieldArray(form.control)` once, right next to their
 below) to both `DiveFormFields`/`MixtureFields` and `DiveFileImport`. Neither
 of those two ever creates its own `useFieldArray` anymore.
 
-## `dives/new`/`dives/[id]/edit` pages' shared structure extracted into `DiveFormCard`/`DiveFormPageHeader`/`PageSpinner`
+## `dives/new`/`dives/[id]/edit` pages' shared structure extracted into `DiveFormCard`/`PageHeader`/`PageSpinner`
 
 The two dive form pages had a lot of identical structure wrapped around the
 genuinely page-specific logic (loading the existing dive vs. pre-filling from
@@ -910,9 +910,10 @@ rather than leaving each page to re-assemble the same JSX:
   identical between the two pages apart from `mode`, `userId`, `onSubmit`, and
   the three action-row strings (`cancelHref`/`submittingLabel`/`submitLabel`) -
   now the only per-page inputs left.
-- `DiveFormPageHeader` (`dive-form-page-header.tsx`) wraps the back-button +
+- `DiveFormPageHeader` (`dive-form-page-header.tsx`) wrapped the back-button +
   title/subtitle block above the card, parameterized by `backHref`/
-  `backLabel`/`title`/`subtitle`.
+  `backLabel`/`title`/`subtitle`. It no longer exists - it was generalized into
+  the resource-agnostic `PageHeader`, see the follow-up below.
 - `PageSpinner` (`components/ui/page-spinner.tsx`) wraps the full-viewport
   `<Loader2>` spinner used for the auth-loading state in both pages (and
   `new`'s `Suspense` fallback). This exact markup is also duplicated across
@@ -923,7 +924,8 @@ rather than leaving each page to re-assemble the same JSX:
 
 Each page now reduces to: its own data-loading effect(s), its own `onSubmit`,
 and a handful of early-return loading/error states, followed by one
-`DiveFormPageHeader` + one `DiveFormCard`. The edit page's dive-not-found and
+`PageHeader` (`DiveFormPageHeader` at the time - see below) + one
+`DiveFormCard`. The edit page's dive-not-found and
 in-card loading states were left as page-local JSX (not extracted) since
 they're not shared with the create page at all.
 
@@ -1012,3 +1014,276 @@ needed fixing to actually display/accept it correctly:
   real, meaningful value (e.g. `20.99%` rendering as `21.0%`). Both now render
   the raw number, matching how `volume`/`start_pressure`/`end_pressure` are
   already displayed elsewhere in the same table.
+
+## Gear sets are loaded into the dive form, never linked from the dive
+
+The dive form's gear section (`components/gear/dive-gear-field.tsx`) has three
+parts: a "Load a gear set..." picker, the item list itself
+(`GearItemMultiSelect`), and a "Save as set" button. Picking a set **replaces**
+the form's `gear_item_uuids` with that set's items; from that moment the two are
+independent - adding or removing an item on the dive never writes back to the
+stored set, and the dive is saved with items only (the API has no
+`gear_set_uuid` on a dive at all - see the backend DECISIONS.md).
+
+Three deliberate UX choices around that:
+
+- **Replacing a non-empty list asks first.** Loading a set into an empty list -
+  the common case - stays a single click, but if the diver has already picked
+  gear (or loaded a different set), a `ConfirmDialog` names what's about to be
+  thrown away. Cheap insurance against one mis-click wiping a hand-built list.
+- **The picker un-selects itself once the list is edited.** `GearItemMultiSelect`
+  takes an `onManualChange` callback fired only on user-driven add/remove (not
+  on a programmatic `onChange` from loading a set), which clears the picker's
+  selected set. Otherwise it would keep claiming the dive is "Sidemount" after
+  the diver swapped half the kit out.
+- **"Save as set" reuses the set form rather than being its own flow.**
+  `GearSetDialog` is the same component the gear page uses to create/edit a set;
+  from the dive form it just gets `initialItemUuids` plus
+  `allowChoosingTarget`, which adds a "Save to" dropdown offering the user's
+  existing sets alongside "Create a new set". One component, one set of
+  validation rules, two entry points.
+
+## The gear picker fetches archived items but won't offer them
+
+`GearItemMultiSelect` calls `fetchAllGearItems(userId, true)` - i.e. *including*
+archived gear - then filters archived items out of the dropdown. The two aren't
+in conflict: an older dive (or a set built before a piece of kit was retired) can
+legitimately reference archived gear, and without it in the fetched list those
+selections would render as a bare `Gear #<uuid>` instead of their real name. They
+show with an "Archived" badge and can be removed, just not newly added.
+
+The same "fetch every page" loop as `DiveSiteMultiSelect` applies (see
+`fetchAllGearItems`/`fetchAllGearSets` in `lib/api/gear.ts`): these are
+client-side-filtered pickers, not paginated list views, so they need the user's
+full set.
+
+New-dive prefill (`dives/new/page.tsx`) carries the previous dive's gear over -
+divers reuse the same kit dive after dive - but skips archived items, since the
+picker wouldn't offer them for a new dive either.
+
+## Gear is created and edited in dialogs, not on `new`/`edit` pages
+
+Trips and dive sites each get `/x/new` and `/x/[id]/edit` pages. Gear doesn't:
+`GearItemDialog` and `GearSetDialog` handle both create and edit, and `/gear` is
+a single page listing items and sets together.
+
+A gear item is four fields (name, brand, rented, notes), and the flow that
+matters most is adding one *from inside a half-filled dive form* - navigating
+away to a page and back would mean either losing that form or building
+draft-persistence for it. Both dialogs take an optional existing record: passing
+one edits it in place, omitting one creates. `/gear/[id]` still exists as a
+detail page, since it hosts the "Dives with this Gear" list that makes an item's
+dive count explorable.
+
+## `ui/checkbox.tsx` is a plain `<input type="checkbox">`
+
+Every other `ui/` primitive wraps a Radix component, but `@radix-ui/react-checkbox`
+isn't a dependency and this is the app's only checkbox (the "Rented" field and the
+gear list's "Show archived" toggle). A styled native input keeps focus, keyboard
+and screen-reader behaviour for free without adding a package - so it takes
+`checked`/`onChange` rather than Radix's `checked`/`onCheckedChange`, which is
+worth remembering if a second checkbox ever needs `indeterminate` styling.
+
+## A dialog's submit event bubbles into the form that opened it
+
+Every "quick add" dialog - new gear item, new gear set, new dive site, new trip -
+is rendered *from inside the dive form*, because the pickers that open them are
+dive form fields. Each dialog contains its own `<form>`, and all four were
+wiring it up as `onSubmit={form.handleSubmit(onSubmit)}`.
+
+That silently submits the dive form too. Radix portals `DialogContent` out to
+`document.body`, so there are no nested `<form>` elements in the DOM and the
+setup looks fine - but React bubbles events through the **React** tree, not the
+DOM tree, so the dialog's submit event still lands in the dive form's own
+`onSubmit`. `handleSubmit` calls `preventDefault()` but never
+`stopPropagation()`, so nothing stops it.
+
+Symptom: add a gear item from the dive form and the item saves correctly, then
+the dive form behind the dialog runs its own `handleSubmit`, fails validation on
+whatever isn't filled in yet ("Duration is required") and scrolls to that field.
+Pressing Enter in any dialog input does the same thing, via implicit submission.
+
+`lib/dialog-form.ts`'s `dialogFormSubmit()` wraps the handler and stops
+propagation first:
+
+```tsx
+<form onSubmit={dialogFormSubmit(form.handleSubmit(onSubmit))}>
+```
+
+**Any new dialog containing a form must use it** - the bug is invisible until
+the dialog happens to be opened from inside another form, and then it presents
+as a mysterious validation error on a form the user never submitted.
+
+Verified with a throwaway jsdom test that mounted a portalled form inside an
+outer form: the outer `onSubmit` fires on the inner form's submit, and stops
+firing once wrapped. `lib/dialog-form.test.ts` keeps the helper's contract
+(stop-before-handle, event passthrough, errors not swallowed) covered.
+
+## Gear types are a closed vocabulary shared with the API, not free text
+
+`GEAR_TYPES` in `lib/api/gear.ts` mirrors the API's `GearType` enum. It's a fixed
+list rather than a text field so the same kind of kit is named the same way
+across a diver's whole list, which is what makes the type worth showing at all.
+
+Two details worth keeping:
+
+- **Order is meaningful.** The array is declared in the order kit is normally
+  listed, not alphabetically, and it's what drives the picker's option order - so
+  it reads "Mask, Snorkel, Fins..." rather than "BCD, Boots, Camera...".
+- **`gearTypeLabel()` falls back to the raw value** for a type this build doesn't
+  know. The API can grow a category before the frontend ships the matching label,
+  and rendering the slug beats rendering a blank cell. A test walks `GEAR_TYPES`
+  to catch the opposite mistake - a type added without a label.
+
+Type is optional. `""` is the form's "not set" state (React Hook Form re-displays
+a field's default whenever its value resolves to `undefined` - see "The 'cleared
+field resets to default' React Hook Form quirk"), converted to an explicit `null`
+on update so clearing it actually clears it, and simply omitted on create.
+Radix's `SelectItem` can't take an empty string value, so the dropdown's "No
+type" option uses a `__none__` sentinel - the same pattern as `GearSetDialog`'s
+"Create a new set".
+
+## `ComboboxItem.location` was renamed to `hint`
+
+`CreatableCombobox` has always had an optional second line of text after an
+item's name, documented as "purely cosmetic" but named `location` because dive
+sites were its only caller. The gear picker wants the same slot for an item's
+type ("Apeks XTX50, Regulator") - kit often has cryptic model names, so the
+category is what makes the dropdown scannable. Renamed to `hint`, which is what
+the field always was.
+
+## Drag-to-reorder uses Pointer Events and no library
+
+The dive form's gear list is sortable by dragging its grip handle
+(`hooks/useDragSort.ts`). Three choices worth keeping:
+
+- **Pointer Events, not the HTML5 drag-and-drop API.** HTML5 DnD emits no events
+  for touch, so a phone couldn't reorder at all - the app has a mobile nav, so
+  that's not a theoretical gap. Pointer events cover mouse, touch and pen through
+  one code path. The handle needs `touch-action: none` (supplied by the hook, so
+  consumers can't forget it) or the browser scrolls the page instead of letting
+  the drag through.
+- **Move listeners go on `window`, and `setPointerCapture` is deliberately not
+  used.** Capture is the obvious tool and was the first implementation, but it is
+  wrong here: the capturing element sits *inside* the row being reordered, so the
+  moment the list rearranges React moves that row in the DOM, the browser releases
+  the capture and fires `lostpointercapture` - killing the drag mid-gesture. It
+  bit hardest when dragging past either end, where a swap fires immediately and
+  the row was "lost" on the first movement. Window listeners don't care about the
+  DOM moving underneath them, so a drag ends only on a real pointerup/cancel.
+- **The dragged row is translated to follow the pointer** (`dragOffset`). Without
+  it the row stayed in place until it happened to reach its destination, which
+  reads as the drag never having started. The offset is re-based at each swap
+  (`desiredTop - targetRect.top`) so the row doesn't jump by a row height at the
+  moment the list rearranges, and is otherwise self-correcting: each move nudges
+  by the difference between where the row is and where the pointer wants it,
+  which survives reorders and reflows without tracking layout by hand.
+- **A swap walks past every neighbour the row has cleared, not one per event.** A
+  quick flick emits only a handful of pointermove events; single-stepping left the
+  list crawling behind the pointer.
+- **No @dnd-kit / react-beautiful-dnd.** This is one short vertical list on one
+  screen; a drag library would be a dependency and a bundle for that.
+- **The handle is a real `<button>` with Up/Down keyboard support.** A drag-only
+  implementation quietly assumes a pointer, which would make reordering
+  impossible for keyboard users. Its `aria-label` says so, since "drag to
+  reorder" alone would be a dead end. Because rows are keyed by item uuid, React
+  moves the DOM node on reorder rather than recreating it, so focus follows the
+  item and repeated arrow presses keep working.
+
+The list reorders live as the pointer crosses a row rather than only on drop, so
+`onReorder` fires many times per gesture - hence `moveItem()` returns the *same
+array reference* for a no-op move, which keeps a pointermove within one row from
+queueing a pointless form-state update.
+
+Swapping compares the dragged row's own centre against its neighbours' centres,
+not "which row is the pointer inside?". The pointer-inside test did nothing while
+the pointer sat in the gap between two rows, and tied the swap to where the
+pointer was rather than to where the row had visibly got to.
+
+`resolveSwapTarget()` is exported separately from the hook purely so it can be
+unit-tested: it's the only pure logic (centre crossing, multi-step walking,
+parking at the ends, tolerating not-yet-mounted refs) and testing it through
+simulated pointer events in jsdom would mostly be testing stubs, since jsdom has
+no layout and `getBoundingClientRect` returns zeroes. The gesture as a whole was
+verified in a real browser instead, against a throwaway unauthenticated page:
+follows the pointer 1:1 from the first pixel, swaps at the halfway crossing with
+the row staying exactly under the cursor, survives being dragged far outside the
+list in both directions, and leaves no transform or lifted styling behind on
+release.
+
+A second pointer going down mid-drag is ignored, or a stray finger on a
+touchscreen would start a second gesture whose listeners fight the first over the
+same offset.
+
+Dive sites use the same handle, and their up/down arrow buttons were removed
+rather than kept alongside it: the handle already answers Up/Down when focused,
+so the arrows were a third and fourth control per row doing what the grip does.
+Dive site order is semantically load-bearing (position 0 is the primary site,
+shown as "Site +2" wherever only one fits), so their handle's `aria-label` names
+the position and calls out the primary slot - dragging blind is fine when order
+is cosmetic, less so when it decides which site the dive is filed under.
+
+## The combobox opens on click as well as focus, and stays open for multi-select
+
+`CreatableCombobox` originally opened its menu only in `onFocus`. Two consequences,
+both reported as bugs:
+
+- **Picking an existing item left the picker stuck.** `handleSelect` closed the
+  menu, but the item's `onMouseDown` preventDefault deliberately keeps focus on
+  the input - so the input stayed focused with the menu closed. A `focus` event
+  doesn't fire on an already-focused element, so clicking the input did nothing:
+  the only way back was to click away and click in again. Adding a second dive
+  site or gear item therefore took three clicks instead of one.
+- Any other path that closes the menu while keeping focus (Escape, a dialog
+  restoring focus on close) landed in the same dead end.
+
+Two fixes, deliberately both:
+
+- `onClick` on the input also opens the menu. That's the general guard - whatever
+  closes the menu, a click always brings it back, with no dependence on focus
+  having actually changed.
+- `keepOpenOnSelect` keeps the menu up after a pick and clears the typed filter,
+  so several items can be added in a row. Set by `DiveSiteMultiSelect` and
+  `GearItemMultiSelect`, whose picked items move into the list above them.
+  `TripCombobox` leaves it off: it fills a single field, so closing the menu and
+  showing the chosen name in the input is the right outcome there.
+
+Verified in a real browser against a throwaway page: picking an item leaves the
+input focused and empty with the menu open and the picked item gone from the
+options, two picks land back to back with no clicking away, and clicking an
+already-focused input with a closed menu reopens it.
+
+## Dropdowns are navigable with Up/Down and Enter
+
+Both of the dive form's dropdown implementations - `CreatableCombobox` (dive
+sites, trips, gear) and `VolumeCombobox` (cylinder presets) - highlight rows with
+Up/Down and take the highlighted one with Enter. They share `nextActiveIndex()`,
+so they move identically.
+
+The details worth keeping:
+
+- **The menu opens with nothing highlighted (`activeIndex === -1`).** Enter then
+  keeps its original meaning - commit the typed text, which is what matches an
+  exactly-typed name or creates one via `onCreate` - rather than silently picking
+  whichever row happened to be first. Down enters the list from the top, Up from
+  the bottom.
+- **Movement clamps rather than wrapping.** Running off the end of a long list
+  and silently reappearing at the other end is disorienting.
+- **The "Add new..." row is option 0, not a special case.** It's a row in the
+  menu like any other; skipping it would make it the one thing in the list you
+  can't reach by keyboard.
+- **Typing resets the highlight**, since re-filtering would otherwise leave the
+  index pointing at a different row than the one being looked at. Hovering with
+  the mouse moves the highlight too, so mouse and keyboard can't end up
+  disagreeing about which row is active.
+- The input carries `role="combobox"` + `aria-expanded`/`aria-controls`/
+  `aria-activedescendant`, and rows carry `role="option"`/`aria-selected`, so a
+  screen reader follows the highlight without focus ever leaving the input.
+  The highlighted row is scrolled into view (`block: "nearest"`) - the menu is
+  only 15rem tall, so arrowing down a long list otherwise walks off the bottom.
+
+One deliberate behaviour change: `VolumeCombobox`'s input is `type="number"`,
+where Up/Down natively step the value by `step` (0.01 here). Navigating the
+preset list is the far more useful binding and nudging a volume by a hundredth of
+a litre isn't something anyone reaches for, but it *is* a change - if the
+stepping is ever wanted back, that's the one dropdown to reconsider.

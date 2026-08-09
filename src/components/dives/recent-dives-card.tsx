@@ -28,6 +28,9 @@ export interface RecentDivesCardProps {
   // Only show dives made at this dive site. When omitted, shows dives
   // regardless of dive site.
   diveSiteId?: string;
+  // Only show dives this gear item was used on. When omitted, shows dives
+  // regardless of gear.
+  gearItemId?: string;
   // Maximum number of dives to fetch/display. Defaults to 5 for the
   // dashboard/profile "recent dives" use case.
   limit?: number;
@@ -50,6 +53,7 @@ export function RecentDivesCard({
   userId,
   tripId,
   diveSiteId,
+  gearItemId,
   limit = RECENT_DIVES_COUNT,
   title = "Recent Dives",
   description = "Your latest underwater adventures",
@@ -75,6 +79,7 @@ export function RecentDivesCard({
           limit,
           tripId,
           diveSiteId,
+          gearItemId,
         );
         setRecentDives(response.data);
       } catch (error) {
@@ -85,7 +90,7 @@ export function RecentDivesCard({
     };
 
     fetchRecentDives();
-  }, [userId, tripId, diveSiteId, limit]);
+  }, [userId, tripId, diveSiteId, gearItemId, limit]);
 
   return (
     <Card>

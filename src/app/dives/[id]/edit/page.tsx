@@ -48,6 +48,7 @@ export default function EditDivePage() {
       visibility: undefined,
       trip_uuid: undefined,
       dive_site_uuids: [],
+      gear_item_uuids: [],
       notes: "",
       mixtures: [{ ...DEFAULT_MIXTURE, name: getDefaultMixtureName(0) }],
     },
@@ -77,6 +78,7 @@ export default function EditDivePage() {
           visibility: diveData.visibility,
           trip_uuid: diveData.trip_uuid,
           dive_site_uuids: diveData.dive_sites?.map((site) => site.uuid) ?? [],
+          gear_item_uuids: diveData.gear_items?.map((item) => item.uuid) ?? [],
           notes: diveData.notes || "",
           mixtures: diveData.mixtures?.length
             ? diveData.mixtures.map((m) => ({
@@ -147,6 +149,10 @@ export default function EditDivePage() {
 
       if (data.dive_site_uuids !== undefined) {
         updateData.dive_site_uuids = data.dive_site_uuids;
+      }
+
+      if (data.gear_item_uuids !== undefined) {
+        updateData.gear_item_uuids = data.gear_item_uuids;
       }
 
       if (data.notes !== undefined) {

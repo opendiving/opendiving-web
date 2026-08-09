@@ -25,6 +25,7 @@ import {
   Waves,
   MapPin,
   Luggage,
+  Backpack,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -34,6 +35,7 @@ const NAV_SECTIONS: { prefix: string; page: string }[] = [
   { prefix: "/trips", page: "trips" },
   { prefix: "/dives", page: "dives" },
   { prefix: "/sites", page: "sites" },
+  { prefix: "/gear", page: "gear" },
   { prefix: "/community", page: "community" },
 ];
 
@@ -119,6 +121,14 @@ export function Header() {
                     Dive Sites
                   </Link>
                   <Link
+                    href="/gear"
+                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-coral ${
+                      currentPage === "gear" ? "text-coral" : "text-foreground"
+                    }`}
+                  >
+                    Gear
+                  </Link>
+                  <Link
                     href="/community"
                     className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-coral ${
                       currentPage === "community"
@@ -184,6 +194,12 @@ export function Header() {
                     <Link href="/sites/new" className="flex items-center">
                       <MapPin className="mr-2 h-4 w-4" />
                       New Dive Site
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/gear" className="flex items-center">
+                      <Backpack className="mr-2 h-4 w-4" />
+                      Manage Gear
                     </Link>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -286,6 +302,13 @@ export function Header() {
                     Dive Sites
                   </Link>
                   <Link
+                    href="/gear"
+                    className={`text-sm font-medium hover:text-coral py-2 ${currentPage === "gear" ? "text-coral" : "text-foreground"}`}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Gear
+                  </Link>
+                  <Link
                     href="/community"
                     className={`text-sm font-medium hover:text-coral py-2 ${currentPage === "community" ? "text-coral" : "text-foreground"}`}
                     onClick={() => setIsMobileMenuOpen(false)}
@@ -319,6 +342,14 @@ export function Header() {
                     >
                       <MapPin className="mr-2 h-4 w-4" />
                       New Dive Site
+                    </Link>
+                    <Link
+                      href="/gear"
+                      className="flex items-center text-sm font-medium text-foreground hover:text-coral py-2"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      <Backpack className="mr-2 h-4 w-4" />
+                      Manage Gear
                     </Link>
                   </div>
                 </>

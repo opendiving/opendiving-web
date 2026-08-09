@@ -56,14 +56,15 @@ function NewDivePageContent() {
       trip_uuid: initialTripId,
       dive_site_uuids:
         initialDiveSiteId !== undefined ? [initialDiveSiteId] : [],
+      gear_item_uuids: [],
       notes: "",
       mixtures: [{ ...DEFAULT_MIXTURE, name: getDefaultMixtureName(0) }],
     },
   });
   const mixtureFieldArray = useMixtureFieldArray(form.control);
 
-  // Pre-fill trip and gas mixture defaults from the most recent dive so the
-  // user doesn't have to re-enter recurring values for every new log entry.
+  // Pre-fill trip, gas mixture and gear defaults from the most recent dive so
+  // the user doesn't have to re-enter recurring values for every new log entry.
   useEffect(() => {
     if (!user) return;
 
@@ -94,6 +95,12 @@ function NewDivePageContent() {
           trip_uuid: initialTripId ?? lastDive.trip_uuid,
           dive_site_uuids:
             initialDiveSiteId !== undefined ? [initialDiveSiteId] : [],
+          // Divers tend to use the same kit dive after dive, so carry it over.
+          // Archived items are skipped: they're gear that's been retired since,
+          // and the picker wouldn't offer them for a new dive either.
+          gear_item_uuids: (lastDive.gear_items ?? [])
+            .filter((item) => !item.is_archived)
+            .map((item) => item.uuid),
           notes: "",
           mixtures: lastDive.mixtures?.length
             ? lastDive.mixtures.map((m, i) => ({
