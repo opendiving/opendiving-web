@@ -53,6 +53,7 @@ function NewDivePageContent() {
       avg_depth: undefined,
       bottom_temperature: undefined,
       visibility: undefined,
+      weight: undefined,
       trip_uuid: initialTripId,
       dive_site_uuids:
         initialDiveSiteId !== undefined ? [initialDiveSiteId] : [],
@@ -91,6 +92,10 @@ function NewDivePageContent() {
           avg_depth: undefined,
           bottom_temperature: undefined,
           visibility: undefined,
+          // Carried over for the same reason as the gear below: weight is a
+          // property of the kit and exposure suit, so it rarely changes between
+          // consecutive dives.
+          weight: lastDive.weight,
           // URL param takes precedence over the last dive's trip.
           trip_uuid: initialTripId ?? lastDive.trip_uuid,
           dive_site_uuids:

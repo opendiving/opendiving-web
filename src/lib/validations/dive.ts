@@ -27,6 +27,12 @@ const durationField = (
   message = "Duration must be in MM:SS format, e.g. 67:30",
 ) => z.string().min(1, "Duration is required").regex(DURATION_REGEX, message);
 
+// Total ballast carried on the dive, in kilograms. Identical in the create and
+// update schemas (it's optional in both), so it lives in one helper rather than
+// being written out twice.
+const weightField = () =>
+  z.number().min(0, "Weight must be zero or positive").nullable().optional();
+
 // Optional numeric field that can also hold the literal empty string "" while
 // the user is editing. We deliberately never let the *live* form value become
 // `undefined` for these fields: react-hook-form falls back to re-displaying a
@@ -145,6 +151,10 @@ export const diveCreateSchema = z.object({
     .positive("Visibility must be positive")
     .nullable()
     .optional(),
+  // Kilograms. `min(0)` rather than `positive()`, unlike the depths above:
+  // diving with no lead at all is a real entry, and it's worth distinguishing
+  // from not having recorded it - mirrors `ck_dive_weight_non_negative`.
+  weight: weightField(),
   trip_uuid: z.string().optional(),
   dive_site_uuids: z.array(z.string()).default([]),
   gear_item_uuids: z.array(z.string()).default([]),
@@ -180,6 +190,7 @@ export const diveUpdateSchema = z.object({
     .positive("Visibility must be positive")
     .nullable()
     .optional(),
+  weight: weightField(),
   trip_uuid: z.string().optional(),
   dive_site_uuids: z.array(z.string()).optional(),
   gear_item_uuids: z.array(z.string()).optional(),

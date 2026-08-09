@@ -33,6 +33,9 @@ export interface Dive {
   avg_depth?: number;
   bottom_temperature?: number;
   visibility?: number;
+  // Total ballast carried on the dive, in kilograms. A plain per-dive number
+  // rather than a gear item - see the API's DECISIONS.md.
+  weight?: number;
   trip_uuid?: string;
   dive_sites: DiveSiteSummary[];
   // Gear used on the dive. A dive records the items themselves, never the gear
@@ -56,6 +59,7 @@ export interface DiveCreate {
   avg_depth?: number | null;
   bottom_temperature?: number | null;
   visibility?: number | null;
+  weight?: number | null;
   trip_uuid?: string;
   dive_site_uuids?: string[];
   gear_item_uuids?: string[];
@@ -72,6 +76,7 @@ export interface DiveUpdate {
   avg_depth?: number | null;
   bottom_temperature?: number | null;
   visibility?: number | null;
+  weight?: number | null;
   trip_uuid?: string;
   dive_site_uuids?: string[];
   gear_item_uuids?: string[];

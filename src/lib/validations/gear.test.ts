@@ -98,4 +98,30 @@ describe("gearSetSchema", () => {
       expect(result.error.issues[0].message).toBe("Set name is required");
     }
   });
+
+  // A set without a weight makes no claim about ballast, and loading it into a
+  // dive leaves whatever's already there alone.
+  it("leaves weight undefined when it isn't given", () => {
+    const result = gearSetSchema.safeParse({ name: "Sidemount" });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.weight).toBeUndefined();
+    }
+  });
+
+  it("accepts a fractional weight", () => {
+    const result = gearSetSchema.safeParse({ name: "Sidemount", weight: 4.5 });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.weight).toBe(4.5);
+    }
+  });
+
+  it("rejects a negative weight", () => {
+    const result = gearSetSchema.safeParse({ name: "Sidemount", weight: -1 });
+
+    expect(result.success).toBe(false);
+  });
 });

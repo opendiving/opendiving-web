@@ -1,7 +1,7 @@
 "use client";
 
 import { Control, FieldValues, Path } from "react-hook-form";
-import { Clock, Gauge, Thermometer, Eye } from "lucide-react";
+import { Clock, Gauge, Thermometer, Eye, Weight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { DiveStartTimeField } from "@/components/dives/dive-start-time-field";
@@ -41,6 +41,7 @@ export interface DiveFormValues extends FieldValues {
   avg_depth?: number | null;
   bottom_temperature?: number | null;
   visibility?: number | null;
+  weight?: number | null;
   trip_uuid?: string;
   dive_site_uuids?: string[];
   gear_item_uuids?: string[];
@@ -310,22 +311,65 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
         fieldArray={mixtureFieldArray}
       />
 
-      {/* Gear */}
+      {/* Gear & weight - grouped as "how the diver was configured for this
+          dive", as opposed to the environment readings above. Weight is a plain
+          per-dive number rather than one of the gear items (see DECISIONS.md),
+          but it belongs next to them here.
+
+          The two are nested rather than rendered side by side because loading a
+          gear set fills in *both*: `DiveGearField` needs the weight field's
+          value and setter, and nesting is what puts them in scope without
+          registering `weight` twice. */}
       <FormField
         control={control}
-        name={"gear_item_uuids" as Path<TFieldValues>}
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Gear</FormLabel>
-            <FormControl>
-              <DiveGearField
-                userId={userId}
-                value={field.value ?? []}
-                onChange={field.onChange}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
+        name={"weight" as Path<TFieldValues>}
+        render={({ field: weightField }) => (
+          <div className="space-y-6">
+            <FormField
+              control={control}
+              name={"gear_item_uuids" as Path<TFieldValues>}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Gear</FormLabel>
+                  <FormControl>
+                    <DiveGearField
+                      userId={userId}
+                      value={field.value ?? []}
+                      onChange={field.onChange}
+                      weight={weightField.value ?? null}
+                      onWeightChange={weightField.onChange}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormItem>
+                <FormLabel>Weight (kg)</FormLabel>
+                <FormControl>
+                  <div className="relative">
+                    <Weight className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                    <Input
+                      type="number"
+                      step="0.5"
+                      min="0"
+                      placeholder="e.g. 6"
+                      className="pl-9"
+                      {...weightField}
+                      value={weightField.value ?? ""}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value);
+                        weightField.onChange(Number.isNaN(val) ? null : val);
+                      }}
+                    />
+                  </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            </div>
+          </div>
         )}
       />
 

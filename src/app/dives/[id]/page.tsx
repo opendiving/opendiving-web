@@ -43,6 +43,7 @@ import {
   MapPin,
   FileText,
   Backpack,
+  Weight,
   Loader2,
 } from "lucide-react";
 import Link from "next/link";
@@ -172,6 +173,8 @@ export default function DiveDetailPage() {
 
   const hasEnvironmentInfo =
     dive.bottom_temperature != null || dive.visibility != null;
+
+  const hasGearInfo = (dive.gear_items?.length ?? 0) > 0 || dive.weight != null;
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -349,8 +352,10 @@ export default function DiveDetailPage() {
             </Card>
           )}
 
-          {/* Gear */}
-          {dive.gear_items && dive.gear_items.length > 0 && (
+          {/* Gear & weight. Shown whenever *either* is recorded - a dive can
+              have a logged weight without any gear items listed, and vice
+              versa. */}
+          {hasGearInfo && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -358,23 +363,38 @@ export default function DiveDetailPage() {
                   Gear
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <ul className="space-y-2">
-                  {dive.gear_items.map((item) => (
-                    <li key={item.uuid} className="flex items-center gap-2">
-                      <Link
-                        href={`/gear/${item.uuid}`}
-                        className="text-sm font-medium hover:underline"
-                      >
-                        {gearItemLabel(item)}
-                      </Link>
-                      {item.rented && <Badge variant="secondary">Rented</Badge>}
-                      {item.is_archived && (
-                        <Badge variant="outline">Archived</Badge>
-                      )}
-                    </li>
-                  ))}
-                </ul>
+              <CardContent className="space-y-4">
+                {dive.gear_items && dive.gear_items.length > 0 && (
+                  <ul className="space-y-2">
+                    {dive.gear_items.map((item) => (
+                      <li key={item.uuid} className="flex items-center gap-2">
+                        <Link
+                          href={`/gear/${item.uuid}`}
+                          className="text-sm font-medium hover:underline"
+                        >
+                          {gearItemLabel(item)}
+                        </Link>
+                        {item.rented && (
+                          <Badge variant="secondary">Rented</Badge>
+                        )}
+                        {item.is_archived && (
+                          <Badge variant="outline">Archived</Badge>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {dive.weight != null && (
+                  <div>
+                    <div className="text-sm font-medium text-muted-foreground mb-1">
+                      Weight
+                    </div>
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <Weight className="h-4 w-4 text-muted-foreground" />
+                      {dive.weight} kg
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}

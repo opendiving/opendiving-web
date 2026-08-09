@@ -118,6 +118,10 @@ export interface GearItemUpdate {
 export interface GearSet {
   uuid: string;
   name: string;
+  // Ballast normally carried with this configuration, in kilograms. Prefills
+  // the dive form's `weight` when the set is loaded - the dive keeps its own
+  // copy from then on, exactly like the item list.
+  weight?: number;
   gear_items: GearItemSummary[];
   user_uuid: string;
   created_at: string;
@@ -126,11 +130,13 @@ export interface GearSet {
 export interface GearSetCreate {
   user_uuid: string;
   name: string;
+  weight?: number | null;
   gear_item_uuids: string[];
 }
 
 export interface GearSetUpdate {
   name?: string;
+  weight?: number | null;
   gear_item_uuids?: string[];
 }
 

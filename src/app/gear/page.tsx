@@ -368,6 +368,7 @@ export default function GearPage() {
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Gear</TableHead>
+                    <TableHead>Weight</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -379,6 +380,9 @@ export default function GearPage() {
                         {set.gear_items.length === 0
                           ? "Empty"
                           : set.gear_items.map(gearItemLabel).join(", ")}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground whitespace-nowrap">
+                        {set.weight != null ? `${set.weight} kg` : "—"}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
