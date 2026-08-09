@@ -1,4 +1,5 @@
 import { apiClient } from "./client";
+import { GearItemSummary } from "./gear";
 
 // A single gas mixture / scuba tank used during a dive.
 export interface DiveMixture {
@@ -34,6 +35,9 @@ export interface Dive {
   visibility?: number;
   trip_uuid?: string;
   dive_sites: DiveSiteSummary[];
+  // Gear used on the dive. A dive records the items themselves, never the gear
+  // set they were loaded from - sets are only a form-filling shortcut.
+  gear_items: GearItemSummary[];
   notes: string;
   user_uuid: string;
   created_at: string;
@@ -54,6 +58,7 @@ export interface DiveCreate {
   visibility?: number | null;
   trip_uuid?: string;
   dive_site_uuids?: string[];
+  gear_item_uuids?: string[];
   notes?: string;
   mixtures?: DiveMixture[];
 }
@@ -69,6 +74,7 @@ export interface DiveUpdate {
   visibility?: number | null;
   trip_uuid?: string;
   dive_site_uuids?: string[];
+  gear_item_uuids?: string[];
   notes?: string;
   mixtures?: DiveMixture[];
 }
@@ -122,14 +128,16 @@ export const divesAPI = {
     return response.data;
   },
 
-  // Get all dives for a user (paginated). Pass `tripUuid`/`diveSiteUuid` to only
-  // return dives that belong to a given trip / were made at a given site.
+  // Get all dives for a user (paginated). Pass `tripUuid`/`diveSiteUuid`/
+  // `gearItemUuid` to only return dives that belong to a given trip / were made
+  // at a given site / used a given piece of gear.
   async getDives(
     userUuid: string,
     page: number = 1,
     items_per_page: number = 10,
     tripUuid?: string,
     diveSiteUuid?: string,
+    gearItemUuid?: string,
   ): Promise<PaginatedDivesResponse> {
     const response = await apiClient.get(`/dives`, {
       params: {
@@ -138,6 +146,7 @@ export const divesAPI = {
         items_per_page,
         ...(tripUuid !== undefined ? { trip_uuid: tripUuid } : {}),
         ...(diveSiteUuid !== undefined ? { dive_site_uuid: diveSiteUuid } : {}),
+        ...(gearItemUuid !== undefined ? { gear_item_uuid: gearItemUuid } : {}),
       },
     });
     return response.data;

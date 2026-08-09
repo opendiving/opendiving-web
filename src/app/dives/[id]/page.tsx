@@ -6,6 +6,8 @@ import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { divesAPI, Dive } from "@/lib/api/dives";
 import { tripsAPI, Trip } from "@/lib/api/trips";
 import { DiveSitesLabel } from "@/components/dives/dive-sites-label";
+import { gearItemLabel } from "@/lib/api/gear";
+import { Badge } from "@/components/ui/badge";
 import {
   formatDateTime,
   formatDiveDateTime,
@@ -40,6 +42,7 @@ import {
   Luggage,
   MapPin,
   FileText,
+  Backpack,
   Loader2,
 } from "lucide-react";
 import Link from "next/link";
@@ -342,6 +345,36 @@ export default function DiveDetailPage() {
                     </TableBody>
                   </Table>
                 </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Gear */}
+          {dive.gear_items && dive.gear_items.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Backpack className="h-5 w-5" />
+                  Gear
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-2">
+                  {dive.gear_items.map((item) => (
+                    <li key={item.uuid} className="flex items-center gap-2">
+                      <Link
+                        href={`/gear/${item.uuid}`}
+                        className="text-sm font-medium hover:underline"
+                      >
+                        {gearItemLabel(item)}
+                      </Link>
+                      {item.rented && <Badge variant="secondary">Rented</Badge>}
+                      {item.is_archived && (
+                        <Badge variant="outline">Archived</Badge>
+                      )}
+                    </li>
+                  ))}
+                </ul>
               </CardContent>
             </Card>
           )}

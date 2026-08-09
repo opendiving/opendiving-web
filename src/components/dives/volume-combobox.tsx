@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
+import { nextActiveIndex } from "@/components/ui/creatable-combobox";
 import { cn } from "@/lib/utils";
 
 export interface VolumeOption {
@@ -60,11 +61,28 @@ export function VolumeCombobox({
   placeholder = "Select or enter volume...",
 }: VolumeComboboxProps) {
   const [isOpen, setIsOpen] = useState(false);
+  // Index of the keyboard-highlighted preset, or -1 for none - shares
+  // `nextActiveIndex` with `CreatableCombobox` so both dropdowns in the dive
+  // form move the same way.
+  const [activeIndex, setActiveIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
+  const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const listId = useId();
+  const optionId = (index: number) => `${listId}-option-${index}`;
+
+  useEffect(() => {
+    if (activeIndex < 0) return;
+    optionRefs.current[activeIndex]?.scrollIntoView({ block: "nearest" });
+  }, [activeIndex]);
+
+  const closeMenu = () => {
+    setIsOpen(false);
+    setActiveIndex(-1);
+  };
 
   const handleSelect = (option: VolumeOption) => {
     onChange(option.value);
-    setIsOpen(false);
+    closeMenu();
   };
 
   return (
@@ -81,31 +99,77 @@ export function VolumeCombobox({
           const parsed = parseFloat(e.target.value);
           onChange(Number.isNaN(parsed) ? undefined : parsed);
         }}
+        role="combobox"
+        aria-expanded={isOpen}
+        aria-controls={listId}
+        aria-activedescendant={
+          isOpen && activeIndex >= 0 ? optionId(activeIndex) : undefined
+        }
         onFocus={() => setIsOpen(true)}
-        onBlur={() => setIsOpen(false)}
+        onClick={() => setIsOpen(true)}
+        onBlur={closeMenu}
         onKeyDown={(e) => {
+          if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+            // On a `type="number"` input these keys natively step the value by
+            // `step` (0.01 here). Navigating the preset list is the far more
+            // useful binding, and nudging a volume by a hundredth of a litre
+            // isn't something anyone reaches for - but it is a behaviour change,
+            // so it's called out rather than silently swapped.
+            e.preventDefault();
+            if (!isOpen) {
+              setIsOpen(true);
+              return;
+            }
+            setActiveIndex((current) =>
+              nextActiveIndex(
+                current,
+                e.key === "ArrowDown" ? 1 : -1,
+                VOLUME_OPTIONS.length,
+              ),
+            );
+            return;
+          }
+
           if (e.key === "Enter") {
             e.preventDefault();
+            if (isOpen && activeIndex >= 0) {
+              handleSelect(VOLUME_OPTIONS[activeIndex]);
+              return;
+            }
             inputRef.current?.blur();
+            return;
           }
+
           if (e.key === "Escape") {
-            setIsOpen(false);
+            closeMenu();
             inputRef.current?.blur();
           }
         }}
       />
       {isOpen && (
-        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md max-h-60 overflow-auto">
-          {VOLUME_OPTIONS.map((option) => (
+        <div
+          id={listId}
+          role="listbox"
+          className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md max-h-60 overflow-auto"
+        >
+          {VOLUME_OPTIONS.map((option, index) => (
             <button
               key={option.value}
               type="button"
+              id={optionId(index)}
+              role="option"
+              aria-selected={index === activeIndex}
+              ref={(el) => {
+                optionRefs.current[index] = el;
+              }}
               className={cn(
                 "w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground",
                 option.value === value && "bg-accent/50",
+                index === activeIndex && "bg-accent text-accent-foreground",
               )}
               // Prevent the input's onBlur from firing before this click is registered.
               onMouseDown={(e) => e.preventDefault()}
+              onMouseEnter={() => setActiveIndex(index)}
               onClick={() => handleSelect(option)}
             >
               {option.label}

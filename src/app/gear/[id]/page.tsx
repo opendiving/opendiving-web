@@ -1,0 +1,324 @@
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
+import {
+  gearAPI,
+  GearItem,
+  gearItemLabel,
+  gearTypeLabel,
+} from "@/lib/api/gear";
+import { getApiErrorMessage } from "@/lib/api/error";
+import { formatDateTime } from "@/lib/date-time";
+import { RecentDivesCard } from "@/components/dives/recent-dives-card";
+import { GearItemDialog } from "@/components/gear/gear-item-dialog";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { PageHeader } from "@/components/ui/page-header";
+import { PageSpinner } from "@/components/ui/page-spinner";
+import { SectionSpinner } from "@/components/ui/section-spinner";
+import { NotFoundState } from "@/components/ui/not-found-state";
+import {
+  Edit,
+  Trash2,
+  Backpack,
+  Archive,
+  ArchiveRestore,
+  Loader2,
+} from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
+
+export default function GearItemDetailPage() {
+  const params = useParams();
+  const router = useRouter();
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
+  const { toast } = useToast();
+  const [gearItem, setGearItem] = useState<GearItem | null>(null);
+  const [isLoadingGear, setIsLoadingGear] = useState(true);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
+  const [isArchiveConfirmOpen, setIsArchiveConfirmOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+
+  const gearItemId = params.id as string;
+
+  const loadGearItem = useCallback(async () => {
+    setGearItem(await gearAPI.getGearItem(gearItemId));
+  }, [gearItemId]);
+
+  useEffect(() => {
+    const fetchGearItem = async () => {
+      if (!user || !gearItemId) return;
+
+      try {
+        setIsLoadingGear(true);
+        await loadGearItem();
+      } catch (error) {
+        console.error("Failed to fetch gear:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load gear details. Please try again.",
+          variant: "destructive",
+        });
+        router.push("/gear");
+      } finally {
+        setIsLoadingGear(false);
+      }
+    };
+
+    if (user) {
+      fetchGearItem();
+    }
+  }, [user, gearItemId, loadGearItem, toast, router]);
+
+  const handleToggleArchived = async () => {
+    if (!gearItem) return;
+
+    try {
+      setIsArchiving(true);
+      await gearAPI.updateGearItem(gearItem.uuid, {
+        is_archived: !gearItem.is_archived,
+      });
+      await loadGearItem();
+      toast({
+        title: "Success",
+        description: gearItem.is_archived
+          ? "Gear unarchived."
+          : "Gear archived. It stays on your logged dives but won't be offered for new ones.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: getApiErrorMessage(
+          error,
+          "Failed to update gear. Please try again.",
+        ),
+        variant: "destructive",
+      });
+    } finally {
+      setIsArchiving(false);
+      setIsArchiveConfirmOpen(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!gearItem) return;
+
+    try {
+      setIsDeleting(true);
+      await gearAPI.deleteGearItem(gearItem.uuid);
+      toast({ title: "Success", description: "Gear deleted successfully." });
+      router.push("/gear");
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: getApiErrorMessage(
+          error,
+          "Failed to delete gear. Please try again.",
+        ),
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+      setIsDeleteConfirmOpen(false);
+    }
+  };
+
+  if (isAuthLoading) {
+    return <PageSpinner />;
+  }
+
+  if (!isAuthenticated) {
+    return null; // Will redirect to signin
+  }
+
+  if (isLoadingGear) {
+    return (
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <SectionSpinner />
+      </div>
+    );
+  }
+
+  if (!gearItem) {
+    return (
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <NotFoundState
+          message="Gear not found."
+          backHref="/gear"
+          backLabel="Back to Gear"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <PageHeader
+        backHref="/gear"
+        backLabel="Back to Gear"
+        title={gearItem.name}
+        subtitle={gearItem.brand ?? undefined}
+        actions={
+          <>
+            <Button variant="outline" onClick={() => setIsEditOpen(true)}>
+              <Edit className="h-4 w-4 mr-2" />
+              Edit
+            </Button>
+            <Button
+              variant="outline"
+              disabled={isArchiving}
+              onClick={() =>
+                gearItem.is_archived
+                  ? handleToggleArchived()
+                  : setIsArchiveConfirmOpen(true)
+              }
+            >
+              {gearItem.is_archived ? (
+                <ArchiveRestore className="h-4 w-4 mr-2" />
+              ) : (
+                <Archive className="h-4 w-4 mr-2" />
+              )}
+              {gearItem.is_archived ? "Unarchive" : "Archive"}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => setIsDeleteConfirmOpen(true)}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-2" />
+              )}
+              Delete
+            </Button>
+          </>
+        }
+      />
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <RecentDivesCard
+            userId={user?.uuid ?? ""}
+            gearItemId={gearItem.uuid}
+            limit={100}
+            title="Dives with this Gear"
+            description="Every dive this item was used on"
+            viewAllHref={null}
+            emptyTitle="Not used on any dive yet"
+            emptyDescription="Add this item to a dive's gear list to see it here."
+            newDiveLabel="Log a Dive"
+          />
+        </div>
+
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Backpack className="h-5 w-5" />
+                Gear Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <div className="text-sm font-medium text-muted-foreground mb-1">
+                  Dives
+                </div>
+                <div className="text-2xl font-bold tabular-nums">
+                  {gearItem.dive_count}
+                </div>
+              </div>
+
+              {(gearItem.rented || gearItem.is_archived) && (
+                <div className="flex flex-wrap gap-2">
+                  {gearItem.rented && <Badge variant="secondary">Rented</Badge>}
+                  {gearItem.is_archived && (
+                    <Badge variant="outline">Archived</Badge>
+                  )}
+                </div>
+              )}
+
+              {gearItem.type && (
+                <div>
+                  <div className="text-sm font-medium text-muted-foreground mb-1">
+                    Type
+                  </div>
+                  <div className="text-sm">{gearTypeLabel(gearItem.type)}</div>
+                </div>
+              )}
+
+              {gearItem.brand && (
+                <div>
+                  <div className="text-sm font-medium text-muted-foreground mb-1">
+                    Brand
+                  </div>
+                  <div className="text-sm">{gearItem.brand}</div>
+                </div>
+              )}
+
+              {gearItem.notes && (
+                <div>
+                  <div className="text-sm font-medium text-muted-foreground mb-1">
+                    Notes
+                  </div>
+                  <p className="whitespace-pre-wrap text-sm text-muted-foreground leading-relaxed">
+                    {gearItem.notes}
+                  </p>
+                </div>
+              )}
+
+              <div>
+                <div className="text-sm font-medium text-muted-foreground mb-1">
+                  Added on
+                </div>
+                <div className="text-sm">
+                  {formatDateTime(gearItem.created_at, {
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      <GearItemDialog
+        userId={user?.uuid ?? ""}
+        open={isEditOpen}
+        onOpenChange={setIsEditOpen}
+        gearItem={gearItem}
+        onSaved={setGearItem}
+      />
+
+      <ConfirmDialog
+        open={isArchiveConfirmOpen}
+        onOpenChange={setIsArchiveConfirmOpen}
+        title="Archive gear"
+        description={`"${gearItemLabel(gearItem)}" will stay on the ${gearItem.dive_count} dive${
+          gearItem.dive_count === 1 ? "" : "s"
+        } it's already logged on, but won't be offered when logging new ones.`}
+        confirmText="Archive"
+        variant="default"
+        isLoading={isArchiving}
+        onConfirm={handleToggleArchived}
+      />
+
+      <ConfirmDialog
+        open={isDeleteConfirmOpen}
+        onOpenChange={setIsDeleteConfirmOpen}
+        title="Delete gear"
+        description="Are you sure you want to delete this gear? Dives you already logged it on keep showing it. To retire gear without touching your log, archive it instead."
+        confirmText="Delete"
+        isLoading={isDeleting}
+        onConfirm={handleDelete}
+      />
+    </div>
+  );
+}

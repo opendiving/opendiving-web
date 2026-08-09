@@ -18,6 +18,7 @@ import {
 } from "@/components/dives/mixture-fields";
 import { TripCombobox } from "@/components/dives/trip-combobox";
 import { DiveSiteMultiSelect } from "@/components/dives/dive-site-multi-select";
+import { DiveGearField } from "@/components/gear/dive-gear-field";
 import { DiveMixtureInput } from "@/lib/validations/dive";
 
 // The field shape shared by both `DiveCreateInput` and `DiveUpdateInput`
@@ -42,6 +43,7 @@ export interface DiveFormValues extends FieldValues {
   visibility?: number | null;
   trip_uuid?: string;
   dive_site_uuids?: string[];
+  gear_item_uuids?: string[];
   notes?: string;
   mixtures?: DiveMixtureInput[];
 }
@@ -306,6 +308,25 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
       <MixtureFields<TFieldValues>
         control={control}
         fieldArray={mixtureFieldArray}
+      />
+
+      {/* Gear */}
+      <FormField
+        control={control}
+        name={"gear_item_uuids" as Path<TFieldValues>}
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Gear</FormLabel>
+            <FormControl>
+              <DiveGearField
+                userId={userId}
+                value={field.value ?? []}
+                onChange={field.onChange}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
       />
 
       {/* Notes */}

@@ -9,6 +9,7 @@ import {
   DiveSiteCreateInput,
 } from "@/lib/validations/dive-site";
 import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
+import { dialogFormSubmit } from "@/lib/dialog-form";
 import {
   Dialog,
   DialogContent,
@@ -90,7 +91,12 @@ export function NewDiveSiteDialog({
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          {/* `dialogFormSubmit` keeps this submit from bubbling into the dive
+              form this dialog is opened from - see `lib/dialog-form.ts`. */}
+          <form
+            onSubmit={dialogFormSubmit(form.handleSubmit(onSubmit))}
+            className="space-y-4"
+          >
             <FormField
               control={form.control}
               name="name"
