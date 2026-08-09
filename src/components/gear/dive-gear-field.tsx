@@ -20,20 +20,29 @@ export interface DiveGearFieldProps {
   // Selected gear item uuids for this dive.
   value: string[];
   onChange: (gearItemUuids: string[]) => void;
+  // The dive's `weight` field, owned by the dive form and rendered just below
+  // this component. It's passed in because loading a gear set fills it in too -
+  // weight is part of the configuration a set describes, even though the input
+  // itself doesn't live here.
+  weight?: number | null;
+  onWeightChange?: (weight: number | null) => void;
   disabled?: boolean;
 }
 
 // The dive form's gear section: a gear set switcher, the list of items on the
 // dive, and a "Save as set" shortcut.
 //
-// Loading a set replaces the dive's gear with the set's items; from then on the
-// two are independent - adding or removing an item here never writes back to the
-// stored set, and the dive itself records only the resulting items (it holds no
-// reference to the set at all).
+// Loading a set replaces the dive's gear with the set's items (and its weight,
+// if the set records one); from then on the two are independent - adding or
+// removing an item here never writes back to the stored set, and the dive itself
+// records only the resulting items and weight (it holds no reference to the set
+// at all).
 export function DiveGearField({
   userId,
   value,
   onChange,
+  weight,
+  onWeightChange,
   disabled,
 }: DiveGearFieldProps) {
   const [gearSets, setGearSets] = useState<GearSet[]>([]);
@@ -69,6 +78,9 @@ export function DiveGearField({
 
   const applySet = (set: GearSet) => {
     onChange(set.gear_items.map((item) => item.uuid));
+    // A set with no weight of its own makes no claim about how much lead to
+    // carry, so it leaves whatever's on the dive alone rather than clearing it.
+    if (set.weight != null) onWeightChange?.(set.weight);
     setLoadedSetUuid(set.uuid);
   };
 
@@ -78,7 +90,9 @@ export function DiveGearField({
 
     // Replacing a non-empty list throws away whatever the diver already picked
     // (or a previous set), so it's worth one confirmation. Loading into an empty
-    // list - the common case - stays a single click.
+    // list - the common case - stays a single click. The set's weight rides
+    // along with the items and isn't separately guarded: it's one visible number
+    // that's trivial to retype, unlike a hand-built list of kit.
     if (value.length > 0) {
       setPendingSet(set);
       return;
@@ -162,6 +176,7 @@ export function DiveGearField({
         open={showSaveDialog}
         onOpenChange={setShowSaveDialog}
         initialItemUuids={value}
+        initialWeight={weight}
         allowChoosingTarget
         onSaved={handleSetSaved}
       />

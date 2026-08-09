@@ -1287,3 +1287,64 @@ where Up/Down natively step the value by `step` (0.01 here). Navigating the
 preset list is the far more useful binding and nudging a volume by a hundredth of
 a litre isn't something anyone reaches for, but it *is* a change - if the
 stepping is ever wanted back, that's the one dropdown to reconsider.
+
+## Weight sits with the gear, not with the environment readings
+
+`weight` (kilograms of ballast, a plain per-dive number on the API's `Dive` -
+see the backend DECISIONS.md for why it isn't a gear item) is rendered directly
+below the gear picker in `DiveFormFields`, and inside the "Gear" card on the
+dive detail page - not alongside Bottom Temperature/Visibility.
+
+The split the form makes is *what the diver observed* vs. *how the diver was
+configured*: depth, temperature and visibility are readings taken from the dive,
+while gear and weight are choices carried into it. Weight is also the field a
+diver most often looks up in an old log precisely to check it against the suit
+and cylinder they were using, so it wants to be next to them.
+
+Two follow-on details:
+
+- **The detail page's Gear card renders when *either* is present.** `hasGearInfo`
+  is `gear_items.length > 0 || weight != null`, mirroring `hasEnvironmentInfo`
+  above it - a dive can have a recorded weight and no itemized gear (or gear and
+  no weight), and neither should hide the other.
+- **`dives/new` pre-fills it from the last dive**, alongside the gear list and
+  mixtures. Weight is a property of the kit and exposure suit, so it rarely
+  changes between consecutive dives; the same reasoning that carries the gear
+  over carries the weight.
+
+Zod uses `min(0)` rather than `positive()` (unlike the depths), matching the
+API's `ck_dive_weight_non_negative`: zero is a real entry, distinct from an
+omitted one.
+
+## Loading a gear set fills in the dive's weight too
+
+A `GearSet` carries an optional `weight` (kg) - the ballast the diver normally
+uses with that configuration - and picking a set in the dive form applies it
+alongside the item list. The dive keeps its own copy from then on; the set is
+never linked (see "Gear sets are loaded into the dive form, never linked from
+the dive").
+
+Three rules make this predictable:
+
+- **A set with no weight changes nothing.** `applySet` only calls
+  `onWeightChange` when `set.weight != null`. A set that doesn't record a weight
+  isn't asserting "dive with zero lead", so it leaves the field alone. This is
+  also why `gear_set.weight` is nullable rather than defaulting to 0 - see the
+  backend DECISIONS.md.
+- **The weight isn't separately guarded by the replace confirmation.** The
+  `ConfirmDialog` still fires on a non-empty item list only, and the set's weight
+  rides along with the items. An earlier version also confirmed when the set
+  would overwrite a weight the diver had typed, and named whichever was at stake
+  in the dialog copy - about 18 lines to protect one visible number that takes a
+  second to retype. The item list earns a confirmation because rebuilding eight
+  hand-picked items is laborious; a single number doesn't.
+- **"Save as set" carries the dive's weight into the dialog.**
+  `initialWeight={weight}` mirrors `initialItemUuids={value}` - whatever is on
+  the dive is the obvious default for the set being saved from it.
+
+`DiveGearField` therefore takes `weight`/`onWeightChange` props even though it
+doesn't render the input. In `DiveFormFields` the gear `FormField` is **nested
+inside** the weight one so both `field` objects are in scope: the alternative,
+registering `weight` twice (once via `useController` for the set logic, once via
+`FormField` for the input), works in react-hook-form but leaves two subscriptions
+to the same name for no benefit.

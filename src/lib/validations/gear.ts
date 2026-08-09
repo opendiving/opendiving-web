@@ -23,6 +23,14 @@ export const gearSetSchema = z.object({
     .string()
     .min(1, "Set name is required")
     .max(255, "Set name cannot exceed 255 characters"),
+  // Optional default ballast in kg, carried into the dive form when the set is
+  // loaded. `min(0)` matches `dive.weight` - zero is a real configuration, and a
+  // set that simply doesn't record a weight leaves the dive's own value alone.
+  weight: z
+    .number()
+    .min(0, "Weight must be zero or positive")
+    .nullable()
+    .optional(),
   gear_item_uuids: z.array(z.string()).default([]),
 });
 

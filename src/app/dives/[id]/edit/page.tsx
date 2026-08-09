@@ -46,6 +46,7 @@ export default function EditDivePage() {
       avg_depth: undefined,
       bottom_temperature: undefined,
       visibility: undefined,
+      weight: undefined,
       trip_uuid: undefined,
       dive_site_uuids: [],
       gear_item_uuids: [],
@@ -76,6 +77,7 @@ export default function EditDivePage() {
           avg_depth: diveData.avg_depth,
           bottom_temperature: diveData.bottom_temperature,
           visibility: diveData.visibility,
+          weight: diveData.weight,
           trip_uuid: diveData.trip_uuid,
           dive_site_uuids: diveData.dive_sites?.map((site) => site.uuid) ?? [],
           gear_item_uuids: diveData.gear_items?.map((item) => item.uuid) ?? [],
@@ -141,6 +143,10 @@ export default function EditDivePage() {
 
       if (data.visibility !== undefined) {
         updateData.visibility = data.visibility;
+      }
+
+      if (data.weight !== undefined) {
+        updateData.weight = data.weight;
       }
 
       if (data.trip_uuid !== undefined) {

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2 } from "lucide-react";
+import { Loader2, Weight } from "lucide-react";
 import { gearSetSchema, GearSetInput } from "@/lib/validations/gear";
 import { gearAPI, GearSet, fetchAllGearSets } from "@/lib/api/gear";
 import { getApiErrorMessage } from "@/lib/api/error";
@@ -50,6 +50,9 @@ interface GearSetDialogProps {
   // Items to prefill the set with - this is how the dive form's "Save as set"
   // hands over whatever gear is currently on the dive.
   initialItemUuids?: string[];
+  // Weight to prefill the set with, from the same "Save as set" flow: whatever
+  // the diver entered on the dive is the obvious default for the set.
+  initialWeight?: number | null;
   // Shows a "Save to" picker offering the user's existing sets alongside
   // "Create a new set". Used from the dive form, where the items are known but
   // their destination isn't. Ignored when editing a specific `gearSet`.
@@ -66,6 +69,7 @@ export function GearSetDialog({
   onOpenChange,
   gearSet,
   initialItemUuids,
+  initialWeight,
   allowChoosingTarget = false,
   onSaved,
 }: GearSetDialogProps) {
@@ -80,7 +84,7 @@ export function GearSetDialog({
 
   const form = useForm<GearSetInput>({
     resolver: zodResolver(gearSetSchema),
-    defaultValues: { name: "", gear_item_uuids: [] },
+    defaultValues: { name: "", weight: undefined, gear_item_uuids: [] },
   });
   const { reset, setValue } = form;
 
@@ -90,13 +94,14 @@ export function GearSetDialog({
     if (!open) return;
     reset({
       name: gearSet?.name ?? "",
+      weight: initialWeight ?? gearSet?.weight,
       gear_item_uuids:
         initialItemUuids ?? gearSet?.gear_items.map((i) => i.uuid) ?? [],
     });
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setTargetUuid(undefined);
     setApiError(null);
-  }, [open, gearSet, initialItemUuids, reset]);
+  }, [open, gearSet, initialItemUuids, initialWeight, reset]);
 
   // The target picker needs the user's sets; only fetched when it's actually shown.
   useEffect(() => {
@@ -115,8 +120,9 @@ export function GearSetDialog({
   }, [open, showTargetPicker, userId]);
 
   // Picking an existing set only decides *where* the items are saved - the items
-  // themselves stay as they came in from the dive form. The name field follows
-  // the target so the user can see (and still rename) what they're overwriting.
+  // and weight themselves stay as they came in from the dive form. The name field
+  // follows the target so the user can see (and still rename) what they're
+  // overwriting.
   const handleTargetChange = (next: string) => {
     if (next === NEW_SET_VALUE) {
       setTargetUuid(undefined);
@@ -130,6 +136,9 @@ export function GearSetDialog({
   const onSubmit = async (data: GearSetInput) => {
     setApiError(null);
     const items = data.gear_item_uuids ?? [];
+    // `undefined` from a cleared number input means "no default weight", which
+    // the API spells as an explicit null on a PATCH so it can be unset again.
+    const weight = data.weight ?? null;
     const saveToUuid = gearSet?.uuid ?? targetUuid;
 
     try {
@@ -138,6 +147,7 @@ export function GearSetDialog({
       if (saveToUuid) {
         await gearAPI.updateGearSet(saveToUuid, {
           name: data.name,
+          weight,
           gear_item_uuids: items,
         });
         // The API returns only a status message on PATCH, so re-read the set to
@@ -148,6 +158,7 @@ export function GearSetDialog({
           await gearAPI.createGearSet({
             user_uuid: userId,
             name: data.name,
+            weight,
             gear_item_uuids: items,
           }),
         );
@@ -249,6 +260,38 @@ export function GearSetDialog({
                       onChange={field.onChange}
                     />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="weight"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Weight (kg)</FormLabel>
+                  <FormControl>
+                    <div className="relative">
+                      <Weight className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                      <Input
+                        type="number"
+                        step="0.5"
+                        min="0"
+                        placeholder="e.g. 6"
+                        className="pl-9"
+                        {...field}
+                        value={field.value ?? ""}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value);
+                          field.onChange(Number.isNaN(val) ? null : val);
+                        }}
+                      />
+                    </div>
+                  </FormControl>
+                  <p className="text-xs text-muted-foreground">
+                    Optional. Loading this set into a dive fills in this weight.
+                  </p>
                   <FormMessage />
                 </FormItem>
               )}

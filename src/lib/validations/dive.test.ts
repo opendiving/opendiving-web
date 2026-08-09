@@ -115,6 +115,23 @@ describe("diveCreateSchema numeric fields", () => {
     });
     expect(result.success).toBe(true);
   });
+
+  it("rejects a negative weight", () => {
+    const result = diveCreateSchema.safeParse({ ...validDive, weight: -1 });
+    expect(result.success).toBe(false);
+  });
+
+  // Unlike the depths, zero is a meaningful weight (a drysuit with a heavy
+  // undergarment, a freedive) and is kept distinct from an omitted one.
+  it("allows a weight of zero", () => {
+    const result = diveCreateSchema.safeParse({ ...validDive, weight: 0 });
+    expect(result.success).toBe(true);
+  });
+
+  it("allows a fractional weight", () => {
+    const result = diveCreateSchema.safeParse({ ...validDive, weight: 4.5 });
+    expect(result.success).toBe(true);
+  });
 });
 
 describe("diveMixtureSchema", () => {
