@@ -78,6 +78,19 @@ function shiftByEmbeddedOffset(isoString: string): {
   return { shifted, offsetMinutes };
 }
 
+// A dive's `start_time` as a timestamp whose *UTC* getters read back the dive's
+// own wall-clock time - the numeric counterpart to `formatDiveDateTime()`, for
+// code that has to position or bucket a dive on a timeline rather than print it.
+//
+// Not the same as `new Date(startTime).getTime()`, and the difference is the
+// whole point: a dive at 00:30 on New Year's Day in Thailand (+07:00) is still
+// the previous year in UTC, and would land in the wrong year on a chart. Read it
+// back with `getUTC*` (or format with `timeZone: "UTC"`), never the local
+// getters, exactly as `formatDiveDateTime()` does.
+export function diveWallClockTime(startTime: string): number {
+  return shiftByEmbeddedOffset(startTime).shifted.getTime();
+}
+
 // Splits an offset-aware ISO 8601 datetime string (e.g. the API's dive
 // `start_time`) into its wall-clock component - formatted like
 // `formatDateTimeForForm()` - and its UTC offset in minutes, *without* ever

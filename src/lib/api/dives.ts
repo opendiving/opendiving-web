@@ -21,6 +21,25 @@ export interface DiveSiteSummary {
   location?: string;
 }
 
+// Surface-normalized gas consumption for a dive, derived by the API from the
+// dive's duration, average depth and cylinder pressures - see the API's
+// `services/dive_gas.py` for the arithmetic and the assumptions baked into it.
+//
+// Deliberately *not* recomputed in the browser, unlike gear service status:
+// that one depends on today's date, so a cached value would be a lie, whereas
+// this is a pure function of stored fields and can never go stale. There is one
+// implementation of the formula and it lives in the API.
+export interface DiveGasUse {
+  // Gas breathed, in liters at surface pressure.
+  gas_used: number;
+  // Respiratory minute volume: liters/minute at surface pressure. Independent
+  // of cylinder size, so this is the figure to compare across dives.
+  rmv: number;
+  // The same consumption as a pressure drop rate, meaningful only alongside
+  // this dive's cylinder volume - but it's what a pressure gauge shows.
+  sac_bar_per_min: number;
+}
+
 export interface Dive {
   uuid: string;
   dive_number: number;
@@ -52,6 +71,13 @@ export interface Dive {
   // list is the app's hottest query and nothing in it renders this. Don't
   // "fix" a missing value in the list by adding it server-side.
   source_file?: DiveFileInfo | null;
+  // Set only when the dive records everything needed to derive it: exactly one
+  // mixture, an average depth, and both of that mixture's pressures. Optional
+  // for the same reason as `source_file` - it's a detail-response field, and it
+  // additionally derives from `mixtures`, which the list response doesn't carry
+  // either. Use `gasUseUnavailableReason()` (`lib/dive-gas.ts`) to explain a
+  // missing value to the user rather than showing nothing.
+  gas_use?: DiveGasUse | null;
 }
 
 // What the API accepts as a dive-computer export, mirrored here so the file

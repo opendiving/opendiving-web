@@ -1626,3 +1626,181 @@ required field. Don't "fix" a missing value in the list by adding it server-side
 of, rather than to a blank or "Unknown": the API can grow a parser ahead of the frontend,
 and rendering `garmin_fit` is worse than a label but far better than an empty cell that
 reads as a bug.
+
+## Air consumption is the API's number; the browser only explains its absence
+
+`dive.gas_use` (SAC/RMV) arrives computed from the detail endpoint and is rendered as-is.
+This is deliberately the *opposite* call to "Service status is derived in the browser,
+because a cached 'days remaining' is a lie" a few sections up, and for a reason that
+generalizes: service status depends on today's date, so a cached one goes stale on its
+own; gas use depends only on stored dive fields, so it can't. There is one implementation
+of the formula, in the API's `services/dive_gas.py`, and no `grep`-the-pair maintenance
+burden. Don't add a second one here - not even for a live preview in the dive form.
+
+What the browser *does* own is `lib/dive-gas.ts`'s `gasUseUnavailableReason()`. The API
+returns `gas_use: null` for every un-derivable dive without saying why, which is right -
+the reasons are all plainly visible in the dive itself and phrasing them is a UI job. But
+rendering nothing would be wrong: unlike the other optional cards on the dive detail page
+(Depth, Environment, Gear), which are absent because the diver knows they didn't record
+something, this one can vanish *despite* the pressures being filled in - a missing average
+depth, or a second tank - and silence reads as a bug. So the Air Consumption card renders
+whenever the dive logs a tank at all, showing either the figures or the one specific thing
+in the way.
+
+That helper's branches mirror `compute_gas_use()`'s guard clauses and have to be changed
+with them (`grep gas_use` finds the pair). It lives in `lib/` rather than in the page for
+the usual reason: `vitest.config.mts` only collects coverage for `src/lib/**`.
+
+Two guards in it are load-bearing. It returns `null` when `mixtures` is missing entirely,
+because the *list* response carries neither `mixtures` nor `gas_use` and every row would
+otherwise claim its pressures were missing. And the multi-tank branch names a limitation
+instead of asking the diver to add a field, because there is no field to add - see the
+API's "Gas use is computed on read".
+
+## The air-consumption chart is hand-rolled SVG, and breaks its trend line at gaps
+
+No charting library, for the same reason `VolumeCombobox` and the drag-to-reorder list
+are hand-rolled - plus one specific to this app. The CSP in `src/proxy.ts` is
+nonce-based and strict: `style-src-attr 'unsafe-inline'` allows inline style
+*attributes*, but `style-src` is nonce-gated in production and `'unsafe-inline'` only in
+dev. A library that injects a `<style>` element (the emotion/styled-components-based ones
+do) therefore works locally and breaks in production, which is a miserable bug to buy for
+one chart. `gas-use-chart.tsx` is ~130 lines of `<svg>` that themes itself off
+`currentColor`.
+
+**The trend line is drawn per stretch of diving, not across the whole series.** With one
+polyline over 343 points, a diver who logs a week in April and a week in October gets a
+long flat segment spanning the six months between, which reads as "steady all summer"
+when the truth is "no data here". `segmentByGap()` splits the series wherever consecutive
+dives are more than `TREND_GAP_DAYS` (60) apart and each run gets its own polyline. The
+trailing mean itself still averages across the gap - your consumption doesn't reset
+because you took a winter off - it's only the drawn connector that would be a lie.
+
+**Coral for the trend, teal for the dots.** Both are declared once in `globals.css` and
+never redeclared under `.dark`, so they hold contrast in both themes; `--primary` is
+near-black in light mode and a mid grey in dark, which left the line barely visible on a
+dark card. Two different hues rather than one at two opacities because the dots and the
+line they're averaged into are otherwise the same mark in the same color, and the eye
+can't separate the raw data from the smoothing.
+
+**The y axis is not zero-based.** RMV clusters between roughly 10 and 25 L/min, so
+anchoring at 0 squashes a career's variation into the top third. `niceDomain()` rounds
+outward from the data instead, and the axis is labeled. Its nice-number progression
+includes 2.5, which the textbook 1/2/5/10 one doesn't: without it an entirely typical
+5-to-26 spread falls through to a step of 10 and gets three gridlines for the whole chart.
+
+Each dot is a plain SVG `<a>` (not `next/link`, which would be creating an anchor in the
+SVG namespace) wrapping a `<title>` - a tooltip with no JS, no hover state to manage, and
+the thing a screen reader announces. The chart scrolls inside its own `overflow-x-auto`
+container below ~560px rather than scaling down, which would shrink the axis labels past
+legibility on a phone; the page body never scrolls sideways.
+
+The chart lives in a card that renders even when there's nothing to plot, unlike
+`ServiceDueCard`. An empty service list means nothing needs attention; an empty series
+here means the dives are missing pressures or an average depth, which is something the
+diver can act on and won't otherwise discover.
+
+## The chart windows to All/Year/Month, but scales itself from the whole series
+
+Three years of dots in one frame shows the long arc and buries any single trip; a month
+shows the trip and no arc. Both are worth seeing, so `GasUseCard` owns a scope switch
+(`all`/`year`/`month`) and, for the two bounded scopes, prev/next buttons. It opens on
+`year` at the most recent dive - how you're diving *now* is the question people actually
+have, and "All" is one click away.
+
+Three things are deliberately derived from the **whole** series and not the visible
+window, and all three matter:
+
+- **The y domain.** A per-window domain rescales on every click, which makes a good year
+  and a bad year draw identically. Fixed, the axis stays put and the periods are
+  comparable at a glance.
+- **The trailing mean.** Computed across all history and then sliced, so January's first
+  dive carries the context of December's last few instead of restarting the average at
+  each period boundary.
+- **The x bounds within a period**, which are the *calendar* period, not the min/max of
+  what's in it. A year in which you only dived in April shows one cluster on the left, not
+  April stretched across the full width as though it were the whole year.
+
+**Prev/next skip to the next period that has dives**, rather than stepping one calendar
+period at a time (`stepPeriod()`). Diving happens in bursts a season apart; stepping would
+mean clicking through eight empty months to reach the next trip. `null` means there's
+nothing further in that direction, which is what disables the button.
+
+**The period label between them is also a dropdown** (`availablePeriods()`), listing only
+the years - or month/year pairs - that contain dives. Stepping is the right control for
+"the trip before this one" and useless for reaching a specific season three years back.
+Its `<Select>` value is the *period's* start, never the anchor itself: the anchor is
+whichever dive you last landed on, which usually isn't the one representing its period in
+the list, and a Radix `Select` whose value matches no registered item renders an empty
+trigger - the same trap documented under the `VolumeCombobox` "NaN L" note above. The
+options carry a real dive time alongside that key, so picking one preserves the invariant
+below.
+
+**The anchor is always one of the dives' own timestamps**, never a synthesized date. That
+is what makes switching scope land somewhere useful: going from `year` to `month` shows
+the month *containing* the dive you were looking at, not an arbitrary month that may be
+empty.
+
+**All of it buckets on `diveWallClockTime()`, never `new Date(start_time).getTime()`.**
+A dive at 00:30 on New Year's Day in Thailand (+07:00) is still the previous year in UTC
+and would land in the wrong year - and, worse, in a *different* year depending on where
+the viewer is. That's the same rule as "A dive's `start_time` displays/edits in its own
+timezone, never the browser's", extended from formatting to bucketing; the helper is the
+numeric counterpart to `formatDiveDateTime()`. Everything downstream of it - `periodRange`,
+`periodLabel`, the axis ticks - reads it back with `getUTC*`/`Date.UTC`/`timeZone: "UTC"`.
+Using the local getters anywhere in that chain silently reintroduces the bug.
+
+### The chart's tooltip is one state-driven card, not a tooltip per dot
+
+The dots started with a native SVG `<title>`, which is free and needs no JavaScript but
+looks like an OS tooltip - wrong font, wrong colors, half a second of delay, no control
+over any of it. It's now an HTML card positioned over the chart.
+
+**One `hovered` index for the whole chart**, not a `Tooltip.Root` per point. At a few
+hundred dives, per-dot tooltip instances are a lot of machinery for the one that can ever
+be open, and the same state drives the dot's own enlarge-and-brighten, so the lit dot and
+the card can't disagree the way a CSS `:hover` and React state would. (That's also why
+the app's unused `@radix-ui/react-tooltip` dependency stayed unused here - it's the right
+tool for a button, not for a scatter plot.)
+
+**Positioned in percentages of the chart box.** The SVG scales uniformly inside a wrapper
+of exactly its size, so viewBox units map straight onto percentages and nothing has to be
+measured in the DOM on hover. The `style` prop is an inline style *attribute*, which the
+CSP explicitly allows (`style-src-attr 'unsafe-inline'`) - an injected `<style>` element
+would not be, which is the same constraint that ruled out a charting library.
+
+**It flips to stay inside the box** rather than overflowing: below the dot in the top
+third, and left/right-aligned within 18% of either edge. It has to stay inside, because
+setting `overflow-x: auto` on the scroll container makes `overflow-y` compute to `auto`
+as well, so anything hanging past the top edge is clipped or adds a stray scrollbar.
+
+**Each dot has an invisible `r=7` hit circle** on top of the visible one - a 2.5-unit dot
+is a ~4px target, which is fiddly to hover deliberately. `fill="transparent"`, not
+`fill="none"`: `none` takes no pointer events at all, which is the opposite of the point.
+
+The card is `pointer-events-none` (otherwise it steals the hover from the dot that
+triggered it and flickers) and carries no accessible text - `aria-label` on the link does
+what `<title>` used to. It also clears when the visible window changes underneath it, so
+paging from 2025 to 2026 with the cursor still on the chart can't leave a card describing
+a dive that is no longer drawn.
+
+### `--tooltip` is its own surface token, because `--popover` isn't one
+
+`--popover` and `--card` are declared the *same color* in both themes - white in light,
+13% lightness under `.dark` - so anything using `bg-popover` on top of a card is separated
+from it by nothing but a 1px border. That is fine for a dropdown, which is usually over
+page background and is the only thing you're looking at. It is not fine for the chart's
+hover card, which overlaps its own data points: matching the panel underneath made it
+read as cut out of the card rather than floating above it.
+
+So the hover card uses `--tooltip`/`--tooltip-foreground`, added alongside `--coral` and
+`--teal` in `globals.css` and registered in `tailwind.config.mts` the same way. It is
+**dark in both themes** rather than inverting per theme - a near-black chip is the
+conventional chart tooltip, and it carries the same weight over a white card as over a
+dark one. Measured against the card it sits on: 17.9:1 in light, 1.22:1 in dark (where
+the shadow and hairline border do proportionally more of the work, the same way `--card`
+separates from `--background` by 13% vs 9% lightness). Text on the chip is 17:1, and the
+70%-alpha secondary lines 8.8:1.
+
+The border is `border-white/10`, not the `--border` token: on a near-black chip the
+theme's border color is invisible in light mode and merges with the chip in dark.

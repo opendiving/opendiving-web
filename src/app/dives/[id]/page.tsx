@@ -8,6 +8,7 @@ import { tripsAPI, Trip } from "@/lib/api/trips";
 import { DiveSitesLabel } from "@/components/dives/dive-sites-label";
 import { DiveSourceFileCard } from "@/components/dives/dive-source-file-card";
 import { gearItemLabel } from "@/lib/api/gear";
+import { gasUseUnavailableReason } from "@/lib/dive-gas";
 import { Badge } from "@/components/ui/badge";
 import {
   formatDateTime,
@@ -45,6 +46,7 @@ import {
   FileText,
   Backpack,
   Weight,
+  Activity,
   Loader2,
 } from "lucide-react";
 import Link from "next/link";
@@ -193,6 +195,11 @@ export default function DiveDetailPage() {
     dive.bottom_temperature != null || dive.visibility != null;
 
   const hasGearInfo = (dive.gear_items?.length ?? 0) > 0 || dive.weight != null;
+
+  // Null both when the figure is present and when the dive was never a
+  // candidate for one, so `dive.gas_use || gasUseReason` is the whole "is there
+  // anything to show" test.
+  const gasUseReason = gasUseUnavailableReason(dive);
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -366,6 +373,66 @@ export default function DiveDetailPage() {
                     </TableBody>
                   </Table>
                 </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Air consumption, derived by the API from the duration, average
+              depth and cylinder pressures above - which is why it sits after
+              the mixtures table rather than before it: the inputs are on screen
+              by the time the number is.
+
+              Rendered even when the figure couldn't be derived, unlike the
+              other optional cards here. Those are absent because the diver
+              didn't record something they'd know they hadn't; this one can be
+              absent despite the pressures being filled in (a missing average
+              depth, a second tank), and silence would read as a bug. */}
+          {(dive.gas_use || gasUseReason) && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="h-5 w-5" />
+                  Air Consumption
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {dive.gas_use ? (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <div className="text-sm font-medium text-muted-foreground mb-1">
+                          SAC / RMV
+                        </div>
+                        <div className="text-2xl font-bold">
+                          {dive.gas_use.rmv} L/min
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-muted-foreground mb-1">
+                          Pressure Rate
+                        </div>
+                        <div className="text-2xl font-bold">
+                          {dive.gas_use.sac_bar_per_min} bar/min
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-muted-foreground mb-1">
+                          Gas Used
+                        </div>
+                        <div className="text-2xl font-bold">
+                          {dive.gas_use.gas_used} L
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-4">
+                      What you&apos;d have breathed doing the same dive at the
+                      surface, from an average depth of {dive.avg_depth}m.
+                      Assumes salt water at sea level. Lower is better.
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground">{gasUseReason}</p>
+                )}
               </CardContent>
             </Card>
           )}
