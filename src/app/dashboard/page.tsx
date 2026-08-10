@@ -3,6 +3,7 @@
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { RecentTripsCard } from "@/components/dives/recent-trips-card";
+import { ServiceDueCard } from "@/components/gear/service-due-card";
 import { diveStatsAPI, UserDiveStats } from "@/lib/api/dive-stats";
 import { formatDurationHoursMinutes } from "@/lib/date-time";
 import {
@@ -130,6 +131,10 @@ export default function DashboardPage() {
 
         {/* Quick Actions & Upcoming */}
         <div className="space-y-6">
+          {/* Renders nothing at all when no gear needs attention, so this slot is
+              empty on a normal day rather than showing a permanent "all fine" tile. */}
+          <ServiceDueCard userId={user.uuid} />
+
           {/* Quick Actions */}
           <Card>
             <CardHeader>

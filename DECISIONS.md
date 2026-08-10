@@ -1348,3 +1348,123 @@ inside** the weight one so both `field` objects are in scope: the alternative,
 registering `weight` twice (once via `useController` for the set logic, once via
 `FormField` for the input), works in react-hook-form but leaves two subscriptions
 to the same name for no benefit.
+
+## Service status is derived in the browser, because a cached "days remaining" is a lie
+
+The API deliberately never returns a service status for a gear item - only
+clock-stable facts: `next_due_on`, `next_due_at_dive_count`, `last_service_on`, plus
+the item's existing `dive_count`. Status depends on *today's date*, and the API's
+single-gear-item cache is an hour long (the list is 60s), so a server-computed "due in
+1 day" would still say "due in 1 day" tomorrow morning.
+
+So `serviceStatus()` in `src/lib/gear-service.ts` does that arithmetic here, at render
+time, where "today" is always actually today. It's a near-line-for-line twin of
+`service_status` in the API's `services/gear_service.py`, which exists solely for the
+reminder email - the one consumer with no browser. The constants are named identically
+on both sides (`SERVICE_DUE_SOON_DAYS = 30`, `SERVICE_DUE_SOON_DIVES = 10`), so a
+single `grep SERVICE_DUE_SOON` finds the pair; change one and you must change the other.
+
+Both interval arms are evaluated and the more urgent wins, which is what implements
+"annually or every 100 dives, whichever comes first". `worstServiceStatus()` collapses
+an item's schedules into the one badge shown in the gear list, and returns **`null`**
+rather than `"ok"` when there are no schedules at all - nothing being tracked is not
+the same as everything being fine, and `ServiceStatusBadge` renders that as a muted
+dash.
+
+## `lib/gear-service.ts` holds the logic, `lib/api/gear-service.ts` holds the transport
+
+Two modules with almost the same name, split on purpose. `lib/api/gear-service.ts` is
+the usual hand-written types + axios calls (`SERVICE_KINDS`, `serviceKindLabel`, the
+`gearServiceAPI` object) mirroring the API's Pydantic schemas, exactly like
+`lib/api/gear.ts`. `lib/gear-service.ts` is pure functions - no axios, no React - so
+the rules that actually matter (status thresholds, date arithmetic, the due-text
+phrasing, the type presets) are unit-testable and covered.
+
+That split isn't cosmetic: `vitest.config.mts` only collects coverage for `src/lib/**`,
+and component-level code is generally untested here, so anything worth testing has to
+live in `lib/`. `gear-service.test.ts` is where the whole status truth table lives.
+
+`lib/api/gear.ts` imports `GearServiceScheduleSummary` from `lib/api/gear-service.ts`
+as `import type` - the API side made the mirror-image choice (`schemas/gear_service.py`
+imports nothing from `gear_item.py`) so the pair points one way only and can never
+become a cycle.
+
+## Service dates are `YYYY-MM-DD` and never touch `new Date(dateString)`
+
+`next_due_on`, `starts_on`, `serviced_on` and `last_service_on` are all bare dates, so
+they fall squarely under the trap documented in "Bare `YYYY-MM-DD` dates must not go
+through `new Date(dateString)`": that parses as UTC midnight, which is the previous day
+anywhere west of Greenwich, and would make every due date read as one day closer than it
+is.
+
+`daysBetweenIsoDates()` builds both ends from split parts (`new Date(y, m-1, d)`), same
+as `formatDateOnly()`. Using local midnight for both also makes it immune to DST - the
+two Dates shift by the same offset, and rounding the millisecond difference absorbs the
+one 23- or 25-hour day in between. `todayIsoDate()` is built from local getters rather
+than `toISOString()` for the same reason. The tests assert exact day counts across both
+DST transitions, and the suite is run under UTC-8 through UTC+14.
+
+## Gear service uses two dialogs, and both need `dialogFormSubmit`
+
+`GearServiceScheduleDialog` and `GearServiceRecordDialog` follow `GearItemDialog`
+exactly - dialogs rather than pages, because they're a handful of fields always reached
+from a gear detail page you want to stay on, and the same three-way open state (`null` =
+closed, `undefined` = creating, an object = editing).
+
+Both contain a `<form>`, so both wrap their submit in `dialogFormSubmit()` per "A
+dialog's submit event bubbles into the form that opened it". They aren't opened from
+the dive form today, but the rule is about the React tree, not the current call sites,
+and it costs nothing.
+
+Both interval fields use the `""`-means-cleared convention already used by
+`gearSetSchema.weight`, mapped to an explicit `null` on PATCH so an interval can
+actually be removed rather than being ignored as an omitted key. The
+"at least one interval" rule is an object-level `.refine()`, which - unlike a
+`z.preprocess()`/`.transform()` - leaves `z.input<>` untouched (see "Never use
+`z.preprocess()`/`.transform()` on fields feeding `z.input<>`-derived types").
+
+## Per-gear-type service presets are prefills, not safety advice
+
+Opening "Add Schedule" on a cylinder starts at "visual inspection, every 12 months";
+on a regulator at "service, every 12 months or 100 dives". These come from
+`defaultSchedulesForGearType()` and exist purely to save typing.
+
+They are **not** authoritative. Manufacturer service intervals differ, and cylinder
+test periods are set by jurisdiction (five years across much of the US and EU, two and
+a half in some regimes for some cylinder types). Every field stays editable, nothing is
+filled in silently on save, and the dialog says so in as many words. This is
+dive-safety-adjacent UI and must not read as advice - if the preset list is ever
+extended, keep that framing.
+
+Gear with no meaningful convention (a mask, a knife) and gear with no type set get
+`[]`, not a made-up default.
+
+## The dashboard's "Service due" card renders nothing when nothing is due
+
+`ServiceDueCard` returns `null` when no schedule needs attention, and also when its
+fetch fails (logged, not surfaced). A permanent "all your gear is fine" tile is
+dashboard noise that trains people to stop reading the dashboard; a supplementary card
+erroring out shouldn't make the whole page look broken either.
+
+It calls `GET /gear-service-due`, which deliberately takes no date horizon - a
+server-side "due within N days" filter would bake today's date into a cached response
+and go wrong at midnight - so the bucketing happens client-side, through the same
+`serviceStatus()` every other surface uses.
+
+The gear *list* needs no extra request at all: `GET /gear-items` embeds each item's
+schedules (`item.service`), and the badge is derived from those.
+
+## The gear reminder toggle lives in its own settings card, and saves on change
+
+`NotificationsCard` is factored out like `EmailChangeCard` rather than being bolted
+onto the profile form, since it's a different concern and will grow if more email
+preferences appear.
+
+It saves immediately on change rather than behind a "Save Changes" button: it's a
+single boolean, and a toggle that needs confirming reads as broken. It sends only
+`{ gear_service_emails }` - `PATCH /user` is `extra="forbid"`, so sending anything else
+alongside would 422.
+
+`User.gear_service_emails` is optional in the TS type and falls back to `true` when
+absent, matching the server-side default, so the toggle renders correctly against an
+API that predates the field.

@@ -13,6 +13,7 @@ import { getApiErrorMessage } from "@/lib/api/error";
 import { formatDateTime } from "@/lib/date-time";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { GearItemDialog } from "@/components/gear/gear-item-dialog";
+import { GearServiceCard } from "@/components/gear/gear-service-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -202,7 +203,22 @@ export default function GearItemDetailPage() {
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 space-y-6">
+          {/* Above the dive list on purpose: service is the thing you can act on
+              from this page, the dive list is reference. */}
+          <GearServiceCard
+            userId={user?.uuid ?? ""}
+            gearItem={gearItem}
+            onChanged={() => {
+              // Refetches the item so its embedded `service` summaries (and so the
+              // header's badge) pick up the new due dates. Failures are logged
+              // rather than surfaced - the card has already toasted the real error.
+              loadGearItem().catch((error) =>
+                console.error("Failed to reload gear:", error),
+              );
+            }}
+          />
+
           <RecentDivesCard
             userId={user?.uuid ?? ""}
             gearItemId={gearItem.uuid}
