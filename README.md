@@ -184,7 +184,7 @@ For support and questions:
 - [ ] Offline support
 - [ ] Advanced dive analytics
 - [ ] Equipment tracking
-- [ ] Certification management
+- [x] Certification management
 
 ---
 

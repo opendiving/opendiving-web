@@ -1468,3 +1468,102 @@ alongside would 422.
 `User.gear_service_emails` is optional in the TS type and falls back to `true` when
 absent, matching the server-side default, so the toggle renders correctly against an
 API that predates the field.
+
+## Private card images render from a blob URL, which needs `blob:` in `img-src`
+
+Certification card files are owner-only: `GET /certification/{uuid}/file/{side}` requires
+an `Authorization` header. An `<img src>` cannot send one, and there is no ambient
+credential to fall back on either - `lib/api/client.ts` holds the access token in memory
+and only the *refresh* token is a cookie. So a plain `src` pointing at the API would 401.
+
+`hooks/useAuthedBlobUrl.ts` fetches through the API client with `responseType: "blob"`,
+wraps the result in `URL.createObjectURL`, and revokes it whenever it's replaced and on
+unmount (object URLs are held by the document until explicitly released - skipping that
+leaks the whole blob for the life of the page).
+
+That required the one CSP change in `proxy.ts`: blob URLs are **not** covered by
+`'self'`, so `img-src` needed an explicit `blob:` or the `<img>` is blocked. It widens
+nothing an attacker could reach - a `blob:` URL can only name data this document already
+created.
+
+The hook keeps a single "settled result" object rather than three flags, and derives
+`isLoading` from `result === null`. That isn't cosmetic: setting an `isLoading` flag
+synchronously in the effect body trips `react-hooks/set-state-in-effect`, which is an
+error in this config.
+
+Known cost: the blob is re-fetched on every mount, so a card shown in both the list and
+a dialog is fetched twice. Fine for a handful of cards with `Cache-Control: private,
+max-age=300` and `ETag` revalidation behind it; it would need real thought at gallery
+scale.
+
+### Keying that fetch on (certification, side) is not enough - it breaks Replace
+
+The card image lives at a stable URL whose *contents can change*, which breaks two
+caches at once. Replacing an image would upload fine, the filename beside it would
+update, and the picture would not move:
+
+1. `fetchBlob` was `useCallback(..., [certificationUuid, side])`. Neither changes when a
+   file is replaced, so `useAuthedBlobUrl`'s effect never re-ran and the previous object
+   URL stayed on screen.
+2. Even once it does refetch, `max-age=300` lets the *browser* serve the old bytes from
+   its own HTTP cache for five minutes, since the URL is identical.
+
+Both are fixed by `certificationFileVersion(file)` in `lib/certification.ts`, which is
+in the `useCallback` deps *and* sent as a `v` query param the API ignores. `updated_at`
+moves on every replace; `uuid` covers delete-then-upload, which inserts a new row rather
+than updating the old one - and would otherwise produce a token identical to the
+original (`updated_at` is null on both). It deliberately does **not** fold in `side`,
+which is already in the URL, so repeat views of an unchanged card still hit the cache.
+
+It lives in `lib/` rather than inline in the component specifically so it can be tested -
+`certification.test.ts` covers replace, second replace, and delete-then-reupload, since
+none of that is visible to a type checker and all of it looks correct while being wrong.
+
+## PDFs are download-only, never previewed inline
+
+Rendering a PDF inline means an `<object>` or `<iframe>`, and `proxy.ts` sets
+`object-src 'none'` with a narrow `frame-src`. Loosening either to display
+*user-uploaded documents* is a bad trade for a preview, so a stored PDF shows as a
+labelled file with a Download button instead. Most c-cards get photographed rather than
+scanned, so the image path is the common one.
+
+Downloading goes through the API client for the same reason rendering does - a plain
+`<a href>` to the endpoint would 401 - so it fetches the blob, clicks a synthetic anchor
+and revokes the URL immediately.
+
+## `useWatch`, not `form.watch()`
+
+`CertificationDialog` shows the `agency_other` field only when the agency is `other`.
+`form.watch("agency")` returns a fresh function every render that can't be memoized,
+which `react-hooks/incompatible-library` flags; `useWatch({ control, name })` is the
+supported equivalent. Worth knowing because the error it produces is reported against
+the `useForm()` call, and while it's present the react-hooks plugin stops analysing the
+rest of the component - so fixing it can *reveal* previously-silent `set-state-in-effect`
+errors elsewhere in the same file.
+
+## Certification expiry is derived in the browser, and `null` means "don't badge"
+
+`lib/certification.ts` reuses `todayIsoDate`/`daysBetweenIsoDates` from
+`lib/gear-service.ts` rather than reimplementing date maths (both avoid
+`new Date(dateString)` on a bare date, which parses as UTC midnight and lands a day early
+in western timezones).
+
+`certificationExpiryStatus` returns `null` for both "no expiry date" and "expires, but
+not soon" - there is no "valid" state. Most recreational certifications never expire, so
+badging them all green would bury the two rows that actually need attention. Same
+reasoning as `worstServiceStatus` returning `null` for untracked gear.
+
+The window is 90 days, not gear's 30: renewing a rescue or first-aid card means booking
+onto a course with an instructor, not dropping a regulator at a shop.
+
+## Card uploads are a separate step from creating the certification
+
+The API takes card images on `PUT /certification/{uuid}/file/{side}`, not as multipart on
+create, so the dialog creates the certification first and then opens the card-images
+dialog. Creating a new certification hands straight off to that second dialog - adding
+the photo is the point of the feature, so making the diver find the button afterwards
+would bury it.
+
+After any upload or delete the list's embedded file metadata is stale, so the page
+refetches the single certification *and* the list, and re-points the open dialog at the
+refreshed row - otherwise the panel being looked at keeps showing what it loaded with.

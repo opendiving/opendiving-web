@@ -58,7 +58,13 @@ export function proxy(request: NextRequest) {
     "style-src-attr 'unsafe-inline'",
     // `www.gravatar.com` - `UserAvatar` (`lib/utils.ts`'s `getGravatarUrl`)
     // loads user avatars from there.
-    `img-src 'self' data: ${apiOrigin} https://www.gravatar.com`,
+    // `blob:` - certification card images are private, so they're fetched with an
+    // `Authorization` header and rendered from an object URL rather than pointed
+    // at directly (see `hooks/useAuthedBlobUrl.ts`). Blob URLs are *not* covered
+    // by `'self'`, so without this the `<img>` is blocked. It widens nothing an
+    // attacker could reach: a `blob:` URL can only name data this document
+    // already created.
+    `img-src 'self' data: blob: ${apiOrigin} https://www.gravatar.com`,
     "font-src 'self' data:",
     // `accounts.google.com` - the "Continue with Google" button
     // (`components/auth/GoogleAuthButton.tsx`) renders Google's own iframe
