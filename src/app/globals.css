@@ -12,6 +12,20 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
+    /* A deliberately dark overlay surface, for things that float *above* a card
+       and have to read as detached from it - currently the air-consumption
+       chart's hover card. Not --popover, which is the same color as --card in
+       both themes (white here, 13% lightness under .dark) and so leans entirely
+       on its 1px border to separate from whatever it's sitting on. Over a chart
+       that's not enough: the card overlaps its own data points, and a surface
+       that matches the panel underneath reads as part of it.
+
+       Dark in *both* themes rather than inverting per theme - a near-black chip
+       is the conventional chart tooltip, and it keeps the same weight against a
+       white card as it does against a dark one. */
+    --tooltip: 222 47% 11%;
+    --tooltip-foreground: 210 40% 98%;
+
     --primary: 240 2% 15%;
     --primary-foreground: 0 0% 100%;
 
@@ -60,6 +74,13 @@
 
     --popover: 240 4% 13%;
     --popover-foreground: 240 6% 93%;
+
+    /* Darker than both --card (13%) and --background (9%), so the hover card
+       still reads as floating above the panel rather than cut out of it. Kept
+       on the same cool gray hue as the rest of the dark palette rather than
+       reusing the light theme's slightly blue near-black. */
+    --tooltip: 240 6% 4%;
+    --tooltip-foreground: 240 6% 93%;
 
     --primary: 240 2% 45%;
     --primary-foreground: 0 0% 100%;

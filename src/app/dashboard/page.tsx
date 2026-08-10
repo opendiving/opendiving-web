@@ -3,6 +3,7 @@
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { RecentTripsCard } from "@/components/dives/recent-trips-card";
+import { GasUseCard } from "@/components/dives/gas-use-card";
 import { ServiceDueCard } from "@/components/gear/service-due-card";
 import { diveStatsAPI, UserDiveStats } from "@/lib/api/dive-stats";
 import { formatDurationHoursMinutes } from "@/lib/date-time";
@@ -125,6 +126,10 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Recent Dives & Trips */}
         <div className="lg:col-span-2 space-y-6">
+          {/* Above the recent-dives list: it's the one thing here that says
+              something about how the diving is going rather than just what was
+              logged. */}
+          <GasUseCard />
           <RecentDivesCard userId={user.uuid} />
           <RecentTripsCard userId={user.uuid} />
         </div>
