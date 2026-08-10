@@ -1,0 +1,235 @@
+import { apiClient } from "./client";
+
+// The training agency that issued a certification. Mirrors the API's
+// `CertificationAgency` enum - a closed vocabulary rather than free text, so the
+// same agency is named the same way across a diver's whole list and the UI can
+// badge and group by it.
+//
+// Declared roughly by how many divers hold cards from each rather than
+// alphabetically: `CERTIFICATION_AGENCIES` drives the picker's option order, and
+// most people reach for the first two. Keep in sync with the API.
+export const CERTIFICATION_AGENCIES = [
+  "padi",
+  "ssi",
+  "naui",
+  "sdi",
+  "tdi",
+  "cmas",
+  "raid",
+  "bsac",
+  "gue",
+  "iantd",
+  "psai",
+  "dan",
+  "efr",
+  "other",
+] as const;
+
+export type CertificationAgency = (typeof CERTIFICATION_AGENCIES)[number];
+
+// Display labels. These are acronyms rather than words, so none of them can be
+// derived by capitalizing the value.
+const CERTIFICATION_AGENCY_LABELS: Record<CertificationAgency, string> = {
+  padi: "PADI",
+  ssi: "SSI",
+  naui: "NAUI",
+  sdi: "SDI",
+  tdi: "TDI",
+  cmas: "CMAS",
+  raid: "RAID",
+  bsac: "BSAC",
+  gue: "GUE",
+  iantd: "IANTD",
+  psai: "PSAI",
+  dan: "DAN",
+  efr: "EFR",
+  other: "Other",
+};
+
+// Label for an agency, tolerating a value this build doesn't know about (an API
+// that has grown a new agency shouldn't render as a blank cell). For `other` the
+// diver's own `agency_other` is the useful label, so callers pass it in.
+export function certificationAgencyLabel(
+  agency: string | null | undefined,
+  agencyOther?: string | null,
+): string | null {
+  if (!agency) return null;
+  if (agency === "other") return agencyOther?.trim() || "Other";
+  return CERTIFICATION_AGENCY_LABELS[agency as CertificationAgency] ?? agency;
+}
+
+// Which face of the physical card a stored file shows.
+export const CERTIFICATION_SIDES = ["front", "back"] as const;
+export type CertificationSide = (typeof CERTIFICATION_SIDES)[number];
+
+export const CERTIFICATION_SIDE_LABELS: Record<CertificationSide, string> = {
+  front: "Front",
+  back: "Back",
+};
+
+// What the API accepts for a card image, mirrored here so the file picker can
+// filter and so an obviously-wrong file is rejected before it is uploaded. The
+// API sniffs the actual bytes regardless - this is convenience, not validation.
+export const CERTIFICATION_FILE_ACCEPT =
+  "image/jpeg,image/png,image/webp,application/pdf";
+export const MAX_CERTIFICATION_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+
+// Metadata about one stored card image or PDF - never its bytes. The file itself
+// is fetched separately (and authenticated) via `getCertificationFileBlob`.
+export interface CertificationFileInfo {
+  uuid: string;
+  side: CertificationSide;
+  content_type: string;
+  byte_size: number;
+  original_filename: string;
+  updated_at?: string | null;
+}
+
+// A diving certification, with photos or scans of the physical c-card.
+export interface Certification {
+  uuid: string;
+  agency: CertificationAgency;
+  // Only set when `agency` is `other` - the name of the issuing body.
+  agency_other?: string | null;
+  // The level as printed on the card, e.g. "Advanced Open Water Diver".
+  name: string;
+  certification_number?: string | null;
+  certified_on?: string | null;
+  // Most recreational certifications never expire; rescue, first-aid and most
+  // technical ones do.
+  expires_on?: string | null;
+  instructor_name?: string | null;
+  instructor_number?: string | null;
+  training_center?: string | null;
+  notes?: string;
+  // Stored card images, embedded by the API so the list can show which cards have
+  // photos without a request per row. Optional so a client built against an older
+  // API (or a cached response predating the field) still type-checks.
+  files?: CertificationFileInfo[];
+  user_uuid: string;
+  created_at: string;
+}
+
+export interface CertificationCreate {
+  user_uuid: string;
+  agency: CertificationAgency;
+  agency_other?: string | null;
+  name: string;
+  certification_number?: string | null;
+  certified_on?: string | null;
+  expires_on?: string | null;
+  instructor_name?: string | null;
+  instructor_number?: string | null;
+  training_center?: string | null;
+  notes?: string;
+}
+
+export type CertificationUpdate = Partial<Omit<CertificationCreate, "user_uuid">>;
+
+export interface PaginatedCertificationsResponse {
+  data: Certification[];
+  total_count: number;
+  has_more: boolean;
+  page: number;
+  items_per_page: number;
+}
+
+// Find one side's stored file in a certification's embedded metadata.
+export function certificationFile(
+  certification: Certification,
+  side: CertificationSide,
+): CertificationFileInfo | undefined {
+  return certification.files?.find((file) => file.side === side);
+}
+
+export const certificationsAPI = {
+  // Create a certification. `data.user_uuid` must be the signed-in user's uuid.
+  // Card images are attached afterwards with `uploadCertificationFile`.
+  async createCertification(data: CertificationCreate): Promise<Certification> {
+    const response = await apiClient.post(`/certification`, data);
+    return response.data;
+  },
+
+  // Get a user's certifications (paginated), newest first.
+  async getCertifications(
+    userUuid: string,
+    page: number = 1,
+    items_per_page: number = 10,
+  ): Promise<PaginatedCertificationsResponse> {
+    const response = await apiClient.get(`/certifications`, {
+      params: { user_uuid: userUuid, page, items_per_page },
+    });
+    return response.data;
+  },
+
+  async getCertification(certificationUuid: string): Promise<Certification> {
+    const response = await apiClient.get(`/certification/${certificationUuid}`);
+    return response.data;
+  },
+
+  async updateCertification(
+    certificationUuid: string,
+    data: CertificationUpdate,
+  ): Promise<void> {
+    await apiClient.patch(`/certification/${certificationUuid}`, data);
+  },
+
+  async deleteCertification(certificationUuid: string): Promise<void> {
+    await apiClient.delete(`/certification/${certificationUuid}`);
+  },
+
+  // Attach or replace one side's card image. Uploading a side that already has a
+  // file replaces it.
+  //
+  // The `Content-Type` header is explicitly cleared so the browser sets
+  // `multipart/form-data` *with its own boundary* - the same reason
+  // `dives.ts::parseDiveFile` does it.
+  async uploadCertificationFile(
+    certificationUuid: string,
+    side: CertificationSide,
+    file: File,
+  ): Promise<CertificationFileInfo> {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await apiClient.put(
+      `/certification/${certificationUuid}/file/${side}`,
+      formData,
+      { headers: { "Content-Type": undefined } },
+    );
+    return response.data;
+  },
+
+  async deleteCertificationFile(
+    certificationUuid: string,
+    side: CertificationSide,
+  ): Promise<void> {
+    await apiClient.delete(`/certification/${certificationUuid}/file/${side}`);
+  },
+
+  // Fetch one side's bytes as a Blob.
+  //
+  // This has to go through the API client rather than being pointed at from an
+  // `<img src>`: card files are private, the endpoint requires an `Authorization`
+  // header, and an `<img>` cannot send one (the access token lives in memory, not
+  // in a cookie). Callers turn the Blob into an object URL - see
+  // `hooks/useAuthedBlobUrl.ts`.
+  //
+  // `version` identifies the current contents (see `CertificationCardImage`) and
+  // is sent as a `v` query param the API ignores. Its job is to give each version
+  // of a card its own URL: the response is cached with `max-age=300`, so without
+  // it the browser would keep serving the old bytes from its own cache for five
+  // minutes after a replace, however correctly the app refetches. Stable while
+  // the file is unchanged, so repeat views still hit the cache.
+  async getCertificationFileBlob(
+    certificationUuid: string,
+    side: CertificationSide,
+    version?: string,
+  ): Promise<Blob> {
+    const response = await apiClient.get(
+      `/certification/${certificationUuid}/file/${side}`,
+      { responseType: "blob", params: version ? { v: version } : undefined },
+    );
+    return response.data;
+  },
+};

@@ -26,6 +26,7 @@ import {
   MapPin,
   Luggage,
   Backpack,
+  BadgeCheck,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -36,6 +37,7 @@ const NAV_SECTIONS: { prefix: string; page: string }[] = [
   { prefix: "/dives", page: "dives" },
   { prefix: "/sites", page: "sites" },
   { prefix: "/gear", page: "gear" },
+  { prefix: "/certifications", page: "certifications" },
   { prefix: "/community", page: "community" },
 ];
 
@@ -129,6 +131,16 @@ export function Header() {
                     Gear
                   </Link>
                   <Link
+                    href="/certifications"
+                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-coral ${
+                      currentPage === "certifications"
+                        ? "text-coral"
+                        : "text-foreground"
+                    }`}
+                  >
+                    Certifications
+                  </Link>
+                  <Link
                     href="/community"
                     className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-coral ${
                       currentPage === "community"
@@ -200,6 +212,12 @@ export function Header() {
                     <Link href="/gear" className="flex items-center">
                       <Backpack className="mr-2 h-4 w-4" />
                       Manage Gear
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/certifications" className="flex items-center">
+                      <BadgeCheck className="mr-2 h-4 w-4" />
+                      Certifications
                     </Link>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -309,6 +327,13 @@ export function Header() {
                     Gear
                   </Link>
                   <Link
+                    href="/certifications"
+                    className={`text-sm font-medium hover:text-coral py-2 ${currentPage === "certifications" ? "text-coral" : "text-foreground"}`}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Certifications
+                  </Link>
+                  <Link
                     href="/community"
                     className={`text-sm font-medium hover:text-coral py-2 ${currentPage === "community" ? "text-coral" : "text-foreground"}`}
                     onClick={() => setIsMobileMenuOpen(false)}
@@ -350,6 +375,14 @@ export function Header() {
                     >
                       <Backpack className="mr-2 h-4 w-4" />
                       Manage Gear
+                    </Link>
+                    <Link
+                      href="/certifications"
+                      className="flex items-center text-sm font-medium text-foreground hover:text-coral py-2"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      <BadgeCheck className="mr-2 h-4 w-4" />
+                      Certifications
                     </Link>
                   </div>
                 </>
