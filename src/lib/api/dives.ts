@@ -78,6 +78,62 @@ export interface Dive {
   // either. Use `gasUseUnavailableReason()` (`lib/dive-gas.ts`) to explain a
   // missing value to the user rather than showing nothing.
   gas_use?: DiveGasUse | null;
+  // Summary of the dive's per-sample profile, if one was extracted from its
+  // imported file. Optional for the same reason as `source_file` above: the API
+  // deliberately only sends it on the detail response. The curves themselves are
+  // tens of KB and are fetched separately via `getDiveProfile`.
+  profile?: DiveProfileInfo | null;
+}
+
+// What the dive detail response says about a dive's profile without carrying it:
+// enough to decide whether to render the card, what to put in its heading, and
+// which version of the series to ask for.
+export interface DiveProfileInfo {
+  uuid: string;
+  // Span of the recorded samples, which is *not* `dive.duration` - a dive
+  // computer keeps logging for a few seconds after the dive ends, and
+  // `dive.duration` is the diver's own record and may have been hand-edited.
+  duration_seconds: number;
+  depth_sample_count: number;
+  // Which curves the profile carries: any of "depth", "temperature", "pressure".
+  channels: string[];
+  // Display units (meters, Celsius, bar) - unlike the series, which stay
+  // integer-scaled. These are scalars a human reads, not points to map.
+  max_depth?: number | null;
+  min_temperature?: number | null;
+  max_temperature?: number | null;
+  min_pressure?: number | null;
+  max_pressure?: number | null;
+  updated_at?: string | null;
+}
+
+// One channel of a profile, exactly as the API stores it: `t` is elapsed seconds
+// from the start of the dive, `v` is integer-scaled (see `PROFILE_CHANNELS` in
+// `lib/dive-profile.ts` for the divisor per channel).
+//
+// Integers rather than floats deliberately, both on the wire and in the
+// database: a float round-trip reintroduces `20.600000000000023`-class noise
+// several thousand times per dive, and the chart is going to map every point
+// through a scale function anyway - so it divides once per point there.
+//
+// There are no nulls inside a series. A sensor dropout is a *gap in `t`*, which
+// `segmentByTimeGap` turns into separate polylines.
+export interface DiveProfileSeries {
+  t: number[];
+  v: number[];
+}
+
+export interface DiveProfilePressureSeries extends DiveProfileSeries {
+  // The cylinder's own gas number as the device labelled it - 1 on a 2025 D5, 0
+  // on a Suunto Ocean. A label to display, never an index to trust.
+  gas_number: number;
+}
+
+export interface DiveProfile {
+  duration_seconds: number;
+  depth?: DiveProfileSeries | null;
+  temperature?: DiveProfileSeries | null;
+  pressure: DiveProfilePressureSeries[];
 }
 
 // What the API accepts as a dive-computer export, mirrored here so the file
@@ -311,6 +367,24 @@ export const divesAPI = {
   async getDiveFileBlob(diveUuid: string, version?: string): Promise<Blob> {
     const response = await apiClient.get(`/dive/${diveUuid}/file`, {
       responseType: "blob",
+      params: version ? { v: version } : undefined,
+    });
+    return response.data;
+  },
+
+  // Fetch a dive's per-sample profile. 404s when the dive has no imported file,
+  // or has one that carried no samples - check `dive.profile` first rather than
+  // calling this speculatively.
+  //
+  // `version` is sent as a `v` query param the API ignores, for the same reason
+  // as `getDiveFileBlob`: the response is `max-age=300`, and a re-extraction
+  // (after an extractor-version bump, say) would otherwise be masked by the
+  // previous payload for five minutes. Pass the profile's `updated_at`.
+  async getDiveProfile(
+    diveUuid: string,
+    version?: string,
+  ): Promise<DiveProfile> {
+    const response = await apiClient.get(`/dive/${diveUuid}/profile`, {
       params: version ? { v: version } : undefined,
     });
     return response.data;

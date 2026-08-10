@@ -6,12 +6,11 @@ import {
   type GasUseScope,
   RMV_TREND_WINDOW,
   TREND_GAP_DAYS,
-  axisTicks,
-  niceDomain,
   periodRange,
   rollingMean,
   segmentByGap,
 } from "@/lib/dive-gas";
+import { axisTicks, niceDomain } from "@/lib/chart-scale";
 import { diveWallClockTime, formatDiveDateTime } from "@/lib/date-time";
 import { cn } from "@/lib/utils";
 
