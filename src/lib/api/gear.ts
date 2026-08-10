@@ -1,4 +1,7 @@
 import { apiClient } from "./client";
+// Type-only, so it erases at compile time - `gear-service.ts` has no import back to
+// here, but keeping this one type-only means the pair can never become a real cycle.
+import type { GearServiceScheduleSummary } from "./gear-service";
 
 // Broad category a gear item falls into. Mirrors the API's `GearType` enum -
 // a closed vocabulary rather than free text, so the same kind of kit is named
@@ -80,6 +83,13 @@ export interface GearItem {
   // Number of the owner's dives this item was used on, maintained by the API
   // after every dive create/update/delete.
   dive_count: number;
+  // This item's servicing rules, embedded by the API so the gear list can badge
+  // "service due" without a request per row. Optional so a client built against an
+  // older API (or a cached response predating the field) still type-checks.
+  //
+  // Carries due dates and thresholds only - status is derived in the browser, see
+  // `lib/gear-service.ts`.
+  service?: GearServiceScheduleSummary[];
   user_uuid: string;
   created_at: string;
 }

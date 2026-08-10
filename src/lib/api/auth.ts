@@ -11,6 +11,10 @@ export interface User {
   username: string;
   email: string;
   profile_image_url: string;
+  // Whether to email this user when their gear is due for servicing. Opt-out, so it
+  // defaults to true server-side; optional here so a response from an API that predates
+  // the field still type-checks.
+  gear_service_emails?: boolean;
 }
 
 // Mirrors the backend's `AuthOutcome` (see `schemas/auth.py`): either the caller is
@@ -29,6 +33,7 @@ export interface AuthOutcome {
 export interface UpdateProfileData {
   name?: string;
   username?: string;
+  gear_service_emails?: boolean;
 }
 
 export interface EmailChangeResponse {
@@ -74,7 +79,10 @@ export const authAPI = {
     const response = await apiClient.post<AuthOutcome>("/auth/email/verify", {
       token,
     });
-    if (response.data.status === "authenticated" && response.data.access_token) {
+    if (
+      response.data.status === "authenticated" &&
+      response.data.access_token
+    ) {
       setAccessToken(response.data.access_token);
     }
     return response.data;
@@ -87,7 +95,10 @@ export const authAPI = {
     const response = await apiClient.post<AuthOutcome>("/auth/google", {
       credential,
     });
-    if (response.data.status === "authenticated" && response.data.access_token) {
+    if (
+      response.data.status === "authenticated" &&
+      response.data.access_token
+    ) {
       setAccessToken(response.data.access_token);
     }
     return response.data;
@@ -105,7 +116,10 @@ export const authAPI = {
       name,
       username,
     });
-    if (response.data.status === "authenticated" && response.data.access_token) {
+    if (
+      response.data.status === "authenticated" &&
+      response.data.access_token
+    ) {
       setAccessToken(response.data.access_token);
     }
     return response.data;

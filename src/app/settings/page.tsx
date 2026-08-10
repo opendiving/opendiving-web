@@ -13,13 +13,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { EmailChangeCard } from "@/components/settings/EmailChangeCard";
+import { NotificationsCard } from "@/components/settings/NotificationsCard";
 import { User, Save, AlertCircle, CheckCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { authAPI } from "@/lib/api/auth";
-import { profileSchema, type ProfileFormData } from "@/lib/validations/settings";
+import {
+  profileSchema,
+  type ProfileFormData,
+} from "@/lib/validations/settings";
 
 export default function SettingsPage() {
   const { isAuthenticated, isLoading } = useAuthGuard();
@@ -152,8 +156,7 @@ export default function SettingsPage() {
                     </p>
                   )}
                   <p className="text-xs text-muted-foreground">
-                    Your username is used in your profile URL and for
-                    mentions.
+                    Your username is used in your profile URL and for mentions.
                   </p>
                 </div>
               </div>
@@ -180,6 +183,8 @@ export default function SettingsPage() {
         </Card>
 
         <EmailChangeCard currentEmail={user.email} />
+
+        <NotificationsCard />
       </div>
 
       {/* Account Actions */}

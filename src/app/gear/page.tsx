@@ -32,6 +32,8 @@ import { PageSpinner } from "@/components/ui/page-spinner";
 import { useToast } from "@/components/ui/use-toast";
 import { GearItemDialog } from "@/components/gear/gear-item-dialog";
 import { GearSetDialog } from "@/components/gear/gear-set-dialog";
+import { ServiceStatusBadge } from "@/components/gear/service-status-badge";
+import { worstServiceStatus } from "@/lib/gear-service";
 import {
   Plus,
   Edit,
@@ -238,6 +240,7 @@ export default function GearPage() {
                     <TableHead>Type</TableHead>
                     <TableHead>Brand</TableHead>
                     <TableHead className="text-right">Dives</TableHead>
+                    <TableHead>Service</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -268,6 +271,16 @@ export default function GearPage() {
                       <TableCell>{item.brand || "-"}</TableCell>
                       <TableCell className="text-right tabular-nums">
                         {item.dive_count}
+                      </TableCell>
+                      {/* No extra fetch - the API embeds each item's schedules, and
+                          the status is derived from them in the browser. */}
+                      <TableCell>
+                        <ServiceStatusBadge
+                          status={worstServiceStatus(
+                            item.service ?? [],
+                            item.dive_count,
+                          )}
+                        />
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
