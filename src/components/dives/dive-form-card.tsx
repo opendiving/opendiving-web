@@ -10,6 +10,7 @@ import {
 } from "@/components/dives/dive-form-fields";
 import { DiveFormActions } from "@/components/dives/dive-form-actions";
 import { MixtureFieldArray } from "@/components/dives/mixture-fields";
+import { DiveFileInfo } from "@/lib/api/dives";
 
 export interface DiveFormCardProps<TFieldValues extends DiveFormValues> {
   form: UseFormReturn<TFieldValues>;
@@ -21,6 +22,11 @@ export interface DiveFormCardProps<TFieldValues extends DiveFormValues> {
   cancelHref: string;
   submittingLabel: string;
   submitLabel: string;
+  // Passed straight through to `DiveFileImport`. The page, not this card, owns
+  // the picked file: it can only be uploaded once the dive exists, which is
+  // after `onSubmit` resolves.
+  onFileSelected?: (file: File, fileToken: string) => void;
+  attachedFile?: DiveFileInfo | null;
 }
 
 // The "Dive Details" card shared by the create and edit dive pages: file
@@ -38,6 +44,8 @@ export function DiveFormCard<TFieldValues extends DiveFormValues>({
   cancelHref,
   submittingLabel,
   submitLabel,
+  onFileSelected,
+  attachedFile,
 }: DiveFormCardProps<TFieldValues>) {
   return (
     <Card>
@@ -51,6 +59,8 @@ export function DiveFormCard<TFieldValues extends DiveFormValues>({
             <DiveFileImport
               form={form}
               replaceMixtures={mixtureFieldArray.replace}
+              onFileSelected={onFileSelected}
+              attachedFile={attachedFile}
             />
 
             <DiveFormFields

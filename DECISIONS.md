@@ -1567,3 +1567,62 @@ would bury it.
 After any upload or delete the list's embedded file metadata is stale, so the page
 refetches the single certification *and* the list, and re-points the open dialog at the
 refreshed row - otherwise the panel being looked at keeps showing what it loaded with.
+
+## The dive form holds the imported file in page state and uploads it after saving
+
+`DiveFileImport` calls `onFileSelected(file, fileToken)` only after a *successful* parse,
+and the page - `dives/new` and `dives/[id]/edit` - parks both in `useState` until
+`createDive`/`updateDive` resolves. The API stores nothing at parse time and there is no
+dive to attach to until the save succeeds, so there is nowhere earlier to send it.
+
+Uploading after the save rather than on selection also matters on the edit page:
+importing a file and then cancelling the edit must not silently change the dive's stored
+export.
+
+A failed attach is a toast, not a rollback. The dive is saved and correct; the file is
+kept so new parsing features can be developed against real exports later, which is not
+something the diver asked for and not worth undoing their save over. Both real failures
+surface here with the API's own wording and are worth reading: a 409 means this export is
+already attached to another dive (usually one file logged as two dives), a 422 means the
+import went stale and needs redoing.
+
+`isSubmitting` stays true across the upload so the button doesn't re-enable mid-flight.
+
+## The dive's source file downloads through the API client, like card images
+
+`DiveSourceFileCard` fetches a Blob and clicks a synthetic `<a download>`, the same
+pattern as `certification-view-dialog.tsx` and for the same reason: the endpoint needs an
+`Authorization` header and the access token lives in memory, not a cookie, so a plain
+`<a href>` would 401. The object URL is revoked immediately - the browser has its own
+copy by the time the click returns.
+
+Unlike card images this needs **no** CSP change: nothing renders the file, so
+`useAuthedBlobUrl` and the `blob:` `img-src` entry aren't involved.
+
+The `v` param is `${uuid}:${updated_at}` - `uuid` covers delete-then-reattach,
+`updated_at` covers a replace. Without it the response's `max-age=300` would keep serving
+the previous file's bytes after a replace.
+
+## Deleting the imported file refreshes without the page-level spinner
+
+The dive detail page has two fetchers: the initial `useEffect` one that toggles
+`isLoadingDive` and redirects on failure, and a separate `refreshDive` `useCallback`
+passed to `DiveSourceFileCard` as `onChanged` that does neither.
+
+Reusing the first would blank the whole page into a spinner to swap one card, and would
+redirect to `/dives` if the refetch failed after a delete that had already succeeded. It
+also trips `react-hooks/set-state-in-effect`: a `useCallback` that calls `setState`
+synchronously can't then be called from an effect body, which is what made the split
+necessary as well as correct.
+
+## `Dive.source_file` is optional because the list response never carries it
+
+The same `Dive` interface backs both `GET /dives` and `GET /dive/{uuid}`, and the API
+deliberately only sends `source_file` on the detail one - the list is its hottest query
+and nothing in the table renders an attachment. Hence `source_file?:` rather than a
+required field. Don't "fix" a missing value in the list by adding it server-side.
+
+`diveParserLabel` falls back to the raw `parser_key` for a parser this build hasn't heard
+of, rather than to a blank or "Unknown": the API can grow a parser ahead of the frontend,
+and rendering `garmin_fit` is worse than a label but far better than an empty cell that
+reads as a bug.

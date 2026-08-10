@@ -33,6 +33,13 @@ export default function EditDivePage() {
   const [dive, setDive] = useState<Dive | null>(null);
   const [isLoadingDive, setIsLoadingDive] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Uploaded after the edit is saved rather than when the file is picked, so
+  // that importing a file and then cancelling the edit doesn't silently change
+  // the dive's stored export.
+  const [sourceFile, setSourceFile] = useState<{
+    file: File;
+    token: string;
+  } | null>(null);
 
   const diveId = params.id as string;
 
@@ -171,6 +178,29 @@ export default function EditDivePage() {
 
       await divesAPI.updateDive(diveId, updateData);
 
+      if (sourceFile) {
+        try {
+          await divesAPI.uploadDiveFile(
+            diveId,
+            sourceFile.file,
+            sourceFile.token,
+          );
+        } catch (error: any) {
+          // Non-fatal, for the same reason as on the new-dive page: the edit
+          // itself succeeded, and losing the attachment is a much smaller cost
+          // than failing a save the diver already made.
+          console.error("Failed to attach the dive file:", error);
+          toast({
+            title: "Dive updated, but the file wasn't attached",
+            description: getApiErrorMessage(
+              error,
+              "Try importing the file again.",
+            ),
+            variant: "destructive",
+          });
+        }
+      }
+
       toast({
         title: "Success",
         description: "Dive updated successfully!",
@@ -242,6 +272,8 @@ export default function EditDivePage() {
         cancelHref={`/dives/${diveId}`}
         submittingLabel="Updating Dive..."
         submitLabel="Update Dive"
+        onFileSelected={(file, token) => setSourceFile({ file, token })}
+        attachedFile={dive.source_file}
       />
     </div>
   );

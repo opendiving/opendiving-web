@@ -13,6 +13,7 @@ import {
   MAX_CERTIFICATION_FILE_SIZE,
 } from "@/lib/api/certifications";
 import { getApiErrorMessage } from "@/lib/api/error";
+import { formatFileSize } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { CertificationCardImage } from "./certification-card-image";
@@ -177,7 +178,7 @@ export function CertificationCardFiles({
             {file && (
               <p className="text-xs text-muted-foreground truncate">
                 {file.original_filename} ·{" "}
-                {Math.max(1, Math.round(file.byte_size / 1024))} KB
+                {formatFileSize(file.byte_size)}
               </p>
             )}
           </div>
