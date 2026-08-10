@@ -30,6 +30,7 @@ const config: Config = {
         },
         coral: "hsl(var(--coral))",
         teal: "hsl(var(--teal))",
+        pressure: "hsl(var(--pressure))",
         tooltip: {
           DEFAULT: "hsl(var(--tooltip))",
           foreground: "hsl(var(--tooltip-foreground))",

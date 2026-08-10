@@ -1804,3 +1804,126 @@ separates from `--background` by 13% vs 9% lightness). Text on the chip is 17:1,
 
 The border is `border-white/10`, not the `--border` token: on a near-black chip the
 theme's border color is invisible in light mode and merges with the chip in dark.
+
+## `niceDomain`/`axisTicks` moved to `lib/chart-scale.ts` when a second chart needed them
+
+A pure move out of `lib/dive-gas.ts`, with their tests, and no behavior change. A depth
+axis has nothing to do with gas use, and importing a gas module to scale meters reads as
+an accident.
+
+Worth noting because it looks like an omission: `niceDomain`'s "deliberately not
+zero-based" docstring is *right for depth too*. The depth axis has to anchor at the
+surface, and it does - feeding the surface's own `0` into the values makes
+`Math.floor(0 / step) * step` equal 0, so the axis lands on 0 by arithmetic. Nobody needs
+to add a `zeroBased` flag here that would do nothing.
+
+## The dive profile chart is hand-rolled SVG too, with three channels and one hovered time
+
+Same CSP reasoning as the air-consumption chart, restated in full in the component rather
+than cross-referenced: `src/proxy.ts` ships a strict nonce-based CSP where inline style
+*attributes* are allowed but an injected `<style>` element is not, so an
+emotion/styled-components-based charting library works in dev and breaks in production.
+That comment is what stops the next person reaching for Recharts, and it only works if it
+is where they are looking.
+
+All of the arithmetic lives in `lib/dive-profile.ts` and is Vitest-tested, per the repo
+convention of testing pure functions in `lib/` and not rendering components. If a number
+on that chart could be wrong, its derivation is in there.
+
+**Depth is inverted and anchored at the surface**, filled (`text-teal` at `opacity-15`)
+with the curve stroked over it - the fill is also what makes "which side is the water"
+unambiguous on an upside-down axis. **Temperature gets its own domain**, not a shared one:
+a whole dive's temperature usually spans something like 21.6-21.9 °C, which is a flat line
+on any axis wide enough for depth. **Pressure shares the right-hand side but not its
+labels** - three sets of numbers on one edge is unreadable, and the tooltip gives the exact
+figure for any instant. Every cylinder shares one pressure domain, unlike the channels
+above, because two tanks on one dive are directly comparable and per-tank axes would make
+a 50-bar stage look like the 200-bar back gas.
+
+**One hovered *time*, not one hovered index.** `GasUseChart` keeps a single hovered index
+for the whole chart; the analogue here can't be an index, because the channels are
+independently sampled and don't share a time axis - "the sample under the cursor" is a
+different index per channel. So a full-plot transparent `<rect>` turns the cursor's x into
+seconds once, and each channel resolves its own nearest sample with `nearestSampleIndex`
+(binary search, clamped both ends). Every value in the readout is a real reading, never an
+interpolation: the card says "26.4 m at 16:13", and a value the sensor never recorded has
+no business being presented as one.
+
+**The readout card anchors to a plot edge, not to a data point** - the one thing here that
+differs from `GasUseChart` and the one that was got wrong first. Offsetting a card from the
+point it describes (`translateY: calc(-100% - 12px)` when the point is low, `12px` when it's
+high) only works if you know how tall the card is, and here you don't: its height depends on
+how many channels the dive recorded, and the SVG scales to its container while the card's
+text does not. A "flip above the point when it's in the top third" rule put a 100px card
+into 76px of space on a real dive, 11px past the top of a scroll container that clips
+(`overflow-x: auto` computes `overflow-y` to `auto` too), so it was cut off between roughly
+11:54 and 15:06.
+
+`tooltipVerticalAnchor` instead pins the card's bottom edge to the plot's bottom edge, or
+its top edge to the plot's top edge, choosing whichever end keeps it off the readings it
+describes. Both placements are inside the box for *any* card height at *any* render scale,
+which is a property rather than a tuned constant - and it also stops the card jumping
+between channels as you scrub, since "the hovered point" was always three different points
+and picking the topmost was arbitrary. A test sweeps every y in the plot and asserts the
+anchor is only ever an edge.
+
+**Keyboard scrubbing is deliberately out of scope**, said in a comment rather than left
+silently absent. The gas chart gets focus for free because its dots are `<a>` links to
+dives; a polyline has no equivalent without inventing a focus model. The `aria-label`
+carries the summary instead ("Dive profile over 46min, maximum depth 27.7 meters,
+temperature 22.9 to 26.0 degrees Celsius, tank pressure 205 down to 87 bar"), using
+`formatDurationHoursMinutes` rather than the axis's `MM:SS` - read aloud, "84:36" is not a
+length of time.
+
+`--pressure` is a third theme-stable chart token in `globals.css`, declared once and *not*
+redeclared under `.dark` - the property that makes `--coral` and `--teal` hold contrast in
+both themes. Violet, because it is the only family clearly separable from both coral and
+teal when all three are thin lines sharing one plot.
+
+## The profile's line breaks are derived from the series' own cadence
+
+`segmentByTimeGap` is the same idea as `segmentByGap` on the gas chart - never draw a line
+across data that isn't there - expressed in seconds instead of days. A transmitter that
+drops out for ten minutes mid-dive would otherwise be drawn as a straight line from the
+last reading to the first one after it, which reads as "the pressure fell smoothly" when
+the truth is "nothing was recorded here". Real: `Dive_2025-03-08-1440.xml` has a
+1 341-second hole in its pressure series.
+
+The threshold has to be **derived rather than fixed** (`gapThreshold`): cadence ranges from
+1 s (Suunto Ocean temperature) to 10 s (every Suunto depth series), and the API's min/max
+downsampling stretches it further and unevenly. A fixed threshold would either break every
+downsampled line into confetti or draw straight through a real dropout. Three times the
+median delta sits comfortably above normal jitter and below any dropout worth showing;
+`MIN_GAP_SECONDS` keeps a perfectly regular 1 Hz series from breaking on a rounding wobble.
+
+## The profile card fetches on mount and needs no `onChanged`
+
+`DiveProfileCard` renders nothing when `dive.profile` is absent - the same call as
+`DiveSourceFileCard`, and the opposite of `GasUseCard`. A dive logged by hand has no
+samples and never could, so there is nothing for the diver to act on and nothing worth an
+empty state; a missing air-consumption figure, by contrast, is usually something they can
+fix.
+
+It takes no `onChanged` callback, unlike `DiveSourceFileCard`. Deleting the source file
+deletes the profile with it server-side, and the page's `refreshDive` already drops
+`dive.profile` - which unmounts this card. A callback would be a second mechanism for
+something that already happens.
+
+The series are fetched separately from the dive, keyed on the profile's `updated_at` as a
+`v` cache-buster, because they are tens of KB and the detail response carries only the
+summary. A failure shows a muted line where the chart would have been rather than a toast:
+nothing the diver did caused it and there is nothing for them to do about it, so it belongs
+in the card, not over the whole page.
+
+## `Dive.profile` is optional for the same reason as `source_file`
+
+Detail-response only. The API deliberately doesn't send it on the paginated list - that is
+the app's hottest query and nothing in the list renders it - so the field is optional on the
+shared `Dive` interface, with the same "don't fix this by adding it server-side" note.
+
+The series themselves stay integer-scaled on the wire (depth in cm, temperature in tenths of
+a degree, pressure in tenths of a bar) and are divided in `toChannelSeries`. **Divided, never
+multiplied by a reciprocal:** `1234 / 100` is the correctly-rounded `12.34`, whereas
+`1234 * 0.01` is `12.340000000000002` - exactly the noise the integer encoding was chosen to
+remove. `PROFILE_CHANNELS` holds the divisors and is the mirror of the API's
+`DEPTH_SCALE`/`TEMPERATURE_SCALE`/`PRESSURE_SCALE`; the two lists are a pair.

@@ -57,6 +57,18 @@
        light/dark so it reads consistently in both themes. */
     --teal: 187 60% 45%;
 
+    /* Third chart accent, for the dive profile's tank-pressure curve. Depth is
+       teal and temperature is coral; pressure needs a hue that's separable from
+       both at a glance, since all three are thin lines sharing one plot. Violet
+       sits roughly opposite the coral/teal pair on the wheel and is the only
+       family that does.
+
+       Declared here and deliberately *not* redeclared under .dark, the same
+       property that makes coral and teal hold their contrast in both themes:
+       62% lightness reads against a white card and against the dark theme's 13%
+       one. A per-theme pair would have to be tuned twice and would drift. */
+    --pressure: 265 70% 62%;
+
     --radius: 0.5rem;
   }
 

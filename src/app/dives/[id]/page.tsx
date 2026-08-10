@@ -7,6 +7,7 @@ import { divesAPI, Dive } from "@/lib/api/dives";
 import { tripsAPI, Trip } from "@/lib/api/trips";
 import { DiveSitesLabel } from "@/components/dives/dive-sites-label";
 import { DiveSourceFileCard } from "@/components/dives/dive-source-file-card";
+import { DiveProfileCard } from "@/components/dives/dive-profile-card";
 import { gearItemLabel } from "@/lib/api/gear";
 import { gasUseUnavailableReason } from "@/lib/dive-gas";
 import { Badge } from "@/components/ui/badge";
@@ -326,6 +327,12 @@ export default function DiveDetailPage() {
               </CardContent>
             </Card>
           )}
+
+          {/* The recorded profile, immediately after the two depth numbers it
+              is the detailed form of, and before the gas mixtures whose
+              pressures its third curve traces. Renders nothing for a dive
+              logged by hand. */}
+          <DiveProfileCard dive={dive} />
 
           {/* Gas Mixtures */}
           {dive.mixtures && dive.mixtures.length > 0 && (
