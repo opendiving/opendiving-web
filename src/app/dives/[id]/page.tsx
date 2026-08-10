@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { divesAPI, Dive } from "@/lib/api/dives";
 import { tripsAPI, Trip } from "@/lib/api/trips";
 import { DiveSitesLabel } from "@/components/dives/dive-sites-label";
+import { DiveSourceFileCard } from "@/components/dives/dive-source-file-card";
 import { gearItemLabel } from "@/lib/api/gear";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -88,6 +89,23 @@ export default function DiveDetailPage() {
       fetchDive();
     }
   }, [user, diveId, toast, router]);
+
+  // Re-read the dive after something on the page changes it - currently only
+  // deleting the imported file, which the dive embeds as `source_file`.
+  //
+  // Deliberately *not* the initial fetch above: this one leaves
+  // `isLoadingDive` alone, so refreshing after a delete swaps the one card
+  // that changed instead of blanking the whole page into a spinner. A failure
+  // is non-fatal here (the delete already succeeded), so it doesn't redirect.
+  const refreshDive = useCallback(async () => {
+    if (!diveId) return;
+
+    try {
+      setDive(await divesAPI.getDive(diveId));
+    } catch (error) {
+      console.error("Failed to refresh dive:", error);
+    }
+  }, [diveId]);
 
   // Once the dive has loaded, resolve its trip's name (the dive itself only
   // stores the trip's ID; its dive site(s) come embedded on the dive already).
@@ -489,6 +507,9 @@ export default function DiveDetailPage() {
               </CardContent>
             </Card>
           )}
+
+          {/* The dive-computer export this dive was imported from, if any */}
+          <DiveSourceFileCard dive={dive} onChanged={refreshDive} />
 
           {/* Dive Metadata */}
           <Card>

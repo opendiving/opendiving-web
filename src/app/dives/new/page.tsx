@@ -37,6 +37,12 @@ function NewDivePageContent() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // The imported file is held here until the dive exists - `/dive/parse` stores
+  // nothing, and there is no dive to attach it to until `onSubmit` succeeds.
+  const [sourceFile, setSourceFile] = useState<{
+    file: File;
+    token: string;
+  } | null>(null);
 
   // Allow pre-selecting a trip/dive site via ?trip_uuid=... / ?dive_site_uuid=...,
   // e.g. when logging a dive from a trip's or dive site's detail page.
@@ -153,7 +159,36 @@ function NewDivePageContent() {
         mixtures: normalizeMixtures(data.mixtures ?? []),
       };
 
-      await divesAPI.createDive(diveData);
+      const created = await divesAPI.createDive(diveData);
+
+      if (sourceFile) {
+        try {
+          await divesAPI.uploadDiveFile(
+            created.uuid,
+            sourceFile.file,
+            sourceFile.token,
+          );
+        } catch (error: any) {
+          // Deliberately non-fatal. The dive exists and is correct; keeping the
+          // source file is a nicety for future parsing work, not something the
+          // diver asked for. Rolling the dive back - or blocking the redirect -
+          // to save it would be a far worse outcome than losing it, and it can
+          // still be attached later from the edit page.
+          //
+          // Both real failures surface here with the API's own wording: a 409
+          // ("already attached to another dive", i.e. the same export logged
+          // twice) and a 422 (the import expired). Both are worth reading.
+          console.error("Failed to attach the dive file:", error);
+          toast({
+            title: "Dive logged, but the file wasn't attached",
+            description: getApiErrorMessage(
+              error,
+              "You can attach it from the dive's edit page.",
+            ),
+            variant: "destructive",
+          });
+        }
+      }
 
       toast({
         title: "Success",
@@ -198,6 +233,7 @@ function NewDivePageContent() {
         cancelHref="/dives"
         submittingLabel="Logging Dive..."
         submitLabel="Log Dive"
+        onFileSelected={(file, token) => setSourceFile({ file, token })}
       />
     </div>
   );

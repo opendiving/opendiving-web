@@ -4,7 +4,14 @@ import { useRef, useState } from "react";
 import { FieldPathValue, Path, UseFormReturn } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { divesAPI, ParsedDive, ParsedDiveMixture } from "@/lib/api/dives";
+import {
+  divesAPI,
+  DiveFileInfo,
+  DIVE_FILE_ACCEPT,
+  MAX_DIVE_FILE_SIZE,
+  ParsedDive,
+  ParsedDiveMixture,
+} from "@/lib/api/dives";
 import {
   combineStartTime,
   formatDateTimeForForm,
@@ -132,14 +139,25 @@ export interface DiveFileImportProps<TFieldValues extends DiveFormValues> {
   // `applyParsedDiveToForm` doc comment above for why a separate instance
   // created here wouldn't work.
   replaceMixtures: (mixtures: DiveMixtureInput[]) => void;
+  // Called only after a *successful* parse, with the file and the token proving
+  // the API parsed it. The page holds both and uploads them once the dive has
+  // been saved - see `divesAPI.uploadDiveFile`. A failed parse applied nothing
+  // to the form, so there is nothing to attach and this isn't called.
+  onFileSelected?: (file: File, fileToken: string) => void;
+  // The export already stored against this dive, on the edit form. Purely
+  // informational: it tells the diver what importing again would replace.
+  attachedFile?: DiveFileInfo | null;
 }
 
 export function DiveFileImport<TFieldValues extends DiveFormValues>({
   form,
   replaceMixtures,
+  onFileSelected,
+  attachedFile,
 }: DiveFileImportProps<TFieldValues>) {
   const { toast } = useToast();
   const [isParsingFile, setIsParsingFile] = useState(false);
+  const [pendingFileName, setPendingFileName] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -147,9 +165,23 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
     if (!file) return;
 
     try {
+      // Checked here as well as by the API so a diver on a slow connection
+      // isn't made to upload an oversized file before being told no. The API
+      // re-checks regardless, and its check is the one that counts.
+      if (file.size > MAX_DIVE_FILE_SIZE) {
+        toast({
+          title: "File too large",
+          description: "Dive files must be 5 MB or smaller.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       setIsParsingFile(true);
       const parsed: ParsedDive = await divesAPI.parseDiveFile(file);
       applyParsedDiveToForm(form, parsed, replaceMixtures);
+      onFileSelected?.(file, parsed.file_token);
+      setPendingFileName(file.name);
 
       toast({
         title: "Dive file parsed",
@@ -183,12 +215,26 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
           Upload a dive log export (e.g. Suunto XML or JSON) to automatically
           fill in the fields below.
         </p>
+        {pendingFileName ? (
+          <p className="text-sm text-muted-foreground mt-1">
+            Will be attached when you save:{" "}
+            <span className="font-medium">{pendingFileName}</span>
+          </p>
+        ) : attachedFile ? (
+          <p className="text-sm text-muted-foreground mt-1">
+            Attached:{" "}
+            <span className="font-medium">
+              {attachedFile.original_filename}
+            </span>{" "}
+            &mdash; importing another file will replace it.
+          </p>
+        ) : null}
       </div>
       <div>
         <input
           ref={fileInputRef}
           type="file"
-          accept=".xml,.json"
+          accept={DIVE_FILE_ACCEPT}
           className="hidden"
           onChange={handleFileSelected}
         />

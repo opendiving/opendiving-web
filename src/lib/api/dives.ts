@@ -45,6 +45,50 @@ export interface Dive {
   user_uuid: string;
   created_at: string;
   mixtures: DiveMixture[];
+  // The dive-computer export this dive was imported from, if any.
+  //
+  // Optional because this same interface backs both the list and the detail
+  // response, and the API deliberately only sends it on the detail one - the
+  // list is the app's hottest query and nothing in it renders this. Don't
+  // "fix" a missing value in the list by adding it server-side.
+  source_file?: DiveFileInfo | null;
+}
+
+// What the API accepts as a dive-computer export, mirrored here so the file
+// picker can filter and so an obviously-oversized file is rejected before it
+// is uploaded. The API re-checks both regardless - this is convenience, not
+// validation.
+export const DIVE_FILE_ACCEPT = ".xml,.json";
+export const MAX_DIVE_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
+
+// Metadata about the stored export a dive was imported from - never its bytes.
+// The file itself is fetched separately (and authenticated) via
+// `getDiveFileBlob`.
+export interface DiveFileInfo {
+  uuid: string;
+  original_filename: string;
+  content_type: string;
+  byte_size: number;
+  // Which parser read the file, e.g. "suunto_xml". Render it with
+  // `diveParserLabel` rather than showing the raw key.
+  parser_key: string;
+  updated_at?: string | null;
+}
+
+const DIVE_PARSER_LABELS: Record<string, string> = {
+  suunto_xml: "Suunto XML export",
+  suunto_json: "Suunto JSON export",
+};
+
+// Human-readable name for a `parser_key`. Falls back to the raw key rather
+// than to a blank or "Unknown": if the API grows a parser this build hasn't
+// heard of, showing "garmin_fit" is worse than a label but far better than an
+// empty cell that looks like a bug.
+export function diveParserLabel(
+  key: string | null | undefined,
+): string | null {
+  if (!key) return null;
+  return DIVE_PARSER_LABELS[key] ?? key;
 }
 
 export interface DiveCreate {
@@ -123,6 +167,11 @@ export interface ParsedDive {
   avg_depth: number | null;
   bottom_temperature: number | null;
   mixtures: ParsedDiveMixture[];
+  // Proof that the API parsed this exact file for this user. Hand it back to
+  // `uploadDiveFile` along with the same `File` once the dive exists, and the
+  // export is stored against that dive. Nothing else can be attached: the API
+  // re-hashes the body it receives and compares it against this token.
+  file_token: string;
   [key: string]: unknown;
 }
 
@@ -188,6 +237,55 @@ export const divesAPI = {
     // "multipart/form-data; boundary=..." header itself.
     const response = await apiClient.post("/dive/parse", formData, {
       headers: { "Content-Type": undefined },
+    });
+    return response.data;
+  },
+
+  // Attach (or replace) the dive-computer export a dive was imported from.
+  //
+  // Called after the dive has been created or updated, not when the file is
+  // picked: `/dive/parse` stores nothing, so a file only becomes worth keeping
+  // once it has actually produced a dive.
+  //
+  // `fileToken` is the `file_token` from the `parseDiveFile` call for this same
+  // file. Without it the API rejects the upload - it is what proves the bytes
+  // are the ones that pre-filled the form rather than an arbitrary blob.
+  //
+  // The `Content-Type` header is explicitly cleared so the browser sets
+  // `multipart/form-data` *with its own boundary* - same as `parseDiveFile`.
+  async uploadDiveFile(
+    diveUuid: string,
+    file: File,
+    fileToken: string,
+  ): Promise<DiveFileInfo> {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("file_token", fileToken);
+
+    const response = await apiClient.put(`/dive/${diveUuid}/file`, formData, {
+      headers: { "Content-Type": undefined },
+    });
+    return response.data;
+  },
+
+  async deleteDiveFile(diveUuid: string): Promise<void> {
+    await apiClient.delete(`/dive/${diveUuid}/file`);
+  },
+
+  // Fetch a dive's stored export as a Blob.
+  //
+  // This has to go through the API client rather than a plain link: the file is
+  // private, the endpoint requires an `Authorization` header, and an `<a href>`
+  // cannot send one (the access token lives in memory, not in a cookie).
+  //
+  // `version` is sent as a `v` query param the API ignores. Its job is to give
+  // each version of a file its own URL: the response is cached with
+  // `max-age=300`, so without it the browser would keep serving the old bytes
+  // for five minutes after a replace.
+  async getDiveFileBlob(diveUuid: string, version?: string): Promise<Blob> {
+    const response = await apiClient.get(`/dive/${diveUuid}/file`, {
+      responseType: "blob",
+      params: version ? { v: version } : undefined,
     });
     return response.data;
   },
