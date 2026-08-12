@@ -10,7 +10,6 @@ import {
   DIVE_FILE_ACCEPT,
   MAX_DIVE_FILE_SIZE,
   ParsedDive,
-  ParsedDiveMixture,
 } from "@/lib/api/dives";
 import {
   formatDurationForForm,
@@ -19,6 +18,13 @@ import {
 import { getApiErrorMessage } from "@/lib/api/error";
 import { DiveFormValues } from "@/components/dives/dive-form-fields";
 import { DiveMixtureInput } from "@/lib/validations/dive";
+import {
+  describeMixtureImport,
+  existingMixtureFor,
+  mergeMixture,
+  mixtureImportNotes,
+  type MixtureImportNotes,
+} from "@/lib/dive-import";
 import { Loader2, Upload } from "lucide-react";
 
 // Applies the fields parsed from a dive-computer export file onto a dive
@@ -49,20 +55,16 @@ function setDiveFormValue<
   );
 }
 
-// Converts a parsed mixture (nullable fields, no `id`) into the shape the
-// mixture form fields expect: `start_pressure`/`end_pressure` use "" (not
-// `undefined`) as their "unset" placeholder, matching `DEFAULT_MIXTURE`'s
-// convention in `mixture-fields.tsx`, and `name` is left `undefined` so the
-// field shows blank rather than the literal string "null".
-function toMixtureFormValue(mixture: ParsedDiveMixture): DiveMixtureInput {
-  return {
-    name: mixture.name ?? undefined,
-    volume: mixture.volume,
-    start_pressure: mixture.start_pressure ?? "",
-    end_pressure: mixture.end_pressure ?? "",
-    oxygen: mixture.oxygen,
-    helium: mixture.helium,
-  };
+// The mixtures currently on the form. Same cast reasoning as `setDiveFormValue`
+// above: the field name is known against `DiveFormValues` but not against a
+// still-generic `TFieldValues`.
+function getDiveFormMixtures<TFieldValues extends DiveFormValues>(
+  form: UseFormReturn<TFieldValues>,
+): DiveMixtureInput[] {
+  const mixtures = form.getValues(
+    "mixtures" as unknown as Path<TFieldValues>,
+  ) as unknown as DiveMixtureInput[] | undefined;
+  return mixtures ?? [];
 }
 
 export function applyParsedDiveToForm<TFieldValues extends DiveFormValues>(
@@ -77,7 +79,7 @@ export function applyParsedDiveToForm<TFieldValues extends DiveFormValues>(
   // instance's `fields` when the new array is shorter - see DECISIONS.md),
   // and plain `form.setValue("mixtures", ...)` has the same problem.
   replaceMixtures: (mixtures: DiveMixtureInput[]) => void,
-) {
+): MixtureImportNotes {
   if (parsed.dive_number != null) {
     setDiveFormValue(form, "dive_number", parsed.dive_number);
   }
@@ -99,9 +101,20 @@ export function applyParsedDiveToForm<TFieldValues extends DiveFormValues>(
   if (parsed.bottom_temperature != null) {
     setDiveFormValue(form, "bottom_temperature", parsed.bottom_temperature);
   }
-  if (parsed.mixtures.length > 0) {
-    replaceMixtures(parsed.mixtures.map(toMixtureFormValue));
+  if (parsed.mixtures.length === 0) {
+    return { guessed: {}, keptPressures: false, discardedPressures: false };
   }
+
+  const existing = getDiveFormMixtures(form);
+  const merged = parsed.mixtures.map((mixture, index) =>
+    mergeMixture(
+      mixture,
+      index,
+      existingMixtureFor(existing, parsed.mixtures.length, index),
+    ),
+  );
+  replaceMixtures(merged.map((cylinder) => cylinder.value));
+  return mixtureImportNotes(parsed.mixtures, merged, existing);
 }
 
 export interface DiveFileImportProps<TFieldValues extends DiveFormValues> {
@@ -130,8 +143,16 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
   const { toast } = useToast();
   const [isParsingFile, setIsParsingFile] = useState(false);
   const [pendingFileName, setPendingFileName] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // What the import had to guess, shown next to the file name rather than in the
+  // toast: the toast is gone in seconds, and this is exactly the thing the diver
+  // has to still be able to see while fixing it.
+  //
+  // The rendered sentence, not the structured notes - it is a statement about the
+  // file and never changes after import, so there is nothing to re-derive. See
+  // `describeMixtureImport`.
+  const [importNote, setImportNote] = useState<string | null>(null);
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -151,9 +172,10 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
 
       setIsParsingFile(true);
       const parsed: ParsedDive = await divesAPI.parseDiveFile(file);
-      applyParsedDiveToForm(form, parsed, replaceMixtures);
+      const notes = applyParsedDiveToForm(form, parsed, replaceMixtures);
       onFileSelected?.(file, parsed.file_token);
       setPendingFileName(file.name);
+      setImportNote(describeMixtureImport(notes));
 
       toast({
         title: "Dive file parsed",
@@ -184,8 +206,9 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
       <div>
         <p className="font-medium text-sm">Import from a dive computer file</p>
         <p className="text-sm text-muted-foreground">
-          Upload a dive log export (e.g. Suunto XML or JSON) to automatically
-          fill in the fields below.
+          Upload a dive log export — a FIT file from a Garmin Descent or Suunto
+          computer, or a Suunto XML or JSON export — to automatically fill in
+          the fields below.
         </p>
         {pendingFileName ? (
           <p className="text-sm text-muted-foreground mt-1">
@@ -201,6 +224,21 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
             &mdash; importing another file will replace it.
           </p>
         ) : null}
+        {/* Rendered unconditionally and `sr-only` until there is something to say: a
+            `role="status"` region that mounts together with its text is typically not
+            announced at all, since screen readers register it on insertion and read
+            *subsequent* changes. The text is computed once at import and never changes
+            afterwards, so this announces exactly once - see `describeMixtureImport`. */}
+        <p
+          role="status"
+          className={
+            importNote
+              ? "text-sm text-amber-700 dark:text-amber-500 mt-1"
+              : "sr-only"
+          }
+        >
+          {importNote}
+        </p>
       </div>
       <div>
         <input

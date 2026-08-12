@@ -18,25 +18,10 @@ import {
 } from "@/components/ui/form";
 import { Plus, Trash2 } from "lucide-react";
 import { DiveMixtureInput } from "@/lib/validations/dive";
+import { DEFAULT_MIXTURE, getDefaultMixtureName } from "@/lib/dive-mixtures";
 import { VolumeCombobox } from "@/components/dives/volume-combobox";
 
-// Default values pre-filled when a new mixture (tank) is added. Start/end
-// pressure are deliberately left blank ("") rather than defaulted, since
-// they vary per tank/fill and shouldn't be guessed.
-export const DEFAULT_MIXTURE = {
-  volume: 11.1,
-  start_pressure: "" as const,
-  end_pressure: "" as const,
-  oxygen: 21.0,
-  helium: 0,
-};
-
-// Default name for a mixture based on its position in the list: the first
-// tank is assumed to be the "Back Gas", and every subsequent tank is a
-// numbered "Deco Gas".
-export function getDefaultMixtureName(index: number): string {
-  return index === 0 ? "Back Gas" : `Deco Gas ${index}`;
-}
+export { DEFAULT_MIXTURE, getDefaultMixtureName };
 
 // The minimal field shape `MixtureFields` needs: any form values type that
 // has a `mixtures` array (both `DiveCreateInput` and `DiveUpdateInput` from

@@ -133,7 +133,7 @@ the API. New dives default it to `nowStartTime()` (now, in the browser's own
 offset via `getBrowserUtcOffsetMinutes()` - the negation of
 `Date.prototype.getTimezoneOffset()`) - the best available guess for someone
 logging a dive shortly after diving it. Importing a dive-computer file
-(`normalizeParsedStartTime()` in `dive-file-import.tsx`) uses the file's own
+(`normalizeParsedStartTime()` in `lib/date-time.ts`) uses the file's own
 embedded offset if it has one, and falls back to that same browser default if
 the file's `start_time` is naive (e.g. Suunto XML's `StartTime`, which has no
 offset at all).
@@ -907,6 +907,141 @@ doesn't.
 There is currently no way to fetch or manage another user's data through this API
 at all - that's deliberate until the public-profile endpoint exists.
 
+## FIT imports: one vendor-neutral label, and gas gaps filled here but declared
+
+The API gained a `fit` parser reading Garmin Descent and Suunto's native export
+alike, so `DIVE_FILE_ACCEPT` is now `.xml,.json,.fit`. Three client-side
+decisions came with it.
+
+**`diveParserLabel` says "FIT export", not "Garmin FIT".** One API parser reads
+the FIT files of every vendor that writes them, because FIT fixes units in a
+global profile rather than per manufacturer. Naming a single vendor would
+mislabel the other one's dives, and the stored `parser_key` is `fit` for both.
+`dives.test.ts` asserts a label for every key the API's registry can currently
+emit, and `DIVE_FILE_ACCEPT` is pinned against the same list - a parser the API
+grows and this list forgets is invisible rather than broken: the file simply
+cannot be selected in the picker. `DIVE_PARSER_LABELS` is exported so the test
+can write `satisfies Record<keyof typeof DIVE_PARSER_LABELS, string>`, which is
+what makes that coupling real: a hand-written `Record<string, string>` in the
+test looked like it enforced this and didn't, since a fourth parser would have
+compiled and passed unchanged.
+
+**Missing gas values are defaulted here, not in the API - and the diver is
+told.** The API's parsers deliberately return `null` for anything an export did
+not record, rather than substituting a plausible number (see its
+`DiveMixtureSchema`). The form cannot hold `null` for
+`volume`/`oxygen`/`helium`, so `mergeMixture` fills them from
+`DEFAULT_MIXTURE` - the same values a hand-added cylinder starts with.
+
+Doing only that would have thrown away exactly the information the API kept
+`null` to preserve. A FIT file can never record cylinder size, and the 2026
+Suunto Ocean export records no gas fraction anywhere, so **every** FIT import
+silently claimed an 11.1 L cylinder of air. That is not cosmetic: one cylinder
+plus an average depth plus both pressures is precisely `compute_gas_use`'s
+trigger, so a diver who used a 15 L got an RMV about 26 % low, rendered as a
+derived fact, and a 32 % nitrox dive was logged as air. So
+`applyParsedDiveToForm` returns what it had to invent and the import box says
+so, in a line that stays on screen rather than a toast that doesn't. Pressures
+are never defaulted - `""` means unknown, and 0 bar would read as an empty tank.
+
+**`guessed` is keyed off the file alone**, and getting that wrong made the
+whole warning dead code on both real forms. It first asked whether *no* source
+had the value - file or carried-over cylinder - which reads sensibly and never
+fires: both dive pages seed `mixtures` with a complete `DEFAULT_MIXTURE`
+cylinder before any import happens, and the create form's last-dive prefill
+supplies all three too, so the carried cylinder is never null. For the ordinary
+one-cylinder-file-against-a-one-cylinder-form case the counts always match, so
+the note appeared only when the cylinder counts differed - a minority path, and
+one that made it look like it worked.
+
+`applyParsedDiveToForm` is tested against the pages' literal seed rather than a
+hand-picked `existing` cylinder, because the bug lived entirely in that seam:
+every unit test of the merge passed, and none of them used the input
+the app actually produces.
+
+**The note says where the value came from, not just that it was guessed.**
+`mergeMixture` reports per field whether the number now in the box came from the
+file, from the cylinder already on the form, or from `DEFAULT_MIXTURE`. Importing
+onto a form prefilled from the previous dive keeps that dive's gases, so the
+fields are *untouched* - and "filled in as a starting point" described something
+that had not happened. The sentence now reads "Those values were already on this
+form" or "Those are defaults" accordingly.
+
+This is not the unanswerable question an earlier round ruled out. "Did the diver
+type this or did the form seed it?" is genuinely unknowable; "which branch of the
+merge ran" is something the merge knows exactly, and conflating the two is what
+left the wrong wording in place.
+
+**The note is a statement about the file, and never changes after import.** "This export
+doesn't record cylinder size" is true when it appears and stays true - nothing the diver
+types afterwards bears on it.
+
+Two rounds of review pushed the other way, and both were right *given* a note that talks
+about form state: quote the live value so the figure in the field is recognisable, then
+track provenance so a corrected field stops being called a default. What collapses the
+whole idea is the layout. The note sits in the import card; the gas fields are **~2 200 px
+below it**, measured. They are never on screen together, so a quoted figure can never be
+compared with the one in the box, and a sentence that rewrites itself while the diver edits
+a field two viewports away is a change nobody is present for.
+
+That left only the cost: a snapshot of the imported cylinders, a `form.watch` subscription,
+an `addressed` check, a `null`-returning `reading()` for cleared fields, and a live region
+re-announcing itself once per keystroke - every one of it machinery introduced to fix a
+problem the previous piece of machinery had created. Gone, along with the numbers that
+required it. Computed once, at import.
+
+If naming the specific value ever earns its place, the place for it is a hint on the field
+itself, where the value and the claim about it *are* visible together - not a sentence
+2 200 px away trying to describe one.
+
+**`guessed` holds a per-field source, not a value.** That is what survives of the
+attempts to quote one: whether each field came from the file, the form or
+`DEFAULT_MIXTURE` is fixed at import and is the only thing the sentence needs.
+
+**Helium is folded into "gas mix" when oxygen was guessed too**, and named on its
+own (`helium fraction`) otherwise - a file recording neither has no gas mix at
+all, and "0 % helium" adds nothing to that, while a file that recorded the oxygen
+would be described by a "gas mix" label it has no business wearing.
+
+Provenance is judged over *every* guessed field rather than the named ones, or a
+defaulted helium hides behind the label oxygen is wearing for it: the note said
+"already on this form" while the He box showed a `DEFAULT_MIXTURE` 0 the diver
+had deliberately cleared.
+
+**The two pressures move as a pair.** Falling back field by field let a start
+from the file meet an end from whatever was on the form - a fill that never
+existed. It either trips `diveMixtureSchema`'s `end <= start` refine on a field
+the diver never touched, or passes and hands `compute_gas_use` a consumption
+spanning two different fills. The form's pressures are carried over only when
+the file supplies neither.
+
+**The live region is rendered unconditionally, `sr-only` until there is
+something to say.** A `role="status"` element that mounts together with its text
+is typically not announced - screen readers register the region on insertion and
+read *subsequent* changes - so conditionally rendering it reintroduced the
+silence it was added to fix.
+
+The mixture mapping, note derivation and note prose live in `lib/dive-import.ts`
+rather than in the component. It had reached 411 lines doing four separable
+things, and `src/lib/**` is where the coverage report looks - which is where this
+logic, the densest in the import path, belongs.
+
+**An import keeps what the form already held.** `replaceMixtures` swaps the
+array wholesale, which was destructive once FIT arrived: Suunto's FIT carries
+gas mixes and no transmitter data while its JSON carries pressures and no gas
+mix, so importing both for one dive is the documented way to log a multi-gas
+dive - and the second import erased the first one's contribution, quietly
+costing the dive its `gas_use`. `mergeMixture` now reads from the file
+first, then whatever sat in that cylinder's position, then `DEFAULT_MIXTURE`.
+Positional pairing applies **only when the counts match**, mirroring how the API
+pairs tank telemetry to gases: carrying a stage bottle's pressures onto a back
+gas would produce a confidently wrong RMV, which is worse than an empty field.
+
+Imported cylinders are also named via `getDefaultMixtureName`, as hand-added
+ones are. Mixture names are never parsed, and multi-gas FIT imports are routine
+enough (4 of 19 dives in the API's Ocean corpus) that leaving them anonymous is
+a chore repeated every dive.
+
 ## Parsed dive-file mixtures need `useFieldArray().replace()`, not `form.setValue()`
 
 `applyParsedDiveToForm` (`dive-file-import.tsx`) filled in every top-level field
@@ -924,7 +1059,7 @@ form value. Overwriting the value directly with `setValue` doesn't reliably
 keep that row-key bookkeeping in sync, so `applyParsedDiveToForm` now takes an
 explicit `replaceMixtures` parameter and calls it with the parsed mixtures
 (converted from the API's nullable/no-`id` shape to `DiveMixtureInput` via a
-small `toMixtureFormValue` mapper) instead of replacing the array's contents
+small `mergeMixture` mapper) instead of replacing the array's contents
 wholesale.
 
 `ParsedDive` (`lib/api/dives.ts`) also gained a proper `ParsedDiveMixture`
