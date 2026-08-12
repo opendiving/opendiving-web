@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { axisTicks, niceDomain } from "@/lib/chart-scale";
+import { axisTicks, countDomain, niceDomain } from "@/lib/chart-scale";
 
 // Moved verbatim from `dive-gas.test.ts` along with the functions themselves;
 // the examples are still phrased in RMV because that is the series they were
@@ -48,5 +48,51 @@ describe("axisTicks", () => {
   it("does not accumulate floating-point drift on fractional steps", () => {
     // Accumulating `+= step` here yields 12.499999999999998 as a tick label.
     expect(axisTicks({ min: 10, max: 15, step: 2.5 })).toEqual([10, 12.5, 15]);
+  });
+});
+
+describe("countDomain", () => {
+  it("anchors at zero, so a bar's height is its quantity", () => {
+    // The whole reason this exists alongside `niceDomain`, which would start
+    // this axis at 8 and draw twelve dives as three times the block of ten.
+    expect(countDomain(12).min).toBe(0);
+  });
+
+  it("labels whole dives, never halves", () => {
+    // `niceDomain([0, 2])` picks a step of 0.5 and labels the axis 0, 0.5, 1 -
+    // half a dive is not a thing anyone can log.
+    for (const highest of [1, 2, 3, 5, 7, 12, 40, 137, 1200]) {
+      for (const tick of axisTicks(countDomain(highest))) {
+        expect(Number.isInteger(tick)).toBe(true);
+      }
+    }
+  });
+
+  it("always contains the tallest bar", () => {
+    for (const highest of [1, 3, 9, 12, 41, 250, 999]) {
+      expect(countDomain(highest).max).toBeGreaterThanOrEqual(highest);
+    }
+  });
+
+  it("keeps the axis to a handful of gridlines", () => {
+    for (const highest of [1, 4, 17, 63, 480, 5000]) {
+      expect(axisTicks(countDomain(highest)).length).toBeLessThanOrEqual(6);
+    }
+  });
+
+  it("doesn't leave the tallest bar stranded under a rounded-up axis", () => {
+    // A real logbook's busiest year. At a target of four gaps this rounded to a
+    // step of 100 and an axis of 300, so the tallest bar in the whole chart
+    // stopped three quarters of the way up and the top quarter was always empty.
+    const domain = countDomain(223);
+
+    expect(domain).toEqual({ min: 0, max: 250, step: 50 });
+    expect(223 / domain.max).toBeGreaterThan(0.85);
+  });
+
+  it("gives an empty logbook an axis to draw nothing in", () => {
+    // Zero-height everywhere, but the gridlines and the baseline still have to
+    // land somewhere finite.
+    expect(countDomain(0)).toEqual({ min: 0, max: 1, step: 1 });
   });
 });

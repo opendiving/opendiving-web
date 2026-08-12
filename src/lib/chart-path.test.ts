@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildAreaPath, smoothBandPath, smoothPath } from "@/lib/chart-path";
+import {
+  barPath,
+  buildAreaPath,
+  smoothBandPath,
+  smoothPath,
+} from "@/lib/chart-path";
 
 describe("buildAreaPath", () => {
   it("closes the shape along the baseline", () => {
@@ -125,5 +130,28 @@ describe("smoothBandPath", () => {
     // the caller - either way, better to draw nothing than a torn shape.
     expect(smoothBandPath([upper[0]], [lower[0]])).toBe("");
     expect(smoothBandPath(upper, lower.slice(1))).toBe("");
+  });
+});
+
+describe("barPath", () => {
+  it("rounds the top corners and leaves the bottom square", () => {
+    // Up the left side, round the top, down the right, and along the baseline -
+    // which stays flat, so the bar sits on the axis rather than floating.
+    expect(barPath(10, 60, 20, 40, 3)).toBe(
+      "M10,100 L10,63 Q10,60 13,60 L27,60 Q30,60 30,63 L30,100 Z",
+    );
+  });
+
+  it("never rounds more than the bar can carry", () => {
+    // A one-dive bar in a fifty-dive year is a couple of units tall; the
+    // full radius on it would bow the sides out into a lens.
+    expect(barPath(10, 98, 20, 2, 3)).toBe(
+      "M10,100 L10,100 Q10,98 12,98 L28,98 Q30,98 30,100 L30,100 Z",
+    );
+  });
+
+  it("draws nothing for a month with no diving", () => {
+    // An absence, not a sliver: a zero-height bar would still show a 3-unit cap.
+    expect(barPath(10, 100, 20, 0, 3)).toBe("");
   });
 });

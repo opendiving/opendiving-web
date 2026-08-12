@@ -137,3 +137,39 @@ export function smoothBandPath(upper: Point[], lower: Point[]): string {
 
   return `${smoothPath(upper)} L${round(back[0].x)},${round(back[0].y)} ${curveCommands(back)} Z`;
 }
+
+// The `d` of a bar with its top two corners rounded and its bottom two square.
+//
+// `<rect rx>` would be the obvious way to draw a bar, and it rounds all four
+// corners - which lifts the bar off the axis it is measured from, leaving a
+// visible notch either side of the baseline. Rounding only the top is what makes
+// a bar read as a column standing on the axis rather than as a floating pill.
+//
+// The radius is clamped to what the bar can actually carry: half its width (past
+// that the two arcs would cross) and its own height (a one-dive bar in a
+// hundred-dive year is a few units tall, and a 4-unit radius on it would bow the
+// sides). A zero-height bar draws nothing at all, which is right - "no diving
+// that month" is an absence, not a sliver.
+export function barPath(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number,
+): string {
+  if (height <= 0 || width <= 0) return "";
+
+  const r = Math.min(radius, width / 2, height);
+  const right = x + width;
+  const bottom = y + height;
+
+  return [
+    `M${round(x)},${round(bottom)}`,
+    `L${round(x)},${round(y + r)}`,
+    `Q${round(x)},${round(y)} ${round(x + r)},${round(y)}`,
+    `L${round(right - r)},${round(y)}`,
+    `Q${round(right)},${round(y)} ${round(right)},${round(y + r)}`,
+    `L${round(right)},${round(bottom)}`,
+    "Z",
+  ].join(" ");
+}
