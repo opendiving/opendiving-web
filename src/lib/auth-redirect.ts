@@ -6,15 +6,43 @@
 //     passed down as a prop (`AuthForm` -> `GoogleAuthButton`) - no storage.
 //   - The email magic link leaves the app entirely and comes back on
 //     `/auth/verify`, a page that has no idea where the visitor was originally
-//     headed. `sessionStorage` carries it across that hop.
+//     headed. `localStorage` carries it across that hop.
 //
-// `sessionStorage` (not `localStorage`) deliberately: it's scoped to the tab and
-// dies with it, and all it ever holds is a path the visitor's own browser was
-// already pointed at. If the emailed link is opened in a different browser or
-// tab the value simply isn't there, and they land on `/dashboard` - a fine
-// outcome, not an error case.
+// `localStorage` (not `sessionStorage`) because the link is clicked from a mail
+// client, and that practically never reuses the tab that asked for it: a desktop
+// mail app hands the URL to the browser, and webmail opens it with `noopener`.
+// Either way the destination lands in a browsing context with no opener, and a
+// `sessionStorage` entry - which is copied only from an opener - isn't there.
+// The value that used to be stored was therefore lost in the ordinary case, and
+// every magic-link sign-in fell through to `/dashboard`.
+//
+// What's stored is still only a path the visitor's own browser was already
+// pointed at, and it's still read exactly once, but `localStorage` outlives the
+// tab - so it carries its own expiry rather than relying on the tab closing.
+// `lib/gas-use-view.ts` and the two other remembered-view modules store their
+// preferences the same way, for a related reason.
 
 const POST_AUTH_REDIRECT_KEY = "opendiving:post-auth-redirect";
+
+// A backstop, not a mirror of the link's own life. The obvious value would be
+// `MAGIC_LINK_TOKEN_EXPIRE_MINUTES`, but that's read from the environment on the
+// backend (30 is only its default) and nothing here can see it - so matching it
+// by hand would mean an operator who raises it to an hour silently reintroduces
+// the bug this storage exists to fix, with every sign-in in the back half of the
+// window landing on `/dashboard` again.
+//
+// The asymmetry decides it: too short breaks the feature, too long costs
+// essentially nothing. A destination can only be *read* by `/auth/verify`, which
+// needs a live token, and a live token means a link request, which re-stamps
+// this entry anyway. So the expiry is only there to stop an abandoned path
+// living in storage forever, and a day is long enough to be safely past any
+// plausible link lifetime.
+const POST_AUTH_REDIRECT_TTL_MS = 24 * 60 * 60 * 1000;
+
+interface StoredRedirect {
+  path: string;
+  expiresAt: number;
+}
 
 // Where every auth entry point sends a freshly signed-in user when there's no
 // remembered destination.
@@ -71,16 +99,23 @@ export function signInHref(next?: string | null): string {
 
 // Stores the destination to return to after the magic-link round trip. Always
 // call this when requesting a link - passing no path *clears* any previously
-// remembered one, so a destination abandoned earlier in the tab (e.g. the
-// visitor opened `/signin?next=/dives/abc`, then signed in from the landing
-// page instead) can never hijack a later sign-in.
+// remembered one, so a destination abandoned earlier (e.g. the visitor opened
+// `/signin?next=/dives/abc`, then signed in from the landing page instead) can
+// never hijack a later sign-in.
 export function rememberPostAuthRedirect(path?: string | null): void {
   const target = sanitizeRedirectPath(path);
   try {
     if (target) {
-      window.sessionStorage.setItem(POST_AUTH_REDIRECT_KEY, target);
+      const stored: StoredRedirect = {
+        path: target,
+        expiresAt: Date.now() + POST_AUTH_REDIRECT_TTL_MS,
+      };
+      window.localStorage.setItem(
+        POST_AUTH_REDIRECT_KEY,
+        JSON.stringify(stored),
+      );
     } else {
-      window.sessionStorage.removeItem(POST_AUTH_REDIRECT_KEY);
+      window.localStorage.removeItem(POST_AUTH_REDIRECT_KEY);
     }
   } catch {
     // Storage can be unavailable (Safari private mode, storage disabled, quota).
@@ -91,12 +126,28 @@ export function rememberPostAuthRedirect(path?: string | null): void {
 
 // Reads and clears the remembered destination. Single-use by design: it's
 // consumed by whichever page finishes the sign-in, so it can't leak into the
-// next one.
+// next one. Removed before it's even inspected, so a stale, expired or
+// unparseable entry clears itself out too rather than sitting there being
+// rejected on every subsequent sign-in.
 export function consumePostAuthRedirect(): string | null {
+  let raw: string | null;
   try {
-    const stored = window.sessionStorage.getItem(POST_AUTH_REDIRECT_KEY);
-    window.sessionStorage.removeItem(POST_AUTH_REDIRECT_KEY);
-    return sanitizeRedirectPath(stored);
+    raw = window.localStorage.getItem(POST_AUTH_REDIRECT_KEY);
+    window.localStorage.removeItem(POST_AUTH_REDIRECT_KEY);
+  } catch {
+    return null;
+  }
+  if (!raw) return null;
+
+  try {
+    // Anything that isn't the shape written above is treated as absent: an entry
+    // left by an older build stored the bare path, and `JSON.parse` throws on it.
+    const stored: unknown = JSON.parse(raw);
+    if (typeof stored !== "object" || stored === null) return null;
+    const { path, expiresAt } = stored as Partial<StoredRedirect>;
+    if (typeof path !== "string" || typeof expiresAt !== "number") return null;
+    if (Date.now() > expiresAt) return null;
+    return sanitizeRedirectPath(path);
   } catch {
     return null;
   }

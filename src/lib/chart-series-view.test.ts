@@ -5,6 +5,7 @@ import {
   toggleSeries,
   writeSeriesVisibility,
 } from "@/lib/chart-series-view";
+import { memoryStorage, useStorage } from "@/test/memory-storage";
 
 const KEY = "opendiving:test-series";
 
@@ -17,31 +18,7 @@ function readSeries() {
 }
 
 // `window.localStorage` is installed per test rather than used as jsdom provides
-// it, for the reason spelled out in `gas-use-view.test.ts`: under this runner
-// Node's own experimental `localStorage` global shadows jsdom's, so
-// `window.localStorage` is `undefined` here.
-function memoryStorage(): Storage {
-  const store = new Map<string, string>();
-
-  return {
-    get length() {
-      return store.size;
-    },
-    clear: () => store.clear(),
-    getItem: (key) => store.get(key) ?? null,
-    key: (index) => [...store.keys()][index] ?? null,
-    removeItem: (key) => void store.delete(key),
-    setItem: (key, value) => void store.set(key, value),
-  };
-}
-
-function useStorage(storage: Storage | undefined) {
-  Object.defineProperty(window, "localStorage", {
-    value: storage,
-    configurable: true,
-  });
-}
-
+// it - see `test/memory-storage.ts` for why.
 describe("readStoredSeries / writeSeriesVisibility", () => {
   beforeEach(() => {
     useStorage(memoryStorage());

@@ -4,6 +4,8 @@ import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/components/ui/use-toast";
+import { getApiErrorMessage } from "@/lib/api/error";
 import { isFormPath } from "@/lib/return-to";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/ui/user-avatar";
@@ -84,6 +86,26 @@ export function Header() {
   const currentPage = getCurrentPage(pathname);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const headerRef = useRef<HTMLElement>(null);
+  const { toast } = useToast();
+
+  // `signOut` rejects when the server never confirmed, and deliberately leaves
+  // the diver signed in when it does - so this is the one place that can say so.
+  // Silently swallowing it would leave them looking at an unchanged page with no
+  // idea their session is still open.
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      toast({
+        title: "Couldn't sign you out",
+        description: getApiErrorMessage(
+          error,
+          "You're still signed in. Check your connection and try again.",
+        ),
+        variant: "destructive",
+      });
+    }
+  };
 
   // The mobile menu lives inside the sticky header, so it has no overlay of its
   // own to dismiss it - without this, tapping the page or hitting Escape leaves
@@ -106,14 +128,6 @@ export function Header() {
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [isMobileMenuOpen]);
-
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-    } catch (error) {
-      console.error("Sign out error:", error);
-    }
-  };
 
   return (
     <header

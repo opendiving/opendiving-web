@@ -63,12 +63,16 @@ export function AuthForm({ className, redirectTo }: AuthFormProps) {
   const onSubmit = async (data: EmailAuthFormData) => {
     try {
       setError(null);
-      await requestEmailLink(data.email);
       // The magic link comes back on `/auth/verify`, which knows nothing about
-      // this form - stash the destination for it to pick up. Called
-      // unconditionally: with no `redirectTo` this *clears* any destination
-      // remembered earlier in the tab, so an abandoned one can't resurface here.
+      // this form - stash the destination for it to pick up. Before the request,
+      // not after, so it really is unconditional: with no `redirectTo` this
+      // *clears* any destination remembered earlier, and leaving that clear
+      // behind a request that might fail is how an abandoned destination
+      // resurfaces at an unrelated later sign-in. Storing one for a link that
+      // then fails to send costs nothing - the next request overwrites it, and
+      // it expires on its own.
       rememberPostAuthRedirect(redirectTo);
+      await requestEmailLink(data.email);
       setSentTo(data.email);
       setCooldown(RESEND_COOLDOWN_SECONDS);
     } catch (err) {
@@ -92,6 +96,12 @@ export function AuthForm({ className, redirectTo }: AuthFormProps) {
       setIsResending(true);
       setResendError(null);
       setResendMessage(null);
+      // Re-stamped, and for the same reason placed before the request rather
+      // than after it. The stored expiry is deliberately blind to how long the
+      // backend actually makes links live (see `rememberPostAuthRedirect`), so
+      // restamping whenever a new link is minted is the only thing keeping the
+      // destination alive for exactly as long as the link the diver is holding.
+      rememberPostAuthRedirect(redirectTo);
       await requestEmailLink(sentTo);
       setResendMessage("Link resent - check your email.");
       setCooldown(RESEND_COOLDOWN_SECONDS);

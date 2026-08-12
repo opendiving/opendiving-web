@@ -6,7 +6,13 @@ import { AUTH_SESSION_EXPIRED_EVENT } from "@/lib/api/client";
 
 // `vi.hoisted` because `vi.mock` is lifted above every other statement in the file,
 // so a plain `const` declared here would not exist yet when the factory runs.
-const { authAPI, refreshAccessToken, clearAccessToken } = vi.hoisted(() => ({
+const {
+  authAPI,
+  refreshAccessToken,
+  clearAccessToken,
+  hardNavigate,
+  rememberPostAuthRedirect,
+} = vi.hoisted(() => ({
   authAPI: {
     getCurrentUser: vi.fn(),
     requestEmailLink: vi.fn(),
@@ -18,9 +24,18 @@ const { authAPI, refreshAccessToken, clearAccessToken } = vi.hoisted(() => ({
   },
   refreshAccessToken: vi.fn(),
   clearAccessToken: vi.fn(),
+  hardNavigate: vi.fn(),
+  rememberPostAuthRedirect: vi.fn(),
 }));
 
 vi.mock("@/lib/api/auth", () => ({ authAPI }));
+// Real storage would work through Node's shadowed `localStorage` and warn; what
+// matters here is only whether sign-out asks for the destination to be cleared.
+vi.mock("@/lib/auth-redirect", () => ({ rememberPostAuthRedirect }));
+// Signing out leaves for the landing page with a real page load, which jsdom
+// can't perform and won't let a test intercept on `window.location` - hence the
+// wrapper module (see `lib/navigation.ts`), mocked here.
+vi.mock("@/lib/navigation", () => ({ hardNavigate }));
 // Only the two token helpers are stubbed; `AUTH_SESSION_EXPIRED_EVENT` has to stay
 // real, since the point of one test is that the provider listens for the same event
 // name the client dispatches.
@@ -161,18 +176,46 @@ describe("AuthProvider outcomes", () => {
     expect(authAPI.completeProfile).not.toHaveBeenCalled();
   });
 
-  it("clears the user even when signing out fails server-side", async () => {
+  // The reload is the whole danger here. `POST /auth/logout` is the only thing
+  // that blacklists the token pair and clears the refresh cookie, so after a
+  // failed one the cookie is still live and a page load would hand it to
+  // `initAuth`, which re-derives the session and lets `/` bounce the diver to
+  // `/dashboard` - signed in, one click after asking to leave.
+  it("changes nothing, and stays put, when the server didn't confirm", async () => {
     refreshAccessToken.mockResolvedValue("token");
     authAPI.getCurrentUser.mockResolvedValue(USER);
     const { result } = renderHook(() => useAuth(), { wrapper });
     await waitFor(() => expect(result.current.isAuthenticated).toBe(true));
 
     authAPI.signOut.mockRejectedValue(new Error("500"));
+    await expect(act(() => result.current.signOut())).rejects.toThrow("500");
+
+    expect(hardNavigate).not.toHaveBeenCalled();
+    // Still signed in, deliberately: the session on the server is still open, and
+    // the interceptor would rebuild the access token from that cookie on the next
+    // 401. Showing "signed out" over a working session is the dangerous lie.
+    expect(result.current.user).toEqual(USER);
+    expect(result.current.isAuthenticated).toBe(true);
+  });
+
+  // Not `/signin`: the diver asked to leave. Getting there by reloading the
+  // document is the point - clearing the user re-runs `useAuthGuard` on the
+  // page being signed out of, and a client-side navigation would lose to the
+  // guard's own `/signin?next=<that page>` redirect.
+  it("leaves for the landing page with a full page load", async () => {
+    refreshAccessToken.mockResolvedValue("token");
+    authAPI.getCurrentUser.mockResolvedValue(USER);
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isAuthenticated).toBe(true));
+
+    authAPI.signOut.mockResolvedValue(undefined);
     await act(() => result.current.signOut());
 
-    // Leaving the diver looking signed in because the *server* failed to hear about
-    // it is the wrong way round: the local session is gone either way.
     expect(result.current.user).toBeNull();
+    expect(hardNavigate).toHaveBeenCalledWith("/");
+    // A destination left over from an unclicked magic link would otherwise sit
+    // in `localStorage` for a day, readable after the diver has gone.
+    expect(rememberPostAuthRedirect).toHaveBeenCalledWith(undefined);
   });
 });
 
