@@ -2969,21 +2969,23 @@ from the page rotates the cookie out from under the app.
 `npm install`, for a script only a maintainer runs. `playwright-core` is the driver alone and
 takes an `executablePath`, so it uses the Chrome already on the machine.
 
-### The one-second refresh-token collision
+### `visit()` fails loudly when a navigation lands on `/signin`
 
-Worth writing down because it is an API bug this script trips every time, not a quirk of the
-script. A refresh token's payload is `{sub, exp, token_type}` and nothing else - no `jti`, no
-`iat` - and JWT `exp` has one-second resolution. Two refresh tokens issued for the same account
-inside the same wall-clock second are therefore *byte-identical*. `/auth/refresh` blacklists the
-token it was handed before minting the replacement, so when the replacement collides it hands
-back a token that is already blacklisted, and the next refresh 401s. In a browser that means:
-sign in, navigate before the second ticks over, and the page after that lands on `/signin` with
-no explanation.
+Kept from a workaround that is no longer needed, because it is worth keeping on its own.
 
-A script hits this on almost every run, since it navigates the instant sign-in completes.
-`sleepPastTheSecond()` waits out the boundary, and `visit()` fails loudly if a navigation lands
-on `/signin` rather than quietly producing four screenshots of the sign-in form. Both come out
-once the API puts a `jti` on refresh tokens.
+The script used to trip an API bug on almost every run: refresh tokens carried only `{sub,
+exp, token_type}`, and JWT `exp` has one-second resolution, so two minted for one account
+inside the same wall-clock second were *byte-identical*. `/auth/refresh` blacklists the token
+it was handed before minting the replacement, so a collision handed back an already-revoked
+token and the next refresh 401'd - sign in, navigate before the second ticks over, and the
+page after that lands on `/signin` with no explanation. A `sleepPastTheSecond()` call waited
+out the boundary; `opendiving-api` now puts a `uuid4` `jti` on every revocable token (see
+*"Every revocable token carries a `jti`"* in its `DECISIONS.md`), so the sleep is gone.
+
+The `/signin` check in `visit()` stays. It cost nothing and it is the difference between a
+run that fails with "signed out on the way to /dashboard" and a run that quietly produces
+four screenshots of the sign-in form - which is the failure mode of *any* future auth
+regression, not just the one that has been fixed.
 
 ## "Due soon" is a `warning` badge, because `secondary` is invisible on a card
 

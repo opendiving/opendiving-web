@@ -258,11 +258,10 @@ async function selectActivityYear(page, target) {
 
 const atTop = (page) => page.evaluate(() => window.scrollTo(0, 0));
 
-// Every full load re-mounts `AuthProvider`, which spends the httpOnly refresh cookie
-// for a replacement. Two of those inside the same wall-clock second currently hand
-// back a byte-identical token that the rotation has already blacklisted, and the page
-// after that lands on /signin - see `sleepPastTheSecond`. Checking here turns that
-// into a clear failure rather than four screenshots of the sign-in form.
+// Every full load re-mounts `AuthProvider`, which spends the httpOnly refresh cookie for
+// a replacement, so a run is a chain of rotations and any break in it signs the browser
+// out. Checking here turns that into a clear failure rather than a set of screenshots of
+// the sign-in form - see DECISIONS.md.
 //
 // The frame is set before the navigation rather than before the shot, so the page lays
 // out at its final height on the way in - a card that only renders once it is in view
@@ -275,15 +274,6 @@ async function visit(page, name, url) {
     throw new Error(`signed out on the way to ${url}`);
   }
 }
-
-// The API's refresh token carries only `sub`, `exp` and `token_type`, and `exp` has
-// one-second resolution - so two issued for the same account in the same second are
-// the same string. `/auth/refresh` blacklists the one it was given before minting the
-// replacement, which in that case blacklists the replacement too. Signing in and
-// navigating immediately is the reliable way to hit it; a script does it every time.
-// Remove this once the API puts a `jti` on refresh tokens.
-const sleepPastTheSecond = (page) =>
-  page.waitForTimeout(1000 - (Date.now() % 1000) + 250);
 
 // ------------------------------------------------------------------- the run
 const link = await magicLink();
@@ -313,7 +303,6 @@ page.on("request", (request) => {
 await page.goto(`${WEB}/auth/verify?token=${link}`);
 await page.getByRole("button", { name: "Sign in" }).click();
 await page.getByRole("button", { name: "Account menu" }).waitFor();
-await sleepPastTheSecond(page);
 
 // The dashboard is where signing in lands, and the only page the bearer can be lifted
 // off before anything else needs it - so it gets loaded whether or not it gets shot.
