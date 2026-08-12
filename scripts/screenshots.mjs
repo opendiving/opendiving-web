@@ -57,6 +57,23 @@ const frame = (name) => ({ width: WIDTH, height: HEIGHT[name] });
 // it needs this overridden.
 const CHART_YEAR = process.env.CHART_YEAR ?? "2025";
 
+// The hour the dashboard's clock is pinned to before the shutter. Its heading greets by
+// time of day (`greetingForHour()`), so an unpinned run shoots whichever greeting it
+// happens to be launched at and the README image flips between three of them for no
+// reason anyone reading the diff can see. 09:00 on the run's *own* date: only the hour
+// is decided here, so everything else derived from the clock - a service "due in 24
+// days", the year the charts open on - lands exactly where an unpinned run would put it.
+const GREETING_HOUR = Number(process.env.GREETING_HOUR ?? 9);
+// Range-checked because `setHours()` rolls rather than rejects: a 25 would pin the clock
+// to 01:00 *tomorrow* and quietly take a day off the service countdown - the one thing
+// the comment above promises this override does not touch.
+if (!Number.isInteger(GREETING_HOUR) || GREETING_HOUR < 0 || GREETING_HOUR > 23) {
+  console.error(
+    `GREETING_HOUR must be a whole hour from 0 to 23, not "${process.env.GREETING_HOUR}"`,
+  );
+  process.exit(1);
+}
+
 const email = process.argv[2] ?? process.env.SCREENSHOT_EMAIL;
 if (!email) {
   console.error("usage: npm run screenshots -- you@example.com [shot...]");
@@ -294,6 +311,15 @@ const context = await browser.newContext({
 // Generous, because the first hit on a route in `next dev` compiles it, and the
 // profile chart is a few hundred samples of hand-rolled SVG on top of that.
 context.setDefaultTimeout(90_000);
+
+// Set before the first page exists, so every navigation in the run sees the same clock.
+// `setFixedTime` only freezes what the page reads out of `Date`; timers and animations
+// keep running on the real one, which is what the `networkidle` waits below depend on.
+// Nothing here needs the tokens to agree with it either - they are checked against the
+// API's own clock, not the browser's.
+const pinnedNow = new Date();
+pinnedNow.setHours(GREETING_HOUR, 0, 0, 0);
+await context.clock.setFixedTime(pinnedNow);
 
 const page = await context.newPage();
 

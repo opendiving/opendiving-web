@@ -270,6 +270,19 @@ export function formatTimeOnly(
   });
 }
 
+// The greeting for an hour of the viewer's own local day (0-23), e.g. the
+// dashboard heading. Takes the hour rather than a `Date` so the boundaries can
+// be tested without faking the clock.
+//
+// Anything before 04:00 falls in with the evening: "Good night" is a farewell
+// rather than a greeting, and someone reading a dive log at 03:00 is still
+// having their evening.
+export function greetingForHour(hour: number): string {
+  if (hour >= 4 && hour < 12) return "Good morning";
+  if (hour >= 12 && hour < 18) return "Good afternoon";
+  return "Good evening";
+}
+
 // Formats a duration given in seconds as "MM:SS" (the format used in dive
 // forms - see `durationField()` in `lib/validations/dive.ts` for the matching
 // input validation).

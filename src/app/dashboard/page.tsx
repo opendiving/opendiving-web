@@ -19,7 +19,7 @@ import { CertificationExpiryCard } from "@/components/certifications/certificati
 import { SetupChecklistCard } from "@/components/dashboard/setup-checklist-card";
 import { diveStatsAPI, UserDiveStats } from "@/lib/api/dive-stats";
 import { getApiErrorMessage } from "@/lib/api/error";
-import { formatDurationHoursMinutes } from "@/lib/date-time";
+import { formatDurationHoursMinutes, greetingForHour } from "@/lib/date-time";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PageSpinner } from "@/components/ui/page-spinner";
@@ -116,12 +116,20 @@ export default function DashboardPage() {
   // place, and the error card below explains why they are empty.
   const hasDives = stats === null || stats.total_dives > 0;
 
+  // Read straight off the clock during render rather than from state: everything
+  // above this point means the heading only ever renders after the auth check has
+  // settled in an effect, so the server's hour never reaches the markup and there
+  // is nothing for hydration to disagree about. The greeting is fixed for as long
+  // as the page stays mounted, which is the right trade - a dashboard left open
+  // past midnight is not worth a timer.
+  const greeting = greetingForHour(new Date().getHours());
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground mb-2">
-            Welcome back, {user.name}!
+            {greeting}, {user.name}!
           </h1>
           <p className="text-muted-foreground">
             Your logbook, your trips and your stats, at a glance
