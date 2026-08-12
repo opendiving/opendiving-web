@@ -2,9 +2,13 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   parseDiveActivityView,
   readStoredDiveActivityView,
-  resolveYear,
   writeDiveActivityView,
 } from "@/lib/dive-activity-view";
+
+// The anchor is the start of a day the diver had dives on - what the card stores
+// and what `resolveAnchor` (in `chart-period.ts`, tested there) checks back
+// against the logbook.
+const APRIL_8 = Date.UTC(2025, 3, 8);
 
 // The pair the card actually composes: read the raw entry, then parse it.
 function readDiveActivityView() {
@@ -45,23 +49,27 @@ describe("readStoredDiveActivityView / writeDiveActivityView", () => {
   });
 
   it("round-trips a view", () => {
-    writeDiveActivityView({ scope: "month", year: 2025 });
+    writeDiveActivityView({ scope: "month", anchor: APRIL_8 });
 
-    expect(readDiveActivityView()).toEqual({ scope: "month", year: 2025 });
+    expect(readDiveActivityView()).toEqual({
+      scope: "month",
+      anchor: APRIL_8,
+    });
   });
 
-  it("round-trips the never-picked-a-year case", () => {
+  it("round-trips the never-picked-a-period case", () => {
     // Null is a real value here, not an absence: it means "follow the most
-    // recent year", which keeps working as the diver dives into a new one.
-    writeDiveActivityView({ scope: "year", year: null });
+    // recent diving", which keeps working as the diver logs into a new season.
+    writeDiveActivityView({ scope: "year", anchor: null });
 
-    expect(readDiveActivityView()).toEqual({ scope: "year", year: null });
+    expect(readDiveActivityView()).toEqual({ scope: "year", anchor: null });
   });
 
   it("does not collide with the gas card's remembered view", () => {
-    // Two cards, two keys. A shared entry would make each card's write have to
-    // preserve the other's fields.
-    writeDiveActivityView({ scope: "month", year: 2025 });
+    // Two cards, two keys. The two now store the same *shape*, which is exactly
+    // why they must not share an entry: each card's write would otherwise have
+    // to preserve the other's period.
+    writeDiveActivityView({ scope: "month", anchor: APRIL_8 });
 
     expect(window.localStorage.getItem("opendiving:gas-use-view")).toBeNull();
   });
@@ -77,44 +85,50 @@ describe("readStoredDiveActivityView / writeDiveActivityView", () => {
   });
 
   it("ignores a scope the app doesn't have", () => {
-    // The gas card's "all", for instance - a stale entry from someone who
-    // assumed the two cards share a vocabulary. Restoring it would light no
-    // button in the segmented control at all.
+    // A stale entry from a build whose scopes were named differently. Restoring
+    // it would light no button in the segmented control at all.
     window.localStorage.setItem(
       KEY,
-      JSON.stringify({ scope: "all", year: null }),
+      JSON.stringify({ scope: "season", anchor: null }),
     );
 
     expect(readDiveActivityView()).toBeNull();
   });
 
-  it("ignores a year that isn't a whole number", () => {
-    // Anything here reaches a `<Select>` value and a `Date`; a non-integer
+  it("ignores an anchor that isn't a finite number", () => {
+    // Anything here reaches a `<Select>` value and a `Date`; a non-number
     // matches no option and renders an empty trigger.
-    for (const year of ["2025", true, {}, [], 2025.5]) {
+    for (const anchor of ["2025", true, {}, []]) {
       window.localStorage.setItem(
         KEY,
-        JSON.stringify({ scope: "month", year }),
+        JSON.stringify({ scope: "month", anchor }),
       );
       expect(readDiveActivityView()).toBeNull();
     }
   });
 
-  it("ignores a view with no year key at all", () => {
+  it("ignores a view with no anchor key at all", () => {
     // Distinct from a stored `null`, which this module writes and which means
-    // "follow the most recent year". An absent key is a shape we never write.
+    // "follow the most recent diving". An absent key is a shape we never write -
+    // and it is also the shape of the `{ scope, year }` entries an older build
+    // left behind, which are rejected whole rather than migrated.
     window.localStorage.setItem(KEY, JSON.stringify({ scope: "month" }));
+    expect(readDiveActivityView()).toBeNull();
 
+    window.localStorage.setItem(
+      KEY,
+      JSON.stringify({ scope: "year", year: 2025 }),
+    );
     expect(readDiveActivityView()).toBeNull();
   });
 
-  it("reads a stored NaN as no year picked", () => {
+  it("reads a stored NaN as no period picked", () => {
     // Not a gap in the validation above: `JSON.stringify` turns `NaN` into
     // `null`, so it cannot survive being written. Pinned so nobody "fixes" the
     // validator to reject something that can't arrive.
-    writeDiveActivityView({ scope: "month", year: NaN });
+    writeDiveActivityView({ scope: "month", anchor: NaN });
 
-    expect(readDiveActivityView()).toEqual({ scope: "month", year: null });
+    expect(readDiveActivityView()).toEqual({ scope: "month", anchor: null });
   });
 
   it("survives storage that refuses to answer", () => {
@@ -129,7 +143,7 @@ describe("readStoredDiveActivityView / writeDiveActivityView", () => {
     useStorage(denied);
 
     expect(() =>
-      writeDiveActivityView({ scope: "month", year: 2025 }),
+      writeDiveActivityView({ scope: "month", anchor: APRIL_8 }),
     ).not.toThrow();
     expect(readDiveActivityView()).toBeNull();
   });
@@ -140,31 +154,8 @@ describe("readStoredDiveActivityView / writeDiveActivityView", () => {
     useStorage(undefined);
 
     expect(() =>
-      writeDiveActivityView({ scope: "month", year: 2025 }),
+      writeDiveActivityView({ scope: "month", anchor: APRIL_8 }),
     ).not.toThrow();
     expect(readDiveActivityView()).toBeNull();
-  });
-});
-
-describe("resolveYear", () => {
-  const years = [2023, 2025];
-
-  it("keeps a year that still has diving in it", () => {
-    expect(resolveYear(2023, years)).toBe(2023);
-  });
-
-  it("falls back to the most recent when nothing was remembered", () => {
-    expect(resolveYear(null, years)).toBeNull();
-  });
-
-  it("falls back to the most recent when the year has emptied out", () => {
-    // Its dives were deleted, or their dates corrected into another year. The
-    // dropdown no longer offers it, and a `<Select>` whose value matches no
-    // item renders an empty trigger.
-    expect(resolveYear(2025, [2023])).toBeNull();
-  });
-
-  it("falls back to the most recent when the logbook is empty", () => {
-    expect(resolveYear(2025, [])).toBeNull();
   });
 });

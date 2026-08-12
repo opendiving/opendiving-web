@@ -2,9 +2,11 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   parseGasUseView,
   readStoredGasUseView,
-  resolveAnchor,
   writeGasUseView,
 } from "@/lib/gas-use-view";
+
+// `resolveAnchor` moved to `lib/chart-period.ts` when the activity card wanted it
+// too; its tests moved with it, to `chart-period.test.ts`.
 
 // The pair the component actually composes: read the raw entry, then parse it.
 function readGasUseView() {
@@ -137,58 +139,5 @@ describe("readStoredGasUseView / writeGasUseView", () => {
 
     expect(() => writeGasUseView({ scope: "year", anchor: 1 })).not.toThrow();
     expect(readGasUseView()).toBeNull();
-  });
-});
-
-describe("resolveAnchor", () => {
-  // Two dives in April 2025, one in October, one in March 2026.
-  const times = [
-    Date.UTC(2025, 3, 10),
-    Date.UTC(2025, 3, 12),
-    Date.UTC(2025, 9, 5),
-    Date.UTC(2026, 2, 1),
-  ];
-
-  it("keeps an anchor whose dive is still there", () => {
-    expect(resolveAnchor(times[2], "month", times)).toBe(times[2]);
-  });
-
-  it("falls back to the most recent when nothing was remembered", () => {
-    expect(resolveAnchor(null, "year", times)).toBeNull();
-  });
-
-  it("falls back to the most recent when there are no dives at all", () => {
-    expect(resolveAnchor(times[0], "year", [])).toBeNull();
-  });
-
-  it("lands on the same period when the remembered dive is gone", () => {
-    // The April 10th dive was deleted, or its time was edited. The diver was
-    // reading April 2025 and should still be reading April 2025.
-    const withoutFirst = times.slice(1);
-
-    expect(resolveAnchor(times[0], "month", withoutFirst)).toBe(times[1]);
-  });
-
-  it("gives up when the whole period is gone", () => {
-    // Every April dive removed - there is no April 2025 to restore, and the
-    // period select would render an empty trigger if we tried.
-    const withoutApril = times.slice(2);
-
-    expect(resolveAnchor(times[0], "month", withoutApril)).toBeNull();
-  });
-
-  it("resolves against the period the scope means", () => {
-    // The same missing dive: April is gone as a *month*, but 2025 still has
-    // October in it, so the year scope has somewhere to land.
-    const withoutApril = times.slice(2);
-
-    expect(resolveAnchor(times[0], "month", withoutApril)).toBeNull();
-    expect(resolveAnchor(times[0], "year", withoutApril)).toBe(times[2]);
-  });
-
-  it("has no period to fall back to in the all scope", () => {
-    // "All" plots everything regardless, so a stale anchor there only affects
-    // where switching back to Year or Month lands - the default is right.
-    expect(resolveAnchor(Date.UTC(2020, 0, 1), "all", times)).toBeNull();
   });
 });

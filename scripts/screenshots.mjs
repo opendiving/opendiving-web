@@ -49,11 +49,13 @@ const HEIGHT = { dashboard: 1564, "dive-detail": 1086, "gear-item": 1086 };
 // here, which is the difference between a clean edge and a sliver of the next card.
 const CUT_BELOW = { dashboard: "Dive Activity" };
 const frame = (name) => ({ width: WIDTH, height: HEIGHT[name] });
-// The month the consumption chart is parked on: a full one, so the trend has shape.
-const CHART_MONTH = process.env.CHART_MONTH ?? "July 2025";
-// The year the dive-activity card's month view is parked on. Both of these name a period
-// in one particular log, so an account without it needs them overridden.
-const ACTIVITY_YEAR = Number(process.env.ACTIVITY_YEAR ?? 2025);
+// The year both dashboard charts are parked on, on their `Year` scope - twelve months of
+// one season in each. One constant, because the two cards showing the *same* period is
+// the point: they carry the same All/Year/Month toggle and are meant to read as a pair,
+// and a career of bars beside a single July reads as two unrelated cards that happen to
+// share a dashboard. Names a year in one particular log, so an account without diving in
+// it needs this overridden.
+const CHART_YEAR = process.env.CHART_YEAR ?? "2025";
 
 const email = process.argv[2] ?? process.env.SCREENSHOT_EMAIL;
 if (!email) {
@@ -200,21 +202,46 @@ const MONTHS = [
   "December",
 ];
 
-// Walks the consumption chart's period picker to a given month. The arrows skip
-// periods with no dives, so stepping is safe across gaps in the log.
+// One of the two dashboard chart cards, by its own heading.
 //
-// Everything is scoped to the consumption card. The dive-activity card below it has a
-// Year/Month toggle of its own - `aria-label="Bar size"` against this one's "Time range"
-// - and an unscoped `Month` matched both once it landed.
-async function selectMonth(page, target) {
-  const card = page
-    .locator("div.rounded-lg", { has: page.getByLabel("Time range") })
+// Scoping matters and is easy to get wrong: the cards now carry the same All/Year/Month
+// toggle, the same `aria-label="Time range"` on it and the same prev/next labels, so an
+// unscoped `Month` or `Previous period with dives` matches both. The toggle's label used
+// to be the discriminator ("Bar size" against "Time range"); the heading is the one thing
+// the two will never share.
+const chartCard = (page, heading) =>
+  page
+    .locator("div.rounded-lg", {
+      has: page.getByRole("heading", { name: heading, exact: true }),
+    })
     .last();
-  await card.getByRole("button", { name: "Month", exact: true }).click();
-  const ordinal = (label) => {
-    const [month, year] = label.trim().split(" ");
-    return Number(year) * 12 + MONTHS.indexOf(month);
-  };
+
+// Orders the labels the period control produces, so a walk knows which arrow to press.
+// Two shapes, one per scope: "2025" and "July 2025".
+const ordinal = (label) => {
+  const parts = label.trim().split(" ");
+  const year = Number(parts[parts.length - 1]);
+  return year * 12 + (parts.length > 1 ? MONTHS.indexOf(parts[0]) : 0);
+};
+
+// Parks one of the dashboard's chart cards on a scope and a period.
+//
+// One walk for both cards, where there used to be one apiece. They now carry the same
+// three scopes over the same period control, differing only in the card name each
+// control's `aria-label` leads with - which is the whole point of the change that merged
+// them.
+//
+// The arrows are matched on the half of that label they share, as a regex: the card name
+// in front of it is what tells a screen reader's controls list which chart it drives, and
+// pinning it here would mean this walk breaks every time that wording is improved. The
+// `chartCard` scope is what makes matching the shared half unambiguous.
+//
+// The period picker only exists once the toggle is off `All`, so the scope click has to
+// come before the walk. The arrows skip periods with no dives, so stepping is safe
+// across the gaps in a log rather than counting through them.
+async function selectPeriod(page, heading, scope, target) {
+  const card = chartCard(page, heading);
+  await card.getByRole("button", { name: scope, exact: true }).click();
   const combobox = card.getByRole("combobox").first();
 
   for (let step = 0; step < 60; step++) {
@@ -222,38 +249,14 @@ async function selectMonth(page, target) {
     if (current === target) return;
     const arrow =
       ordinal(current) > ordinal(target)
-        ? "Previous period with dives"
-        : "Next period with dives";
+        ? /previous period with dives/i
+        : /next period with dives/i;
     await card.getByRole("button", { name: arrow }).click();
     await page.waitForTimeout(120);
   }
-  throw new Error(`${target} is not a month with dives`);
-}
-
-// Puts the dive-activity card on one year's months. Year view is its default and shows a
-// career at a glance, which is the right chart for the card and the wrong one for a
-// screenshot beside a single month of consumption: twelve bars next to thirty-one days
-// read as two views of the same season, where a dozen years next to one July reads as
-// two unrelated cards that happen to share a dashboard.
-//
-// Month view only draws its year picker once the toggle is on it, so the switch has to
-// come before the walk. Same arrow-stepping as `selectMonth`, and scoped the same way.
-async function selectActivityYear(page, target) {
-  const card = page
-    .locator("div.rounded-lg", { has: page.getByLabel("Bar size") })
-    .last();
-  await card.getByRole("button", { name: "Month", exact: true }).click();
-  const combobox = card.getByRole("combobox").first();
-
-  for (let step = 0; step < 40; step++) {
-    const current = Number((await combobox.textContent()).trim());
-    if (current === target) return;
-    const arrow =
-      current > target ? "Previous year with dives" : "Next year with dives";
-    await card.getByRole("button", { name: arrow }).click();
-    await page.waitForTimeout(120);
-  }
-  throw new Error(`${target} is not a year with dives`);
+  throw new Error(
+    `${heading} has no ${scope.toLowerCase()} "${target}" with dives`,
+  );
 }
 
 const atTop = (page) => page.evaluate(() => window.scrollTo(0, 0));
@@ -307,7 +310,11 @@ await page.getByRole("button", { name: "Account menu" }).waitFor();
 // The dashboard is where signing in lands, and the only page the bearer can be lifted
 // off before anything else needs it - so it gets loaded whether or not it gets shot.
 await visit(page, "dashboard", `${WEB}/dashboard`);
-await page.getByText("Gas Consumption").waitFor();
+// By heading, not by text: the cards carry visually-hidden labels naming the chart
+// their period control belongs to ("Gas consumption period"), and `getByText` matches
+// case-insensitive substrings - so a bare "Gas Consumption" resolves to two elements
+// and fails strict mode. `chartCard` scopes by the heading for the same reason.
+await page.getByRole("heading", { name: "Gas Consumption" }).waitFor();
 
 // Skipped when only the dashboard is being retaken: finding the dive costs one request
 // per candidate until a profile turns up.
@@ -320,8 +327,8 @@ if (dive || gearItem)
   console.log(`dive ${dive ?? "(none with a profile)"} · gear ${gearItem}`);
 
 if (wanted("dashboard")) {
-  await selectMonth(page, CHART_MONTH);
-  await selectActivityYear(page, ACTIVITY_YEAR);
+  await selectPeriod(page, "Gas Consumption", "Year", CHART_YEAR);
+  await selectPeriod(page, "Dive Activity", "Year", CHART_YEAR);
   await atTop(page);
   await shot(page, "dashboard", await cutBelow(page, CUT_BELOW.dashboard));
 }

@@ -1703,6 +1703,11 @@ three matter:
   it. A year in which you only dived in April shows one cluster on the left, not April stretched
   across the full width as though it were the whole year.
 
+All of the machinery named below - `periodRange`, `periodLabel`, `availablePeriods`, `stepPeriod`,
+`resolveAnchor` - lives in `lib/chart-period.ts` and is shared with `DiveActivityCard`, which offers
+the same three scopes. It started here, in `dive-gas.ts` and `gas-use-view.ts`; see _"The activity
+chart is bars over the same three scopes as the gas chart"_ for why it moved.
+
 **Prev/next skip to the next period that has dives**, rather than stepping one calendar period at a
 time (`stepPeriod()`). Diving happens in bursts a season apart; stepping would mean clicking through
 eight empty months to reach the next trip. `null` means there's nothing further in that direction,
@@ -2782,11 +2787,20 @@ the named images. None of the three are stable between runs - "due in 24 days" c
 subjects are re-picked from whatever the log holds that day - so retaking all three to change one
 puts two unrelated images in the diff.
 
-**Selectors are scoped to the card they belong to.** `selectMonth` drove the consumption chart's
-Year/Month toggle through a bare `getByRole("button", {name: "Month"})`, which was unambiguous until
-dive activity landed with a Year/Month toggle of its own and every retake died on a strict-mode
-violation. The two groups are told apart by `aria-label` - "Time range" on consumption, "Bar size"
-on activity - and the walk is scoped to the card containing the former.
+**Selectors are scoped to the card they belong to, by heading.** `selectMonth` drove the consumption
+chart's Year/Month toggle through a bare `getByRole("button", {name: "Month"})`, which was
+unambiguous until dive activity landed with a toggle of its own and every retake died on a
+strict-mode violation. The fix was to tell the two groups apart by `aria-label` - "Time range" on
+consumption, "Bar size" on activity - which held exactly until activity grew the same three scopes
+and the same, now equally accurate, "Time range". The discriminator is the card's `<h3>`
+(`chartCard()`): the toggles and their prev/next buttons are otherwise identical between the two
+cards, and the heading is the one thing they will never share.
+
+Those labels are card-qualified again now ("Dive activity: previous period with dives"), for the
+screen-reader reason above rather than for this script - so the walk matches the half of the label
+the two cards _share_, as a `/previous period with dives/i` regex. Pinning the whole string here
+would mean a wording improvement in the app breaks the screenshots, and the card scope is what makes
+matching the shared half unambiguous.
 
 **Two images, not four, and one frame per page.** The grid previously held two crops of the same
 dive page at different scroll offsets - the top, and the profile chart further down - which reads as
@@ -2940,13 +2954,13 @@ names for the eye - and the type is the _question_, the name is the answer. Muti
 the odd case where a missing type rendered a dimmer dash than the value next to it. Brand stays at
 full strength: it's part of the item's identity, and a diver reads "Apeks XTX50" as one thing.
 
-## The activity chart is bars, and its period is a year rather than a dive
+## The activity chart is bars over the same three scopes as the gas chart
 
 `DiveActivityCard` answers "how much am I diving" where `GasUseCard`, directly above it, answers
 "how well". They deliberately share a shape - same header, same stat row, same
-prev/next-and-dropdown in the same corner, same remembered view - because two charts on one page
-that work differently cost more to read than either does alone. Three things are genuinely
-different, and each is a decision rather than an omission.
+prev/next-and-dropdown in the same corner, same remembered view, same All/Year/Month toggle over the
+same `lib/chart-period.ts` - because two charts on one page that work differently cost more to read
+than either does alone. What is genuinely different is a decision rather than an omission.
 
 **Bars, not dots, and therefore an axis anchored at zero.** A count has no meaning between its
 values: there is no such thing as 4.5 dives in August, so a line joining August to September would
@@ -2957,35 +2971,85 @@ third), and on a bar chart a floating baseline would draw four dives as twice th
 Its 1/2/5/10 ladder also includes 2.5, which on a scale of dives labels the axis 2.5 and 7.5 - half
 a dive is not something anyone can log.
 
-**Two scopes, not three.** The gas card has All/Year/Month; this one has Year/Month, and the missing
-"All" is not an oversight. Its year scope _is_ all - one bar per calendar year, from the first year
-with diving to the last - so a third button would show the same picture with the bars renamed.
+**The scopes name the window, and the bar size follows from it.** All is one bar per calendar year
+across the career, Year is twelve months of one year, Month is every day of one month. That is the
+same window each label means on the gas card, which is the point: a control that reads the same in
+both places has to mean the same thing in both.
 
-**The period is a plain year number, not an anchor.** The gas chart anchors on one of the dives' own
-timestamps, so switching scope lands on the month _containing_ the dive you were reading. There are
-no dives here to land on: a bar is a calendar bucket, so `lib/dive-activity.ts` carries integers
-where `lib/dive-gas.ts` carries instants, and `resolveYear` is correspondingly simpler than
-`resolveAnchor` - a year either still has diving in it or it doesn't, with no nearer period to fall
-back to. That is also why the two modules don't share code: one of them would have to carry the
-other's concept for no gain.
+This card used to carry Year/Month for the first two of those, with no "All" - defensible while
+"year" _was_ everything, and wrong the moment a third, finer window existed, because the same word
+then named two different spans on one page. Renaming rather than adding a fourth button is what
+keeps the two cards' toggles identical. It costs the remembered view: an entry from the old build
+stores `{scope, year}`, which the new parser rejects whole rather than migrating (see
+`DiveActivityView.anchor`), so a returning diver lands on the default once. The default is `all` -
+deliberately not the gas card's `year` - because a bar per year is legible at any career length
+where a dot per dive over the same span is a smear, and "how has my diving gone" is the question
+this card exists for.
+
+**The anchor is the start of a day with diving in it.** The gas chart anchors on one of the dives'
+own timestamps, so switching scope lands on the period _containing_ the dive you were reading; this
+one anchors on a day bucket and gets the same behavior from the same code. That is what changed when
+the API moved from month buckets to day buckets: the old argument for two separate modules was that
+a bar is a calendar bucket with no instant to anchor on, and a day _is_ an instant. So
+`periodRange`, `periodLabel`, `availablePeriods`, `stepPeriod` and `resolveAnchor` moved out of
+`dive-gas.ts`/`gas-use-view.ts` into `lib/chart-period.ts` - the same move `niceDomain`/`axisTicks`
+made to `chart-scale.ts` - and `resolveYear` went with them, replaced by `resolveAnchor`.
+
+**The day scope needs no new request.** `GET /user/dive-activity` returns one row per day dived and
+the client sums days into months and months into years (`activityBars`), so All/Year/Month are three
+views of one cached fetch and switching between them is instant. A `granularity` parameter would
+have been a second round trip for a toggle that has to feel immediate. The API's own reasoning is
+under _"Dives-per-day is counted in Python"_ in `opendiving-api/DECISIONS.md`.
+
+**The x axis labels per scope, because label width differs.** `MAX_X_LABELS` is 20 for years (a
+four-digit year is ~24 units against 33-unit slots), 12 for months, and 31 for days - a one- or
+two-digit day is ~12 units against 21-unit slots, so a full month labels every day rather than
+counting down from the 31st in twos, which is how a thinned day axis reads.
+
+### Every chart control names its own card, because the two cards draw the same row
+
+Making the toggles identical made their accessible names identical too, and that is a regression
+rather than consistency: both cards render on `/dashboard` at once, `Card` is a plain `div` with no
+role, and nothing scopes one card's controls to it. Read in place the heading above is all the
+context anyone needs. A screen reader's controls list is not read in place - it is flat names and
+nothing else, and four arrows all reading "Previous period with dives" in it are four coin flips.
+
+So each `aria-label` leads with its card: `Dive activity: previous period with dives`,
+`Gas consumption: time range`. Leading rather than trailing, so the list groups by chart when it is
+scanned or sorted. This is the same ambiguity `screenshots.mjs` hit from the automation side, where
+the fix was to scope by the card's `<h3>` - and a heading is exactly the context a controls list
+drops, which is why the two needed separate fixes.
+
+**The period dropdown is described, not labelled**, and the distinction is load-bearing.
+`aria-label="Dive activity period"` on the `SelectTrigger` would _replace_ its accessible name, and
+that name is its own value - "September 2025" - which is the one thing a diver needs read back from
+it. An `aria-describedby` pointing at a visually-hidden span is announced after the name instead, so
+the control keeps saying which period it is on and gains which chart it drives.
+
+That hidden span is why `screenshots.mjs` waits on `getByRole("heading")` rather than
+`getByText("Gas Consumption")`: `getByText` matches case-insensitive substrings, so a bare card
+title now also matches the span reading "Gas consumption period" and fails Playwright's strict mode.
 
 ### Empty buckets are the point, and the ceiling comes from the whole logbook
 
-`activityBars` fills the gaps - twelve months whatever the year held, and every year between the
-first dive and the last. A chart of only the months that had diving would space three trips evenly
-across the plot and quietly say the year was busy throughout; the gaps are what make a season read
-as a season. It's the same call the gas chart makes by plotting a period's _calendar_ bounds rather
-than the extent of what's in it. Nothing is drawn before the first dive or after the most recent
-one, where the answer is "no data" rather than "no diving".
+`activityBars` fills the gaps - every day of the month whatever the trip covered, twelve months
+whatever the year held, and every year between the first dive and the last. A chart of only the
+months that had diving would space three trips evenly across the plot and quietly say the year was
+busy throughout; the gaps are what make a season read as a season, and at the day scope they are
+what tells a fortnight's liveaboard apart from four weekends. It's the same call the gas chart makes
+by plotting a period's _calendar_ bounds rather than the extent of what's in it. Nothing is drawn
+before the first dive or after the most recent one, where the answer is "no data" rather than "no
+diving".
 
 `barCeiling` scales the y axis to the tallest bar the scope can produce **across the whole
-logbook**, not across the year on screen - the same reasoning as the gas chart's fixed domain, and
+logbook**, not across the period on screen - the same reasoning as the gas chart's fixed domain, and
 load-bearing here in a way it isn't there. Bar height is the quantity, so a per-year axis would draw
 a four-dive August exactly as tall as a forty-dive one and the arrows would compare nothing.
 
-Empty _periods_, though, are not offered: `divingYears` lists only the years that contain dives, so
-the dropdown has no dead options and `stepYear` skips the fallow years the way `stepPeriod` skips
-the empty months.
+Empty _periods_, though, are not offered: `availablePeriods` lists only the years - or months - that
+contain dives, so the dropdown has no dead options and `stepPeriod` skips the fallow ones. Both
+cards get that from the same functions, which is why a card with a season's gap in it steps from
+April straight to October in either.
 
 ### What the bars can't be, and what that costs
 
@@ -2993,8 +3057,10 @@ The bars aren't links, so the svg is `role="img"` (like the profile chart) rathe
 chart's `role="group"` - there is nothing focusable inside it to browse to. That leaves a
 `role="img"` label as the only channel, and a sentence can say "34 dives, busiest 2025" but not what
 every bucket held, which is exactly the rounding a sighted reader doesn't have to accept. So the
-figures follow the chart as an `sr-only` list, one entry per bar. Cheap at this size - twelve
-months, or one line per year of a career.
+figures follow the chart as an `sr-only` list, one entry per bar. Cheap at this size - a month's
+days, twelve months, or one line per year of a career. Its counts are pluralized where the chart's
+tooltip always was: a bucket of exactly one dive is the common case at the day scope and was nearly
+unreachable when a bucket was a month, and "1 dives" read aloud is worse than it looks written down.
 
 **The hover target is the whole column, not the bar.** A quiet January is a few units tall and an
 empty one has no bar at all, and "how many dives was that?" is exactly the question you would point

@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { barPath } from "@/lib/chart-path";
 import { axisTicks, countDomain } from "@/lib/chart-scale";
-import type { ActivityBar, DiveActivityScope } from "@/lib/dive-activity";
+import type { ChartScope } from "@/lib/chart-period";
+import type { ActivityBar } from "@/lib/dive-activity";
 import { cn } from "@/lib/utils";
 
 // Hand-rolled SVG, for the reasons `gas-use-chart.tsx` sets out at length: the
@@ -37,16 +38,25 @@ const MAX_BAR_WIDTH = 52;
 
 const BAR_RADIUS = 3;
 
-// How many x labels the axis carries before it starts skipping them.
+// How many x labels the axis carries before it starts skipping them, per scope.
 //
 // Higher than the gas chart's twelve, and deliberately: there, labels sit at
 // whatever x the data lands on and can crowd each other locally; here they are
-// one per evenly spaced slot, so the only thing that matters is the arithmetic.
+// one per evenly spaced slot, so the only thing that matters is the arithmetic -
+// how wide a label is against the 664-unit plot it has to divide.
+//
 // A four-digit year at `fontSize={11}` is about 24 units wide, and twenty slots
-// across a 664-unit plot are 33 units each - eight units of air either side.
-// Twelve left a fourteen-year career labeling every other year, which is a
-// thinner axis than it needs.
-const MAX_X_LABELS = 20;
+// are 33 units each - eight units of air either side. Twelve left a fourteen-year
+// career labeling every other year, which is a thinner axis than it needs. A
+// three-letter month is about 20 units and there are only ever twelve of them, at
+// 55 units each. A one- or two-digit day is about 12, and 31 slots are 21 units
+// each - nine units of air, so a full month can label every day rather than
+// counting down from the 31st in twos, which is how a thinned day axis reads.
+const MAX_X_LABELS: Record<ChartScope, number> = {
+  all: 20,
+  year: 12,
+  month: 31,
+};
 
 export interface DiveActivityChartProps {
   // Exactly the bars to draw, in calendar order and including the empty ones -
@@ -58,9 +68,10 @@ export interface DiveActivityChartProps {
   // `bars`. Scaling to the visible year would make every year's busiest month
   // full height and the arrows compare nothing - see `barCeiling`.
   ceiling: number;
-  // Only ever wording, for the chart's accessible description. Nothing about the
-  // geometry depends on it.
-  scope: DiveActivityScope;
+  // The chart's accessible description, and how many x labels the axis can carry
+  // (see `MAX_X_LABELS`). Nothing about the plot's own geometry depends on it -
+  // that all follows from `bars.length`.
+  scope: ChartScope;
 }
 
 export function DiveActivityChart({
@@ -80,11 +91,11 @@ export function DiveActivityChart({
   // a horizontal axis at all; a single bar is a perfectly readable answer to
   // "how much have I been diving".
   //
-  // The test is the total rather than the number of bars, because the month
-  // scope always produces twelve of them - a grid of nothing is not a chart. In
-  // practice only an empty logbook reaches this: the year control offers only
-  // years that contain dives. It also keeps `describeBars` off an empty array,
-  // where its `reduce` would throw.
+  // The test is the total rather than the number of bars, because the bounded
+  // scopes always produce a full calendar's worth of them - a grid of nothing is
+  // not a chart. In practice only an empty logbook reaches this: the period
+  // control offers only periods that contain dives. It also keeps `describeBars`
+  // off an empty array, where its `reduce` would throw.
   if (total === 0) {
     return (
       <p className="text-sm text-muted-foreground">
@@ -106,7 +117,7 @@ export function DiveActivityChart({
   // Thinned from the right, so the most recent year always keeps its label -
   // it's the one the eye goes to, and dropping it to keep 1998's would be the
   // wrong half of the axis to preserve.
-  const labelStride = Math.ceil(bars.length / MAX_X_LABELS);
+  const labelStride = Math.ceil(bars.length / MAX_X_LABELS[scope]);
   const labelled = (index: number) =>
     (bars.length - 1 - index) % labelStride === 0;
 
@@ -245,11 +256,19 @@ export function DiveActivityChart({
           sentence - it can say how much diving and when the busiest of it was,
           but not what every bucket held, and rounding a year down to its headline
           is exactly what a sighted reader doesn't have to accept here. Cheap at
-          this size: twelve months, or one entry per year of a career. */}
+          this size: a month's days, twelve months, or one entry per year of a
+          career.
+
+          Pluralized, unlike when this list only ever held months and years: a
+          bucket of exactly one dive is the common case at the day scope, and
+          "1 dives" read aloud is worse than it looks written down. */}
       <ul className="sr-only">
         {bars.map((bar) => (
           <li key={bar.key}>
-            {bar.name}: {bar.dives === 0 ? "no dives" : `${bar.dives} dives`}
+            {bar.name}:{" "}
+            {bar.dives === 0
+              ? "no dives"
+              : `${bar.dives} ${bar.dives === 1 ? "dive" : "dives"}`}
           </li>
         ))}
       </ul>
@@ -257,19 +276,32 @@ export function DiveActivityChart({
   );
 }
 
+// What one bar counts, in the scope's own words.
+const BAR_UNITS: Record<ChartScope, string> = {
+  all: "year",
+  year: "month",
+  month: "day",
+};
+
 // The chart's accessible name. Frames the list that follows it rather than
 // repeating it: what is being counted, over what, and where the peak was.
+//
+// The peak carries its unit for the same reason the list below pluralizes: this
+// is read aloud, and a sentence ending "August 12, 2025, 1." leaves the listener
+// to infer what the 1 counts from a phrase four words back. The leading "Dives
+// per day" is doing that work for a sighted skim and not for a spoken one.
 function describeBars(
   bars: ActivityBar[],
-  scope: DiveActivityScope,
+  scope: ChartScope,
   total: number,
 ): string {
-  const per = scope === "month" ? "month" : "year";
+  const per = BAR_UNITS[scope];
   const busiest = bars.reduce((best, bar) =>
     bar.dives > best.dives ? bar : best,
   );
+  const dives = `${busiest.dives} ${busiest.dives === 1 ? "dive" : "dives"}`;
 
-  return `Dives per ${per}, ${total} in total. Busiest ${per}: ${busiest.name}, ${busiest.dives}.`;
+  return `Dives per ${per}, ${total} in total. Busiest ${per}: ${busiest.name}, ${dives}.`;
 }
 
 // The hover card. HTML rather than SVG `<text>` so it gets the app's popover

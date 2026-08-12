@@ -10,23 +10,27 @@
 // people bookmark, which a query string appearing only after you touch a control
 // can't do.
 //
-// What's stored is a view preference: a scope name and a year the diver already
-// had on screen. No dive data, nothing fetched.
+// What's stored is a view preference: a scope name and a timestamp the diver
+// already had on screen. No dive data, nothing fetched.
 
-import {
-  DIVE_ACTIVITY_SCOPES,
-  type DiveActivityScope,
-} from "@/lib/dive-activity";
+import { CHART_SCOPES, type ChartScope } from "@/lib/chart-period";
 
 const DIVE_ACTIVITY_VIEW_KEY = "opendiving:dive-activity-view";
 
 export interface DiveActivityView {
-  scope: DiveActivityScope;
-  // The year the diver picked, or null when they never moved off the default.
-  // The distinction is the same one `GasUseView.anchor` draws: null means
-  // "whatever is most recent", which keeps following new dives as they're
-  // logged, whereas a year pins the view and should stay pinned.
-  year: number | null;
+  scope: ChartScope;
+  // The period the diver picked, as the UTC start of a day they had dives on, or
+  // null when they never moved off the default. The distinction is the same one
+  // `GasUseView.anchor` draws: null means "whatever is most recent", which keeps
+  // following new dives as they're logged, whereas a timestamp pins the view and
+  // should stay pinned.
+  //
+  // A timestamp rather than the plain year this used to hold, because there are
+  // now two bounded scopes and a year can't say which month of it you were on.
+  // An entry in the old shape has no `anchor` at all and is rejected whole by
+  // `parseDiveActivityView`, which costs a returning diver one click - the right
+  // trade against carrying a migration for a remembered scroll position.
+  anchor: number | null;
 }
 
 // The stored entry, raw and unparsed.
@@ -51,7 +55,7 @@ export function readStoredDiveActivityView(): string | null {
 //
 // Re-validated rather than trusted: this is a string a user (or a stale build)
 // can put anything in, and a bad `scope` would light no button in the segmented
-// control, while a `NaN` year would render a period select with no matching
+// control, while a `NaN` anchor would render a period select with no matching
 // option - an empty trigger.
 export function parseDiveActivityView(
   raw: string | null,
@@ -62,14 +66,11 @@ export function parseDiveActivityView(
     const parsed: unknown = JSON.parse(raw);
     if (typeof parsed !== "object" || parsed === null) return null;
 
-    const { scope, year } = parsed as Record<string, unknown>;
-    if (!DIVE_ACTIVITY_SCOPES.includes(scope as DiveActivityScope)) return null;
-    // A year is a whole number here, and `Number.isInteger` rejects the `NaN`,
-    // the infinities and the 2026.5 that `Number.isFinite` alone would let into
-    // a `<Select>` value.
-    if (year !== null && !Number.isInteger(year)) return null;
+    const { scope, anchor } = parsed as Record<string, unknown>;
+    if (!CHART_SCOPES.includes(scope as ChartScope)) return null;
+    if (anchor !== null && !Number.isFinite(anchor)) return null;
 
-    return { scope: scope as DiveActivityScope, year: year as number | null };
+    return { scope: scope as ChartScope, anchor: anchor as number | null };
   } catch {
     return null;
   }
@@ -83,21 +84,6 @@ export function writeDiveActivityView(view: DiveActivityView): void {
   }
 }
 
-// The remembered year made safe against the logbook as it exists *now*, or null
-// to fall back to the most recent year with diving.
-//
-// It has to be checked rather than used as stored: a year can empty out between
-// visits (its dives deleted, or their dates corrected into another year), and
-// restoring it would select a year the dropdown no longer offers - which renders
-// an empty trigger, the same failure noted on `GasUsePeriod.start`.
-//
-// Simpler than `resolveAnchor`, which has a period to fall back to when the dive
-// it remembered has moved. A year *is* the period here, so there is no nearer
-// thing to land on: either it still has diving in it or it doesn't.
-export function resolveYear(
-  stored: number | null,
-  years: number[],
-): number | null {
-  if (stored === null) return null;
-  return years.includes(stored) ? stored : null;
-}
+// `resolveYear` used to live here, and `resolveAnchor` in `lib/chart-period.ts`
+// replaced it: the two cards now remember the same kind of thing, and checking a
+// remembered period against the data that exists today is one rule, not two.

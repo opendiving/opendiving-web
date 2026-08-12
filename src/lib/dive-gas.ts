@@ -1,10 +1,21 @@
 import type { Dive } from "@/lib/api/dives";
+import {
+  type ChartScope,
+  periodLabel,
+  periodRange,
+  stepPeriod,
+} from "@/lib/chart-period";
 
 // `niceDomain` and `axisTicks` used to live here. They moved, unchanged, to
 // `lib/chart-scale.ts` once the dive profile chart needed them too - a depth
 // axis has nothing to do with gas use, and importing a gas module to scale
 // meters reads as an accident. Their tests moved with them, to
 // `chart-scale.test.ts`.
+//
+// The scope type and the period machinery it names - `periodRange`,
+// `periodLabel`, `availablePeriods`, `stepPeriod` - made the same move, to
+// `lib/chart-period.ts`, once the activity card grew the same three scopes.
+// Windowing a series to a calendar period is not a fact about gas either.
 
 // How many dives the trend line averages over, per scope.
 //
@@ -18,7 +29,7 @@ import type { Dive } from "@/lib/api/dives";
 //
 // Five is roughly a day's diving; ten is roughly a trip; twenty is a couple of
 // them, which is about the resolution a multi-year arc is legible at.
-const TREND_WINDOWS: Record<GasUseScope, number> = {
+const TREND_WINDOWS: Record<ChartScope, number> = {
   month: 5,
   year: 10,
   all: 20,
@@ -34,7 +45,7 @@ const MAX_TREND_FRACTION = 3;
 export const MIN_TREND_WINDOW = 5;
 
 // The window to smooth with, for a scope and a series of `diveCount` dives.
-export function trendWindow(scope: GasUseScope, diveCount: number): number {
+export function trendWindow(scope: ChartScope, diveCount: number): number {
   return Math.max(
     MIN_TREND_WINDOW,
     Math.min(TREND_WINDOWS[scope], Math.floor(diveCount / MAX_TREND_FRACTION)),
@@ -77,20 +88,6 @@ export function rollingStdDev(values: number[], window: number): number[] {
   });
 }
 
-// How much of the series the chart shows at once. A career's worth of dots in
-// one frame shows the long arc but buries a single trip; a month shows the trip
-// but no arc. Both are worth looking at, so it's a switch rather than a choice
-// made once here.
-export type GasUseScope = "all" | "year" | "month";
-
-export const GAS_USE_SCOPES: GasUseScope[] = ["all", "year", "month"];
-
-export const GAS_USE_SCOPE_LABELS: Record<GasUseScope, string> = {
-  all: "All",
-  year: "Year",
-  month: "Month",
-};
-
 // The three marks sharing the gas chart's plot, each of which the diver can turn
 // off. The trend and its spread band are one mark, not two: the band is what
 // gives the line body and says how tightly the dives it averages were clustered,
@@ -100,29 +97,6 @@ export const GAS_USE_SCOPE_LABELS: Record<GasUseScope, string> = {
 export const GAS_USE_MARKS = ["dives", "trend", "average"] as const;
 
 export type GasUseMark = (typeof GAS_USE_MARKS)[number];
-
-// The half-open `[start, end)` bounds of the calendar period containing
-// `anchor`.
-//
-// Everything here reads and builds timestamps in UTC (`Date.UTC`, `getUTC*`)
-// because every time fed to it comes from `diveWallClockTime()`, which encodes a
-// dive's *own* local time into a UTC-reading instant. Using the local getters
-// would re-interpret that through the viewer's timezone and drop a New Year's
-// Eve dive into the wrong year depending on where it's being looked at from.
-export function periodRange(
-  anchor: number,
-  scope: "year" | "month",
-): { start: number; end: number } {
-  const date = new Date(anchor);
-  const year = date.getUTCFullYear();
-
-  if (scope === "year") {
-    return { start: Date.UTC(year, 0, 1), end: Date.UTC(year + 1, 0, 1) };
-  }
-
-  const month = date.getUTCMonth();
-  return { start: Date.UTC(year, month, 1), end: Date.UTC(year, month + 1, 1) };
-}
 
 // The half-open `[start, end)` bounds the chart actually plots, for any scope.
 //
@@ -138,22 +112,11 @@ export function periodRange(
 export function scopeRange(
   times: number[],
   anchor: number,
-  scope: GasUseScope,
+  scope: ChartScope,
 ): { start: number; end: number } {
   if (scope !== "all") return periodRange(anchor, scope);
   if (times.length === 0) return { start: 0, end: 1 };
   return { start: times[0], end: times[times.length - 1] + 1 };
-}
-
-// What to call the period on screen: "All time", "2026", "April 2026".
-export function periodLabel(anchor: number, scope: GasUseScope): string {
-  if (scope === "all") return "All time";
-
-  return new Date(anchor).toLocaleDateString("en-US", {
-    ...(scope === "month" ? { month: "long" } : {}),
-    year: "numeric",
-    timeZone: "UTC",
-  });
 }
 
 // The sub-periods to shade behind the plot, so alternate months (within a year)
@@ -171,7 +134,7 @@ export function periodLabel(anchor: number, scope: GasUseScope): string {
 // clamped to the plotted range, which matters for "all" - a career starts
 // partway through its first year and ends partway through its last.
 export function bandRanges(
-  scope: GasUseScope,
+  scope: ChartScope,
   range: { start: number; end: number },
 ): { start: number; end: number }[] {
   if (scope === "month") return [];
@@ -209,63 +172,6 @@ export function bandRanges(
     .filter((band) => band.end > band.start);
 }
 
-export interface GasUsePeriod {
-  // The period's start, as a stable identity for it. This, not `anchor`, is what
-  // a dropdown option's value has to be: an arbitrary dive's timestamp is not a
-  // value the current anchor can be compared against, and a `<Select>` whose
-  // value matches no registered item renders an empty trigger (see the
-  // `VolumeCombobox` "NaN L" note above).
-  start: number;
-  // A real dive's timestamp inside the period, for use as the chart's anchor.
-  anchor: number;
-}
-
-// Every calendar period that actually contains dives, oldest first - the options
-// a period dropdown offers.
-//
-// Each carries a real dive's timestamp rather than just the period's start, so
-// picking one preserves the invariant that the anchor is always a dive. Without
-// that, choosing "2025" and then switching to Month would land on January 2025,
-// which may well be empty.
-export function availablePeriods(
-  times: number[],
-  scope: "year" | "month",
-): GasUsePeriod[] {
-  const byPeriod = new Map<number, number>();
-
-  for (const time of times) {
-    // `times` is chronological and later writes win, so each period ends up
-    // represented by its most recent dive - the same most-recent bias the chart
-    // opens with.
-    byPeriod.set(periodRange(time, scope).start, time);
-  }
-
-  return [...byPeriod].map(([start, anchor]) => ({ start, anchor }));
-}
-
-// The anchor for the nearest period in `direction` that actually contains a
-// dive, or `null` when there is none - which is what disables the button.
-//
-// Skipping straight to the next period *with data*, rather than stepping one
-// calendar period at a time, is the whole difference between usable and not for
-// this data: diving happens in bursts a season apart, so stepping would mean
-// clicking through eight empty months to reach the next trip.
-export function stepPeriod(
-  anchor: number,
-  scope: "year" | "month",
-  direction: 1 | -1,
-  times: number[],
-): number | null {
-  const { start, end } = periodRange(anchor, scope);
-
-  if (direction === 1) {
-    return times.find((time) => time >= end) ?? null;
-  }
-
-  const earlier = times.filter((time) => time < start);
-  return earlier.length > 0 ? earlier[earlier.length - 1] : null;
-}
-
 export interface GasUseSummary {
   // How many dives the figures below are drawn from.
   dives: number;
@@ -297,7 +203,7 @@ export interface GasUseSummary {
 export function summarizeGasUse(
   times: number[],
   rmvs: number[],
-  scope: GasUseScope,
+  scope: ChartScope,
   anchor: number,
 ): GasUseSummary | null {
   const inPeriod = (range: { start: number; end: number }) =>

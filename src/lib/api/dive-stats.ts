@@ -22,18 +22,25 @@ export interface DiveGasUsePoint {
   gas_use: DiveGasUse;
 }
 
-// One calendar month of the diver's logbook, counted in the dives' own local
-// time - so a dive keeps the month it was logged in, wherever it's read from.
+// One calendar day of the diver's logbook, counted in the dives' own local time -
+// so a dive keeps the day it was logged on, wherever it's read from.
 //
-// Only months containing dives are sent. The chart draws a fixed grid (twelve
-// months, or every year of a career) and fills its own gaps, so an empty bucket
-// would be padding one shape into a different one.
+// Days rather than months because the card windows this one series three ways -
+// day by day, month by month, year by year - and sums the finer buckets into the
+// coarser ones itself (`activityBars`). One row per day dived, so the series is
+// bounded by the diving and stays smaller than the gas history the same dashboard
+// already fetches.
+//
+// Only days containing dives are sent. The chart draws a fixed grid (a month's
+// days, twelve months, or every year of a career) and fills its own gaps, so an
+// empty bucket would be padding one shape into a different one.
 export interface DiveActivityPoint {
   year: number;
   // 1-12, not the 0-11 `Date` uses. It's the API's number, and re-basing it here
   // would leave two conventions in play across the module boundary; the chart
   // converts where it builds dates.
   month: number;
+  day: number;
   dives: number;
 }
 
@@ -58,10 +65,10 @@ export const diveStatsAPI = {
     return response.data;
   },
 
-  // How many dives the caller logged in each calendar month, oldest first. One
-  // small object per month with diving in it - a whole career's worth is a few
-  // hundred bytes, so this is a single request rather than a page, and the API
-  // caches it.
+  // How many dives the caller logged on each calendar day, oldest first. One
+  // small object per day with diving in it - a few kilobytes for an active
+  // career, and strictly less than `getGasUseHistory` above, so this is a single
+  // request rather than a page, and the API caches it.
   async getDiveActivity(): Promise<DiveActivityPoint[]> {
     const response = await apiClient.get("/user/dive-activity");
     return response.data;
