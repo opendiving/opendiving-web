@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useDialogApiError } from "@/hooks/useDialogApiError";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Weight } from "lucide-react";
+import { Loader2, Plus, Save, Weight } from "lucide-react";
 import { gearSetSchema, GearSetInput } from "@/lib/validations/gear";
 import { gearAPI, GearSet, fetchAllGearSets } from "@/lib/api/gear";
+import { isAbortError } from "@/lib/api/client";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { dialogFormSubmit } from "@/lib/dialog-form";
 import {
@@ -74,7 +76,7 @@ export function GearSetDialog({
   onSaved,
 }: GearSetDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [apiError, setApiError] = useState<string | null>(null);
+  const [apiError, setApiError] = useDialogApiError(open);
   const [existingSets, setExistingSets] = useState<GearSet[]>([]);
   // uuid of the set being overwritten, or `undefined` while creating a new one.
   const [targetUuid, setTargetUuid] = useState<string | undefined>(undefined);
@@ -100,23 +102,23 @@ export function GearSetDialog({
     });
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setTargetUuid(undefined);
-    setApiError(null);
   }, [open, gearSet, initialItemUuids, initialWeight, reset]);
 
   // The target picker needs the user's sets; only fetched when it's actually shown.
   useEffect(() => {
     if (!open || !showTargetPicker || !userId) return;
-    let cancelled = false;
+    const controller = new AbortController();
 
-    fetchAllGearSets(userId)
+    fetchAllGearSets(userId, controller.signal)
       .then((sets) => {
-        if (!cancelled) setExistingSets(sets);
+        if (!controller.signal.aborted) setExistingSets(sets);
       })
-      .catch((error) => console.error("Failed to fetch gear sets:", error));
+      .catch((error) => {
+        if (isAbortError(error)) return;
+        console.error("Failed to fetch gear sets:", error);
+      });
 
-    return () => {
-      cancelled = true;
-    };
+    return () => controller.abort();
   }, [open, showTargetPicker, userId]);
 
   // Picking an existing set only decides *where* the items are saved - the items
@@ -165,7 +167,7 @@ export function GearSetDialog({
       }
 
       onOpenChange(false);
-    } catch (error: any) {
+    } catch (error) {
       setApiError(
         getApiErrorMessage(error, "Failed to save gear set. Please try again."),
       );
@@ -234,7 +236,7 @@ export function GearSetDialog({
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Set Name *</FormLabel>
+                  <FormLabel>Set name *</FormLabel>
                   <FormControl>
                     <Input
                       placeholder="e.g. Sidemount, Warm water rec"
@@ -257,6 +259,9 @@ export function GearSetDialog({
                     <GearItemMultiSelect
                       userId={userId}
                       value={field.value ?? []}
+                      // An edited set already carries its members' details, so
+                      // the picker needn't fetch each one back by uuid.
+                      knownItems={gearSet?.gear_items}
                       onChange={field.onChange}
                     />
                   </FormControl>
@@ -271,9 +276,9 @@ export function GearSetDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Weight (kg)</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                      <Weight className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                  <div className="relative">
+                    <Weight className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                    <FormControl>
                       <Input
                         type="number"
                         step="0.5"
@@ -287,8 +292,8 @@ export function GearSetDialog({
                           field.onChange(Number.isNaN(val) ? null : val);
                         }}
                       />
-                    </div>
-                  </FormControl>
+                    </FormControl>
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     Optional. Loading this set into a dive fills in this weight.
                   </p>
@@ -311,12 +316,18 @@ export function GearSetDialog({
                 {isSubmitting ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Saving...
+                    {isEdit ? "Saving..." : "Creating..."}
                   </>
                 ) : isEdit ? (
-                  "Save Set"
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save Changes
+                  </>
                 ) : (
-                  "Create Set"
+                  <>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Set
+                  </>
                 )}
               </Button>
             </DialogFooter>

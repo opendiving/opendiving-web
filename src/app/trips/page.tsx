@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { usePaginatedResource } from "@/hooks/usePaginatedResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
@@ -19,11 +19,15 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { PaginationFooter } from "@/components/ui/pagination-footer";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { TripDialog } from "@/components/trips/trip-dialog";
 import { Plus, Eye, Edit, Trash2, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { PageSpinner } from "@/components/ui/page-spinner";
 
 export default function TripsPage() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
+  // `null` = the dialog is closed; a trip = editing it; `undefined` = creating.
+  const [editingTrip, setEditingTrip] = useState<Trip | null | undefined>(null);
 
   const fetchTrips = useCallback(
     (page: number, perPage: number) => {
@@ -63,11 +67,7 @@ export default function TripsPage() {
   });
 
   if (isAuthLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
+    return <PageSpinner variant="inset" />;
   }
 
   if (!isAuthenticated) {
@@ -83,11 +83,9 @@ export default function TripsPage() {
             Group your dives into trips and liveaboards
           </p>
         </div>
-        <Button asChild>
-          <Link href="/trips/new">
-            <Plus className="h-4 w-4 mr-2" />
-            New Trip
-          </Link>
+        <Button onClick={() => setEditingTrip(undefined)}>
+          <Plus className="h-4 w-4 mr-2" />
+          New Trip
         </Button>
       </div>
 
@@ -110,11 +108,9 @@ export default function TripsPage() {
               <div className="text-muted-foreground mb-4">
                 No trips yet. Create your first trip to group your dives!
               </div>
-              <Button asChild>
-                <Link href="/trips/new">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Your First Trip
-                </Link>
+              <Button onClick={() => setEditingTrip(undefined)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Your First Trip
               </Button>
             </div>
           ) : (
@@ -151,10 +147,13 @@ export default function TripsPage() {
                               <Eye className="h-4 w-4" />
                             </Link>
                           </Button>
-                          <Button variant="ghost" size="sm" asChild>
-                            <Link href={`/trips/${trip.uuid}/edit`}>
-                              <Edit className="h-4 w-4" />
-                            </Link>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            aria-label="Edit"
+                            onClick={() => setEditingTrip(trip)}
+                          >
+                            <Edit className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="ghost"
@@ -188,6 +187,14 @@ export default function TripsPage() {
           />
         </CardContent>
       </Card>
+
+      <TripDialog
+        userId={user?.uuid ?? ""}
+        open={editingTrip !== null}
+        onOpenChange={(open) => !open && setEditingTrip(null)}
+        trip={editingTrip}
+        onSaved={refetch}
+      />
 
       <ConfirmDialog
         open={pendingId !== null}

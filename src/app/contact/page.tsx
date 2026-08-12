@@ -1,6 +1,4 @@
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
@@ -8,247 +6,190 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { ContactForm } from "@/components/contact/contact-form";
+import { ISSUE_TRACKERS } from "@/lib/contact";
 import Link from "next/link";
 import { Metadata } from "next";
-import {
-  Mail,
-  MessageSquare,
-  Bug,
-  Users,
-  BookOpen,
-  Shield,
-  Heart,
-} from "lucide-react";
+import { AlertCircle, Anchor, Bug, Heart, Mail, Shield } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Contact Us | OpenDiving",
+  // The root layout's `title.template` appends " | OpenDiving".
+  title: "Contact",
   description:
-    "Get in touch with the OpenDiving community. Find support, report issues, or contribute to our open-source diving platform.",
+    "Get in touch with the people who build OpenDiving - report a bug, request a feature, or send a message that reaches a real inbox.",
 };
+
+// Display-only, and deliberately without a default: this can't route mail on its own -
+// the API's `CONTACT_FORM_EMAIL` decides where a submission actually goes - so
+// defaulting it to the project's own address would hand a self-hosted instance's
+// visitors an address that reaches people who can't help them. Left unset, a failed
+// submission points at the issue tracker instead, which is right for every deployment.
+const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL;
 
 export default function ContactPage() {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      {/* Header Section */}
-      <div className="text-center mb-12">
+      <div className="mb-12 text-center">
         <h1 className="text-4xl font-bold text-foreground mb-4">
-          Get in Touch
+          Get in touch
         </h1>
         <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-          OpenDiving is built by the community, for the community. Whether you
-          need help, want to contribute, or have feedback, we'd love to hear
-          from you.
+          OpenDiving is an open-source dive log built by volunteers. There is no
+          support desk - but the form below reaches a real inbox, and most
+          things get fixed faster in the open, on GitHub.
         </p>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-8">
-        {/* Contact Methods */}
         <div className="lg:col-span-1 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center">
-                <MessageSquare className="h-5 w-5 mr-2 text-primary" />
-                Community Support
+              {/* Only the two semantic icons below are coloured. `text-primary`
+                  used to be on the other three, and is a mid-grey in dark mode
+                  (see DECISIONS.md) - dimmer there than the description under
+                  it, and indistinguishable from the title in light mode. */}
+              <CardTitle className="flex items-center gap-2">
+                <Bug className="h-5 w-5" />
+                Bugs & feature requests
               </CardTitle>
               <CardDescription>
-                Get help from our diving community
+                Public, searchable, and where the work happens
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <p className="text-foreground mb-4">
-                Join our community discussions for general questions, diving
-                tips, and platform support.
+            <CardContent className="space-y-3">
+              <p className="text-foreground">
+                Check whether someone has already reported it, then open an
+                issue on whichever part broke:
               </p>
-              <Button asChild className="w-full">
-                <Link href="https://github.com/opendiving/discussions">
-                  Join Discussions
-                </Link>
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                {ISSUE_TRACKERS.map(({ label, href }) => (
+                  <Button key={href} asChild variant="outline" size="sm">
+                    <a href={href} target="_blank" rel="noopener noreferrer">
+                      {label}
+                    </a>
+                  </Button>
+                ))}
+              </div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center">
-                <Bug className="h-5 w-5 mr-2 text-foreground" />
-                Technical Issues
+              <CardTitle className="flex items-center gap-2">
+                <Shield className="h-5 w-5 text-success" />
+                Security
               </CardTitle>
-              <CardDescription>Report bugs or request features</CardDescription>
+              <CardDescription>Report it privately first</CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-foreground mb-4">
-                Found a bug or have a feature request? Create an issue on our
-                GitHub repository.
+              <p className="text-foreground">
+                Found something that exposes other divers&apos; data? Use the
+                form with the <strong>Security</strong> category rather than the
+                issue tracker, so it can be fixed before it is public.
               </p>
-              <Button asChild variant="outline" className="w-full">
-                <Link href="https://github.com/opendiving/opendiving/issues">
-                  Report Issue
-                </Link>
-              </Button>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center">
-                <Heart className="h-5 w-5 mr-2 text-red-500" />
+              <CardTitle className="flex items-center gap-2">
+                <Heart className="h-5 w-5 text-destructive" />
                 Contributing
               </CardTitle>
-              <CardDescription>Help make OpenDiving better</CardDescription>
+              <CardDescription>Code, docs, or a new parser</CardDescription>
             </CardHeader>
-            <CardContent>
-              <p className="text-foreground mb-4">
-                Want to contribute code, documentation, or translations? Check
-                out our contributing guide.
+            <CardContent className="space-y-3">
+              <p className="text-foreground">
+                Support for a dive computer we cannot read yet is the single
+                most useful thing you can add. The contributing guide covers
+                setup and how a parser fits in.
               </p>
               <Button asChild variant="outline" className="w-full">
-                <Link href="https://github.com/opendiving/opendiving/blob/main/CONTRIBUTING.md">
-                  Contribute
-                </Link>
+                <a
+                  href="https://github.com/opendiving/opendiving-web/blob/main/CONTRIBUTING.md"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Contributing guide
+                </a>
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Anchor className="h-5 w-5" />
+                Self-hosted instances
+              </CardTitle>
+              <CardDescription>Your server, your data</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-foreground">
+                If you run your own instance, your dives live in your database -
+                we cannot see them, restore them, or reset an account on it.
+                Whoever operates that server is the one who can.
+              </p>
+              <Button asChild variant="outline" className="w-full">
+                <a
+                  href="https://github.com/opendiving/opendiving-api#quickstart"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Self-hosting quickstart
+                </a>
               </Button>
             </CardContent>
           </Card>
         </div>
 
-        {/* Contact Form */}
         <div className="lg:col-span-2">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center">
-                <Mail className="h-5 w-5 mr-2 text-primary" />
-                Send Us a Message
+              <CardTitle className="flex items-center gap-2">
+                <Mail className="h-5 w-5" />
+                Send us a message
               </CardTitle>
               <CardDescription>
-                For general inquiries, partnerships, or other matters
+                For anything that does not belong in a public issue - or when
+                you would rather just write to a person.
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <form className="space-y-6">
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Name</Label>
-                    <Input id="name" placeholder="Your full name" required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="your.email@example.com"
-                      required
-                    />
-                  </div>
-                </div>
+            <CardContent className="space-y-6">
+              <ContactForm fallbackEmail={CONTACT_EMAIL} />
 
-                <div className="space-y-2">
-                  <Label htmlFor="subject">Subject</Label>
-                  <Input
-                    id="subject"
-                    placeholder="What's this about?"
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="category">Category</Label>
-                  <select
-                    id="category"
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                    required
-                  >
-                    <option value="">Select a category</option>
-                    <option value="support">General Support</option>
-                    <option value="bug">Bug Report</option>
-                    <option value="feature">Feature Request</option>
-                    <option value="partnership">Partnership</option>
-                    <option value="safety">Safety Concern</option>
-                    <option value="legal">Legal/Privacy</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="message">Message</Label>
-                  <textarea
-                    id="message"
-                    placeholder="Tell us more about your inquiry..."
-                    rows={6}
-                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                    required
-                  />
-                </div>
-
-                <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900 rounded-md p-4">
-                  <p className="text-blue-800 dark:text-blue-300 text-sm">
-                    <strong>Note:</strong> For urgent safety concerns or
-                    emergencies, please contact your local emergency services
-                    immediately. OpenDiving is not an emergency service.
+              <div className="rounded-md border bg-muted p-4">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">
+                    <strong>
+                      This is a logbook, not an emergency service.
+                    </strong>{" "}
+                    For a diving accident or suspected decompression illness,
+                    call your local emergency number and your regional diving
+                    emergency hotline - not us. Nothing in OpenDiving, including
+                    its gas and service calculations, is a substitute for your
+                    training, your tables, or your dive computer.
                   </p>
                 </div>
-
-                <Button type="submit" className="w-full">
-                  <Mail className="h-4 w-4 mr-2" />
-                  Send Message
-                </Button>
-              </form>
+              </div>
             </CardContent>
           </Card>
         </div>
       </div>
 
-      {/* Additional Contact Information */}
-      <div className="mt-12 grid md:grid-cols-3 gap-6">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <Users className="h-12 w-12 text-primary mx-auto mb-4" />
-              <h3 className="font-semibold text-foreground mb-2">
-                Community Managers
-              </h3>
-              <p className="text-muted-foreground text-sm">
-                community@opendiving.app
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <Shield className="h-12 w-12 text-green-600 mx-auto mb-4" />
-              <h3 className="font-semibold text-foreground mb-2">
-                Security Issues
-              </h3>
-              <p className="text-muted-foreground text-sm">
-                security@opendiving.app
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <BookOpen className="h-12 w-12 text-purple-600 mx-auto mb-4" />
-              <h3 className="font-semibold text-foreground mb-2">
-                Documentation
-              </h3>
-              <p className="text-muted-foreground text-sm">
-                docs@opendiving.app
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Response Time Note */}
-      <div className="mt-12 text-center">
-        <p className="text-muted-foreground">
-          OpenDiving is an open-source project maintained by volunteers from the
-          diving community.
-        </p>
-        <p className="text-muted-foreground mt-2">
-          Response times may vary, but we typically respond within 48-72 hours.
+      <div className="mt-12 text-center text-muted-foreground">
+        <p>
+          Everyone here is a volunteer diving in their own time, so replies take
+          a few days. Anything you send is used only to answer you - see the{" "}
+          <Link href="/privacy" className="underline hover:text-foreground">
+            privacy policy
+          </Link>{" "}
+          and{" "}
+          <Link href="/terms" className="underline hover:text-foreground">
+            terms
+          </Link>
+          .
         </p>
       </div>
     </div>

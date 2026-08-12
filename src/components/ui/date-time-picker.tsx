@@ -12,6 +12,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import type { FormControlSlotProps } from "@/components/ui/form";
 
 const DATE_TIME_REGEX = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/;
 
@@ -45,7 +46,7 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-export interface DateTimePickerProps {
+export interface DateTimePickerProps extends FormControlSlotProps {
   /** Value formatted as "YYYY-MM-DD HH:mm:ss" */
   value?: string;
   onChange: (value: string) => void;
@@ -58,6 +59,7 @@ export function DateTimePicker({
   onChange,
   placeholder = "YYYY-MM-DD HH:mm:ss",
   disabled,
+  ...slotProps
 }: DateTimePickerProps) {
   const [open, setOpen] = React.useState(false);
   const selectedDate = parseDateTime(value);
@@ -83,6 +85,13 @@ export function DateTimePicker({
     }
   }, [value]);
 
+  // An empty time field means "midnight" only once a date is committed alongside
+  // it; while typing it just means "not filled in".
+  const timePart = (raw: string) => {
+    const parsed = Number.parseInt(raw, 10);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  };
+
   const commit = (date: Date, h: number, m: number, s: number) => {
     const next = new Date(date);
     next.setHours(h, m, s, 0);
@@ -91,7 +100,7 @@ export function DateTimePicker({
 
   const handleSelectDate = (date: Date | undefined) => {
     if (!date) return;
-    commit(date, Number(hours), Number(minutes), Number(seconds));
+    commit(date, timePart(hours), timePart(minutes), timePart(seconds));
   };
 
   const handleTimeChange = (
@@ -99,19 +108,38 @@ export function DateTimePicker({
     rawValue: string,
   ) => {
     const max = part === "hours" ? 23 : 59;
-    const numeric = clamp(Number.parseInt(rawValue, 10) || 0, 0, max);
+    const parsed = Number.parseInt(rawValue, 10);
+
+    // Clearing the field used to run through `Number.parseInt("") || 0` and snap
+    // straight back to "00" - so a diver correcting 08:15 to 18:15 could never
+    // empty the box to retype it. Unparseable input leaves the field as typed and
+    // commits nothing, matching how the dive form's number inputs treat NaN.
+    if (Number.isNaN(parsed)) {
+      if (part === "hours") setHours("");
+      if (part === "minutes") setMinutes("");
+      if (part === "seconds") setSeconds("");
+      return;
+    }
+
+    const numeric = clamp(parsed, 0, max);
     const formatted = pad(numeric);
 
     if (part === "hours") setHours(formatted);
     if (part === "minutes") setMinutes(formatted);
     if (part === "seconds") setSeconds(formatted);
 
-    const base = selectedDate ?? new Date();
+    // Only ever commit against a date the diver actually picked. This used to fall
+    // back to `new Date()`, so typing a time into an empty picker silently stamped
+    // *today* onto the value - on a dive being back-filled from a paper logbook,
+    // today's date is the one date it certainly isn't. With no date chosen the time
+    // is held in local state until `handleSelectDate` commits the pair.
+    if (!selectedDate) return;
+
     commit(
-      base,
-      part === "hours" ? numeric : Number(hours),
-      part === "minutes" ? numeric : Number(minutes),
-      part === "seconds" ? numeric : Number(seconds),
+      selectedDate,
+      part === "hours" ? numeric : timePart(hours),
+      part === "minutes" ? numeric : timePart(minutes),
+      part === "seconds" ? numeric : timePart(seconds),
     );
   };
 
@@ -119,6 +147,7 @@ export function DateTimePicker({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
+          {...slotProps}
           type="button"
           variant="outline"
           disabled={disabled}

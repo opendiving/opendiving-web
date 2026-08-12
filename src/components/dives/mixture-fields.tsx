@@ -115,7 +115,7 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
             <span className="text-sm font-medium text-muted-foreground">
               Tank {index + 1}
             </span>
-            {fields.length > 1 && (
+            {index > 0 && (
               <Button
                 type="button"
                 variant="ghost"
@@ -177,9 +177,20 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                       min="0"
                       max="100"
                       {...field}
-                      onChange={(e) =>
-                        field.onChange(parseFloat(e.target.value))
-                      }
+                      value={field.value ?? ""}
+                      onChange={(e) => {
+                        // An emptied box is `undefined`, never `NaN`. Unlike
+                        // the pressures below - which are optional and use ""
+                        // as their placeholder - O2/He are required numbers, so
+                        // `undefined` gets the schema's "required" message
+                        // instead of a "expected number, received nan" one, and
+                        // `value ?? ""` keeps React from warning about a NaN
+                        // value attribute in the meantime.
+                        const raw = e.target.value;
+                        field.onChange(
+                          raw === "" ? undefined : parseFloat(raw),
+                        );
+                      }}
                     />
                   </FormControl>
                   <FormMessage />
@@ -200,9 +211,20 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                       min="0"
                       max="100"
                       {...field}
-                      onChange={(e) =>
-                        field.onChange(parseFloat(e.target.value))
-                      }
+                      value={field.value ?? ""}
+                      onChange={(e) => {
+                        // An emptied box is `undefined`, never `NaN`. Unlike
+                        // the pressures below - which are optional and use ""
+                        // as their placeholder - O2/He are required numbers, so
+                        // `undefined` gets the schema's "required" message
+                        // instead of a "expected number, received nan" one, and
+                        // `value ?? ""` keeps React from warning about a NaN
+                        // value attribute in the meantime.
+                        const raw = e.target.value;
+                        field.onChange(
+                          raw === "" ? undefined : parseFloat(raw),
+                        );
+                      }}
                     />
                   </FormControl>
                   <FormMessage />
@@ -215,7 +237,7 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
               name={`mixtures.${index}.start_pressure` as Path<TFieldValues>}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Start Pressure (bar)</FormLabel>
+                  <FormLabel>Start pressure (bar)</FormLabel>
                   <FormControl>
                     <Input
                       type="number"
@@ -239,7 +261,7 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
               name={`mixtures.${index}.end_pressure` as Path<TFieldValues>}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>End Pressure (bar)</FormLabel>
+                  <FormLabel>End pressure (bar)</FormLabel>
                   <FormControl>
                     <Input
                       type="number"

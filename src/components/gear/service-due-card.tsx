@@ -11,6 +11,7 @@ import {
 } from "@/lib/api/gear-service";
 import { formatServiceDue, serviceStatus } from "@/lib/gear-service";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { TruncatedNote } from "@/components/ui/truncated-note";
 import { ServiceStatusBadge } from "@/components/gear/service-status-badge";
 
 interface ServiceDueCardProps {
@@ -28,6 +29,9 @@ interface ServiceDueCardProps {
 // midnight - so the bucketing happens here.
 export function ServiceDueCard({ userId }: ServiceDueCardProps) {
   const [due, setDue] = useState<GearServiceDueEntry[]>([]);
+  // The API caps how many schedules it returns. Without surfacing that, a diver past
+  // the cap sees a card that looks complete while some overdue kit isn't in it.
+  const [truncated, setTruncated] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -45,6 +49,7 @@ export function ServiceDueCard({ userId }: ServiceDueCardProps) {
             ) !== "ok",
         );
         setDue(needsAttention);
+        setTruncated(response.truncated === true);
       })
       // Swallowed on purpose: this is a supplementary card, and a failed fetch should
       // leave the dashboard looking normal rather than showing an error tile.
@@ -77,12 +82,14 @@ export function ServiceDueCard({ userId }: ServiceDueCardProps) {
             <Link
               key={entry.schedule_uuid}
               href={`/gear/${entry.gear_item_uuid}`}
-              className="block space-y-1 hover:underline"
+              className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 hover:underline"
             >
-              <div className="text-sm font-medium">{label}</div>
-              <div className="text-xs text-muted-foreground">
-                {serviceKindLabel(entry.kind)}
-                {entry.label ? ` (${entry.label})` : ""}
+              <div className="min-w-0">
+                <div className="text-sm font-medium">{label}</div>
+                <div className="text-xs text-muted-foreground">
+                  {serviceKindLabel(entry.kind)}
+                  {entry.label ? ` (${entry.label})` : ""}
+                </div>
               </div>
               <ServiceStatusBadge
                 status={status}
@@ -91,6 +98,7 @@ export function ServiceDueCard({ userId }: ServiceDueCardProps) {
             </Link>
           );
         })}
+        {truncated && <TruncatedNote where="your gear" />}
       </CardContent>
     </Card>
   );

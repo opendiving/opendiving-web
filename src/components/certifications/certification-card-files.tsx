@@ -74,7 +74,7 @@ export function CertificationCardFiles({
         title: "Card saved",
         description: `${CERTIFICATION_SIDE_LABELS[side]} of your card was uploaded.`,
       });
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Error",
         description: getApiErrorMessage(
@@ -100,7 +100,7 @@ export function CertificationCardFiles({
         title: "Image removed",
         description: `${CERTIFICATION_SIDE_LABELS[side]} image deleted.`,
       });
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Error",
         description: getApiErrorMessage(
@@ -177,8 +177,7 @@ export function CertificationCardFiles({
 
             {file && (
               <p className="text-xs text-muted-foreground truncate">
-                {file.original_filename} ·{" "}
-                {formatFileSize(file.byte_size)}
+                {file.original_filename} · {formatFileSize(file.byte_size)}
               </p>
             )}
           </div>

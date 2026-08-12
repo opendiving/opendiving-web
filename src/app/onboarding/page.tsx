@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
-import { ProfileCompletionForm } from "@/components/auth/ProfileCompletionForm";
+import { ProfileCompletionForm } from "@/components/auth/profile-completion-form";
 import { Logo } from "@/components/logo";
 
 // Profile completion - shared by both authentication methods (email magic link and
@@ -48,14 +48,11 @@ export default function OnboardingPage() {
         <div className="mt-8 text-center text-sm text-muted-foreground">
           <p>
             By creating an account, you agree to our{" "}
-            <Link href="/terms" className="text-primary hover:text-primary/80">
+            <Link href="/terms" className="underline hover:text-foreground">
               Terms of Service
             </Link>{" "}
             and{" "}
-            <Link
-              href="/privacy"
-              className="text-primary hover:text-primary/80"
-            >
+            <Link href="/privacy" className="underline hover:text-foreground">
               Privacy Policy
             </Link>
           </p>

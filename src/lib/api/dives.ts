@@ -1,4 +1,5 @@
 import { apiClient } from "./client";
+import type { PaginatedResponse } from "./client";
 import { GearItemSummary } from "./gear";
 
 // A single gas mixture / scuba tank used during a dive.
@@ -136,10 +137,12 @@ export interface DiveProfile {
   pressure: DiveProfilePressureSeries[];
 }
 
-// What the API accepts as a dive-computer export, mirrored here so the file
-// picker can filter and so an obviously-oversized file is rejected before it
-// is uploaded. The API re-checks both regardless - this is convenience, not
-// validation.
+/**
+ * What the API accepts as a dive-computer export, mirrored here so the file
+ * picker can filter and so an obviously-oversized file is rejected before it
+ * is uploaded. The API re-checks both regardless - this is convenience, not
+ * validation.
+ */
 export const DIVE_FILE_ACCEPT = ".xml,.json";
 export const MAX_DIVE_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
@@ -162,13 +165,13 @@ const DIVE_PARSER_LABELS: Record<string, string> = {
   suunto_json: "Suunto JSON export",
 };
 
-// Human-readable name for a `parser_key`. Falls back to the raw key rather
-// than to a blank or "Unknown": if the API grows a parser this build hasn't
-// heard of, showing "garmin_fit" is worse than a label but far better than an
-// empty cell that looks like a bug.
-export function diveParserLabel(
-  key: string | null | undefined,
-): string | null {
+/**
+ * Human-readable name for a `parser_key`. Falls back to the raw key rather
+ * than to a blank or "Unknown": if the API grows a parser this build hasn't
+ * heard of, showing "garmin_fit" is worse than a label but far better than an
+ * empty cell that looks like a bug.
+ */
+export function diveParserLabel(key: string | null | undefined): string | null {
   if (!key) return null;
   return DIVE_PARSER_LABELS[key] ?? key;
 }
@@ -203,20 +206,80 @@ export interface DiveUpdate {
   bottom_temperature?: number | null;
   visibility?: number | null;
   weight?: number | null;
-  trip_uuid?: string;
+  // `null` detaches the dive from its trip; omitting the field leaves whatever
+  // trip it already has alone. Same "explicit null clears, absent means no
+  // change" contract as the nullable measurements above - and the reason
+  // `TripCombobox` normalizes its cleared value to `null` rather than
+  // `undefined`, which the update payload builder drops from the request.
+  trip_uuid?: string | null;
   dive_site_uuids?: string[];
   gear_item_uuids?: string[];
   notes?: string;
   mixtures?: DiveMixture[];
 }
 
-export interface PaginatedDivesResponse {
-  data: Dive[];
-  total_count: number;
-  has_more: boolean;
-  page: number;
-  items_per_page: number;
+// What to prefill a new dive's number with, from `/dives/next-number`.
+//
+// Derived by the API from the dive's *date*, not from the newest dive in the
+// log: back-filling a 2019 dive into a log that already reaches #212 should
+// suggest #12, not #213. See the API's `services/dive_numbering.py`.
+export interface DiveNumberSuggestion {
+  dive_number: number;
+  // Whether an existing dive already carries this number. Advisory only - show
+  // it, don't block on it. Back-filling a run of old dives collides by
+  // construction, and `renumberDives` is what reconciles the log afterwards.
+  is_taken: boolean;
 }
+
+// The state of a user's dive numbering, from `/dives/numbering`.
+//
+// Reported, never enforced. A gap means "part of my log lives in a paper
+// logbook" as often as it means "my numbering is a mess", and only the diver
+// knows which - so this drives an indicator they can ignore, not a warning.
+export interface DiveNumberingSummary {
+  total_dives: number;
+  // Null only when the log is empty.
+  lowest: number | null;
+  highest: number | null;
+  // How many numbers between `lowest` and `highest` no dive uses.
+  missing_count: number;
+  // How many dives carry a number another dive also carries.
+  duplicate_count: number;
+  // How many dives are numbered lower than the dive chronologically before them.
+  out_of_date_order_count: number;
+  // One unbroken run, no duplicates. Doesn't require starting at 1: a log
+  // running #47-#212 is exactly as tidy as one running #1-#166.
+  is_sequential: boolean;
+}
+
+export interface DiveRenumberRequest {
+  // The number to give the earliest dive in scope.
+  start_at?: number;
+  // Offset-aware ISO 8601. Renumber only dives at or after this instant,
+  // leaving earlier ones alone - so a log whose older entries mirror a paper
+  // logbook can have just its recent tail tidied. Omit to renumber everything.
+  from_start_time?: string;
+  // Compute the changes and write nothing. Always send `true` first: it's what
+  // the confirmation dialog renders.
+  dry_run?: boolean;
+}
+
+export interface DiveRenumberChange {
+  dive_uuid: string;
+  start_time: string;
+  dive_number: number;
+  new_dive_number: number;
+}
+
+export interface DiveRenumberResult {
+  dry_run: boolean;
+  dives_in_scope: number;
+  // Only the dives whose number actually moves, in chronological order - a log
+  // already numbered as requested comes back with this empty.
+  changes: DiveRenumberChange[];
+}
+
+export type PaginatedDivesResponse = PaginatedResponse<Dive>;
 
 // A gas mixture parsed from a dive-computer export file. Mirrors the API's
 // `DiveMixtureSchema` - `name` is always `null` (mixture names aren't parsed,
@@ -257,6 +320,15 @@ export interface ParsedDive {
   [key: string]: unknown;
 }
 
+/**
+ * Dive CRUD, plus dive-computer file import, profile fetching and numbering.
+ *
+ * Two things differ from the other resources here. Updates replace the list-valued fields
+ * (`mixtures`, `dive_site_uuids`, `gear_item_uuids`) wholesale rather than merging, so a
+ * caller must send the full intended list. And importing a file is two steps - parse to
+ * pre-fill the form, then upload against the created dive - because the diver gets to
+ * correct the parsed values before anything is stored.
+ */
 export const divesAPI = {
   // Create a new dive. `diveData.user_uuid` must be the currently signed-in user's uuid.
   async createDive(diveData: DiveCreate): Promise<Dive> {
@@ -291,6 +363,37 @@ export const divesAPI = {
   // Get a specific dive by uuid
   async getDive(diveUuid: string): Promise<Dive> {
     const response = await apiClient.get(`/dive/${diveUuid}`);
+    return response.data;
+  },
+
+  // The dive number to prefill for a dive starting at `startTime` (offset-aware
+  // ISO 8601 - build one with `combineStartTime()` from `lib/date-time.ts`).
+  //
+  // A suggestion, not a reservation. Always the signed-in user's own log, so
+  // unlike `getDives` this takes no user uuid.
+  async getNextDiveNumber(startTime: string): Promise<DiveNumberSuggestion> {
+    const response = await apiClient.get(`/dives/next-number`, {
+      params: { start_time: startTime },
+    });
+    return response.data;
+  },
+
+  // The state of the signed-in user's dive numbering, for the log's numbering
+  // indicator.
+  async getDiveNumbering(): Promise<DiveNumberingSummary> {
+    const response = await apiClient.get(`/dives/numbering`);
+    return response.data;
+  },
+
+  // Renumber the signed-in user's dives consecutively, in date order.
+  //
+  // The one call in the app that rewrites numbers the diver entered. Call it
+  // with `dry_run: true` first and show the result before calling it for real -
+  // some of those numbers may also be written in a paper logbook.
+  async renumberDives(
+    request: DiveRenumberRequest = {},
+  ): Promise<DiveRenumberResult> {
+    const response = await apiClient.post(`/dives/renumber`, request);
     return response.data;
   },
 

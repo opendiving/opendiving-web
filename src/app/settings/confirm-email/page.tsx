@@ -8,7 +8,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
 import { getApiErrorMessage } from "@/lib/api/error";
-import { AlertCircle, CheckCircle2, Loader2, MailCheck } from "lucide-react";
+import {
+  AlertCircle,
+  Check,
+  CheckCircle2,
+  Loader2,
+  MailCheck,
+} from "lucide-react";
 
 // What the email-change confirmation link actually points to
 // (`{FRONTEND_URL}/settings/confirm-email?token=...`, see the backend's
@@ -43,7 +49,9 @@ function ConfirmEmailChangeContent() {
   const router = useRouter();
   const { refreshUser } = useAuth();
   const token = searchParams.get("token");
-  const [state, setState] = useState<ConfirmState>(token ? "checking" : "error");
+  const [state, setState] = useState<ConfirmState>(
+    token ? "checking" : "error",
+  );
   const [message, setMessage] = useState<string | null>(
     token ? null : "This confirmation link is missing its token.",
   );
@@ -168,32 +176,38 @@ function ConfirmStatus({
                 "Click below to finish changing your account's email."
               )}
             </p>
-            <Button onClick={onConfirm}>Confirm email change</Button>
+            <Button onClick={onConfirm}>
+              <Check className="h-4 w-4 mr-2" />
+              Confirm email change
+            </Button>
           </>
         )}
 
         {state === "verifying" && (
           <>
             <Loader2 className="mx-auto mb-4 h-10 w-10 animate-spin text-primary" />
-            <p className="text-muted-foreground">Confirming your new email...</p>
+            <p className="text-muted-foreground">
+              Confirming your new email...
+            </p>
           </>
         )}
 
         {state === "success" && (
           <>
-            <CheckCircle2 className="mx-auto mb-4 h-10 w-10 text-green-600" />
+            <CheckCircle2 className="mx-auto mb-4 h-10 w-10 text-success" />
             <p className="text-foreground font-medium mb-1">All set!</p>
             <p className="text-muted-foreground mb-6">
               Your email address has been updated
               {email && (
                 <>
                   {" "}
-                  to <span className="font-medium text-foreground">{email}</span>
+                  to{" "}
+                  <span className="font-medium text-foreground">{email}</span>
                 </>
               )}
               .
             </p>
-            <Link href="/settings" className="text-primary hover:text-primary/80">
+            <Link href="/settings" className="underline hover:text-foreground">
               Back to settings
             </Link>
           </>
@@ -201,12 +215,12 @@ function ConfirmStatus({
 
         {state === "error" && (
           <>
-            <AlertCircle className="mx-auto mb-4 h-10 w-10 text-red-600" />
+            <AlertCircle className="mx-auto mb-4 h-10 w-10 text-destructive" />
             <p className="text-foreground font-medium mb-1">
               We couldn&apos;t confirm your email
             </p>
             <p className="text-muted-foreground mb-6">{message}</p>
-            <Link href="/settings" className="text-primary hover:text-primary/80">
+            <Link href="/settings" className="underline hover:text-foreground">
               Back to settings
             </Link>
           </>

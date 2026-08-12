@@ -8,12 +8,14 @@ interface ValidationErrorDetail {
   input?: unknown;
 }
 
-// Extracts a human-readable error message from an error thrown by the API
-// client (axios). FastAPI's `detail` field is a plain string for most
-// errors, but an array of validation error objects for 422 responses.
-// Rendering that array directly (e.g. as a toast description) crashes React,
-// since plain objects aren't valid React children - this normalizes both
-// shapes into a single displayable string.
+/**
+ * Extracts a human-readable error message from an error thrown by the API
+ * client (axios). FastAPI's `detail` field is a plain string for most
+ * errors, but an array of validation error objects for 422 responses.
+ * Rendering that array directly (e.g. as a toast description) crashes React,
+ * since plain objects aren't valid React children - this normalizes both
+ * shapes into a single displayable string.
+ */
 export function getApiErrorMessage(error: unknown, fallback: string): string {
   const detail = (error as { response?: { data?: { detail?: unknown } } })
     ?.response?.data?.detail;

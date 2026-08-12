@@ -1,16 +1,19 @@
-import { apiClient } from "./client";
+import { apiClient, fetchAllPages } from "./client";
+import type { PaginatedResponse } from "./client";
 // Type-only, so it erases at compile time - `gear-service.ts` has no import back to
 // here, but keeping this one type-only means the pair can never become a real cycle.
 import type { GearServiceScheduleSummary } from "./gear-service";
 
-// Broad category a gear item falls into. Mirrors the API's `GearType` enum -
-// a closed vocabulary rather than free text, so the same kind of kit is named
-// the same way across a diver's whole list and the UI can group by it.
-//
-// Declared in the order kit is normally listed rather than alphabetically:
-// `GEAR_TYPES` is what drives the picker's option order, so "Mask, Snorkel,
-// Fins..." reads the way a diver would lay their kit out rather than
-// "BCD, Boots, Camera...". Keep in sync with the API.
+/**
+ * Broad category a gear item falls into. Mirrors the API's `GearType` enum -
+ * a closed vocabulary rather than free text, so the same kind of kit is named
+ * the same way across a diver's whole list and the UI can group by it.
+ *
+ * Declared in the order kit is normally listed rather than alphabetically:
+ * `GEAR_TYPES` is what drives the picker's option order, so "Mask, Snorkel,
+ * Fins..." reads the way a diver would lay their kit out rather than
+ * "BCD, Boots, Camera...". Keep in sync with the API.
+ */
 export const GEAR_TYPES = [
   "mask",
   "snorkel",
@@ -61,8 +64,10 @@ const GEAR_TYPE_LABELS: Record<GearType, string> = {
   other: "Other",
 };
 
-// Label for a gear type, tolerating a value this build doesn't know about (an
-// API that has grown a new category shouldn't render as a blank cell).
+/**
+ * Label for a gear type, tolerating a value this build doesn't know about (an
+ * API that has grown a new category shouldn't render as a blank cell).
+ */
 export function gearTypeLabel(type: string | null | undefined): string | null {
   if (!type) return null;
   return GEAR_TYPE_LABELS[type as GearType] ?? type;
@@ -150,22 +155,14 @@ export interface GearSetUpdate {
   gear_item_uuids?: string[];
 }
 
-export interface PaginatedGearItemsResponse {
-  data: GearItem[];
-  total_count: number;
-  has_more: boolean;
-  page: number;
-  items_per_page: number;
-}
+export type PaginatedGearItemsResponse = PaginatedResponse<GearItem>;
 
-export interface PaginatedGearSetsResponse {
-  data: GearSet[];
-  total_count: number;
-  has_more: boolean;
-  page: number;
-  items_per_page: number;
-}
+export type PaginatedGearSetsResponse = PaginatedResponse<GearSet>;
 
+/**
+ * Gear item and gear set CRUD. Sets are named bundles of items, carrying an optional
+ * default weight the dive form pre-fills.
+ */
 export const gearAPI = {
   // Create a gear item. `data.user_uuid` must be the currently signed-in user's uuid.
   async createGearItem(data: GearItemCreate): Promise<GearItem> {
@@ -175,11 +172,15 @@ export const gearAPI = {
 
   // Get a user's gear (paginated). Archived items are excluded unless
   // `includeArchived` is true, so pickers only ever offer gear still in service.
+  // `search` narrows to items whose name *or* brand contains it, case-insensitively -
+  // the API caps `items_per_page` at 100, so this is a page of matches, never the
+  // whole set.
   async getGearItems(
     userUuid: string,
     page: number = 1,
     items_per_page: number = 10,
     includeArchived: boolean = false,
+    search?: string,
   ): Promise<PaginatedGearItemsResponse> {
     const response = await apiClient.get(`/gear-items`, {
       params: {
@@ -187,6 +188,7 @@ export const gearAPI = {
         page,
         items_per_page,
         include_archived: includeArchived,
+        ...(search ? { search } : {}),
       },
     });
     return response.data;
@@ -254,47 +256,25 @@ export const gearAPI = {
   },
 };
 
-// Fetches every page of a user's gear. The dive form's picker and the gear set
-// editor filter client-side over the full list rather than paging, so a user with
-// more than one page of gear would otherwise see items render as bare uuids.
-// Mirrors the same loop in `DiveSiteMultiSelect`.
-export async function fetchAllGearItems(
+/**
+ * Fetches every page of a user's gear sets: the dive form's set switcher is a
+ * client-side-filtered dropdown, not a list view, and sets are few enough per user
+ * that this stays cheap. The gear *item* picker used to do the same and no longer
+ * does - it searches server-side (see `GearItemMultiSelect`).
+ */
+export async function fetchAllGearSets(
   userUuid: string,
-  includeArchived: boolean = false,
-): Promise<GearItem[]> {
-  const all: GearItem[] = [];
-  let page = 1;
-  let hasMore = true;
-  while (hasMore) {
-    const response = await gearAPI.getGearItems(
-      userUuid,
-      page,
-      100,
-      includeArchived,
-    );
-    all.push(...response.data);
-    hasMore = response.has_more;
-    page += 1;
-  }
-  return all;
+  signal?: AbortSignal,
+): Promise<GearSet[]> {
+  return fetchAllPages(
+    (page, itemsPerPage) => gearAPI.getGearSets(userUuid, page, itemsPerPage),
+    { signal, label: "gear sets", keyOf: (set) => set.uuid },
+  );
 }
 
-// Fetches every page of a user's gear sets - same reasoning as `fetchAllGearItems`
-// (the dive form's set switcher is a client-side-filtered dropdown, not a list view).
-export async function fetchAllGearSets(userUuid: string): Promise<GearSet[]> {
-  const all: GearSet[] = [];
-  let page = 1;
-  let hasMore = true;
-  while (hasMore) {
-    const response = await gearAPI.getGearSets(userUuid, page, 100);
-    all.push(...response.data);
-    hasMore = response.has_more;
-    page += 1;
-  }
-  return all;
-}
-
-// Human-readable label for a gear item, e.g. "Scubapro MK25 EVO" or just "Wing 17L".
+/**
+ * Human-readable label for a gear item, e.g. "Scubapro MK25 EVO" or just "Wing 17L".
+ */
 export function gearItemLabel(item: {
   name: string;
   brand?: string | null;

@@ -16,7 +16,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Fish, Waves, Plus, Clock, Gauge, Loader2 } from "lucide-react";
+import {
+  Fish,
+  Waves,
+  Plus,
+  Clock,
+  ArrowDownToLine,
+  Loader2,
+} from "lucide-react";
 
 const RECENT_DIVES_COUNT = 5;
 
@@ -32,7 +39,7 @@ export interface RecentDivesCardProps {
   // regardless of gear.
   gearItemId?: string;
   // Maximum number of dives to fetch/display. Defaults to 5 for the
-  // dashboard/profile "recent dives" use case.
+  // dashboard's "recent dives" use case.
   limit?: number;
   title?: string;
   description?: string;
@@ -95,18 +102,24 @@ export function RecentDivesCard({
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center">
-            <Waves className="h-5 w-5 mr-2" />
-            {title}
-          </CardTitle>
+        {/* Title and description in one column with the action beside them,
+            rather than the description under the whole row: a `size="sm"`
+            button is taller than the title, so centring it there pushed the
+            description to twice every other card's 6px. */}
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="space-y-1.5">
+            <CardTitle className="flex items-center gap-2">
+              <Waves className="h-5 w-5" />
+              {title}
+            </CardTitle>
+            <CardDescription>{description}</CardDescription>
+          </div>
           {viewAllHref && (
             <Button variant="outline" size="sm" asChild>
               <Link href={viewAllHref}>{viewAllLabel}</Link>
             </Button>
           )}
         </div>
-        <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent>
         {isLoadingDives ? (
@@ -135,7 +148,10 @@ export function RecentDivesCard({
                 href={`/dives/${dive.uuid}`}
                 className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0 p-3 rounded-lg border hover:bg-muted transition-colors"
               >
-                <div>
+                {/* `min-w-0` so a long site name wraps inside this block rather
+                    than squeezing the duration/depth column - the card is half a
+                    row wide on the dashboard. */}
+                <div className="min-w-0">
                   <div className="font-medium text-foreground">
                     Dive #{dive.dive_number}
                   </div>
@@ -149,21 +165,19 @@ export function RecentDivesCard({
                     </span>
                     {dive.dive_sites.length > 0 && (
                       <span className="block sm:inline">
-                        <span className="hidden sm:inline">
-                          {" \u00b7 "}
-                        </span>
+                        <span className="hidden sm:inline">{" \u00b7 "}</span>
                         <DiveSitesLabel sites={dive.dive_sites} showLocation />
                       </span>
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <div className="flex flex-shrink-0 items-center gap-4 text-sm text-muted-foreground">
                   <div className="flex items-center gap-1">
                     <Clock className="h-4 w-4" />
                     {formatDurationHoursMinutes(dive.duration)}
                   </div>
                   <div className="flex items-center gap-1">
-                    <Gauge className="h-4 w-4" />
+                    <ArrowDownToLine className="h-4 w-4" />
                     {dive.max_depth ? `${Math.round(dive.max_depth)}m` : "-"}
                   </div>
                 </div>

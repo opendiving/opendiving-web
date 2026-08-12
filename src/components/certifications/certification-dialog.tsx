@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useDialogApiError } from "@/hooks/useDialogApiError";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus, Save } from "lucide-react";
 import {
   certificationSchema,
   CertificationInput,
@@ -68,7 +69,7 @@ export function CertificationDialog({
   onSaved,
 }: CertificationDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [apiError, setApiError] = useState<string | null>(null);
+  const [apiError, setApiError] = useDialogApiError(open);
   const isEdit = !!certification;
 
   const form = useForm<CertificationInput>({
@@ -112,8 +113,6 @@ export function CertificationDialog({
     // Same deliberate reset-on-open pattern as `gear-item-dialog.tsx`; clearing a
     // stale error when the dialog reopens is exactly the "sync to a prop change"
     // case this rule can't distinguish from a cascading render.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setApiError(null);
   }, [open, certification, reset]);
 
   const handleOpenChange = (next: boolean) => {
@@ -136,7 +135,7 @@ export function CertificationDialog({
       const shared = {
         agency: data.agency as CertificationAgency,
         agency_other:
-          data.agency === "other" ? (data.agency_other || null) : null,
+          data.agency === "other" ? data.agency_other || null : null,
         name: data.name,
         certification_number: data.certification_number || null,
         certified_on: data.certified_on || null,
@@ -159,7 +158,7 @@ export function CertificationDialog({
       }
 
       onOpenChange(false);
-    } catch (error: any) {
+    } catch (error) {
       setApiError(
         getApiErrorMessage(
           error,
@@ -173,7 +172,7 @@ export function CertificationDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>
             {isEdit ? "Edit Certification" : "New Certification"}
@@ -388,9 +387,15 @@ export function CertificationDialog({
                     {isEdit ? "Saving..." : "Creating..."}
                   </>
                 ) : isEdit ? (
-                  "Save Changes"
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save Changes
+                  </>
                 ) : (
-                  "Create Certification"
+                  <>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Certification
+                  </>
                 )}
               </Button>
             </DialogFooter>

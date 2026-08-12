@@ -8,7 +8,10 @@ import * as React from "react";
  * app, this one is inherently multi-color, so it ignores `currentColor` and
  * always renders with its four brand colors.
  */
-export function GooglePlayLogo({ className, ...props }: React.SVGProps<SVGSVGElement>) {
+export function GooglePlayLogo({
+  className,
+  ...props
+}: React.SVGProps<SVGSVGElement>) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"

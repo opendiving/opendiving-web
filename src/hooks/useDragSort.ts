@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-// Returns a copy of `items` with the entry at `from` moved to `to`.
+/**
+ * Returns a copy of `items` with the entry at `from` moved to `to`.
+ */
 export function moveItem<T>(items: T[], from: number, to: number): T[] {
   if (
     from === to ||
@@ -27,21 +29,23 @@ export interface RowBounds {
 
 const centerOf = (row: RowBounds) => (row.top + row.bottom) / 2;
 
-// Which neighbour, if any, the dragged row should swap with.
-//
-// Compares the dragged row's *own* centre against its immediate neighbours'
-// centres, rather than asking "which row is the pointer inside?". That
-// distinction is what makes the drag feel right: the swap happens the moment the
-// lifted row visually overlaps its neighbour past halfway, so the list rearranges
-// under a row that is already moving - instead of waiting for the pointer to
-// arrive somewhere specific, and instead of doing nothing at all while the
-// pointer sits in the gap between two rows.
-//
-// Walks past as many neighbours as the row has actually cleared, rather than one
-// per event: a quick flick produces only a handful of pointermove events, and
-// single-stepping would leave the list crawling along behind the pointer. The
-// neighbours' measurements are all from the pre-swap layout, which is exactly
-// what's wanted - they are the positions the row is being dragged past.
+/**
+ * Which neighbour, if any, the dragged row should swap with.
+ *
+ * Compares the dragged row's *own* centre against its immediate neighbours'
+ * centres, rather than asking "which row is the pointer inside?". That
+ * distinction is what makes the drag feel right: the swap happens the moment the
+ * lifted row visually overlaps its neighbour past halfway, so the list rearranges
+ * under a row that is already moving - instead of waiting for the pointer to
+ * arrive somewhere specific, and instead of doing nothing at all while the
+ * pointer sits in the gap between two rows.
+ *
+ * Walks past as many neighbours as the row has actually cleared, rather than one
+ * per event: a quick flick produces only a handful of pointermove events, and
+ * single-stepping would leave the list crawling along behind the pointer. The
+ * neighbours' measurements are all from the pre-swap layout, which is exactly
+ * what's wanted - they are the positions the row is being dragged past.
+ */
 export function resolveSwapTarget(
   rows: (RowBounds | null)[],
   index: number,
@@ -72,31 +76,33 @@ export interface UseDragSortOptions {
   disabled?: boolean;
 }
 
-// Drag-to-reorder for a vertical list.
-//
-// Built on Pointer Events rather than the HTML5 drag-and-drop API, which emits
-// no events for touch - a phone couldn't reorder at all. Pointer events cover
-// mouse, touch and pen through one code path.
-//
-// **Move listeners go on `window`, not on the handle, and `setPointerCapture` is
-// deliberately not used.** Capture looks like the right tool, but the capturing
-// element is inside the row being reordered: as soon as the list rearranges,
-// React moves that row in the DOM, the browser releases the capture and fires
-// `lostpointercapture` - killing the drag mid-gesture. It bit hardest when
-// dragging past either end of the list, where the clamp forces a reorder
-// immediately. Window listeners are unaffected by the DOM moving underneath
-// them, so a drag now ends only when the pointer is actually released.
-//
-// `dragOffset` translates the dragged row so it tracks the pointer from the
-// first pixel of movement. Without it the row stayed put until it happened to
-// reach its destination, which read as the drag not having started.
-//
-// Deliberately no library: this is one short vertical list, and @dnd-kit et al.
-// would be a dependency (and a bundle) for a single screen.
-//
-// The handle is a real <button>, so the gesture has a keyboard equivalent -
-// focus it and press Up/Down. Without that, reordering would be impossible for
-// anyone not using a pointer, which a drag-only implementation quietly assumes.
+/**
+ * Drag-to-reorder for a vertical list.
+ *
+ * Built on Pointer Events rather than the HTML5 drag-and-drop API, which emits
+ * no events for touch - a phone couldn't reorder at all. Pointer events cover
+ * mouse, touch and pen through one code path.
+ *
+ * **Move listeners go on `window`, not on the handle, and `setPointerCapture` is
+ * deliberately not used.** Capture looks like the right tool, but the capturing
+ * element is inside the row being reordered: as soon as the list rearranges,
+ * React moves that row in the DOM, the browser releases the capture and fires
+ * `lostpointercapture` - killing the drag mid-gesture. It bit hardest when
+ * dragging past either end of the list, where the clamp forces a reorder
+ * immediately. Window listeners are unaffected by the DOM moving underneath
+ * them, so a drag now ends only when the pointer is actually released.
+ *
+ * `dragOffset` translates the dragged row so it tracks the pointer from the
+ * first pixel of movement. Without it the row stayed put until it happened to
+ * reach its destination, which read as the drag not having started.
+ *
+ * Deliberately no library: this is one short vertical list, and @dnd-kit et al.
+ * would be a dependency (and a bundle) for a single screen.
+ *
+ * The handle is a real <button>, so the gesture has a keyboard equivalent -
+ * focus it and press Up/Down. Without that, reordering would be impossible for
+ * anyone not using a pointer, which a drag-only implementation quietly assumes.
+ */
 export function useDragSort({
   itemCount,
   onReorder,
@@ -135,7 +141,16 @@ export function useDragSort({
     [],
   );
 
+  // Detaches the window listeners belonging to the gesture currently in flight.
+  // They are closures created inside `startDrag`, so nothing outside it can name
+  // them - which is why `endDrag` used to leave them attached despite the unmount
+  // effect below claiming otherwise. Holding the remover here is what makes that
+  // claim true.
+  const detachRef = useRef<(() => void) | null>(null);
+
   const endDrag = useCallback(() => {
+    detachRef.current?.();
+    detachRef.current = null;
     dragRef.current = null;
     setDraggingIndex(null);
     setDragOffset(0);
@@ -208,15 +223,19 @@ export function useDragSort({
         ) {
           return;
         }
-        window.removeEventListener("pointermove", handleMove);
-        window.removeEventListener("pointerup", handleEnd);
-        window.removeEventListener("pointercancel", handleEnd);
+        // Detaching is `endDrag`'s job now, so the pointer-up path and the
+        // unmount path can't drift apart.
         endDrag();
       };
 
       window.addEventListener("pointermove", handleMove);
       window.addEventListener("pointerup", handleEnd);
       window.addEventListener("pointercancel", handleEnd);
+      detachRef.current = () => {
+        window.removeEventListener("pointermove", handleMove);
+        window.removeEventListener("pointerup", handleEnd);
+        window.removeEventListener("pointercancel", handleEnd);
+      };
     },
     [endDrag],
   );

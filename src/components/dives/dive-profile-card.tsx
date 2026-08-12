@@ -9,9 +9,28 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { SectionSpinner } from "@/components/ui/section-spinner";
 import { DiveProfileChart } from "@/components/dives/dive-profile-chart";
 import { type Dive, type DiveProfile, divesAPI } from "@/lib/api/dives";
+import { getApiErrorMessage } from "@/lib/api/error";
+
+// What the card knows about the profile right now. `null` is "in flight", derived
+// rather than stored - the same shape `useAuthedBlobUrl` uses, so nothing has to be
+// set synchronously in an effect body just to mark the fetch as started.
+//
+// A single settled value rather than the `profile` + `hasFailed` pair this used to
+// keep. Two independent states could disagree: `hasFailed` was never reset when the
+// dive or the profile version changed, so one failure was permanent for the life of
+// the page, and `profile` was never cleared, so a re-imported dive rendered the
+// *previous* version's chart under the new sample count.
+type ProfileResult =
+  | { status: "ready"; profile: DiveProfile }
+  // The API says this dive has no profile. Nothing to retry - re-asking returns the
+  // same 404, and offering a retry button implies otherwise.
+  | { status: "missing"; message: string }
+  // A 401, a 5xx, or the network. Worth another go.
+  | { status: "failed"; message: string };
 
 interface DiveProfileCardProps {
   dive: Dive;
@@ -29,9 +48,11 @@ interface DiveProfileCardProps {
 // Needs no `onChanged` callback. Deleting the source file deletes the profile
 // with it (see the API's `delete_dive_file`), and the page's `refreshDive`
 // already drops `dive.profile` - which unmounts this card.
+
 export function DiveProfileCard({ dive }: DiveProfileCardProps) {
-  const [profile, setProfile] = useState<DiveProfile | null>(null);
-  const [hasFailed, setHasFailed] = useState(false);
+  const [result, setResult] = useState<ProfileResult | null>(null);
+  // Bumped by the retry button to re-run the effect below.
+  const [attempt, setAttempt] = useState(0);
 
   const info = dive.profile;
   const diveUuid = dive.uuid;
@@ -50,24 +71,42 @@ export function DiveProfileCard({ dive }: DiveProfileCardProps) {
     const fetchProfile = async () => {
       try {
         const data = await divesAPI.getDiveProfile(diveUuid, version);
-        if (isCurrent) setProfile(data);
+        if (isCurrent) setResult({ status: "ready", profile: data });
       } catch (error) {
         console.error("Failed to fetch dive profile:", error);
+        if (!isCurrent) return;
         // A muted line in the card rather than a toast: nothing the diver did
         // caused this and there is nothing for them to do about it, so it
         // belongs where the chart would have been, not over the whole page.
-        if (isCurrent) setHasFailed(true);
+        //
+        // The API's own wording where it has one - "This dive has no profile" -
+        // now that the response interceptor unwraps blob-wrapped error bodies.
+        const status =
+          (error as { response?: { status?: number } })?.response?.status ===
+          404
+            ? "missing"
+            : "failed";
+        setResult({
+          status,
+          message: getApiErrorMessage(
+            error,
+            "This dive's profile couldn't be loaded.",
+          ),
+        });
       }
     };
 
     fetchProfile();
     return () => {
       isCurrent = false;
+      // Back to "in flight" for whatever comes next. This is what stops a stale
+      // chart or a stale failure surviving a dive change or a re-import.
+      setResult(null);
     };
     // `info` itself is a fresh object on every dive refetch; its `updated_at` is
     // what actually identifies the payload.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [diveUuid, version, Boolean(info)]);
+  }, [diveUuid, version, Boolean(info), attempt]);
 
   if (!info) return null;
 
@@ -84,14 +123,26 @@ export function DiveProfileCard({ dive }: DiveProfileCardProps) {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {hasFailed ? (
-          <p className="text-sm text-muted-foreground">
-            This dive&apos;s profile couldn&apos;t be loaded.
-          </p>
-        ) : profile === null ? (
+        {result === null ? (
           <SectionSpinner />
+        ) : result.status === "ready" ? (
+          <DiveProfileChart profile={result.profile} />
         ) : (
-          <DiveProfileChart profile={profile} />
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">{result.message}</p>
+            {/* Only for the transient case. A 404 means this dive genuinely has
+                no profile, and a retry button there would just fail again. */}
+            {result.status === "failed" && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setAttempt((n) => n + 1)}
+              >
+                Try again
+              </Button>
+            )}
+          </div>
         )}
       </CardContent>
     </Card>

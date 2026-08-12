@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
+import { useResource } from "@/hooks/useResource";
+import { useDeleteResource } from "@/hooks/useDeleteResource";
 import {
   gearAPI,
   GearItem,
@@ -33,48 +35,32 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 
 export default function GearItemDetailPage() {
-  const params = useParams();
   const router = useRouter();
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
   const { toast } = useToast();
-  const [gearItem, setGearItem] = useState<GearItem | null>(null);
-  const [isLoadingGear, setIsLoadingGear] = useState(true);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
   const [isArchiveConfirmOpen, setIsArchiveConfirmOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
-  const gearItemId = params.id as string;
+  const {
+    resource: gearItem,
+    setResource: setGearItem,
+    isLoading: isLoadingGear,
+    refetch: loadGearItem,
+  } = useResource<GearItem>(gearAPI.getGearItem, {
+    enabled: !!user,
+    errorMessage: "Failed to load gear details. Please try again.",
+    redirectTo: "/gear",
+  });
 
-  const loadGearItem = useCallback(async () => {
-    setGearItem(await gearAPI.getGearItem(gearItemId));
-  }, [gearItemId]);
-
-  useEffect(() => {
-    const fetchGearItem = async () => {
-      if (!user || !gearItemId) return;
-
-      try {
-        setIsLoadingGear(true);
-        await loadGearItem();
-      } catch (error) {
-        console.error("Failed to fetch gear:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load gear details. Please try again.",
-          variant: "destructive",
-        });
-        router.push("/gear");
-      } finally {
-        setIsLoadingGear(false);
-      }
-    };
-
-    if (user) {
-      fetchGearItem();
-    }
-  }, [user, gearItemId, loadGearItem, toast, router]);
+  const del = useDeleteResource(gearAPI.deleteGearItem, {
+    confirmMessage:
+      "Are you sure you want to delete this gear? Dives you already logged it on keep showing it. To retire gear without touching your log, archive it instead.",
+    successMessage: "Gear deleted successfully.",
+    errorMessage: "Failed to delete gear. Please try again.",
+    onDeleted: () => router.push("/gear"),
+  });
+  const isDeleting = del.deletingId !== null;
 
   const handleToggleArchived = async () => {
     if (!gearItem) return;
@@ -103,29 +89,6 @@ export default function GearItemDetailPage() {
     } finally {
       setIsArchiving(false);
       setIsArchiveConfirmOpen(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!gearItem) return;
-
-    try {
-      setIsDeleting(true);
-      await gearAPI.deleteGearItem(gearItem.uuid);
-      toast({ title: "Success", description: "Gear deleted successfully." });
-      router.push("/gear");
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: getApiErrorMessage(
-          error,
-          "Failed to delete gear. Please try again.",
-        ),
-        variant: "destructive",
-      });
-    } finally {
-      setIsDeleting(false);
-      setIsDeleteConfirmOpen(false);
     }
   };
 
@@ -188,7 +151,7 @@ export default function GearItemDetailPage() {
             </Button>
             <Button
               variant="destructive"
-              onClick={() => setIsDeleteConfirmOpen(true)}
+              onClick={() => del.requestDelete(gearItem.uuid)}
               disabled={isDeleting}
             >
               {isDeleting ? (
@@ -327,13 +290,13 @@ export default function GearItemDetailPage() {
       />
 
       <ConfirmDialog
-        open={isDeleteConfirmOpen}
-        onOpenChange={setIsDeleteConfirmOpen}
+        open={del.pendingId !== null}
+        onOpenChange={(open) => !open && del.cancelDelete()}
         title="Delete gear"
-        description="Are you sure you want to delete this gear? Dives you already logged it on keep showing it. To retire gear without touching your log, archive it instead."
+        description={del.confirmMessage}
         confirmText="Delete"
         isLoading={isDeleting}
-        onConfirm={handleDelete}
+        onConfirm={del.confirmDelete}
       />
     </div>
   );

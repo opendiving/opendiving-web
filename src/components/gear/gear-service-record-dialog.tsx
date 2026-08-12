@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useDialogApiError } from "@/hooks/useDialogApiError";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus, Save } from "lucide-react";
 import {
   gearServiceRecordSchema,
   type GearServiceRecordInput,
@@ -43,6 +44,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 
@@ -70,7 +72,7 @@ export function GearServiceRecordDialog({
   onSaved,
 }: GearServiceRecordDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [apiError, setApiError] = useState<string | null>(null);
+  const [apiError, setApiError] = useDialogApiError(open);
   const isEdit = !!record;
 
   const form = useForm<GearServiceRecordInput>({
@@ -95,8 +97,6 @@ export function GearServiceRecordDialog({
       performed_by: record?.performed_by ?? "",
       notes: record?.notes ?? "",
     });
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setApiError(null);
   }, [open, record, schedule, reset]);
 
   const handleOpenChange = (next: boolean) => {
@@ -133,7 +133,7 @@ export function GearServiceRecordDialog({
 
       onSaved();
       onOpenChange(false);
-    } catch (error: any) {
+    } catch (error) {
       setApiError(
         getApiErrorMessage(
           error,
@@ -189,7 +189,10 @@ export function GearServiceRecordDialog({
                 <FormItem>
                   <FormLabel>Serviced on *</FormLabel>
                   <FormControl>
-                    <Input type="date" {...field} value={field.value ?? ""} />
+                    <DatePicker
+                      value={field.value ?? ""}
+                      onChange={field.onChange}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -250,9 +253,15 @@ export function GearServiceRecordDialog({
                     {isEdit ? "Saving..." : "Logging..."}
                   </>
                 ) : isEdit ? (
-                  "Save Changes"
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save Changes
+                  </>
                 ) : (
-                  "Log Service"
+                  <>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Log Service
+                  </>
                 )}
               </Button>
             </DialogFooter>

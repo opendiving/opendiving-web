@@ -67,7 +67,7 @@ export function proxy(request: NextRequest) {
     `img-src 'self' data: blob: ${apiOrigin} https://www.gravatar.com`,
     "font-src 'self' data:",
     // `accounts.google.com` - the "Continue with Google" button
-    // (`components/auth/GoogleAuthButton.tsx`) renders Google's own iframe
+    // (`components/auth/google-auth-button.tsx`) renders Google's own iframe
     // there, and its client-side JS calls it directly to complete sign-in.
     // The script itself (`https://accounts.google.com/gsi/client?hl=en`)
     // doesn't need a dedicated `script-src` entry - it's injected by our own
@@ -104,7 +104,11 @@ export function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     {
-      source: "/((?!api|_next/static|_next/image|favicon.ico).*)",
+      // The exclusions are anchored with a trailing `/` (or `$`) on purpose:
+      // an unanchored `api` also excludes any future route that merely *starts*
+      // with those letters - `/api-docs`, `/apidemo` - which would then be
+      // served with no CSP at all, silently.
+      source: "/((?!api/|_next/static/|_next/image/|favicon.ico$).*)",
       missing: [
         { type: "header", key: "next-router-prefetch" },
         { type: "header", key: "purpose", value: "prefetch" },

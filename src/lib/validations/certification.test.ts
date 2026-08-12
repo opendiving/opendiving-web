@@ -6,8 +6,10 @@ const valid = {
   name: "Advanced Open Water Diver",
 };
 
-const firstIssue = (result: { success: boolean; error?: { issues: { path: PropertyKey[]; message: string }[] } }) =>
-  result.error?.issues[0];
+const firstIssue = (result: {
+  success: boolean;
+  error?: { issues: { path: PropertyKey[]; message: string }[] };
+}) => result.error?.issues[0];
 
 describe("certificationSchema", () => {
   it("accepts a minimal certification", () => {

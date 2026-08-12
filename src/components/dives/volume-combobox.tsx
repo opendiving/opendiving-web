@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { nextActiveIndex } from "@/components/ui/creatable-combobox";
 import { cn } from "@/lib/utils";
+import type { FormControlSlotProps } from "@/components/ui/form";
 
 export interface VolumeOption {
   value: number;
@@ -32,7 +33,7 @@ export const VOLUME_OPTIONS: VolumeOption[] = [
   { value: 24, label: "24 L (2x12 L)" },
 ];
 
-export interface VolumeComboboxProps {
+export interface VolumeComboboxProps extends FormControlSlotProps {
   value?: number;
   onChange: (value: number | undefined) => void;
   disabled?: boolean;
@@ -59,6 +60,7 @@ export function VolumeCombobox({
   onChange,
   disabled,
   placeholder = "Select or enter volume...",
+  ...slotProps
 }: VolumeComboboxProps) {
   const [isOpen, setIsOpen] = useState(false);
   // Index of the keyboard-highlighted preset, or -1 for none - shares
@@ -88,6 +90,7 @@ export function VolumeCombobox({
   return (
     <div className="relative">
       <Input
+        {...slotProps}
         ref={inputRef}
         type="number"
         step="0.01"

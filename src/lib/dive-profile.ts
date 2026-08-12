@@ -61,6 +61,16 @@ export const PROFILE_CHANNELS: Record<ProfileChannelKey, ProfileChannel> = {
   },
 };
 
+// The channels in the order they're plotted, listed in the legend and stored in
+// a remembered selection. A separate list rather than `Object.keys` on the
+// record above, which gives this order only by accident of how the object
+// happens to be written.
+export const PROFILE_CHANNEL_KEYS: readonly ProfileChannelKey[] = [
+  "depth",
+  "temperature",
+  "pressure",
+];
+
 export interface ChannelSeries {
   channel: ProfileChannel;
   // Elapsed seconds, as stored.
@@ -186,13 +196,14 @@ export function nearestSampleIndex(t: number[], seconds: number): number {
 // Candidate x-axis steps, in seconds. Minute-shaped throughout: `axisTicks`
 // would happily hand back a 250-second step, and nobody reads a dive profile in
 // units of 4 minutes 10 seconds.
-const ELAPSED_STEPS_SECONDS = [
-  60, 120, 300, 600, 900, 1800, 3600, 7200,
-];
+const ELAPSED_STEPS_SECONDS = [60, 120, 300, 600, 900, 1800, 3600, 7200];
 
 // The elapsed-time gridlines for a dive of `durationSeconds`, in seconds,
 // starting at 0 and never running past the end of the dive.
-export function elapsedTicks(durationSeconds: number, targetTicks = 6): number[] {
+export function elapsedTicks(
+  durationSeconds: number,
+  targetTicks = 6,
+): number[] {
   if (durationSeconds <= 0) return [0];
 
   const step =
@@ -245,26 +256,10 @@ export function tooltipVerticalAnchor(
       { y: plotTop, translateY: "4px" };
 }
 
-export interface Point {
-  x: number;
-  y: number;
-}
-
-// The `d` of the filled area under a curve: along the points, down to the
-// baseline, back along it, closed.
-//
-// Kept here rather than inlined in the component so the path string is
-// assertable - it is the one piece of SVG in this chart with a shape worth
-// getting wrong.
-export function buildAreaPath(points: Point[], baselineY: number): string {
-  if (points.length === 0) return "";
-
-  const line = points
-    .map((point, index) => `${index === 0 ? "M" : "L"}${point.x},${point.y}`)
-    .join(" ");
-
-  return `${line} L${points[points.length - 1].x},${baselineY} L${points[0].x},${baselineY} Z`;
-}
+// `Point` and `buildAreaPath` used to live here. They moved, unchanged, to
+// `lib/chart-path.ts` once the gas chart needed them too - same reasoning as the
+// `chart-scale.ts` move noted at the top of `lib/dive-gas.ts`. Their tests moved
+// with them, to `chart-path.test.ts`.
 
 // A reading formatted for a tooltip or an axis label, at the channel's own
 // resolution.

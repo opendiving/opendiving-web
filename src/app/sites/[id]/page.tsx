@@ -1,86 +1,47 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
+import { useResource } from "@/hooks/useResource";
+import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
 import { formatDateTime } from "@/lib/date-time";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DiveSiteDialog } from "@/components/sites/dive-site-dialog";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionSpinner } from "@/components/ui/section-spinner";
 import { NotFoundState } from "@/components/ui/not-found-state";
 import { Edit, Trash2, Plus, MapPin, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { useToast } from "@/components/ui/use-toast";
+import { PageSpinner } from "@/components/ui/page-spinner";
 
 export default function DiveSiteDetailPage() {
-  const params = useParams();
   const router = useRouter();
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
-  const { toast } = useToast();
-  const [diveSite, setDiveSite] = useState<DiveSite | null>(null);
-  const [isLoadingDiveSite, setIsLoadingDiveSite] = useState(true);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
 
-  const diveSiteId = params.id as string;
+  const {
+    resource: diveSite,
+    setResource: setDiveSite,
+    isLoading: isLoadingDiveSite,
+  } = useResource<DiveSite>(diveSitesAPI.getDiveSite, {
+    enabled: !!user,
+    errorMessage: "Failed to load dive site details. Please try again.",
+    redirectTo: "/sites",
+  });
 
-  // Fetch dive site details
-  useEffect(() => {
-    const fetchDiveSite = async () => {
-      if (!user || !diveSiteId) return;
-
-      try {
-        setIsLoadingDiveSite(true);
-        const diveSiteData = await diveSitesAPI.getDiveSite(diveSiteId);
-        setDiveSite(diveSiteData);
-      } catch (error) {
-        console.error("Failed to fetch dive site:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load dive site details. Please try again.",
-          variant: "destructive",
-        });
-        router.push("/sites");
-      } finally {
-        setIsLoadingDiveSite(false);
-      }
-    };
-
-    if (user) {
-      fetchDiveSite();
-    }
-  }, [user, diveSiteId, toast, router]);
-
-  // Handle dive site deletion
-  const handleDeleteDiveSite = async () => {
-    if (!user || !diveSite?.uuid) return;
-
-    try {
-      setIsDeleting(true);
-      await diveSitesAPI.deleteDiveSite(diveSite.uuid);
-
-      toast({
-        title: "Success",
-        description: "Dive site deleted successfully.",
-      });
-
-      router.push("/sites");
-    } catch (error) {
-      console.error("Failed to delete dive site:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete dive site. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsDeleting(false);
-      setIsConfirmOpen(false);
-    }
-  };
+  const del = useDeleteResource(diveSitesAPI.deleteDiveSite, {
+    confirmMessage:
+      "Are you sure you want to delete this dive site? This action cannot be undone.",
+    successMessage: "Dive site deleted successfully.",
+    errorMessage: "Failed to delete dive site. Please try again.",
+    onDeleted: () => router.push("/sites"),
+  });
+  const isDeleting = del.deletingId !== null;
 
   const formatDate = (dateString: string) =>
     formatDateTime(dateString, {
@@ -90,11 +51,7 @@ export default function DiveSiteDetailPage() {
     });
 
   if (isAuthLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
+    return <PageSpinner variant="inset" />;
   }
 
   if (!isAuthenticated) {
@@ -127,22 +84,16 @@ export default function DiveSiteDetailPage() {
         backHref="/sites"
         backLabel="Back to Dive Sites"
         title={diveSite.name}
-        subtitle={
-          diveSite.location
-            ? diveSite.location
-            : undefined
-        }
+        subtitle={diveSite.location ? diveSite.location : undefined}
         actions={
           <>
-            <Button variant="outline" asChild>
-              <Link href={`/sites/${diveSite.uuid}/edit`}>
-                <Edit className="h-4 w-4 mr-2" />
-                Edit
-              </Link>
+            <Button variant="outline" onClick={() => setIsEditOpen(true)}>
+              <Edit className="h-4 w-4 mr-2" />
+              Edit
             </Button>
             <Button
               variant="destructive"
-              onClick={() => setIsConfirmOpen(true)}
+              onClick={() => del.requestDelete(diveSite.uuid)}
               disabled={isDeleting}
             >
               {isDeleting ? (
@@ -156,14 +107,22 @@ export default function DiveSiteDetailPage() {
         }
       />
 
+      <DiveSiteDialog
+        userId={user?.uuid ?? ""}
+        open={isEditOpen}
+        onOpenChange={setIsEditOpen}
+        diveSite={diveSite}
+        onSaved={setDiveSite}
+      />
+
       <ConfirmDialog
-        open={isConfirmOpen}
-        onOpenChange={setIsConfirmOpen}
+        open={del.pendingId !== null}
+        onOpenChange={(open) => !open && del.cancelDelete()}
         title="Delete dive site"
-        description="Are you sure you want to delete this dive site? This action cannot be undone."
+        description={del.confirmMessage}
         confirmText="Delete"
         isLoading={isDeleting}
-        onConfirm={handleDeleteDiveSite}
+        onConfirm={del.confirmDelete}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -3,6 +3,12 @@
 // second chart needed it - a depth axis has nothing to do with gas use, and
 // importing a gas module to scale meters reads as an accident.
 
+export interface Domain {
+  min: number;
+  max: number;
+  step: number;
+}
+
 // A rounded axis domain covering `values`, as `{ min, max, step }`.
 //
 // Deliberately not zero-based: RMV clusters in a narrow band (most divers live
@@ -14,10 +20,7 @@
 // feeding it the surface's own `0` makes `Math.floor(0 / step) * step` equal 0,
 // so the axis lands on 0 by arithmetic rather than by a special case. Nobody
 // needs to add a `zeroBased` flag here that would do nothing.
-export function niceDomain(
-  values: number[],
-  targetTicks = 5,
-): { min: number; max: number; step: number } {
+export function niceDomain(values: number[], targetTicks = 5): Domain {
   if (values.length === 0) return { min: 0, max: 1, step: 1 };
 
   const lowest = Math.min(...values);
@@ -35,7 +38,8 @@ export function niceDomain(
   // 2.5 is in here (it isn't in the textbook 1/2/5/10 progression) because
   // without it a 5-to-26 L/min spread - an entirely typical one - falls through
   // to a step of 10 and gets three gridlines for the whole chart.
-  const niceStep = [1, 2, 2.5, 5, 10].find((candidate) => normalized <= candidate) ?? 10;
+  const niceStep =
+    [1, 2, 2.5, 5, 10].find((candidate) => normalized <= candidate) ?? 10;
   const step = niceStep * magnitude;
 
   return {
@@ -48,15 +52,7 @@ export function niceDomain(
 // The gridline values for a domain, inclusive of both ends. Built by counting
 // steps rather than by accumulating `+= step`, which drifts on fractional steps
 // (0.1 + 0.2 territory) and produces labels like "12.499999999999998".
-export function axisTicks({
-  min,
-  max,
-  step,
-}: {
-  min: number;
-  max: number;
-  step: number;
-}): number[] {
+export function axisTicks({ min, max, step }: Domain): number[] {
   const count = Math.round((max - min) / step);
   return Array.from({ length: count + 1 }, (_, index) =>
     Number((min + index * step).toFixed(10)),

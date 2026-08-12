@@ -17,6 +17,7 @@ import {
 } from "@/lib/certification";
 import { formatDateOnly } from "@/lib/date-time";
 import { getApiErrorMessage } from "@/lib/api/error";
+import { downloadBlob } from "@/lib/download";
 import {
   Dialog,
   DialogContent,
@@ -57,9 +58,8 @@ export function CertificationViewDialog({
   onOpenChange,
 }: CertificationViewDialogProps) {
   const { toast } = useToast();
-  const [downloadingSide, setDownloadingSide] = useState<CertificationSide | null>(
-    null,
-  );
+  const [downloadingSide, setDownloadingSide] =
+    useState<CertificationSide | null>(null);
 
   if (!certification) return null;
 
@@ -79,13 +79,8 @@ export function CertificationViewDialog({
         certification.uuid,
         side,
       );
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = file.original_filename;
-      link.click();
-      URL.revokeObjectURL(url);
-    } catch (error: any) {
+      downloadBlob(blob, file.original_filename);
+    } catch (error) {
       toast({
         title: "Error",
         description: getApiErrorMessage(
@@ -101,7 +96,7 @@ export function CertificationViewDialog({
 
   return (
     <Dialog open={!!certification} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex flex-wrap items-center gap-2">
             <span>{certification.name}</span>

@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { BookmarkPlus } from "lucide-react";
-import { GearSet, fetchAllGearSets } from "@/lib/api/gear";
+import { GearSet, GearItemSummary, fetchAllGearSets } from "@/lib/api/gear";
+import { isAbortError } from "@/lib/api/client";
+import type { FormControlSlotProps } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
@@ -15,10 +17,13 @@ import {
 import { GearItemMultiSelect } from "@/components/gear/gear-item-multi-select";
 import { GearSetDialog } from "@/components/gear/gear-set-dialog";
 
-export interface DiveGearFieldProps {
+export interface DiveGearFieldProps extends FormControlSlotProps {
   userId: string;
   // Selected gear item uuids for this dive.
   value: string[];
+  // Details for those items, when the caller has them - passed straight through
+  // to `GearItemMultiSelect`.
+  knownItems?: GearItemSummary[];
   onChange: (gearItemUuids: string[]) => void;
   // The dive's `weight` field, owned by the dive form and rendered just below
   // this component. It's passed in because loading a gear set fills it in too -
@@ -40,10 +45,16 @@ export interface DiveGearFieldProps {
 export function DiveGearField({
   userId,
   value,
+  knownItems,
   onChange,
   weight,
   onWeightChange,
   disabled,
+  // The field's value is the *item list*, so the label belongs to the item picker
+  // rather than the gear-set switcher above it - loading a set is a shortcut for
+  // filling that list in, not a second thing the label describes. The switcher
+  // carries its own "Load a gear set" label.
+  ...slotProps
 }: DiveGearFieldProps) {
   const [gearSets, setGearSets] = useState<GearSet[]>([]);
   // The set whose contents the list currently matches, if any. Cleared as soon
@@ -58,22 +69,21 @@ export function DiveGearField({
   const [showSaveDialog, setShowSaveDialog] = useState(false);
 
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
 
     const fetchSets = async () => {
       try {
-        const sets = await fetchAllGearSets(userId);
-        if (!cancelled) setGearSets(sets);
+        const sets = await fetchAllGearSets(userId, controller.signal);
+        if (!controller.signal.aborted) setGearSets(sets);
       } catch (error) {
+        if (isAbortError(error)) return;
         console.error("Failed to fetch gear sets:", error);
       }
     };
 
     if (userId) fetchSets();
 
-    return () => {
-      cancelled = true;
-    };
+    return () => controller.abort();
   }, [userId]);
 
   const applySet = (set: GearSet) => {
@@ -149,8 +159,10 @@ export function DiveGearField({
       </div>
 
       <GearItemMultiSelect
+        {...slotProps}
         userId={userId}
         value={value}
+        knownItems={knownItems}
         onChange={onChange}
         disabled={disabled}
         onManualChange={() => setLoadedSetUuid(undefined)}

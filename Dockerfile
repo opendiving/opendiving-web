@@ -7,11 +7,12 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-FROM base AS deps
-RUN npm ci --only=production && npm cache clean --force
-
 # Build the application
+#
+# No separate production-deps stage: `output: "standalone"` (next.config.js)
+# makes the build emit its own pruned `node_modules` into `.next/standalone`,
+# which is what the runner copies. A `npm ci --only=production` stage would be
+# built on every image and then never used by anything.
 FROM base AS builder
 RUN npm ci
 COPY . .
@@ -20,8 +21,21 @@ COPY . .
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# `NEXT_PUBLIC_*` values are inlined into the client bundle at build time, not
+# read at runtime - so this has to be supplied here, with
+# `--build-arg NEXT_PUBLIC_API_URL=https://api.example.com`, and a rebuild is
+# the only way to change it. Without it the shipped bundle would call
+# http://localhost:8000 (the fallback in `lib/api/client.ts`) while
+# `src/proxy.ts` reads the real value at runtime and writes a CSP naming a
+# different origin - so the app would be blocked by its own CSP, in production
+# only. The build fails below rather than shipping that.
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
 # Build the Next.js application
-RUN npm run build
+RUN test -n "$NEXT_PUBLIC_API_URL" || \
+      (echo "ERROR: build-arg NEXT_PUBLIC_API_URL is required." >&2 && exit 1) && \
+    npm run build
 
 # Production image
 FROM node:24-alpine AS runner

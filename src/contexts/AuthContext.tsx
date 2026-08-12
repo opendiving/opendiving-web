@@ -2,8 +2,10 @@
 
 import React, {
   createContext,
+  useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
   ReactNode,
 } from "react";
@@ -93,22 +95,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // (email verify, Google, profile completion): either fetches and stores the
   // now-signed-in user, or stashes the onboarding session for the profile
   // completion page to pick up. Returns whether the caller was signed in.
-  const applyOutcome = async (outcome: AuthOutcome): Promise<boolean> => {
-    if (outcome.status === "authenticated") {
-      const userData = await authAPI.getCurrentUser();
-      setUser(userData);
-      setOnboarding(null);
-      return true;
-    }
+  const applyOutcome = useCallback(
+    async (outcome: AuthOutcome): Promise<boolean> => {
+      if (outcome.status === "authenticated") {
+        const userData = await authAPI.getCurrentUser();
+        setUser(userData);
+        setOnboarding(null);
+        return true;
+      }
 
-    setOnboarding({
-      onboardingToken: outcome.onboarding_token!,
-      email: outcome.email!,
-      name: outcome.name,
-      avatar: outcome.avatar,
-    });
-    return false;
-  };
+      setOnboarding({
+        onboardingToken: outcome.onboarding_token!,
+        email: outcome.email!,
+        name: outcome.name,
+        avatar: outcome.avatar,
+      });
+      return false;
+    },
+    [],
+  );
 
   // Note: `isLoading` intentionally isn't touched by any of the methods below.
   // It reflects only the initial auth bootstrap check above (`initAuth`),
@@ -116,33 +121,45 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // of their content. Each form already tracks its own in-flight state via
   // react-hook-form's `isSubmitting`, so this isn't needed for button loading
   // UI either.
-  const requestEmailLink = (email: string) => authAPI.requestEmailLink(email);
+  const requestEmailLink = useCallback(
+    (email: string) => authAPI.requestEmailLink(email),
+    [],
+  );
 
-  const verifyEmailLink = async (token: string) => {
-    const outcome = await authAPI.verifyEmailLink(token);
-    return applyOutcome(outcome);
-  };
+  const verifyEmailLink = useCallback(
+    async (token: string) => {
+      const outcome = await authAPI.verifyEmailLink(token);
+      return applyOutcome(outcome);
+    },
+    [applyOutcome],
+  );
 
-  const signInWithGoogle = async (credential: string) => {
-    const outcome = await authAPI.signInWithGoogle(credential);
-    return applyOutcome(outcome);
-  };
+  const signInWithGoogle = useCallback(
+    async (credential: string) => {
+      const outcome = await authAPI.signInWithGoogle(credential);
+      return applyOutcome(outcome);
+    },
+    [applyOutcome],
+  );
 
-  const completeProfile = async (name: string, username: string) => {
-    if (!onboarding) {
-      throw new Error("No onboarding session in progress.");
-    }
-    const outcome = await authAPI.completeProfile(
-      onboarding.onboardingToken,
-      name,
-      username,
-    );
-    await applyOutcome(outcome);
-  };
+  const completeProfile = useCallback(
+    async (name: string, username: string) => {
+      if (!onboarding) {
+        throw new Error("No onboarding session in progress.");
+      }
+      const outcome = await authAPI.completeProfile(
+        onboarding.onboardingToken,
+        name,
+        username,
+      );
+      await applyOutcome(outcome);
+    },
+    [onboarding, applyOutcome],
+  );
 
-  const clearOnboarding = () => setOnboarding(null);
+  const clearOnboarding = useCallback(() => setOnboarding(null), []);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     try {
       await authAPI.signOut();
     } catch (error) {
@@ -150,9 +167,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } finally {
       setUser(null);
     }
-  };
+  }, []);
 
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     try {
       if (authAPI.isAuthenticated()) {
         const userData = await authAPI.getCurrentUser();
@@ -162,21 +179,43 @@ export function AuthProvider({ children }: AuthProviderProps) {
       console.error("Refresh user error:", error);
       setUser(null);
     }
-  };
+  }, []);
 
-  const value = {
-    user,
-    isLoading,
-    isAuthenticated: !!user,
-    onboarding,
-    requestEmailLink,
-    verifyEmailLink,
-    signInWithGoogle,
-    completeProfile,
-    clearOnboarding,
-    signOut,
-    refreshUser,
-  };
+  // Memoized because this object is the context value: rebuilding it (and all seven
+  // methods) on every render of the provider makes every `useAuth()` consumer
+  // re-render too, which is ~15 pages plus the header. `user` is what actually
+  // changes; the methods are stable.
+  //
+  // It matters most for the methods rather than the value itself - `signOut` and
+  // `refreshUser` are dependencies of effects and `useCallback`s downstream, so a
+  // fresh identity each render re-runs those effects rather than merely re-rendering.
+  const value = useMemo(
+    () => ({
+      user,
+      isLoading,
+      isAuthenticated: !!user,
+      onboarding,
+      requestEmailLink,
+      verifyEmailLink,
+      signInWithGoogle,
+      completeProfile,
+      clearOnboarding,
+      signOut,
+      refreshUser,
+    }),
+    [
+      user,
+      isLoading,
+      onboarding,
+      requestEmailLink,
+      verifyEmailLink,
+      signInWithGoogle,
+      completeProfile,
+      clearOnboarding,
+      signOut,
+      refreshUser,
+    ],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

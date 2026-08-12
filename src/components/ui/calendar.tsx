@@ -26,7 +26,7 @@ function Calendar({
         caption_label: "text-sm font-medium",
         dropdowns: "flex gap-1",
         dropdown:
-          "border border-input bg-background text-sm rounded-md px-2 py-0.5 cursor-pointer focus:outline-none focus:ring-1 focus:ring-ring appearance-none",
+          "border border-input bg-background text-sm rounded-md px-2 py-0.5 focus:outline-none focus:ring-1 focus:ring-ring appearance-none",
         nav: "space-x-1 flex items-center",
         button_previous: cn(
           buttonVariants({ variant: "outline" }),
@@ -48,7 +48,7 @@ function Calendar({
         ),
         range_end: "day-range-end",
         selected:
-          "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
+          "bg-teal-solid text-primary-foreground hover:bg-teal-solid hover:text-primary-foreground focus:bg-teal-solid focus:text-primary-foreground",
         today: "bg-accent text-accent-foreground",
         outside:
           "day-outside text-muted-foreground opacity-50 aria-selected:bg-accent/50 aria-selected:text-muted-foreground aria-selected:opacity-30",

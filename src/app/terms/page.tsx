@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Terms of Service | OpenDiving",
+  title: "Terms of Service",
   description:
     "Read OpenDiving's Terms of Service to understand your rights and responsibilities when using our open-source diving platform.",
 };
@@ -78,8 +78,8 @@ export default function TermsPage() {
             <h2 className="text-2xl font-semibold text-foreground mb-4">
               4. Safety and Diving Responsibilities
             </h2>
-            <div className="bg-yellow-50 dark:bg-yellow-950/40 border border-yellow-200 dark:border-yellow-900 rounded-md p-4 mb-4">
-              <p className="text-yellow-800 dark:text-yellow-300 font-medium">
+            <div className="rounded-md border border-warning/40 bg-warning/10 p-4 mb-4">
+              <p className="font-medium text-warning">
                 <strong>Important Safety Notice:</strong> OpenDiving is a
                 platform for logging and sharing diving experiences. It does not
                 provide diving instruction, safety advice, or emergency
@@ -146,7 +146,7 @@ export default function TermsPage() {
               Your privacy is important to us. Please review our{" "}
               <Link
                 href="/privacy"
-                className="text-primary hover:text-primary/80 underline"
+                className="underline hover:text-muted-foreground"
               >
                 Privacy Policy
               </Link>
@@ -268,7 +268,7 @@ export default function TermsPage() {
             </p>
             <Link
               href="/"
-              className="mt-4 sm:mt-0 text-primary hover:text-primary/80 text-sm font-medium"
+              className="mt-4 sm:mt-0 text-sm font-medium text-foreground underline hover:text-muted-foreground"
             >
               Back to OpenDiving
             </Link>

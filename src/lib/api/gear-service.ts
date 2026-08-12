@@ -1,11 +1,14 @@
-import { apiClient } from "./client";
+import { apiClient, fetchAllPages } from "./client";
+import type { PaginatedResponse } from "./client";
 
-// What kind of servicing a schedule or record is about. Mirrors the API's `ServiceKind`
-// enum - a closed vocabulary rather than free text, so "VIP"/"vis"/"visual inspection"
-// don't end up as three different things in one diver's list.
-//
-// Declared in the order a diver is likely to reach for them rather than alphabetically:
-// this drives the picker's option order. Keep in sync with the API.
+/**
+ * What kind of servicing a schedule or record is about. Mirrors the API's `ServiceKind`
+ * enum - a closed vocabulary rather than free text, so "VIP"/"vis"/"visual inspection"
+ * don't end up as three different things in one diver's list.
+ *
+ * Declared in the order a diver is likely to reach for them rather than alphabetically:
+ * this drives the picker's option order. Keep in sync with the API.
+ */
 export const SERVICE_KINDS = [
   "service",
   "visual_inspection",
@@ -26,8 +29,10 @@ const SERVICE_KIND_LABELS: Record<ServiceKind, string> = {
   other: "Other",
 };
 
-// Label for a service kind, tolerating a value this build doesn't know about (an API
-// that has grown a new kind shouldn't render as a blank cell). Mirrors `gearTypeLabel`.
+/**
+ * Label for a service kind, tolerating a value this build doesn't know about (an API
+ * that has grown a new kind shouldn't render as a blank cell). Mirrors `gearTypeLabel`.
+ */
 export function serviceKindLabel(
   kind: string | null | undefined,
 ): string | null {
@@ -138,10 +143,20 @@ export interface GearServiceDueEntry {
   gear_item_dive_count: number;
 }
 
-// Views a dashboard entry as the schedule summary the status helpers take, so
-// `serviceStatus`/`formatServiceDue` work identically on the dashboard, the gear list
-// and the item detail card. Always `is_active: true` - the API only ever returns active
-// schedules from `/gear-service-due`.
+export interface GearServiceDueResponse {
+  data: GearServiceDueEntry[];
+  // True when the API's row cap (`DUE_OVERVIEW_LIMIT`, 200) was hit, so this is not
+  // all of them. Optional because a response cached before the field existed won't
+  // carry it - and absent must read as "complete", not as a false alarm.
+  truncated?: boolean;
+}
+
+/**
+ * Views a dashboard entry as the schedule summary the status helpers take, so
+ * `serviceStatus`/`formatServiceDue` work identically on the dashboard, the gear list
+ * and the item detail card. Always `is_active: true` - the API only ever returns active
+ * schedules from `/gear-service-due`.
+ */
 export function scheduleFromDueEntry(
   entry: GearServiceDueEntry,
 ): GearServiceScheduleSummary {
@@ -156,22 +171,19 @@ export function scheduleFromDueEntry(
   };
 }
 
-export interface PaginatedServiceSchedulesResponse {
-  data: GearServiceSchedule[];
-  total_count: number;
-  has_more: boolean;
-  page: number;
-  items_per_page: number;
-}
+export type PaginatedServiceSchedulesResponse =
+  PaginatedResponse<GearServiceSchedule>;
 
-export interface PaginatedServiceRecordsResponse {
-  data: GearServiceRecord[];
-  total_count: number;
-  has_more: boolean;
-  page: number;
-  items_per_page: number;
-}
+export type PaginatedServiceRecordsResponse =
+  PaginatedResponse<GearServiceRecord>;
 
+/**
+ * Service schedules and service history for gear items.
+ *
+ * A schedule says how often an item needs servicing; a record says when one actually
+ * happened. Both are owned via their gear item, so one belonging to another user reads as
+ * a 404 rather than a 403.
+ */
 export const gearServiceAPI = {
   async createSchedule(
     data: GearServiceScheduleCreate,
@@ -267,7 +279,7 @@ export const gearServiceAPI = {
   // Every active schedule the user owns - no date horizon, deliberately. A server-side
   // "due within N days" filter would bake today's date into the cached response, which
   // then goes wrong at midnight; the client buckets these itself.
-  async getDue(userUuid: string): Promise<{ data: GearServiceDueEntry[] }> {
+  async getDue(userUuid: string): Promise<GearServiceDueResponse> {
     const response = await apiClient.get(`/gear-service-due`, {
       params: { user_uuid: userUuid },
     });
@@ -275,26 +287,18 @@ export const gearServiceAPI = {
   },
 };
 
-// Fetches every page of a gear item's service history. The detail card shows the full
-// list rather than paging it - a diver has a handful of records per item, not hundreds.
-// Mirrors the same loop in `fetchAllGearItems`.
+/**
+ * Fetches every page of a gear item's service history. The detail card shows the full
+ * list rather than paging it - a diver has a handful of records per item, not hundreds.
+ */
 export async function fetchAllServiceRecords(
   userUuid: string,
   gearItemUuid: string,
+  signal?: AbortSignal,
 ): Promise<GearServiceRecord[]> {
-  const all: GearServiceRecord[] = [];
-  let page = 1;
-  let hasMore = true;
-  while (hasMore) {
-    const response = await gearServiceAPI.getRecords(
-      userUuid,
-      gearItemUuid,
-      page,
-      100,
-    );
-    all.push(...response.data);
-    hasMore = response.has_more;
-    page += 1;
-  }
-  return all;
+  return fetchAllPages(
+    (page, itemsPerPage) =>
+      gearServiceAPI.getRecords(userUuid, gearItemUuid, page, itemsPerPage),
+    { signal, label: "service records", keyOf: (record) => record.uuid },
+  );
 }

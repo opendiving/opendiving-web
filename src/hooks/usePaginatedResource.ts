@@ -1,13 +1,14 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useToast } from "@/components/ui/use-toast";
+import type { PaginatedResponse } from "@/lib/api/client";
 
-export interface PaginatedResponse<T> {
-  data: T[];
-  total_count: number;
-  has_more: boolean;
-}
+// Re-exported for the pages that import the type alongside this hook. The
+// declaration itself now lives in `lib/api/client.ts` - it describes the API's
+// wire format, so having it here (a layer *above* `lib/api/`) is what pushed
+// eight `lib/api/*` modules into each declaring their own copy.
+export type { PaginatedResponse };
 
 interface UsePaginatedResourceOptions {
   itemsPerPage?: number;
@@ -16,10 +17,12 @@ interface UsePaginatedResourceOptions {
   enabled?: boolean;
 }
 
-// Shared pagination + fetch-on-mount logic for the dives/trips/sites list
-// pages (and any other page listing a paginated resource). `fetchFn` should
-// be a stable (useCallback'd) function performing the actual API request for
-// a given page, typically closing over the current user.
+/**
+ * Shared pagination + fetch-on-mount logic for the dives/trips/sites list
+ * pages (and any other page listing a paginated resource). `fetchFn` should
+ * be a stable (useCallback'd) function performing the actual API request for
+ * a given page, typically closing over the current user.
+ */
 export function usePaginatedResource<T>(
   fetchFn: (page: number, perPage: number) => Promise<PaginatedResponse<T>>,
   {
@@ -35,17 +38,29 @@ export function usePaginatedResource<T>(
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
 
+  // Identifies the most recent request. Clicking through pages faster than the
+  // network answers means several are in flight at once, and they can land out of
+  // order - an earlier page's slower response would then overwrite the newer one's
+  // rows *and* set `currentPage` back to its own number, leaving the footer saying
+  // "page 3" over page 2's rows. Only the newest request is allowed to settle.
+  const latestRequest = useRef(0);
+
   const fetchPage = useCallback(
     async (page: number = 1) => {
+      const requestId = latestRequest.current + 1;
+      latestRequest.current = requestId;
+
       try {
         setIsLoading(true);
         const response = await fetchFn(page, itemsPerPage);
+        if (latestRequest.current !== requestId) return;
 
         setItems(response.data);
         setTotalCount(response.total_count);
         setHasMore(response.has_more);
         setCurrentPage(page);
       } catch (error) {
+        if (latestRequest.current !== requestId) return;
         console.error(errorMessage, error);
         toast({
           title: "Error",
@@ -53,7 +68,9 @@ export function usePaginatedResource<T>(
           variant: "destructive",
         });
       } finally {
-        setIsLoading(false);
+        // Superseded requests leave the spinner alone: the one that replaced them is
+        // still running, and clearing it here would flash the list back in mid-load.
+        if (latestRequest.current === requestId) setIsLoading(false);
       }
     },
     [fetchFn, itemsPerPage, toast, errorMessage],

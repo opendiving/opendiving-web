@@ -103,6 +103,25 @@ const FormLabel = React.forwardRef<
 });
 FormLabel.displayName = "FormLabel";
 
+// What `FormControl` pushes into its child through the Radix `Slot`.
+//
+// `Slot` merges these onto whatever element the child *renders*, which works
+// automatically for the leaf inputs (`<Input>`, `<Textarea>`) but not for a custom
+// function component: unless it declares these props and forwards them, `Slot` hands
+// them to a component that ignores them and they land nowhere. `FormLabel`'s
+// `htmlFor={formItemId}` then points at an id that does not exist, and the field has
+// no programmatic label at all - it looks labelled on screen and is unlabelled to a
+// screen reader.
+//
+// Any component used as a `FormControl` child should extend this and spread it onto
+// its own focusable control. For a composite field (two inputs behind one label) that
+// means the *primary* control, with the secondary one carrying its own `aria-label`.
+export interface FormControlSlotProps {
+  id?: string;
+  "aria-describedby"?: string;
+  "aria-invalid"?: boolean;
+}
+
 const FormControl = React.forwardRef<
   React.ElementRef<typeof Slot>,
   React.ComponentPropsWithoutRef<typeof Slot>

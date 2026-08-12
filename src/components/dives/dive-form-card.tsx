@@ -10,7 +10,8 @@ import {
 } from "@/components/dives/dive-form-fields";
 import { DiveFormActions } from "@/components/dives/dive-form-actions";
 import { MixtureFieldArray } from "@/components/dives/mixture-fields";
-import { DiveFileInfo } from "@/lib/api/dives";
+import { DiveFileInfo, DiveSiteSummary } from "@/lib/api/dives";
+import { GearItemSummary } from "@/lib/api/gear";
 
 export interface DiveFormCardProps<TFieldValues extends DiveFormValues> {
   form: UseFormReturn<TFieldValues>;
@@ -27,6 +28,11 @@ export interface DiveFormCardProps<TFieldValues extends DiveFormValues> {
   // after `onSubmit` resolves.
   onFileSelected?: (file: File, fileToken: string) => void;
   attachedFile?: DiveFileInfo | null;
+  // The dive's existing sites, when editing - see `DiveFormFields`.
+  knownDiveSites?: DiveSiteSummary[];
+  knownGearItems?: GearItemSummary[];
+  // Note shown under the dive number - see `DiveFormFields`.
+  diveNumberNotice?: { forValue: number; message: string } | null;
 }
 
 // The "Dive Details" card shared by the create and edit dive pages: file
@@ -46,6 +52,9 @@ export function DiveFormCard<TFieldValues extends DiveFormValues>({
   submitLabel,
   onFileSelected,
   attachedFile,
+  knownDiveSites,
+  knownGearItems,
+  diveNumberNotice,
 }: DiveFormCardProps<TFieldValues>) {
   return (
     <Card>
@@ -68,10 +77,14 @@ export function DiveFormCard<TFieldValues extends DiveFormValues>({
               mode={mode}
               userId={userId}
               mixtureFieldArray={mixtureFieldArray}
+              knownDiveSites={knownDiveSites}
+              knownGearItems={knownGearItems}
+              diveNumberNotice={diveNumberNotice}
             />
 
             <DiveFormActions
               cancelHref={cancelHref}
+              mode={mode}
               isSubmitting={isSubmitting}
               submittingLabel={submittingLabel}
               submitLabel={submitLabel}

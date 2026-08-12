@@ -1,15 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
+import { useResource } from "@/hooks/useResource";
+import { useReturnTo } from "@/hooks/useReturnTo";
 import { divesAPI, Dive } from "@/lib/api/dives";
 import {
+  buildDiveUpdate,
   diveUpdateSchema,
   DiveUpdateInput,
-  normalizeMixtures,
 } from "@/lib/validations/dive";
 import {
   DEFAULT_MIXTURE,
@@ -22,16 +24,23 @@ import { PageSpinner } from "@/components/ui/page-spinner";
 import { SectionSpinner } from "@/components/ui/section-spinner";
 import { NotFoundState } from "@/components/ui/not-found-state";
 import { useToast } from "@/components/ui/use-toast";
-import { formatDurationForForm, parseFormDuration } from "@/lib/date-time";
+import { formatDurationForForm } from "@/lib/date-time";
 import { getApiErrorMessage } from "@/lib/api/error";
 
+// `useReturnTo` reads the query string, which Next requires a Suspense boundary
+// around - same wrapper the new-dive page uses.
 export default function EditDivePage() {
-  const params = useParams();
+  return (
+    <Suspense fallback={<PageSpinner />}>
+      <EditDivePageContent />
+    </Suspense>
+  );
+}
+
+function EditDivePageContent() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
   const router = useRouter();
   const { toast } = useToast();
-  const [dive, setDive] = useState<Dive | null>(null);
-  const [isLoadingDive, setIsLoadingDive] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   // Uploaded after the edit is saved rather than when the file is picked, so
   // that importing a file and then cancelling the edit doesn't silently change
@@ -40,8 +49,6 @@ export default function EditDivePage() {
     file: File;
     token: string;
   } | null>(null);
-
-  const diveId = params.id as string;
 
   const form = useForm<DiveUpdateInput>({
     resolver: zodResolver(diveUpdateSchema),
@@ -63,57 +70,53 @@ export default function EditDivePage() {
   });
   const mixtureFieldArray = useMixtureFieldArray(form.control);
 
-  // Fetch dive details and populate form
-  useEffect(() => {
-    const fetchDive = async () => {
-      if (!user || !diveId) return;
+  // Seeds the form from the loaded dive. `start_time` is already the same
+  // offset-aware shape the form's `DiveStartTimeField` edits, so it carries
+  // straight over - no conversion needed.
+  const resetFromDive = useCallback(
+    (diveData: Dive) => {
+      form.reset({
+        dive_number: diveData.dive_number,
+        start_time: diveData.start_time,
+        duration: formatDurationForForm(diveData.duration),
+        max_depth: diveData.max_depth,
+        avg_depth: diveData.avg_depth,
+        bottom_temperature: diveData.bottom_temperature,
+        visibility: diveData.visibility,
+        weight: diveData.weight,
+        trip_uuid: diveData.trip_uuid,
+        dive_site_uuids: diveData.dive_sites?.map((site) => site.uuid) ?? [],
+        gear_item_uuids: diveData.gear_items?.map((item) => item.uuid) ?? [],
+        notes: diveData.notes || "",
+        mixtures: diveData.mixtures?.length
+          ? diveData.mixtures.map((m) => ({
+              ...m,
+              start_pressure: m.start_pressure ?? "",
+              end_pressure: m.end_pressure ?? "",
+            }))
+          : [{ ...DEFAULT_MIXTURE, name: getDefaultMixtureName(0) }],
+      });
+    },
+    [form],
+  );
 
-      try {
-        setIsLoadingDive(true);
-        const diveData = await divesAPI.getDive(diveId);
-        setDive(diveData);
+  const {
+    id: diveId,
+    resource: dive,
+    isLoading: isLoadingDive,
+  } = useResource<Dive>(divesAPI.getDive, {
+    enabled: !!user,
+    errorMessage: "Failed to load dive details. Please try again.",
+    redirectTo: "/dives",
+    onLoaded: resetFromDive,
+  });
 
-        // Update form with dive data. `start_time` is already the same
-        // offset-aware shape the form's `DiveStartTimeField` edits, so it
-        // carries straight over - no conversion needed.
-        form.reset({
-          dive_number: diveData.dive_number,
-          start_time: diveData.start_time,
-          duration: formatDurationForForm(diveData.duration),
-          max_depth: diveData.max_depth,
-          avg_depth: diveData.avg_depth,
-          bottom_temperature: diveData.bottom_temperature,
-          visibility: diveData.visibility,
-          weight: diveData.weight,
-          trip_uuid: diveData.trip_uuid,
-          dive_site_uuids: diveData.dive_sites?.map((site) => site.uuid) ?? [],
-          gear_item_uuids: diveData.gear_items?.map((item) => item.uuid) ?? [],
-          notes: diveData.notes || "",
-          mixtures: diveData.mixtures?.length
-            ? diveData.mixtures.map((m) => ({
-                ...m,
-                start_pressure: m.start_pressure ?? "",
-                end_pressure: m.end_pressure ?? "",
-              }))
-            : [{ ...DEFAULT_MIXTURE, name: getDefaultMixtureName(0) }],
-        });
-      } catch (error) {
-        console.error("Failed to fetch dive:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load dive details. Please try again.",
-          variant: "destructive",
-        });
-        router.push("/dives");
-      } finally {
-        setIsLoadingDive(false);
-      }
-    };
-
-    if (user) {
-      fetchDive();
-    }
-  }, [user, diveId, form, toast, router]);
+  // Back/Cancel return to wherever the edit was started from - the dive list, a
+  // trip, an explicit `?from=` - falling back to the dive itself.
+  const returnTo = useReturnTo({
+    href: `/dives/${diveId}`,
+    label: "Back to Dive",
+  });
 
   const onSubmit = async (data: DiveUpdateInput) => {
     if (!user || !diveId) return;
@@ -121,60 +124,7 @@ export default function EditDivePage() {
     try {
       setIsSubmitting(true);
 
-      // Filter out undefined values and format dates
-      const updateData: any = {};
-
-      if (data.dive_number !== undefined) {
-        updateData.dive_number = data.dive_number;
-      }
-
-      if (data.start_time) {
-        updateData.start_time = data.start_time;
-      }
-
-      if (data.duration) {
-        updateData.duration = parseFormDuration(data.duration);
-      }
-
-      if (data.max_depth !== undefined) {
-        updateData.max_depth = data.max_depth;
-      }
-
-      if (data.avg_depth !== undefined) {
-        updateData.avg_depth = data.avg_depth;
-      }
-
-      if (data.bottom_temperature !== undefined) {
-        updateData.bottom_temperature = data.bottom_temperature;
-      }
-
-      if (data.visibility !== undefined) {
-        updateData.visibility = data.visibility;
-      }
-
-      if (data.weight !== undefined) {
-        updateData.weight = data.weight;
-      }
-
-      if (data.trip_uuid !== undefined) {
-        updateData.trip_uuid = data.trip_uuid;
-      }
-
-      if (data.dive_site_uuids !== undefined) {
-        updateData.dive_site_uuids = data.dive_site_uuids;
-      }
-
-      if (data.gear_item_uuids !== undefined) {
-        updateData.gear_item_uuids = data.gear_item_uuids;
-      }
-
-      if (data.notes !== undefined) {
-        updateData.notes = data.notes;
-      }
-
-      if (data.mixtures !== undefined) {
-        updateData.mixtures = normalizeMixtures(data.mixtures);
-      }
+      const updateData = buildDiveUpdate(data);
 
       await divesAPI.updateDive(diveId, updateData);
 
@@ -185,7 +135,7 @@ export default function EditDivePage() {
             sourceFile.file,
             sourceFile.token,
           );
-        } catch (error: any) {
+        } catch (error) {
           // Non-fatal, for the same reason as on the new-dive page: the edit
           // itself succeeded, and losing the attachment is a much smaller cost
           // than failing a save the diver already made.
@@ -207,7 +157,7 @@ export default function EditDivePage() {
       });
 
       router.push(`/dives/${diveId}`);
-    } catch (error: any) {
+    } catch (error) {
       console.error("Failed to update dive:", error);
 
       const errorMessage = getApiErrorMessage(
@@ -256,8 +206,8 @@ export default function EditDivePage() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
       <PageHeader
-        backHref={`/dives/${diveId}`}
-        backLabel="Back to Dive"
+        backHref={returnTo.href}
+        backLabel={returnTo.label}
         title={`Edit Dive #${dive.dive_number}`}
         subtitle="Update the details of your dive"
       />
@@ -269,11 +219,15 @@ export default function EditDivePage() {
         userId={user?.uuid ?? ""}
         onSubmit={onSubmit}
         isSubmitting={isSubmitting}
-        cancelHref={`/dives/${diveId}`}
-        submittingLabel="Updating Dive..."
-        submitLabel="Update Dive"
+        cancelHref={returnTo.href}
+        submittingLabel="Saving..."
+        submitLabel="Save Changes"
         onFileSelected={(file, token) => setSourceFile({ file, token })}
         attachedFile={dive.source_file}
+        // The dive already carries its sites' names, so the picker doesn't have
+        // to look them up again just to label the rows it starts out with.
+        knownDiveSites={dive.dive_sites}
+        knownGearItems={dive.gear_items}
       />
     </div>
   );

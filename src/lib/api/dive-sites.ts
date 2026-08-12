@@ -1,4 +1,5 @@
 import { apiClient } from "./client";
+import type { PaginatedResponse } from "./client";
 
 export interface DiveSite {
   uuid: string;
@@ -22,14 +23,13 @@ export interface DiveSiteUpdate {
   notes?: string;
 }
 
-export interface PaginatedDiveSitesResponse {
-  data: DiveSite[];
-  total_count: number;
-  has_more: boolean;
-  page: number;
-  items_per_page: number;
-}
+export type PaginatedDiveSitesResponse = PaginatedResponse<DiveSite>;
 
+/**
+ * Dive-site CRUD. `getDiveSites` takes a `search` the API matches server-side against
+ * name and location, which is what lets the dive form's picker narrow as you type instead
+ * of loading a diver's whole site list.
+ */
 export const diveSitesAPI = {
   // Create a new dive site. `data.user_uuid` must be the currently signed-in user's uuid.
   async createDiveSite(data: DiveSiteCreate): Promise<DiveSite> {
@@ -37,17 +37,21 @@ export const diveSitesAPI = {
     return response.data;
   },
 
-  // Get all dive sites for a user (paginated)
+  // Get a user's dive sites (paginated, name-ascending). `search` narrows to sites
+  // whose name *or* location contains it, case-insensitively - the API caps
+  // `items_per_page` at 100, so this is a page of matches, never the whole set.
   async getDiveSites(
     userUuid: string,
     page: number = 1,
     items_per_page: number = 10,
+    search?: string,
   ): Promise<PaginatedDiveSitesResponse> {
     const response = await apiClient.get(`/dive-sites`, {
       params: {
         user_uuid: userUuid,
         page,
         items_per_page,
+        ...(search ? { search } : {}),
       },
     });
     return response.data;

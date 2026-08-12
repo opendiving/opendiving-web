@@ -7,7 +7,10 @@ import * as React from "react";
  * unmodified. Drawn with `currentColor` so it can be recolored (e.g. white on
  * the dark App Store badge) like any other icon.
  */
-export function AppleLogo({ className, ...props }: React.SVGProps<SVGSVGElement>) {
+export function AppleLogo({
+  className,
+  ...props
+}: React.SVGProps<SVGSVGElement>) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"

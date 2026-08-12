@@ -5,6 +5,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
+import { useReturnTo } from "@/hooks/useReturnTo";
+import { useSuggestedDiveNumber } from "@/hooks/useSuggestedDiveNumber";
 import { divesAPI } from "@/lib/api/dives";
 import {
   diveCreateSchema,
@@ -49,6 +51,10 @@ function NewDivePageContent() {
   const initialTripId = searchParams.get("trip_uuid") ?? undefined;
   const initialDiveSiteId = searchParams.get("dive_site_uuid") ?? undefined;
 
+  // Back/Cancel return to wherever this form was opened from - the trip or dive
+  // site being logged against, an explicit `?from=`, or the dive list.
+  const returnTo = useReturnTo({ href: "/dives", label: "Back to Dives" });
+
   const form = useForm<DiveCreateInput>({
     resolver: zodResolver(diveCreateSchema),
     defaultValues: {
@@ -69,6 +75,25 @@ function NewDivePageContent() {
     },
   });
   const mixtureFieldArray = useMixtureFieldArray(form.control);
+
+  // The dive number tracks the start time (including a start time an imported
+  // file rewrote), rather than being prefilled once from the last dive - see the
+  // hook. It stops as soon as the diver edits the field themselves.
+  const numberSuggestion = useSuggestedDiveNumber(form, Boolean(user));
+
+  // Attached to the suggested value rather than rendered outright: the field
+  // stops showing that number the moment the diver types their own, and a note
+  // about a number that isn't on screen would be worse than no note. The field
+  // itself does the comparison - see `DiveFormFields`.
+  const diveNumberNotice = numberSuggestion?.is_taken
+    ? {
+        forValue: numberSuggestion.dive_number,
+        message:
+          `Another dive is already numbered #${numberSuggestion.dive_number}. ` +
+          "That's expected while back-filling a log - you can tidy the " +
+          "numbering from the dive list once everything is in.",
+      }
+    : null;
 
   // Pre-fill trip, gas mixture and gear defaults from the most recent dive so
   // the user doesn't have to re-enter recurring values for every new log entry.
@@ -91,7 +116,13 @@ function NewDivePageContent() {
         if (cancelled || form.formState.isDirty) return;
 
         form.reset({
-          dive_number: lastDive.dive_number + 1,
+          // Kept, not recomputed: `useSuggestedDiveNumber` owns this field and
+          // may already have filled it in by the time this prefill lands. The
+          // two run concurrently, and whichever finishes second must not undo
+          // the other - hence reading the current value back rather than
+          // deriving one from `lastDive`, which would also be the wrong number
+          // for a back-dated dive.
+          dive_number: form.getValues("dive_number"),
           start_time: nowStartTime(),
           duration: "",
           max_depth: undefined,
@@ -156,6 +187,11 @@ function NewDivePageContent() {
         user_uuid: user.uuid,
         duration: parseFormDuration(data.duration),
         notes: data.notes || "",
+        // The picker clears to `null` so the *edit* form can tell "detach this
+        // dive from its trip" apart from "field untouched" (see
+        // `DiveUpdate.trip_uuid`). On create there is nothing to detach from,
+        // so the two collapse back into one and the field is simply omitted.
+        trip_uuid: data.trip_uuid ?? undefined,
         mixtures: normalizeMixtures(data.mixtures ?? []),
       };
 
@@ -168,7 +204,7 @@ function NewDivePageContent() {
             sourceFile.file,
             sourceFile.token,
           );
-        } catch (error: any) {
+        } catch (error) {
           // Deliberately non-fatal. The dive exists and is correct; keeping the
           // source file is a nicety for future parsing work, not something the
           // diver asked for. Rolling the dive back - or blocking the redirect -
@@ -195,8 +231,10 @@ function NewDivePageContent() {
         description: "Dive logged successfully!",
       });
 
-      router.push("/dives");
-    } catch (error: any) {
+      // The dive that was just logged, not wherever the form was opened from:
+      // after a successful save the thing worth seeing is the new record.
+      router.push(`/dives/${created.uuid}`);
+    } catch (error) {
       console.error("Failed to create dive:", error);
 
       const errorMessage = getApiErrorMessage(
@@ -217,8 +255,8 @@ function NewDivePageContent() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
       <PageHeader
-        backHref="/dives"
-        backLabel="Back to Dives"
+        backHref={returnTo.href}
+        backLabel={returnTo.label}
         title="Log New Dive"
         subtitle="Record the details of your dive"
       />
@@ -230,10 +268,11 @@ function NewDivePageContent() {
         userId={user?.uuid ?? ""}
         onSubmit={onSubmit}
         isSubmitting={isSubmitting}
-        cancelHref="/dives"
+        cancelHref={returnTo.href}
         submittingLabel="Logging Dive..."
         submitLabel="Log Dive"
         onFileSelected={(file, token) => setSourceFile({ file, token })}
+        diveNumberNotice={diveNumberNotice}
       />
     </div>
   );
