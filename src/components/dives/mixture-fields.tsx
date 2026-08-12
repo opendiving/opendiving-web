@@ -1,11 +1,13 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   Control,
   FieldValues,
   Path,
   UseFieldArrayReturn,
   useFieldArray,
+  useWatch,
 } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,9 +18,14 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, Plus, Trash2 } from "lucide-react";
 import { DiveMixtureInput } from "@/lib/validations/dive";
-import { DEFAULT_MIXTURE, getDefaultMixtureName } from "@/lib/dive-mixtures";
+import {
+  DEFAULT_MIXTURE,
+  diveModWarning,
+  gasHintParts,
+  getDefaultMixtureName,
+} from "@/lib/dive-mixtures";
 import { VolumeCombobox } from "@/components/dives/volume-combobox";
 
 export { DEFAULT_MIXTURE, getDefaultMixtureName };
@@ -28,8 +35,14 @@ export { DEFAULT_MIXTURE, getDefaultMixtureName };
 // `lib/validations/dive.ts` qualify). Keeping this generic - rather than
 // falling back to `Control<any, any, any>` - preserves type safety between
 // the create/update form shapes at the `control` prop boundary.
+//
+// `max_depth` is here for the same reason `mixtures` is: `MixtureGasHint` reads it
+// to place a mix's END/EAD and to decide whether its MOD has been exceeded. Optional
+// because the hint degrades to just the gas name and MOD without it, which is what a
+// dive whose depth hasn't been filled in yet should show.
 export interface MixtureFieldsValues extends FieldValues {
   mixtures?: DiveMixtureInput[];
+  max_depth?: number | null;
 }
 
 // The `useFieldArray` return type for `mixtures`, keyed to `MixtureFieldsValues`
@@ -61,6 +74,111 @@ export function useMixtureFieldArray<TFieldValues extends MixtureFieldsValues>(
     control: control as unknown as Control<MixtureFieldsValues>,
     name: "mixtures",
   });
+}
+
+// What one cylinder's gas works out to, live, under the boxes it was typed into:
+// the gas's name, how deep it can be breathed, and - when the dive logs this as its
+// only cylinder - how deep it *feels* (END) or decompresses like (EAD).
+//
+// Its own component rather than inline in the `fields.map()` below because it needs
+// three `useWatch` subscriptions per row, and hooks cannot be called from a loop
+// body. Watching only these fields - rather than reading `form.watch()` wholesale -
+// also keeps a keystroke in the O₂ box from re-rendering every other tank's card.
+//
+// Renders nothing until there is something true to say. A half-typed O₂ field is
+// `undefined`, and a hint that flickers "EAN3" into "EAN32" as the diver types would
+// be worse than one that waits.
+//
+// `isOnlyMixture` gates everything depth-dependent. The name and the MOD are
+// properties of the gas alone and always hold; END and EAD are statements about a
+// depth this gas was breathed at, which is only known when there is one cylinder to
+// breathe. Printing "EAD 22.6 m at 45.91 m" against a deco bottle staged for the
+// ascent describes a breath nobody took - see `diveModWarning`.
+function MixtureGasHint({
+  control,
+  index,
+  isOnlyMixture,
+}: {
+  control: Control<MixtureFieldsValues>;
+  index: number;
+  isOnlyMixture: boolean;
+}) {
+  const oxygen = useWatch({ control, name: `mixtures.${index}.oxygen` });
+  const helium = useWatch({ control, name: `mixtures.${index}.helium` });
+  const maxDepth = useWatch({ control, name: "max_depth" });
+
+  // `depth` is null unless this is the only cylinder, which is what keeps END/EAD
+  // off a staged deco bottle - `gasHintParts` documents the rule.
+  const parts = gasHintParts({
+    oxygen,
+    helium,
+    depth: isOnlyMixture ? maxDepth : null,
+  });
+  if (parts.length === 0) return null;
+
+  return <p className="text-xs text-muted-foreground">{parts.join(" · ")}</p>;
+}
+
+// How long the gas warning has to hold still before it is announced. Long enough to
+// cover typing a two-digit depth without a pause being mistaken for a finished edit.
+const ANNOUNCE_SETTLE_MS = 700;
+
+// The one oxygen-exposure warning the form can honestly make, under the whole set of
+// cylinders rather than under any one of them. `diveModWarning` carries the reasoning
+// for why a multi-cylinder dive gets a claim about the dive and not about a tank.
+//
+// Unlike `MixtureGasHint` above, this deliberately watches the whole `mixtures`
+// array: its answer depends on every cylinder, so there is no narrower subscription
+// that would still be correct. It re-renders one `<p>` per keystroke, which is why
+// the two are separate components - keeping this subscription out of the per-tank
+// hint is what stops that breadth reaching the field cards.
+function MixtureSetWarning({
+  control,
+}: {
+  control: Control<MixtureFieldsValues>;
+}) {
+  const mixtures = useWatch({ control, name: "mixtures" });
+  const maxDepth = useWatch({ control, name: "max_depth" });
+
+  const warning = diveModWarning(mixtures ?? [], maxDepth);
+
+  // Announced from a region that is always mounted and `sr-only` when there is
+  // nothing to say. A `role="status"` that mounts together with its text is
+  // typically not announced at all - screen readers register the region on
+  // insertion and read *subsequent* changes - which is the same trap
+  // `dive-file-import.tsx` documents.
+  //
+  // Settled rather than live, which that file did not have to handle: its note is
+  // computed once at import, while this sentence quotes the depth and so changes
+  // on every keystroke in that box. Bound directly, a polite region would queue an
+  // announcement per digit; the timer lets the diver finish typing "45" first.
+  const [announced, setAnnounced] = useState("");
+  useEffect(() => {
+    const id = setTimeout(
+      () => setAnnounced(warning ?? ""),
+      ANNOUNCE_SETTLE_MS,
+    );
+    return () => clearTimeout(id);
+  }, [warning]);
+
+  return (
+    <>
+      {/* `aria-hidden` so the sentence is not also read here, in the copy that
+          tracks every keystroke. */}
+      {warning && (
+        <p
+          className="flex items-start gap-1.5 text-xs text-warning"
+          aria-hidden
+        >
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-px" />
+          <span>{warning}</span>
+        </p>
+      )}
+      <p role="status" className="sr-only">
+        {announced}
+      </p>
+    </>
+  );
 }
 
 export interface MixtureFieldsProps<TFieldValues extends MixtureFieldsValues> {
@@ -265,8 +383,21 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
               )}
             />
           </div>
+
+          {/* Narrowing to `MixtureFieldsValues` is sound for the same reason it is in
+              `useMixtureFieldArray` above: it is exactly the shape `TFieldValues` is
+              constrained to extend. */}
+          <MixtureGasHint
+            control={control as unknown as Control<MixtureFieldsValues>}
+            index={index}
+            isOnlyMixture={fields.length === 1}
+          />
         </div>
       ))}
+
+      <MixtureSetWarning
+        control={control as unknown as Control<MixtureFieldsValues>}
+      />
     </div>
   );
 }

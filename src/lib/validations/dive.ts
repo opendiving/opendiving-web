@@ -80,6 +80,33 @@ export const diveMixtureSchema = z
       message: "End pressure cannot be greater than start pressure",
       path: ["end_pressure"],
     },
+  )
+  // A gas is oxygen, helium and whatever nitrogen is left over, so the two named
+  // fractions cannot exceed the whole. Mirrors the API's
+  // `ck_dive_mixture_oxygen_helium_sum`, and exists because without it the DB CHECK
+  // was the *only* thing enforcing this: a 50/60 trimix passed the form, reached the
+  // API and came back a 500, with the diver given nothing to act on.
+  //
+  // Reported on `helium` rather than `oxygen` because helium is the field being
+  // filled in second on the trimix entries where this happens at all - putting the
+  // message under the box the diver is looking at.
+  .refine(
+    (mixture) => {
+      // Stay quiet when either fraction is already outside its own 0-100 range.
+      // Zod runs this refinement alongside the per-field rules rather than
+      // instead of them, so an oxygen of 150 otherwise draws *two* errors: the
+      // accurate one on `oxygen`, and this one pointing at a helium box reading
+      // 0. The range message names the field that actually has to change.
+      const { oxygen, helium } = mixture;
+      const inRange = (value: number) => value >= 0 && value <= 100;
+      if (!inRange(oxygen) || !inRange(helium)) return true;
+
+      return oxygen + helium <= 100;
+    },
+    {
+      message: "Oxygen and helium together cannot exceed 100%",
+      path: ["helium"],
+    },
   );
 
 export type DiveMixtureInput = z.input<typeof diveMixtureSchema>;
