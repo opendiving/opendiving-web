@@ -125,8 +125,11 @@ export interface DiveProfileSeries {
 }
 
 export interface DiveProfilePressureSeries extends DiveProfileSeries {
-  // The cylinder's own gas number as the device labelled it - 1 on a 2025 D5, 0
-  // on a Suunto Ocean. A label to display, never an index to trust.
+  // Which cylinder this curve belongs to: the device's own gas number where the
+  // export carries one (1 on a 2025 D5, 0 on a Suunto Ocean), otherwise the
+  // cylinder's 1-based position in the file (FIT, which identifies a tank only
+  // by its transmitter's ANT serial - useless in a legend). A label to display,
+  // never an index to trust.
   gas_number: number;
 }
 
@@ -143,7 +146,7 @@ export interface DiveProfile {
  * is uploaded. The API re-checks both regardless - this is convenience, not
  * validation.
  */
-export const DIVE_FILE_ACCEPT = ".xml,.json";
+export const DIVE_FILE_ACCEPT = ".xml,.json,.fit";
 export const MAX_DIVE_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
 // Metadata about the stored export a dive was imported from - never its bytes.
@@ -160,9 +163,23 @@ export interface DiveFileInfo {
   updated_at?: string | null;
 }
 
-const DIVE_PARSER_LABELS: Record<string, string> = {
+/**
+ * Human-readable label per API parser key (`DiveParser.key` in the API's
+ * `dive_parsers` registry).
+ *
+ * Exported so `DIVE_FILE_ACCEPT` can be pinned against it in `dives.test.ts` via
+ * `satisfies Record<keyof typeof DIVE_PARSER_LABELS, string>` — adding a parser
+ * here without offering its extension stops the test compiling, rather than
+ * silently greying the file out in the picker.
+ *
+ * Not "Garmin FIT": one API parser reads the FIT files of every vendor that
+ * writes them, so naming a single manufacturer would mislabel the other one's
+ * dives.
+ */
+export const DIVE_PARSER_LABELS = {
   suunto_xml: "Suunto XML export",
   suunto_json: "Suunto JSON export",
+  fit: "FIT export",
 };
 
 /**
@@ -173,7 +190,11 @@ const DIVE_PARSER_LABELS: Record<string, string> = {
  */
 export function diveParserLabel(key: string | null | undefined): string | null {
   if (!key) return null;
-  return DIVE_PARSER_LABELS[key] ?? key;
+  // Widened at the lookup rather than on the declaration, so the map keeps its
+  // literal key type for the accept-list test while still accepting a parser
+  // key this build has never heard of.
+  const labels: Record<string, string> = DIVE_PARSER_LABELS;
+  return labels[key] ?? key;
 }
 
 export interface DiveCreate {
@@ -281,30 +302,34 @@ export interface DiveRenumberResult {
 
 export type PaginatedDivesResponse = PaginatedResponse<Dive>;
 
-// A gas mixture parsed from a dive-computer export file. Mirrors the API's
-// `DiveMixtureSchema` - `name` is always `null` (mixture names aren't parsed,
-// even when the source file has one - see DECISIONS.md - so the diver fills
-// it in themselves), and `start_pressure`/`end_pressure` are nullable since
-// not every gas in a file has recorded pressures (e.g. an untransmitted
-// backup/deco cylinder).
+// A gas mixture as read out of a dive-computer export, mirroring the API's
+// `DiveMixtureSchema`. Every field is nullable and `null` means "the file didn't
+// record this" - the API's parsers report what they read and never substitute a
+// plausible value. `name` is always `null`: mixture names aren't parsed even
+// when the source file has one (see DECISIONS.md), so the diver names them.
+//
+// Fill the gaps with `DEFAULT_MIXTURE` (`components/dives/mixture-fields.tsx`),
+// which is what the form shows for a cylinder added by hand - and say so, via
+// `describeMixtureImport`. A guessed cylinder size feeds `gas_use`, so a diver
+// who cannot tell it from a reading gets an RMV presented as a derived fact.
 export interface ParsedDiveMixture {
   name: string | null;
-  volume: number;
+  volume: number | null;
   start_pressure: number | null;
   end_pressure: number | null;
-  oxygen: number;
-  helium: number;
+  oxygen: number | null;
+  helium: number | null;
 }
 
-// Result of parsing a dive-computer export file (e.g. Suunto XML or JSON) via /dive/parse.
+// Result of parsing a dive-computer export file (Suunto XML or JSON, or a FIT file) via /dive/parse.
 // Most fields are nullable since not every dive-computer format populates every field.
 export interface ParsedDive {
   dive_number: number | null;
   // The dive computer's raw exported timestamp - unlike `Dive.start_time`,
   // this may or may not carry an explicit UTC offset (e.g.
   // "2025-06-03T12:15:33.8" vs. "2021-04-04T10:04:47.910+02:00"), since not
-  // every dive-computer format records one. See `applyParsedStartTime()` in
-  // `dive-file-import.tsx` for how this is normalized before it ever reaches
+  // every dive-computer format records one. See `normalizeParsedStartTime()`
+  // in `lib/date-time.ts` for how this is normalized before it ever reaches
   // the create/edit form.
   start_time: string | null;
   duration: number | null;
@@ -412,7 +437,7 @@ export const divesAPI = {
     return response.data;
   },
 
-  // Parse a dive-computer export file (e.g. Suunto XML or JSON) into structured dive data
+  // Parse a dive-computer export file (Suunto XML or JSON, or a FIT file) into structured dive data
   async parseDiveFile(file: File): Promise<ParsedDive> {
     const formData = new FormData();
     formData.append("file", file);

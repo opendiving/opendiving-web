@@ -1,0 +1,157 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { useForm } from "react-hook-form";
+import { DiveFileImport } from "./dive-file-import";
+import { DEFAULT_MIXTURE, getDefaultMixtureName } from "./mixture-fields";
+import type { DiveFormValues } from "./dive-form-fields";
+import type { ParsedDive, ParsedDiveMixture } from "@/lib/api/dives";
+
+// The sentence itself is unit-tested in `lib/dive-import.test.ts`. What only a render can
+// reach is the wiring: that the `role="status"` region exists *before* the note does, so
+// the note is announced when it arrives rather than landing in a region the screen reader
+// has not registered yet.
+
+vi.mock("@/lib/api/dives", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api/dives")>()),
+  divesAPI: {
+    parseDiveFile: vi.fn(),
+  },
+}));
+
+vi.mock("@/components/ui/use-toast", () => ({
+  useToast: () => ({ toast: vi.fn() }),
+}));
+
+const { divesAPI } = await import("@/lib/api/dives");
+
+// Typed rather than `unknown[]` + `as never`: a field added to `ParsedDive` should break
+// this fixture, which is the coupling the sibling suites already enforce.
+function parsedDive(mixtures: ParsedDiveMixture[]): ParsedDive {
+  return {
+    dive_number: null,
+    start_time: null,
+    duration: null,
+    max_depth: null,
+    avg_depth: null,
+    bottom_temperature: null,
+    mixtures,
+    file_token: "token",
+  };
+}
+
+// Mirrors the create page: the form is seeded with one complete cylinder before any
+// import happens, which is what an import actually meets.
+function Harness() {
+  const form = useForm<DiveFormValues>({
+    defaultValues: {
+      mixtures: [{ ...DEFAULT_MIXTURE, name: getDefaultMixtureName(0) }],
+    },
+  });
+  return (
+    <>
+      <DiveFileImport
+        form={form}
+        replaceMixtures={(mixtures) =>
+          form.setValue("mixtures", mixtures, { shouldDirty: true })
+        }
+      />
+      {/* Stands in for `MixtureFields`' volume input, so the test can edit the value
+          the note is about through the same form the component watches. */}
+      <label>
+        Volume
+        <input
+          type="number"
+          {...form.register("mixtures.0.volume", { valueAsNumber: true })}
+        />
+      </label>
+    </>
+  );
+}
+
+function importFile() {
+  // The real input is `hidden` and driven by a button click, so `userEvent.upload`
+  // refuses it - `fireEvent.change` is what that click ultimately produces.
+  const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
+  fireEvent.change(input, {
+    target: {
+      files: [
+        new File(["{}"], "dive.fit", { type: "application/octet-stream" }),
+      ],
+    },
+  });
+}
+
+describe("DiveFileImport", () => {
+  beforeEach(() => {
+    vi.mocked(divesAPI.parseDiveFile).mockReset();
+  });
+
+  it("keeps a live region mounted before any import", () => {
+    render(<Harness />);
+
+    // Mounted and empty. One that appears together with its text is typically not
+    // announced at all - screen readers register the region on insertion and read
+    // subsequent changes.
+    const region = document.querySelector('[role="status"]');
+    expect(region).not.toBeNull();
+    expect(region).toHaveTextContent("");
+  });
+
+  it("announces the note when it arrives, in a region that was already there", async () => {
+    vi.mocked(divesAPI.parseDiveFile).mockResolvedValue(
+      parsedDive([
+        {
+          name: null,
+          volume: null,
+          start_pressure: null,
+          end_pressure: null,
+          oxygen: 32,
+          helium: 0,
+        },
+      ]),
+    );
+    render(<Harness />);
+
+    const region = document.querySelector('[role="status"]')!;
+    expect(region).toHaveTextContent("");
+
+    importFile();
+
+    await waitFor(() => expect(region).toHaveTextContent("cylinder size"));
+    // No figure in it. The gas fields are ~2 200 px below this card, so a quoted value
+    // could never be compared with the one in the box - and quoting one is what forced
+    // the sentence to track the form.
+    expect(region.textContent).not.toMatch(/\d/);
+  });
+
+  it("leaves the note alone when the diver edits the field it names", async () => {
+    // The note is a statement about the file, and stays true. Rewriting it as the diver
+    // types - two viewports away from this card, where they cannot see it change - was
+    // machinery serving an interaction nobody observes.
+    vi.mocked(divesAPI.parseDiveFile).mockResolvedValue(
+      parsedDive([
+        {
+          name: null,
+          volume: null,
+          start_pressure: null,
+          end_pressure: null,
+          oxygen: 32,
+          helium: 0,
+        },
+      ]),
+    );
+    render(<Harness />);
+    importFile();
+
+    const region = document.querySelector('[role="status"]')!;
+    await waitFor(() => expect(region).toHaveTextContent("cylinder size"));
+    const announced = region.textContent;
+
+    const volume = screen.getByLabelText("Volume");
+    await userEvent.clear(volume);
+    await userEvent.type(volume, "15");
+
+    expect(region.textContent).toBe(announced);
+  });
+});

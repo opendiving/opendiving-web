@@ -19,8 +19,11 @@ was imported from, downloadable at any time.
 - **Dive logging** — times, depths, duration, temperature, visibility, weight, notes,
   and any number of gas mixtures (O₂/He, start/end pressures) per dive. A dive can span
   multiple dive sites (drift dives happen), in order.
-- **Dive-computer import** — upload a Suunto export (XML or JSON) and the form
-  pre-fills itself. The original file is stored with the dive and can be re-downloaded
+- **Dive-computer import** — upload a FIT file (Garmin Descent, Suunto Ocean/D5) or a
+  Suunto XML/JSON export and the form pre-fills itself, keeping the file's own UTC offset
+  where it records one (FIT and the JSON exports do; Suunto's XML carries no offset at
+  all, so those fall back to your current timezone). The original file is stored with the
+  dive and can be re-downloaded
   anytime; the per-sample **dive profile** (depth, temperature, tank pressure) is
   extracted and charted on the dive page.
 - **Air consumption** — SAC and RMV are derived automatically for single-tank dives,
@@ -44,9 +47,8 @@ was imported from, downloadable at any time.
 
 Roadmap items, roughly in priority order — contributions welcome:
 
-- **More dive computers & formats** — FIT (Garmin/Suunto), UDDF, and Subsurface
-  imports, with an eye on [libdivecomputer](https://www.libdivecomputer.org/) for
-  broad hardware support.
+- **More dive computers & formats** — UDDF and Subsurface imports, with an eye on
+  [libdivecomputer](https://www.libdivecomputer.org/) for broad hardware support.
 - **Full export** — one click to take *everything* out in open formats (UDDF, JSON,
   CSV). Getting data out will always be as easy as getting it in.
 - **Statistics** — depth/time records, dives per year, sites map, species log.
