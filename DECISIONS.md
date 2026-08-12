@@ -3295,3 +3295,84 @@ Two things Prettier does to markdown beyond wrapping, both cosmetic and both app
 in one commit: `*emphasis*` becomes `_emphasis_`, and a `*` list bullet becomes `-`. That commit
 also means `git blame` on any line of `DECISIONS.md` points at the reflow rather than at whoever
 wrote the sentence - blame its parent, or use `git log -L`.
+
+## Breathing-gas maths lives in `lib/dive-mixtures.ts`, client-side, and is only ever a label
+
+`gasName`/`mod`/`endDepth`/`ead`/`ppO2AtDepth`/`modWarning` went into the existing
+`lib/dive-mixtures.ts` rather than a new `lib/dive-mix.ts`: two modules a hyphen apart, both about
+mixtures, is a name collision waiting to send an import to the wrong one.
+
+**Client-side, deliberately.** `services/dive_gas.py` draws the line at values derivable purely from
+stored columns, and `gear_service.py` already has a web twin because the browser holds an input the
+server lacks. This is that case: the decisive input is live form state - the O₂ a diver is halfway
+through typing, which has not been saved and may never be - so an API round trip could not answer
+the question, and a server-side twin would exist only to duplicate this one. The trigger for lifting
+it is written in the module header: the moment a non-browser consumer needs the same labels.
+
+**Names round to whole percent; the recorded fractions do not.** `gasName(32.4, 0)` is `"EAN32"`,
+because the shorthand is integer shorthand - that is what goes on the cylinder sticker. That would
+contradict the earlier decision to stop `toFixed(1)`-ing the mixtures table (which hid a real second
+decimal), except the badge sits in its own `Gas` column _beside_ the untouched `O₂`/`He` columns.
+The rounding is a label, never the value, and the exact number is one column away.
+
+**An impossible mix gets no plausible name.** Parsed previews are not validated and a half-typed
+form field is not either, so `gasName(50, 60)` returns `"O₂ 50% / He 60%"` rather than `"50/60"`.
+Same reason `oxygen: 0` falls back: `"EAN0"` is a well-formed label for a gas nobody can breathe.
+Either fraction being `null` returns `null` outright - a gas whose helium content is unknown cannot
+be told apart from air by any honest label.
+
+**Air gets neither END nor EAD.** For air both equal the depth itself, and `EAD 30.0 m at 30 m` is
+noise dressed as information. Helium mixes get END (the figure the mix exists to improve), nitrox
+gets EAD (a nitrogen-load figure that means nothing once helium is in the gas - `ead` returns `null`
+rather than understating it).
+
+**`modWarning` returns two distinct sentences, not one with a threshold.** Past 1.4 the gas is still
+right where a diver is decompressing but not where they are working, which is a planning note. Past
+1.6 there was no point in the dive where it was appropriate. Collapsing them would either cry wolf
+over a legitimate deco gas or stay quiet about an over-rich bottom mix. `PPO2_WORKING`/`PPO2_DECO`
+are function parameters and not a user setting, on purpose - a preference here is an edit that turns
+a warning into silence.
+
+**`modWarning` takes the depth the gas was _breathed_ at, and callers holding a dive must use
+`diveModWarning` instead.** The first version of this compared every mixture against
+`dive.max_depth` and shipped, which meant a two-cylinder dive - air to 45.91 m plus an EAN54 deco
+bottle - reported "Max depth 45.91 m is past this mix's 19.6 m limit at ppO₂ 1.6" against the EAN54.
+That is the normal, correct shape of a staged decompression dive: the bottle is carried down
+unbreathed and used on the ascent. The warning fired on every properly planned technical dive, which
+is precisely the cry-wolf failure the paragraph above claims to avoid - splitting the two ppO₂
+thresholds addressed _which_ limit was crossed and never questioned whether `max_depth` was the
+right depth to compare against at all.
+
+A dive does not record which cylinder was breathed when - the same gap that stops
+`gasUseUnavailableReason` deriving RMV for a multi-tank dive. So `diveModWarning` splits on what is
+actually knowable:
+
+- **One cylinder logged** - it was breathed throughout, `max_depth` is a depth this gas genuinely
+  saw, and `modWarning` applies directly with both thresholds.
+- **Several cylinders** - no single mix can be judged. The one sound inference left is that if the
+  deepest-capable gas on board still cannot reach `max_depth`, none of them could have, in any
+  order. That is reported against the dive rather than blamed on a cylinder, and only at 1.6: a deco
+  gas exceeding 1.4 somewhere on the dive is the intended state of affairs.
+
+The same rule governs the form hint. Gas name and MOD are properties of the gas alone and always
+show; END and EAD are claims about a depth the gas was breathed at, so they are suppressed once
+there is more than one cylinder - `EAD 22.6 m at 45.91 m` under a deco bottle describes a breath
+nobody took. Per-tank warnings against each gas's own depth become possible when gas-switch events
+and per-tank attribution land.
+
+**The warning is spelled out under the table, not in a `title` tooltip.** The amber MOD cell says
+which cylinder to look at and is useless alone; a tooltip would put the only copy of a safety note
+behind a hover, and out of reach entirely on touch.
+
+`text-warning`, not `text-warning-foreground`: the latter is the white that sits _on_ `bg-warning`
+(that is what the `warning` badge pairs), and as text on a card it is invisible in light mode.
+
+## The `o2 + he <= 100` rule was missing from the form, and only the DB CHECK caught it
+
+`diveMixtureSchema` bounded oxygen and helium individually at 0-100 but never their sum, so a 50/60
+trimix passed the form, reached the API and came back a 500 from
+`ck_dive_mixture_oxygen_helium_sum` - a stack trace where a field error belonged, with nothing for
+the diver to act on. The refine mirrors that CHECK.
+
+Reported on `path: ["helium"]` rather than `oxygen`: helium is the box being filled in second on the
+trimix entries where this happens at all, so the message lands under the field being looked at.

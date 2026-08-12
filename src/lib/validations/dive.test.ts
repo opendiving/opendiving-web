@@ -212,6 +212,96 @@ describe("diveMixtureSchema", () => {
     });
     expect(result.success).toBe(true);
   });
+
+  it("rejects oxygen and helium summing past 100", () => {
+    // Each fraction is individually legal, so only the sum rule catches this.
+    // Before it existed the form accepted this and the API answered with a 500
+    // from `ck_dive_mixture_oxygen_helium_sum`.
+    const result = diveMixtureSchema.safeParse({
+      ...validMixture,
+      oxygen: 50,
+      helium: 60,
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("reports the sum rule on the helium field", () => {
+    const result = diveMixtureSchema.safeParse({
+      ...validMixture,
+      oxygen: 50,
+      helium: 60,
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.map((issue) => issue.path)).toContainEqual([
+        "helium",
+      ]);
+    }
+  });
+
+  it("accepts oxygen and helium summing to exactly 100", () => {
+    const result = diveMixtureSchema.safeParse({
+      ...validMixture,
+      oxygen: 30,
+      helium: 70,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts a normal trimix", () => {
+    const result = diveMixtureSchema.safeParse({
+      ...validMixture,
+      oxygen: 18,
+      helium: 45,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("leaves an out-of-range oxygen to the range rule alone", () => {
+    // Zod runs the sum refinement alongside the per-field rules, not instead of
+    // them. Without a guard this reported "oxygen and helium together..." on the
+    // helium field while the He box read 0 - naming a field the diver has no
+    // reason to touch.
+    const result = diveMixtureSchema.safeParse({
+      ...validMixture,
+      oxygen: 150,
+      helium: 0,
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.map((issue) => issue.path)).toEqual([
+        ["oxygen"],
+      ]);
+    }
+  });
+
+  it("leaves an out-of-range helium to the range rule alone", () => {
+    const result = diveMixtureSchema.safeParse({
+      ...validMixture,
+      oxygen: 21,
+      helium: -1,
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.map((issue) => issue.path)).toEqual([
+        ["helium"],
+      ]);
+    }
+  });
+
+  it("still reports the sum rule when both fractions are individually valid", () => {
+    const result = diveMixtureSchema.safeParse({
+      ...validMixture,
+      oxygen: 50,
+      helium: 60,
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.map((issue) => issue.path)).toEqual([
+        ["helium"],
+      ]);
+    }
+  });
 });
 
 describe("normalizeMixtures", () => {
