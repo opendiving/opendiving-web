@@ -25,8 +25,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Runs the npm script rather than repeating its globs. This step and
+      # `format:check` in package.json are the same check; with the file list copied
+      # into both, extending one silently leaves the other behind.
       - name: Run Prettier check
-        run: npx prettier --check "src/**/*.{ts,tsx,js,jsx,json,css,scss,md}"
+        run: npm run format:check
         continue-on-error: true
 
       - name: Run ESLint with detailed output
