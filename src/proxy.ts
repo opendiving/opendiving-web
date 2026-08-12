@@ -52,9 +52,14 @@ export function proxy(request: NextRequest) {
     // relaxation - `style-src-elem`/`style-src` (actual `<style>` blocks,
     // where CSS-exfiltration attacks are more feasible) remain nonce-only
     // in production.
+    // `accounts.google.com` - GSI's client script injects its own
+    // `<link rel="stylesheet" href="https://accounts.google.com/gsi/style">`
+    // into `<head>`. A host source is needed even in dev: `'unsafe-inline'`
+    // only covers inline `<style>`, never an external stylesheet. Without it
+    // the real (invisible but click-receiving) Google button renders unstyled.
     isDev
-      ? "style-src 'self' 'unsafe-inline'"
-      : `style-src 'self' 'nonce-${nonce}'`,
+      ? "style-src 'self' 'unsafe-inline' https://accounts.google.com"
+      : `style-src 'self' 'nonce-${nonce}' https://accounts.google.com`,
     "style-src-attr 'unsafe-inline'",
     // `www.gravatar.com` - `UserAvatar` (`lib/utils.ts`'s `getGravatarUrl`)
     // loads user avatars from there.
