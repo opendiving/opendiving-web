@@ -12,6 +12,7 @@ import {
   formatTripDateRange,
   formatUtcOffset,
   getBrowserUtcOffsetMinutes,
+  greetingForHour,
   normalizeParsedStartTime,
   parseFormDateTime,
   parseFormDuration,
@@ -260,6 +261,28 @@ describe("formatDiveDateTime/formatDiveTimeOnly", () => {
         day: "numeric",
       }),
     ).toBe("Apr 4, 2021");
+  });
+});
+
+describe("greetingForHour", () => {
+  it("greets the morning from 04:00 until noon", () => {
+    expect(greetingForHour(4)).toBe("Good morning");
+    expect(greetingForHour(11)).toBe("Good morning");
+  });
+
+  it("greets the afternoon from noon until 18:00", () => {
+    expect(greetingForHour(12)).toBe("Good afternoon");
+    expect(greetingForHour(17)).toBe("Good afternoon");
+  });
+
+  it("greets the evening from 18:00 onwards", () => {
+    expect(greetingForHour(18)).toBe("Good evening");
+    expect(greetingForHour(23)).toBe("Good evening");
+  });
+
+  it("keeps the small hours in the evening", () => {
+    expect(greetingForHour(0)).toBe("Good evening");
+    expect(greetingForHour(3)).toBe("Good evening");
   });
 });
 

@@ -2047,6 +2047,25 @@ Recent dives and recent trips now sit side by side at `lg`, which is why `Recent
 grew a `min-w-0` on their left block and a `flex-shrink-0` on the metrics: at half a row wide, a
 long site name would otherwise squeeze the duration/depth column instead of wrapping.
 
+### The heading greets by time of day, and reads the clock during render
+
+"Welcome back" is now "Good morning/afternoon/evening, {name}!". The buckets live in
+`greetingForHour()` in `lib/date-time.ts` rather than in the page, so the boundaries are testable
+without faking the clock: morning from 04:00, afternoon from noon, evening from 18:00 - and the
+small hours fall in with the evening, because "Good night" is a farewell rather than a greeting and
+there is nothing else to say to someone reading their logbook at 03:00.
+
+`new Date().getHours()` is called during render, which would normally be a hydration hazard - the
+server's hour is not the viewer's, and React would swap the text out after mount. It is safe here
+only because the heading sits behind the auth gate: `AuthProvider` starts at `isLoading: true` and
+only resolves in an effect, so the server (and the first client render) return `PageSpinner` and the
+greeting never appears in the SSR markup. Anything that later renders a greeting _above_ that gate
+needs the mounted-flag treatment `ThemeToggle` uses instead.
+
+The greeting is fixed for the life of the mount - no timer ticks it over at midnight. A dashboard
+left open that long is not worth an interval. `scripts/screenshots.mjs` pins the browser clock to
+09:00 so the README image does not depend on what time it was retaken - see below.
+
 ## `/profile` is gone until there is someone else to show it to
 
 The page was rebuilt one commit before it was removed (`324c1d6`), and rebuilding it is what made
@@ -2450,7 +2469,7 @@ the access token lives in memory, and has nothing to say to a crawler.
 Its hero headline was an `<h2>` and is now the page's `<h1>` - the header wordmark used to hold the
 only `<h1>`, which gave every page two of them and made "OpenDiving" rather than the page's own
 title the first entry in a screen reader's heading list. The wordmark is a `<span>` now, styling
-unchanged, and the dashboard's "Welcome back" was promoted to `<h1>` to fill the gap it left.
+unchanged, and the dashboard's greeting heading was promoted to `<h1>` to fill the gap it left.
 
 ## Component filenames are kebab-case
 
@@ -2818,6 +2837,20 @@ off the app's own requests via a Playwright `request` listener. The two alternat
 verifying a second magic link server-side runs into the three-per-email-per-fifteen-minutes limit
 within a single retake, and calling `/auth/refresh` from the page rotates the cookie out from under
 the app.
+
+**The clock is pinned to 09:00, so the dashboard greets the same way every retake.** The heading
+reads "Good morning/afternoon/evening" off `new Date().getHours()` (see _"The heading greets by time
+of day"_ above), which made the hero image a record of what time the maintainer happened to run the
+script - three greetings for one page, flipping in the diff for no reason a reader can see. The
+context's clock is fixed before the first page exists, so every navigation in the run agrees.
+
+Only the _hour_ is decided: the pinned instant is 09:00 on the run's own date, which leaves
+everything else the browser derives from the clock - the service card's "due in 24 days", the year
+the two charts open on - exactly where an unpinned run would put it. `GREETING_HOUR` overrides it
+for anyone who wants a different one. `setFixedTime()`, not `install()`: it freezes only what the
+page reads out of `Date`, leaving timers and animations on the real clock, which the `networkidle`
+waits depend on. The tokens do not care either way - they are checked against the API's clock, not
+the browser's.
 
 **`playwright-core`, not `playwright`.** The full package downloads ~130MB of browsers on every
 `npm install`, for a script only a maintainer runs. `playwright-core` is the driver alone and takes
