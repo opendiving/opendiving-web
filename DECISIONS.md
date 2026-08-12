@@ -2888,7 +2888,7 @@ it, but the inputs do.
 checkbox - and a bare `label` selector would put one over every text-input label too, where
 the arrow is correct. Three explicit `cursor-pointer` classes are the cheaper answer.
 
-## The README screenshots are generated, at one frame size that is a breakpoint
+## The README screenshots are generated, at one width that is a breakpoint
 
 `scripts/screenshots.mjs` retakes every image in `docs/screenshots/`. Hand-cropped screenshots
 drift: they get taken on whatever window happened to be open, at whatever scroll position looked
@@ -2907,15 +2907,46 @@ further when GitHub scales the image into a half-width table cell.
 The dashboard was briefly shot narrower, on the theory that its `lg:grid-cols-2` would halve the
 consumption chart. It does not - that grid holds Recent Dives and Recent Trips, and `GasUseCard`
 is full width at every breakpoint, so the chart only gets wider and the trend easier to read.
-One size for everything, and no reason to special-case the hero.
+One width for everything, and no reason to special-case the hero on that axis.
 
-**1086px tall, and the number is a card boundary rather than a round figure.** It is where the
-dashboard's consumption card ends, one row above the cards that follow it, and it also clears
-the dive page's sidebar column. Cutting at the *end* of a column matters more than the exact
-number: a frame that stops just shy of finishing a card reads as an off-by-one, while one that
-stops well inside a card the reader can see continues reads as a page that goes on.
-`deviceScaleFactor: 2`, because a 1x screenshot of a dark UI looks muddy on the displays most
-people read a README on.
+**Height is per page, and the cut lands on a card boundary rather than a round figure.**
+Cutting at the *end* of a card matters more than the exact number, and more than the three
+shots agreeing: a frame that stops just shy of finishing a card reads as an off-by-one, while
+one that stops well inside a card the reader can see continues reads as a page that goes on.
+1086 is where the dive page's profile chart finishes - it also clears the sidebar column beside
+it - and where the gear page's service history does.
+
+**The dashboard measures its own cut, because a written-down height goes stale quietly.** It
+was on 1086 too, back when consumption was its only chart and that was where the card ended.
+Dive activity went in underneath, and the frame that had been cutting on a boundary was
+suddenly cutting through the middle of a second chart - the one part of the hero image that has
+to look deliberate. Re-measuring gave 1604, which survived exactly one retake: four words came
+out of `GasUseCard`'s description, its header row stopped wrapping, 40px came out of the card,
+and the boundary moved to 1564. Nothing failed either time. The frame just quietly stopped
+meaning what the comment above it said.
+
+Worse, the figure is not portable. Measuring 1564 in one Chromium and shooting in the Chrome
+`playwright-core` drives produced a 3px sliver of the Recent Dives card along the bottom edge -
+the same page, laid out four pixels apart. So `cutBelow()` reads the top of the row *after* the
+named card out of the page being photographed, moments before the shutter, and that is the
+frame height. `CUT_BELOW` names the card; nobody maintains a number. Any page can opt in the
+same way, and the two that still carry a literal do so because 1086 has never moved.
+
+**`deviceScaleFactor: 2`**, because a 1x screenshot of a dark UI looks muddy on the displays
+most people read a README on. Every image in `docs/screenshots/` is therefore twice its frame -
+a 1024-wide page is a 2048-wide PNG.
+
+**One shot at a time, optionally.** `npm run screenshots -- you@example.com dashboard` takes
+only the named images. None of the three are stable between runs - "due in 24 days" counts
+down, the subjects are re-picked from whatever the log holds that day - so retaking all three
+to change one puts two unrelated images in the diff.
+
+**Selectors are scoped to the card they belong to.** `selectMonth` drove the consumption
+chart's Year/Month toggle through a bare `getByRole("button", {name: "Month"})`, which was
+unambiguous until dive activity landed with a Year/Month toggle of its own and every retake
+died on a strict-mode violation. The two groups are told apart by `aria-label` - "Time range"
+on consumption, "Bar size" on activity - and the walk is scoped to the card containing the
+former.
 
 **Two images, not four, and one frame per page.** The grid previously held two crops of the same
 dive page at different scroll offsets - the top, and the profile chart further down - which
@@ -3072,3 +3103,109 @@ competes with the item names for the eye - and the type is the *question*, the n
 answer. Muting it also removes the odd case where a missing type rendered a dimmer dash
 than the value next to it. Brand stays at full strength: it's part of the item's identity,
 and a diver reads "Apeks XTX50" as one thing.
+
+## The activity chart is bars, and its period is a year rather than a dive
+
+`DiveActivityCard` answers "how much am I diving" where `GasUseCard`, directly above it,
+answers "how well". They deliberately share a shape - same header, same stat row, same
+prev/next-and-dropdown in the same corner, same remembered view - because two charts on one
+page that work differently cost more to read than either does alone. Three things are
+genuinely different, and each is a decision rather than an omission.
+
+**Bars, not dots, and therefore an axis anchored at zero.** A count has no meaning between
+its values: there is no such thing as 4.5 dives in August, so a line joining August to
+September would draw a fortnight of diving that didn't happen. A bar's *height* is the
+quantity, which is also why `countDomain` exists next to `niceDomain` rather than being it:
+`niceDomain` is deliberately not zero-based (RMV lives in a narrow band and anchoring it at
+zero squashes real variation into the top third), and on a bar chart a floating baseline
+would draw four dives as twice the block of three. Its 1/2/5/10 ladder also includes 2.5,
+which on a scale of dives labels the axis 2.5 and 7.5 - half a dive is not something anyone
+can log.
+
+**Two scopes, not three.** The gas card has All/Year/Month; this one has Year/Month, and
+the missing "All" is not an oversight. Its year scope *is* all - one bar per calendar year,
+from the first year with diving to the last - so a third button would show the same picture
+with the bars renamed.
+
+**The period is a plain year number, not an anchor.** The gas chart anchors on one of the
+dives' own timestamps, so switching scope lands on the month *containing* the dive you were
+reading. There are no dives here to land on: a bar is a calendar bucket, so
+`lib/dive-activity.ts` carries integers where `lib/dive-gas.ts` carries instants, and
+`resolveYear` is correspondingly simpler than `resolveAnchor` - a year either still has
+diving in it or it doesn't, with no nearer period to fall back to. That is also why the two
+modules don't share code: one of them would have to carry the other's concept for no gain.
+
+### Empty buckets are the point, and the ceiling comes from the whole logbook
+
+`activityBars` fills the gaps - twelve months whatever the year held, and every year
+between the first dive and the last. A chart of only the months that had diving would space
+three trips evenly across the plot and quietly say the year was busy throughout; the gaps
+are what make a season read as a season. It's the same call the gas chart makes by plotting
+a period's *calendar* bounds rather than the extent of what's in it. Nothing is drawn before
+the first dive or after the most recent one, where the answer is "no data" rather than "no
+diving".
+
+`barCeiling` scales the y axis to the tallest bar the scope can produce **across the whole
+logbook**, not across the year on screen - the same reasoning as the gas chart's fixed
+domain, and load-bearing here in a way it isn't there. Bar height is the quantity, so a
+per-year axis would draw a four-dive August exactly as tall as a forty-dive one and the
+arrows would compare nothing.
+
+Empty *periods*, though, are not offered: `divingYears` lists only the years that contain
+dives, so the dropdown has no dead options and `stepYear` skips the fallow years the way
+`stepPeriod` skips the empty months.
+
+### What the bars can't be, and what that costs
+
+The bars aren't links, so the svg is `role="img"` (like the profile chart) rather than the
+gas chart's `role="group"` - there is nothing focusable inside it to browse to. That leaves
+a `role="img"` label as the only channel, and a sentence can say "34 dives, busiest 2025"
+but not what every bucket held, which is exactly the rounding a sighted reader doesn't have
+to accept. So the figures follow the chart as an `sr-only` list, one entry per bar. Cheap
+at this size - twelve months, or one line per year of a career.
+
+**The hover target is the whole column, not the bar.** A quiet January is a few units tall
+and an empty one has no bar at all, and "how many dives was that?" is exactly the question
+you would point at those to ask. The bar itself is `pointer-events-none` so it can't steal
+its own column's hover and flicker along the top edge. `barPath` draws it with only the top
+corners rounded: `<rect rx>` rounds all four, which lifts the bar off the axis it's measured
+from and leaves a visible notch either side of the baseline.
+
+**The change figure is in dives, not percent.** These are small whole numbers a diver can
+hold in their head, and "+16 vs 2023" says something "+178%" doesn't. Uncolored, for the
+reason the gas card's already documents - and one more: a light year can be a house move
+rather than a slump, so nothing here should editorialize about the direction.
+
+**`ChartStat` moved out of `gas-use-card.tsx`** when this card wanted the same row - the
+same move `niceDomain`/`axisTicks` and `subscribeToNothing` made before it. The two cards
+sit one above the other, so "the same shape" isn't a nicety: a label size or baseline gap
+drifting a couple of pixels between them would read as a rendering fault.
+
+### The two chart cards stack, and gas leads - both measured, not assumed
+
+Side by side is the obvious layout for two cards that mirror each other, and it was tried
+and reverted. Each plot carries `min-w-[560px]`, which is what keeps twelve month labels
+and a y axis legible; a `lg:grid-cols-2` on the dashboard's `max-w-6xl` gives each card
+482px, and widening the page to `max-w-7xl` only gets to 546px. Three things break at
+once, all of them measured in the browser rather than reasoned about:
+
+- **Both charts clip and grow their own horizontal scrollbar.** Dive Activity loses the
+  current year mid-bar, Gas Consumption loses December - so reaching this year's diving
+  means scrolling sideways inside a card.
+- **The axis text halves, 16.6px to 8.6px.** The svg scales uniformly inside its wrapper,
+  so a narrower box shrinks the labels rather than dropping them.
+- **The gas card's header goes from 50px to 114px.** Its description, its All/Year/Month
+  toggle and its `‹ 2026 ›` stepper cannot share a 546px line, so the controls drop below
+  it - and the two cards' controls stop lining up, which is the thing the activity card's
+  one-line description exists to preserve.
+
+Clearing all three needs about 1220px of content width, past anything else in the app's
+layout, and the gas header still wraps there. `RecentDivesCard`/`RecentTripsCard` pair up
+fine directly below, which is the shape that grid is right for: cards whose content
+reflows instead of scaling.
+
+**Gas consumption leads the pair.** It's the card that can change how you dive tomorrow,
+where activity is a record of what already happened. That reverses the order this feature
+shipped in, which put activity first on the grounds that it expands the "Total Dives" tile
+above it and always has something to draw - true, but a card being reliably non-empty is a
+weaker claim on the top slot than a card being reliably useful.

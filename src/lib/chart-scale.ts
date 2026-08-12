@@ -49,6 +49,58 @@ export function niceDomain(values: number[], targetTicks = 5): Domain {
   };
 }
 
+// The 1/2/5 progression `niceDomain` picks its step from, as whole numbers.
+const COUNT_STEPS = [1, 2, 5];
+
+// An axis for counting whole things - dives per month, on `dive-activity-chart`.
+//
+// Two things `niceDomain` deliberately doesn't do, both of which a bar chart
+// needs. It isn't anchored at zero, which is right for RMV and wrong here: a
+// bar's *height* is the quantity, so a floating baseline would draw four dives
+// as twice the block of three. And its step ladder includes 2.5, which on a
+// scale of dives produces gridlines at 2.5 and 7.5 - half a dive is not a thing
+// that can be logged, and an axis that implies otherwise is worse than a coarser
+// one.
+//
+// Walks the ladder upward until the axis fits in `targetTicks` gaps. That always
+// terminates: by the time `magnitude` reaches the largest power of ten at or
+// below `top`, `5 * magnitude` covers more than half of it.
+//
+// `targetTicks` is what decides how much dead space sits above the tallest bar,
+// and 5 - `niceDomain`'s own default - is deliberate. At 4, a 223-dive year has
+// to round up to a step of 100 and an axis of 300, leaving the busiest bar in the
+// logbook at 74% of the plot with a quarter of the chart empty above it; 5 admits
+// a step of 50 and an axis of 250, and the same bar fills 89%. Every other real
+// shape is unchanged between the two. Going further, to 6, buys one more case (12
+// dives, which stops rounding to 15) at the cost of a step of 2 and six gridlines
+// on a chart that is 240 units tall - a busier axis than the data deserves.
+//
+// The ceiling never changes what the bars *say*: it scales all of them equally,
+// so their ratios hold whatever it is. All that is being traded here is vertical
+// extent against how readable the gridlines are - which is why exactly-the-
+// tallest-bar is wrong, tempting as it looks. It would put this axis's labels at
+// 55.75, 111.5 and 167.25, and the gridlines are the only way to read a bar the
+// cursor isn't on.
+export function countDomain(highest: number, targetTicks = 5): Domain {
+  // An empty logbook, or a month with one dive in it, still needs an axis with
+  // room to draw a bar in.
+  const top = Math.max(1, Math.ceil(highest));
+
+  for (let magnitude = 1; magnitude <= top; magnitude *= 10) {
+    for (const candidate of COUNT_STEPS) {
+      const step = candidate * magnitude;
+      if (top / step <= targetTicks) {
+        return { min: 0, max: Math.ceil(top / step) * step, step };
+      }
+    }
+  }
+
+  // Unreachable for any `targetTicks >= 2` - see above. A single gridline at the
+  // top is the honest degenerate answer rather than a throw, since this is only
+  // ever scaling a picture.
+  return { min: 0, max: top, step: top };
+}
+
 // The gridline values for a domain, inclusive of both ends. Built by counting
 // steps rather than by accumulating `+= step`, which drifts on fractional steps
 // (0.1 + 0.2 territory) and produces labels like "12.499999999999998".

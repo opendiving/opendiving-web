@@ -12,6 +12,7 @@ import {
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { RecentTripsCard } from "@/components/dives/recent-trips-card";
+import { DiveActivityCard } from "@/components/dives/dive-activity-card";
 import { GasUseCard } from "@/components/dives/gas-use-card";
 import { ServiceDueCard } from "@/components/gear/service-due-card";
 import { CertificationExpiryCard } from "@/components/certifications/certification-expiry-card";
@@ -186,9 +187,19 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* The one card here that says something about how the diving is going rather
-          than just what was logged, so it leads the rest. */}
+      {/* The two cards that say something about how the diving is *going*, rather than
+          just what was logged, so they lead the rest. Gas consumption first: it's the
+          one that can change how you dive tomorrow, where activity is a record of what
+          already happened - and it's the harder-won number, since it needs dives that
+          recorded pressures and an average depth.
+
+          Stacked, not side by side, and that was measured rather than assumed: each
+          plot needs 560px to keep twelve month labels legible, and a two-column grid
+          gives it 482px even on a widened page. Both charts clip, their axis text
+          halves, and the gas card's header doubles in height when its controls can no
+          longer share a line with its description. See DECISIONS.md. */}
       {hasDives && <GasUseCard />}
+      {hasDives && <DiveActivityCard />}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <RecentDivesCard userId={user.uuid} />

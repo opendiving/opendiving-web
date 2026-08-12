@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SectionSpinner } from "@/components/ui/section-spinner";
+import { ChartStat } from "@/components/dives/chart-stat";
 import { GasUseChart } from "@/components/dives/gas-use-chart";
 import { diveStatsAPI, DiveGasUsePoint } from "@/lib/api/dive-stats";
 import {
@@ -185,12 +186,15 @@ export function GasUseCard() {
                   (`gas_use`, `dive-gas.ts`). The normalisation belongs in the
                   sentence that has room to state it.
 
-                  The trend's exact length used to be named here too. It varies
-                  by scope now (see `trendWindow`), and a number that changes
-                  under you reads better next to the line it describes than in
-                  a standing description - so the legend states it. */}
-              Surface-equivalent gas breathed per minute (RMV), with a rolling
-              trend. Lower is better.
+                  The rolling trend used to be named here too, and isn't: the
+                  legend already labels it, with the window length that this
+                  sentence couldn't state (it varies by scope - see
+                  `trendWindow`). Length is load-bearing beyond the redundancy.
+                  The header row wraps on max-content, not on what the text
+                  could shrink to, so every word here is width the period
+                  controls don't get - and past ~515px they drop to a row of
+                  their own at 1024. */}
+              Surface-equivalent gas breathed per minute (RMV). Lower is better.
             </CardDescription>
           </div>
 
@@ -303,37 +307,18 @@ export function GasUseCard() {
 function GasUseSummaryRow({ summary }: { summary: GasUseSummary }) {
   return (
     <div className="mb-5 flex flex-wrap items-end gap-x-8 gap-y-3">
-      <Stat label="Average">
+      <ChartStat label="Average">
         <Figure value={summary.average} />
         <Change summary={summary} />
-      </Stat>
-      <Stat label="Best dive">
+      </ChartStat>
+      <ChartStat label="Best dive">
         <Figure value={summary.best} />
-      </Stat>
-      <Stat label="Dives">
+      </ChartStat>
+      <ChartStat label="Dives">
         <span className="text-xl font-semibold tabular-nums">
           {summary.dives}
         </span>
-      </Stat>
-    </div>
-  );
-}
-
-function Stat({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        {label}
-      </div>
-      <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2">
-        {children}
-      </div>
+      </ChartStat>
     </div>
   );
 }
