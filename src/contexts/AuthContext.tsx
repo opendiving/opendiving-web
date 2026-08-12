@@ -15,6 +15,8 @@ import {
   clearAccessToken,
   refreshAccessToken,
 } from "@/lib/api/client";
+import { rememberPostAuthRedirect } from "@/lib/auth-redirect";
+import { hardNavigate } from "@/lib/navigation";
 
 // Carried from `/auth/verify` or the Google button to the profile-completion page
 // when no account exists yet for a verified identity - see `OnboardingRequired` on
@@ -42,6 +44,9 @@ interface AuthContextType {
   signInWithGoogle: (credential: string) => Promise<boolean>;
   completeProfile: (name: string, username: string) => Promise<void>;
   clearOnboarding: () => void;
+  // Ends the session and leaves for the landing page with a page load. Rejects,
+  // and changes nothing, when the server didn't confirm - see the implementation
+  // for why a failed logout must not clear anything locally.
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -159,14 +164,53 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const clearOnboarding = useCallback(() => setOnboarding(null), []);
 
+  // Signing out always lands on the landing page, and gets there with a full
+  // document navigation rather than `router.replace("/")`.
+  //
+  // Both halves of that are deliberate. Dropping the user re-runs `useAuthGuard`
+  // on whatever protected page the diver signed out from, and that guard sends
+  // them to `/signin?next=<that page>` - a client-side navigation started here
+  // loses the race against it, so the diver ends up staring at a sign-in form
+  // asking them back into the page they just left. A page load can't be
+  // cancelled by the `history.replaceState` behind `router.replace`, so the
+  // destination is settled here and not by whichever effect runs last - and the
+  // entry being left behind survives intact, since the document is gone before
+  // the guard's `replace` can land on it.
+  //
+  // Reloading is also the honest thing to do: everything the session left in
+  // memory - the access token, fetched dives, blob URLs for private images -
+  // goes with the document instead of lingering in a signed-out tab.
+  //
+  // All of which only holds if the *server* actually ended the session, so a
+  // failed `POST /auth/logout` takes none of it. `logout` is the only thing that
+  // blacklists the token pair and deletes the refresh cookie, so after a failed
+  // one the cookie is still live - and a reload would hand it straight to
+  // `initAuth`, which re-derives a session, sets a user, and lets `/` bounce the
+  // diver to `/dashboard`. Signed in, on their dashboard, one click after asking
+  // to leave.
+  //
+  // Nor is the user cleared in that case. It reads as the cautious choice, but
+  // it's the dangerous one: the access token is gone from memory, yet the
+  // interceptor rebuilds it from the surviving cookie on the next 401, so
+  // "signed out" would be a display state over a working session - exactly the
+  // lie that matters on a shared machine. Staying visibly signed in and throwing
+  // lets the caller say so and lets the diver try again.
   const signOut = useCallback(async () => {
     try {
       await authAPI.signOut();
     } catch (error) {
       console.error("Sign out error:", error);
-    } finally {
-      setUser(null);
+      throw error;
     }
+
+    setUser(null);
+    // Same reasoning as the reload, for the one piece of the session that isn't
+    // in memory. A destination only survives to here if a link was requested and
+    // never clicked (signing in with Google instead, say), and now that it's in
+    // `localStorage` it would otherwise outlive both the sign-out and the
+    // browser - leaving a `/dives/<uuid>` legible on a shared machine for a day.
+    rememberPostAuthRedirect(undefined);
+    hardNavigate("/");
   }, []);
 
   const refreshUser = useCallback(async () => {

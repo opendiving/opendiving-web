@@ -1972,7 +1972,7 @@ this code:
 - **`next` is sanitized, never trusted.** `sanitizeRedirectPath` rejects anything that isn't a plain
   `/`-relative path (absolute URLs, `//host`, `/\host`), so a crafted link can't turn our own
   sign-in page into an open redirect. It's applied on the way in _and_ on the way out, since the
-  value also survives in `sessionStorage` between those two points.
+  value also survives in `localStorage` between those two points.
 - **The guard reads `window.location`, not `usePathname()`/`useSearchParams()`.**
   `useSearchParams()` inside `useAuthGuard` would force every one of the ~15 pages that call it to
   grow its own `Suspense` boundary or fail `next build`. The redirect happens in an effect, where
@@ -1982,17 +1982,147 @@ this code:
 - **The email flow needs storage; Google doesn't.** Google sign-in never leaves the tab, so the
   destination is just a prop (`AuthForm` -> `GoogleAuthButton`). The magic link leaves the app
   entirely and comes back on `/auth/verify`, which has no idea what the visitor originally wanted -
-  so `AuthForm` stashes it in `sessionStorage` when requesting the link and `/auth/verify` consumes
-  it. `rememberPostAuthRedirect` is called on _every_ link request, including with no destination,
+  so `AuthForm` stashes it when requesting the link and `/auth/verify` consumes it.
+  `rememberPostAuthRedirect` is called on _every_ link request, including with no destination,
   precisely so it clears a stale one; `consumePostAuthRedirect` removes the key as it reads it,
-  including on the onboarding branch. Without both of those, a destination abandoned earlier in the
-  tab could silently hijack an unrelated later sign-in. If the link is opened in another browser the
-  value simply isn't there and the visitor lands on `/dashboard`, which is the intended fallback,
-  not a failure.
+  including on the onboarding branch. Without both of those, a destination abandoned earlier could
+  silently hijack an unrelated later sign-in. If the link is opened in another browser the value
+  simply isn't there and the visitor lands on `/dashboard`, which is the intended fallback, not a
+  failure.
+
+#### That storage has to be `localStorage`, and it carries an expiry
+
+It was `sessionStorage` first, on the reasoning that a tab-scoped store is the tighter choice for a
+value the tab itself put there. That reasoning skipped a step: `sessionStorage` is copied into a new
+browsing context only from an _opener_, and a magic link is clicked in a mail client. A desktop mail
+app hands the URL to the browser cold; webmail opens it with `noopener`. Either way `/auth/verify`
+runs in a context whose `sessionStorage` is empty, so the destination was lost in the ordinary case
+and `?next=` only ever worked for Google sign-in and for the contrived same-tab paste. Nothing about
+it was visible in a test either, because jsdom hands one `sessionStorage` to the whole file.
+
+`localStorage` is shared across the browser's tabs, which is exactly the hop that needs covering.
+Two things follow from it outliving the tab, and both are in `lib/auth-redirect.ts`:
+
+- **The entry expires**, stored as `{ path, expiresAt }`. The tempting value was the link's own life
+  (`MAGIC_LINK_TOKEN_EXPIRE_MINUTES`), but that is read from the environment on the API side and 30
+  minutes is only its default - matching it by hand means an operator who raises it to an hour
+  silently reintroduces this very bug for every sign-in in the back half of the window. The
+  asymmetry settles it: too short breaks the feature, too long costs essentially nothing, because a
+  destination can only be _read_ by `/auth/verify`, which needs a live token, which needs a link
+  request, which re-stamps the entry anyway. So it's a day - a backstop against a path living in
+  storage forever, not a mirror of anything.
+- **Anything unreadable is treated as absent, and cleared.** `consumePostAuthRedirect` removes the
+  key before it inspects the value, so a stale, expired or non-JSON entry - the previous
+  implementation's bare path, say - clears itself out instead of being re-rejected on every
+  subsequent sign-in.
+
+Requesting a link stamps the entry, and so does **resending** one. The reason isn't that the
+destination would otherwise expire first - at a day against a 30-minute link the diver would have to
+sit on the "Check your email" screen for the better part of a day for that to bite. It's that the
+stored expiry is deliberately blind to the backend's link lifetime, per the point above, so
+re-stamping on every mint is the only thing that keeps the destination alive for exactly as long as
+whatever link the diver is actually holding.
+
+Two consequences of an origin-wide store that a tab-scoped one didn't have, both acceptable, neither
+obvious:
+
+- **Concurrent link requests share one slot.** Ask for a link from `/signin?next=/dives/abc` in one
+  tab and then from the landing page in another, and the second request clears the first's
+  destination (`rememberPostAuthRedirect(undefined)`); the first tab's link then lands on
+  `/dashboard`. The reverse leaks the other way - the second tab's destination is what the first
+  tab's link honours. Both outcomes are a sanitized same-origin path or the default, so this is a UX
+  edge and not a security one, and either way it beats the old behavior, which lost the destination
+  in _every_ case.
+- **Signing out clears it.** A leftover only exists if a link was requested and never clicked
+  (signing in with Google instead, say), but `localStorage` would keep it for a day, across sign-out
+  and across closing the browser - a legible `/dives/<uuid>` on a shared machine. So `signOut` calls
+  `rememberPostAuthRedirect(undefined)`, on the same reasoning as the reload next to it.
+
+This is not in tension with "Access token lives in memory only, never in `localStorage`" above. What
+gets written here is a path the visitor's own browser was already pointed at, it is sanitized on the
+way in and again on the way out, and it grants nothing. It's the same storage the three
+remembered-view modules (`gas-use-view.ts` and friends) already use, for a related reason.
+
+All four of those suites need a `localStorage` of their own, because under this runner Node's own
+experimental global shadows jsdom's and `window.localStorage` reads back as `undefined`. The stub
+now lives once in `test/memory-storage.ts` and each suite installs it in its own `beforeEach`. Not
+auto-installed in `vitest.setup.ts`: sharing the _helper_ keeps the fresh-store-per-test property,
+whereas sharing an _instance_ would hand all 44 test files one `Map` that nothing resets, and the
+first component test to render a card that remembers its view would start leaking that view into its
+neighbours.
 
 `useAuthGuard` also switched from `router.push` to `router.replace`: the page it's bouncing away
 from can't render while signed out, so leaving it in the history stack only gives the back button
 somewhere to land that immediately bounces again.
+
+### Signing out lands on `/`, and gets there with a page load
+
+The guard above has one case it gets wrong on its own: signing out. `signOut` drops the user, every
+mounted page's `useAuthGuard` sees an unauthenticated visitor, and the diver who just asked to leave
+`/dives` is shown `/signin?next=%2Fdives` - a sign-in form asking them straight back into the page
+they were leaving. So `AuthContext.signOut` names the destination itself.
+
+It has to be a document navigation (`hardNavigate("/")`), not `router.replace("/")`. A client-side
+navigation started from `signOut` _loses_ to the guard: the awaiting caller resumes on a microtask
+while React's re-render - and therefore the guard's effect - is scheduled behind it, so the guard's
+`replace` runs second and wins. A page load isn't something a later `history.replaceState` can
+cancel, which makes the destination a decision rather than a race. It also takes everything the
+session left in memory with it (the access token, fetched dives, blob URLs for private card images)
+instead of leaving it in a signed-out tab.
+
+Because `Header` is on public pages too, signing out from `/contact` or `/privacy` now reloads to
+`/` rather than leaving the reader where they were. That's intended - the diver asked to leave, and
+one destination for one action beats a rule about which page they happened to be on.
+
+#### A failed logout must take none of that
+
+The whole scheme above is safe only when the _server_ ended the session, and it is worth being
+precise about why, because the obvious "clean up locally regardless" version of `signOut` is
+actively harmful. `POST /auth/logout` is the only thing that blacklists the token pair and deletes
+the refresh cookie. If it fails - offline, DNS, a 5xx before the handler runs - that cookie is still
+live, and a page load hands it straight to `AuthContext`'s bootstrap: `refreshAccessToken()`
+succeeds off the cookie, `getCurrentUser()` succeeds, and `/` (which gates on
+`useRedirectIfAuthenticated`) forwards to `/dashboard`. The diver clicks Sign Out and lands on their
+dashboard, signed in, with nothing said. Reproduced by failing just the logout XHR in the browser;
+it is deterministic, not a race.
+
+So `signOut` navigates only on success, and on failure changes nothing and rejects.
+
+Not clearing the user in that case is the part that looks backwards, and was the other way round
+before. The old reasoning was that "the local session is gone either way" since `authAPI.signOut`
+drops the in-memory access token in a `finally`. It isn't gone: the response interceptor rebuilds it
+from the surviving cookie on the very next 401. "Signed out" would be a display state painted over a
+working session - the precise lie that matters on a shared machine, where someone walks away
+believing they're out. Staying visibly signed in is honest, and `Header` turns the rejection into a
+"Couldn't sign you out" toast so there's something to act on.
+
+The guard's effect does still run, though, which raises two separate questions. Both were measured
+rather than argued, by patching `fetch`, `history.replaceState` and a `MutationObserver` onto
+`/dives` and stashing what they saw in `localStorage` so it survived the unload.
+
+**Does the `replace` rewrite the history entry being left behind**, putting `/signin?next=%2Fdives`
+one Back press under the landing page? No. No `replaceState` runs at all, and after pressing Back
+`performance.getEntriesByType("navigation")[0].name` reports `/dives` - with and without a guard
+that stands down. Back _does_ arrive at sign-in, but by reloading `/dives` while signed out and
+being bounced on its own merits, exactly as typing that URL would be. Nothing to fix, and worth
+knowing before anyone tries.
+
+**Does anything happen at all, then?** Yes, and this is why `hardNavigate` raises `isLeavingPage()`
+and `useAuthGuard` returns early on it. Without the check the guard opens a transition and gets as
+far as an RSC request for `/signin?next=%2Fdives&_rsc=…` before the document dies. Nothing paints on
+localhost, where a full document load beats it comfortably - but that request is the first half of
+the flash, and a small RSC payload racing a full page load over a slow link is not a race worth
+leaving open for a route the diver will never see. The flag is module state, not React state:
+nothing needs to re-render on it, it's only read from an effect that runs after it's set, and it's
+never unset because the document is being replaced.
+
+`hardNavigate` living in `lib/navigation.ts` also makes this testable at all: `window.location` is
+unforgeable, so a test can neither spy on `assign` nor replace the object, and calling it for real
+under jsdom just logs "Not implemented: navigation". The wrapper is a module a test can mock, which
+is what `AuthContext.test.tsx` does.
+
+The `Header` no longer wraps the call: `signOut` already handles a failing logout and picks its own
+destination, so the old `try`/`catch` there had nothing left to catch.
 
 ## The dashboard shows only what the app actually tracks
 

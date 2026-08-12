@@ -4,6 +4,7 @@ import {
   readStoredGasUseView,
   writeGasUseView,
 } from "@/lib/gas-use-view";
+import { memoryStorage, useStorage } from "@/test/memory-storage";
 
 // `resolveAnchor` moved to `lib/chart-period.ts` when the activity card wanted it
 // too; its tests moved with it, to `chart-period.test.ts`.
@@ -16,33 +17,8 @@ function readGasUseView() {
 const KEY = "opendiving:gas-use-view";
 
 // `window.localStorage` is installed per test rather than used as jsdom provides
-// it, because under this runner jsdom doesn't provide it at all: Node's own
-// experimental `localStorage` global (gated behind `--localstorage-file`)
-// shadows it, so `window.localStorage` is `undefined` here while
-// `sessionStorage` is fine - which is why `auth-redirect.test.ts` needs none of
-// this. A stub also makes these tests independent of that quirk being fixed.
-function memoryStorage(): Storage {
-  const store = new Map<string, string>();
-
-  return {
-    get length() {
-      return store.size;
-    },
-    clear: () => store.clear(),
-    getItem: (key) => store.get(key) ?? null,
-    key: (index) => [...store.keys()][index] ?? null,
-    removeItem: (key) => void store.delete(key),
-    setItem: (key, value) => void store.set(key, value),
-  };
-}
-
-function useStorage(storage: Storage | undefined) {
-  Object.defineProperty(window, "localStorage", {
-    value: storage,
-    configurable: true,
-  });
-}
-
+// it - see `test/memory-storage.ts` for why it has to be, and why the stub isn't
+// installed globally.
 describe("readStoredGasUseView / writeGasUseView", () => {
   beforeEach(() => {
     useStorage(memoryStorage());

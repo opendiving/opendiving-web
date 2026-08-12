@@ -4,6 +4,7 @@ import {
   readStoredDiveActivityView,
   writeDiveActivityView,
 } from "@/lib/dive-activity-view";
+import { memoryStorage, useStorage } from "@/test/memory-storage";
 
 // The anchor is the start of a day the diver had dives on - what the card stores
 // and what `resolveAnchor` (in `chart-period.ts`, tested there) checks back
@@ -17,32 +18,8 @@ function readDiveActivityView() {
 
 const KEY = "opendiving:dive-activity-view";
 
-// Same stub, for the same reason, as `gas-use-view.test.ts`: under this runner
-// jsdom doesn't provide `window.localStorage` at all - Node's own experimental
-// global shadows it - so the tests install their own rather than depend on that
-// quirk staying fixed either way.
-function memoryStorage(): Storage {
-  const store = new Map<string, string>();
-
-  return {
-    get length() {
-      return store.size;
-    },
-    clear: () => store.clear(),
-    getItem: (key) => store.get(key) ?? null,
-    key: (index) => [...store.keys()][index] ?? null,
-    removeItem: (key) => void store.delete(key),
-    setItem: (key, value) => void store.set(key, value),
-  };
-}
-
-function useStorage(storage: Storage | undefined) {
-  Object.defineProperty(window, "localStorage", {
-    value: storage,
-    configurable: true,
-  });
-}
-
+// `window.localStorage` is installed per test rather than used as jsdom provides
+// it - see `test/memory-storage.ts` for why.
 describe("readStoredDiveActivityView / writeDiveActivityView", () => {
   beforeEach(() => {
     useStorage(memoryStorage());
