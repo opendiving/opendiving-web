@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import type { DiveProfile } from "@/lib/api/dives";
 import {
   MIN_GAP_SECONDS,
-  buildAreaPath,
   elapsedTicks,
   formatChannelValue,
   gapThreshold,
@@ -43,7 +42,9 @@ describe("toChannelSeries", () => {
   });
 
   it("returns null for a channel the profile doesn't carry", () => {
-    expect(toChannelSeries(profile({ temperature: null }), "temperature")).toBeNull();
+    expect(
+      toChannelSeries(profile({ temperature: null }), "temperature"),
+    ).toBeNull();
   });
 
   it("returns null for an empty channel rather than an empty series", () => {
@@ -242,7 +243,9 @@ describe("tooltipVerticalAnchor", () => {
     // `y: BOTTOM` with `-100%` puts the card's *bottom* on the plot's bottom;
     // `y: TOP` with a positive offset puts its *top* on the plot's top. Both are
     // inside for any card height, which is the whole point.
-    expect(tooltipVerticalAnchor(TOP, TOP, BOTTOM).translateY).toContain("-100%");
+    expect(tooltipVerticalAnchor(TOP, TOP, BOTTOM).translateY).toContain(
+      "-100%",
+    );
     expect(tooltipVerticalAnchor(BOTTOM, TOP, BOTTOM).translateY).not.toContain(
       "-100%",
     );
@@ -250,25 +253,6 @@ describe("tooltipVerticalAnchor", () => {
 
   it("survives a zero-height plot rather than dividing by zero", () => {
     expect(tooltipVerticalAnchor(14, 14, 14).y).toBe(14);
-  });
-});
-
-describe("buildAreaPath", () => {
-  it("closes the shape along the baseline", () => {
-    const path = buildAreaPath(
-      [
-        { x: 10, y: 20 },
-        { x: 20, y: 40 },
-        { x: 30, y: 30 },
-      ],
-      100,
-    );
-
-    expect(path).toBe("M10,20 L20,40 L30,30 L30,100 L10,100 Z");
-  });
-
-  it("is empty for an empty series, rather than a stray `Z`", () => {
-    expect(buildAreaPath([], 100)).toBe("");
   });
 });
 

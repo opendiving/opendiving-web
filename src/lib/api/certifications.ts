@@ -1,13 +1,16 @@
-import { apiClient } from "./client";
+import { apiClient, fetchAllPages } from "./client";
+import type { PaginatedResponse } from "./client";
 
-// The training agency that issued a certification. Mirrors the API's
-// `CertificationAgency` enum - a closed vocabulary rather than free text, so the
-// same agency is named the same way across a diver's whole list and the UI can
-// badge and group by it.
-//
-// Declared roughly by how many divers hold cards from each rather than
-// alphabetically: `CERTIFICATION_AGENCIES` drives the picker's option order, and
-// most people reach for the first two. Keep in sync with the API.
+/**
+ * The training agency that issued a certification. Mirrors the API's
+ * `CertificationAgency` enum - a closed vocabulary rather than free text, so the
+ * same agency is named the same way across a diver's whole list and the UI can
+ * badge and group by it.
+ *
+ * Declared roughly by how many divers hold cards from each rather than
+ * alphabetically: `CERTIFICATION_AGENCIES` drives the picker's option order, and
+ * most people reach for the first two. Keep in sync with the API.
+ */
 export const CERTIFICATION_AGENCIES = [
   "padi",
   "ssi",
@@ -46,9 +49,11 @@ const CERTIFICATION_AGENCY_LABELS: Record<CertificationAgency, string> = {
   other: "Other",
 };
 
-// Label for an agency, tolerating a value this build doesn't know about (an API
-// that has grown a new agency shouldn't render as a blank cell). For `other` the
-// diver's own `agency_other` is the useful label, so callers pass it in.
+/**
+ * Label for an agency, tolerating a value this build doesn't know about (an API
+ * that has grown a new agency shouldn't render as a blank cell). For `other` the
+ * diver's own `agency_other` is the useful label, so callers pass it in.
+ */
 export function certificationAgencyLabel(
   agency: string | null | undefined,
   agencyOther?: string | null,
@@ -58,18 +63,23 @@ export function certificationAgencyLabel(
   return CERTIFICATION_AGENCY_LABELS[agency as CertificationAgency] ?? agency;
 }
 
-// Which face of the physical card a stored file shows.
+/**
+ * Which face of the physical card a stored file shows.
+ */
 export const CERTIFICATION_SIDES = ["front", "back"] as const;
 export type CertificationSide = (typeof CERTIFICATION_SIDES)[number];
 
+/** Display names for each card side, so the UI never renders the raw enum value. */
 export const CERTIFICATION_SIDE_LABELS: Record<CertificationSide, string> = {
   front: "Front",
   back: "Back",
 };
 
-// What the API accepts for a card image, mirrored here so the file picker can
-// filter and so an obviously-wrong file is rejected before it is uploaded. The
-// API sniffs the actual bytes regardless - this is convenience, not validation.
+/**
+ * What the API accepts for a card image, mirrored here so the file picker can
+ * filter and so an obviously-wrong file is rejected before it is uploaded. The
+ * API sniffs the actual bytes regardless - this is convenience, not validation.
+ */
 export const CERTIFICATION_FILE_ACCEPT =
   "image/jpeg,image/png,image/webp,application/pdf";
 export const MAX_CERTIFICATION_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
@@ -124,17 +134,34 @@ export interface CertificationCreate {
   notes?: string;
 }
 
-export type CertificationUpdate = Partial<Omit<CertificationCreate, "user_uuid">>;
+export type CertificationUpdate = Partial<
+  Omit<CertificationCreate, "user_uuid">
+>;
 
-export interface PaginatedCertificationsResponse {
-  data: Certification[];
-  total_count: number;
-  has_more: boolean;
-  page: number;
-  items_per_page: number;
+export type PaginatedCertificationsResponse = PaginatedResponse<Certification>;
+
+// One row of `GET /certifications-expiring`: just enough to render a dashboard line.
+// Deliberately not a trimmed `Certification` - it carries no `files`, and `expires_on`
+// is required here because the endpoint only returns cards that have one.
+export interface CertificationExpiringEntry {
+  uuid: string;
+  agency: CertificationAgency;
+  agency_other?: string | null;
+  name: string;
+  expires_on: string;
 }
 
-// Find one side's stored file in a certification's embedded metadata.
+export interface CertificationExpiringResponse {
+  data: CertificationExpiringEntry[];
+  // True when the API's row cap (`EXPIRING_OVERVIEW_LIMIT`, 200) was hit. Optional
+  // for the same reason as `GearServiceDueResponse.truncated` - a response cached
+  // before the field existed must read as complete, not as a false alarm.
+  truncated?: boolean;
+}
+
+/**
+ * Find one side's stored file in a certification's embedded metadata.
+ */
 export function certificationFile(
   certification: Certification,
   side: CertificationSide,
@@ -142,6 +169,12 @@ export function certificationFile(
   return certification.files?.find((file) => file.side === side);
 }
 
+/**
+ * Certification CRUD, plus upload/download of the card images.
+ *
+ * The image endpoints are owner-only and require an `Authorization` header, so a stored
+ * card cannot be used as a plain `<img src>` - `useAuthedBlobUrl` is what bridges that.
+ */
 export const certificationsAPI = {
   // Create a certification. `data.user_uuid` must be the signed-in user's uuid.
   // Card images are attached afterwards with `uploadCertificationFile`.
@@ -164,6 +197,18 @@ export const certificationsAPI = {
 
   async getCertification(certificationUuid: string): Promise<Certification> {
     const response = await apiClient.get(`/certification/${certificationUuid}`);
+    return response.data;
+  },
+
+  // Every certification the user owns that carries an expiry date, soonest first.
+  // The certification twin of `gearServiceAPI.getDue`, and like it takes no date
+  // horizon: a server-side "expiring within N days" filter would bake today's date
+  // into the cached response and go wrong at midnight, so the client buckets these
+  // itself (see `certificationRenewals`).
+  async getExpiring(userUuid: string): Promise<CertificationExpiringResponse> {
+    const response = await apiClient.get(`/certifications-expiring`, {
+      params: { user_uuid: userUuid },
+    });
     return response.data;
   },
 
@@ -233,3 +278,26 @@ export const certificationsAPI = {
     return response.data;
   },
 };
+
+/**
+ * Fetches every page of a user's certifications.
+ *
+ * The dashboard's renewal card used to be the reason this existed; it now asks
+ * `getExpiring` instead, which is one request rather than a page walk. Kept for any
+ * caller that genuinely needs whole `Certification` records rather than the four
+ * fields the renewals card renders.
+ */
+export async function fetchAllCertifications(
+  userUuid: string,
+  signal?: AbortSignal,
+): Promise<Certification[]> {
+  return fetchAllPages(
+    (page, itemsPerPage) =>
+      certificationsAPI.getCertifications(userUuid, page, itemsPerPage),
+    {
+      signal,
+      label: "certifications",
+      keyOf: (certification) => certification.uuid,
+    },
+  );
+}

@@ -1,78 +1,121 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { CreatableCombobox } from "@/components/ui/creatable-combobox";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  ComboboxSearchResult,
+  CreatableCombobox,
+} from "@/components/ui/creatable-combobox";
+import type { FormControlSlotProps } from "@/components/ui/form";
 import { tripsAPI, Trip } from "@/lib/api/trips";
-import { NewTripDialog } from "@/components/dives/new-trip-dialog";
+import { TripDialog } from "@/components/trips/trip-dialog";
 
-export interface TripComboboxProps {
+// How many trips the dropdown asks for at a time. Enough to scroll through
+// before typing, far short of the API's 100 cap.
+const TRIPS_PER_SEARCH = 25;
+
+export interface TripComboboxProps extends FormControlSlotProps {
   userId: string;
-  value?: string;
-  onChange: (tripId: string | undefined) => void;
+  value?: string | null;
+  // `null`, not `undefined`, for "no trip" - and the distinction is load-bearing
+  // on the edit form, which builds its PATCH body by skipping fields that are
+  // `undefined`. Clearing the picker has to be a value the diver *chose*, not an
+  // absent one, or the trip is dropped from the request and silently survives
+  // the save. `CreatableCombobox` speaks `undefined`, so it's normalized here
+  // rather than changing that shared component for its other consumers.
+  onChange: (tripId: string | null) => void;
   disabled?: boolean;
 }
 
+// The dropdown searches server-side rather than fetching the user's whole trip
+// list - see DECISIONS.md. It used to request a single page of 100 and drop the
+// rest silently, so a 101st trip simply couldn't be selected.
 export function TripCombobox({
   userId,
   value,
   onChange,
   disabled,
+  ...slotProps
 }: TripComboboxProps) {
-  const [trips, setTrips] = useState<Trip[]>([]);
-  const [isLoadingTrips, setIsLoadingTrips] = useState(true);
   const [showNewDialog, setShowNewDialog] = useState(false);
+  // Names for every trip this picker has seen - its own search results, whatever
+  // it created, and a lookup for a `value` that arrived from the form. Without
+  // it the input would sit empty on a dive that already has a trip, since the
+  // browser no longer holds the full list to look the name up in.
+  const [names, setNames] = useState<Record<string, string>>({});
+  // Fired-for uuids, so a failed lookup isn't retried on every render.
+  const requestedRef = useRef<Set<string>>(new Set());
 
+  const remember = useCallback(
+    (trip: Pick<Trip, "uuid" | "name">) =>
+      setNames((prev) => ({ ...prev, [trip.uuid]: trip.name })),
+    [],
+  );
+
+  // No cancellation flag on this one, deliberately. `requestedRef` means the
+  // request fires exactly once per uuid, so under StrictMode's mount/unmount/
+  // remount the *only* in-flight lookup belongs to the discarded first mount -
+  // ignoring its result on cleanup would drop the name for good. Writing to a
+  // uuid-keyed map is idempotent, so a late arrival is always safe to apply.
   useEffect(() => {
-    let cancelled = false;
+    if (!value || names[value] || requestedRef.current.has(value)) return;
+    requestedRef.current.add(value);
 
-    const fetchTrips = async () => {
-      try {
-        setIsLoadingTrips(true);
-        const response = await tripsAPI.getTrips(userId, 1, 100);
-        if (!cancelled) setTrips(response.data);
-      } catch (error) {
-        console.error("Failed to fetch trips:", error);
-      } finally {
-        if (!cancelled) setIsLoadingTrips(false);
-      }
-    };
+    tripsAPI
+      .getTrip(value)
+      .then(remember)
+      .catch((error) => console.error("Failed to fetch trip:", error));
+  }, [value, names, remember]);
 
-    if (userId) fetchTrips();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [userId]);
+  const searchTrips = useCallback(
+    async (query: string): Promise<ComboboxSearchResult> => {
+      const response = await tripsAPI.getTrips(
+        userId,
+        1,
+        TRIPS_PER_SEARCH,
+        query,
+      );
+      response.data.forEach(remember);
+      return {
+        // Trips have a `location` too, but unlike dive sites it isn't shown
+        // here - mapped to a bare `{id, name}` so the hint slot stays empty.
+        items: response.data.map((trip) => ({
+          id: trip.uuid,
+          name: trip.name,
+        })),
+        hasMore: response.has_more,
+      };
+    },
+    [userId, remember],
+  );
 
   const handleCreated = (newTrip: Trip) => {
-    setTrips((prev) => [...prev, newTrip]);
+    remember(newTrip);
     onChange(newTrip.uuid);
   };
-
-  // Trips have a `location` field too, but unlike dive sites it's not shown
-  // in this dropdown - map to bare `{id, name}` so `CreatableCombobox`'s
-  // optional location display (added for dive sites) doesn't pick it up.
-  const items = trips.map((trip) => ({ id: trip.uuid, name: trip.name }));
 
   return (
     <>
       <CreatableCombobox
-        items={items}
-        isLoading={isLoadingTrips}
-        value={value}
-        onChange={onChange}
+        {...slotProps}
+        onSearch={searchTrips}
+        value={value ?? undefined}
+        selectedItem={
+          value && names[value] ? { id: value, name: names[value] } : undefined
+        }
+        onChange={(tripId) => onChange(tripId ?? null)}
         disabled={disabled}
         placeholder="Select a trip..."
         noItemsLabel="No trips yet."
+        noMatchesLabel="No trips match."
         addNewLabel="Add trip..."
         onAddNew={() => setShowNewDialog(true)}
       />
 
-      <NewTripDialog
+      <TripDialog
         userId={userId}
         open={showNewDialog}
         onOpenChange={setShowNewDialog}
-        onCreated={handleCreated}
+        onSaved={handleCreated}
       />
     </>
   );

@@ -56,6 +56,41 @@ export function certificationExpiryLabel(
   return status === "expired" ? "Expired" : "Expiring soon";
 }
 
+// One row of the dashboard's renewals card: a certification worth chasing, its status,
+// and its expiry date already narrowed to a plain string - a flagged certification
+// always has one, since a missing date can't produce a status.
+export interface CertificationRenewal<T> {
+  certification: T;
+  status: CertificationExpiryStatus;
+  expiresOn: string;
+}
+
+// The certifications that need renewing, most urgent first.
+//
+// Generic over the certification shape so it can be tested against bare
+// `{ expires_on }` fixtures rather than whole API objects - the only field it reads.
+//
+// Sorting ascending by expiry date is all that's needed to put the expired ones on top:
+// they are precisely the ones whose dates are already behind us.
+export function certificationRenewals<T extends { expires_on?: string | null }>(
+  certifications: T[],
+  today: string = todayIsoDate(),
+): CertificationRenewal<T>[] {
+  return certifications
+    .flatMap((certification) => {
+      const status = certificationExpiryStatus(certification.expires_on, today);
+      if (!status) return [];
+      return [
+        {
+          certification,
+          status,
+          expiresOn: certification.expires_on as string,
+        },
+      ];
+    })
+    .sort((a, b) => a.expiresOn.localeCompare(b.expiresOn));
+}
+
 // Maps onto the `Badge` variants already in the design system, matching how
 // `serviceStatusBadgeVariant` handles the equivalent gear states.
 export function certificationExpiryBadgeVariant(

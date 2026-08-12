@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -55,34 +55,50 @@ export function DatePicker({
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
+    // The clear button can't live inside the trigger - a button inside a button
+    // is invalid - so it's layered over the trigger's right edge instead, the
+    // same treatment `creatable-combobox` gives its own clear control.
+    <div className="relative">
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={disabled}
+            className={cn(
+              "w-full justify-start text-left font-normal",
+              !value && "text-muted-foreground",
+              value && !disabled && "pr-9",
+            )}
+          >
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            {value || placeholder}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="single"
+            selected={selectedDate}
+            onSelect={handleSelectDate}
+            captionLayout="dropdown"
+            startMonth={new Date(1900, 0)}
+            endMonth={new Date(new Date().getFullYear() + 5, 11)}
+            classNames={{ caption_label: "hidden" }}
+            defaultMonth={selectedDate}
+            autoFocus
+          />
+        </PopoverContent>
+      </Popover>
+      {value && !disabled && (
+        <button
           type="button"
-          variant="outline"
-          disabled={disabled}
-          className={cn(
-            "w-full justify-start text-left font-normal",
-            !value && "text-muted-foreground",
-          )}
+          aria-label="Clear"
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          onClick={() => onChange("")}
         >
-          <CalendarIcon className="mr-2 h-4 w-4" />
-          {value || placeholder}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <Calendar
-          mode="single"
-          selected={selectedDate}
-          onSelect={handleSelectDate}
-          captionLayout="dropdown"
-          startMonth={new Date(1900, 0)}
-          endMonth={new Date(new Date().getFullYear() + 5, 11)}
-          classNames={{ caption_label: "hidden" }}
-          defaultMonth={selectedDate}
-          autoFocus
-        />
-      </PopoverContent>
-    </Popover>
+          <X className="h-3.5 w-3.5" />
+        </button>
+      )}
+    </div>
   );
 }

@@ -184,7 +184,7 @@ describe("serviceStatusLabel / serviceStatusBadgeVariant", () => {
 
   it("maps onto existing badge variants", () => {
     expect(serviceStatusBadgeVariant("overdue")).toBe("destructive");
-    expect(serviceStatusBadgeVariant("due_soon")).toBe("secondary");
+    expect(serviceStatusBadgeVariant("due_soon")).toBe("warning");
     expect(serviceStatusBadgeVariant("ok")).toBe("outline");
   });
 });
@@ -211,9 +211,9 @@ describe("formatServiceDue", () => {
     ).toBe("Due in 1 day");
   });
 
-  it("says due today rather than overdue by zero days", () => {
+  it("calls a schedule due today overdue, not merely due", () => {
     expect(formatServiceDue(schedule({ next_due_on: TODAY }), 0, TODAY)).toBe(
-      "Due today",
+      "Overdue (due today)",
     );
   });
 
@@ -253,6 +253,38 @@ describe("formatServiceDue", () => {
 
   it("handles a schedule with no thresholds at all", () => {
     expect(formatServiceDue(schedule(), 0, TODAY)).toBe("No due date");
+  });
+});
+
+// `serviceStatus` drives the badge and `formatServiceDue` the line of text under it,
+// and they are computed independently - which is how "Due today" ended up printed in
+// reassuring prose directly beneath a red "Overdue" badge. These pin the two together
+// so the pair can't drift apart again.
+describe("formatServiceDue agrees with serviceStatus", () => {
+  const cases: { name: string; schedule: GearServiceScheduleSummary }[] = [
+    { name: "due today", schedule: schedule({ next_due_on: TODAY }) },
+    {
+      name: "one day overdue",
+      schedule: schedule({ next_due_on: "2026-08-09" }),
+    },
+    {
+      name: "out of dives exactly",
+      schedule: schedule({ next_due_at_dive_count: 140 }),
+    },
+  ];
+
+  for (const { name, schedule: s } of cases) {
+    it(`describes "${name}" as overdue in both the badge and the text`, () => {
+      const diveCount = s.next_due_at_dive_count ?? 0;
+      expect(serviceStatus(s, diveCount, TODAY)).toBe("overdue");
+      expect(formatServiceDue(s, diveCount, TODAY)).toMatch(/^Overdue/);
+    });
+  }
+
+  it("does not call anything still in the future overdue", () => {
+    const s = schedule({ next_due_on: "2026-08-11" });
+    expect(serviceStatus(s, 0, TODAY)).not.toBe("overdue");
+    expect(formatServiceDue(s, 0, TODAY)).not.toMatch(/Overdue/);
   });
 });
 

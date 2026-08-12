@@ -8,6 +8,7 @@ import {
   CertificationSide,
 } from "@/lib/api/certifications";
 import { useAuthedBlobUrl } from "@/hooks/useAuthedBlobUrl";
+import { getApiErrorMessage } from "@/lib/api/error";
 import { certificationFileVersion } from "@/lib/certification";
 import { cn } from "@/lib/utils";
 
@@ -59,7 +60,7 @@ export function CertificationCardImage({
     );
   }, [certificationUuid, side, version]);
 
-  const { url, isLoading, hasError } = useAuthedBlobUrl(
+  const { url, isLoading, hasError, error } = useAuthedBlobUrl(
     file && !isPdf ? fetchBlob : null,
   );
 
@@ -100,10 +101,21 @@ export function CertificationCardImage({
   }
 
   if (hasError || !url) {
+    // The API's own wording where it has one ("No front image for this
+    // certification"), which is far more actionable than "couldn't load" - the
+    // response interceptor unwraps the blob-wrapped error body so this reads as
+    // a normal JSON error. Falls back for the network-failure case, which has no
+    // body at all.
+    const message = getApiErrorMessage(error, "Couldn't load image");
     return (
-      <div className={cn(frame, "flex-col gap-1 text-muted-foreground")}>
-        <ImageOff className={compact ? "h-4 w-4" : "h-6 w-6"} />
-        {!compact && <span className="text-xs">Couldn&apos;t load image</span>}
+      <div
+        className={cn(frame, "flex-col gap-1 px-2 text-muted-foreground")}
+        title={message}
+      >
+        <ImageOff className={cn("shrink-0", compact ? "h-4 w-4" : "h-6 w-6")} />
+        {!compact && (
+          <span className="line-clamp-2 text-center text-xs">{message}</span>
+        )}
       </div>
     );
   }

@@ -1,12 +1,20 @@
 "use client";
 
 import { Control, FieldValues, Path } from "react-hook-form";
-import { Clock, Gauge, Thermometer, Eye, Weight } from "lucide-react";
+import {
+  ArrowDownToLine,
+  ChevronsDownUp,
+  Clock,
+  Eye,
+  Thermometer,
+  Weight,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { DiveStartTimeField } from "@/components/dives/dive-start-time-field";
 import {
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -20,6 +28,8 @@ import { TripCombobox } from "@/components/dives/trip-combobox";
 import { DiveSiteMultiSelect } from "@/components/dives/dive-site-multi-select";
 import { DiveGearField } from "@/components/gear/dive-gear-field";
 import { DiveMixtureInput } from "@/lib/validations/dive";
+import { DiveSiteSummary } from "@/lib/api/dives";
+import { GearItemSummary } from "@/lib/api/gear";
 
 // The field shape shared by both `DiveCreateInput` and `DiveUpdateInput`
 // (see `lib/validations/dive.ts`): the create schema's fields, all optional
@@ -42,7 +52,9 @@ export interface DiveFormValues extends FieldValues {
   bottom_temperature?: number | null;
   visibility?: number | null;
   weight?: number | null;
-  trip_uuid?: string;
+  // `null` means "no trip", and is distinct from `undefined` ("field not
+  // touched") on the edit form - see `DiveUpdate.trip_uuid`.
+  trip_uuid?: string | null;
   dive_site_uuids?: string[];
   gear_item_uuids?: string[];
   notes?: string;
@@ -64,6 +76,25 @@ export interface DiveFormFieldsProps<TFieldValues extends DiveFormValues> {
   // `DiveFileImport` - see `MixtureFieldArray`'s own doc comment for why this
   // can't just be created internally by `MixtureFields`.
   mixtureFieldArray: MixtureFieldArray;
+  // The dive's existing sites, when editing. The site picker no longer loads
+  // the user's whole catalogue, so it can't look a selected uuid's name up
+  // locally - passing the ones already on the record saves it a request each.
+  knownDiveSites?: DiveSiteSummary[];
+  // Same idea for gear: `Dive.gear_items` already carries what a picked row
+  // renders, so the picker needn't fetch each item back by uuid.
+  knownGearItems?: GearItemSummary[];
+  // A note shown under the dive number, but only while the field still holds
+  // `forValue`. Carried as a value rather than a ready-made string so the
+  // "still showing it?" check can happen inside the field's own render, where
+  // the current value is already reactive - the alternative, a `form.watch` in
+  // the page, opts that whole component out of compiler memoization.
+  //
+  // Currently only the create form sets it, to say the suggested number is
+  // already in use (see `useSuggestedDiveNumber`). A note rather than a
+  // validation error on purpose: duplicates are a normal state while
+  // back-filling a log, reconciled later with Renumber, so this must not block
+  // a save.
+  diveNumberNotice?: { forValue: number; message: string } | null;
 }
 
 export function DiveFormFields<TFieldValues extends DiveFormValues>({
@@ -71,6 +102,9 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
   mode,
   userId,
   mixtureFieldArray,
+  knownDiveSites,
+  knownGearItems,
+  diveNumberNotice,
 }: DiveFormFieldsProps<TFieldValues>) {
   const required = mode === "create";
   const requiredMark = required ? " *" : "";
@@ -84,19 +118,31 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
           name={"dive_number" as Path<TFieldValues>}
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Dive Number{requiredMark}</FormLabel>
+              <FormLabel>Dive number{requiredMark}</FormLabel>
               <FormControl>
                 <Input
                   type="number"
                   min="1"
                   {...field}
-                  onChange={(e) =>
-                    field.onChange(
-                      parseInt(e.target.value) || (required ? 1 : undefined),
-                    )
-                  }
+                  value={field.value ?? ""}
+                  onChange={(e) => {
+                    // `parseInt(...) || 1` looked equivalent and wasn't: `||`
+                    // treats an emptied box (NaN) and a typed 0 alike, so
+                    // clearing the field instantly rewrote it to 1. That write
+                    // also marked the field dirty, and `useSuggestedDiveNumber`
+                    // reads `isDirty` as its permanent "the diver chose a
+                    // number" latch - so one accidental clear stopped the
+                    // number following the date for the rest of the form's
+                    // life, including after a file import changed the date.
+                    // An emptied box must stay empty and let the schema speak.
+                    const parsed = parseInt(e.target.value, 10);
+                    field.onChange(Number.isNaN(parsed) ? undefined : parsed);
+                  }}
                 />
               </FormControl>
+              {diveNumberNotice && field.value === diveNumberNotice.forValue ? (
+                <FormDescription>{diveNumberNotice.message}</FormDescription>
+              ) : null}
               <FormMessage />
             </FormItem>
           )}
@@ -127,11 +173,12 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
         name={"dive_site_uuids" as Path<TFieldValues>}
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Dive Site(s)</FormLabel>
+            <FormLabel>Dive site(s)</FormLabel>
             <FormControl>
               <DiveSiteMultiSelect
                 userId={userId}
                 value={field.value ?? []}
+                knownSites={knownDiveSites}
                 onChange={field.onChange}
               />
             </FormControl>
@@ -146,7 +193,7 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
         name={"start_time" as Path<TFieldValues>}
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Start Time{requiredMark}</FormLabel>
+            <FormLabel>Start time{requiredMark}</FormLabel>
             <FormControl>
               <DiveStartTimeField
                 value={field.value}
@@ -164,17 +211,17 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
         render={({ field }) => (
           <FormItem>
             <FormLabel>Duration (MM:SS){requiredMark}</FormLabel>
-            <FormControl>
-              <div className="relative">
-                <Clock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+            <div className="relative">
+              <Clock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+              <FormControl>
                 <Input
                   type="text"
                   placeholder="e.g. 45 or 67:30"
                   className="pl-9"
                   {...field}
                 />
-              </div>
-            </FormControl>
+              </FormControl>
+            </div>
             <FormMessage />
           </FormItem>
         )}
@@ -187,10 +234,10 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
           name={"max_depth" as Path<TFieldValues>}
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Maximum Depth (m)</FormLabel>
-              <FormControl>
-                <div className="relative">
-                  <Gauge className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+              <FormLabel>Maximum depth (m)</FormLabel>
+              <div className="relative">
+                <ArrowDownToLine className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                <FormControl>
                   <Input
                     type="number"
                     step="0.01"
@@ -204,8 +251,8 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                       field.onChange(Number.isNaN(val) ? null : val);
                     }}
                   />
-                </div>
-              </FormControl>
+                </FormControl>
+              </div>
               <FormMessage />
             </FormItem>
           )}
@@ -216,10 +263,10 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
           name={"avg_depth" as Path<TFieldValues>}
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Average Depth (m)</FormLabel>
-              <FormControl>
-                <div className="relative">
-                  <Gauge className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+              <FormLabel>Average depth (m)</FormLabel>
+              <div className="relative">
+                <ChevronsDownUp className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                <FormControl>
                   <Input
                     type="number"
                     step="0.01"
@@ -233,8 +280,8 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                       field.onChange(Number.isNaN(val) ? null : val);
                     }}
                   />
-                </div>
-              </FormControl>
+                </FormControl>
+              </div>
               <FormMessage />
             </FormItem>
           )}
@@ -248,10 +295,10 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
           name={"bottom_temperature" as Path<TFieldValues>}
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Bottom Temperature (°C)</FormLabel>
-              <FormControl>
-                <div className="relative">
-                  <Thermometer className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+              <FormLabel>Bottom temperature (°C)</FormLabel>
+              <div className="relative">
+                <Thermometer className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                <FormControl>
                   <Input
                     type="number"
                     step="0.01"
@@ -268,8 +315,8 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                       );
                     }}
                   />
-                </div>
-              </FormControl>
+                </FormControl>
+              </div>
               <FormMessage />
             </FormItem>
           )}
@@ -281,9 +328,9 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
           render={({ field }) => (
             <FormItem>
               <FormLabel>Visibility (m)</FormLabel>
-              <FormControl>
-                <div className="relative">
-                  <Eye className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+              <div className="relative">
+                <Eye className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                <FormControl>
                   <Input
                     type="number"
                     step="1"
@@ -297,8 +344,8 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                       field.onChange(Number.isNaN(val) ? null : val);
                     }}
                   />
-                </div>
-              </FormControl>
+                </FormControl>
+              </div>
               <FormMessage />
             </FormItem>
           )}
@@ -335,6 +382,7 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                     <DiveGearField
                       userId={userId}
                       value={field.value ?? []}
+                      knownItems={knownGearItems}
                       onChange={field.onChange}
                       weight={weightField.value ?? null}
                       onWeightChange={weightField.onChange}
@@ -348,9 +396,9 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormItem>
                 <FormLabel>Weight (kg)</FormLabel>
-                <FormControl>
-                  <div className="relative">
-                    <Weight className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                <div className="relative">
+                  <Weight className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                  <FormControl>
                     <Input
                       type="number"
                       step="0.5"
@@ -364,8 +412,8 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                         weightField.onChange(Number.isNaN(val) ? null : val);
                       }}
                     />
-                  </div>
-                </FormControl>
+                  </FormControl>
+                </div>
                 <FormMessage />
               </FormItem>
             </div>

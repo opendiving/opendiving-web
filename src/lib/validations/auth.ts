@@ -1,12 +1,12 @@
 import { z } from "zod";
 
 // The single "how do I get in?" form - just an email address, no password. See
-// `components/auth/AuthForm.tsx`.
+// `components/auth/auth-form.tsx`.
 export const emailAuthSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
 });
 
-// Profile completion (`components/auth/ProfileCompletionForm.tsx`) - shown once for
+// Profile completion (`components/auth/profile-completion-form.tsx`) - shown once for
 // a verified identity (email or Google) with no existing account. No password field:
 // identity was already proven by the email-magic-link or Google flow.
 export const profileCompletionSchema = z.object({

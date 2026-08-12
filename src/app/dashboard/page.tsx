@@ -1,232 +1,198 @@
 "use client";
 
+import { useEffect, useState, type ReactNode } from "react";
+import Link from "next/link";
+import {
+  AlertTriangle,
+  ArrowDownToLine,
+  Clock,
+  Plus,
+  Waves,
+} from "lucide-react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { RecentTripsCard } from "@/components/dives/recent-trips-card";
 import { GasUseCard } from "@/components/dives/gas-use-card";
 import { ServiceDueCard } from "@/components/gear/service-due-card";
+import { CertificationExpiryCard } from "@/components/certifications/certification-expiry-card";
+import { SetupChecklistCard } from "@/components/dashboard/setup-checklist-card";
 import { diveStatsAPI, UserDiveStats } from "@/lib/api/dive-stats";
+import { getApiErrorMessage } from "@/lib/api/error";
 import { formatDurationHoursMinutes } from "@/lib/date-time";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Users,
-  MapPin,
-  Fish,
-  Calendar,
-  Clock,
-  Plus,
-  TrendingUp,
-  Activity,
-} from "lucide-react";
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import { PageSpinner } from "@/components/ui/page-spinner";
 
+// One headline number. `value` is `null` only while the stats request is in flight,
+// and renders as a dash rather than a zero: "0 dives" is a statement about the
+// logbook, and showing it before the answer is known reads as one.
+function StatCard({
+  title,
+  icon,
+  value,
+  hint,
+}: {
+  title: string;
+  icon: ReactNode;
+  value: string | null;
+  hint: string;
+}) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        {icon}
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold">{value ?? "—"}</div>
+        <p className="text-xs text-muted-foreground">{hint}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+// The signed-in home page.
+//
+// Everything on it is derived from something the diver has actually logged, and the
+// three cards that can have nothing to say - gear service, certification renewals, the
+// setup checklist - return `null` rather than an empty tile. They are direct children
+// of the page's `space-y-6` stack for exactly that reason: a wrapper `<div>` around
+// them would leave its own gap behind on the days they render nothing.
+//
+// See DECISIONS.md ("The dashboard shows only what the app actually tracks") for what
+// used to be here and why it went.
 export default function DashboardPage() {
   const { user, isAuthenticated, isLoading } = useAuthGuard();
   const [stats, setStats] = useState<UserDiveStats | null>(null);
+  // A failed stats fetch used to only `console.error`, leaving all three tiles on
+  // "—" forever - indistinguishable from a request that never finished. There is no
+  // legitimate empty case to confuse it with: the API returns zeroed stats for a
+  // diver with no dives rather than a 404, so anything that lands here is genuinely
+  // exceptional and worth saying out loud.
+  const [statsError, setStatsError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     if (!user) return;
+    let cancelled = false;
 
     const fetchStats = async () => {
       try {
         const data = await diveStatsAPI.getDiveStats();
+        if (cancelled) return;
         setStats(data);
+        setStatsError(null);
       } catch (error) {
         console.error("Failed to fetch dive stats:", error);
+        if (cancelled) return;
+        setStatsError(
+          getApiErrorMessage(error, "Couldn't load your dive stats."),
+        );
       }
     };
 
     fetchStats();
-  }, [user]);
+    return () => {
+      cancelled = true;
+    };
+  }, [user, attempt]);
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <PageSpinner />;
   }
 
   if (!isAuthenticated || !user) {
     return null; // Will redirect to signin
   }
 
+  // Kept true while the stats are still loading, so the tiles and the chart hold their
+  // place instead of appearing a beat after everything else. Once the answer is in and
+  // it's zero, both are hidden: a row of zeroes and a chart of nothing say less to a
+  // diver with an empty logbook than the checklist and the "log your first dive"
+  // prompt directly below them already do.
+  //
+  // A failed fetch takes the same branch as "still loading" so the tiles keep their
+  // place, and the error card below explains why they are empty.
+  const hasDives = stats === null || stats.total_dives > 0;
+
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Welcome Section */}
-      <div className="mb-8">
-        <h2 className="text-3xl font-bold text-foreground mb-2">
-          Welcome back, {user.name}! 🤿
-        </h2>
-        <p className="text-muted-foreground">
-          Track your underwater adventures and connect with the diving community
-        </p>
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground mb-2">
+            Welcome back, {user.name}!
+          </h1>
+          <p className="text-muted-foreground">
+            Your logbook, your trips and your stats, at a glance
+          </p>
+        </div>
+        <Button asChild>
+          <Link href="/dives/new?from=/dashboard">
+            <Plus className="h-4 w-4 mr-2" />
+            Log a dive
+          </Link>
+        </Button>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Dives</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.total_dives ?? 0}</div>
-            <p className="text-xs text-muted-foreground">
-              Start logging your dives!
-            </p>
-          </CardContent>
-        </Card>
+      {/* Anything needing action comes first - a regulator that is out of service or a
+          rescue card that has lapsed matters more than how many dives are in the log.
+          Both render nothing on a normal day. */}
+      <ServiceDueCard userId={user.uuid} />
+      <CertificationExpiryCard userId={user.uuid} />
+      <SetupChecklistCard
+        userId={user.uuid}
+        totalDives={stats?.total_dives ?? null}
+      />
 
+      {statsError && (
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Max Depth</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.max_depth ?? 0}m</div>
-            <p className="text-xs text-muted-foreground">Personal best</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Time</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {formatDurationHoursMinutes(stats?.total_time ?? 0)}
+          <CardContent className="flex flex-wrap items-center justify-between gap-4 pt-6">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">{statsError}</p>
             </div>
-            <p className="text-xs text-muted-foreground">Underwater time</p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setAttempt((n) => n + 1)}
+            >
+              Try again
+            </Button>
           </CardContent>
         </Card>
+      )}
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Species Seen</CardTitle>
-            <Fish className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.species_seen ?? 0}</div>
-            <p className="text-xs text-muted-foreground">Marine life species</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Recent Dives & Trips */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Above the recent-dives list: it's the one thing here that says
-              something about how the diving is going rather than just what was
-              logged. */}
-          <GasUseCard />
-          <RecentDivesCard userId={user.uuid} />
-          <RecentTripsCard userId={user.uuid} />
+      {hasDives && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <StatCard
+            title="Total Dives"
+            icon={<Waves className="h-4 w-4 text-muted-foreground" />}
+            value={stats && String(stats.total_dives)}
+            hint="Logged in your logbook"
+          />
+          <StatCard
+            title="Max Depth"
+            icon={<ArrowDownToLine className="h-4 w-4 text-muted-foreground" />}
+            value={stats && `${Math.round(stats.max_depth * 100) / 100}m`}
+            hint="Personal best"
+          />
+          <StatCard
+            title="Total Time"
+            icon={<Clock className="h-4 w-4 text-muted-foreground" />}
+            value={stats && formatDurationHoursMinutes(stats.total_time)}
+            hint="Underwater"
+          />
         </div>
+      )}
 
-        {/* Quick Actions & Upcoming */}
-        <div className="space-y-6">
-          {/* Renders nothing at all when no gear needs attention, so this slot is
-              empty on a normal day rather than showing a permanent "all fine" tile. */}
-          <ServiceDueCard userId={user.uuid} />
+      {/* The one card here that says something about how the diving is going rather
+          than just what was logged, so it leads the rest. */}
+      {hasDives && <GasUseCard />}
 
-          {/* Quick Actions */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-              <CardDescription>Common diving activities</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Button className="w-full justify-start" asChild>
-                <Link href="/dives/new">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Log New Dive
-                </Link>
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <MapPin className="h-4 w-4 mr-2" />
-                Find Dive Sites
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <Users className="h-4 w-4 mr-2" />
-                Find Dive Buddy
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <Calendar className="h-4 w-4 mr-2" />
-                Plan Trip
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Getting Started */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Getting Started</CardTitle>
-              <CardDescription>
-                Complete your profile to get the most out of OpenDiving
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                <div className="p-3 bg-blue-50 dark:bg-blue-950/40 rounded-lg border border-blue-200 dark:border-blue-900">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h5 className="font-medium text-blue-900 dark:text-blue-300">
-                        Complete Profile
-                      </h5>
-                      <p className="text-sm text-blue-700 dark:text-blue-300">
-                        Add your certification details
-                      </p>
-                    </div>
-                    <Badge className="bg-blue-600">0/3</Badge>
-                  </div>
-                </div>
-
-                <div className="p-3 bg-green-50 dark:bg-green-950/40 rounded-lg border border-green-200 dark:border-green-900">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h5 className="font-medium text-green-900 dark:text-green-300">
-                        Log First Dive
-                      </h5>
-                      <p className="text-sm text-green-700 dark:text-green-300">
-                        Start tracking your adventures
-                      </p>
-                    </div>
-                    <Badge variant="secondary">Pending</Badge>
-                  </div>
-                </div>
-
-                <div className="p-3 bg-orange-50 dark:bg-orange-950/40 rounded-lg border border-orange-200 dark:border-orange-900">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h5 className="font-medium text-orange-900 dark:text-orange-300">
-                        Join Community
-                      </h5>
-                      <p className="text-sm text-orange-700 dark:text-orange-300">
-                        Connect with other divers
-                      </p>
-                    </div>
-                    <Badge variant="secondary">Optional</Badge>
-                  </div>
-                </div>
-              </div>
-
-              <Button variant="ghost" className="w-full mt-4 text-sm">
-                View Profile Settings
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <RecentDivesCard userId={user.uuid} />
+        <RecentTripsCard userId={user.uuid} />
       </div>
     </div>
   );

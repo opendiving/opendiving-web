@@ -29,6 +29,10 @@ build/
 *.swo
 *~
 
+# Claude Code working directory - agent worktrees, easily hundreds of MB, and
+# every byte would be uploaded as part of the build context.
+.claude/
+
 # OS files
 .DS_Store
 .DS_Store?

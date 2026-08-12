@@ -1,47 +1,20 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import Link from "next/link";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { usePaginatedResource } from "@/hooks/usePaginatedResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
-import {
-  gearAPI,
-  GearItem,
-  GearSet,
-  gearItemLabel,
-  gearTypeLabel,
-} from "@/lib/api/gear";
+import { gearAPI, gearItemLabel, GearItem, GearSet } from "@/lib/api/gear";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
-import { PaginationFooter } from "@/components/ui/pagination-footer";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { PageSpinner } from "@/components/ui/page-spinner";
 import { useToast } from "@/components/ui/use-toast";
 import { GearItemDialog } from "@/components/gear/gear-item-dialog";
 import { GearSetDialog } from "@/components/gear/gear-set-dialog";
-import { ServiceStatusBadge } from "@/components/gear/service-status-badge";
-import { worstServiceStatus } from "@/lib/gear-service";
-import {
-  Plus,
-  Edit,
-  Trash2,
-  Loader2,
-  Archive,
-  ArchiveRestore,
-} from "lucide-react";
+import { GearItemsCard } from "@/components/gear/gear-items-card";
+import { GearSetsCard } from "@/components/gear/gear-sets-card";
+import { Plus } from "lucide-react";
 
 export default function GearPage() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
@@ -151,7 +124,7 @@ export default function GearPage() {
           : "Gear archived. It stays on your logged dives but won't be offered for new ones.",
       });
       refetchAll();
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Error",
         description: getApiErrorMessage(
@@ -163,6 +136,16 @@ export default function GearPage() {
     } finally {
       setIsArchiving(false);
       setArchivingItem(null);
+    }
+  };
+
+  // Archiving asks first - it changes what the dive form offers - while unarchiving is
+  // immediately reversible and doesn't.
+  const handleArchiveToggle = (item: GearItem) => {
+    if (item.is_archived) {
+      toggleArchived(item);
+    } else {
+      setArchivingItem(item);
     }
   };
 
@@ -190,256 +173,37 @@ export default function GearPage() {
         </Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex flex-wrap items-center justify-between gap-3">
-            <span>Your Gear</span>
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="show-archived"
-                  checked={showArchived}
-                  onChange={(e) => setShowArchived(e.target.checked)}
-                />
-                <Label
-                  htmlFor="show-archived"
-                  className="cursor-pointer text-sm font-normal text-muted-foreground"
-                >
-                  Show archived
-                </Label>
-              </div>
-              <Badge variant="secondary">
-                {itemsTotal} item{itemsTotal !== 1 ? "s" : ""}
-              </Badge>
-            </div>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoadingItems && gearItems.length === 0 ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
-          ) : gearItems.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="text-muted-foreground mb-4">
-                {showArchived
-                  ? "No gear yet. Add your first piece of kit to start tracking what you dive with!"
-                  : "No active gear. Add a piece of kit, or tick “Show archived” to see gear you've retired."}
-              </div>
-              <Button onClick={() => setEditingItem(undefined)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Your First Gear
-              </Button>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Brand</TableHead>
-                    <TableHead className="text-right">Dives</TableHead>
-                    <TableHead>Service</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {gearItems.map((item) => (
-                    <TableRow key={item.uuid}>
-                      <TableCell className="font-medium">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Link
-                            href={`/gear/${item.uuid}`}
-                            className="hover:underline"
-                          >
-                            {item.name}
-                          </Link>
-                          {item.rented && (
-                            <Badge variant="secondary">Rented</Badge>
-                          )}
-                          {item.is_archived && (
-                            <Badge variant="outline">Archived</Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {gearTypeLabel(item.type) ?? (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>{item.brand || "-"}</TableCell>
-                      <TableCell className="text-right tabular-nums">
-                        {item.dive_count}
-                      </TableCell>
-                      {/* No extra fetch - the API embeds each item's schedules, and
-                          the status is derived from them in the browser. */}
-                      <TableCell>
-                        <ServiceStatusBadge
-                          status={worstServiceStatus(
-                            item.service ?? [],
-                            item.dive_count,
-                          )}
-                        />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            aria-label="Edit"
-                            onClick={() => setEditingItem(item)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            aria-label={
-                              item.is_archived ? "Unarchive" : "Archive"
-                            }
-                            disabled={isArchiving}
-                            onClick={() =>
-                              item.is_archived
-                                ? toggleArchived(item)
-                                : setArchivingItem(item)
-                            }
-                          >
-                            {item.is_archived ? (
-                              <ArchiveRestore className="h-4 w-4" />
-                            ) : (
-                              <Archive className="h-4 w-4" />
-                            )}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            aria-label="Delete"
-                            onClick={() => requestDeleteItem(item.uuid)}
-                            disabled={deletingItemId === item.uuid}
-                          >
-                            {deletingItemId === item.uuid ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+      <GearItemsCard
+        items={gearItems}
+        isLoading={isLoadingItems}
+        totalCount={itemsTotal}
+        currentPage={itemsPage}
+        itemsPerPage={itemsPerPage}
+        hasMore={itemsHaveMore}
+        onPageChange={fetchItemsPage}
+        showArchived={showArchived}
+        onShowArchivedChange={setShowArchived}
+        onCreate={() => setEditingItem(undefined)}
+        onEdit={setEditingItem}
+        onArchiveToggle={handleArchiveToggle}
+        isArchiving={isArchiving}
+        deletingId={deletingItemId}
+        onDelete={requestDeleteItem}
+      />
 
-          <PaginationFooter
-            currentPage={itemsPage}
-            itemsPerPage={itemsPerPage}
-            totalCount={itemsTotal}
-            hasMore={itemsHaveMore}
-            isLoading={isLoadingItems}
-            itemLabel="gear items"
-            onPageChange={fetchItemsPage}
-          />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex flex-wrap items-center justify-between gap-3">
-            <span>Gear Sets</span>
-            <div className="flex items-center gap-3">
-              <Badge variant="secondary">
-                {setsTotal} set{setsTotal !== 1 ? "s" : ""}
-              </Badge>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setEditingSet(undefined)}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                New Set
-              </Button>
-            </div>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoadingSets && gearSets.length === 0 ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
-          ) : gearSets.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              No gear sets yet. Group the kit you use together — sidemount,
-              tech, warm water — and load it into a dive in one click.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Gear</TableHead>
-                    <TableHead>Weight</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {gearSets.map((set) => (
-                    <TableRow key={set.uuid}>
-                      <TableCell className="font-medium">{set.name}</TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {set.gear_items.length === 0
-                          ? "Empty"
-                          : set.gear_items.map(gearItemLabel).join(", ")}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground whitespace-nowrap">
-                        {set.weight != null ? `${set.weight} kg` : "—"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            aria-label="Edit"
-                            onClick={() => setEditingSet(set)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            aria-label="Delete"
-                            onClick={() => requestDeleteSet(set.uuid)}
-                            disabled={deletingSetId === set.uuid}
-                          >
-                            {deletingSetId === set.uuid ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-
-          <PaginationFooter
-            currentPage={setsPage}
-            itemsPerPage={setsPerPage}
-            totalCount={setsTotal}
-            hasMore={setsHaveMore}
-            isLoading={isLoadingSets}
-            itemLabel="gear sets"
-            onPageChange={fetchSetsPage}
-          />
-        </CardContent>
-      </Card>
+      <GearSetsCard
+        sets={gearSets}
+        isLoading={isLoadingSets}
+        totalCount={setsTotal}
+        currentPage={setsPage}
+        itemsPerPage={setsPerPage}
+        hasMore={setsHaveMore}
+        onPageChange={fetchSetsPage}
+        onCreate={() => setEditingSet(undefined)}
+        onEdit={setEditingSet}
+        deletingId={deletingSetId}
+        onDelete={requestDeleteSet}
+      />
 
       <GearItemDialog
         userId={user?.uuid ?? ""}

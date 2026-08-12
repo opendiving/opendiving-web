@@ -1,18 +1,32 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { GripVertical, X } from "lucide-react";
-import { CreatableCombobox } from "@/components/ui/creatable-combobox";
+import {
+  ComboboxSearchResult,
+  CreatableCombobox,
+} from "@/components/ui/creatable-combobox";
+import type { FormControlSlotProps } from "@/components/ui/form";
 import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
-import { NewDiveSiteDialog } from "@/components/dives/new-dive-site-dialog";
+import { DiveSiteSummary } from "@/lib/api/dives";
+import { DiveSiteDialog } from "@/components/sites/dive-site-dialog";
 import { moveItem, useDragSort } from "@/hooks/useDragSort";
 import { cn } from "@/lib/utils";
 
-export interface DiveSiteMultiSelectProps {
+// How many sites the dropdown asks for at a time. Enough to scroll through
+// before typing, far short of the API's 100 cap.
+const SITES_PER_SEARCH = 25;
+
+export interface DiveSiteMultiSelectProps extends FormControlSlotProps {
   userId: string;
   // Ordered list of selected dive site uuids - the first entry is the primary
   // site (e.g. shown as "Site Name +2" wherever only one site fits).
   value: string[];
+  // Names for the sites already in `value`, when the caller has them (the edit
+  // form does: `Dive.dive_sites` carries them). Purely an optimization - any
+  // uuid not covered here is fetched individually - but it saves a request per
+  // site on the form that always has selections.
+  knownSites?: DiveSiteSummary[];
   onChange: (diveSiteUuids: string[]) => void;
   disabled?: boolean;
 }
@@ -22,49 +36,96 @@ export interface DiveSiteMultiSelectProps {
 // here beyond presentation: the first entry is the dive's primary site. Wraps
 // the generic `CreatableCombobox` for the "add a site" input, plus a
 // drag-sortable list of the sites already added.
+//
+// The dropdown searches server-side (`CreatableCombobox`'s `onSearch`) rather
+// than fetching the user's whole catalogue up front - see DECISIONS.md. The
+// names of *selected* sites are therefore tracked separately, in `labels`,
+// since a picked site drops out of the results as soon as the query changes.
 export function DiveSiteMultiSelect({
   userId,
   value,
+  knownSites,
   onChange,
   disabled,
+  // Forwarded to the "add a site" combobox - the field's one focusable control.
+  // The selected-sites list above it is a `<ul>` of remove buttons, which the
+  // label has nothing to say about.
+  ...slotProps
 }: DiveSiteMultiSelectProps) {
-  const [diveSites, setDiveSites] = useState<DiveSite[]>([]);
-  const [isLoadingDiveSites, setIsLoadingDiveSites] = useState(true);
+  const [labels, setLabels] = useState<Record<string, DiveSiteSummary>>({});
   const [showNewDialog, setShowNewDialog] = useState(false);
+  // Every uuid a single-site lookup has already been fired for, successful or not.
+  const requestedRef = useRef<Set<string>>(new Set());
 
+  const rememberLabel = useCallback(
+    (site: DiveSiteSummary) =>
+      setLabels((prev) => ({ ...prev, [site.uuid]: site })),
+    [],
+  );
+
+  // Read through the `knownSites` prop rather than copying it into `labels` via
+  // an effect: the copy wouldn't have landed yet on the render that first sees a
+  // selection, so the lookup below would fire for sites the caller had already
+  // handed over.
+  const labelFor = (uuid: string): DiveSiteSummary | undefined =>
+    labels[uuid] ?? knownSites?.find((site) => site.uuid === uuid);
+
+  // Resolve any selected site whose name isn't already known - which is how a
+  // site pre-selected by uuid alone (`/dives/new?dive_site_uuid=...`) gets a
+  // name, and the safety net that keeps a selection from ever rendering
+  // nameless. A dive has a handful of sites at most, so these are one-off
+  // single-record fetches, not a list scan.
   useEffect(() => {
-    let cancelled = false;
+    const unresolved = value.filter(
+      (uuid) =>
+        !labels[uuid] &&
+        !knownSites?.some((site) => site.uuid === uuid) &&
+        !requestedRef.current.has(uuid),
+    );
+    if (unresolved.length === 0) return;
 
-    const fetchDiveSites = async () => {
+    // Marked before the request, not after: a failed lookup must not be retried
+    // on every subsequent render, and this effect re-runs whenever `labels`
+    // changes - i.e. after each sibling lookup that did succeed.
+    //
+    // That same guard is why there's no cancellation flag here: it makes each
+    // uuid fetch exactly once, so under StrictMode's mount/unmount/remount the
+    // only in-flight lookup belongs to the discarded first mount, and ignoring
+    // its result would drop the name for good. Writing to a uuid-keyed map is
+    // idempotent, so a late arrival is always safe to apply.
+    unresolved.forEach((uuid) => requestedRef.current.add(uuid));
+
+    unresolved.forEach(async (uuid) => {
       try {
-        setIsLoadingDiveSites(true);
-        // Fetch every page - this is a client-side-filtered picker, not a
-        // paginated list view, so it needs the user's full set of dive sites
-        // (some users have well over one page's worth) or sites past the
-        // first page would show up as "Dive site #123" instead of their name.
-        const allSites: DiveSite[] = [];
-        let page = 1;
-        let hasMore = true;
-        while (hasMore) {
-          const response = await diveSitesAPI.getDiveSites(userId, page, 100);
-          allSites.push(...response.data);
-          hasMore = response.has_more;
-          page += 1;
-        }
-        if (!cancelled) setDiveSites(allSites);
+        rememberLabel(await diveSitesAPI.getDiveSite(uuid));
       } catch (error) {
-        console.error("Failed to fetch dive sites:", error);
-      } finally {
-        if (!cancelled) setIsLoadingDiveSites(false);
+        console.error("Failed to fetch dive site:", error);
       }
-    };
+    });
+  }, [value, labels, knownSites, rememberLabel]);
 
-    if (userId) fetchDiveSites();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [userId]);
+  const searchDiveSites = useCallback(
+    async (query: string): Promise<ComboboxSearchResult> => {
+      const response = await diveSitesAPI.getDiveSites(
+        userId,
+        1,
+        SITES_PER_SEARCH,
+        query,
+      );
+      // Every site the dropdown shows is remembered, so picking one never needs
+      // the record fetched straight back just to label its row.
+      response.data.forEach(rememberLabel);
+      return {
+        items: response.data.map((site) => ({
+          id: site.uuid,
+          name: site.name,
+          hint: site.location,
+        })),
+        hasMore: response.has_more,
+      };
+    },
+    [userId, rememberLabel],
+  );
 
   const addSite = (id: string | undefined) => {
     if (id === undefined || value.includes(id)) return;
@@ -85,15 +146,9 @@ export function DiveSiteMultiSelect({
   });
 
   const handleCreated = (newDiveSite: DiveSite) => {
-    setDiveSites((prev) => [...prev, newDiveSite]);
+    rememberLabel(newDiveSite);
     addSite(newDiveSite.uuid);
   };
-
-  // Already-selected sites are hidden from the "add a site" dropdown so the
-  // same site can't be added twice.
-  const selectableDiveSites = diveSites.filter(
-    (site) => !value.includes(site.uuid),
-  );
 
   return (
     <div className="space-y-2">
@@ -103,8 +158,10 @@ export function DiveSiteMultiSelect({
           className={cn("space-y-1", draggingIndex !== null && "select-none")}
         >
           {value.map((id, index) => {
-            const site = diveSites.find((s) => s.uuid === id);
-            const label = site ? site.name : `Dive site #${id}`;
+            const site = labelFor(id);
+            // The fallback is only ever visible for the moment between a site
+            // being selected and its name being resolved.
+            const label = site ? site.name : "Dive site...";
             const isDragging = draggingIndex === index;
             return (
               <li
@@ -163,12 +220,13 @@ export function DiveSiteMultiSelect({
       )}
 
       <CreatableCombobox
-        items={selectableDiveSites.map((site) => ({
-          id: site.uuid,
-          name: site.name,
-          hint: site.location,
-        }))}
-        isLoading={isLoadingDiveSites}
+        {...slotProps}
+        onSearch={searchDiveSites}
+        // Already-selected sites are hidden from the "add a site" dropdown so
+        // the same site can't be added twice. Excluded here rather than in the
+        // query, which would silently shrink the page and change what
+        // `has_more` means.
+        excludeIds={value}
         value={undefined}
         onChange={addSite}
         disabled={disabled}
@@ -176,16 +234,17 @@ export function DiveSiteMultiSelect({
           value.length ? "Add another dive site..." : "Select a dive site..."
         }
         noItemsLabel="No dive sites yet."
+        noMatchesLabel="No dive sites match."
         addNewLabel="Add dive site..."
         keepOpenOnSelect
         onAddNew={() => setShowNewDialog(true)}
       />
 
-      <NewDiveSiteDialog
+      <DiveSiteDialog
         userId={userId}
         open={showNewDialog}
         onOpenChange={setShowNewDialog}
-        onCreated={handleCreated}
+        onSaved={handleCreated}
       />
     </div>
   );

@@ -1,11 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { Loader2, Save } from "lucide-react";
+import { Loader2, Plus, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export interface DiveFormActionsProps {
   cancelHref: string;
+  // Picks the submit icon, matching the rest of the app: a plus creates,
+  // a floppy saves an existing record.
+  mode: "create" | "edit";
   isSubmitting: boolean;
   submittingLabel: string;
   submitLabel: string;
@@ -14,10 +17,12 @@ export interface DiveFormActionsProps {
 // Shared "Cancel" / "Save" button row used by both the create and edit dive forms.
 export function DiveFormActions({
   cancelHref,
+  mode,
   isSubmitting,
   submittingLabel,
   submitLabel,
 }: DiveFormActionsProps) {
+  const SubmitIcon = mode === "create" ? Plus : Save;
   return (
     <div className="flex justify-end gap-4 pt-4">
       <Button type="button" variant="outline" asChild>
@@ -31,7 +36,7 @@ export function DiveFormActions({
           </>
         ) : (
           <>
-            <Save className="h-4 w-4 mr-2" />
+            <SubmitIcon className="h-4 w-4 mr-2" />
             {submitLabel}
           </>
         )}

@@ -7,10 +7,7 @@ import { CERTIFICATION_AGENCIES } from "@/lib/api/certifications";
 // change what `z.input<>` infers, which breaks the form's field types (see
 // DECISIONS.md).
 const optionalDate = (message: string) =>
-  z.union([
-    z.literal(""),
-    z.string().regex(/^\d{4}-\d{2}-\d{2}$/, message),
-  ]);
+  z.union([z.literal(""), z.string().regex(/^\d{4}-\d{2}-\d{2}$/, message)]);
 
 export const certificationSchema = z
   .object({
@@ -51,13 +48,10 @@ export const certificationSchema = z
   })
   // Mirrors the API's `_check_agency_other` model validator. An object-level
   // refine, unlike a field-level transform, leaves `z.input<>` untouched.
-  .refine(
-    (data) => data.agency !== "other" || !!data.agency_other?.trim(),
-    {
-      message: "Tell us which agency issued this",
-      path: ["agency_other"],
-    },
-  )
+  .refine((data) => data.agency !== "other" || !!data.agency_other?.trim(), {
+    message: "Tell us which agency issued this",
+    path: ["agency_other"],
+  })
   // A card that expired before it was issued is a data-entry slip, and the API has
   // no constraint against it - catching it here is the only thing that will.
   .refine(

@@ -12,6 +12,7 @@ import {
   formatTripDateRange,
   formatUtcOffset,
   getBrowserUtcOffsetMinutes,
+  normalizeParsedStartTime,
   parseFormDateTime,
   parseFormDuration,
   parseUtcOffsetMinutes,
@@ -115,6 +116,54 @@ describe("parseUtcOffsetMinutes", () => {
   it("returns null for a naive datetime with no offset", () => {
     expect(parseUtcOffsetMinutes("2025-06-03T12:15:33.8")).toBeNull();
     expect(parseUtcOffsetMinutes("2024-05-01T09:00:00")).toBeNull();
+  });
+
+  // A bare date ends in "-DD", which reads exactly like a "-HH" offset. Some
+  // dive computers export `start_time` this way, and treating the day as an
+  // offset would shift the dive by that many hours.
+  it("does not read a bare date's day as an offset", () => {
+    expect(parseUtcOffsetMinutes("2021-04-04")).toBeNull();
+    expect(parseUtcOffsetMinutes("2024-05-01")).toBeNull();
+    expect(parseUtcOffsetMinutes("2024-05-12")).toBeNull();
+  });
+
+  it("parses offsets written without a colon, or with hours only", () => {
+    expect(parseUtcOffsetMinutes("2024-05-01T09:00:00+0200")).toBe(120);
+    expect(parseUtcOffsetMinutes("2024-05-01T09:00:00+02")).toBe(120);
+    expect(parseUtcOffsetMinutes("2024-05-01T09:00+02:00")).toBe(120);
+  });
+});
+
+describe("normalizeParsedStartTime", () => {
+  const browserOffset = formatUtcOffset(getBrowserUtcOffsetMinutes());
+
+  it("passes an already offset-aware start_time through untouched", () => {
+    expect(normalizeParsedStartTime("2021-04-04T10:04:47.910+02:00")).toBe(
+      "2021-04-04T10:04:47.910+02:00",
+    );
+  });
+
+  it("gives a naive datetime the browser's offset, keeping its digits", () => {
+    expect(normalizeParsedStartTime("2025-06-03T12:15:33")).toBe(
+      `2025-06-03T12:15:33${browserOffset}`,
+    );
+  });
+
+  // The whole point of the date-only branch: `new Date("2021-04-04")` is UTC
+  // midnight, so going through it would report 2021-04-03 anywhere west of
+  // Greenwich. The date must survive verbatim.
+  it("takes a date-only start_time as local midnight on that same date", () => {
+    expect(normalizeParsedStartTime("2021-04-04")).toBe(
+      `2021-04-04T00:00:00${browserOffset}`,
+    );
+    expect(normalizeParsedStartTime("2024-05-12")).toBe(
+      `2024-05-12T00:00:00${browserOffset}`,
+    );
+  });
+
+  it("returns undefined for something that isn't a datetime at all", () => {
+    expect(normalizeParsedStartTime("not a date")).toBeUndefined();
+    expect(normalizeParsedStartTime("")).toBeUndefined();
   });
 });
 

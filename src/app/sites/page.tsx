@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { usePaginatedResource } from "@/hooks/usePaginatedResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
@@ -18,11 +18,17 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { PaginationFooter } from "@/components/ui/pagination-footer";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DiveSiteDialog } from "@/components/sites/dive-site-dialog";
 import { Plus, Eye, Edit, Trash2, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { PageSpinner } from "@/components/ui/page-spinner";
 
 export default function SitesPage() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
+  // `null` = the dialog is closed; a site = editing it; `undefined` = creating.
+  const [editingSite, setEditingSite] = useState<DiveSite | null | undefined>(
+    null,
+  );
 
   const fetchDiveSites = useCallback(
     (page: number, perPage: number) => {
@@ -62,11 +68,7 @@ export default function SitesPage() {
   });
 
   if (isAuthLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
+    return <PageSpinner variant="inset" />;
   }
 
   if (!isAuthenticated) {
@@ -82,11 +84,9 @@ export default function SitesPage() {
             Keep track of the dive sites you&apos;ve visited
           </p>
         </div>
-        <Button asChild>
-          <Link href="/sites/new">
-            <Plus className="h-4 w-4 mr-2" />
-            New Dive Site
-          </Link>
+        <Button onClick={() => setEditingSite(undefined)}>
+          <Plus className="h-4 w-4 mr-2" />
+          New Dive Site
         </Button>
       </div>
 
@@ -110,11 +110,9 @@ export default function SitesPage() {
                 No dive sites yet. Add your first dive site to start tracking
                 your favorite spots!
               </div>
-              <Button asChild>
-                <Link href="/sites/new">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Your First Dive Site
-                </Link>
+              <Button onClick={() => setEditingSite(undefined)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Your First Dive Site
               </Button>
             </div>
           ) : (
@@ -146,10 +144,13 @@ export default function SitesPage() {
                               <Eye className="h-4 w-4" />
                             </Link>
                           </Button>
-                          <Button variant="ghost" size="sm" asChild>
-                            <Link href={`/sites/${diveSite.uuid}/edit`}>
-                              <Edit className="h-4 w-4" />
-                            </Link>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            aria-label="Edit"
+                            onClick={() => setEditingSite(diveSite)}
+                          >
+                            <Edit className="h-4 w-4" />
                           </Button>
                           <Button
                             variant="ghost"
@@ -183,6 +184,14 @@ export default function SitesPage() {
           />
         </CardContent>
       </Card>
+
+      <DiveSiteDialog
+        userId={user?.uuid ?? ""}
+        open={editingSite !== null}
+        onOpenChange={(open) => !open && setEditingSite(null)}
+        diveSite={editingSite}
+        onSaved={refetch}
+      />
 
       <ConfirmDialog
         open={pendingId !== null}

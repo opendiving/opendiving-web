@@ -4,9 +4,10 @@ import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { isFormPath } from "@/lib/return-to";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/ui/user-avatar";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { ThemeMenuItems, ThemeToggle } from "@/components/theme-toggle";
 import { Logo } from "@/components/logo";
 import {
   DropdownMenu,
@@ -16,10 +17,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  User,
   LogOut,
   Settings,
-  BookOpen,
   Menu,
   Plus,
   Waves,
@@ -27,8 +26,39 @@ import {
   Luggage,
   Backpack,
   BadgeCheck,
+  type LucideIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import {
+  useQuickCreate,
+  type QuickCreateKind,
+} from "@/components/layout/quick-create";
+
+// Everything the "+" menu can start. It's the single way to create from the
+// chrome at every width - the mobile menu deliberately doesn't repeat these, so
+// the hamburger is navigation and "+" is creation. A dive is the only form big
+// enough to warrant its own page; the rest open a dialog over whatever the
+// diver is looking at.
+type CreateAction = { label: string; icon: LucideIcon } & (
+  { href: string } | { kind: QuickCreateKind }
+);
+
+const CREATE_ACTIONS: CreateAction[] = [
+  { label: "New Dive", icon: Waves, href: "/dives/new" },
+  { label: "New Trip", icon: Luggage, kind: "trip" },
+  { label: "New Dive Site", icon: MapPin, kind: "site" },
+  { label: "New Gear", icon: Backpack, kind: "gear" },
+  { label: "New Certification", icon: BadgeCheck, kind: "certification" },
+];
+
+// The create menu is reachable from every page, so the form it opens is told
+// where it was launched from - otherwise its Back/Cancel would guess. Nothing is
+// appended when the current page is itself a form (see `isFormPath`), which
+// would otherwise send Cancel straight back to the form being cancelled.
+function withReturnTo(href: string, pathname: string | null): string {
+  if (!pathname || isFormPath(pathname)) return href;
+  return `${href}?from=${encodeURIComponent(pathname)}`;
+}
 
 // Maps URL path prefixes to the nav item that should be highlighted as active.
 const NAV_SECTIONS: { prefix: string; page: string }[] = [
@@ -38,7 +68,6 @@ const NAV_SECTIONS: { prefix: string; page: string }[] = [
   { prefix: "/sites", page: "sites" },
   { prefix: "/gear", page: "gear" },
   { prefix: "/certifications", page: "certifications" },
-  { prefix: "/community", page: "community" },
 ];
 
 function getCurrentPage(pathname: string | null): string | undefined {
@@ -50,9 +79,33 @@ function getCurrentPage(pathname: string | null): string | undefined {
 
 export function Header() {
   const { user, isAuthenticated, signOut, isLoading } = useAuth();
+  const openCreate = useQuickCreate();
   const pathname = usePathname();
   const currentPage = getCurrentPage(pathname);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const headerRef = useRef<HTMLElement>(null);
+
+  // The mobile menu lives inside the sticky header, so it has no overlay of its
+  // own to dismiss it - without this, tapping the page or hitting Escape leaves
+  // it covering the screen and only the toggle can close it again.
+  useEffect(() => {
+    if (!isMobileMenuOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (headerRef.current?.contains(event.target as Node)) return;
+      setIsMobileMenuOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsMobileMenuOpen(false);
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isMobileMenuOpen]);
 
   const handleSignOut = async () => {
     try {
@@ -63,7 +116,10 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-background shadow-sm border-b">
+    <header
+      ref={headerRef}
+      className="sticky top-0 z-50 bg-background shadow-sm border-b"
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-4">
           {/* Logo and Navigation */}
@@ -73,9 +129,14 @@ export function Header() {
               className="flex flex-shrink-0 items-center space-x-2"
             >
               <Logo className="h-7 w-7 sm:h-8 sm:w-8 text-coral flex-shrink-0" />
-              <h1 className="text-lg sm:text-2xl font-bold text-foreground whitespace-nowrap">
+              {/* A `<span>`, not an `<h1>`. The wordmark is site furniture that
+                  appears on every page; as a heading it gave every page two
+                  `<h1>`s, and made "OpenDiving" - rather than the page's own
+                  title - the first thing a screen reader's heading list offers.
+                  Styling is unchanged. */}
+              <span className="text-lg sm:text-2xl font-bold text-foreground whitespace-nowrap">
                 OpenDiving
-              </h1>
+              </span>
             </Link>
 
             {/* Desktop Navigation - Show different nav based on auth status */}
@@ -84,9 +145,9 @@ export function Header() {
                 <>
                   <Link
                     href="/dashboard"
-                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-coral ${
+                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-coral-text ${
                       currentPage === "dashboard"
-                        ? "text-coral"
+                        ? "text-coral-text"
                         : "text-foreground"
                     }`}
                   >
@@ -94,9 +155,9 @@ export function Header() {
                   </Link>
                   <Link
                     href="/trips"
-                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-coral ${
+                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-coral-text ${
                       currentPage === "trips"
-                        ? "text-coral"
+                        ? "text-coral-text"
                         : "text-foreground"
                     }`}
                   >
@@ -104,9 +165,9 @@ export function Header() {
                   </Link>
                   <Link
                     href="/dives"
-                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-coral ${
+                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-coral-text ${
                       currentPage === "dives"
-                        ? "text-coral"
+                        ? "text-coral-text"
                         : "text-foreground"
                     }`}
                   >
@@ -114,9 +175,9 @@ export function Header() {
                   </Link>
                   <Link
                     href="/sites"
-                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-coral ${
+                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-coral-text ${
                       currentPage === "sites"
-                        ? "text-coral"
+                        ? "text-coral-text"
                         : "text-foreground"
                     }`}
                   >
@@ -124,31 +185,13 @@ export function Header() {
                   </Link>
                   <Link
                     href="/gear"
-                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-coral ${
-                      currentPage === "gear" ? "text-coral" : "text-foreground"
+                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-coral-text ${
+                      currentPage === "gear"
+                        ? "text-coral-text"
+                        : "text-foreground"
                     }`}
                   >
                     Gear
-                  </Link>
-                  <Link
-                    href="/certifications"
-                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-coral ${
-                      currentPage === "certifications"
-                        ? "text-coral"
-                        : "text-foreground"
-                    }`}
-                  >
-                    Certifications
-                  </Link>
-                  <Link
-                    href="/community"
-                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-coral ${
-                      currentPage === "community"
-                        ? "text-coral"
-                        : "text-foreground"
-                    }`}
-                  >
-                    Community
                   </Link>
                 </>
               ) : (
@@ -177,53 +220,46 @@ export function Header() {
           </div>
 
           {/* Actions */}
-          <div className="flex flex-shrink-0 items-center space-x-3">
+          {/* Tighter gaps on the narrowest phones, where the wordmark and the
+              three controls would otherwise be squeezed against each other. */}
+          <div className="flex flex-shrink-0 items-center space-x-1 sm:space-x-3">
             {isAuthenticated && user && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="hidden sm:inline-flex"
-                  >
+                  <Button variant="ghost" size="sm" aria-label="Create new">
                     <Plus className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem asChild>
-                    <Link href="/dives/new" className="flex items-center">
-                      <Waves className="mr-2 h-4 w-4" />
-                      New Dive
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/trips/new" className="flex items-center">
-                      <Luggage className="mr-2 h-4 w-4" />
-                      New Trip
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/sites/new" className="flex items-center">
-                      <MapPin className="mr-2 h-4 w-4" />
-                      New Dive Site
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/gear" className="flex items-center">
-                      <Backpack className="mr-2 h-4 w-4" />
-                      Manage Gear
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/certifications" className="flex items-center">
-                      <BadgeCheck className="mr-2 h-4 w-4" />
-                      Certifications
-                    </Link>
-                  </DropdownMenuItem>
+                  {CREATE_ACTIONS.map((action) => {
+                    const Icon = action.icon;
+                    return "href" in action ? (
+                      <DropdownMenuItem key={action.label} asChild>
+                        <Link
+                          href={withReturnTo(action.href, pathname)}
+                          className="flex items-center"
+                        >
+                          <Icon className="mr-2 h-4 w-4" />
+                          {action.label}
+                        </Link>
+                      </DropdownMenuItem>
+                    ) : (
+                      <DropdownMenuItem
+                        key={action.label}
+                        onSelect={() => openCreate(action.kind)}
+                      >
+                        <Icon className="mr-2 h-4 w-4" />
+                        {action.label}
+                      </DropdownMenuItem>
+                    );
+                  })}
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
-            <ThemeToggle />
+            {/* Signed in, the theme choices live in the user menu with the
+                other account preferences; signed out there's no such menu, so
+                the standalone control stands in. */}
+            {!isLoading && !isAuthenticated && <ThemeToggle />}
             {isLoading ? (
               <div className="animate-pulse bg-muted rounded-md h-9 w-20"></div>
             ) : isAuthenticated && user ? (
@@ -234,6 +270,7 @@ export function Header() {
                     <Button
                       variant="ghost"
                       className="relative h-9 w-9 rounded-full p-0"
+                      aria-label="Account menu"
                     >
                       <UserAvatar
                         email={user.email}
@@ -252,9 +289,12 @@ export function Header() {
                     </div>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
-                      <Link href="/profile" className="flex items-center">
-                        <User className="mr-2 h-4 w-4" />
-                        Profile
+                      <Link
+                        href="/certifications"
+                        className="flex items-center"
+                      >
+                        <BadgeCheck className="mr-2 h-4 w-4" />
+                        Certifications
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
@@ -264,6 +304,8 @@ export function Header() {
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
+                    <ThemeMenuItems />
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleSignOut}>
                       <LogOut className="mr-2 h-4 w-4" />
                       Sign Out
@@ -271,13 +313,24 @@ export function Header() {
                   </DropdownMenuContent>
                 </DropdownMenu>
               </>
-            ) : null}
+            ) : (
+              <Button
+                asChild
+                size="sm"
+                className="bg-coral-solid text-primary-foreground hover:bg-coral-solid/90"
+              >
+                <Link href="/signin">Sign In</Link>
+              </Button>
+            )}
 
             {/* Mobile menu button */}
             <Button
               variant="ghost"
               size="sm"
               className="md:hidden px-2 sm:px-3"
+              aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={isMobileMenuOpen}
+              aria-controls="mobile-menu"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             >
               <Menu className="h-4 w-4" />
@@ -287,104 +340,52 @@ export function Header() {
 
         {/* Mobile Navigation */}
         {isMobileMenuOpen && (
-          <div className="md:hidden border-t py-4">
+          // Capped and scrollable: the full list is taller than a short phone
+          // viewport, and because the header is sticky the overflow can only be
+          // reached by scrolling the page behind it - impossible on a page with
+          // nothing to scroll.
+          <div
+            id="mobile-menu"
+            className="md:hidden border-t py-4 max-h-[calc(100dvh-4.5rem)] overflow-y-auto"
+          >
             <nav className="flex flex-col space-y-3">
               {isAuthenticated ? (
                 <>
                   <Link
                     href="/dashboard"
-                    className={`text-sm font-medium hover:text-coral py-2 ${currentPage === "dashboard" ? "text-coral" : "text-foreground"}`}
+                    className={`text-sm font-medium hover:text-coral-text py-2 ${currentPage === "dashboard" ? "text-coral-text" : "text-foreground"}`}
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Dashboard
                   </Link>
                   <Link
                     href="/trips"
-                    className={`text-sm font-medium hover:text-coral py-2 ${currentPage === "trips" ? "text-coral" : "text-foreground"}`}
+                    className={`text-sm font-medium hover:text-coral-text py-2 ${currentPage === "trips" ? "text-coral-text" : "text-foreground"}`}
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Trips
                   </Link>
                   <Link
                     href="/dives"
-                    className={`text-sm font-medium hover:text-coral py-2 ${currentPage === "dives" ? "text-coral" : "text-foreground"}`}
+                    className={`text-sm font-medium hover:text-coral-text py-2 ${currentPage === "dives" ? "text-coral-text" : "text-foreground"}`}
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Dives
                   </Link>
                   <Link
                     href="/sites"
-                    className={`text-sm font-medium hover:text-coral py-2 ${currentPage === "sites" ? "text-coral" : "text-foreground"}`}
+                    className={`text-sm font-medium hover:text-coral-text py-2 ${currentPage === "sites" ? "text-coral-text" : "text-foreground"}`}
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Dive Sites
                   </Link>
                   <Link
                     href="/gear"
-                    className={`text-sm font-medium hover:text-coral py-2 ${currentPage === "gear" ? "text-coral" : "text-foreground"}`}
+                    className={`text-sm font-medium hover:text-coral-text py-2 ${currentPage === "gear" ? "text-coral-text" : "text-foreground"}`}
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Gear
                   </Link>
-                  <Link
-                    href="/certifications"
-                    className={`text-sm font-medium hover:text-coral py-2 ${currentPage === "certifications" ? "text-coral" : "text-foreground"}`}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Certifications
-                  </Link>
-                  <Link
-                    href="/community"
-                    className={`text-sm font-medium hover:text-coral py-2 ${currentPage === "community" ? "text-coral" : "text-foreground"}`}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    Community
-                  </Link>
-                  <div className="pt-3 border-t space-y-3">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                      Create New
-                    </p>
-                    <Link
-                      href="/dives/new"
-                      className="flex items-center text-sm font-medium text-foreground hover:text-coral py-2"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      <Waves className="mr-2 h-4 w-4" />
-                      New Dive
-                    </Link>
-                    <Link
-                      href="/trips/new"
-                      className="flex items-center text-sm font-medium text-foreground hover:text-coral py-2"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      <Luggage className="mr-2 h-4 w-4" />
-                      New Trip
-                    </Link>
-                    <Link
-                      href="/sites/new"
-                      className="flex items-center text-sm font-medium text-foreground hover:text-coral py-2"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      <MapPin className="mr-2 h-4 w-4" />
-                      New Dive Site
-                    </Link>
-                    <Link
-                      href="/gear"
-                      className="flex items-center text-sm font-medium text-foreground hover:text-coral py-2"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      <Backpack className="mr-2 h-4 w-4" />
-                      Manage Gear
-                    </Link>
-                    <Link
-                      href="/certifications"
-                      className="flex items-center text-sm font-medium text-foreground hover:text-coral py-2"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                      <BadgeCheck className="mr-2 h-4 w-4" />
-                      Certifications
-                    </Link>
-                  </div>
                 </>
               ) : (
                 <>

@@ -1,191 +1,109 @@
 # OpenDiving Web
 
-A modern web application for the diving community built with Next.js, React, Tailwind CSS, and shadcn/ui.
+**A self-hosted dive log. Your dives, your data — in open formats, on your own server.**
+
+OpenDiving is an open-source logbook for scuba divers: log dives with gas mixtures and
+multiple sites per dive, group them into trips, import dives straight from your dive
+computer's export file — full depth/temperature/tank-pressure profile included — and
+keep your gear service history and c-cards in one place.
+
+Cloud dive logs come and go, and when they go, years of dive history go with them.
+OpenDiving is built on a different premise: the app is AGPL-licensed, the data lives in
+your own Postgres database, and every dive keeps the original dive-computer export it
+was imported from, downloadable at any time.
+
+![Dashboard](docs/screenshots/dashboard.png)
 
 ## Features
 
-- 🤿 **Dive Logging**: Track your underwater adventures with detailed dive logs
-- 🌊 **Community**: Connect with divers worldwide and share experiences
-- 📍 **Dive Sites**: Discover and explore dive sites around the globe
-- 📊 **Dashboard**: Personal diving statistics and recent activity
-- 🎨 **Modern UI**: Built with shadcn/ui components and Tailwind CSS
-- 📱 **Responsive**: Optimized for desktop, tablet, and mobile devices
-- 🔒 **Type Safe**: Full TypeScript support throughout the application
+- **Dive logging** — times, depths, duration, temperature, visibility, weight, notes,
+  and any number of gas mixtures (O₂/He, start/end pressures) per dive. A dive can span
+  multiple dive sites (drift dives happen), in order.
+- **Dive-computer import** — upload a Suunto export (XML or JSON) and the form
+  pre-fills itself. The original file is stored with the dive and can be re-downloaded
+  anytime; the per-sample **dive profile** (depth, temperature, tank pressure) is
+  extracted and charted on the dive page.
+- **Air consumption** — SAC and RMV are derived automatically for single-tank dives,
+  with a per-dive breakdown and a consumption trend chart on the dashboard.
+- **Trips** — group dives into a liveaboard or a holiday week, with location and dates.
+- **Dive sites** — your personal site list, with every dive you've logged at each site.
+- **Gear tracking** — your equipment with per-item dive counts, groupable into gear
+  sets you can attach to a dive in one click, plus **service schedules** (annual
+  service, visual inspection, hydro test…) with due-soon reminders on the dashboard
+  and by email.
+- **Certifications** — keep photos of your c-cards on hand at the dive shop without
+  digging out the plastic.
+- **Passwordless sign-in** — email magic links or Google; no passwords stored, ever.
+- **Dark mode & responsive** — works on the boat, in the dive shop, and on your desk.
 
-## Tech Stack
+| | |
+|---|---|
+| ![A dive, with the profile charted from its dive-computer export](docs/screenshots/dive-detail.png) | ![A gear item with its service schedule and history](docs/screenshots/gear-item.png) |
 
-- **Framework**: [Next.js 14](https://nextjs.org/) with App Router
-- **Language**: [TypeScript](https://www.typescriptlang.org/)
-- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
-- **UI Components**: [shadcn/ui](https://ui.shadcn.com/)
-- **Icons**: [Lucide React](https://lucide.dev/)
-- **Linting**: [ESLint](https://eslint.org/)
+## Planned
 
-## Prerequisites
+Roadmap items, roughly in priority order — contributions welcome:
 
-Before you begin, ensure you have the following installed:
+- **More dive computers & formats** — FIT (Garmin/Suunto), UDDF, and Subsurface
+  imports, with an eye on [libdivecomputer](https://www.libdivecomputer.org/) for
+  broad hardware support.
+- **Full export** — one click to take *everything* out in open formats (UDDF, JSON,
+  CSV). Getting data out will always be as easy as getting it in.
+- **Statistics** — depth/time records, dives per year, sites map, species log.
+- **Sharing** — public link to a dive or trip, e.g. for instructors verifying
+  experience.
+- **Community** — find dive buddies and share sites.
+- **iOS companion app** — with Bluetooth download from dive computers and offline
+  logging ([opendiving-ios](https://github.com/opendiving/opendiving-ios)).
 
-- **Node.js** (version 18 or higher)
-- **npm** or **yarn** package manager
+## Getting started
 
-## Getting Started
-
-1. **Clone the repository** (if not already done):
-   ```bash
-   git clone <repository-url>
-   cd opendiving/opendiving-web
-   ```
-
-2. **Install dependencies**:
-   ```bash
-   npm install
-   ```
-
-3. **Run the development server**:
-   ```bash
-   npm run dev
-   ```
-
-4. **Open your browser** and navigate to [http://localhost:3000](http://localhost:3000)
-
-## Available Scripts
-
-- `npm run dev` - Start the development server
-- `npm run build` - Build the application for production
-- `npm run start` - Start the production server
-- `npm run lint` - Run ESLint to check for code issues
-- `npm run type-check` - Run TypeScript type checking
-- `npm run test` - Run the unit test suite once
-- `npm run test:watch` - Run the unit test suite in watch mode
-- `npm run test:coverage` - Run the unit test suite with a coverage report
-
-## Project Structure
-
-```
-src/
-├── app/                    # Next.js App Router pages
-│   ├── dashboard/         # Dashboard page
-│   ├── globals.css        # Global styles and Tailwind imports
-│   ├── layout.tsx         # Root layout component
-│   └── page.tsx           # Homepage
-├── components/            # React components
-│   ├── layout/           # Layout components (Header, Footer, etc.)
-│   └── ui/               # shadcn/ui components
-└── lib/                  # Utility functions
-    └── utils.ts          # Class name utilities for Tailwind
-```
-
-## Adding New Components
-
-To add new shadcn/ui components, you can use the CLI:
+The web app is the frontend for
+[opendiving-api](https://github.com/opendiving/opendiving-api) — start that first
+(one `docker compose up`), then:
 
 ```bash
-npx shadcn-ui@latest add [component-name]
+npm install
+cp .env.example .env   # points at http://localhost:8000 by default
+npm run dev
 ```
 
-For example:
-```bash
-npx shadcn-ui@latest add dialog
-npx shadcn-ui@latest add dropdown-menu
-npx shadcn-ui@latest add form
-```
+Open [http://localhost:3000](http://localhost:3000), sign in with your email, and log
+your first dive. Without a configured email provider on the API side, the magic link
+is printed to the API logs — handy for local development.
 
-## Customization
+### Scripts
 
-### Tailwind Configuration
+| Command | |
+|---|---|
+| `npm run dev` | Development server |
+| `npm run build` / `npm start` | Production build / serve |
+| `npm run lint` | ESLint |
+| `npm run type-check` | TypeScript |
+| `npm test` | Unit tests (`test:watch`, `test:coverage` variants) |
 
-The Tailwind configuration is located in `tailwind.config.ts`. You can customize colors, spacing, and other design tokens here.
+## Tech stack
 
-### shadcn/ui Configuration
-
-The shadcn/ui configuration is in `components.json`. This controls the component installation path and styling preferences.
-
-### Theme Colors
-
-CSS custom properties for theming are defined in `src/app/globals.css`. You can modify these to change the application's color scheme.
-
-## Pages Overview
-
-### Homepage (`/`)
-- Landing page with hero section
-- Features overview
-- Community statistics
-- Call-to-action sections
-
-### Dashboard (`/dashboard`)
-- Personal diving statistics
-- Recent dive activity
-- Quick actions
-- Upcoming dive plans
-
-## Deployment
-
-### Build for Production
-
-```bash
-npm run build
-```
-
-### Deploy to Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme):
-
-1. Push your code to a Git repository
-2. Connect your repository to Vercel
-3. Vercel will automatically deploy your application
-
-### Deploy to Other Platforms
-
-This Next.js application can be deployed to various platforms:
-
-- **Netlify**: Use the Next.js build output
-- **AWS Amplify**: Configure build settings for Next.js
-- **Docker**: Create a Dockerfile for containerized deployment
+Next.js (App Router) + TypeScript, Tailwind CSS, shadcn/ui with Radix primitives,
+react-hook-form + Zod validation, axios. The dive-profile and consumption charts are
+hand-rolled SVG — no charting library.
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+Issues and PRs are welcome — from a typo fix to a new importer. Open an issue first
+for bigger features so we can agree on the shape. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for setup, the checks CI runs, and the house rules,
+and [DECISIONS.md](DECISIONS.md) for the non-obvious choices already made.
 
-## Code Style
+## Related repositories
 
-This project uses:
-
-- **ESLint** for code linting
-- **TypeScript** for type safety
-- **Prettier** integration through ESLint
-- **Tailwind CSS** for consistent styling
-
-Make sure to run `npm run lint` before submitting changes.
+| | |
+|---|---|
+| [opendiving-api](https://github.com/opendiving/opendiving-api) | FastAPI backend (Postgres, Redis, dive-file parsing) |
+| [opendiving-ios](https://github.com/opendiving/opendiving-ios) | SwiftUI companion app (early stage) |
 
 ## License
 
-This project is open source and available under the [MIT License](LICENSE).
-
-## Support
-
-For support and questions:
-
-- Open an issue in the repository
-- Join our community discussions
-- Check the documentation
-
-## Roadmap
-
-- [ ] User authentication system
-- [ ] Dive log CRUD operations  
-- [ ] Photo upload and gallery
-- [ ] Social features and following
-- [ ] Dive site database integration
-- [ ] Mobile app companion
-- [ ] Offline support
-- [ ] Advanced dive analytics
-- [ ] Equipment tracking
-- [x] Certification management
-
----
-
-Built with ❤️ for the diving community
+[AGPL-3.0](LICENSE). In short: run it, change it, self-host it freely — but if you
+offer a modified version as a service, you share your changes. Nobody gets to take
+this closed-source and lock divers' data away.

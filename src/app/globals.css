@@ -33,13 +33,42 @@
     --secondary-foreground: 222.2 84% 4.9%;
 
     --muted: 210 40% 96%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Darkened from shadcn's default 46.9%. At that lightness it is 4.65:1 on
+       --background (barely AA) and only 4.34:1 on --muted, so every muted line on a
+       tinted surface - the footer, a card's description - failed. 40% clears AA on
+       both (6.0:1 and 5.4:1) and is still visibly secondary to --foreground. */
+    --muted-foreground: 215 16% 40%;
 
     --accent: 210 40% 96%;
     --accent-foreground: 222.2 84% 4.9%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
+
+    /* Same red, darkened until white label text clears WCAG AA (5.8:1). At
+       --destructive's own lightness a filled destructive button reaches only 3.6:1,
+       which fails on the most consequential control in the app - but --destructive
+       itself has to stay light enough to read as *text* on the dark theme's
+       background, which is the other half of the same tension. So it splits, exactly
+       as --teal / --teal-solid and --coral / --coral-solid already do: --destructive
+       for text, icons and tints; --destructive-solid for anything filled. */
+    --destructive-solid: 0 72% 42%;
+
+    /* The counterpart to --destructive, for a confirmation that has to persist in
+       place rather than in a toast (see `StatusMessage`). Five components each
+       hand-picked a green-600/green-400 pair for this; a token means the pair is
+       tuned once and stays consistent with --destructive's weight. Darker than the
+       obvious green so it clears AA against --background as body text. */
+    --success: 142 72% 29%;
+    --success-foreground: 0 0% 100%;
+
+    /* Between --success and --destructive in weight: something to take seriously
+       that is not a failure. Currently one use - the terms page's safety notice,
+       which is deliberately *not* one of the informational callouts that became
+       `bg-muted`. A dive log telling people it is not a source of safety advice
+       should not look like a footnote. */
+    --warning: 32 92% 27%;
+    --warning-foreground: 0 0% 100%;
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
@@ -51,11 +80,36 @@
        the same in both themes. */
     --coral: 16 100% 66%;
 
+    /* Same coral, darkened enough that white label text clears WCAG AA (5.1:1).
+       --coral itself is tuned for the logo and for icons/active states against a
+       light or dark surface; used as a filled button background it only reaches
+       2.3:1 with white on top, which axe flags on the landing page's sign-in
+       button. Exactly the same split, and the same reasoning, as --teal /
+       --teal-solid. Kept constant across light/dark for the same reason as
+       --coral. */
+    --coral-solid: 16 100% 40%;
+
+    /* Coral as *text* on the page background - the header's active nav item, the
+       landing hero's accent word. --coral itself is only 2.3:1 on a light
+       background, which fails AA on a primary navigation affordance.
+       Unlike --coral and --coral-solid this one IS redeclared under .dark, and has
+       to be: a colour dark enough to read on white is too dark to read on the dark
+       theme's background. The brand mark keeps using --coral in both themes, so the
+       "reads the same everywhere" property that token exists for is unaffected. */
+    --coral-text: 16 100% 36%;
+
     /* Secondary brand accent - a teal that sits across the color wheel from
        coral, used for feature icons and other spots that want a cooler
        counterpoint to coral. Same rationale as --coral: kept constant across
        light/dark so it reads consistently in both themes. */
     --teal: 187 60% 45%;
+
+    /* Same teal, darkened enough that white label text clears WCAG AA (5.7:1).
+       --teal itself is tuned for icons and strokes against a light or dark
+       surface; used as a filled button background it only reaches 2.9:1 with
+       white on top. Kept constant across light/dark for the same reason as
+       --teal. */
+    --teal-solid: 187 60% 30%;
 
     /* Third chart accent, for the dive profile's tank-pressure curve. Depth is
        teal and temperature is coral; pressure needs a hue that's separable from
@@ -97,7 +151,15 @@
     --primary: 240 2% 45%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 4% 16%;
+    /* Nine points above --card rather than shadcn's three. --secondary's whole job
+       is to fill a chip, and every one of them in this app sits on a card: at 16% a
+       secondary badge was 1.2:1 against the surface behind it and simply wasn't
+       there. The light theme gets away with a 4-point gap because its --secondary
+       carries a 40%-saturation blue tint that separates it by hue; this palette is
+       deliberately near-neutral, so lightness is the only channel available.
+       Deliberately NOT merged with --muted, which stays at 16% - that one is a
+       large-area wash (the footer, callouts) where 22% would read as a panel. */
+    --secondary: 240 4% 22%;
     --secondary-foreground: 240 6% 93%;
 
     --muted: 240 4% 16%;
@@ -108,6 +170,22 @@
 
     --destructive: 4 100% 61%;
     --destructive-foreground: 0 0% 100%;
+
+    /* Constant across themes, like --teal-solid and --coral-solid: it is only ever
+       under white label text, so it has nothing to adapt to. */
+    --destructive-solid: 0 72% 42%;
+
+    /* The light theme needs a dark coral for text; on this background the brand
+       coral itself is already 8:1, so text can simply use it. */
+    --coral-text: 16 100% 66%;
+
+    /* Lightened for the dark surface, exactly as --destructive is. */
+    --success: 142 65% 55%;
+    --success-foreground: 240 4% 9%;
+
+    /* Lightened for the dark surface, exactly as --success is. */
+    --warning: 38 95% 62%;
+    --warning-foreground: 240 4% 9%;
 
     --border: 240 4% 18%;
     --input: 240 4% 18%;
@@ -121,5 +199,23 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+
+  /* Tailwind v4's Preflight dropped v3's `button { cursor: pointer }` to match
+     the browser default. Restored here, because without it the app is visibly
+     inconsistent along a line that has nothing to do with what a control does:
+     `<Button asChild>` around a `<Link>` gets a hand (it renders an anchor, and
+     the UA styles those) while every other button - the same component, the
+     same appearance - gets an arrow. The alternative is patching `cursor-pointer`
+     onto components one at a time, which is what was happening.
+
+     Radix's menu and listbox items are unaffected: they carry an explicit
+     `cursor-default` (native OS menus don't use a hand), and a utility always
+     outranks this layer. Same for `disabled:cursor-not-allowed` on inputs. */
+  button:not(:disabled),
+  [role="button"]:not(:disabled),
+  select:not(:disabled),
+  input:where([type="checkbox"], [type="radio"], [type="file"]):not(:disabled) {
+    cursor: pointer;
   }
 }

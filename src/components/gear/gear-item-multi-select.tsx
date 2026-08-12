@@ -1,23 +1,36 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { GripVertical, X } from "lucide-react";
-import { CreatableCombobox } from "@/components/ui/creatable-combobox";
+import {
+  ComboboxSearchResult,
+  CreatableCombobox,
+} from "@/components/ui/creatable-combobox";
+import type { FormControlSlotProps } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
 import { moveItem, useDragSort } from "@/hooks/useDragSort";
 import { cn } from "@/lib/utils";
 import {
+  gearAPI,
   GearItem,
-  fetchAllGearItems,
+  GearItemSummary,
   gearItemLabel,
   gearTypeLabel,
 } from "@/lib/api/gear";
 import { GearItemDialog } from "@/components/gear/gear-item-dialog";
 
-export interface GearItemMultiSelectProps {
+// How much gear the dropdown asks for at a time. Enough to scroll through
+// before typing, far short of the API's 100 cap.
+const GEAR_PER_SEARCH = 25;
+
+export interface GearItemMultiSelectProps extends FormControlSlotProps {
   userId: string;
   // Selected gear item uuids, in the order they were added.
   value: string[];
+  // Details for the items already in `value`, when the caller has them (the dive
+  // form does: `Dive.gear_items` carries exactly the fields a row renders).
+  // Purely an optimization - anything not covered here is fetched individually.
+  knownItems?: GearItemSummary[];
   onChange: (gearItemUuids: string[]) => void;
   disabled?: boolean;
   // Called whenever the user adds or removes an item by hand, as opposed to the
@@ -33,39 +46,87 @@ export interface GearItemMultiSelectProps {
 export function GearItemMultiSelect({
   userId,
   value,
+  knownItems,
   onChange,
   disabled,
   onManualChange,
+  ...slotProps
 }: GearItemMultiSelectProps) {
-  const [gearItems, setGearItems] = useState<GearItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Every gear item this picker has seen, keyed by uuid - its own search
+  // results, whatever it created, and lookups for selections that arrived from
+  // the form. Rows show a type plus "Rented"/"Archived" badges, so this keeps
+  // the whole summary rather than just a name.
+  const [known, setKnown] = useState<Record<string, GearItemSummary>>({});
   const [showNewDialog, setShowNewDialog] = useState(false);
+  // Fired-for uuids, so a failed lookup isn't retried on every render.
+  const requestedRef = useRef<Set<string>>(new Set());
 
+  const remember = useCallback(
+    (item: GearItemSummary) =>
+      setKnown((prev) => ({ ...prev, [item.uuid]: item })),
+    [],
+  );
+
+  // Read through the `knownItems` prop rather than copying it in via an effect:
+  // the copy wouldn't have landed on the render that first sees a selection, so
+  // the lookup below would fire for items the caller had already handed over.
+  const itemFor = (uuid: string): GearItemSummary | undefined =>
+    known[uuid] ?? knownItems?.find((item) => item.uuid === uuid);
+
+  // Resolve any selection whose record isn't known yet. This is also what keeps
+  // *archived* gear rendering properly: an older dive can legitimately reference
+  // retired kit, which the dropdown deliberately never offers, so it can only
+  // ever arrive here by uuid.
   useEffect(() => {
-    let cancelled = false;
+    const unresolved = value.filter(
+      (uuid) =>
+        !known[uuid] &&
+        !knownItems?.some((item) => item.uuid === uuid) &&
+        !requestedRef.current.has(uuid),
+    );
+    if (unresolved.length === 0) return;
 
-    const fetchGear = async () => {
+    // Marked before the request, so a failure isn't retried on every render -
+    // and, for the same reason as `DiveSiteMultiSelect`, why there's no
+    // cancellation flag: each uuid is fetched exactly once, so discarding a
+    // late result on cleanup would lose it for good.
+    unresolved.forEach((uuid) => requestedRef.current.add(uuid));
+
+    unresolved.forEach(async (uuid) => {
       try {
-        setIsLoading(true);
-        // Archived gear is fetched too, but only so already-selected archived
-        // items (on an older dive, or in a set built before they were retired)
-        // still render with their real name instead of a bare uuid. The
-        // dropdown below filters them back out, so they can't be *newly* added.
-        const items = await fetchAllGearItems(userId, true);
-        if (!cancelled) setGearItems(items);
+        remember(await gearAPI.getGearItem(uuid));
       } catch (error) {
-        console.error("Failed to fetch gear:", error);
-      } finally {
-        if (!cancelled) setIsLoading(false);
+        console.error("Failed to fetch gear item:", error);
       }
-    };
+    });
+  }, [value, known, knownItems, remember]);
 
-    if (userId) fetchGear();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [userId]);
+  const searchGear = useCallback(
+    async (query: string): Promise<ComboboxSearchResult> => {
+      // Archived gear is excluded at the source rather than filtered out here:
+      // retired kit shouldn't be offered for a new dive, and leaving it in would
+      // eat into the page of matches the user can actually pick from.
+      const response = await gearAPI.getGearItems(
+        userId,
+        1,
+        GEAR_PER_SEARCH,
+        false,
+        query,
+      );
+      response.data.forEach(remember);
+      return {
+        items: response.data.map((item) => ({
+          id: item.uuid,
+          name: gearItemLabel(item),
+          // Kit often has cryptic model names ("MK25 EVO"), so the category
+          // makes the dropdown scannable.
+          hint: gearTypeLabel(item.type) ?? undefined,
+        })),
+        hasMore: response.has_more,
+      };
+    },
+    [userId, remember],
+  );
 
   const addItem = (id: string | undefined) => {
     if (id === undefined || value.includes(id)) return;
@@ -95,16 +156,9 @@ export function GearItemMultiSelect({
   });
 
   const handleCreated = (newItem: GearItem) => {
-    setGearItems((prev) => [...prev, newItem]);
+    remember(newItem);
     addItem(newItem.uuid);
   };
-
-  // Already-selected items are hidden from the dropdown so the same item can't
-  // be added twice, and so are archived ones (retired gear shouldn't show up
-  // when logging a new dive).
-  const selectableItems = gearItems.filter(
-    (item) => !item.is_archived && !value.includes(item.uuid),
-  );
 
   return (
     <div className="space-y-2">
@@ -114,9 +168,11 @@ export function GearItemMultiSelect({
           className={cn("space-y-1", draggingIndex !== null && "select-none")}
         >
           {value.map((id, index) => {
-            const item = gearItems.find((g) => g.uuid === id);
+            const item = itemFor(id);
             const typeLabel = gearTypeLabel(item?.type);
-            const label = item ? gearItemLabel(item) : `Gear #${id}`;
+            // The fallback is only ever visible for the moment between an item
+            // being selected and its record being resolved.
+            const label = item ? gearItemLabel(item) : "Gear item...";
             const isDragging = draggingIndex === index;
             return (
               <li
@@ -185,19 +241,16 @@ export function GearItemMultiSelect({
       )}
 
       <CreatableCombobox
-        items={selectableItems.map((item) => ({
-          id: item.uuid,
-          name: gearItemLabel(item),
-          // Kit often has cryptic model names ("MK25 EVO"), so the category
-          // makes the dropdown scannable.
-          hint: gearTypeLabel(item.type) ?? undefined,
-        }))}
-        isLoading={isLoading}
+        {...slotProps}
+        onSearch={searchGear}
+        // Already-selected items are hidden so the same item can't be added twice.
+        excludeIds={value}
         value={undefined}
         onChange={addItem}
         disabled={disabled}
         placeholder={value.length ? "Add more gear..." : "Add gear..."}
         noItemsLabel="No gear yet."
+        noMatchesLabel="No gear matches."
         addNewLabel="New gear item..."
         keepOpenOnSelect
         onAddNew={() => setShowNewDialog(true)}

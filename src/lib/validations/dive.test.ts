@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { diveCreateSchema, diveMixtureSchema, normalizeMixtures } from "./dive";
+import {
+  buildDiveUpdate,
+  diveCreateSchema,
+  diveMixtureSchema,
+  diveUpdateSchema,
+  normalizeMixtures,
+} from "./dive";
 
 const validDive = {
   dive_number: 1,
@@ -279,5 +285,68 @@ describe("normalizeMixtures", () => {
     expect(result).toHaveLength(2);
     expect(result[0].end_pressure).toBeUndefined();
     expect(result[1].start_pressure).toBeUndefined();
+  });
+});
+
+describe("buildDiveUpdate", () => {
+  it("omits every field the diver never touched", () => {
+    expect(buildDiveUpdate({})).toEqual({});
+  });
+
+  // The regression this helper exists for: clearing the trip picker used to
+  // produce `undefined`, which was dropped from the PATCH, so the dive kept its
+  // trip while the UI and the success toast both claimed otherwise.
+  it("sends an explicit null when the trip is cleared", () => {
+    const update = buildDiveUpdate({ trip_uuid: null });
+
+    expect(update).toHaveProperty("trip_uuid");
+    expect(update.trip_uuid).toBeNull();
+  });
+
+  it("leaves the trip alone when the field was untouched", () => {
+    expect(buildDiveUpdate({ trip_uuid: undefined })).not.toHaveProperty(
+      "trip_uuid",
+    );
+  });
+
+  it("sends a selected trip through unchanged", () => {
+    expect(buildDiveUpdate({ trip_uuid: "trip-uuid" }).trip_uuid).toBe(
+      "trip-uuid",
+    );
+  });
+
+  // Same distinction, for the nullable measurements.
+  it("distinguishes a cleared measurement from an untouched one", () => {
+    const cleared = buildDiveUpdate({ max_depth: null, weight: null });
+    expect(cleared.max_depth).toBeNull();
+    expect(cleared.weight).toBeNull();
+
+    expect(buildDiveUpdate({})).not.toHaveProperty("max_depth");
+  });
+
+  it("converts the MM:SS duration to seconds", () => {
+    expect(buildDiveUpdate({ duration: "45:30" }).duration).toBe(2730);
+  });
+
+  it("normalizes mixtures, dropping the empty-string pressure placeholders", () => {
+    const update = buildDiveUpdate({
+      mixtures: [
+        {
+          volume: 12,
+          start_pressure: 200,
+          end_pressure: "",
+          oxygen: 21,
+          helium: 0,
+        },
+      ],
+    });
+
+    expect(update.mixtures?.[0].end_pressure).toBeUndefined();
+    expect(update.mixtures?.[0].start_pressure).toBe(200);
+  });
+
+  it("accepts a null trip through the update schema", () => {
+    const parsed = diveUpdateSchema.safeParse({ trip_uuid: null });
+    expect(parsed.success).toBe(true);
   });
 });

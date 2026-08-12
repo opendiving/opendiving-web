@@ -22,6 +22,10 @@ export interface DiveGasUsePoint {
   gas_use: DiveGasUse;
 }
 
+/**
+ * Aggregate dive statistics for the signed-in user. A diver with no dives logged gets
+ * zeroed-out stats rather than a 404, so callers needn't special-case the empty state.
+ */
 export const diveStatsAPI = {
   // Get the signed-in caller's own aggregate dive stats (total dives, max depth,
   // total time, species seen). Always operates on the caller's own account - no

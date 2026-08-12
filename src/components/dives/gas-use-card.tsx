@@ -1,7 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Activity, ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import {
+  Activity,
+  ChevronLeft,
+  ChevronRight,
+  Minus,
+  TrendingDown,
+  TrendingUp,
+} from "lucide-react";
 import {
   Card,
   CardContent,
@@ -24,16 +31,24 @@ import {
   GAS_USE_SCOPES,
   GAS_USE_SCOPE_LABELS,
   type GasUseScope,
-  RMV_TREND_WINDOW,
+  type GasUseSummary,
   availablePeriods,
   periodLabel,
   periodRange,
   stepPeriod,
+  summarizeGasUse,
 } from "@/lib/dive-gas";
+import {
+  parseGasUseView,
+  readStoredGasUseView,
+  resolveAnchor,
+  writeGasUseView,
+} from "@/lib/gas-use-view";
+import { subscribeToNothing } from "@/lib/chart-series-view";
 import { diveWallClockTime } from "@/lib/date-time";
 import { cn } from "@/lib/utils";
 
-// The dashboard's air-consumption trend.
+// The dashboard's gas-consumption trend.
 //
 // Unlike `ServiceDueCard`, this renders even with nothing to plot: an empty
 // service list means nothing needs attention, which is genuinely nothing to say,
@@ -43,12 +58,37 @@ import { cn } from "@/lib/utils";
 // points are the minimum.
 export function GasUseCard() {
   const [points, setPoints] = useState<DiveGasUsePoint[] | null>(null);
-  const [scope, setScope] = useState<GasUseScope>("year");
-  // A timestamp inside the visible period, and always one of the dives' own
-  // times rather than an arbitrary date - which is what makes switching scope
-  // land somewhere useful (the month *containing* the dive you were looking at)
-  // instead of on an empty period.
+  // Both of these hold *this visit's* choice, and both are null until the diver
+  // makes one - which is what leaves room for the remembered view underneath.
+  // The anchor is a timestamp inside the visible period, and always one of the
+  // dives' own times rather than an arbitrary date: that's what makes switching
+  // scope land somewhere useful (the month *containing* the dive you were
+  // looking at) instead of on an empty period.
+  const [chosenScope, setChosenScope] = useState<GasUseScope | null>(null);
   const [anchor, setAnchor] = useState<number | null>(null);
+
+  // The view remembered from last time.
+  //
+  // Through `useSyncExternalStore` rather than a `useState` + effect pair, which
+  // is what this wants to be and can't: `localStorage` doesn't exist on the
+  // server, so a first client render that read it would disagree with the HTML
+  // Next rendered and be a hydration mismatch. The three arguments are exactly
+  // that problem's shape - a server snapshot of `null` to hydrate against, a
+  // client snapshot read straight from storage, and no subscription (see
+  // `subscribeToNothing`). React re-renders with the client value immediately
+  // after hydrating, under the spinner the card is already showing.
+  //
+  // The snapshot is the raw string because `useSyncExternalStore` compares
+  // snapshots by identity; parsing it here, once per distinct string, is what
+  // keeps that comparison meaningful.
+  const stored = useSyncExternalStore(
+    subscribeToNothing,
+    readStoredGasUseView,
+    () => null,
+  );
+  const remembered = useMemo(() => parseGasUseView(stored), [stored]);
+
+  const scope = chosenScope ?? remembered?.scope ?? "year";
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -70,9 +110,51 @@ export function GasUseCard() {
     [points],
   );
 
-  // Opens on the most recent dive, not the oldest: the interesting question is
-  // how you're diving now, and the older periods are one click back.
-  const activeAnchor = anchor ?? times[times.length - 1] ?? 0;
+  // The remembered period, checked against the dives that exist now - see
+  // `resolveAnchor`. Null until the series arrives, which is why the fallback
+  // below still has to be there.
+  const rememberedAnchor = useMemo(
+    () => resolveAnchor(remembered?.anchor ?? null, scope, times),
+    [remembered, scope, times],
+  );
+
+  // Three sources, most specific first: whatever the diver clicked in this
+  // visit, then whatever they were reading last visit, then the most recent
+  // dive - not the oldest, since the interesting question is how you're diving
+  // now and the older periods are one click back.
+  const activeAnchor =
+    anchor ?? rememberedAnchor ?? times[times.length - 1] ?? 0;
+
+  // Remembered for next time. Held back until the series is in: `times` is what
+  // `rememberedAnchor` resolves against, so writing before it arrives would
+  // persist a null over the very period we're about to restore. That guard also
+  // covers the failed-fetch path, which sets an empty series - a request that
+  // didn't come back should not erase where you were.
+  useEffect(() => {
+    if (times.length === 0) return;
+
+    // The *chosen* anchor, never `activeAnchor`. Falling back to the most
+    // recent dive is a default, not a preference, and persisting it would pin
+    // the card to today's newest dive forever - so a diver who never touched
+    // the period control would stop following their own new dives.
+    writeGasUseView({ scope, anchor: anchor ?? rememberedAnchor });
+  }, [times, scope, anchor, rememberedAnchor]);
+
+  // The figures above the chart. Same threshold as the chart's own: with one
+  // dive there is no trend to describe, and an "Average" over a single dive
+  // sitting above "log at least two dives" would be a contradiction.
+  const summary = useMemo(
+    () =>
+      points && points.length >= 2
+        ? summarizeGasUse(
+            times,
+            points.map((point) => point.gas_use.rmv),
+            scope,
+            activeAnchor,
+          )
+        : null,
+    [points, times, scope, activeAnchor],
+  );
 
   const steppable = scope === "all" ? null : scope;
   const previous = steppable
@@ -88,14 +170,27 @@ export function GasUseCard() {
     <Card>
       <CardHeader>
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
+          {/* `CardHeader`'s own `space-y-1.5` only reaches its direct children,
+              and the controls to the right put a wrapper between it and the
+              title - so the pair has to carry the gap itself. */}
+          <div className="space-y-1.5">
             <CardTitle className="flex items-center gap-2">
               <Activity className="h-5 w-5" />
-              Air Consumption
+              Gas Consumption
             </CardTitle>
             <CardDescription>
-              Surface-equivalent consumption per dive, with a {RMV_TREND_WINDOW}
-              -dive trend. Lower is better.
+              {/* "Surface-equivalent" is carrying the S of SAC here. The title
+                  deliberately doesn't: "air" is wrong the moment you breathe
+                  nitrox or trimix, and the whole data model already says gas
+                  (`gas_use`, `dive-gas.ts`). The normalisation belongs in the
+                  sentence that has room to state it.
+
+                  The trend's exact length used to be named here too. It varies
+                  by scope now (see `trendWindow`), and a number that changes
+                  under you reads better next to the line it describes than in
+                  a standing description - so the legend states it. */}
+              Surface-equivalent gas breathed per minute (RMV), with a rolling
+              trend. Lower is better.
             </CardDescription>
           </div>
 
@@ -170,7 +265,7 @@ export function GasUseCard() {
                 <button
                   key={option}
                   type="button"
-                  onClick={() => setScope(option)}
+                  onClick={() => setChosenScope(option)}
                   aria-pressed={scope === option}
                   className={cn(
                     "rounded px-2.5 py-1 text-xs font-medium transition-colors",
@@ -190,9 +285,96 @@ export function GasUseCard() {
         {points === null ? (
           <SectionSpinner />
         ) : (
-          <GasUseChart points={points} scope={scope} anchor={activeAnchor} />
+          <>
+            {summary && <GasUseSummaryRow summary={summary} />}
+            <GasUseChart points={points} scope={scope} anchor={activeAnchor} />
+          </>
         )}
       </CardContent>
     </Card>
+  );
+}
+
+// The headline figures for the period on screen.
+//
+// The chart shows the shape; this answers "am I improving", which is the
+// question the card exists for and the one a scatter of dots is worst at
+// answering at a glance.
+function GasUseSummaryRow({ summary }: { summary: GasUseSummary }) {
+  return (
+    <div className="mb-5 flex flex-wrap items-end gap-x-8 gap-y-3">
+      <Stat label="Average">
+        <Figure value={summary.average} />
+        <Change summary={summary} />
+      </Stat>
+      <Stat label="Best dive">
+        <Figure value={summary.best} />
+      </Stat>
+      <Stat label="Dives">
+        <span className="text-xl font-semibold tabular-nums">
+          {summary.dives}
+        </span>
+      </Stat>
+    </div>
+  );
+}
+
+function Stat({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        {label}
+      </div>
+      <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// One decimal. The API returns two, which is more resolution than a figure
+// derived from a hand-read pressure gauge honestly has - and these are averages
+// over a whole period, where the second decimal is noise about noise. (The hover
+// card on the chart still shows a single dive's own two, as it always has.)
+function Figure({ value }: { value: number }) {
+  return (
+    <>
+      <span className="text-xl font-semibold tabular-nums">
+        {value.toFixed(1)}
+      </span>
+      <span className="text-sm text-muted-foreground">L/min</span>
+    </>
+  );
+}
+
+// Change against the previous period with dives.
+//
+// Deliberately uncolored. The app has no good/bad status tokens, and the two
+// candidates are both already spoken for on this card - coral is the trend line
+// and teal is a dive - so a green/red pair here would either collide with the
+// chart's own meanings or have to be invented for one label. The arrow and the
+// "vs <period>" text carry it instead, which is also what keeps the direction
+// legible to anyone who can't separate the two hues.
+function Change({ summary }: { summary: GasUseSummary }) {
+  if (summary.changePercent === null) return null;
+
+  // Rounded before it's judged, so a 0.4% drift isn't announced as an
+  // improvement by an arrow pointing at a number that reads "0%".
+  const percent = Math.round(summary.changePercent);
+  const Icon = percent === 0 ? Minus : percent < 0 ? TrendingDown : TrendingUp;
+
+  return (
+    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+      <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+      {percent === 0
+        ? `level with ${summary.previousLabel}`
+        : `${Math.abs(percent)}% vs ${summary.previousLabel}`}
+    </span>
   );
 }

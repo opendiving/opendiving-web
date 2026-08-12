@@ -11,6 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useQuickCreate } from "@/components/layout/quick-create";
 import { formatTripDateRange } from "@/lib/date-time";
 import { Luggage, Plus, Calendar, Loader2 } from "lucide-react";
 
@@ -26,11 +27,12 @@ export interface RecentTripsCardProps {
   userId: string;
 }
 
-// Shows the user's most recently created trips (up to 5). Used on the
+// Shows the user's most recent trips by trip date (up to 5). Used on the
 // dashboard so divers can quickly jump back into a trip they're logging dives for.
 export function RecentTripsCard({ userId }: RecentTripsCardProps) {
   const [recentTrips, setRecentTrips] = useState<Trip[]>([]);
   const [isLoadingTrips, setIsLoadingTrips] = useState(true);
+  const openCreate = useQuickCreate();
 
   useEffect(() => {
     const fetchRecentTrips = async () => {
@@ -38,15 +40,11 @@ export function RecentTripsCard({ userId }: RecentTripsCardProps) {
 
       try {
         setIsLoadingTrips(true);
-        // The trips list endpoint sorts alphabetically by name, so fetch a
-        // larger batch and sort by creation date client-side to surface the
-        // most *recently created* trips here.
-        const response = await tripsAPI.getTrips(userId, 1, 100);
-        const sorted = [...response.data].sort(
-          (a, b) =>
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-        );
-        setRecentTrips(sorted.slice(0, RECENT_TRIPS_COUNT));
+        // The trips list endpoint already sorts by start_date descending, so the
+        // first page is exactly the most recent trips - no client-side sorting
+        // (which would disagree with the ordering on /trips).
+        const response = await tripsAPI.getTrips(userId, 1, RECENT_TRIPS_COUNT);
+        setRecentTrips(response.data);
       } catch (error) {
         console.error("Failed to fetch recent trips:", error);
       } finally {
@@ -60,16 +58,20 @@ export function RecentTripsCard({ userId }: RecentTripsCardProps) {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center">
-            <Luggage className="h-5 w-5 mr-2" />
-            Recent Trips
-          </CardTitle>
+        {/* Same column-plus-action shape as `RecentDivesCard`, and for the same
+            reason - see the comment there. */}
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="space-y-1.5">
+            <CardTitle className="flex items-center gap-2">
+              <Luggage className="h-5 w-5" />
+              Recent Trips
+            </CardTitle>
+            <CardDescription>Your latest diving trips</CardDescription>
+          </div>
           <Button variant="outline" size="sm" asChild>
             <Link href="/trips">View All Trips</Link>
           </Button>
         </div>
-        <CardDescription>Your latest diving trips</CardDescription>
       </CardHeader>
       <CardContent>
         {isLoadingTrips ? (
@@ -85,11 +87,9 @@ export function RecentTripsCard({ userId }: RecentTripsCardProps) {
             <p className="text-muted-foreground mb-4">
               Create a trip to group your dives together!
             </p>
-            <Button asChild>
-              <Link href="/trips/new">
-                <Plus className="h-4 w-4 mr-2" />
-                Create Your First Trip
-              </Link>
+            <Button onClick={() => openCreate("trip")}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Your First Trip
             </Button>
           </div>
         ) : (
@@ -98,9 +98,9 @@ export function RecentTripsCard({ userId }: RecentTripsCardProps) {
               <Link
                 key={trip.uuid}
                 href={`/trips/${trip.uuid}`}
-                className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted transition-colors"
+                className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 p-3 rounded-lg border hover:bg-muted transition-colors"
               >
-                <div>
+                <div className="min-w-0">
                   <div className="font-medium text-foreground">{trip.name}</div>
                   {trip.location && (
                     <div className="text-sm text-muted-foreground">

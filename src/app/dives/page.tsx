@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { usePaginatedResource } from "@/hooks/usePaginatedResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { divesAPI, Dive } from "@/lib/api/dives";
 import { DiveSitesLabel } from "@/components/dives/dive-sites-label";
+import { DiveNumberingStatus } from "@/components/dives/dive-numbering-status";
 import {
   formatDiveDateTime,
   formatDurationHoursMinutes,
@@ -26,9 +27,18 @@ import { PaginationFooter } from "@/components/ui/pagination-footer";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Plus, Eye, Edit, Trash2, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { PageSpinner } from "@/components/ui/page-spinner";
 
 export default function DivesPage() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
+  // Bumped whenever the log changes, to re-describe its numbering: deleting a
+  // dive leaves the number it held unused, which the line above the table says
+  // out loud.
+  const [numberingToken, setNumberingToken] = useState(0);
+  const reloadNumbering = useCallback(
+    () => setNumberingToken((n) => n + 1),
+    [],
+  );
 
   const fetchDives = useCallback(
     (page: number, perPage: number) => {
@@ -64,15 +74,14 @@ export default function DivesPage() {
       "Are you sure you want to delete this dive? This action cannot be undone.",
     successMessage: "Dive deleted successfully.",
     errorMessage: "Failed to delete dive. Please try again.",
-    onDeleted: refetch,
+    onDeleted: () => {
+      refetch();
+      reloadNumbering();
+    },
   });
 
   if (isAuthLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
+    return <PageSpinner variant="inset" />;
   }
 
   if (!isAuthenticated) {
@@ -106,6 +115,12 @@ export default function DivesPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
+          <DiveNumberingStatus
+            enabled={!!user}
+            reloadToken={numberingToken}
+            onRenumbered={refetch}
+          />
+
           {isLoadingDives && dives.length === 0 ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin" />
@@ -165,8 +180,13 @@ export default function DivesPage() {
                               <Eye className="h-4 w-4" />
                             </Link>
                           </Button>
-                          <Button variant="ghost" size="sm" asChild>
-                            <Link href={`/dives/${dive.uuid}/edit`}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            aria-label="Edit"
+                            asChild
+                          >
+                            <Link href={`/dives/${dive.uuid}/edit?from=/dives`}>
                               <Edit className="h-4 w-4" />
                             </Link>
                           </Button>

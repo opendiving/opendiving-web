@@ -5,12 +5,15 @@ import {
   certificationExpiryLabel,
   certificationExpiryStatus,
   certificationFileVersion,
+  certificationRenewals,
 } from "./certification";
 import type { CertificationFileInfo } from "./api/certifications";
 
 const TODAY = "2026-08-10";
 
-const file = (overrides: Partial<CertificationFileInfo> = {}): CertificationFileInfo => ({
+const file = (
+  overrides: Partial<CertificationFileInfo> = {},
+): CertificationFileInfo => ({
   uuid: "019fe94e-c13c-7166-9dad-5af54eb08319",
   side: "front",
   content_type: "image/png",
@@ -64,7 +67,9 @@ describe("certificationFileVersion", () => {
   it("is stable while the file is unchanged", () => {
     // Repeat views must keep hitting the same cache entry rather than refetching
     // megabytes on every mount.
-    expect(certificationFileVersion(file())).toBe(certificationFileVersion(file()));
+    expect(certificationFileVersion(file())).toBe(
+      certificationFileVersion(file()),
+    );
   });
 
   it("does not change for metadata that doesn't affect the bytes served", () => {
@@ -126,6 +131,74 @@ describe("certificationExpiryStatus", () => {
     expect(certificationExpiryStatus("2026-12-20", "2027-01-05")).toBe(
       "expired",
     );
+  });
+});
+
+describe("certificationRenewals", () => {
+  const card = (name: string, expires_on: string | null) => ({
+    name,
+    expires_on,
+  });
+
+  it("is empty when nothing needs renewing", () => {
+    // The normal case for a recreational diver, and what keeps the dashboard card
+    // off the page entirely.
+    expect(
+      certificationRenewals(
+        [card("OW", null), card("AOW", "2030-01-01")],
+        TODAY,
+      ),
+    ).toEqual([]);
+  });
+
+  it("keeps only the cards inside the notice window or already gone", () => {
+    const renewals = certificationRenewals(
+      [
+        card("OW", null),
+        card("Rescue", "2026-09-01"),
+        card("Nitrox", "2030-01-01"),
+        card("EFR", "2026-01-01"),
+      ],
+      TODAY,
+    );
+
+    expect(renewals.map((renewal) => renewal.certification.name)).toEqual([
+      "EFR",
+      "Rescue",
+    ]);
+  });
+
+  it("puts expired cards ahead of ones merely expiring soon", () => {
+    // Sorting is by date alone; this is the property that behaviour rests on, so it
+    // gets its own test rather than being assumed from the implementation.
+    const renewals = certificationRenewals(
+      [card("Rescue", "2026-10-30"), card("EFR", "2026-08-09")],
+      TODAY,
+    );
+
+    expect(renewals.map((renewal) => renewal.status)).toEqual([
+      "expired",
+      "expiring_soon",
+    ]);
+  });
+
+  it("orders several expired cards oldest first", () => {
+    const renewals = certificationRenewals(
+      [card("EFR", "2025-01-01"), card("Rescue", "2019-06-30")],
+      TODAY,
+    );
+
+    expect(renewals.map((renewal) => renewal.certification.name)).toEqual([
+      "Rescue",
+      "EFR",
+    ]);
+  });
+
+  it("narrows the expiry date to a plain string", () => {
+    // What lets the card render a date without a non-null assertion of its own.
+    const [renewal] = certificationRenewals([card("EFR", "2026-09-01")], TODAY);
+
+    expect(renewal.expiresOn).toBe("2026-09-01");
   });
 });
 

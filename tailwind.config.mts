@@ -28,8 +28,15 @@ const config: Config = {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
         },
-        coral: "hsl(var(--coral))",
-        teal: "hsl(var(--teal))",
+        coral: {
+          DEFAULT: "hsl(var(--coral))",
+          solid: "hsl(var(--coral-solid))",
+          text: "hsl(var(--coral-text))",
+        },
+        teal: {
+          DEFAULT: "hsl(var(--teal))",
+          solid: "hsl(var(--teal-solid))",
+        },
         pressure: "hsl(var(--pressure))",
         tooltip: {
           DEFAULT: "hsl(var(--tooltip))",
@@ -41,7 +48,16 @@ const config: Config = {
         },
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
+          solid: "hsl(var(--destructive-solid))",
           foreground: "hsl(var(--destructive-foreground))",
+        },
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
         },
         muted: {
           DEFAULT: "hsl(var(--muted))",

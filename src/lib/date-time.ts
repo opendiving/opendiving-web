@@ -30,7 +30,17 @@ export function parseFormDateTime(value: string): Date {
 
 // Matches a trailing UTC offset ("Z", "+HH:MM", "+HHMM", or "+HH") on an ISO
 // 8601 datetime string.
-const OFFSET_SUFFIX_REGEX = /(Z)$|([+-])(\d{2}):?(\d{2})?$/;
+//
+// The offset must follow a time component, and that is not a nicety: without
+// it, `-04` matches the *day* of a bare "2021-04-04", which a dive computer is
+// entirely capable of exporting. That date would then be treated as
+// offset-aware and shifted by four hours - silently moving the dive - and it
+// would satisfy `diveCreateSchema`'s "must include a UTC offset" refine on the
+// way through. The `\d{2}:\d{2}` lookbehind-by-capture anchors the match to a
+// real "HH:MM" (optionally with seconds/fraction) so only a genuine offset
+// counts.
+const OFFSET_SUFFIX_REGEX =
+  /\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:(Z)|([+-])(\d{2}):?(\d{2})?)$/;
 
 // Returns the UTC offset (in minutes) embedded in an ISO 8601 datetime
 // string, e.g. 120 for "...+02:00", or `null` if it has none (a "naive"
@@ -115,6 +125,51 @@ export function combineStartTime(
   offsetMinutes: number,
 ): string {
   return `${localDateTime.replace(" ", "T")}${formatUtcOffset(offsetMinutes)}`;
+}
+
+// A `start_time` that carries only a date, with no time at all, e.g.
+// "2021-04-04".
+const DATE_ONLY_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
+// Normalizes a dive-computer file's raw `start_time` into the single
+// offset-aware `start_time` string the form (`DiveStartTimeField`) and the API
+// both expect. Dive computers export it in three shapes:
+//
+// - With an explicit offset, e.g. "2021-04-04T10:04:47.910+02:00" - already the
+//   shape we want, so it's used as-is.
+// - Date-only, e.g. "2021-04-04" - taken as midnight wall-clock. Checked
+//   *before* the naive branch below, because `new Date("2021-04-04")` parses as
+//   UTC midnight and reading it back with local getters shows the previous day
+//   west of Greenwich (see DECISIONS.md, "Bare `YYYY-MM-DD` dates must not go
+//   through `new Date(dateString)`").
+// - Naive/local, e.g. "2025-06-03T12:15:33.8" - its literal date/time digits
+//   are kept (parsing a naive string with `Date` and reading back local getters
+//   is a no-op transformation: there is no timezone to convert from) and
+//   combined with the browser's current offset, the best available default.
+//   It's on the diver to correct it if their computer's clock was set to a
+//   different zone than wherever they are now.
+//
+// Returns `undefined` for anything `Date` can't parse at all.
+export function normalizeParsedStartTime(
+  rawStartTime: string,
+): string | undefined {
+  if (parseUtcOffsetMinutes(rawStartTime) !== null) {
+    return rawStartTime;
+  }
+
+  if (DATE_ONLY_REGEX.test(rawStartTime)) {
+    return combineStartTime(
+      `${rawStartTime} 00:00:00`,
+      getBrowserUtcOffsetMinutes(),
+    );
+  }
+
+  const date = new Date(rawStartTime);
+  if (Number.isNaN(date.getTime())) return undefined;
+  return combineStartTime(
+    formatDateTimeForForm(date),
+    getBrowserUtcOffsetMinutes(),
+  );
 }
 
 // The default `start_time` for a brand-new dive: right now, in the browser's

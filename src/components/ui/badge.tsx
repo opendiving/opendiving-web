@@ -13,7 +13,13 @@ const badgeVariants = cva(
         secondary:
           "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
         destructive:
-          "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
+          "border-transparent bg-destructive-solid text-destructive-foreground hover:bg-destructive-solid/80",
+        // For a state to take seriously that is not yet a failure, sitting between
+        // `outline` and `destructive` in weight. `secondary` cannot carry this: in dark
+        // mode --secondary (16%) is three points off --card (13%), so the chip all but
+        // disappears on the surface these statuses are always rendered on.
+        warning:
+          "border-transparent bg-warning text-warning-foreground hover:bg-warning/80",
         outline: "text-foreground",
       },
     },

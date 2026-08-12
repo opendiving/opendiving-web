@@ -8,7 +8,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
 import { getApiErrorMessage } from "@/lib/api/error";
-import { AlertCircle, Loader2, MailCheck } from "lucide-react";
+import {
+  consumePostAuthRedirect,
+  DEFAULT_POST_AUTH_REDIRECT,
+} from "@/lib/auth-redirect";
+import { AlertCircle, Loader2, LogIn, MailCheck } from "lucide-react";
 
 // The magic-link landing page - this is what `{FRONTEND_URL}/auth/verify?token=...`
 // (see the backend's `services.email_service`) actually points to. Mirrors the
@@ -67,7 +71,10 @@ function VerifyMagicLinkContent() {
       })
       .catch((err) => {
         setError(
-          getApiErrorMessage(err, "This sign-in link is invalid or has expired."),
+          getApiErrorMessage(
+            err,
+            "This sign-in link is invalid or has expired.",
+          ),
         );
         setState("error");
       });
@@ -79,7 +86,13 @@ function VerifyMagicLinkContent() {
     setState("verifying");
     try {
       const signedIn = await verifyEmailLink(token);
-      router.replace(signedIn ? "/dashboard" : "/onboarding");
+      // Consumed unconditionally, even when heading to onboarding: a brand-new
+      // account has nothing to return to, and leaving the value behind would
+      // only let it surface at some unrelated later sign-in in this tab.
+      const next = consumePostAuthRedirect();
+      router.replace(
+        signedIn ? (next ?? DEFAULT_POST_AUTH_REDIRECT) : "/onboarding",
+      );
     } catch (err) {
       setError(
         getApiErrorMessage(err, "This sign-in link is invalid or has expired."),
@@ -124,7 +137,9 @@ function VerifyStatus({
         {state === "checking" && (
           <>
             <Loader2 className="mx-auto mb-4 h-10 w-10 animate-spin text-primary" />
-            <p className="text-muted-foreground">Checking your sign-in link...</p>
+            <p className="text-muted-foreground">
+              Checking your sign-in link...
+            </p>
           </>
         )}
 
@@ -144,7 +159,10 @@ function VerifyStatus({
                 "Click below to finish signing in to OpenDiving."
               )}
             </p>
-            <Button onClick={onConfirm}>Sign in</Button>
+            <Button onClick={onConfirm}>
+              <LogIn className="h-4 w-4 mr-2" />
+              Sign in
+            </Button>
           </>
         )}
 
@@ -157,12 +175,12 @@ function VerifyStatus({
 
         {state === "error" && (
           <>
-            <AlertCircle className="mx-auto mb-4 h-10 w-10 text-red-600" />
+            <AlertCircle className="mx-auto mb-4 h-10 w-10 text-destructive" />
             <p className="text-foreground font-medium mb-1">
               We couldn&apos;t sign you in
             </p>
             <p className="text-muted-foreground mb-6">{error}</p>
-            <Link href="/#get-started" className="text-primary hover:text-primary/80">
+            <Link href="/signin" className="underline hover:text-foreground">
               Request a new sign-in link
             </Link>
           </>

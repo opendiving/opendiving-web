@@ -1,4 +1,5 @@
 import { apiClient } from "./client";
+import type { PaginatedResponse } from "./client";
 
 export interface Trip {
   uuid: string;
@@ -28,14 +29,9 @@ export interface TripUpdate {
   notes?: string;
 }
 
-export interface PaginatedTripsResponse {
-  data: Trip[];
-  total_count: number;
-  has_more: boolean;
-  page: number;
-  items_per_page: number;
-}
+export type PaginatedTripsResponse = PaginatedResponse<Trip>;
 
+/** Trip CRUD. Every call is scoped to the signed-in user by the API. */
 export const tripsAPI = {
   // Create a new trip. `tripData.user_uuid` must be the currently signed-in user's uuid.
   async createTrip(tripData: TripCreate): Promise<Trip> {
@@ -43,17 +39,21 @@ export const tripsAPI = {
     return response.data;
   },
 
-  // Get all trips for a user (paginated)
+  // Get a user's trips (paginated, most recent first). `search` narrows to trips
+  // whose name *or* location contains it, case-insensitively - the API caps
+  // `items_per_page` at 100, so this is a page of matches, never the whole set.
   async getTrips(
     userUuid: string,
     page: number = 1,
     items_per_page: number = 10,
+    search?: string,
   ): Promise<PaginatedTripsResponse> {
     const response = await apiClient.get(`/trips`, {
       params: {
         user_uuid: userUuid,
         page,
         items_per_page,
+        ...(search ? { search } : {}),
       },
     });
     return response.data;

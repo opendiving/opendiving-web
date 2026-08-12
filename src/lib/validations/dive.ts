@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { parseUtcOffsetMinutes } from "@/lib/date-time";
+import { parseFormDuration, parseUtcOffsetMinutes } from "@/lib/date-time";
+import type { DiveUpdate } from "@/lib/api/dives";
 
 // Same offset-aware ISO 8601 shape as the API's `Dive.start_time`, e.g.
 // "2021-04-04T10:04:47+02:00" - produced/consumed by `DiveStartTimeField`
@@ -155,7 +156,7 @@ export const diveCreateSchema = z.object({
   // diving with no lead at all is a real entry, and it's worth distinguishing
   // from not having recorded it - mirrors `ck_dive_weight_non_negative`.
   weight: weightField(),
-  trip_uuid: z.string().optional(),
+  trip_uuid: z.string().nullable().optional(),
   dive_site_uuids: z.array(z.string()).default([]),
   gear_item_uuids: z.array(z.string()).default([]),
   notes: z
@@ -191,7 +192,9 @@ export const diveUpdateSchema = z.object({
     .nullable()
     .optional(),
   weight: weightField(),
-  trip_uuid: z.string().optional(),
+  // Nullable, not just optional: `null` is how the edit form says "detach this
+  // dive from its trip". See `DiveUpdate.trip_uuid` in `lib/api/dives.ts`.
+  trip_uuid: z.string().nullable().optional(),
   dive_site_uuids: z.array(z.string()).optional(),
   gear_item_uuids: z.array(z.string()).optional(),
   notes: z
@@ -203,3 +206,47 @@ export const diveUpdateSchema = z.object({
 
 export type DiveCreateInput = z.input<typeof diveCreateSchema>;
 export type DiveUpdateInput = z.input<typeof diveUpdateSchema>;
+
+// Turns the edit form's values into the PATCH body for `divesAPI.updateDive`.
+//
+// The one rule, and the whole reason this isn't a plain spread: a field that is
+// `undefined` was never touched and must not appear in the request at all,
+// while a field that is `null` is a value the diver deliberately cleared and
+// must be sent so the API can null it out. Collapsing those two together is
+// what previously made a dive's trip impossible to remove - the picker cleared
+// to `undefined`, the field was dropped, and the trip survived a save that
+// reported success.
+//
+// `duration` is the only shape change: the form edits it as an "MM:SS" string
+// and the API takes seconds. Done here rather than in the schema because
+// `z.transform()` on a field feeding a `z.input<>`-derived form type breaks
+// `useForm()`'s binding - see CONTRIBUTING.md.
+export function buildDiveUpdate(data: DiveUpdateInput): DiveUpdate {
+  const update: DiveUpdate = {};
+
+  if (data.dive_number !== undefined) update.dive_number = data.dive_number;
+  if (data.start_time !== undefined) update.start_time = data.start_time;
+  if (data.duration !== undefined) {
+    update.duration = parseFormDuration(data.duration);
+  }
+  if (data.max_depth !== undefined) update.max_depth = data.max_depth;
+  if (data.avg_depth !== undefined) update.avg_depth = data.avg_depth;
+  if (data.bottom_temperature !== undefined) {
+    update.bottom_temperature = data.bottom_temperature;
+  }
+  if (data.visibility !== undefined) update.visibility = data.visibility;
+  if (data.weight !== undefined) update.weight = data.weight;
+  if (data.trip_uuid !== undefined) update.trip_uuid = data.trip_uuid;
+  if (data.dive_site_uuids !== undefined) {
+    update.dive_site_uuids = data.dive_site_uuids;
+  }
+  if (data.gear_item_uuids !== undefined) {
+    update.gear_item_uuids = data.gear_item_uuids;
+  }
+  if (data.notes !== undefined) update.notes = data.notes;
+  if (data.mixtures !== undefined) {
+    update.mixtures = normalizeMixtures(data.mixtures);
+  }
+
+  return update;
+}

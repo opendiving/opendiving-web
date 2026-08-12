@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useDialogApiError } from "@/hooks/useDialogApiError";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus, Save } from "lucide-react";
 import {
   gearServiceScheduleSchema,
   type GearServiceScheduleInput,
@@ -42,6 +43,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Button } from "@/components/ui/button";
 
 interface GearServiceScheduleDialogProps {
@@ -64,7 +66,7 @@ export function GearServiceScheduleDialog({
   onSaved,
 }: GearServiceScheduleDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [apiError, setApiError] = useState<string | null>(null);
+  const [apiError, setApiError] = useDialogApiError(open);
   const isEdit = !!schedule;
 
   const form = useForm<GearServiceScheduleInput>({
@@ -106,8 +108,6 @@ export function GearServiceScheduleDialog({
         interval_dives: preset?.interval_dives ?? "",
       });
     }
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setApiError(null);
   }, [open, schedule, gearItem.type, reset]);
 
   const handleOpenChange = (next: boolean) => {
@@ -149,7 +149,7 @@ export function GearServiceScheduleDialog({
 
       onSaved();
       onOpenChange(false);
-    } catch (error: any) {
+    } catch (error) {
       setApiError(
         getApiErrorMessage(
           error,
@@ -230,7 +230,10 @@ export function GearServiceScheduleDialog({
                 <FormItem>
                   <FormLabel>In service since *</FormLabel>
                   <FormControl>
-                    <Input type="date" {...field} value={field.value ?? ""} />
+                    <DatePicker
+                      value={field.value ?? ""}
+                      onChange={field.onChange}
+                    />
                   </FormControl>
                   <p className="text-xs text-muted-foreground">
                     Counted from until you log a service. For a used cylinder,
@@ -316,9 +319,15 @@ export function GearServiceScheduleDialog({
                     {isEdit ? "Saving..." : "Creating..."}
                   </>
                 ) : isEdit ? (
-                  "Save Changes"
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save Changes
+                  </>
                 ) : (
-                  "Create Schedule"
+                  <>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Schedule
+                  </>
                 )}
               </Button>
             </DialogFooter>

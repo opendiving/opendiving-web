@@ -1,93 +1,47 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
+import { useResource } from "@/hooks/useResource";
+import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { tripsAPI, Trip } from "@/lib/api/trips";
 import { formatDateTime, formatTripDateRange } from "@/lib/date-time";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { TripDialog } from "@/components/trips/trip-dialog";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionSpinner } from "@/components/ui/section-spinner";
 import { NotFoundState } from "@/components/ui/not-found-state";
-import {
-  Edit,
-  Trash2,
-  Plus,
-  Calendar,
-  MapPin,
-  Loader2,
-} from "lucide-react";
+import { Edit, Trash2, Plus, Calendar, MapPin, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { useToast } from "@/components/ui/use-toast";
+import { PageSpinner } from "@/components/ui/page-spinner";
 
 export default function TripDetailPage() {
-  const params = useParams();
   const router = useRouter();
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
-  const { toast } = useToast();
-  const [trip, setTrip] = useState<Trip | null>(null);
-  const [isLoadingTrip, setIsLoadingTrip] = useState(true);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
 
-  const tripId = params.id as string;
+  const {
+    resource: trip,
+    setResource: setTrip,
+    isLoading: isLoadingTrip,
+  } = useResource<Trip>(tripsAPI.getTrip, {
+    enabled: !!user,
+    errorMessage: "Failed to load trip details. Please try again.",
+    redirectTo: "/trips",
+  });
 
-  // Fetch trip details
-  useEffect(() => {
-    const fetchTrip = async () => {
-      if (!user || !tripId) return;
-
-      try {
-        setIsLoadingTrip(true);
-        const tripData = await tripsAPI.getTrip(tripId);
-        setTrip(tripData);
-      } catch (error) {
-        console.error("Failed to fetch trip:", error);
-        toast({
-          title: "Error",
-          description: "Failed to load trip details. Please try again.",
-          variant: "destructive",
-        });
-        router.push("/trips");
-      } finally {
-        setIsLoadingTrip(false);
-      }
-    };
-
-    if (user) {
-      fetchTrip();
-    }
-  }, [user, tripId, toast, router]);
-
-  // Handle trip deletion
-  const handleDeleteTrip = async () => {
-    if (!user || !trip?.uuid) return;
-
-    try {
-      setIsDeleting(true);
-      await tripsAPI.deleteTrip(trip.uuid);
-
-      toast({
-        title: "Success",
-        description: "Trip deleted successfully.",
-      });
-
-      router.push("/trips");
-    } catch (error) {
-      console.error("Failed to delete trip:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete trip. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsDeleting(false);
-      setIsConfirmOpen(false);
-    }
-  };
+  const del = useDeleteResource(tripsAPI.deleteTrip, {
+    confirmMessage:
+      "Are you sure you want to delete this trip? This action cannot be undone.",
+    successMessage: "Trip deleted successfully.",
+    errorMessage: "Failed to delete trip. Please try again.",
+    onDeleted: () => router.push("/trips"),
+  });
+  const isDeleting = del.deletingId !== null;
 
   const formatDate = (dateString: string) =>
     formatDateTime(dateString, {
@@ -105,11 +59,7 @@ export default function TripDetailPage() {
     : undefined;
 
   if (isAuthLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
+    return <PageSpinner variant="inset" />;
   }
 
   if (!isAuthenticated) {
@@ -153,15 +103,13 @@ export default function TripDetailPage() {
         }
         actions={
           <>
-            <Button variant="outline" asChild>
-              <Link href={`/trips/${trip.uuid}/edit`}>
-                <Edit className="h-4 w-4 mr-2" />
-                Edit
-              </Link>
+            <Button variant="outline" onClick={() => setIsEditOpen(true)}>
+              <Edit className="h-4 w-4 mr-2" />
+              Edit
             </Button>
             <Button
               variant="destructive"
-              onClick={() => setIsConfirmOpen(true)}
+              onClick={() => del.requestDelete(trip.uuid)}
               disabled={isDeleting}
             >
               {isDeleting ? (
@@ -175,14 +123,22 @@ export default function TripDetailPage() {
         }
       />
 
+      <TripDialog
+        userId={user?.uuid ?? ""}
+        open={isEditOpen}
+        onOpenChange={setIsEditOpen}
+        trip={trip}
+        onSaved={setTrip}
+      />
+
       <ConfirmDialog
-        open={isConfirmOpen}
-        onOpenChange={setIsConfirmOpen}
+        open={del.pendingId !== null}
+        onOpenChange={(open) => !open && del.cancelDelete()}
         title="Delete trip"
-        description="Are you sure you want to delete this trip? This action cannot be undone."
+        description={del.confirmMessage}
         confirmText="Delete"
         isLoading={isDeleting}
-        onConfirm={handleDeleteTrip}
+        onConfirm={del.confirmDelete}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

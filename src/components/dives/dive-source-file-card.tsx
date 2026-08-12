@@ -8,6 +8,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { Dive, divesAPI, diveParserLabel } from "@/lib/api/dives";
 import { getApiErrorMessage } from "@/lib/api/error";
+import { downloadBlob } from "@/lib/download";
 import { formatFileSize } from "@/lib/format";
 
 interface DiveSourceFileCardProps {
@@ -19,7 +20,10 @@ interface DiveSourceFileCardProps {
 
 // Shows the dive-computer export a dive was imported from, on the dive detail
 // page. Renders nothing when there isn't one - most dives are logged by hand.
-export function DiveSourceFileCard({ dive, onChanged }: DiveSourceFileCardProps) {
+export function DiveSourceFileCard({
+  dive,
+  onChanged,
+}: DiveSourceFileCardProps) {
   const { toast } = useToast();
   const [isDownloading, setIsDownloading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -30,9 +34,8 @@ export function DiveSourceFileCard({ dive, onChanged }: DiveSourceFileCardProps)
 
   // Downloading goes through the API client rather than a plain `<a href>`: the
   // endpoint needs an `Authorization` header, which a link cannot send (the
-  // access token lives in memory, not in a cookie). The object URL is revoked
-  // immediately - the browser has taken its own copy by the time the synthetic
-  // click returns.
+  // access token lives in memory, not in a cookie). See `lib/download.ts` for why
+  // the object URL outlives the click.
   //
   // The `v` param is the file's identity: `uuid` covers delete-then-reattach,
   // `updated_at` covers a replace. Without it the 5-minute `max-age` would keep
@@ -44,13 +47,8 @@ export function DiveSourceFileCard({ dive, onChanged }: DiveSourceFileCardProps)
         dive.uuid,
         `${file.uuid}:${file.updated_at ?? ""}`,
       );
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = file.original_filename;
-      link.click();
-      URL.revokeObjectURL(url);
-    } catch (error: any) {
+      downloadBlob(blob, file.original_filename);
+    } catch (error) {
       toast({
         title: "Error",
         description: getApiErrorMessage(
@@ -74,7 +72,7 @@ export function DiveSourceFileCard({ dive, onChanged }: DiveSourceFileCardProps)
         title: "File deleted",
         description: "The imported file was removed from this dive.",
       });
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Error",
         description: getApiErrorMessage(

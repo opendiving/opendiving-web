@@ -7,8 +7,9 @@ import {
   getBrowserUtcOffsetMinutes,
   splitStartTime,
 } from "@/lib/date-time";
+import type { FormControlSlotProps } from "@/components/ui/form";
 
-export interface DiveStartTimeFieldProps {
+export interface DiveStartTimeFieldProps extends FormControlSlotProps {
   // An offset-aware ISO 8601 string, e.g. "2021-04-04T10:04:47+02:00" - the
   // same shape as the API's `Dive.start_time` - or `""`/`undefined` while
   // still empty (e.g. the edit form before the dive has loaded).
@@ -28,6 +29,10 @@ export function DiveStartTimeField({
   value,
   onChange,
   disabled,
+  // A composite field behind one "Start time" label, so the slot props go on the
+  // *primary* control - the date/time picker. The offset select beside it carries
+  // its own `aria-label`, since "Start time" would describe it only vaguely.
+  ...slotProps
 }: DiveStartTimeFieldProps) {
   const { localDateTime, offsetMinutes } = value
     ? splitStartTime(value)
@@ -36,6 +41,7 @@ export function DiveStartTimeField({
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
       <DateTimePicker
+        {...slotProps}
         value={localDateTime}
         onChange={(next) => onChange(combineStartTime(next, offsetMinutes))}
         disabled={disabled}

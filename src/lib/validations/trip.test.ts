@@ -1,28 +1,28 @@
 import { describe, expect, it } from "vitest";
-import { normalizeTripDates, tripCreateSchema, tripUpdateSchema } from "./trip";
+import { normalizeTripDates, tripFormSchema } from "./trip";
 
-describe("tripCreateSchema", () => {
+describe("tripFormSchema", () => {
   const validTrip = {
     name: "Red Sea Liveaboard",
     start_date: "2024-06-01",
   };
 
   it("accepts a valid trip with only the required fields", () => {
-    expect(tripCreateSchema.safeParse(validTrip).success).toBe(true);
+    expect(tripFormSchema.safeParse(validTrip).success).toBe(true);
   });
 
   it("rejects an empty name", () => {
-    const result = tripCreateSchema.safeParse({ ...validTrip, name: "" });
+    const result = tripFormSchema.safeParse({ ...validTrip, name: "" });
     expect(result.success).toBe(false);
   });
 
   it("rejects a missing start_date", () => {
-    const result = tripCreateSchema.safeParse({ name: "Trip" });
+    const result = tripFormSchema.safeParse({ name: "Trip" });
     expect(result.success).toBe(false);
   });
 
   it("accepts an end_date on or after the start_date", () => {
-    const result = tripCreateSchema.safeParse({
+    const result = tripFormSchema.safeParse({
       ...validTrip,
       end_date: "2024-06-08",
     });
@@ -30,7 +30,7 @@ describe("tripCreateSchema", () => {
   });
 
   it("accepts an end_date equal to the start_date", () => {
-    const result = tripCreateSchema.safeParse({
+    const result = tripFormSchema.safeParse({
       ...validTrip,
       end_date: "2024-06-01",
     });
@@ -38,7 +38,7 @@ describe("tripCreateSchema", () => {
   });
 
   it("rejects an end_date before the start_date", () => {
-    const result = tripCreateSchema.safeParse({
+    const result = tripFormSchema.safeParse({
       ...validTrip,
       end_date: "2024-05-31",
     });
@@ -49,22 +49,8 @@ describe("tripCreateSchema", () => {
   });
 
   it("allows omitting end_date entirely", () => {
-    const result = tripCreateSchema.safeParse(validTrip);
+    const result = tripFormSchema.safeParse(validTrip);
     expect(result.success).toBe(true);
-  });
-});
-
-describe("tripUpdateSchema", () => {
-  it("accepts an empty object (all fields optional)", () => {
-    expect(tripUpdateSchema.safeParse({}).success).toBe(true);
-  });
-
-  it("still enforces the date-range refinement when both dates are present", () => {
-    const result = tripUpdateSchema.safeParse({
-      start_date: "2024-06-08",
-      end_date: "2024-06-01",
-    });
-    expect(result.success).toBe(false);
   });
 });
 
@@ -89,12 +75,14 @@ describe("normalizeTripDates", () => {
     expect(result.end_date).toBe("2024-06-08");
   });
 
-  it("passes through name/location unmodified", () => {
+  it("passes through name/location/notes unmodified", () => {
     const result = normalizeTripDates({
       name: "Trip",
       location: "Egypt",
+      notes: "Great viz",
     });
     expect(result.name).toBe("Trip");
     expect(result.location).toBe("Egypt");
+    expect(result.notes).toBe("Great viz");
   });
 });

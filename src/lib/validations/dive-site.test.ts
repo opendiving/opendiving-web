@@ -1,28 +1,28 @@
 import { describe, expect, it } from "vitest";
-import { diveSiteCreateSchema, diveSiteUpdateSchema } from "./dive-site";
+import { diveSiteFormSchema } from "./dive-site";
 
-describe("diveSiteCreateSchema", () => {
+describe("diveSiteFormSchema", () => {
   it("accepts a valid dive site with only the required name", () => {
-    expect(diveSiteCreateSchema.safeParse({ name: "Blue Hole" }).success).toBe(
+    expect(diveSiteFormSchema.safeParse({ name: "Blue Hole" }).success).toBe(
       true,
     );
   });
 
   it("rejects an empty name", () => {
-    expect(diveSiteCreateSchema.safeParse({ name: "" }).success).toBe(false);
+    expect(diveSiteFormSchema.safeParse({ name: "" }).success).toBe(false);
   });
 
   it("rejects a missing name", () => {
-    expect(diveSiteCreateSchema.safeParse({}).success).toBe(false);
+    expect(diveSiteFormSchema.safeParse({}).success).toBe(false);
   });
 
   it("rejects a name longer than 255 characters", () => {
-    const result = diveSiteCreateSchema.safeParse({ name: "a".repeat(256) });
+    const result = diveSiteFormSchema.safeParse({ name: "a".repeat(256) });
     expect(result.success).toBe(false);
   });
 
   it("accepts optional location/notes", () => {
-    const result = diveSiteCreateSchema.safeParse({
+    const result = diveSiteFormSchema.safeParse({
       name: "Blue Hole",
       location: "Dahab, Egypt",
       notes: "Famous for its arch",
@@ -31,21 +31,10 @@ describe("diveSiteCreateSchema", () => {
   });
 
   it("rejects notes longer than the max length", () => {
-    const result = diveSiteCreateSchema.safeParse({
+    const result = diveSiteFormSchema.safeParse({
       name: "Blue Hole",
       notes: "a".repeat(63207),
     });
-    expect(result.success).toBe(false);
-  });
-});
-
-describe("diveSiteUpdateSchema", () => {
-  it("accepts an empty object (all fields optional)", () => {
-    expect(diveSiteUpdateSchema.safeParse({}).success).toBe(true);
-  });
-
-  it("still rejects an explicitly empty name", () => {
-    const result = diveSiteUpdateSchema.safeParse({ name: "" });
     expect(result.success).toBe(false);
   });
 });

@@ -20,6 +20,7 @@ import {
   type GearServiceSchedule,
 } from "@/lib/api/gear-service";
 import { formatServiceDue, serviceStatus } from "@/lib/gear-service";
+import { isAbortError } from "@/lib/api/client";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { formatDateOnly } from "@/lib/date-time";
 import { Button } from "@/components/ui/button";
@@ -69,18 +70,24 @@ export function GearServiceCard({
   const [deletingRecord, setDeletingRecord] =
     useState<GearServiceRecord | null>(null);
 
-  const load = useCallback(async () => {
-    const [schedulePage, allRecords] = await Promise.all([
-      gearServiceAPI.getSchedules(userId, gearItem.uuid, 1, 100),
-      fetchAllServiceRecords(userId, gearItem.uuid),
-    ]);
-    setSchedules(schedulePage.data);
-    setRecords(allRecords);
-  }, [userId, gearItem.uuid]);
+  // `signal` is passed only by the mount effect below. The post-write refetches
+  // call this with no signal: they are triggered by a save the diver is watching
+  // for, so there is nothing to cancel them against.
+  const load = useCallback(
+    async (signal?: AbortSignal) => {
+      const [schedulePage, allRecords] = await Promise.all([
+        gearServiceAPI.getSchedules(userId, gearItem.uuid, 1, 100),
+        fetchAllServiceRecords(userId, gearItem.uuid, signal),
+      ]);
+      setSchedules(schedulePage.data);
+      setRecords(allRecords);
+    },
+    [userId, gearItem.uuid],
+  );
 
   useEffect(() => {
     if (!userId) return;
-    let cancelled = false;
+    const controller = new AbortController();
 
     // Wrapped in an async function rather than called straight from the effect body,
     // matching the fetch effects on the gear/dive detail pages - a synchronous
@@ -88,9 +95,9 @@ export function GearServiceCard({
     const fetchService = async () => {
       try {
         setIsLoading(true);
-        await load();
+        await load(controller.signal);
       } catch (error) {
-        if (cancelled) return;
+        if (controller.signal.aborted || isAbortError(error)) return;
         toast({
           title: "Error",
           description: getApiErrorMessage(
@@ -100,15 +107,13 @@ export function GearServiceCard({
           variant: "destructive",
         });
       } finally {
-        if (!cancelled) setIsLoading(false);
+        if (!controller.signal.aborted) setIsLoading(false);
       }
     };
 
     fetchService();
 
-    return () => {
-      cancelled = true;
-    };
+    return () => controller.abort();
   }, [userId, load, toast]);
 
   // Any write can move a due date, so both this card and the page's copy of the item

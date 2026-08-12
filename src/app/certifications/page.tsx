@@ -46,10 +46,14 @@ export default function CertificationsPage() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
 
   // `null` = the dialog is closed; a certification = editing it; `undefined` = creating.
-  const [editing, setEditing] = useState<Certification | null | undefined>(null);
+  const [editing, setEditing] = useState<Certification | null | undefined>(
+    null,
+  );
   const [viewing, setViewing] = useState<Certification | null>(null);
   // The certification whose card images are being managed, if any.
-  const [managingFiles, setManagingFiles] = useState<Certification | null>(null);
+  const [managingFiles, setManagingFiles] = useState<Certification | null>(
+    null,
+  );
 
   const fetchCertifications = useCallback(
     (page: number, perPage: number) => {
@@ -294,7 +298,7 @@ export default function CertificationsPage() {
             if (!open) setManagingFiles(null);
           }}
         >
-          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+          <DialogContent className="sm:max-w-2xl">
             <DialogHeader>
               <DialogTitle>Card images — {managingFiles.name}</DialogTitle>
             </DialogHeader>

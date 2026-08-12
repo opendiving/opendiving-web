@@ -160,6 +160,68 @@ create" entity type is needed, wrap `CreatableCombobox` the same way rather than
 copy-pasting the interaction logic (filtering, commit-on-blur/Enter,
 mouse-down-prevents-blur for option clicks).
 
+## Every dive form picker searches server-side
+
+`DiveSiteMultiSelect`, `TripCombobox` and `GearItemMultiSelect` each used to page
+through the user's *entire* list before their dropdown was usable, so a diver with
+a few hundred logged sites paid several sequential round-trips on every dive form
+open. (`TripCombobox` didn't even loop - it fetched one page of 100 and dropped the
+rest silently, so a 101st trip couldn't be selected at all.) All three now pass
+`CreatableCombobox`'s `onSearch`: one request for 25 matches when the menu opens,
+and one more per debounced query. See the backend `DECISIONS.md` for which columns
+each endpoint matches.
+
+`CreatableCombobox` therefore has two modes. Pass `items` for a list small enough
+to ship to the browser (it filters locally, by name); pass `onSearch` for one that
+isn't. In remote mode the component deliberately does **not** re-filter what came
+back - the server may have matched on a field the local filter can't see (a site's
+location, a gear item's brand), and re-filtering on the name would empty a
+correctly-filled menu. Related pieces, all of which exist because the browser no
+longer holds the full list:
+
+- `excludeIds` (rather than the caller filtering inside `onSearch`) hides
+  already-picked items, so a pick disappears from the menu immediately instead of
+  at the next query.
+- `selectedItem` supplies the option behind `value` for a remote-mode
+  *single*-select. `TripCombobox`'s own results only cover the current query, so
+  without it the input sits empty for a trip loaded from the form rather than
+  picked in this session.
+- `noMatchesLabel` is separate from `noItemsLabel`: "no gear yet" is a different
+  (and, once filtered, false) statement from "none match 'scub'".
+- The `hasMore` flag from `onSearch` renders a "keep typing to narrow" footer. A
+  silently truncated page otherwise reads as the user's whole catalogue.
+- `onSearch` is held in a ref, so an inline arrow - the obvious thing to write -
+  doesn't restart the search on every render.
+- The debounce is skipped for the empty query the menu fires on open: there was no
+  keystroke to coalesce, and a quarter-second blank menu is the lag this was meant
+  to remove.
+
+Each picker tracks the records behind its *selections* separately from the
+dropdown, since a picked item drops out of the results as soon as the query
+changes. All three fill that map the same three ways: from a `known*` prop where
+the caller already has the records (the edit page passes `dive.dive_sites` and
+`dive.gear_items`), from **every** result its own `onSearch` returns, and - only as
+a fallback - by fetching the record by uuid one at a time. Three things worth
+knowing about that:
+
+- The `known*` prop is read *through* rather than copied into state by an effect:
+  the copy hasn't landed on the render that first sees a selection, so the fallback
+  would fire for records the caller had already handed over.
+- The fallback isn't dead weight. It names a site pre-selected by uuid alone via
+  `/dives/new?dive_site_uuid=...`, and it's the only way *archived* gear renders
+  properly - an older dive can legitimately reference retired kit, which the
+  dropdown deliberately never offers, so it can only ever arrive by uuid.
+- Those lookups have a `requestedRef` guard but **no cancellation flag**, which
+  looks like an oversight and isn't. The guard fires each uuid exactly once, so
+  under StrictMode's mount/unmount/remount the only in-flight request belongs to
+  the discarded first mount - honouring `cancelled` in the cleanup drops the name
+  for good, which is exactly the bug that shipped and had to be undone. Writing to
+  a uuid-keyed map is idempotent, so a late arrival is always safe to apply.
+
+`fetchAllGearSets` still pages through everything, and that's fine: the dive form's
+set switcher is a client-side-filtered dropdown and sets are few per user. Only the
+item-level pickers had a list that grows without bound.
+
 ## Duration is a free-typed, regex-validated "MM:SS" string in the form
 
 `Dive.duration` on the API/`Dive`/`DiveCreate`/`DiveUpdate` types is always
@@ -400,6 +462,11 @@ Three new routes carry the rest of the flow:
 page *is* the sign-in surface now, so there's no separate page to send signed-out
 visitors to. `NO_CHROME_ROUTES` in `app-shell.tsx` changed from `/signin`/`/signup`
 to `/onboarding`/`/auth/verify` (the two remaining standalone, chrome-free pages).
+
+(Both of those are no longer true: `/signin` is back as a dedicated page and
+`useAuthGuard` bounces to it again - see "`/signin` is back, and carries where
+the visitor was headed" below. The *form* is still the single shared `AuthForm`,
+and the landing page still hosts its own copy of it; only the routing changed.)
 
 Settings' "Change Password" card was deleted outright (`app/settings/page.tsx`,
 `lib/validations/settings.ts`'s `passwordSchema`) - there's no password anywhere
@@ -1043,19 +1110,20 @@ Three deliberate UX choices around that:
   existing sets alongside "Create a new set". One component, one set of
   validation rules, two entry points.
 
-## The gear picker fetches archived items but won't offer them
+## The gear picker displays archived items but won't offer them
 
-`GearItemMultiSelect` calls `fetchAllGearItems(userId, true)` - i.e. *including*
-archived gear - then filters archived items out of the dropdown. The two aren't
-in conflict: an older dive (or a set built before a piece of kit was retired) can
-legitimately reference archived gear, and without it in the fetched list those
-selections would render as a bare `Gear #<uuid>` instead of their real name. They
-show with an "Archived" badge and can be removed, just not newly added.
+An older dive - or a set built before a piece of kit was retired - can legitimately
+reference archived gear, so `GearItemMultiSelect` has to *render* archived items
+while never offering them for a new selection. They show with an "Archived" badge
+and can be removed, just not newly added.
 
-The same "fetch every page" loop as `DiveSiteMultiSelect` applies (see
-`fetchAllGearItems`/`fetchAllGearSets` in `lib/api/gear.ts`): these are
-client-side-filtered pickers, not paginated list views, so they need the user's
-full set.
+It used to square that by fetching every page *including* archived gear and
+filtering the archived ones back out of the dropdown. Now that the dropdown
+searches server-side it asks for `include_archived=false` instead - retired kit
+shouldn't be offered, and leaving it in the results would eat into the page of
+matches the user can actually pick from - and an archived selection reaches the
+list the same way any other unknown uuid does, through the per-uuid lookup
+described above.
 
 New-dive prefill (`dives/new/page.tsx`) carries the previous dive's gear over -
 divers reuse the same kit dive after dive - but skips archived items, since the
@@ -1927,3 +1995,1080 @@ multiplied by a reciprocal:** `1234 / 100` is the correctly-rounded `12.34`, whe
 `1234 * 0.01` is `12.340000000000002` - exactly the noise the integer encoding was chosen to
 remove. `PROFILE_CHANNELS` holds the divisors and is the mirror of the API's
 `DEPTH_SCALE`/`TEMPERATURE_SCALE`/`PRESSURE_SCALE`; the two lists are a pair.
+
+## The contact form posts to the API, and the page it lives on claims only what exists
+
+`/contact` used to be a mock: a `<form>` with no `onSubmit` (clicking "Send Message"
+reloaded the page and dropped the message), links to a `github.com/opendiving/opendiving`
+repo and a `/discussions` page that don't exist, and three invented mailboxes
+(`community@`, `security@`, `docs@`). A contact page that silently discards messages is
+worse than no contact page, so the whole thing was rebuilt around things that are real.
+
+**Where the message goes.** There is no mail provider on this side and no server-side
+secret to hold one - the app is a client for the API, which already owns the Resend
+integration. So `contactAPI.sendMessage` posts to `POST /contact`, and the API forwards it
+to its `CONTACT_FORM_EMAIL` (see the API's `DECISIONS.md`). Nothing here decides, or can
+decide, the recipient.
+
+`NEXT_PUBLIC_CONTACT_EMAIL` is therefore **display only, optional, and deliberately has no
+default** - it's the address offered as a `mailto:` fallback in the error state, so a
+visitor whose submission fails isn't left at a dead end. Setting it does not change where
+a successful submission is delivered.
+
+The missing default is the point. Two values that must be kept in sync by hand *will*
+drift, and this pair drifts silently - nothing can detect it, since one side is baked into
+the client bundle at build time and the other lives in the API's environment. So the
+question is which way a drifted (or simply unconfigured) instance should fail. Defaulting
+to `contact@opendiving.app` fails badly: a self-hosted instance would hand its visitors an
+address reaching people who, by the page's own "Self-hosted instances" card, can't see
+that server or touch its data - reintroducing exactly the wrong-address problem this
+rebuild removed. Unset, `ContactForm` points at the web app's issue tracker
+(`FALLBACK_ISSUES_URL` in `lib/contact.ts`) instead, which is correct for every deployment
+because the form being broken is itself a bug in this repo. Only set the variable on a
+deployment whose operator reads the mailbox it names.
+
+**The category list is a closed vocabulary shared with the API** (`CONTACT_CATEGORIES` in
+`lib/api/contact.ts`, mirroring `ContactCategory` in the API's `schemas/contact.py`). The
+backend rejects anything else with a 422, and the human-readable label that ends up in the
+subject line of the forwarded email is derived from the slug *there*, not here - the
+labels in this repo are only what the dropdown shows. Adding a category means changing
+both sides. Every option maps to something the app actually does; the old list had
+"Partnership" and "Legal/Privacy" options pointing at channels that never existed.
+
+`contactSchema` duplicates the API's length bounds on purpose - the server enforces them
+regardless, but finding out via a 422 after a round-trip is a worse form.
+
+**The form prefills from `useAuth()` for a signed-in diver**, filling only fields that are
+still empty. It can't be done with `defaultValues`: the user object only arrives once the
+auth bootstrap resolves (see `AuthContext`), long after the form first renders.
+
+The page itself is a Server Component (for `metadata`); only the form is `"use client"`.
+
+## `/signin` is back, and carries where the visitor was headed
+
+Sending signed-out visitors to `/` (see "Unified auth flow" above) meant a
+protected URL - a shared dive link, a bookmarked `/gear`, a session that expired
+mid-session - dumped them on the marketing page, where the sign-in form is one
+section among many, and where nothing recorded what they'd been trying to reach.
+`app/signin/page.tsx` is a dedicated page for exactly that: the same shared
+`AuthForm`, a "Sign in" heading, and nothing else competing with it. It's
+chrome-free (added to `NO_CHROME_ROUTES` in `app-shell.tsx`), matching the other
+two auth-flow pages, `/auth/verify` and `/onboarding`. This is *not* a return to
+the old password-based `/signin`/`/signup` pair - there's still exactly one form
+and one entry point, and the landing page still hosts its own `AuthForm` in the
+hero for visitors arriving cold.
+
+`Header`'s signed-out state, which rendered nothing at all where the user menu
+sits, now has a coral "Sign In" button linking there. It stays in the actions row
+at every breakpoint rather than being folded into the mobile menu - on a phone
+it's the single most important thing a signed-out visitor can do, and the row
+still fits at 375px.
+
+### The destination round-trips through `lib/auth-redirect.ts`
+
+`useAuthGuard` now redirects to `signInHref(...)` - `/signin?next=<encoded path>` -
+and `/signin` sends the visitor there once they're in. Three things about that
+are worth knowing before touching this code:
+
+- **`next` is sanitized, never trusted.** `sanitizeRedirectPath` rejects anything
+  that isn't a plain `/`-relative path (absolute URLs, `//host`, `/\host`), so a
+  crafted link can't turn our own sign-in page into an open redirect. It's applied
+  on the way in *and* on the way out, since the value also survives in
+  `sessionStorage` between those two points.
+- **The guard reads `window.location`, not `usePathname()`/`useSearchParams()`.**
+  `useSearchParams()` inside `useAuthGuard` would force every one of the ~15 pages
+  that call it to grow its own `Suspense` boundary or fail `next build`. The
+  redirect happens in an effect, where `window` is real, so there's nothing to
+  gain from the hook version. (`/signin` itself *does* use `useSearchParams`, and
+  therefore *does* have a `Suspense` boundary - same shape as `/auth/verify`.)
+- **The email flow needs storage; Google doesn't.** Google sign-in never leaves
+  the tab, so the destination is just a prop (`AuthForm` -> `GoogleAuthButton`).
+  The magic link leaves the app entirely and comes back on `/auth/verify`, which
+  has no idea what the visitor originally wanted - so `AuthForm` stashes it in
+  `sessionStorage` when requesting the link and `/auth/verify` consumes it.
+  `rememberPostAuthRedirect` is called on *every* link request, including with no
+  destination, precisely so it clears a stale one; `consumePostAuthRedirect`
+  removes the key as it reads it, including on the onboarding branch. Without
+  both of those, a destination abandoned earlier in the tab could silently
+  hijack an unrelated later sign-in. If the link is opened in another browser
+  the value simply isn't there and the visitor lands on `/dashboard`, which is
+  the intended fallback, not a failure.
+
+`useAuthGuard` also switched from `router.push` to `router.replace`: the page it's
+bouncing away from can't render while signed out, so leaving it in the history
+stack only gives the back button somewhere to land that immediately bounces again.
+
+## The dashboard shows only what the app actually tracks
+
+`app/dashboard/page.tsx` used to carry three things the app could not back up, and they
+are gone:
+
+- **A "Species Seen" tile.** `user_dive_stats.species_seen` exists in the API's schema
+  but is never derived from anything (see `services/dive_stats.py`), so the tile read
+  "0" for every diver forever. It stays in `UserDiveStats` on the client - the field is
+  really on the wire - but nothing renders it on the dashboard.
+- **A "Quick Actions" card** whose "Find Dive Sites", "Find Dive Buddy" and "Plan Trip"
+  buttons were plain `<Button>`s with no `href` and no handler. Two of those
+  destinations exist (`/sites`, `/trips/new`) and are already one click away in the
+  header's create menu; the third is not a feature. The card went, and the one action
+  worth promoting - logging a dive - is now a single primary button in the page header.
+- **A "Getting Started" checklist** hard-coded to "0/3", "Pending" and "Optional"
+  regardless of the account, pointing at a "Join Community" step for a community page
+  that was deleted. `SetupChecklistCard` replaces it with the same three-step shape
+  driven by real counts (`/user/dive-stats`, `/gear-items`, `/certifications`, the last
+  two fetched with `items_per_page: 1` for `total_count` alone), and it removes itself
+  once all three are done.
+
+`CertificationExpiryCard` is new, and is the certification twin of `ServiceDueCard`:
+certifications were a whole feature the dashboard never mentioned, and an expired rescue
+or first-aid card is exactly the kind of thing a diver wants to find out about before a
+trip rather than at a dive shop. It follows the same rule as its gear twin - it renders
+`null` when nothing needs renewing and when its fetch fails. Its rows all link to
+`/certifications` rather than to a card of their own, because certifications are edited
+in dialogs on that page and have no per-certification URL.
+
+The filtering and ordering live in `certificationRenewals()` in `lib/certification.ts`,
+not in the component, so they can be tested independently of rendering - "expired cards
+sort above expiring-soon ones" is a real behaviour worth pinning down. (This used to read
+"the app has no React component tests"; it has `@testing-library/react` now - see below -
+but keeping the logic out of the component is still the better shape.)
+
+### The layout is a flat stack, so the cards that can vanish leave no hole
+
+The page is one `space-y-6` column and `ServiceDueCard`, `CertificationExpiryCard` and
+`SetupChecklistCard` are **direct children** of it. That is deliberate: `space-y-*`
+spaces rendered siblings, so a card returning `null` costs nothing, while wrapping the
+three in a "needs attention" `<div>` would leave that div's own gap behind on every day
+nothing is due. The same reasoning rules out the old two-column grid - its sidebar held
+the two fake cards, and without them an established diver with nothing due would have
+been looking at an empty third of the page.
+
+Alerts sit above the stats rather than below: an overdue regulator matters more than a
+dive count, and the setup checklist is the first thing a brand-new account should see.
+
+The stat tiles and the air-consumption chart hide themselves at zero dives (but *not*
+while the stats request is in flight - `hasDives` stays true until the answer is in, so
+they don't pop in a beat after everything else). A row of zeroes and an empty chart tell
+a new diver less than the checklist and the "log your first dive" prompt already do.
+
+Recent dives and recent trips now sit side by side at `lg`, which is why
+`RecentDivesCard`'s rows grew a `min-w-0` on their left block and a `flex-shrink-0` on
+the metrics: at half a row wide, a long site name would otherwise squeeze the
+duration/depth column instead of wrapping.
+## `/profile` is gone until there is someone else to show it to
+
+The page was rebuilt one commit before it was removed (`324c1d6`), and rebuilding it is
+what made the case against it legible. What was left after the five invented things came
+off was four blocks, and three of them were already somewhere better:
+
+- **The stats card** - total dives, max depth, total time - was the dashboard's three
+  tiles, from the same `getDiveStats()` call, with the same `hasDives` gate and a
+  near-copy of `StatCard` beside it. Two pages, one endpoint, one set of numbers, and
+  every future change to them to make twice.
+- **`RecentDivesCard`** was the same component with the same props as the dashboard's.
+- **The identity header** - avatar, name, `@username`, email - was a read-only view of
+  what `/settings` both shows *and* edits, ending in an "Edit Profile" button whose only
+  job was to send the diver to `/settings`.
+- **`CertificationsCard`** was the one block not on the dashboard, and `/certifications`
+  is the fuller version of it, in the main nav.
+
+That is the whole page: a strictly weaker dashboard at a second URL, reachable only from
+the avatar dropdown directly above the `/settings` item it kept pointing at.
+
+The reason none of that could be fixed by rearranging is that a profile page exists to be
+*someone else's* view of a diver, and this API cannot do that yet. See "Current-user
+endpoints moved off `/user/me`/`/user/{uuid}` onto a bare `/user`" above: the public
+profile endpoint for other users is deliberately not built, and there is currently no way
+to fetch another user's data at all. `/profile` had no `[username]` segment and could not
+have used one - it read the signed-in caller and nothing else. Two URLs were answering the
+same question about the same person.
+
+When the public endpoint lands, the page comes back as `/divers/[username]`, written
+fresh. This one is not scaffolding for it: that page takes a username parameter, must not
+render `email`, and shares no fetch with anything here.
+
+### The certifications summary went with it rather than moving to the dashboard
+
+`CertificationsCard` and `certificationsByRecency` (`lib/certification.ts`, with its
+tests) were built for this page in the same commit and had no other caller, so they were
+removed rather than left exported with nothing importing them. Both are recoverable whole
+from `324c1d6` when `/divers/[username]` wants them.
+
+The dashboard was deliberately *not* given the card in exchange. It already carries
+`CertificationExpiryCard`, which is the half of the subject that needs a diver to act;
+"here is every c-card you hold, newest first" is not an alert, and `/certifications` is
+one nav click away and shows all of them with their card images, dates and dialogs. A
+five-row read-only echo of a page in the nav is the same duplication that took the profile
+page down, one page over.
+
+`certificationsByRecency` is worth reading before writing that ordering again: `GET
+/certifications` is newest-*row*-first, so a diver who types their Open Water card in last
+gets it above the Divemaster it led to. `/certifications` itself still renders the API's
+order - it is a full table with a sortable-looking date column and pagination, and
+reordering one page of it client-side would be a lie about the pages either side.
+
+### The Gravatar line moved to `/settings`, reworded
+
+It was attribution under a picture on the profile page. `/settings` shows no avatar, so it
+would have been attribution for nothing there; it is now a "Profile Picture" note in the
+profile form saying where the avatar comes from and that changing it on Gravatar changes
+it here. That is the question a diver actually arrives at `/settings` with.
+
+The username hint under the same form used to read "used in your profile URL and for
+mentions". Neither exists - there is no profile URL any more and mentions were never a
+feature - so it now states the rule the field actually enforces (`profileSchema`:
+lowercase letters and numbers, unique).
+
+## Dive numbering: the suggestion follows the date, and only the diver renumbers
+
+The API owns the rules (`services/dive_numbering.py`, and the corresponding section of
+its `DECISIONS.md`): `dive_number` is a label, gaps in it are as often deliberate as
+accidental, and nothing renumbers a log automatically. Three things here follow from that.
+
+### The new-dive form's number tracks `start_time`, not the last dive
+
+It used to be `lastDive.dive_number + 1`, where "last" meant most recent by date. That is
+right for the ordinary case and wrong for the one that matters: back-filling a 2019 dive
+into a log that reaches #212 suggested #213. `useSuggestedDiveNumber` refetches
+`GET /dives/next-number` whenever the start time changes, which also covers importing a
+dive-computer file - the import rewrites `start_time` to whenever the dive really was, and
+the number follows it there.
+
+**Use `resetField`, not `setValue`, to write the suggestion.** This is the non-obvious
+part. The hook stops suggesting once `dive_number` is dirty, which is how it knows the
+diver has taken the field over. `setValue` without `shouldDirty` looks like the right call
+and isn't: react-hook-form recomputes `dirtyFields` by comparing values against
+`defaultValues` on the next change to *any* field, so a suggestion written over the
+default shows up as dirty the moment the diver touches the date - which is precisely when
+the hook needs to run again. Symptom: the suggestion lands once and then silently stops
+following the date. `resetField(name, { defaultValue })` writes the suggestion *as* the
+default, so "dirty" keeps meaning "the diver typed a number".
+
+It is create-only. On the edit form, renumbering a dive because its date was corrected is
+the silent renumbering the app avoids everywhere else - an existing number may be written
+in a paper logbook, or on the back of a photo.
+
+### The duplicate note is attached to a value, not rendered outright
+
+`diveNumberNotice` is `{ forValue, message }` and `DiveFormFields` shows it only while the
+field still holds `forValue`. Two reasons. A note about a number that isn't on screen any
+more is worse than no note; and the alternative - a `form.watch("dive_number")` in the
+page to compare against - opts that whole component out of React Compiler memoization
+(`react-hooks/incompatible-library`), whereas the field's own render already has the
+current value reactively.
+
+It is a `FormDescription`, never a validation error. Duplicate numbers are a normal state
+while back-filling, reconciled later with Renumber, so nothing about them may block a save.
+
+### The numbering line describes; it doesn't scold
+
+`describeDiveNumbering` never says "should" and never phrases a gap as a problem - see its
+own comment. A diver continuing a paper logbook has deliberate gaps forever, and a line
+that nags on every page load is one they stop reading, including on the day it would have
+told them something. That is also why there is no dismiss control: the line is muted and
+factual enough not to need one, and hiding it would hide the way in to Renumber.
+
+`RenumberDivesDialog` mounts its form as a child rendered only while open, so each visit
+starts from clean defaults instead of inheriting the last run's inputs (and so the reset
+isn't a `setState` in an effect). Its preview is tagged with the inputs that produced it
+and every branch is gated on that tag matching the form - including the confirm button, so
+it can never apply a renumber the diver hasn't been shown. The change list is rendered in
+full inside a scroll container rather than truncated: "and 180 more" hides exactly the rows
+someone would want to check against a paper logbook.
+
+## "Due today" is overdue, and the certification boundary is deliberately the other way
+
+`serviceStatus` treats a gear schedule with `next_due_on === today` as `overdue`
+(`days <= 0`), and `formatServiceDue` now says "Overdue (due today)" to match. It used
+to say a bare "Due today", which put reassuring prose directly under a destructive
+badge - the two are computed independently and had drifted.
+
+The badge is the side that was right, because the API has already picked it and has two
+consumers depending on it: `service_status` in the API's `services/gear_service.py` uses
+`today >= next_due_on`, and the reminder digest in `core/worker/functions.py` emails
+"overdue since 11 Aug 2026" about a schedule due that morning. Moving the *status*
+boundary to `days < 0` would have made the badge disagree with the email, so only the
+text changed. `formatServiceDue agrees with serviceStatus` in `gear-service.test.ts`
+pins the pair together.
+
+**`certificationExpiryStatus` uses `daysLeft < 0` instead, and that is not an
+inconsistency to harmonise away.** A c-card is valid *through* its printed expiry date -
+a diver whose card expires today can still dive today - whereas a service interval that
+has arrived has arrived. The two are different kinds of date and want different
+boundaries.
+
+The certification side also has no API counterpart at all: no status field on any read
+schema, no reminder job, no email. `CERTIFICATION_EXPIRING_SOON_DAYS` is a frontend-only
+constant, unlike `SERVICE_DUE_SOON_DAYS`, which is deliberately named identically on both
+sides so one grep finds the pair. Don't go looking for the certification twin; there
+isn't one.
+
+## Service status is derived in the browser, and so is a timezone off the digest
+
+The API returns only clock-stable facts about a schedule (`next_due_on`,
+`next_due_at_dive_count`, `last_service_on`) and never a computed status - `ServiceStatus`
+is documented in the API's `schemas/gear_service.py` as deliberately neither a stored
+column nor a field on any read schema. Those routes are cached for 60 seconds, and a
+cached status is wrong the next morning. Duplicating the derivation in `lib/gear-service.ts`
+is the intended cost of keeping the responses cacheable; it is not drift, and moving it
+server-side would trade a correct badge for a cheaper one.
+
+One consequence worth knowing before someone reports it as a bug: the browser computes
+"today" in the *viewer's* timezone (`todayIsoDate` uses local date parts on purpose),
+while the reminder digest computes it in UTC (`core/worker/functions.py`, which notes
+that `User` has no timezone column). A diver at UTC+13 can therefore see "Overdue" in the
+app up to a day before the email agrees. At a 30-day lead time that is cosmetic, and the
+fix on the API side would be to run the job hourly and gate on the offset of the user's
+most recent dive - not worth it. Documented rather than fixed.
+
+## One paging helper, and the dashboard cards no longer page at all
+
+Four modules had their own `while (hasMore)` loop. They are now one `fetchAllPages`
+in `lib/api/client.ts`, with a page cap, an abort signal and cross-page dedup.
+
+They were never the infinite-loop hazard they looked like: the API clamps
+`items_per_page` to 100 and computes `has_more` as `page * items_per_page < total_count`,
+so `page` outruns any realistic insert rate. The real hazard is subtler. List pages are
+cached for 60 seconds under a per-`page` key, so a loop can stitch together *different
+snapshots*: an insert between page 1 and page 2 shifts every later row down one and the
+boundary item arrives twice. That is what `keyOf` is for. The gap half of the same problem
+- an item pushed from page 2 to page 3 by a delete - cannot be fixed client-side at all,
+which is the argument for a single-shot endpoint rather than a better loop.
+
+Truncation is `console.warn`ed rather than thrown. A card showing the first 2000 items
+beats a card showing an error, but a short list that looks complete is how "my oldest
+certification stopped appearing" becomes unexplainable.
+
+The abort signal stops the loop *between* pages; it does not cancel the request already
+in flight, because the `lib/api/*` functions take no axios config. That is the useful
+90%: a dashboard card that unmounted mid-fetch stops walking the rest of a diver's
+history. `isAbortError` is exported alongside so call sites can tell "navigated away"
+apart from "request failed" and skip the error log.
+
+**Both dashboard cards have since stopped paging entirely.** `ServiceDueCard` already had
+`/gear-service-due`; `CertificationExpiryCard` now has `/certifications-expiring` (see the
+API's `DECISIONS.md` for why that endpoint takes no `within_days` parameter). Each is one
+request. `fetchAllCertifications` survives for any caller needing whole `Certification`
+records rather than the four fields a renewals row renders - but nothing on the dashboard
+does.
+
+Both cards now honour the `truncated` flag those endpoints return, via `TruncatedNote`.
+The cap was previously invisible: a diver past it saw a card that looked like the complete
+answer while some overdue gear simply wasn't in it. For a safety-adjacent list, silently
+under-reporting is the wrong direction to fail in.
+
+## Blob-wrapped error bodies are unwrapped in the interceptor, not at the call sites
+
+Axios applies the request's `responseType` to *error* responses too, so a failed
+`responseType: "blob"` request (certification card images, dive source files) arrives with
+its JSON error body wrapped in a Blob. `getApiErrorMessage` looked for
+`response.data.detail` on a Blob, found `undefined`, and every binary call site showed its
+generic fallback - even though the API sends a perfectly good
+`{"detail": "This dive has no profile"}`. Every binary route raises an ordinary
+`HTTPException`, so the route's declared `media_type` never applies to a failure.
+
+`unwrapBlobErrorBody` runs in the response interceptor, at the one place every rejection
+already passes through. Doing it there rather than in `getApiErrorMessage` keeps all ~26
+call sites synchronous instead of forcing an async variant onto the handful that fetch
+binary. A body that isn't JSON is left as the Blob and the caller's fallback is used -
+throwing from inside the interceptor would replace the real error with a parse error.
+
+`useAuthedBlobUrl` returns the raw `error` alongside `hasError` so callers can run it
+through `getApiErrorMessage` themselves; the hook has no opinion about what the fallback
+message should be.
+
+## The combobox will not clear a selection it cannot prove is gone
+
+Two ways `CreatableCombobox` used to lose data, both now decided by pure functions
+(`commitAction`, `clampActiveIndex`) rather than inside a blur or keydown handler.
+
+**Tabbing through the Trip field cleared the trip.** `onBlur` calls `commit()`, which
+matched the typed text against `remoteResult.items` - empty until the debounced search
+lands. Tab in and straight out of Trip on `/dives/new` and the field held the selected
+trip's name, matched nothing, and committed a clear. The dive saved with no trip.
+
+The fix is to distinguish "the server says nothing matches" from "we never asked".
+`searchedQuery` records which query the current results actually answer; until it equals
+the text being committed, an empty result set is not evidence and `commitAction` returns
+`keep`. A *failed* search deliberately leaves `searchedQuery` untouched for the same
+reason - a 500 is not a statement that the trip has been deleted. A second guard keeps a
+selection whose name the input still shows, which covers the case where the selected item
+has dropped out of the current results entirely.
+
+The guard is not "never clear in remote mode": once the server has answered that exact
+query with nothing, the clear goes through, so deleting the text and typing a name that
+really doesn't exist still takes effect.
+
+**Enter could throw.** `activeIndex` was clamped when it *moved*, but the option list can
+shrink underneath a stationary highlight - a debounced search narrowing, or a sibling pick
+changing `excludeIds`. Enter then read `filteredItems[activeIndex - addNewOffset]`,
+got `undefined`, and `handleSelect` threw on `item.id`. `clampActiveIndex` re-derives the
+highlight every render and every read goes through it. Out-of-range collapses to -1 rather
+than clamping to the last row: the row the user was looking at is gone either way, and -1
+gives Enter its other, safe meaning (commit the typed text) instead of silently picking
+whichever unrelated option now sits at that index.
+
+## Fetch states are one settled value, not a pile of booleans
+
+`DiveProfileCard` kept `profile` and `hasFailed` as separate state, and neither was reset
+when the dive or the profile version changed. One failure was therefore permanent for the
+life of the page, and a re-imported dive rendered the *previous* version's chart under the
+new sample count. It is now a single `ProfileResult | null` - `null` meaning "in flight" -
+cleared in the effect's cleanup, which is the same shape `useAuthedBlobUrl` uses and which
+avoids a `setState` in an effect body.
+
+It also branches on *which* failure. A 404 ("This dive has no profile") is permanent and
+gets no retry button, because re-asking returns the same 404 and offering the button
+implies otherwise. A 401/5xx/network failure gets one.
+
+The dashboard's stats fetch had the opposite problem: it only `console.error`d, so all
+three tiles sat on "—" forever, indistinguishable from a request still in flight. There is
+no legitimate empty case to confuse it with - the API returns *zeroed* stats for a diver
+with no dives rather than a 404 - so anything landing there is genuinely exceptional and
+now shows an error with a retry.
+
+`usePaginatedResource` had no race guard. Paging faster than the network answers put
+several requests in flight, and an earlier page's slower response would overwrite the newer
+one's rows *and* set `currentPage` back to its own number - the footer saying "page 3" over
+page 2's rows. A request id ref means only the newest is allowed to settle; superseded ones
+also leave the spinner alone, since the request that replaced them is still running.
+
+## Assorted fixes whose comments were lying
+
+* **`useDragSort` did not remove its window listeners.** The unmount effect called
+  `endDrag`, which only reset state - `handleMove`/`handleEnd` are closures created inside
+  `startDrag`, so nothing outside it could name them. `endDrag` now calls a remover stored
+  in a ref, which makes both the pointer-up path and the unmount path go through one place.
+* **`use-toast` is vendored from shadcn/ui and shipped two upstream bugs.** Its subscribe
+  effect had `[state]` where it means `[]`, so every toast unsubscribed and resubscribed;
+  between the two, a `dispatch` from another subscriber's render could skip this one.
+  `TOAST_REMOVE_DELAY` was `1000000` - ~16.7 minutes - which with `TOAST_LIMIT = 1` pinned
+  every toast the app had ever shown in `memoryState`. It is 1000ms, which only has to
+  outlast the exit animation.
+* **Object URLs were revoked synchronously after `link.click()`.** Chrome has taken its own
+  reference by then, so it looked fine; Firefox and Safari read the blob asynchronously and
+  silently cancel the download. Both call sites now go through `lib/download.ts`, which
+  also appends the anchor to the document (Firefox ignores a detached one) and defers the
+  revoke.
+* **`DateTimePicker` invented today's date.** Typing a time with no date picked committed
+  against `new Date()` - and on a dive being back-filled from a paper logbook, today is the
+  one date it certainly isn't. It now holds the time in local state until a date is chosen.
+  `Number.parseInt(raw, 10) || 0` also snapped a cleared field straight back to "00", so
+  the box could never be emptied to retype it.
+* **`AuthContext` rebuilt its value and all seven methods every render**, re-rendering
+  every `useAuth()` consumer - ~15 pages plus the header. It matters most for the methods:
+  `signOut` and `refreshUser` are dependencies of downstream effects, so a fresh identity
+  re-ran those rather than merely re-rendering.
+
+## `useResource` for the detail pages, and one delete flow for everything
+
+The four `[id]` detail pages plus the dive edit page each hand-rolled the same block:
+read `params.id`, cast it, fetch, toast-and-redirect on failure, clear a loading flag in
+`finally`. Five copies drift, and these had: some guarded against settling after unmount
+and some didn't, so navigating away from a slow dive page still fired a toast *and* a
+redirect on whatever page the diver had landed on. `useResource` is that block, once.
+
+It also absorbs the five `params.id as string` casts. The cast itself is unavoidable -
+Next types the param as `string | string[]` and only a catch-all route can produce the
+array - but it is worth making in one place rather than five.
+
+`refetch` re-reads *without* touching `isLoading`, which is what lets the gear page's
+archive toggle and the dive page's file delete swap the one card that changed instead of
+blanking the page into a spinner. Failures there are deliberately non-fatal and don't
+redirect: whatever prompted the refresh already succeeded.
+
+The dive edit page seeds its form through `onLoaded` rather than an effect watching the
+resource. That callback is held in a ref, so passing an inline arrow - the obvious thing
+to write - doesn't restart the fetch.
+
+**The four detail-page deletes now go through `useDeleteResource` too.** They had diverged
+from the list pages and from each other, and only `gear/[id]` ran the failure through
+`getApiErrorMessage`. So a 409 on a dive, a site or a trip - "this dive site is used by 3
+dives", the one message that tells the diver what to do about it - was replaced by a
+generic "Please try again.", which is exactly the wrong advice when retrying will fail
+identically. The hook now formats the message itself, so every caller gets it. Its
+docstring claimed it covered detail pages long before it did; that is true now.
+
+## `PaginatedResponse` moved down a layer, and dialogs share their error state
+
+`PaginatedResponse<T>` lived in `hooks/usePaginatedResource.ts` - a layer *above*
+`lib/api/`. Nothing in `lib/api/` will import upwards from `hooks/`, so all eight modules
+declared their own identical copy instead. It now lives in `lib/api/client.ts`, beside the
+client that produces it, and the eight are type aliases over it.
+`hooks/usePaginatedResource.ts` re-exports it for the pages that import the type alongside
+the hook.
+
+Seven create/edit dialogs each kept their own `apiError` state and cleared it inside the
+effect that resets the form - each carrying its own copy of the
+`react-hooks/set-state-in-effect` disable. `useDialogApiError` owns that state, leaving
+those effects doing nothing but `reset(...)`, which the rule has no quarrel with. Thirteen
+disables across the app are now seven, and the five that remain outside the two hooks are
+genuinely different patterns (theme mount, avatar fallback, the date picker's external
+sync), not copies of one.
+
+## `FormControl` only labels what it can reach
+
+`FormControl` is a Radix `Slot`: it merges `id`/`aria-describedby`/`aria-invalid` onto
+whatever element its child *renders*. That works automatically for a leaf `<Input>` or
+`<Textarea>`, and silently does nothing useful in two other cases - both of which the dive
+form had.
+
+**A custom function component that never spreads rest props.** `DiveStartTimeField`,
+`TripCombobox`, `DiveSiteMultiSelect`, `DiveGearField` and `VolumeCombobox` each ignored
+what `Slot` handed them, so `FormLabel`'s `htmlFor={formItemId}` pointed at an id that
+existed nowhere. They now extend `FormControlSlotProps` (exported from `form.tsx`) and
+spread it onto their own focusable control.
+
+**A wrapper `<div>`.** Six more fields - Duration, Max depth, Average depth, Bottom
+temperature, Visibility, Weight - wrapped their input in `<div className="relative">` for
+an icon or unit adornment. `Slot` put the id on the *div*, and `<label for>` only
+associates with labelable elements (input, select, textarea, button, meter, output,
+progress), so the input inside had no accessible name either. `FormControl` now sits
+*inside* the wrapper, around the `<Input>`. It only needs to be within the `FormItem` for
+the context, which it still is.
+
+This second group was found by reading the accessibility tree rather than the code - the
+markup looks correct, and the fields look labelled on screen. Checking that every
+`label[for]` resolves to a *labelable* element is what surfaces it:
+
+    [...document.querySelectorAll('label[for]')]
+      .map(l => document.getElementById(l.htmlFor)?.tagName)
+
+For a composite field (two controls behind one label) the slot props go on the *primary*
+control - the date picker in `DiveStartTimeField`, the item picker in `DiveGearField` -
+and the secondary one keeps its own `aria-label` ("UTC offset", "Load a gear set").
+
+## `--coral-solid`, for the same reason as `--teal-solid`
+
+`--coral` is tuned for the logo and for icons and active states against a light or dark
+surface. Used as a filled button background with white text it reaches only 2.3:1, which
+axe flags on the landing page's sign-in button. `--coral-solid` (`16 100% 40%`) is the
+same hue darkened until white clears AA at 5.1:1 - exactly the split `--teal` /
+`--teal-solid` already documents, and for exactly the same reason.
+
+Two other contrast failures went with it. The landing page's stats strip used
+`text-primary-foreground/70` on `bg-primary`, which is 3.4:1 in dark mode - the 70% was
+carrying visual hierarchy the `text-4xl font-bold` figure above it already carries. And
+`text-primary` as a *link* colour is 3.67:1 on the dark background: `--primary` is a
+mid-grey in dark mode, which is fine behind white button text and not fine as text.
+Those links now use the app's own in-copy idiom - a plain underline inheriting the
+surrounding colour, which is why `contact/page.tsx` passed axe when `terms` and `privacy`
+did not.
+
+`npx @axe-core/cli` over `/`, `/signin`, `/contact`, `/privacy` and `/terms` reports 0
+violations. The `code-quality` workflow only scans `/`; the others were checked by hand
+here, and are worth re-checking the same way after any change to `globals.css`.
+
+## Metadata, and why the landing page is a Server Component
+
+Only `layout`, `contact`, `privacy` and `terms` exported metadata, and the root
+description was a generic "Open source diving platform".
+
+The root layout now sets `metadataBase` (without it Next warns on every build and emits
+relative `og:image` URLs that no crawler can fetch), a `title.template`, OpenGraph and
+Twitter cards, and the README's actual pitch. `NEXT_PUBLIC_SITE_URL` lets a self-hosted
+instance point it at its own origin; the localhost fallback is right for development and
+harmless elsewhere, since the only pages worth unfurling are public.
+
+Because of the template, a page exporting `title: "Contact"` renders as
+"Contact | OpenDiving" - so the three pages that previously spelled the suffix out
+themselves had it removed. The landing page opts out with `title: { absolute: ... }`,
+its title already naming the product.
+
+The landing page itself is now a Server Component that renders
+`components/layout/landing-page.tsx`, which carries the `"use client"`. That is the split
+`contact/page.tsx` already used, and it is the only way to export metadata from a page
+that gates its whole render on `useRedirectIfAuthenticated`. It is also the one page worth
+indexing: everything else is behind auth, renders client-side because the access token
+lives in memory, and has nothing to say to a crawler.
+
+Its hero headline was an `<h2>` and is now the page's `<h1>` - the header wordmark used to
+hold the only `<h1>`, which gave every page two of them and made "OpenDiving" rather than
+the page's own title the first entry in a screen reader's heading list. The wordmark is a
+`<span>` now, styling unchanged, and the dashboard's "Welcome back" was promoted to `<h1>`
+to fill the gap it left.
+
+## Component filenames are kebab-case
+
+81 of 86 files in `src/components` already were; the five exceptions were the entire
+contents of `components/auth/` and `components/settings/`. They are renamed
+(`AuthForm.tsx` -> `auth-form.tsx` and so on), the *exported components* keep their
+PascalCase names, and `google-icon.tsx` moved into `components/icons/` where the other
+three icons live.
+
+Nothing stated the convention anywhere, which is how five files drifted out of it. It is
+stated here now: **files kebab-case, exports PascalCase.**
+
+## One spinner component per shape, not per call site
+
+Three separate styles were in use. `PageSpinner`/`SectionSpinner` used the `Loader2` icon;
+seven pages hand-wrote a `min-h-[60vh]` version of `PageSpinner`; and `app/page.tsx` and
+`app/settings/page.tsx` used a bordered CSS ring instead of the icon entirely. Five forms
+had a fourth, `<div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />`.
+
+`PageSpinner` now takes `variant`. The `min-h-[60vh]` difference is deliberate and
+documented above - a page rendering *below* `AppShell`'s header and footer must not
+reserve a full viewport, or the footer is pushed off the bottom of a page that was about
+to be shorter than one - so the variant preserves it without preserving seven copies of
+it. `ButtonSpinner` covers the in-button case and uses `currentColor`, which fixes a real
+bug: the hardcoded white was only correct on a filled button and wrong on the outline and
+ghost variants.
+
+## Theme tokens, and the three colours that needed a second variant
+
+CONTRIBUTING.md asks for theme tokens; 124 raw Tailwind palette classes across 12 files
+said otherwise. They are gone. What remains is a handful that are *correctly* raw: the
+dialog overlay's `bg-black/80` (a scrim is black in both themes) and the two chart
+tooltips' `border-white/10` hairline over a dark surface.
+
+Most of it was mechanical - `text-neutral-600 dark:text-neutral-400` is
+`text-muted-foreground`, and so on. Three cases were not, and all three resolved the same
+way: **a colour tuned to sit *behind* white text cannot also be read *as* text, and vice
+versa.** The codebase already had one instance of this (`--teal` / `--teal-solid`); it now
+has the rest of the family.
+
+* `--coral-solid` for filled coral buttons (`--coral` is 2.3:1 under white).
+* `--coral-text` for coral *as* text - the header's active nav item was 2.5:1 on a light
+  background. This one **is** redeclared under `.dark`, unlike `--coral` and
+  `--coral-solid`: a coral dark enough to read on white is too dark to read on the dark
+  theme's background. The brand mark still uses `--coral` in both themes, so the "reads
+  the same everywhere" property that token exists for is untouched.
+* `--destructive-solid` for filled destructive surfaces (button, badge, toast). White on
+  `--destructive` is 3.6:1 - an AA failure on the most consequential control in the app -
+  but `--destructive` itself has to stay light enough to read as text on the dark theme's
+  background, which is the same tension from the other side.
+
+Two new semantic tokens came with the inline-banner work: `--success` (five components
+each hand-picked a `green-600`/`green-400` pair) and `--warning` (one use, the terms
+page's safety notice, which is deliberately *not* one of the informational callouts that
+became `bg-muted` - a dive log disclaiming safety advice should not look like a footnote).
+
+`--muted-foreground` was also darkened from shadcn's 46.9% to 40%. At the default it is
+4.65:1 on `--background` and only 4.34:1 on `--muted`, so every muted line on a tinted
+surface failed - including the footer, which this work had just moved onto `bg-muted`.
+
+**In-copy links are underlined, not coloured.** `text-primary` is a mid-grey in dark mode:
+correct behind white button text, 3.67:1 as link text. Ten links across `signin`,
+`onboarding`, `terms`, `privacy`, `verify`, `confirm-email` and `AuthForm` used it. They
+now use the idiom `contact/page.tsx` already had - a plain underline inheriting the
+surrounding colour - which also fixes axe's `link-in-text-block` (colour alone was
+marking them as links inside a paragraph).
+
+## Outcomes go in toasts; `StatusMessage` is the documented exception
+
+`app/settings/page.tsx` was the only page reporting outcomes as inline strings rather than
+toasts. Its profile save now toasts like everything else.
+
+Some inline banners stay, and `StatusMessage` is what they use: a form whose result the
+diver has to be able to *re-read* while fixing it - the sign-in form's "that link has
+expired", the email-change card's "check your new address" - is worse served by a message
+that fades. It carries `role="alert"`, and the state is signalled by the icon, border and
+tint rather than by the body text, which stays `foreground`. `text-destructive` on
+`bg-destructive/10` is only 3.3:1; the old hand-rolled `red-600`-on-`red-50` version
+actually passed, so standardising without this would have been a regression.
+
+## Verifying colour work
+
+Reading the accessibility tree catches labelling; contrast needs measuring. Both themes,
+and don't trust arithmetic over the rendered value - `bg-destructive/10` composites over
+whatever is behind it, so the painted background is not the token's own colour.
+
+`npx @axe-core/cli` covers the public pages; the authenticated ones have no session under
+it, so those were swept with an in-page script that walks every text node, resolves the
+nearest opaque background, and applies WCAG's large-text threshold. That is what found the
+footer regression and the nav item. One caveat learned the hard way: a scan run while the
+dev server is mid-recompile reads a half-updated stylesheet and reports dozens of
+phantom failures - re-run before believing a sudden spike.
+
+## Component and hook tests are possible now, and coverage says where the gaps are
+
+`@testing-library/react` (plus `/dom`, `/jest-dom`, `/user-event`) is a dev dependency,
+and `vitest.setup.ts` registers jest-dom's matchers along with the browser APIs jsdom
+lacks that Radix reaches for on mount - `matchMedia`, `ResizeObserver`,
+`scrollIntoView`. Without those, anything rendering a dialog or a select throws before it
+reaches its assertion.
+
+The first tests are for the hooks this round of work created or fixed, because that is
+where the bugs were. Each pins a specific failure:
+
+* `useDeleteResource` shows the API's own message on a refused delete, not "please try
+  again" - which is exactly the wrong advice when retrying will fail identically.
+* `usePaginatedResource` ignores a superseded response that lands late. Both of those
+  tests were checked by deleting the request-id guard and confirming they fail.
+* `useResource` neither toasts nor redirects once unmounted, and `refetch` does not
+  redirect on failure.
+* `AuthContext` keeps its context value and methods referentially stable, clears the user
+  on the session-expired event, and clears it even when the server-side sign-out fails.
+
+Two things worth knowing before writing more:
+
+**Mock `useRouter` with a hoisted object.** Next's real `useRouter` returns a stable
+reference and `useResource`'s fetch effect depends on it; a mock that builds a fresh
+object per call re-runs the effect forever. It looks exactly like an infinite-loop bug in
+the hook, and it isn't.
+
+**`vi.mock` factories can't close over ordinary `const`s.** The call is hoisted above
+every other statement in the file, so shared spies have to come from `vi.hoisted`.
+
+Coverage was scoped to `src/lib/**` with no thresholds, which meant `hooks/`, `contexts/`,
+`components/` and `app/` were invisible and nothing was enforced. All five are in scope
+now (`components/ui/**` excluded - it is vendored from shadcn/ui and its number would
+measure how much of someone else's library the app happens to render).
+
+**The global thresholds look low on purpose.** With `components/` and `app/` in scope and
+almost entirely untested, the headline figure is ~24%. Widening the scope was meant to
+make that gap *visible*, not to flatter the number - so the global floors sit just under
+the current values as a ratchet, and per-directory floors on `lib/`, `hooks/` and
+`contexts/` are what actually hold the tested layers to account. Raise them as coverage
+grows; lowering one to make a build pass is the thing they exist to prevent.
+
+## The toast store is a real external store, and a lesson in measuring against a dev server
+
+`useToast` uses `useSyncExternalStore` rather than the `useState` + `useEffect`
+subscription shadcn/ui ships. The store is module-level - `toast()` has to be callable
+from anywhere, including outside React - and that hook is the primitive for exactly this.
+
+The effect-based version has a real gap. `dispatch` notifies whoever is in `listeners` at
+that instant and nothing re-delivers, but the subscription is set up in an *effect*, so a
+toast raised before that effect runs reaches nobody. It is observable: instrument
+`dispatch` and load a detail page with a bad id, and you get `ADD_TOAST listeners= 0`.
+`<Toaster />` is a later sibling of `<AppShell>` in the root layout, so a page's effects
+run first.
+
+Upstream mostly gets away with it, because a subscriber mounting *after* the dispatch
+seeds `useState(memoryState)` from the store and picks the toast up anyway. What it cannot
+recover is a subscriber that was already rendered when the toast landed.
+`useSyncExternalStore` closes that: React reads the snapshot during render and re-checks
+after subscribing.
+
+`TOAST_REMOVE_DELAY` came down from upstream's ~16.7 minutes to 1000ms, which is all the
+exit animation needs. (It does not control how long a toast is on screen - Radix owns
+that, 5s by default.)
+
+### The measurement trap, which cost more time than the fix
+
+An earlier pass through this file concluded that shortening `TOAST_REMOVE_DELAY` broke
+toasts outright, and reverted it with a comment warning the next person off. **That was
+wrong**, and the reasoning is worth keeping because the same trap is easy to fall into
+again.
+
+Every "the toast never appears" reading was taken too late. Navigating the browser to a
+route the dev server has to compile takes several seconds, and the tooling only hands
+control back once the page has loaded - by which point `performance.now()` was already
+reading 8-11 seconds, and Radix had auto-dismissed the toast at ~5.9s. The toast had been
+rendering correctly the whole time.
+
+Two things make a measurement like this trustworthy:
+
+* **Time from an event you control, not from when the tool returns.** Trigger the failure
+  with a client-side transition on an already-loaded page (breaking the request rather
+  than the URL), and sample from `t=0`. Done that way the toast is plainly visible from
+  831ms to 7.8s.
+* **Print the page's own age.** A single `performance.now()` in the first sample would
+  have shown the window had already closed.
+
+This is the same class of error as the phantom axe failures noted above: a dev server
+mid-recompile, or a page older than you think, will happily report a bug that is not
+there. When a result implicates something as inert as a `setTimeout` constant, suspect
+the measurement first.
+
+## Both charts' legends are the control for what they plot
+
+Every mark on both charts can be turned off, and the toggle is the legend entry itself
+rather than a separate row of checkboxes. The legend already names each mark and carries
+its swatch, so it is where you look to ask "which line is that" - and "hide it" is the next
+thought. A control row above the chart would say the same three words twice.
+
+They are `<button aria-pressed>`, not checkboxes: these change the picture in place, and
+the pressed state is what a screen reader needs to hear. The label stays the mark's own
+name in both states - "Show Depth" on a control that is currently showing depth describes
+what the button *does* rather than what it *is*, and `aria-pressed` already carries the
+rest. A hidden mark keeps its swatch, drawn in the button's own muted color instead of the
+mark's, so a grey line where the teal one was says both "off" and "this is what it would
+be".
+
+**Hiding everything is allowed**, and puts a one-line message where the plot was with the
+legend still under it. The alternative - disabling the last enabled toggle - is a button
+that refuses to do what it says, and the empty state is one click from recoverable.
+
+**The profile chart toggles by *channel*, not by plotted line**, which is only a
+distinction on a dive with two cylinders. Both pressure lines draw in the same
+`--pressure` violet, so listing them separately never distinguished them by eye anyway,
+and the crosshair readout still names each one ("Tank pressure (gas 2)"). Toggling by
+channel is also what makes the choice worth remembering across dives: "gas 2" means a
+different cylinder on the next dive, "tank pressure" doesn't.
+
+**The labelled axes follow what's plotted.** With depth hidden, temperature takes the
+gridlines (they were depth's, and gridlines that line up with no labelled value are just
+decoration); with only pressure left, the right-hand labels are pressure's, which is the
+one case they aren't temperature's. That needed `PlottedChannel` to carry the `domain` it
+was scaled against rather than the axis code recomputing one - which would have been
+*wrong* for pressure, where every cylinder shares one domain across all of them. The
+`aria-label` is built from the visible channels too: a summary naming a temperature range
+the diver has hidden describes a chart nobody is looking at.
+
+**The gas chart's trend and its spread band are one mark**, so they share one toggle. The
+band is what gives the line body and says how tightly the dives it averages were
+clustered; a chart with one and not the other says less than either alone. The legend
+keeps saying "and spread" while the trend is *off* (`withSpread`, which is
+`scope !== "all"`, separate from `showSpread`, which also requires the trend) - a control
+that drops the word exactly when you're deciding whether to bring it back is describing
+the picture instead of itself.
+
+## Remembered selections use `useSyncExternalStore`, and the handler uses the updater form
+
+`lib/chart-series-view.ts` is the storage half, generic over the series keys because two
+charts want it and their keys have nothing in common. Same `localStorage` reasoning as
+`gas-use-view.ts` (which it took `subscribeToNothing` from): it has to survive the tab
+closing, and it has to work from the bare `/dashboard` and `/dives/{uuid}` that the nav
+links point at, which a query string appearing only after you touch a control can't do.
+Both keys hold nothing but a handful of series names the charts themselves define.
+
+The read is `useSyncExternalStore` with a server snapshot of `null`, for exactly the reason
+`GasUseCard` already documents for its remembered period: `localStorage` doesn't exist on
+the server, so a first client render that read it would disagree with the HTML Next
+rendered. The snapshot stays the raw string, because `useSyncExternalStore` compares with
+`Object.is` and a freshly parsed array each call loops forever.
+
+`parseSeriesVisibility` **filters** through the allowed keys rather than rejecting on an
+unknown one - a key this build no longer plots is stale, not corrupt, and dropping it
+leaves the rest of a good selection intact. Two cases that look alike and aren't: a stored
+`[]` is restored as "hide everything", because that is a choice someone made, while an
+entry naming *only* unrecognized keys falls back to null, because restoring it as "hide
+everything" would open on a blank plot for no reason the diver could account for. The
+profile chart additionally intersects the remembered selection with the channels *this*
+dive recorded, and ignores it when the intersection is empty: a dive that only carries what
+you'd hidden should open showing what it does have.
+
+**The toggle handler uses `setChosen(current => ...)`, and this was a real bug first.**
+Computing from the render's own `visible`/`marks` meant two toggles clicked inside one
+React batch both derived from the pre-click value, so the second silently undid the first -
+reproduced by clicking three legend buttons in one tick and getting one flip instead of
+three. The write to storage moved into a `useEffect` keyed on the chosen selection, which
+is what keeps that updater pure; React is entitled to call an updater twice.
+
+## The hand cursor on buttons is restored once, in the base layer
+
+Tailwind v3's Preflight shipped `button, [role="button"] { cursor: pointer }`. v4 dropped it
+to match the browser default, and the result was an app whose cursor changed along a line
+that had nothing to do with what the control did: `<Button asChild>` wrapping a `<Link>` got
+a hand, because it renders an `<a href>` and the UA styles anchors that way, while the same
+component rendering a real `<button>` - the same size, colour and hover state, sitting next
+to it in the same toolbar - got an arrow. Roughly 18 call sites on one side and 100 on the
+other, plus every Radix trigger, so it read as random rather than as a rule.
+
+What made it worth fixing centrally rather than per component is where it had already got
+to: `Checkbox`, the calendar's year/month dropdown and both chart legends had each grown
+their own `cursor-pointer`, one file at a time, none of them aware of the others. That is
+the failure mode a base rule prevents, so the four local patches came out with it.
+
+The selector is Tailwind's own documented v4-compat snippet, widened to the native controls
+that had accumulated patches (`select`, and checkbox/radio/file inputs - `Checkbox` is a
+plain `<input>`, see the note on it there):
+
+```css
+button:not(:disabled),
+[role="button"]:not(:disabled),
+select:not(:disabled),
+input:where([type="checkbox"], [type="radio"], [type="file"]):not(:disabled) {
+  cursor: pointer;
+}
+```
+
+Two things keep it from being blunt. **It lives in `@layer base`**, so every `cursor-*`
+utility outranks it - which is what leaves Radix's menu and listbox items alone. Those carry
+an explicit `cursor-default` on purpose, because a native OS menu doesn't show a hand, and
+they're `role="menuitem"`/`role="option"` so the selector misses them twice over. The same
+precedence is what keeps `disabled:cursor-not-allowed` on inputs and `cursor-grab` on the
+multi-select drag handles working untouched. **And `:not(:disabled)`** stops a disabled
+control claiming a pointer; `Button` sets `disabled:pointer-events-none` and so never needed
+it, but the inputs do.
+
+`<label>` was deliberately left out. Only three labels want a hand - the ones paired with a
+checkbox - and a bare `label` selector would put one over every text-input label too, where
+the arrow is correct. Three explicit `cursor-pointer` classes are the cheaper answer.
+
+## The README screenshots are generated, at one frame size that is a breakpoint
+
+`scripts/screenshots.mjs` retakes every image in `docs/screenshots/`. Hand-cropped screenshots
+drift: they get taken on whatever window happened to be open, at whatever scroll position looked
+fine that day, against whatever account had data in it. The grid had ended up three page shots
+and one bare chart card at a different size, which is exactly the kind of thing nobody notices
+until the table looks lopsided.
+
+**1024px wide, because that is where the cards stop stacking.** Every detail page lays out as
+`grid grid-cols-1 lg:grid-cols-3`, and `lg` is 1024px. One pixel under it the sidebar drops
+below the main column, so a screenshot of the dive page shows its profile chart with the site,
+the conditions and the imported file a whole screen away - the page photographs as a narrow
+ribbon of cards instead of as the two-column layout it is. 1024 is the *minimum* that avoids it;
+going wider only adds gutters, since the content is `max-w-6xl` centred, and shrinks the text
+further when GitHub scales the image into a half-width table cell.
+
+The dashboard was briefly shot narrower, on the theory that its `lg:grid-cols-2` would halve the
+consumption chart. It does not - that grid holds Recent Dives and Recent Trips, and `GasUseCard`
+is full width at every breakpoint, so the chart only gets wider and the trend easier to read.
+One size for everything, and no reason to special-case the hero.
+
+**1086px tall, and the number is a card boundary rather than a round figure.** It is where the
+dashboard's consumption card ends, one row above the cards that follow it, and it also clears
+the dive page's sidebar column. Cutting at the *end* of a column matters more than the exact
+number: a frame that stops just shy of finishing a card reads as an off-by-one, while one that
+stops well inside a card the reader can see continues reads as a page that goes on.
+`deviceScaleFactor: 2`, because a 1x screenshot of a dark UI looks muddy on the displays most
+people read a README on.
+
+**Two images, not four, and one frame per page.** The grid previously held two crops of the same
+dive page at different scroll offsets - the top, and the profile chart further down - which
+reads as a mistake rather than as two things. At 1024 that is moot: one frame of the dive page
+carries the chart *and* the sidebar. Filling the other two cells then meant reaching for list
+pages, and a table of dive sites or trips is a screenshot of a table - it demonstrates nothing
+the feature list hasn't already said. What's left is the two pages that show something you
+cannot describe in a bullet: the profile charted out of a dive-computer export, and a gear
+item's service schedule with its history under it.
+
+**Nothing about the account is hardcoded.** The dive is whichever of the 30 most recent carries
+an imported profile (only `GET /dive/{uuid}` says whether one exists, hence the probing), and
+the gear item is whichever has the most service tracked on it. Those queries reuse the access
+token lifted off the app's own requests via a Playwright `request` listener. The two
+alternatives are both worse: verifying a second magic link server-side runs into the
+three-per-email-per-fifteen-minutes limit within a single retake, and calling `/auth/refresh`
+from the page rotates the cookie out from under the app.
+
+**`playwright-core`, not `playwright`.** The full package downloads ~130MB of browsers on every
+`npm install`, for a script only a maintainer runs. `playwright-core` is the driver alone and
+takes an `executablePath`, so it uses the Chrome already on the machine.
+
+### The one-second refresh-token collision
+
+Worth writing down because it is an API bug this script trips every time, not a quirk of the
+script. A refresh token's payload is `{sub, exp, token_type}` and nothing else - no `jti`, no
+`iat` - and JWT `exp` has one-second resolution. Two refresh tokens issued for the same account
+inside the same wall-clock second are therefore *byte-identical*. `/auth/refresh` blacklists the
+token it was handed before minting the replacement, so when the replacement collides it hands
+back a token that is already blacklisted, and the next refresh 401s. In a browser that means:
+sign in, navigate before the second ticks over, and the page after that lands on `/signin` with
+no explanation.
+
+A script hits this on almost every run, since it navigates the instant sign-in completes.
+`sleepPastTheSecond()` waits out the boundary, and `visit()` fails loudly if a navigation lands
+on `/signin` rather than quietly producing four screenshots of the sign-in form. Both come out
+once the API puts a `jti` on refresh tokens.
+
+## "Due soon" is a `warning` badge, because `secondary` is invisible on a card
+
+`serviceStatusBadgeVariant` mapped `due_soon` onto the `secondary` badge, which is
+`bg-secondary` with a transparent border. In dark mode `--secondary` is `240 4% 16%` and
+`--card` is `240 4% 13%` - **three points of lightness apart**, and every place that badge
+renders (the gear list, the gear detail card, the dashboard's service-due card) is on a
+card. The chip effectively had no background: 1.2:1 against the surface behind it. WCAG has
+nothing to say about that - the *label* was 13:1 and passed every contrast scan - which is
+exactly why it survived the colour sweep. Non-text contrast is the check a text-node walker
+doesn't make.
+
+It's now `bg-warning`, a new `Badge` variant over the token that already means "take this
+seriously, it isn't a failure" - 9.2:1 against the card in dark mode, and the escalation
+finally reads as one: outline, then amber, then `destructive`'s red. It also stops "Due
+soon" being the identical chip to "Rented", which is a fact about an item, not a status.
+
+**`--warning` is dark and slightly brown in light mode (`32 92% 27%`), and that is
+deliberate** - it carries white text, and the obvious mid-amber only reaches 3.9:1 under
+white. Same split as `--coral` / `--coral-solid`, arrived at from the other direction. In
+dark mode it flips to `38 95% 62%` with near-black text and reads as proper amber.
+
+### And then the token itself, because every other secondary chip had it too
+
+Recolouring one badge left the same 1.2:1 chip everywhere else `secondary` renders, which
+is a card header in all eleven cases - the count chips on dives, sites, trips,
+certifications, gear and gear sets, "Rented" in `gear-items-card`, `dive-detail-main` and
+`gear-item-multi-select`, and the dashboard's `doneCount/steps` chip. So **dark
+`--secondary` moved 16% → 22%**, nine points above `--card` instead of three.
+
+Why lightness and not a border: the base `Badge` class already carries `border`, and
+`secondary` sets `border-transparent`. Giving it a visible one delineates the chip
+beautifully - and makes it look exactly like the `outline` variant, which on the gear
+table sits three rows above it as "In service". Filled and outlined have to stay
+distinguishable, so the fill is the only channel left.
+
+**The light theme's 4-point gap (`96%` on white) is fine and was left alone**, which looks
+inconsistent until you notice the light `--secondary` is `210 40% 96%` - 40% saturation. It
+separates by *hue*, not lightness. The dark palette is near-neutral on purpose (macOS
+system greys, 4% saturation), so it has no hue channel to spend and has to pay in
+lightness. Judged by eye at 16/20/22/25/28% against a real card; 22% is where the chip
+stops disappearing and before it starts reading as a button.
+
+Two non-badge consumers came along. `bg-secondary` is also the *selected* segment of the
+gas-consumption card's time-range control - at 16% you genuinely could not tell which of
+All/Year/Month was active, so that one was a functional bug, not a cosmetic one. And it is
+the `Button` `secondary` variant, which sounds risky and isn't: nothing in the app uses it.
+`--muted` deliberately stayed at 16% despite having been the same value - it is a
+large-area wash (the footer, callouts), and 22% over that much surface reads as a panel
+rather than a tint.
+
+## One card-header shape: `space-y-1.5` only reaches `CardHeader`'s *direct* children
+
+`CardHeader` is `flex flex-col space-y-1.5 p-6`, and Tailwind's `space-y-*` is a
+`> * + *` selector - so the 6px between a title and its description exists only while
+both are children of the header itself. `GasUseCard` wraps them in a `<div>` so the
+period picker and the All/Year/Month control can sit to their right, and that wrapper
+silently ate the gap: "Gas Consumption" and its description were **0px** apart, the only
+card in the app where they touched.
+
+`RecentDivesCard` and `RecentTripsCard` had the mirror-image version. They kept the
+description as a direct child and wrapped only the title with its "View All" button -
+which works, except a `size="sm"` button is 36px against a `leading-none` 24px title, so
+centring the two left 6px of slack under the title *inside* the row, on top of the row's
+own 6px. Measured **12px**, twice every other card.
+
+So the shape for a card whose header carries a control is now the one `GasUseCard` uses,
+in all three:
+
+```tsx
+<CardHeader>
+  <div className="flex flex-wrap items-start justify-between gap-3">
+    <div className="space-y-1.5">
+      <CardTitle …>…</CardTitle>
+      <CardDescription>…</CardDescription>
+    </div>
+    {control}
+  </div>
+</CardHeader>
+```
+
+`items-start`, so the control aligns with the top of the title block rather than the
+middle of a two-line column. Every title/description pair in the app now measures 6px at
+both 1100px and 375px - checked by walking the rendered cards and diffing
+`description.top - title.bottom`, which is the only way this class of bug shows up at all.
+
+**Card-title icons are `gap-2` on the title, never `mr-2` on the icon**, so the header
+has one idiom to match. And they inherit the title's colour: `text-primary` was on five
+of them (`settings`, `email-change-card`, and three on `contact`) and is a mid-grey in
+dark mode - the same fact that took it off in-copy links above. On the settings page that
+put two dim icons next to `Notifications`' bright one; the dim ones were also dimmer than
+the muted description text beneath them. `contact`'s `text-success` shield and
+`text-destructive` heart stay: those two are semantic and read as deliberate.
+
+## The dive page's gear list is a table, and its columns lead with Type
+
+`DiveDetailMain`'s Gear card used to be a `<ul>` of `gearItemLabel(item)` - brand and name
+glued into one string, one item per line. That reads fine for two items and badly for
+seven, which is what a real dive carries: the eye has nothing to scan down, and "Fourth
+Element Hooded Vest" gives no hint where the brand stops. It's now a `Table`, same shape as
+the Gas Mixtures card two cards above it, so the main column has one idiom.
+
+**Type first, then Brand, then Name** - deliberately *not* the gear page's Name/Type/Brand.
+The two tables answer different questions. `/gear` is a list of things you own, looked up
+by the name you gave them; the dive page is a kit list, read to check what you were wearing,
+where Type is the thing you scan for ("what suit? what computer?") and the name is the
+answer. Leading with the closed vocabulary also gives the column a short, repeating left
+edge instead of ragged free text.
+
+Splitting brand into its own column is what retires `gearItemLabel` here (it stays in the
+five places that need a one-line label: the picker, the sets card, and the archive/delete
+confirmations). The Name cell keeps the link and the Rented/Archived badges.
+
+**The whole Type column is `text-muted-foreground`, not just its empty cells.** Leading
+with Type is what makes the table scannable, but a full-strength column of category names
+competes with the item names for the eye - and the type is the *question*, the name is the
+answer. Muting it also removes the odd case where a missing type rendered a dimmer dash
+than the value next to it. Brand stays at full strength: it's part of the item's identity,
+and a diver reads "Apeks XTX50" as one thing.

@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export function Footer() {
   return (
-    <footer className="bg-neutral-100 text-neutral-900 dark:bg-neutral-950 dark:text-white py-12">
+    <footer className="bg-muted text-foreground py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid md:grid-cols-4 gap-8">
           <div>
@@ -11,131 +11,102 @@ export function Footer() {
               <Logo className="h-6 w-6 text-coral" />
               <span className="text-lg font-semibold">OpenDiving</span>
             </div>
-            <p className="text-neutral-600 dark:text-neutral-400 text-sm">
+            <p className="text-muted-foreground text-sm">
               Open source diving platform for the global diving community.
             </p>
           </div>
           <div>
             <h4 className="font-semibold mb-4">Platform</h4>
-            <ul className="space-y-2 text-sm text-neutral-600 dark:text-neutral-400">
+            <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <a
-                  href="#"
-                  className="hover:text-neutral-900 dark:hover:text-white"
-                >
+                <Link href="/dives" className="hover:text-foreground">
                   Dive Log
-                </a>
+                </Link>
               </li>
               <li>
-                <a
-                  href="#"
-                  className="hover:text-neutral-900 dark:hover:text-white"
-                >
-                  Community
-                </a>
+                <Link href="/trips" className="hover:text-foreground">
+                  Trips
+                </Link>
               </li>
               <li>
-                <a
-                  href="#"
-                  className="hover:text-neutral-900 dark:hover:text-white"
-                >
+                <Link href="/sites" className="hover:text-foreground">
                   Dive Sites
-                </a>
+                </Link>
               </li>
               <li>
-                <a
-                  href="#"
-                  className="hover:text-neutral-900 dark:hover:text-white"
-                >
+                <Link href="/gear" className="hover:text-foreground">
                   Equipment
-                </a>
+                </Link>
               </li>
             </ul>
           </div>
           <div>
             <h4 className="font-semibold mb-4">Resources</h4>
-            <ul className="space-y-2 text-sm text-neutral-600 dark:text-neutral-400">
+            <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
                 <a
-                  href="#"
-                  className="hover:text-neutral-900 dark:hover:text-white"
-                >
-                  Documentation
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#"
-                  className="hover:text-neutral-900 dark:hover:text-white"
-                >
-                  API
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#"
-                  className="hover:text-neutral-900 dark:hover:text-white"
+                  href="https://github.com/opendiving"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-foreground"
                 >
                   GitHub
                 </a>
               </li>
               <li>
                 <a
-                  href="#"
-                  className="hover:text-neutral-900 dark:hover:text-white"
+                  href="https://github.com/opendiving/opendiving-api"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-foreground"
+                >
+                  API
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://github.com/opendiving/opendiving-web/blob/main/CONTRIBUTING.md"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-foreground"
                 >
                   Contributing
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://github.com/opendiving/opendiving-web/blob/main/CODE_OF_CONDUCT.md"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-foreground"
+                >
+                  Code of Conduct
                 </a>
               </li>
             </ul>
           </div>
           <div>
             <h4 className="font-semibold mb-4">Support</h4>
-            <ul className="space-y-2 text-sm text-neutral-600 dark:text-neutral-400">
+            <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
-                <a
-                  href="#"
-                  className="hover:text-neutral-900 dark:hover:text-white"
-                >
-                  Help Center
-                </a>
-              </li>
-              <li>
-                <a
-                  href="#"
-                  className="hover:text-neutral-900 dark:hover:text-white"
-                >
-                  Safety Guidelines
-                </a>
-              </li>
-              <li>
-                <Link
-                  href="/contact"
-                  className="hover:text-neutral-900 dark:hover:text-white"
-                >
+                <Link href="/contact" className="hover:text-foreground">
                   Contact
                 </Link>
               </li>
               <li>
-                <Link
-                  href="/privacy"
-                  className="hover:text-neutral-900 dark:hover:text-white"
-                >
+                <Link href="/privacy" className="hover:text-foreground">
                   Privacy
                 </Link>
               </li>
               <li>
-                <Link
-                  href="/terms"
-                  className="hover:text-neutral-900 dark:hover:text-white"
-                >
+                <Link href="/terms" className="hover:text-foreground">
                   Terms of Service
                 </Link>
               </li>
             </ul>
           </div>
         </div>
-        <div className="border-t border-neutral-200 dark:border-neutral-800 mt-12 pt-8 text-center text-sm text-neutral-600 dark:text-neutral-400">
+        <div className="border-t mt-12 pt-8 text-center text-sm text-muted-foreground">
           <p>&copy; 2026 OpenDiving. Open source diving platform.</p>
         </div>
       </div>

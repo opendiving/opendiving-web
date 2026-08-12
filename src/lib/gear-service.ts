@@ -105,12 +105,15 @@ export function serviceStatusLabel(status: ServiceStatus): string {
 }
 
 // Maps onto the `Badge` variants already in the design system rather than introducing
-// new colours: overdue is the same weight as any other destructive state.
+// new colours: overdue is the same weight as any other destructive state, and due-soon
+// borrows --warning, the token that already means "take this seriously, it isn't a
+// failure". It used to be `secondary`, which is nearly invisible on a card in dark mode
+// and, being the same chip as "Rented", didn't read as a status at all.
 export function serviceStatusBadgeVariant(
   status: ServiceStatus,
-): "destructive" | "secondary" | "outline" {
+): "destructive" | "warning" | "outline" {
   if (status === "overdue") return "destructive";
-  if (status === "due_soon") return "secondary";
+  if (status === "due_soon") return "warning";
   return "outline";
 }
 
@@ -151,7 +154,13 @@ export function formatServiceDue(
   }
   if (dateOverdue) {
     const over = -days!;
-    if (over === 0) return "Due today";
+    // Due *today* is already overdue, not "nearly due" - `serviceStatus` above badges
+    // it destructive, and the API agrees on both counts: `service_status` uses
+    // `today >= next_due_on`, and the reminder digest emails "overdue since 11 Aug
+    // 2026" for a schedule due that morning. A bare "Due today" here read as
+    // reassurance directly under a red Overdue badge, so it names the state first and
+    // keeps the useful "and it's today" as the qualifier.
+    if (over === 0) return "Overdue (due today)";
     return `Overdue by ${over} day${over === 1 ? "" : "s"}`;
   }
   if (days != null) {

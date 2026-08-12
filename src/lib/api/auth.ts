@@ -53,6 +53,14 @@ export interface LinkCheckResult {
   email?: string;
 }
 
+/**
+ * Sign-in, sign-out and onboarding calls.
+ *
+ * Both entry points (magic link, Google) can land on either of two outcomes - an existing
+ * user is signed in, or a verified identity with no account yet gets an onboarding token
+ * to hand to `completeOnboarding`. Callers have to branch on `status` rather than assuming
+ * a session came back.
+ */
 export const authAPI = {
   // Step 1 of the email flow: always resolves with the same generic message,
   // whether or not `email` belongs to an existing account.

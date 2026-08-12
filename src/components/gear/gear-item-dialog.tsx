@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useDialogApiError } from "@/hooks/useDialogApiError";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus, Save } from "lucide-react";
 import { gearItemSchema, GearItemInput } from "@/lib/validations/gear";
 import {
   gearAPI,
@@ -72,7 +73,7 @@ export function GearItemDialog({
   initialName,
 }: GearItemDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [apiError, setApiError] = useState<string | null>(null);
+  const [apiError, setApiError] = useDialogApiError(open);
   const isEdit = !!gearItem;
 
   const form = useForm<GearItemInput>({
@@ -93,8 +94,6 @@ export function GearItemDialog({
       notes: gearItem?.notes ?? "",
       rented: gearItem?.rented ?? false,
     });
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setApiError(null);
   }, [open, gearItem, initialName, reset]);
 
   const handleOpenChange = (next: boolean) => {
@@ -141,7 +140,7 @@ export function GearItemDialog({
       }
 
       onOpenChange(false);
-    } catch (error: any) {
+    } catch (error) {
       setApiError(
         getApiErrorMessage(
           error,
@@ -293,9 +292,15 @@ export function GearItemDialog({
                     {isEdit ? "Saving..." : "Creating..."}
                   </>
                 ) : isEdit ? (
-                  "Save Changes"
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save Changes
+                  </>
                 ) : (
-                  "Create Gear"
+                  <>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Gear
+                  </>
                 )}
               </Button>
             </DialogFooter>
