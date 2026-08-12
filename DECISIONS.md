@@ -356,6 +356,16 @@ This only works because the app runs as a persistent Node server (`output: "stan
   just breaks dev styling for reasons outside this app's control. Production never inline-injects
   CSS - it ships static, hashed `<link rel="stylesheet">` files covered by `'self'`, so the nonce
   requirement costs nothing there.
+- `style-src` also lists `https://accounts.google.com` in _both_ modes. GSI's client script injects
+  its own `<link rel="stylesheet" href="https://accounts.google.com/gsi/style">` into `<head>`, and
+  a host source is the only thing that allows it: `'unsafe-inline'` covers inline `<style>` blocks
+  only, never an external stylesheet, so the dev branch needs the entry just as much as production
+  does. Without it the browser reports a `style-src-elem` violation for that URL and the real
+  (invisible, click-receiving) Google button in `components/auth/google-auth-button.tsx` renders
+  unstyled - it still sits under the custom visual, so nothing looks broken, which is exactly why
+  this went unnoticed. The same origin already appears in `connect-src`/`frame-src`; note that
+  adding a host source alongside a nonce is fine - a nonce only disables the `'unsafe-inline'`
+  fallback for its directive, not host allowlisting.
 - Radix components that lock body scroll (`Dialog`, `Popover`, `DropdownMenu`, ...) pull in
   `react-remove-scroll` -> `react-style-singleton`, which injects a `<style>` tag straight into
   `document.head` via raw DOM APIs - completely outside React/Next's own nonce propagation. It looks
