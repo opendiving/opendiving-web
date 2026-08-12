@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import {
   Activity,
   ChevronLeft,
@@ -28,21 +34,20 @@ import { SectionSpinner } from "@/components/ui/section-spinner";
 import { ChartStat } from "@/components/dives/chart-stat";
 import { GasUseChart } from "@/components/dives/gas-use-chart";
 import { diveStatsAPI, DiveGasUsePoint } from "@/lib/api/dive-stats";
+import { type GasUseSummary, summarizeGasUse } from "@/lib/dive-gas";
 import {
-  GAS_USE_SCOPES,
-  GAS_USE_SCOPE_LABELS,
-  type GasUseScope,
-  type GasUseSummary,
+  CHART_SCOPES,
+  CHART_SCOPE_LABELS,
+  type ChartScope,
   availablePeriods,
   periodLabel,
   periodRange,
+  resolveAnchor,
   stepPeriod,
-  summarizeGasUse,
-} from "@/lib/dive-gas";
+} from "@/lib/chart-period";
 import {
   parseGasUseView,
   readStoredGasUseView,
-  resolveAnchor,
   writeGasUseView,
 } from "@/lib/gas-use-view";
 import { subscribeToNothing } from "@/lib/chart-series-view";
@@ -65,8 +70,15 @@ export function GasUseCard() {
   // dives' own times rather than an arbitrary date: that's what makes switching
   // scope land somewhere useful (the month *containing* the dive you were
   // looking at) instead of on an empty period.
-  const [chosenScope, setChosenScope] = useState<GasUseScope | null>(null);
+  const [chosenScope, setChosenScope] = useState<ChartScope | null>(null);
   const [anchor, setAnchor] = useState<number | null>(null);
+
+  // Names the period dropdown without renaming it. `aria-label` here would
+  // *replace* the trigger's accessible name, and that name is the value -
+  // "September 2025" - which is the one thing a diver needs read back. A
+  // description is announced after it instead, so the control keeps saying which
+  // period it is on and gains which chart it drives.
+  const periodHintId = useId();
 
   // The view remembered from last time.
   //
@@ -207,7 +219,7 @@ export function GasUseCard() {
                   className="h-8 w-8"
                   disabled={previous === null}
                   onClick={() => setAnchor(previous)}
-                  aria-label="Previous period with dives"
+                  aria-label="Gas consumption: previous period with dives"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
@@ -221,6 +233,9 @@ export function GasUseCard() {
                     has no registered item renders an empty trigger. Fixed width
                     so the chart doesn't shift sideways between "May 2026" and
                     "September 2026". */}
+                <span id={periodHintId} className="sr-only">
+                  Gas consumption period
+                </span>
                 <Select
                   value={String(periodRange(activeAnchor, scope).start)}
                   onValueChange={(value) => {
@@ -230,7 +245,10 @@ export function GasUseCard() {
                     if (picked) setAnchor(picked.anchor);
                   }}
                 >
-                  <SelectTrigger className="h-8 w-40 px-2 text-sm font-medium">
+                  <SelectTrigger
+                    aria-describedby={periodHintId}
+                    className="h-8 w-40 px-2 text-sm font-medium"
+                  >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -250,22 +268,32 @@ export function GasUseCard() {
                   className="h-8 w-8"
                   disabled={next === null}
                   onClick={() => setAnchor(next)}
-                  aria-label="Next period with dives"
+                  aria-label="Gas consumption: next period with dives"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
             )}
 
+            {/* Every control in this row names its own card, because the two
+                cards draw the same row and `Card` is a plain `div` - so nothing
+                scopes them to each other. Read in place the heading above is all
+                the context you need, but a screen reader's controls list is flat
+                names and nothing else, and four arrows reading "Previous period
+                with dives" in it are four coin flips. The card name leads rather
+                than trails so the list groups by chart when it is scanned or
+                sorted. Same ambiguity `screenshots.mjs` hit from the automation
+                side, where the fix was to scope by the card's `<h3>` - the
+                heading is exactly the context a controls list drops. */}
             {/* A segmented control built from plain buttons - the app has no
                 tabs/toggle-group primitive, and three buttons in a bordered row
                 is the whole of it. */}
             <div
               className="flex items-center rounded-md border p-0.5"
               role="group"
-              aria-label="Time range"
+              aria-label="Gas consumption: time range"
             >
-              {GAS_USE_SCOPES.map((option) => (
+              {CHART_SCOPES.map((option) => (
                 <button
                   key={option}
                   type="button"
@@ -278,7 +306,7 @@ export function GasUseCard() {
                       : "text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  {GAS_USE_SCOPE_LABELS[option]}
+                  {CHART_SCOPE_LABELS[option]}
                 </button>
               ))}
             </div>

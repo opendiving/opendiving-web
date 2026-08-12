@@ -15,17 +15,12 @@
 // already had on screen. No dive data, nothing fetched, nothing that isn't
 // reconstructible from the chart itself.
 
-import {
-  GAS_USE_SCOPES,
-  type GasUseScope,
-  availablePeriods,
-  periodRange,
-} from "@/lib/dive-gas";
+import { CHART_SCOPES, type ChartScope } from "@/lib/chart-period";
 
 const GAS_USE_VIEW_KEY = "opendiving:gas-use-view";
 
 export interface GasUseView {
-  scope: GasUseScope;
+  scope: ChartScope;
   // The period the diver actually picked, or null when they never moved off the
   // default. The distinction matters: null means "whatever is most recent",
   // which keeps following new dives as they're logged, whereas a timestamp
@@ -65,10 +60,10 @@ export function parseGasUseView(raw: string | null): GasUseView | null {
     if (typeof parsed !== "object" || parsed === null) return null;
 
     const { scope, anchor } = parsed as Record<string, unknown>;
-    if (!GAS_USE_SCOPES.includes(scope as GasUseScope)) return null;
+    if (!CHART_SCOPES.includes(scope as ChartScope)) return null;
     if (anchor !== null && !Number.isFinite(anchor)) return null;
 
-    return { scope: scope as GasUseScope, anchor: anchor as number | null };
+    return { scope: scope as ChartScope, anchor: anchor as number | null };
   } catch {
     return null;
   }
@@ -77,7 +72,10 @@ export function parseGasUseView(raw: string | null): GasUseView | null {
 // `subscribeToNothing` used to live here. It moved, unchanged, to
 // `lib/chart-series-view.ts` once the two charts' remembered *series* selections
 // wanted it too - three readers of `useSyncExternalStore`, none of which is
-// about gas.
+// about gas. `resolveAnchor` made the same move later, to
+// `lib/chart-period.ts`, once the activity card remembered an anchor too - what
+// it does is check a timestamp against the periods that still have data, which
+// is period arithmetic rather than anything about this storage key.
 
 export function writeGasUseView(view: GasUseView): void {
   try {
@@ -85,38 +83,4 @@ export function writeGasUseView(view: GasUseView): void {
   } catch {
     // As above - and losing the remembered view costs a click, not data.
   }
-}
-
-// The remembered anchor made safe against the dives that exist *now*, or null
-// to fall back to the most recent dive.
-//
-// It has to be checked rather than used as stored. A dive can be deleted or have
-// its time edited between visits, and the chart's anchor carries an invariant
-// the rest of the card leans on: it is a real dive's timestamp, inside a period
-// that has dives. Restoring a timestamp that no longer satisfies that renders a
-// period select with no matching option - an empty trigger, the same failure
-// noted on `GasUsePeriod.start`.
-//
-// The period fallback is the useful half of this: edit one dive's time and you
-// should still land on the month you were reading, not be thrown back to the
-// most recent one.
-export function resolveAnchor(
-  stored: number | null,
-  scope: GasUseScope,
-  times: number[],
-): number | null {
-  if (stored === null || times.length === 0) return null;
-
-  // The dive itself is still there and still where it was.
-  if (times.includes(stored)) return stored;
-
-  // "All" has no period to fall back to - it plots everything either way.
-  if (scope === "all") return null;
-
-  const { start } = periodRange(stored, scope);
-  const period = availablePeriods(times, scope).find(
-    (candidate) => candidate.start === start,
-  );
-
-  return period ? period.anchor : null;
 }

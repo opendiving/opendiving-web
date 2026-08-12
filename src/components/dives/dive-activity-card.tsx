@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import {
   BarChart3,
   ChevronLeft,
@@ -29,20 +35,25 @@ import { ChartStat } from "@/components/dives/chart-stat";
 import { DiveActivityChart } from "@/components/dives/dive-activity-chart";
 import { diveStatsAPI, DiveActivityPoint } from "@/lib/api/dive-stats";
 import {
-  DIVE_ACTIVITY_SCOPES,
-  DIVE_ACTIVITY_SCOPE_LABELS,
-  type DiveActivityScope,
   type DiveActivitySummary,
   activityBars,
+  activityDays,
   barCeiling,
-  divingYears,
-  stepYear,
   summarizeActivity,
 } from "@/lib/dive-activity";
 import {
+  CHART_SCOPES,
+  CHART_SCOPE_LABELS,
+  type ChartScope,
+  availablePeriods,
+  periodLabel,
+  periodRange,
+  resolveAnchor,
+  stepPeriod,
+} from "@/lib/chart-period";
+import {
   parseDiveActivityView,
   readStoredDiveActivityView,
-  resolveYear,
   writeDiveActivityView,
 } from "@/lib/dive-activity-view";
 import { subscribeToNothing } from "@/lib/chart-series-view";
@@ -50,23 +61,32 @@ import { cn } from "@/lib/utils";
 
 // The dashboard's how-much-am-I-diving card, and the counterpart to
 // `GasUseCard`: that one is about the quality of the diving, this one about the
-// quantity. They share their shape deliberately - the same header, the same
-// stat row, the same period controls in the same corner - because two charts on
-// one page that work differently cost more to read than either does alone.
+// quantity. They share their shape deliberately - the same header, the same stat
+// row, the same period controls in the same corner, the same All/Year/Month
+// scopes over the same shared `chart-period.ts` - because two charts on one page
+// that work differently cost more to read than either does alone.
 //
-// Where they differ is what a period *is*. The gas chart plots dives, so its
-// period is anchored to one of them; here a bar is a calendar bucket and the
-// period is a plain year. That's why this card carries a year rather than an
-// anchor, and why the "All" scope has no counterpart: the year scope already
-// shows every year there is.
+// Where they differ is what a mark *is*. The gas chart plots dives, so its anchor
+// is one of their timestamps; here a bar is a calendar bucket, so the anchor is
+// the start of a day that has diving in it. Everything downstream of that -
+// stepping to the next period with dives, the dropdown of periods worth offering,
+// restoring the remembered one - is the same code in both cards.
 export function DiveActivityCard() {
   const [points, setPoints] = useState<DiveActivityPoint[] | null>(null);
   // This visit's choices, both null until the diver makes one - which is what
-  // leaves room for the remembered view underneath.
-  const [chosenScope, setChosenScope] = useState<DiveActivityScope | null>(
-    null,
-  );
-  const [chosenYear, setChosenYear] = useState<number | null>(null);
+  // leaves room for the remembered view underneath. The anchor is always the
+  // start of a day with dives, which is what makes switching scope land somewhere
+  // useful (the month *containing* the day you were looking at) instead of on an
+  // empty period.
+  const [chosenScope, setChosenScope] = useState<ChartScope | null>(null);
+  const [anchor, setAnchor] = useState<number | null>(null);
+
+  // Names the period dropdown without renaming it. `aria-label` here would
+  // *replace* the trigger's accessible name, and that name is the value -
+  // "September 2025" - which is the one thing a diver needs read back. A
+  // description is announced after it instead, so the control keeps saying which
+  // period it is on and gains which chart it drives.
+  const periodHintId = useId();
 
   // The view remembered from last time, through `useSyncExternalStore` rather
   // than a `useState` + effect pair for the reason `GasUseCard` documents at
@@ -81,9 +101,11 @@ export function DiveActivityCard() {
   );
   const remembered = useMemo(() => parseDiveActivityView(stored), [stored]);
 
-  // Opens on the years, not the months: "how has my diving gone" is the question
-  // the card exists for, and a single year is one click in.
-  const scope = chosenScope ?? remembered?.scope ?? "year";
+  // Opens on the whole career, not on a year of it - the opposite default to the
+  // gas card's, and deliberate. "How has my diving gone" is the question this
+  // card exists for, and a bar per year answers it at any career length, where a
+  // dot per dive over the same span is a smear. A single season is one click in.
+  const scope = chosenScope ?? remembered?.scope ?? "all";
 
   useEffect(() => {
     const fetchActivity = async () => {
@@ -100,55 +122,64 @@ export function DiveActivityCard() {
     fetchActivity();
   }, []);
 
-  const years = useMemo(() => divingYears(points ?? []), [points]);
+  const days = useMemo(() => activityDays(points ?? []), [points]);
 
-  // The remembered year, checked against the logbook as it exists now - see
-  // `resolveYear`. Null until the series arrives, which is why the fallback
+  // The remembered period, checked against the logbook as it exists now - see
+  // `resolveAnchor`. Null until the series arrives, which is why the fallback
   // below still has to be there.
-  const rememberedYear = useMemo(
-    () => resolveYear(remembered?.year ?? null, years),
-    [remembered, years],
+  const rememberedAnchor = useMemo(
+    () => resolveAnchor(remembered?.anchor ?? null, scope, days),
+    [remembered, scope, days],
   );
 
   // Three sources, most specific first: this visit's pick, then last visit's,
-  // then the most recent year with diving - not the first, since the interesting
-  // question is how this season is going and the older years are one click back.
+  // then the most recent day with diving - not the first, since the interesting
+  // question is how this season is going and the older periods are one click
+  // back.
   //
   // The `0` is unreachable except on an empty logbook, where the chart renders
-  // its prompt instead of a grid of twelve empty months.
-  const activeYear =
-    chosenYear ?? rememberedYear ?? years[years.length - 1] ?? 0;
+  // its prompt instead of a grid of empty buckets.
+  const activeAnchor = anchor ?? rememberedAnchor ?? days[days.length - 1] ?? 0;
 
-  // Remembered for next time. Held back until the series is in: `years` is what
-  // `rememberedYear` resolves against, so writing before it arrives would
-  // persist a null over the very year we're about to restore. That guard also
+  // Remembered for next time. Held back until the series is in: `days` is what
+  // `rememberedAnchor` resolves against, so writing before it arrives would
+  // persist a null over the very period we're about to restore. That guard also
   // covers the failed-fetch path, which sets an empty series - a request that
   // didn't come back should not erase where you were.
   useEffect(() => {
-    if (years.length === 0) return;
+    if (days.length === 0) return;
 
-    // The *chosen* year, never `activeYear`. Falling back to the most recent one
-    // is a default, not a preference, and persisting it would pin the card to
-    // this year forever - so a diver who never touched the control would stop
-    // following their own diving into next season.
-    writeDiveActivityView({ scope, year: chosenYear ?? rememberedYear });
-  }, [years, scope, chosenYear, rememberedYear]);
+    // The *chosen* anchor, never `activeAnchor`. Falling back to the most recent
+    // day is a default, not a preference, and persisting it would pin the card to
+    // today's newest dive forever - so a diver who never touched the period
+    // control would stop following their own diving into next season.
+    writeDiveActivityView({ scope, anchor: anchor ?? rememberedAnchor });
+  }, [days, scope, anchor, rememberedAnchor]);
 
   const bars = useMemo(
-    () => activityBars(points ?? [], scope, activeYear),
-    [points, scope, activeYear],
+    () => activityBars(points ?? [], scope, activeAnchor),
+    [points, scope, activeAnchor],
   );
   const ceiling = useMemo(
     () => barCeiling(points ?? [], scope),
     [points, scope],
   );
   const summary = useMemo(
-    () => summarizeActivity(points ?? [], scope, activeYear),
-    [points, scope, activeYear],
+    () => summarizeActivity(points ?? [], scope, activeAnchor),
+    [points, scope, activeAnchor],
   );
 
-  const previous = stepYear(activeYear, -1, years);
-  const next = stepYear(activeYear, 1, years);
+  // "All" spans the whole logbook, so it has no period to step through - the same
+  // shape the gas card carries, down to the null that switches the controls off.
+  const steppable = scope === "all" ? null : scope;
+  const previous = steppable
+    ? stepPeriod(activeAnchor, steppable, -1, days)
+    : null;
+  const next = steppable ? stepPeriod(activeAnchor, steppable, 1, days) : null;
+  const periods = useMemo(
+    () => (steppable ? availablePeriods(days, steppable) : []),
+    [days, steppable],
+  );
 
   return (
     <Card>
@@ -163,48 +194,70 @@ export function DiveActivityCard() {
               Dive Activity
             </CardTitle>
             <CardDescription>
-              {/* Kept to one line's worth. The header is a wrapping flex row
-                  with the period controls on the far side of it, and a
-                  description any longer than the gas card's pushes them onto a
-                  second line - so the two cards' controls stop lining up down
-                  the page. What went to make room: a note that the counting
-                  happens in each dive's own local time, which is a promise the
-                  app keeps everywhere and states nowhere else. */}
-              How many dives you logged, year by year or month by month.
+              {/* Kept short. The header is a wrapping flex row with the period
+                  controls on the far side of it, and a description any longer
+                  than the gas card's pushes them onto a second line - so the two
+                  cards' controls stop lining up down the page. Naming all three
+                  bar sizes in full ("day by day, month by month or year by
+                  year") is what that budget wouldn't take. What went earlier: a
+                  note that the counting happens in each dive's own local time,
+                  which is a promise the app keeps everywhere and states nowhere
+                  else. */}
+              How many dives you logged, by day, month or year.
             </CardDescription>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {/* Only the month scope has a year to navigate. The year scope
-                already shows every year there is, so arrows on it would have
-                nowhere to go. */}
-            {scope === "month" && (
+            {/* Only the bounded scopes have a period to navigate. "All" already
+                shows every year there is, so arrows on it would have nowhere to
+                go. */}
+            {scope !== "all" && (
               <div className="flex items-center gap-1">
                 <Button
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8"
                   disabled={previous === null}
-                  onClick={() => setChosenYear(previous)}
-                  aria-label="Previous year with dives"
+                  onClick={() => setAnchor(previous)}
+                  aria-label="Dive activity: previous period with dives"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                {/* The label is also the jump-to control - stepping a year at a
-                    time is fine for "the season before this one" and useless for
-                    reaching one several seasons back. Fixed width so the chart
-                    doesn't shift as the label changes. */}
+                {/* The label is also the jump-to control - stepping one period at
+                    a time is fine for "the season before this one" and useless
+                    for reaching one several seasons back.
+
+                    Its value is the *period's* start, never `activeAnchor`
+                    itself: the anchor is whichever day you happened to land on,
+                    which usually matches no option, and a `Select` whose value
+                    has no registered item renders an empty trigger. Fixed width -
+                    the gas card's, since both now show "September 2026" - so the
+                    chart doesn't shift sideways as the label changes. */}
+                <span id={periodHintId} className="sr-only">
+                  Dive activity period
+                </span>
                 <Select
-                  value={String(activeYear)}
-                  onValueChange={(value) => setChosenYear(Number(value))}
+                  value={String(periodRange(activeAnchor, scope).start)}
+                  onValueChange={(value) => {
+                    const picked = periods.find(
+                      (period) => String(period.start) === value,
+                    );
+                    if (picked) setAnchor(picked.anchor);
+                  }}
                 >
-                  <SelectTrigger className="h-8 w-24 px-2 text-sm font-medium">
+                  <SelectTrigger
+                    aria-describedby={periodHintId}
+                    className="h-8 w-40 px-2 text-sm font-medium"
+                  >
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {years.map((year) => (
-                      <SelectItem key={year} value={String(year)}>
-                        {year}
+                    {periods.map((period) => (
+                      <SelectItem
+                        key={period.start}
+                        value={String(period.start)}
+                      >
+                        {periodLabel(period.start, scope)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -214,23 +267,33 @@ export function DiveActivityCard() {
                   size="icon"
                   className="h-8 w-8"
                   disabled={next === null}
-                  onClick={() => setChosenYear(next)}
-                  aria-label="Next year with dives"
+                  onClick={() => setAnchor(next)}
+                  aria-label="Dive activity: next period with dives"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
             )}
 
+            {/* Every control in this row names its own card, because the two
+                cards draw the same row and `Card` is a plain `div` - so nothing
+                scopes them to each other. Read in place the heading above is all
+                the context you need, but a screen reader's controls list is flat
+                names and nothing else, and four arrows reading "Previous period
+                with dives" in it are four coin flips. The card name leads rather
+                than trails so the list groups by chart when it is scanned or
+                sorted. Same ambiguity `screenshots.mjs` hit from the automation
+                side, where the fix was to scope by the card's `<h3>` - the
+                heading is exactly the context a controls list drops. */}
             {/* A segmented control built from plain buttons - the app has no
                 tabs/toggle-group primitive, and the gas card above already draws
                 this exact row. */}
             <div
               className="flex items-center rounded-md border p-0.5"
               role="group"
-              aria-label="Bar size"
+              aria-label="Dive activity: time range"
             >
-              {DIVE_ACTIVITY_SCOPES.map((option) => (
+              {CHART_SCOPES.map((option) => (
                 <button
                   key={option}
                   type="button"
@@ -243,7 +306,7 @@ export function DiveActivityCard() {
                       : "text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  {DIVE_ACTIVITY_SCOPE_LABELS[option]}
+                  {CHART_SCOPE_LABELS[option]}
                 </button>
               ))}
             </div>
@@ -266,6 +329,13 @@ export function DiveActivityCard() {
   );
 }
 
+// What one bar counts, for the stat that names the fullest of them.
+const BUSIEST_LABELS: Record<ChartScope, string> = {
+  all: "Busiest year",
+  year: "Busiest month",
+  month: "Busiest day",
+};
+
 // The headline figures for what's on screen. The bars show the shape; these
 // answer "how much, and is it more than before", which a row of columns is
 // worst at answering precisely.
@@ -274,7 +344,7 @@ function DiveActivitySummaryRow({
   scope,
 }: {
   summary: DiveActivitySummary;
-  scope: DiveActivityScope;
+  scope: ChartScope;
 }) {
   return (
     <div className="mb-5 flex flex-wrap items-end gap-x-8 gap-y-3">
@@ -284,7 +354,7 @@ function DiveActivitySummaryRow({
         </span>
         <Change summary={summary} />
       </ChartStat>
-      <ChartStat label={scope === "month" ? "Busiest month" : "Busiest year"}>
+      <ChartStat label={BUSIEST_LABELS[scope]}>
         <span className="text-xl font-semibold">{summary.busiestLabel}</span>
         <span className="text-sm text-muted-foreground tabular-nums">
           {summary.busiestDives} {summary.busiestDives === 1 ? "dive" : "dives"}
@@ -294,7 +364,7 @@ function DiveActivitySummaryRow({
   );
 }
 
-// Change against the previous year with diving.
+// Change against the previous period with diving.
 //
 // Deliberately uncolored, the same call the gas card's `Change` makes and for
 // the same reason: the app has no good/bad status tokens, and teal is already

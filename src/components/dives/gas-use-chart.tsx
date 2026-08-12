@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import type { DiveGasUsePoint } from "@/lib/api/dive-stats";
 import {
   type GasUseMark,
-  type GasUseScope,
   GAS_USE_MARKS,
   TREND_GAP_DAYS,
   bandRanges,
@@ -14,6 +13,7 @@ import {
   segmentByGap,
   trendWindow,
 } from "@/lib/dive-gas";
+import type { ChartScope } from "@/lib/chart-period";
 import { axisTicks, niceDomain } from "@/lib/chart-scale";
 import { smoothBandPath, smoothPath } from "@/lib/chart-path";
 import {
@@ -79,7 +79,7 @@ export interface GasUseChartProps {
   // visible window. The scale, the domain and the trend are all derived from all
   // of it (see below); only the marks are windowed.
   points: DiveGasUsePoint[];
-  scope: GasUseScope;
+  scope: ChartScope;
   // A timestamp inside the period to show. Always one of the points' own times,
   // so switching scope keeps you near the same dive. Ignored when scope is
   // "all".
@@ -694,7 +694,7 @@ function describePoint(point: DiveGasUsePoint): string {
 // `Date.UTC`/`getUTC*`, since the times these sit alongside are wall-clock
 // instants (see `diveWallClockTime`).
 function buildXTicks(
-  scope: GasUseScope,
+  scope: ChartScope,
   range: { start: number; end: number },
 ): { label: string; time: number }[] {
   if (scope === "month") {
