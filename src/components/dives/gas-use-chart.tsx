@@ -671,10 +671,47 @@ function GasUseTooltip({
         })}
       </div>
       <div className="text-xs text-tooltip-foreground/70">
-        {point.avg_depth}m average &middot; {point.gas_use.gas_used} L used
+        {describePointBasis(point)}
       </div>
     </div>
   );
+}
+
+// What the RMV above it was worked out from, which is not the same sentence for
+// every dot on this chart.
+//
+// A single-cylinder point is the dive's own average depth over its whole
+// duration, and saying so is what makes the figure checkable. **A multi-tank
+// point is not**: each cylinder is normalized against its own mean depth over
+// the stretch it was breathed for - that is the entire point of the split, see
+// `DiveTankGasUse` - so pairing this rate with `avg_depth` would name a
+// denominator it was never divided by. On dive #493 that reads as "12.4 L/min at
+// 20.87m" for a figure derived at 33.99 m.
+//
+// Its litres are understated in the same way, being the sum over attributed
+// tanks only, so the two are dropped together rather than one of them being
+// quietly wrong beside the other. What replaces them is the one thing a diver
+// needs to read the dot correctly: this rate is per cylinder, and the detail
+// page is where the cylinders are.
+function describePointBasis(point: DiveGasUsePoint): string {
+  const tanks = point.gas_use.tanks?.length ?? 0;
+  if (isPerTankPoint(point)) {
+    return `Per tank across ${tanks} ${tanks === 1 ? "cylinder" : "cylinders"} - see the dive for the split`;
+  }
+
+  return `${point.avg_depth}m average · ${point.gas_use.gas_used} L used`;
+}
+
+// Whether this dot's RMV was derived per cylinder rather than against the dive's
+// own average depth.
+//
+// One dot, two sentences about it - the tooltip and the accessible name - and
+// they have to agree, so they ask one function rather than each testing `tanks`
+// for themselves. Written out twice, the pair could drift into a chart whose
+// visible label and announced label make different claims about the same
+// figure, which is worse than either being wrong on its own.
+function isPerTankPoint(point: DiveGasUsePoint): boolean {
+  return (point.gas_use.tanks?.length ?? 0) > 0;
 }
 
 // The accessible name of a dot's link - what the `<title>` element used to say,
@@ -686,7 +723,14 @@ function describePoint(point: DiveGasUsePoint): string {
     day: "numeric",
   });
 
-  return `Dive #${point.dive_number}, ${date} - ${point.gas_use.rmv} liters per minute at ${point.avg_depth}m average`;
+  // Same predicate as `describePointBasis`, and it has to be: this is the only
+  // version of the sentence a screen-reader user gets, so it cannot be the one
+  // that names a depth the rate didn't come from.
+  const basis = isPerTankPoint(point)
+    ? "derived per cylinder"
+    : `at ${point.avg_depth}m average`;
+
+  return `Dive #${point.dive_number}, ${date} - ${point.gas_use.rmv} liters per minute ${basis}`;
 }
 
 // Axis labels at whatever granularity the window makes readable: years across a

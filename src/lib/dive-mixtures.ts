@@ -487,8 +487,14 @@ export function gasHintParts({
  * The 1.4 working limit is deliberately not applied in the multi-cylinder case: a
  * deco gas exceeding 1.4 somewhere on the dive is the normal, intended state of
  * affairs, and saying so on every technical dive is the noise this function exists to
- * avoid. Per-tank warnings against the depth each gas was actually breathed at become
- * possible once gas-switch events and per-tank attribution land.
+ * avoid.
+ *
+ * Per-tank attribution has since landed (`DiveGasUse.tanks`) and is *not* enough to
+ * lift this restriction. It reports a **mean** depth per cylinder, which is the right
+ * input for a consumption rate and the wrong one for a MOD: a gas averaging 6 m may
+ * still have been breathed at 20 m for a minute, and warning against the mean would
+ * clear exactly the excursion worth warning about. What this needs is a deepest-point
+ * per gas, which nothing sends yet.
  */
 export function diveModWarning(
   mixtures: readonly OxygenFractions[],
