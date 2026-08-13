@@ -1,6 +1,11 @@
 import { z } from "zod";
 import { parseFormDuration, parseUtcOffsetMinutes } from "@/lib/date-time";
-import type { DiveUpdate } from "@/lib/api/dives";
+import {
+  GAS_ROLES,
+  type DiveMixture,
+  type DiveUpdate,
+  type GasRole,
+} from "@/lib/api/dives";
 
 // Same offset-aware ISO 8601 shape as the API's `Dive.start_time`, e.g.
 // "2021-04-04T10:04:47+02:00" - produced/consumed by `DiveStartTimeField`
@@ -67,6 +72,30 @@ export const diveMixtureSchema = z
       .number()
       .min(0, "Helium percentage must be at least 0")
       .max(100, "Helium percentage must be at most 100"),
+    // Mirrors `ck_dive_mixture_po2_limit_range`. The band is wide because it exists to
+    // catch a unit error rather than an aggressive gas plan - a Suunto JSON export
+    // writes 140000 Pa for 1.4 bar - and it has to admit both real values a diver
+    // types, 1.4 for a back gas and 1.6 for a deco bottle. `""` is the cleared state,
+    // as it is for the pressures.
+    po2_limit: z
+      .union([
+        z.literal(""),
+        z
+          .number()
+          .min(0.4, "ppO₂ limit must be at least 0.4 bar")
+          .max(2.0, "ppO₂ limit must be at most 2.0 bar"),
+      ])
+      .optional(),
+    // Carried, never edited - there is no input for it. It is the file's own identifier
+    // for the cylinder, so the form's job is to round-trip it untouched rather than let
+    // it be retyped. `min(0)` mirrors `ck_dive_mixture_gas_number_non_negative`: a
+    // Suunto Ocean numbers from 0.
+    gas_number: z.number().int().min(0).optional(),
+    // `""` for the same reason as the numeric fields above, not for symmetry: the
+    // `<select>` has a real "Not recorded" option, and writing `undefined` when it is
+    // chosen made react-hook-form re-display the imported role instead — clearing a
+    // deco badge snapped it straight back. `normalizeMixtures` converts it away.
+    role: z.union([z.literal(""), z.enum(GAS_ROLES)]).optional(),
   })
   .refine(
     (mixture) => {
@@ -118,6 +147,9 @@ export interface NormalizedDiveMixture {
   end_pressure?: number;
   oxygen: number;
   helium: number;
+  po2_limit?: number;
+  gas_number?: number;
+  role?: GasRole;
 }
 
 // Converts any "" placeholders (used to represent a cleared optional field
@@ -141,6 +173,9 @@ export function normalizeMixtures(
     end_pressure?: number | "";
     oxygen: number;
     helium: number;
+    po2_limit?: number | "";
+    gas_number?: number;
+    role?: GasRole | "";
   }[],
 ): NormalizedDiveMixture[] {
   return mixtures.map((mixture) => ({
@@ -152,7 +187,46 @@ export function normalizeMixtures(
       mixture.end_pressure === "" ? undefined : mixture.end_pressure,
     oxygen: mixture.oxygen,
     helium: mixture.helium,
+    po2_limit: mixture.po2_limit === "" ? undefined : mixture.po2_limit,
+    // Passed straight through: unlike the fields above it has no cleared state,
+    // because no input writes to it. It is either the number an import put there or
+    // absent, which is why its type carries no `""` to normalize away.
+    gas_number: mixture.gas_number,
+    role: mixture.role === "" ? undefined : mixture.role,
   }));
+}
+
+// The inverse of `normalizeMixtures`: a saved mixture as the API returns it,
+// turned into the row shape the form edits.
+//
+// Every optional field on the wire arrives as an explicit `null` when the mixture
+// doesn't record it (`DiveMixture` says why), and `null` is not a member of any
+// field's union above - so a mixture handed to `form.reset()` unconverted fails
+// validation on values the diver never entered. That was invisible rather than
+// merely wrong: `gas_number` has no input, so its error had no `FormMessage` to
+// render into and the Save button simply did nothing.
+//
+// Lives here rather than inline in the edit page so that the two directions sit
+// together and the conversion is testable against a real response shape.
+export function toDiveMixtureInput(mixture: DiveMixture): DiveMixtureInput {
+  return {
+    id: mixture.id,
+    // `""` rather than `getDefaultMixtureName()` as the create form's prefill
+    // uses: loading a dive for editing must show what is stored, and an empty
+    // box is the honest rendering of an unnamed cylinder - the mixtures card
+    // already reads one as "Tank N" without a name being saved for it.
+    name: mixture.name ?? "",
+    volume: mixture.volume,
+    start_pressure: mixture.start_pressure ?? "",
+    end_pressure: mixture.end_pressure ?? "",
+    oxygen: mixture.oxygen,
+    helium: mixture.helium,
+    po2_limit: mixture.po2_limit ?? "",
+    // The one field with no `""` state, because no input writes to it - see
+    // `normalizeMixtures`, which passes it back out the same way.
+    gas_number: mixture.gas_number ?? undefined,
+    role: mixture.role ?? "",
+  };
 }
 
 export const diveCreateSchema = z.object({

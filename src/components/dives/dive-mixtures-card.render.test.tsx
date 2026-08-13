@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { DiveMixturesCard } from "./dive-mixtures-card";
-import type { Dive, DiveMixture } from "@/lib/api/dives";
+import type { Dive, DiveMixture, GasRole } from "@/lib/api/dives";
 
 // `diveModWarning` itself is unit-tested in `lib/dive-mixtures.test.ts`. What only a
 // render reaches is the two rules layered on top of it here - which cylinder, if any,
@@ -85,5 +85,78 @@ describe("DiveMixturesCard warnings", () => {
 
     expect(screen.getByText("O₂ 50% / He 60%")).toBeInTheDocument();
     expect(screen.queryByText(/\d+\.\d m$/)).not.toBeInTheDocument();
+  });
+});
+
+// `sharedPpO2Limit` is unit-tested in `lib/dive-mixtures.test.ts`. What only a render
+// reaches is whether its answer and the column under it were wired to the same limit -
+// a header naming one number above cells computed from another is the exact failure the
+// helper exists to prevent, and neither half can show it alone.
+describe("DiveMixturesCard ppO₂ column header", () => {
+  const at = (po2_limit: number, oxygen: number): DiveMixture => ({
+    volume: 11.1,
+    helium: 0,
+    oxygen,
+    po2_limit,
+  });
+
+  it("names the limit in the header when every cylinder shares one", () => {
+    render(<DiveMixturesCard dive={dive([AIR, EAN54], 30)} />);
+
+    // Neither records a limit, so both fall back to the same working default.
+    expect(screen.getByText("MOD @ ppO₂ 1.4")).toBeInTheDocument();
+    expect(screen.queryByText(/@ 1\.4$/)).not.toBeInTheDocument();
+  });
+
+  it("moves the qualifier into the rows when the cylinders disagree", () => {
+    // The real shape: a Suunto records 1.4 on the back gas and 1.6 on the deco bottle
+    // of the same dive.
+    render(<DiveMixturesCard dive={dive([at(1.4, 21), at(1.6, 50)], 30)} />);
+
+    expect(screen.getByText("MOD")).toBeInTheDocument();
+    expect(screen.queryByText(/MOD @ ppO₂/)).not.toBeInTheDocument();
+    // Both rows carry their own, not just the one that differs from the default:
+    // an unqualified cell beside a qualified one reads as "no limit", not "1.4".
+    expect(screen.getByText(/56\.7 m @ 1\.4/)).toBeInTheDocument();
+    expect(screen.getByText(/22\.0 m @ 1\.6/)).toBeInTheDocument();
+  });
+
+  it("computes each row at its own recorded limit, not the default", () => {
+    // EAN50 at ppO₂ 1.6 is 22.0 m; at the 1.4 default it would be 18.0 m. A header
+    // that said 1.4 over this cell would be naming a limit the number didn't use.
+    render(<DiveMixturesCard dive={dive([at(1.6, 50)], 20)} />);
+
+    expect(screen.getByText("MOD @ ppO₂ 1.6")).toBeInTheDocument();
+    expect(screen.getByText("22.0 m")).toBeInTheDocument();
+  });
+});
+
+describe("DiveMixturesCard role badge", () => {
+  it("labels a cylinder the import recorded a role for", () => {
+    render(
+      <DiveMixturesCard dive={dive([{ ...EAN54, role: "deco" }, AIR], 30)} />,
+    );
+
+    expect(screen.getByText("Deco")).toBeInTheDocument();
+    // Beside the gas name rather than replacing it - the two answer one question
+    // together, "EAN54, the deco bottle".
+    expect(screen.getByText("EAN54")).toBeInTheDocument();
+  });
+
+  it("shows no badge for the cylinders that have no role, which is most of them", () => {
+    render(<DiveMixturesCard dive={dive([AIR, EAN54], 30)} />);
+
+    expect(screen.queryByText("Deco")).not.toBeInTheDocument();
+    expect(screen.queryByText("Bottom")).not.toBeInTheDocument();
+  });
+
+  it("falls back to the wire value for a role the label map hasn't caught up with", () => {
+    // `GAS_ROLE_LABELS` is kept in step with the API's `GasRole` by hand, so the
+    // cast stands in for the window after a role is added there. Without the
+    // fallback this renders a bordered badge containing nothing at all.
+    const unknown = { ...EAN54, role: "bailout" as GasRole };
+    render(<DiveMixturesCard dive={dive([unknown], 30)} />);
+
+    expect(screen.getByText("bailout")).toBeInTheDocument();
   });
 });

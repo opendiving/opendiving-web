@@ -19,15 +19,34 @@
 // same labels (an export renderer, a mobile client, a notification job); until then
 // one implementation, here.
 
+import type { GasRole } from "@/lib/api/dives";
+
 // Default values pre-filled when a new mixture (tank) is added. Start/end
 // pressure are deliberately left blank ("") rather than defaulted, since
 // they vary per tank/fill and shouldn't be guessed.
+//
+// `po2_limit` is blank for the same reason and one more: a MOD is the number this
+// whole module exists to get right, and seeding 1.4 would make every hand-added
+// cylinder claim a limit the diver never chose. Absent, `mod()` applies
+// `PPO2_WORKING` itself - the same 1.4, but as a documented fallback rather than as
+// a value pretending to be a decision. `role` carries no *value* either, for a third
+// reason: it is a fact about the dive plan that only the diver knows.
+//
+// `role` is still spelled `""` rather than left off, because `""` is this form's word
+// for cleared - `mergeMixture` and `toDiveMixtureInput` both write it, and
+// `normalizeMixtures` converts it away at the edge. Omitting it here made a
+// hand-added cylinder the one row where the field arrived `undefined`, which is the
+// value react-hook-form treats as "show the default" (see `diveMixtureSchema`).
+// `gas_number` is the genuine exception: no input writes it, so it has no cleared
+// state to spell - it is a file's own identifier and a hand-added cylinder has none.
 export const DEFAULT_MIXTURE = {
   volume: 11.1,
   start_pressure: "" as const,
   end_pressure: "" as const,
   oxygen: 21.0,
   helium: 0,
+  po2_limit: "" as const,
+  role: "" as const,
 };
 
 // Default name for a mixture based on its position in the list: the first
@@ -36,6 +55,26 @@ export const DEFAULT_MIXTURE = {
 export function getDefaultMixtureName(index: number): string {
   return index === 0 ? "Back Gas" : `Deco Gas ${index}`;
 }
+
+// How each `GasRole` is written for a diver. Separate from the wire values, which are
+// the API's vocabulary (`GasRole` in `schemas/dive_mixture.py`) - capitalized, and
+// free to diverge if a role is ever better named than its enum member. Lives here
+// beside `getDefaultMixtureName` because it is the same kind of thing - what to call a
+// cylinder - and keeps the form's picker and the detail badge naming a role identically.
+//
+// One word each, and the "gas" that "Bottom gas"/"Deco gas" would naturally carry is
+// deliberately dropped. Both places these appear supply that word already - a badge in
+// the mixtures table's **Gas** column, and an option under the form's **Role** label -
+// so it was pure redundancy, and redundancy is expensive in that table: it has eight
+// columns in a 667 px card and was already ~52 px wider than its slot before this badge
+// existed. See DECISIONS.md - the width is a real, measured trade-off, not a rounding
+// error, and shortening these was the cheap half of it.
+export const GAS_ROLE_LABELS: Record<GasRole, string> = {
+  bottom: "Bottom",
+  deco: "Deco",
+  diluent: "Diluent",
+  oxygen: "Oxygen",
+};
 
 // Meters of seawater per bar of ambient pressure. Deliberately the round 10 the
 // API's `METERS_PER_BAR` (`services/dive_gas.py`) already uses, not the ~10.06 a
@@ -163,7 +202,52 @@ export function mod(
   ppO2: number = PPO2_WORKING,
 ): number | null {
   if (oxygen == null || !Number.isFinite(oxygen) || oxygen <= 0) return null;
-  return (ppO2 / (oxygen / 100) - 1) * METERS_PER_BAR;
+  const depth = (ppO2 / (oxygen / 100) - 1) * METERS_PER_BAR;
+  // A mix already past its ppO₂ limit at the surface has no operating depth at all.
+  // `null`, not `Math.max(0, …)` as `endDepth` and `ead` use: 0 m is a real answer for
+  // those two — a rich mix in shallow water genuinely is equivalent to the surface —
+  // whereas "MOD 0.0 m" reads as a depth this gas may be breathed at, which is the
+  // opposite of what it means. Both call sites already render `-` for null.
+  //
+  // Unreachable until this branch: `mod` was only ever called with the 1.4/1.6
+  // constants, which need oxygen above 140 % to go negative. A diver-editable
+  // `po2_limit` down to 0.4 puts it one plausible EAN50 away.
+  return depth < 0 ? null : depth;
+}
+
+/**
+ * The ppO₂ a cylinder's MOD should be worked out at: what the dive recorded, or
+ * `PPO2_WORKING` when it recorded nothing.
+ *
+ * One place, because a MOD shown against a limit other than the one it was computed
+ * from is worse than no MOD at all, and three callers were about to make this choice
+ * independently.
+ */
+export function ppO2Limit(mixture: { po2_limit?: number | null }): number {
+  const limit = mixture.po2_limit;
+  return limit != null && Number.isFinite(limit) ? limit : PPO2_WORKING;
+}
+
+/**
+ * The one ppO₂ limit every cylinder on this dive shares, or `null` when they differ.
+ *
+ * Exists so the mixtures table can put the qualifier in its column header - "MOD @
+ * ppO₂ 1.4" - in the ordinary case where it applies to every row, and move it into
+ * the rows only when it genuinely varies. A header naming one limit above a column
+ * computed from two is the failure this prevents, and it is a real shape: a Suunto
+ * records 1.4 on the back gas and 1.6 on the deco bottle of the same dive.
+ *
+ * An empty list has nothing to share and returns `null`; the caller renders no table
+ * at all in that case.
+ */
+export function sharedPpO2Limit(
+  mixtures: readonly { po2_limit?: number | null }[],
+): number | null {
+  if (mixtures.length === 0) return null;
+  const first = ppO2Limit(mixtures[0]);
+  return mixtures.every((mixture) => ppO2Limit(mixture) === first)
+    ? first
+    : null;
 }
 
 export interface EndOptions {
@@ -246,6 +330,16 @@ export function ead(
 export interface OxygenFractions {
   oxygen: number | null | undefined;
   helium?: number | null | undefined;
+  // Accepted and **deliberately never read** - `PPO2_WORKING`/`PPO2_DECO` are what
+  // the warnings judge against, and a dive's own recorded limit must not be able to
+  // move them (see `modWarning`). Declared rather than left off so that reading
+  // right here is the answer to "does the limit feed the warning?", instead of the
+  // question surviving as an excess-property error at one call site.
+  //
+  // `""` is in the union for the same reason the rest of this interface is loose:
+  // a live form row spells a cleared number that way, and this type exists to be
+  // satisfied by both a saved `DiveMixture` and a half-filled one.
+  po2_limit?: number | "" | null | undefined;
 }
 
 /**
@@ -264,6 +358,14 @@ export interface OxygenFractions {
  * gas is still breathable where a diver is decompressing but not where they are
  * working, which is a planning note. Past 1.6 there is no depth at which it was
  * appropriate, which is a different sentence and a louder one.
+ *
+ * **A recorded `po2_limit` deliberately does not move these thresholds**, even though
+ * it moves the MOD displayed beside them. The two are different claims: the MOD
+ * column says what the diver planned this gas to, while this says what the gas can
+ * physiologically take. Letting the dive's own number set the limit it is judged
+ * against would make a cylinder recorded at ppO₂ 2.0 unwarnable - the "edit that
+ * turns an over-MOD warning into silence" that `PPO2_WORKING`/`PPO2_DECO` are
+ * constants to prevent, arriving through a file instead of a settings screen.
  */
 export function modWarning(
   mixture: OxygenFractions,
@@ -306,10 +408,15 @@ export function gasHintParts({
   oxygen,
   helium,
   depth,
+  ppO2,
 }: {
   oxygen: number | null | undefined;
   helium: number | null | undefined;
   depth: number | null | undefined;
+  // The ppO₂ this gas was planned to, when the dive records one. Absent falls back
+  // to `PPO2_WORKING` - the same 1.4, but the fallback is what the printed "@ ppO₂
+  // 1.4" then describes, so the label always names the limit the number came from.
+  ppO2?: number | null | undefined;
 }): string[] {
   const name = gasName(oxygen, helium);
   if (name === null) return [];
@@ -324,9 +431,10 @@ export function gasHintParts({
     return parts;
   }
 
-  const workingMod = mod(oxygen, PPO2_WORKING);
+  const limit = ppO2Limit({ po2_limit: ppO2 });
+  const workingMod = mod(oxygen, limit);
   if (workingMod !== null) {
-    parts.push(`MOD ${workingMod.toFixed(1)} m @ ppO₂ ${PPO2_WORKING}`);
+    parts.push(`MOD ${workingMod.toFixed(1)} m @ ppO₂ ${limit}`);
   }
 
   if (depth == null || !Number.isFinite(depth)) return parts;

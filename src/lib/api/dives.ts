@@ -3,14 +3,41 @@ import type { PaginatedResponse } from "./client";
 import { GearItemSummary } from "./gear";
 
 // A single gas mixture / scuba tank used during a dive.
+// The ppO₂ vocabulary and the cylinder-role vocabulary the API accepts. Mirrors
+// `GasRole` (`schemas/dive_mixture.py`), which is the single source of truth - the API
+// rejects anything outside it, so this list has to be kept in step by hand.
+export const GAS_ROLES = ["bottom", "deco", "diluent", "oxygen"] as const;
+export type GasRole = (typeof GAS_ROLES)[number];
+
+// Every optional field is `| null` because that is what comes back on the wire, not
+// merely what could be missing: the API declares them `X | None` (`DiveMixtureBase`
+// in `schemas/dive_mixture.py`) and sets no `exclude_none`, so an unrecorded field
+// arrives as an explicit `null` rather than an absent key. Writing them `?: number`
+// alone made TypeScript vouch for a value the response never promised, and the form
+// pages - which feed these straight into `diveMixtureSchema`, where `null` is not a
+// member of any field's union - were the ones that paid for it.
 export interface DiveMixture {
   id?: number;
-  name?: string;
+  name?: string | null;
   volume: number;
-  start_pressure?: number;
-  end_pressure?: number;
+  start_pressure?: number | null;
+  end_pressure?: number | null;
   oxygen: number;
   helium: number;
+  // The ppO₂ this gas was planned to, in bar - the limit its MOD is derived from.
+  // Imported from the dive computer where the export records one, and editable.
+  // Null/undefined falls back to `PPO2_WORKING` at every call site computing a MOD.
+  po2_limit?: number | null;
+  // How the source export identifies this cylinder, and the join key to the profile's
+  // per-cylinder pressure channels. **A label, not an index** - a Suunto Ocean numbers
+  // its cylinders from 0 while the other parsers count from 1 (see the API's
+  // DECISIONS.md). Carried through edits rather than edited: the form round-trips it
+  // untouched so an import's numbering survives a save, and a hand-added cylinder has
+  // none.
+  gas_number?: number | null;
+  // What the cylinder was carried for. Rarely present on an import - most exports
+  // don't record it - so this is mostly the diver's own label.
+  role?: GasRole | null;
 }
 
 // A dive site visited during a dive, as embedded in a `Dive`. Dives are
@@ -53,6 +80,31 @@ export interface Dive {
   avg_depth?: number;
   bottom_temperature?: number;
   visibility?: number;
+  // Oxygen exposure and surface pressure as the dive computer recorded them, written
+  // by the import and **not settable through the form** - the API keeps these off its
+  // create/update schemas entirely (see its DECISIONS.md), because nothing on a logged
+  // dive reconstructs a CNS clock or an OTU count. Undefined on a hand-logged dive, on
+  // one imported from a format that doesn't record them (every FIT file has no surface
+  // pressure; a 2026 Suunto Ocean export has none of them), and on any dive imported
+  // before the backfill ran.
+  //
+  // Unlike `gas_use`/`profile`/`source_file` below, these are on the list response too:
+  // those are kept off it because each costs the hottest query an extra lookup, and
+  // these are plain columns on the row being selected anyway.
+  //
+  // `| null` for the same reason as `DiveMixture`'s optional fields, and it is the same
+  // schema decision behind it: `DiveTechScalars` declares all five `float | None` with
+  // no `exclude_none`, so an unrecorded reading arrives as an explicit `null`, not an
+  // absent key. `DiveExposureCard` guards with `!= null` and would survive either way -
+  // but a type that promises `number | undefined` over a response that sends `null` is
+  // exactly what let three mixture fields reach a resolver unconverted.
+  cns_start?: number | null;
+  cns_end?: number | null;
+  otu_start?: number | null;
+  otu_end?: number | null;
+  // Ambient pressure at the surface, in bar. Display only - the API's gas-use maths
+  // deliberately assumes 1 bar.
+  surface_pressure_bar?: number | null;
   // Total ballast carried on the dive, in kilograms. A plain per-dive number
   // rather than a gear item - see the API's DECISIONS.md.
   weight?: number;
@@ -319,6 +371,12 @@ export interface ParsedDiveMixture {
   end_pressure: number | null;
   oxygen: number | null;
   helium: number | null;
+  // All nullable like everything else here, and for the same reason: a parser reports
+  // what the file recorded. Only the two Suunto exports carry a ppO₂ at all, and only
+  // the JSON one carries anything role-shaped.
+  po2_limit: number | null;
+  gas_number: number | null;
+  role: GasRole | null;
 }
 
 // Result of parsing a dive-computer export file (Suunto XML or JSON, or a FIT file) via /dive/parse.
@@ -337,6 +395,14 @@ export interface ParsedDive {
   avg_depth: number | null;
   bottom_temperature: number | null;
   mixtures: ParsedDiveMixture[];
+  // Returned by the parse so a preview can show them, but deliberately **not** applied
+  // to the form: the API writes these itself when the file is attached, from its own
+  // re-parse of the same bytes. Nothing here should try to send them back.
+  cns_start: number | null;
+  cns_end: number | null;
+  otu_start: number | null;
+  otu_end: number | null;
+  surface_pressure_bar: number | null;
   // Proof that the API parsed this exact file for this user. Hand it back to
   // `uploadDiveFile` along with the same `File` once the dive exists, and the
   // export is stored against that dive. Nothing else can be attached: the API

@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DiveProfileCard } from "@/components/dives/dive-profile-card";
 import { DiveMixturesCard } from "@/components/dives/dive-mixtures-card";
+import { DiveExposureCard } from "@/components/dives/dive-exposure-card";
 import { DiveGasConsumptionCard } from "@/components/dives/dive-gas-consumption-card";
 import {
   Table,
@@ -122,6 +123,12 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
       <DiveProfileCard dive={dive} />
 
       <DiveMixturesCard dive={dive} />
+
+      {/* Between the gas and what it cost: the mixtures above are what produced this
+          exposure, and the consumption below is the other thing those same cylinders
+          determined. Renders nothing unless the dive was imported from a format that
+          records any of it. */}
+      <DiveExposureCard dive={dive} />
 
       <DiveGasConsumptionCard dive={dive} />
 

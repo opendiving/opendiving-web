@@ -36,6 +36,14 @@ function parsedDive(mixtures: ParsedDiveMixture[]): ParsedDive {
     avg_depth: null,
     bottom_temperature: null,
     mixtures,
+    // Returned by the parse but never applied to the form - the API writes these
+    // itself when the file is attached. Spelled out so this fixture stays a complete
+    // `ParsedDive` rather than a partial one the compiler happens to accept.
+    cns_start: null,
+    cns_end: null,
+    otu_start: null,
+    otu_end: null,
+    surface_pressure_bar: null,
     file_token: "token",
   };
 }
@@ -108,6 +116,9 @@ describe("DiveFileImport", () => {
           end_pressure: null,
           oxygen: 32,
           helium: 0,
+          po2_limit: null,
+          gas_number: null,
+          role: null,
         },
       ]),
     );
@@ -138,6 +149,9 @@ describe("DiveFileImport", () => {
           end_pressure: null,
           oxygen: 32,
           helium: 0,
+          po2_limit: null,
+          gas_number: null,
+          role: null,
         },
       ]),
     );

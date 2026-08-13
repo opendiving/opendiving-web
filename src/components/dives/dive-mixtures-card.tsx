@@ -10,11 +10,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  PPO2_WORKING,
+  GAS_ROLE_LABELS,
   diveModWarning,
   gasName,
   isNameableMix,
   mod,
+  ppO2Limit,
+  sharedPpO2Limit,
 } from "@/lib/dive-mixtures";
 import { AlertTriangle, Wind } from "lucide-react";
 
@@ -29,10 +31,11 @@ interface DiveMixturesCardProps {
  * Sits between the depth figures and the gas-consumption card on the detail page: the
  * pressures here are the inputs that card's RMV/SAC are derived from.
  *
- * Each row carries its gas's name and maximum operating depth alongside the recorded
- * fractions, and says so when the dive went past that depth. Those three are derived
- * rather than stored, so they are computed here from `lib/dive-mixtures.ts` rather
- * than asked of the API - see that module's header for why the maths lives client-side.
+ * Each row carries its gas's name, role and maximum operating depth alongside the
+ * recorded fractions, and says so when the dive went past that depth. The name and the
+ * MOD are derived rather than stored, so they are computed here from
+ * `lib/dive-mixtures.ts` rather than asked of the API - see that module's header for
+ * why the maths lives client-side.
  */
 export function DiveMixturesCard({ dive }: DiveMixturesCardProps) {
   if (!dive.mixtures || dive.mixtures.length === 0) return null;
@@ -47,6 +50,13 @@ export function DiveMixturesCard({ dive }: DiveMixturesCardProps) {
   // row's gas, which is exactly the single-cylinder case. With several cylinders the
   // sentence is about the dive, so marking a row would be pointing at the wrong thing.
   const attributable = warning !== null && dive.mixtures.length === 1;
+
+  // Where every cylinder was planned to the same ppO₂ - which is every recreational
+  // dive, and every dive imported before the limit was recorded - the qualifier
+  // belongs in the header rather than repeated down the column. It moves into the
+  // rows only when the dive genuinely mixes limits, which is what a back gas at 1.4
+  // and a deco bottle at 1.6 looks like.
+  const shared = sharedPpO2Limit(dive.mixtures);
 
   return (
     <Card>
@@ -71,11 +81,13 @@ export function DiveMixturesCard({ dive }: DiveMixturesCardProps) {
                 <TableHead>End</TableHead>
                 <TableHead>O₂</TableHead>
                 <TableHead>He</TableHead>
-                {/* Qualified, because the warning under the table cites the 1.6
-                    ceiling while this column is the 1.4 working limit - a bare "MOD"
-                    left two different numbers on screen for the same gas with
-                    nothing saying why. Matches the form hint's phrasing. */}
-                <TableHead>MOD @ ppO₂ 1.4</TableHead>
+                {/* Qualified wherever it can be, because the warning under the table
+                    cites the 1.6 ceiling while this column is usually the 1.4 working
+                    limit - a bare "MOD" left two different numbers on screen for the
+                    same gas with nothing saying why. Matches the form hint's phrasing. */}
+                <TableHead>
+                  {shared !== null ? `MOD @ ppO₂ ${shared}` : "MOD"}
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -85,8 +97,9 @@ export function DiveMixturesCard({ dive }: DiveMixturesCardProps) {
                 // fraction of an impossible one is not a gas property to derive from.
                 // Same rule `gasHintParts` applies to the form hint - shared through
                 // `isNameableMix` so the two cannot drift apart.
+                const limit = ppO2Limit(mixture);
                 const workingMod = isNameableMix(mixture.oxygen, mixture.helium)
-                  ? mod(mixture.oxygen, PPO2_WORKING)
+                  ? mod(mixture.oxygen, limit)
                   : null;
 
                 return (
@@ -105,11 +118,31 @@ export function DiveMixturesCard({ dive }: DiveMixturesCardProps) {
                       {mixture.name || `Tank ${index + 1}`}
                     </TableCell>
                     <TableCell>
-                      {name ? (
-                        <Badge variant="secondary">{name}</Badge>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
+                      {/* Role sits beside the gas rather than in a column of its own:
+                          most cylinders have none recorded, so a ninth column would be
+                          mostly dashes, and the two answer one question together -
+                          "EAN50, the deco bottle". `outline` rather than `secondary`
+                          keeps the gas name the louder of the pair. */}
+                      {/* A `div`, not a `span`: `Badge` renders a `div`, and flow
+                          content inside a phrasing element is invalid markup. The
+                          cell is a `td`, so a block-level wrapper is fine here. */}
+                      <div className="flex items-center gap-1.5">
+                        {name ? (
+                          <Badge variant="secondary">{name}</Badge>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                        {mixture.role && (
+                          // Falls back to the wire value because `GAS_ROLE_LABELS`
+                          // is kept in step with the API's `GasRole` by hand: a
+                          // role added there before this map catches up would
+                          // otherwise render as an empty bordered badge beside the
+                          // gas name. "diluent" unlabelled beats nothing at all.
+                          <Badge variant="outline">
+                            {GAS_ROLE_LABELS[mixture.role] ?? mixture.role}
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>{mixture.volume} L</TableCell>
                     <TableCell>
@@ -142,6 +175,13 @@ export function DiveMixturesCard({ dive }: DiveMixturesCardProps) {
                             />
                           )}
                           {workingMod.toFixed(1)} m
+                          {/* `@ 1.6`, not `@ ppO₂ 1.6`, and only in the mixed case.
+                              The unit is spelled out in the header wherever the
+                              header can carry it; here it would be repeated on
+                              every row of an eight-column table that is already
+                              wider than its card, and "@" in a MOD column is not
+                              ambiguous. */}
+                          {shared === null && ` @ ${limit}`}
                         </span>
                       ) : (
                         "-"

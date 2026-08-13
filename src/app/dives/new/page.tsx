@@ -150,6 +150,13 @@ function NewDivePageContent() {
                 volume: m.volume,
                 oxygen: m.oxygen,
                 helium: m.helium,
+                // Same reasoning as the gas fractions above - a diver on the same
+                // 32/1.4 back gas and EAN50/1.6 deco bottle plans them the same way
+                // dive after dive. `gas_number` is deliberately *not* carried: it
+                // identifies a cylinder inside the previous dive's export file, and
+                // this dive has no file for it to point into.
+                po2_limit: m.po2_limit ?? ("" as const),
+                role: m.role ?? ("" as const),
                 start_pressure: "" as const,
                 end_pressure: "" as const,
               }))

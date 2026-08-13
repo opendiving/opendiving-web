@@ -5,7 +5,9 @@ import {
   diveMixtureSchema,
   diveUpdateSchema,
   normalizeMixtures,
+  toDiveMixtureInput,
 } from "./dive";
+import type { DiveMixture } from "@/lib/api/dives";
 
 const validDive = {
   dive_number: 1,
@@ -301,6 +303,95 @@ describe("diveMixtureSchema", () => {
         ["helium"],
       ]);
     }
+  });
+});
+
+describe("toDiveMixtureInput", () => {
+  // Written out as the API actually serializes it - explicit `null`s, not absent
+  // keys - because that difference is the whole point of the conversion. Every
+  // other mixture fixture in this file is already form-shaped, which is how a
+  // form that could not be saved at all passed the suite.
+  const fromApi: DiveMixture = {
+    id: 7,
+    name: null,
+    volume: 11.1,
+    start_pressure: null,
+    end_pressure: null,
+    oxygen: 32,
+    helium: 0,
+    po2_limit: null,
+    gas_number: null,
+    role: null,
+  };
+
+  it("converts a mixture the API recorded nothing optional for into a valid row", () => {
+    const result = diveMixtureSchema.safeParse(toDiveMixtureInput(fromApi));
+    expect(result.success).toBe(true);
+  });
+
+  it("puts every cleared field into the '' state the form fields expect", () => {
+    expect(toDiveMixtureInput(fromApi)).toEqual({
+      id: 7,
+      name: "",
+      volume: 11.1,
+      start_pressure: "",
+      end_pressure: "",
+      oxygen: 32,
+      helium: 0,
+      po2_limit: "",
+      // The exception: no input writes it, so it has no cleared state to spell.
+      gas_number: undefined,
+      role: "",
+    });
+  });
+
+  it("carries recorded values through untouched", () => {
+    const recorded: DiveMixture = {
+      ...fromApi,
+      name: "Deco 50",
+      start_pressure: 200,
+      end_pressure: 50,
+      po2_limit: 1.6,
+      gas_number: 0,
+      role: "deco",
+    };
+
+    expect(toDiveMixtureInput(recorded)).toEqual({
+      id: 7,
+      name: "Deco 50",
+      volume: 11.1,
+      start_pressure: 200,
+      end_pressure: 50,
+      oxygen: 32,
+      helium: 0,
+      po2_limit: 1.6,
+      // Zero, not dropped: a Suunto Ocean numbers its cylinders from 0, so `??`
+      // rather than `||` is load-bearing here.
+      gas_number: 0,
+      role: "deco",
+    });
+    expect(
+      diveMixtureSchema.safeParse(toDiveMixtureInput(recorded)).success,
+    ).toBe(true);
+  });
+
+  // The round trip the edit form performs on every save: load a dive, change
+  // nothing, submit. What comes back out must be what went in, minus the `id`
+  // the API rejects and the placeholders that mean "not recorded".
+  it("round-trips through normalizeMixtures back to the stored values", () => {
+    expect(normalizeMixtures([toDiveMixtureInput(fromApi)])).toEqual([
+      {
+        name: "",
+        volume: 11.1,
+        start_pressure: undefined,
+        end_pressure: undefined,
+        oxygen: 32,
+        helium: 0,
+        po2_limit: undefined,
+        gas_number: undefined,
+        role: undefined,
+      },
+    ]);
   });
 });
 
