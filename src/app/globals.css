@@ -123,6 +123,28 @@
        one. A per-theme pair would have to be tuned twice and would drift. */
     --pressure: 265 70% 62%;
 
+    /* Fourth chart accent, for the dive profile's deco ceiling. Red, which is
+       what every dive computer and every other dive log uses for the ceiling,
+       and the one mark on this chart that is a *limit* rather than a
+       measurement - the region it bounds is water the diver may not enter.
+
+       Declared once and deliberately not redeclared under .dark, the same call
+       --pressure, --teal and --coral make. 55% lightness is 4.3:1 against the
+       light card and 3.8:1 against the dark theme's 13% one, so it clears the
+       3:1 WCAG asks of a graphical object in both - which is the property a
+       per-theme pair would have to be re-tuned twice to keep, and would drift.
+       That is also why it isn't --destructive, which is a light/dark pair tuned
+       for text and for white-on-fill, and not for a stroke over a chart.
+
+       This sits closer to --coral's hue 16 than a chart accent normally should,
+       and temperature is the channel most likely to be plotted beside a
+       ceiling. What separates them is lightness and saturation rather than hue
+       - coral is a pale salmon at 66%, this is a saturated red at 55% - plus
+       the fact that the ceiling is the only mark on the chart drawn as a dashed
+       line over a shaded region. Colour is doing the least of the work here,
+       which is the condition that makes the overlap acceptable. */
+    --ceiling: 0 80% 55%;
+
     --radius: 0.5rem;
   }
 

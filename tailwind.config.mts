@@ -38,6 +38,7 @@ const config: Config = {
           solid: "hsl(var(--teal-solid))",
         },
         pressure: "hsl(var(--pressure))",
+        ceiling: "hsl(var(--ceiling))",
         tooltip: {
           DEFAULT: "hsl(var(--tooltip))",
           foreground: "hsl(var(--tooltip-foreground))",

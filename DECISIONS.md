@@ -3584,3 +3584,342 @@ The general rule this leaves: **a field arriving from the API needs a conversion
 moment the form gives it a sentinel empty value**, and a spread cannot be that conversion, because
 it silently admits whatever gets added next. Note `name` was in the same position and only survived
 on luck — every path that writes it happened to coerce it first.
+
+## The deco ceiling rides depth's axis, and hiding depth hides the water, not the scale
+
+`ceiling` is a fourth entry in `PROFILE_CHANNELS` with `scale: 100` and `inverted: true` — depth's
+own numbers, mirroring `CEILING_SCALE = DEPTH_SCALE` in the API's `schemas/dive_profile.py`. What is
+new here is `depthDomain(depthValues, ceilingValues)`, which replaced the inline
+`niceDomain([0, ...depth.values])` at the first of the chart's three domain call sites. Temperature
+and pressure keep theirs.
+
+**One domain across both channels, and it is computed from both whether or not either is plotted.**
+A ceiling is a bound _on_ the depth curve, so an axis of its own could put a 3 m ceiling below a 40
+m depth — the picture saying the opposite of the dive. Feeding it the hidden channel's values too is
+what keeps the axis still when the ceiling is toggled; on real data it changes nothing, because a
+ceiling is always shallower than the depth it was computed at, but an axis that depends on what is
+visible is a needless way for the plot to move under the diver's eyes.
+
+That makes `leftChannel` "depth, or the ceiling if depth is off" while `depthChannel` stays the one
+that gets the teal fill. A deco dive with depth hidden is then a readable chart — same 0–50 m scale,
+labelled in red instead of teal — rather than an unscaled one, and the split is why the fill didn't
+follow the axis over to the ceiling.
+
+**The forbidden zone is shaded, not the safe one.** The area runs from the surface _down_ to the
+ceiling: that is the water the diver may not ascend into, and the dashed line alone says where the
+limit is without saying which side of it is the problem. It is drawn over the depth fill rather than
+under it, since it is a subset of the water column by construction and would otherwise be invisible.
+
+**One shaded region per segment**, from the same `segmentByTimeGap` every other channel uses, and
+here the gaps carry more meaning than anywhere else on the chart: a break in this series is a
+stretch of dive with _no_ decompression obligation, not a sensor dropping out. On
+`Dive_2025-06-03-1215.xml` the channel starts at 730 s, so spanning the gap would shade the first
+twelve minutes of a no-decompression descent as if the diver had been held to a ceiling.
+
+**The dash is load-bearing.** It is the only curve on this chart that was never measured — depth,
+temperature and pressure are readings, a ceiling is a computed limit that moved as tissues loaded —
+and a solid line would present the two as the same kind of fact. It also carries the channel's
+identity where colour alone would be asking too much of 22 degrees of hue; see the `--ceiling` note
+below.
+
+## Adding a channel meant bumping the remembered-selection key
+
+`DIVE_PROFILE_SERIES_KEY` gained a `-v2` suffix. `parseSeriesVisibility` filters a stored selection
+down to the keys the current build plots, which is exactly right for a key that has _gone_ — stale,
+not corrupt, drop it and keep the rest — and exactly wrong for one that has _arrived_. Every
+selection written before this branch names `depth`, `temperature`, `pressure`; all three are still
+available, so it restores cleanly and leaves the ceiling switched off, with a legend entry sitting
+right there implying the diver turned it off themselves. The feature would have been invisible to
+precisely the people who had used the chart before.
+
+Bumping drops those selections and opens on everything plotted — what a first visit already does.
+The cost is one diver's hidden temperature line coming back once.
+
+**The alternative was to skip the toggle**, drawing the ceiling with depth and never listing it.
+That is what _"Both charts' legends are the control for what they plot"_ forbids: the legend is the
+only thing on this chart that says what the red means, and an entry that isn't a control breaks the
+pact that makes the legend readable as one. So the ceiling is a toggle, and the key gets a version.
+
+**The general rule: adding a key to a `parseSeriesVisibility` list needs a key bump; removing one
+does not.**
+
+**The old entry is deliberately left behind rather than deleted.** `opendiving:dive-profile-series`
+now lingers in every returning diver's `localStorage`, holding about forty bytes nothing will ever
+read. Removing it costs one `removeItem` — and buys a list of dead key names that has to be carried,
+kept correct, and grown by one on every future bump, in code whose whole job is to be forgotten. The
+leak is bounded and inert; the cleanup is unbounded and load-bearing. Written down because "why is
+there a stale key here" is a fair question with a real answer, not an oversight.
+
+## `--ceiling` is one value for both themes, and the plan asked for two
+
+The rev-3 plan said to define light and dark values. The three chart accents already there —
+`--teal`, `--coral`, `--pressure` — are each declared once and deliberately never redeclared under
+`.dark`, and the recorded reason is that a per-theme pair has to be tuned twice and drifts.
+Following the plan would have made the fourth accent the odd one out, so it is a single `0 80% 55%`,
+and the contrast was computed rather than assumed: **4.3:1 against the light card and 3.8:1 against
+the dark theme's 13% one**, clearing the 3:1 WCAG asks of a graphical object in both. The web
+`accessibility-check` job would not have caught a failure here in any case — it runs axe against the
+landing page only, and with `|| true`.
+
+It is not `--destructive`, which is the app's other red: that one is a light/dark pair tuned for
+text and for white label text on a fill, and neither job is this one.
+
+**Red at hue 0 sits closer to `--coral`'s 16 than a chart accent normally should**, and temperature
+is the channel most likely to be plotted beside a ceiling. An earlier revision of this branch used
+amber at hue 38 to buy that separation; red is what every dive computer and every other dive log
+uses for a ceiling, and matching the convention divers already read is worth more than the hue gap.
+What separates the two in practice is lightness and saturation rather than hue — coral is a pale
+salmon at 66%, this is a saturated red at 55% — plus the ceiling being the only mark on the chart
+drawn as a dashed line over a shaded region. **Colour is doing the least of the work here, and that
+is the condition that makes the overlap acceptable**; a fifth accent that had to be told apart from
+coral by hue alone would not get the same answer.
+
+## Markers are annotations, so they have no toggle and no axis
+
+`events` renders as a tick standing on the x-axis with a glyph on top, at `x(t)` — where a dive
+computer's own display puts them, and the only anchor that still works with depth toggled off. They
+are deliberately **not** a fifth channel: no scale, no unit, nothing to invert, and a
+`PROFILE_CHANNELS` entry would have had to invent all three. A handful of ticks on the baseline is
+the same order of visual noise as the gridlines, which nobody offers a switch for either, and they
+sit at 0.9 opacity until the crosshair reaches one, which is where a dive with a dozen of them stops
+reading as a picket fence in front of the curves they annotate without the marks becoming too faint
+to aim at — see the contrast note further down for why that number is 0.9 and not the 0.55 it
+started at.
+
+**Three glyph families, not five.** At this size a shape is worth about one bit, and spending it on
+"gas plan / a stop / the computer talking" beats five outlines nobody can tell apart. The readout
+says which in words.
+
+**Colour answers a narrower question than shape does: does this marker join to something else on the
+chart?** A gas switch is `--pressure` violet because that is the cylinders' colour here and the
+marker carries the `gas_number` that joins it to one. Nothing else joins to anything, so nothing
+else is coloured.
+
+**A stop is deliberately not drawn in the ceiling's red**, which an earlier version of this branch
+did on the stated grounds that "a stop _is_ the obligation the ceiling describes". That claim is not
+true of either type this build can receive. Both arrive through `_STOP_TYPE_BY_NOTIFY` in the API's
+`suunto_json.py`, which maps them from Suunto `Notify` values — the computer _recommending_ a pause,
+not a ceiling forbidding an ascent. A safety stop is the clearest case, being precisely the stop
+that is not an obligation: a red triangle in the forbidden zone's exact colour would put an
+obligation on a recreational no-deco profile that never had one, which is the same overstatement
+this branch works to avoid in every number it prints. **Red means the ceiling, and only the
+ceiling.**
+
+**`describeEvent` passes an `other`'s label through unchanged**, because that is the whole point of
+the type — the API's `_validate_events` rejects an unlabelled `other` precisely so the device's own
+wording survives, and rephrasing "Mandatory Safety Stop Broken" into something tidier would be
+inventing a claim about a dive. `gas_number` is tested with `== null`, not for falsiness: **0 is a
+real cylinder on a Suunto Ocean**, the same trap `gas_number` sprang on the mixtures form.
+
+**`label` is the first parser-derived free text the app renders.** Everything else an import
+produces is a number or a member of a closed vocabulary. React escapes it and the API caps it at 120
+characters, but 120 characters on one line is several times the plot's width, so the event line in
+the tooltip overrides the card's `whitespace-nowrap` with a `max-w-64 whitespace-normal` and wraps —
+the card sits inside a container that clips, so an unbounded line would be cut off rather than
+merely ugly.
+
+The chart's `aria-label` **names the markers rather than counting them**, unlike every channel
+beside it. A curve's shape genuinely cannot be read aloud, so its extremes are the honest summary; a
+list of five markers can be, and hovering — which is how a sighted reader gets them — is exactly
+what that label stands in for. Capped at eight with an "and N more", since the API allows 200.
+
+**A sixth event type must not take out the page, and the first version of this would have.**
+`EVENT_GLYPHS` is keyed by the five-member union and the marker destructured the lookup directly, so
+a type this bundle had never heard of made it `undefined` and the destructure a `TypeError` inside
+render. There is no `error.tsx` anywhere under `src/app`, so that reaches Next's default
+client-error page and takes the whole dive detail route with it — for one tick on a chart.
+`describeEvent` had the quieter half of the same hole: an exhaustive `switch` with no `default`
+falls off the end and returns `undefined` from a function typed `: string`.
+
+`ProfileEventType` is closed _today_; the two repos deploy independently, so "closed" is a fact
+about the API's current build and not about the string in this browser's hands. `glyphFor` takes a
+`string` and falls back to a neutral grey circle, and `describeEvent`'s `default` degrades to the
+device's own wording. **A closed vocabulary from another deployable is an open one at the boundary**
+— the exhaustiveness TypeScript checks is over the union you declared, not over the bytes that
+arrive.
+
+**Resting opacity is 0.9, not the 0.55 it started at.** Opacity composites away exactly the contrast
+`--ceiling` and `--pressure` were picked for, and a marker is the one mark here where faintness
+fails the reader it matters to — you cannot hover what you cannot see. Against the card the markers
+sit on, 0.55 puts `--ceiling` at **1.94:1** and `--pressure` at **2.01:1** in dark, and
+`--muted-foreground` at **2.37:1** in light: all under the 3:1 asked of a graphical object, while
+every one of those tokens clears it on its own. 0.9 brings the worst case to **3.27:1**; 0.85 would
+clear at 3.05:1, near enough the line that a compositing rounding difference could put it under. The
+picket-fence worry the dimming existed for is answered by the marks being thin ticks on the
+baseline, and the hover still reads — it takes the tick to full strength _and_ thickens it, which
+was always doing more of that work than the opacity was.
+
+**The general rule: a token's contrast is a property of the token _and_ the opacity it is drawn
+at.** Checking the token alone is checking a colour that never reaches the screen.
+
+## The crosshair quoted readings from stretches the chart refused to draw
+
+`nearestSampleIndex` clamps at both ends, which is right for finding a neighbour and wrong for
+captioning one, and adding the ceiling turned a cosmetic flaw into a safety claim. On dive #493 the
+ceiling channel begins at 730 s; hovering at 300 s reported **"3.0 m Deco ceiling"** five minutes
+into a dive that was still well inside no-decompression limits — an obligation the diver never had,
+on the one curve where an invented number is not merely untidy. The same clamp had been quoting tank
+pressure straight through a transmitter dropout all along, which was a lie too, just a quieter one.
+
+`sampleIndexAt(t, seconds, maxDeltaSeconds)` is `nearestSampleIndex` plus the channel's own
+`gapThreshold` — the same number that decided where to break the line, so the plot and the readout
+cannot disagree about the same stretch of dive. Beyond it the channel simply drops out of the card,
+exactly as its line drops out of the plot: no line, no dot, no readout. `PlottedChannel` carries
+`gapSeconds` for it, and the four call sites that were each computing
+`segmentByTimeGap(t, gapThreshold(t))` now go through one local `runs(t)` that returns both, so the
+two can only ever be cut at one threshold.
+
+Nothing changes for a well-covered channel: a 10 s cadence gives a 30 s tolerance, and the crosshair
+moves about 7 s per viewBox unit on a 72-minute dive.
+
+**And the first version of that guard was inert on exactly the dives it was written for**, which is
+worth recording because the mistake looks like the fix. `gapThreshold` answers `Infinity` for a
+series of fewer than three samples — correct for segmenting, where it means "there is no cadence
+here, so never break this line". Handed to `sampleIndexAt` the same value reads as "no distance is
+too far to quote", so the guard fell straight back to the clamping it replaced.
+
+The ceiling is precisely the channel that produces short series, because the API drops zero ceilings
+and the channel therefore exists only while an obligation did. A dive that tips into deco for one or
+two 10-second samples is a two-point series and nothing else — and it reported that ceiling at
+_every instant of the dive_. The one-sample case was worse: `segmentByTimeGap` yields a single-point
+run that draws neither a line nor an area, so the chart showed no ceiling at all while the tooltip
+insisted on one, with the dot parked at 730 s and the crosshair at 60 s. **The guard failed on the
+short, unexpected obligations and worked on the long obvious ones** — the opposite of the order you
+would want to find out in.
+
+`readoutTolerance(t)` is `gapThreshold` with the infinity replaced by `MIN_GAP_SECONDS`, and
+`runs()` now feeds the two separately: `gapThreshold` to the segmenter, `readoutTolerance` to the
+readout. They are the same number wherever a cadence exists, and the divergence is the point rather
+than a wart — "never break this line" and "no distance is too far" happen to be the same value and
+are opposite instructions.
+
+The floor errs toward refusing: on two samples 70 s apart the line spans the gap while the readout
+answers only within 15 s of either end, so there is a stretch with a curve and no number. Silence
+where a curve exists is cosmetic; a number where no obligation existed is not, and this channel is
+the one where that asymmetry is worth paying for.
+
+**The general rule: a sentinel that means "unbounded" is safe in a predicate that asks "should I
+split here?" and dangerous in one that asks "is this close enough?"** — the same constant, opposite
+defaults.
+
+### And fixing the readout half left the drawing half wrong for another round
+
+The paragraph above concluded that `gapThreshold` was right for segmenting and only the readout
+needed the floor. **That was wrong, and wrong in the direction the whole branch is about.** For a
+ceiling of two isolated samples — deco at 1 400 s, cleared, deco again at 2 600 s — the infinite
+threshold joins them into one run, and `ceilingAreas` shades a continuous twenty-minute forbidden
+zone across nineteen minutes the diver owed nothing. The same false safety claim as the tooltip bug,
+expressed in pixels instead of in words, and on the same corpus shape the fix's own comment had
+already named.
+
+Worse, the two halves then contradicted each other: `readoutTolerance` was 15 s there, so hovering
+mid-span showed no ceiling while the chart shaded one — the precise disagreement `gapSeconds` was
+introduced to make impossible. `runs()` now derives both from `readoutTolerance`, which restores
+that property rather than merely claiming it.
+
+Two samples ten seconds apart still join and still draw, which is the brief obligation worth seeing.
+Two samples twenty minutes apart become two single-point runs, and **single-point runs are now
+dropped** rather than emitted: a one-sample `<polyline>` has no line and `buildAreaPath` turns one
+point into a degenerate zero-width shape, so they were only ever markup that rendered nothing.
+Dropping them makes "no ceiling is drawn here" true of the DOM as well as the pixels, which is what
+lets a test assert it. The dive is not thereby recorded as owing nothing — `max_ceiling` still puts
+the obligation in the card's description.
+
+### Third round: a tolerance cannot express "was this drawn?", and a sample is always near itself
+
+The paragraph above ended by saying the crosshair "still quotes it within 15 s of a sample", and
+treated that as the fix landing. It was the same bug once more. `gapSeconds` answers _is there a
+sample near enough to quote_, and **a sample dropped for sitting in an undrawable run of one is
+trivially near enough to itself** — so hovering within 15 s of an isolated ceiling sample named a
+3.0 m ceiling, planted a red dot on it, and put "deco ceiling to 3.0 meters" in the `aria-label`,
+over a chart that had drawn no ceiling at all. Verbatim the failure this guard was written to
+remove, narrowed from the whole dive to a band about 5 px wide at the chart's minimum width — and
+narrow enough that the regression test walked straight past it by hovering mid-span instead of on
+the sample.
+
+The fix is to stop asking a distance a membership question. `PlottedChannel.drawn` is the set of
+sample indices that reached the picture, and a readout now needs `sampleIndexAt` **and**
+`drawn.has(index)`. Those are different questions and only the second one is "is there anything here
+to quote".
+
+**And a channel with nothing drawable left is no longer a plotted channel at all.** `channels` is
+filtered on `segments.length > 0`, which is what makes the rule hold everywhere at once — legend,
+both axes, crosshair, summary. Before it, a two-sample series claimed a toggle reading "on", a fully
+labelled axis in its own colour, and a line in the `aria-label`, over a plot with no curve; a
+two-sample depth series additionally drew its area fill with no line over it, because `depthArea` is
+built from the whole series rather than from `segments`.
+
+### Fourth round: the same disagreement, one granularity down
+
+The round above filtered `channels` on `segments.length > 0` and called the invariant restored. It
+wasn't. **That gate asks "is this _channel_ on the chart"; runs are dropped a level below it, per
+_sample_.** A ceiling that keeps one drawable run passes the gate and then hands its whole raw
+series to everything that reports an extreme. On `t = [600, 610, 620, 2000]`, where 2000 s is an
+isolated 9.0 m sample that draws nothing, the summary announced **"deco ceiling to 9.0 meters"**
+over a chart whose deepest drawn ceiling was 3.0 m — an invented deeper obligation, which is the
+safety claim this whole guard exists to prevent, now reachable through the `aria-label` rather than
+the tooltip. The shared vertical axis read the same array and stretched to fit a curve nobody can
+see.
+
+`drawnValues(series, drawn)` is the fix, and both `depthDomain` and `describeProfile` take their
+input through it. `describeProfile` now accepts plain `number[]` per channel rather than
+`ChannelSeries | null`: it only ever computed extremes, an empty array already means "not on
+screen", and taking values rather than a series makes it impossible to pass the raw one by habit.
+
+**And a nearer _undrawn_ sample could mask a drawn one.** `sampleIndexAt` returned the nearest index
+and the `drawn` check then rejected it outright, so on `t = [1000, 1010, 1020, 1060]` with 1060
+dropped, hovering at 1045 s went silent — with 1020 only 25 s away and inside the tolerance.
+`drawnSampleIndexAt` walks outward from the nearest sample and takes the first drawn one, which
+collapses two rules into the sayable version: _the nearest drawn sample within tolerance_.
+
+### The third round also broke two-sample measured channels, and `gapsAreMeaningful` is the fix
+
+Segmenting everything at `readoutTolerance` was ceiling-shaped reasoning applied to all four
+channels. Below three samples the two thresholds diverge totally — `Infinity` (always join) becomes
+15 s (split, then drop both singletons) — so **any** channel with two samples more than 15 s apart
+silently stopped plotting. Where that channel was depth and the only one, the component fell through
+to `available.length === 0` and rendered "this dive's imported file recorded no samples to plot"
+over a dive that recorded two.
+
+`ProfileChannel.gapsAreMeaningful` splits the two cases on what a gap actually _means_. For a
+measured channel it means "not recorded", there is no cadence to judge two samples by, and joining
+them is the only honest option left — which is exactly what `gapThreshold`'s `Infinity` says. For
+the ceiling it means **no obligation existed**, a fact about the dive rather than the sensor, and
+joining draws a forbidden zone over water the diver was free to be in. Only the second is worth
+refusing to draw for, and only it pays the cost. It coincides with `dashed` today and says something
+different: that one is how the curve is drawn, this is what its absence means — so reusing `dashed`
+as the proxy would have been a rendering flag standing in for a semantic one.
+
+**Four rounds on one invariant, and the shape of the mistake never changed**: each fix was applied
+to the consumer that had been caught, and the next consumer of the same value was left holding the
+old behaviour — segmenter, then readout, then legend and axes, then the summary and the shared
+domain. Twice the fix itself introduced the next round, once by narrowing the window instead of
+closing it and once by generalising a ceiling-specific rule to channels it was wrong for. The thing
+that would have ended it sooner is asking _which code reads this, and at what granularity_, rather
+than _where did the symptom appear_. Worth noting the `lib` tests caught none of the four: every one
+lived in how the component wired well-tested helpers together, which is what
+`dive-profile-chart.render.test.tsx` now exists for.
+
+## Markers are clipped to the plot, because the API says in so many words that they aren't
+
+`_rebase_events` clamps an event's time at zero — an XML export records the opening gas selection at
+`GasChangeTime 0` while numbering samples from `Time 1`, so the naive rebase is -1 and dropping it
+would lose which gas the dive started on — and **deliberately leaves the high end alone**, because
+`duration_seconds` is the span of the _samples_ and a device goes on recording after the last one. A
+FIT `user_marker` can be pressed after surfacing. It closes with: "A chart that draws past its x
+domain is the chart's to clip."
+
+This chart wasn't clipping. `x(6000)` on a 3 000 s dive is 1 304 in a 720-unit viewBox, so that
+marker vanished; `x(3200)` is 716, which is _inside_ the viewBox but in the right-hand axis-label
+gutter, aligned with no time on the axis at all. Meanwhile `describeProfile` named both. **A marker
+invisible to the eye and announced to a screen reader is the two views disagreeing about what the
+chart contains**, which is worse than either dropping it or drawing it.
+
+One filtered list now feeds all three consumers — the glyphs, the crosshair and the summary — so
+they cannot disagree. Dropped rather than clamped to the last second: clamping would invent a time
+to keep a marker on screen, which is the same class of lie as quoting a ceiling that hadn't started.
+And not left to the SVG's own clipping, which isn't clipping at all — it hides what leaves the
+viewBox and happily draws what merely leaves the plot.
+
+**The general rule: when an upstream contract says "this is yours to handle", that sentence is the
+requirement.** The API's comment was load-bearing documentation of a boundary, not a remark.

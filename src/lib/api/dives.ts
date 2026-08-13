@@ -148,11 +148,21 @@ export interface DiveProfileInfo {
   // `dive.duration` is the diver's own record and may have been hand-edited.
   duration_seconds: number;
   depth_sample_count: number;
-  // Which curves the profile carries: any of "depth", "temperature", "pressure".
+  // Which curves the profile carries: any of "depth", "ceiling",
+  // "temperature", "pressure".
   channels: string[];
+  // How many event markers the profile carries. Deliberately a count rather
+  // than a fifth entry in `channels`: an event is not a curve with an axis, and
+  // "3 markers" is worth showing where a bare boolean isn't. Null on a profile
+  // extracted before the API recorded events at all - a row the backfill hasn't
+  // reached - where 0 is this extractor having looked and found none.
+  event_count?: number | null;
   // Display units (meters, Celsius, bar) - unlike the series, which stay
   // integer-scaled. These are scalars a human reads, not points to map.
   max_depth?: number | null;
+  // Deepest deco ceiling the dive was held to, in meters. Null when it owed no
+  // decompression at all, which is every recreational dive.
+  max_ceiling?: number | null;
   min_temperature?: number | null;
   max_temperature?: number | null;
   min_pressure?: number | null;
@@ -185,11 +195,50 @@ export interface DiveProfilePressureSeries extends DiveProfileSeries {
   gas_number: number;
 }
 
+// What a marker on the profile chart says happened. A closed vocabulary the API
+// normalizes three export formats into (`ProfileEventType` in its
+// `schemas/dive_profile.py`), so a chart never has to interpret a device's own
+// wording - except for `other`, which is exactly the case where it hands that
+// wording over in `label`.
+export type DiveProfileEventType =
+  "gas_switch" | "deep_stop" | "safety_stop" | "bookmark" | "other";
+
+// One thing the dive computer recorded happening, at an instant rather than
+// over a channel.
+export interface DiveProfileEvent {
+  // Elapsed seconds from the start of the dive, on the same axis as every
+  // series' `t`.
+  t: number;
+  type: DiveProfileEventType;
+  // Set only on a `gas_switch`, and the same label `DiveMixture.gas_number` and
+  // the pressure curves carry - so a switch marker and the cylinder it switched
+  // to can be joined. Null where the file recorded that a switch happened
+  // without saying to what.
+  gas_number?: number | null;
+  // The device's own wording, always present on an `other` and absent on the
+  // types that speak for themselves.
+  //
+  // The only parser-derived free text in any response body: everything else an
+  // import produces is a number or a value from a closed vocabulary. The API
+  // caps it at 120 characters, which is still long enough to overflow a
+  // `whitespace-nowrap` tooltip - see how `ProfileTooltip` lets it wrap.
+  label?: string | null;
+}
+
 export interface DiveProfile {
   duration_seconds: number;
   depth?: DiveProfileSeries | null;
+  // The deco ceiling, in centimeters on depth's own scale, because it is drawn
+  // against depth's axis and a ceiling of 3 m has to be the same integer as a
+  // depth of 3 m for the shading to line up with the curve it bounds.
+  //
+  // Present only while the dive owed decompression: a gap in `t` is a stretch
+  // with no obligation, not a sensor dropout, and the channel is absent
+  // entirely on every no-deco dive.
+  ceiling?: DiveProfileSeries | null;
   temperature?: DiveProfileSeries | null;
   pressure: DiveProfilePressureSeries[];
+  events: DiveProfileEvent[];
 }
 
 /**

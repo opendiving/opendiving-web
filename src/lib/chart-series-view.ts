@@ -8,14 +8,33 @@
 // links point at and people bookmark.
 //
 // Generic over the series keys because two charts want it and their keys have
-// nothing in common: the profile chart plots depth/temperature/pressure, the gas
-// chart plots dives/trend/average. What is shared is the shape - a set of keys,
-// re-validated on the way in against the ones the chart actually has.
+// nothing in common: the profile chart plots depth/ceiling/temperature/pressure,
+// the gas chart plots dives/trend/average. What is shared is the shape - a set
+// of keys, re-validated on the way in against the ones the chart actually has.
 //
 // What's stored is a view preference: a handful of series names the chart itself
 // defines. No dive data, nothing fetched.
+//
+// **A superseded key is left in storage rather than cleaned up**, which is the
+// precedent for the next bump: see "Adding a channel meant bumping the
+// remembered-selection key" in DECISIONS.md. Forty inert bytes against a list of
+// dead key names that would have to be carried, kept correct, and grown on every
+// future bump - in code whose whole job is to be forgotten.
 
-export const DIVE_PROFILE_SERIES_KEY = "opendiving:dive-profile-series";
+// Versioned, and the suffix was added when the deco ceiling became a fourth
+// channel. `parseSeriesVisibility` filters a stored selection down to the keys
+// this build plots, which is exactly right for a key that has *gone* and exactly
+// wrong for one that has arrived: every selection written before the ceiling
+// existed names three channels, all of them still available, so it would restore
+// cleanly and leave the ceiling switched off - hiding the one mark the diver
+// came to a deco dive's profile to see, with a legend entry sitting right there
+// claiming they had turned it off themselves.
+//
+// Bumping the key drops those selections and opens on everything plotted, which
+// is what a first visit already does. The cost is one diver's hidden temperature
+// line coming back once; the alternative is a feature that is invisible to
+// precisely the people who have used the chart before.
+export const DIVE_PROFILE_SERIES_KEY = "opendiving:dive-profile-series-v2";
 export const GAS_USE_SERIES_KEY = "opendiving:gas-use-series";
 
 // The stored entry, raw and unparsed.
