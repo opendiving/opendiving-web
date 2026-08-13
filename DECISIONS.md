@@ -1634,14 +1634,16 @@ pressures being filled in - a missing average depth, or a second tank - and sile
 So the Air Consumption card renders whenever the dive logs a tank at all, showing either the figures
 or the one specific thing in the way.
 
-That helper's branches mirror `compute_gas_use()`'s guard clauses and have to be changed with them
-(`grep gas_use` finds the pair). It lives in `lib/` rather than in the page for the usual reason:
-`vitest.config.mts` only collects coverage for `src/lib/**`.
+That helper's branches mirror the guard clauses of `compute_gas_use()` _and_
+`compute_multi_tank_gas_use()`, and have to be changed with them (`grep gas_use` finds the set). It
+lives in `lib/` rather than in the page for the usual reason: `vitest.config.mts` only collects
+coverage for `src/lib/**`.
 
 Two guards in it are load-bearing. It returns `null` when `mixtures` is missing entirely, because
 the _list_ response carries neither `mixtures` nor `gas_use` and every row would otherwise claim its
-pressures were missing. And the multi-tank branch names a limitation instead of asking the diver to
-add a field, because there is no field to add - see the API's "Gas use is computed on read".
+pressures were missing. And the multi-tank branch names a limitation rather than asking for a field
+in the ordinary case — see "The multi-tank branch now splits three ways, and tests attribution
+first" below for the one case where it does ask.
 
 ## The air-consumption chart is hand-rolled SVG, and breaks its trend line at gaps
 
@@ -3923,3 +3925,307 @@ viewBox and happily draws what merely leaves the plot.
 
 **The general rule: when an upstream contract says "this is yours to handle", that sentence is the
 requirement.** The API's comment was load-bearing documentation of a boundary, not a remark.
+
+## A dive-wide bar/min is not a rate, so multi-tank `sac_bar_per_min` is null
+
+Every other figure on the Gas Consumption card survives being summed across cylinders. Litres are
+litres, and RMV is defined at surface pressure precisely so a 22 L twinset and an 11 L stage produce
+comparable numbers. SAC does not: bar/min is a rate of _pressure_, and 10 bar out of the stage is
+half the gas that 10 bar out of the twinset is. Adding the two, or averaging them, produces a number
+with no referent — not an approximation, a category error.
+
+So `DiveGasUse.sac_bar_per_min` is `number | null` on the wire and null on exactly the multi-tank
+dives, where each entry in `tanks` carries its own instead. A per-tank SAC _is_ meaningful, because
+a tank has one volume, and it is the figure a diver reads off a pressure gauge — which is why it
+stays in the table rather than being dropped as derivable.
+
+The nullability is cheap to carry. The only other reader of the field is nothing:
+`gas-use-chart.tsx` and `gas-use-card.tsx` plot `rmv` and label with `gas_used`, so the dashboard is
+untouched by this even though multi-tank dives now enter `gas_use_history` for the first time.
+
+The total row renders `-` rather than omitting the cell, and greys it. An absent cell in a column
+five other rows fill reads as a layout bug; a dash reads as "there is no answer here", which is the
+claim being made.
+
+## The multi-tank branch now splits three ways, and tests attribution first
+
+Before this phase, `gasUseUnavailableReason` had one thing to say about several cylinders: the model
+can't tell them apart. Now it can, given gas switches the dive computer recorded — so the branch has
+several outcomes and the order they're tested in is the whole decision.
+
+`compute_multi_tank_gas_use` gives up for five distinct reasons: no attribution at all; two mixtures
+claiming one `gas_number` (which refuses the whole dive, since the ambiguity poisons every join, not
+just theirs); a cylinder the attribution never names; a cylinder failing the same pressure
+arithmetic `compute_gas_use` applies; and a tank whose per-tank RMV comes out past
+`MAX_PLAUSIBLE_RMV`.
+
+**Only the fourth is a plain skip.** The third splits on whether that cylinder's own pressures show
+a drop: none, and it is passed over as the corpus's ordinary deco bottle with no transmitter; a
+drop, and it refuses the whole dive, because the time it was breathed for is sitting inside another
+tank's stretch and the surviving figures are wrong rather than incomplete — with a coverage fraction
+whose two halves agree and read as the whole dive. The fifth refuses for the same reason arriving by
+another route, a switch recorded late rather than not at all. And if every cylinder is skipped by
+the fourth, nothing survives and the dive comes back empty anyway.
+
+**That is why the attribution sentence cannot claim the import records no gas switches**, which is
+what it said first. Three of the five refusals are attribution faults and share it, and two of those
+three happen on dives that demonstrably _do_ record switches — where `DiveProfileCard` is drawing
+their markers ten lines further up the same page. A card asserting an absence the chart above it
+disproves is the same failure `gasAttributionNote` spends four words avoiding. It says the switches
+don't account for every cylinder instead: true of all three, including vacuously the no-switches
+case, which is what all 18 un-derivable multi-gas dives in the corpus actually are.
+
+The wider lesson is the mirror-comment pact's own failure mode. The comment saying "if either
+function's conditions change, this list has to change with it" is not self-enforcing, and the API
+grew two conditions in the hour before this branch's tip. What made it visible was not the pact but
+the _sentence_ the stale list produced — so where a guard list drives user-facing copy, phrase the
+copy against what the app can still see (a chart full of switch markers) rather than against the
+guard it is mirroring.
+
+The API's outer gate is attribution: it reaches the pressure arithmetic only after the attribution
+exists. The browser can't see `dive_profile.gas_attribution`, so the inference runs backwards. **If
+a cylinder's pressures would have produced a figure and the dive produced none, the attribution is
+what was missing** — that cylinder would otherwise have survived as a partial result. Only when no
+cylinder could have produced one do the other two sentences apply: no pressure drop anywhere (they
+are recorded, and adding more wouldn't help), or no pressures at all.
+
+The duplicate-`gas_number` case deliberately gets no sentence of its own. It isn't reachable through
+this app — `gas_number` is carried, never edited, and a hand-added cylinder has none — so a phrase
+for it would be untestable wording for a state the UI cannot produce. It lands on the generic
+attribution sentence if it ever arrives.
+
+Two phrasings that the one-tank branch uses are deliberately not reused. Not "this tank's" — it
+points at a row the diver isn't looking at when there are four. And not a word about average depth,
+which the single-tank sentence asks for and the multi-tank path genuinely does not need: it takes a
+mean depth per cylinder from the profile, so `dive.avg_depth` is not one of its inputs and sending a
+diver to fill it in would change nothing.
+
+## Attribution comes from gas switches only, and the litres never come from the profile
+
+Two plausible-sounding sources are not in play, and both are worth naming because the obvious guess
+is wrong in each case.
+
+**Per-cylinder pressure activity is not an attribution source.** Watching each tank's pressure curve
+for the stretch where it falls looks like the natural signal, and it was rejected on two independent
+grounds: the exports carry one pressure channel per file, so there is usually nothing to compare,
+and a cylinder's pressure keeps moving with its temperature long after the diver switched away from
+it. The column is named `gas_attribution`, not `gas_usage`, precisely because it carries no
+pressures — only which cylinder, for how long, at what mean depth.
+
+**The litres come from the form's `start_pressure`/`end_pressure`, not the profile's curve.** On the
+showcase dive the two disagree by 4.6 bar, for the same cooling reason. The recorded header is the
+diver's own number and the one the mixtures card prints directly above; deriving consumption from a
+different number than the one on screen would make the table unreconcilable with the card above it.
+
+## The consumption table is six columns wide and scrolls, like the mixtures table above it
+
+Measured on dive #493 in a 680 px pane: the table lays out at 648 px inside a 582 px card, so it
+overflows by 66 px — 11 px more than the mixtures table's 55 px in the same card. Both scroll inside
+their own `overflow-x-auto` wrapper and the page body never scrolls sideways, which is the same
+resolution Phase 2 recorded. On a full-width desktop the main column is around 800 px and neither
+table overflows at all; this is a narrow-pane artifact, not the target viewport.
+
+The columns were measured before accepting it: Tank 175, Time 74, Avg Depth 84, Gas Used 90, RMV
+109, SAC 117. The two widest are driven by their **content** — `18.24 L/min`, `0.82 bar/min` — not
+their headers, so the header-shortening that bought Phase 2 its 73 px back has almost nothing to
+give here. Moving the units into the headers would reclaim it, and is exactly what this card's own
+rule forbids: "Units stay with the values, never doubled in the label."
+
+"Avg Depth" survives at full length for a reason worth stating, since it is the one header short
+enough to trim: it is a **mean** depth over the stretch a cylinder was breathed, and "Depth" beside
+a per-tank row invites reading it as that gas's deepest point. That misreading is the one this
+feature must not encourage — see `diveModWarning`, which refuses to warn per tank precisely because
+a mean depth is the wrong input for a MOD.
+
+## The tank↔mixture join applies the API's duplicate rule rather than trusting it
+
+`compute_multi_tank_gas_use` refuses a whole dive whose mixtures share a `gas_number`, so a
+duplicate reaches the browser as `gas_use: null` and `tankGasUseRows` is never called on one. **The
+guard here is belt-and-braces, and stays anyway.** It is the cheap half of a pair whose expensive
+half is a table showing one cylinder's litres twice under a total that counted them once — a table
+that visibly doesn't add up, which is worse than one that says less.
+
+The two sides can drift, which is the whole argument for keeping it. `gas_number` round-trips
+through the form untouched today; the day an edit path opens, or the day a response cached before
+that API guard existed is served, this is what stands between a duplicate and that table. A pure
+exported function whose output is only sound because of a server-side check somewhere else is a
+function whose contract can't be stated.
+
+So a gas number naming more than one cylinder names none of them: both rows come back unattributed.
+
+**The same rule applies to the tank side, and the first version only guarded the mixtures.** That
+asymmetry was the more damaging of the two. A `Map` keyed by gas number keeps the last writer, so
+two tanks sharing a number left the earlier one matched to nothing — and the append loop tested the
+_number_ rather than the tank, saw the number already claimed, and skipped it. The tank disappeared
+from the table while its litres stayed inside the dive-wide total: not a total contradicted by its
+rows, but a total silently larger than all of them, which is harder to spot and just as wrong. Both
+tanks now fall through to rows of their own, keyed by position in `tanks` rather than by the gas
+number they share.
+
+The invariant that fixes it is worth naming, because two other decisions on this page lean on it:
+**every tank reaches exactly one row.** A test pins it directly.
+
+The two asymmetries around it are deliberate and pull in opposite directions:
+
+- **A mixture with no matching tank keeps its row**, marked "Not attributed". A pony carried and
+  never breathed belongs in this table saying exactly that, and dropping it would leave this table
+  quietly shorter than the mixtures table directly above it.
+- **A tank matching no mixture is appended**, labelled `Gas N` from the device's own number. Its
+  litres are already inside the dive-wide total, so hiding the row would leave a total the visible
+  rows don't sum to — the same failure as the duplicate case, arriving from the other end.
+
+`Gas 3`, not `Tank 3`: the mixtures card numbers cylinders by 1-based _position_, and the whole
+point of this row is that it matches no position at all. Reusing that word would invite reading it
+as the third cylinder. The row keys follow the same rule — built from `mixture.id` or list position,
+never from `gas_number`, which is neither unique nor always present.
+
+Every `!number` shortcut in this join would have dropped the entire first cylinder of a Suunto Ocean
+export, which numbers from 0. There is a test pinning that, as there is on the form side.
+
+## Attribution coverage is stated when it's short, and silent when it isn't
+
+Per-tank figures are an inference from the profile, not a recorded fact, and the inference can leave
+a remainder — a file recording gas switches but not the gas the diver entered the water on has
+nothing to assign the descent to. Presenting figures that describe 38 of a dive's 42 minutes as
+though they described the dive understates every one of them.
+
+`gasAttributionNote` says so, from the `attributed_seconds`/`duration_seconds` pair, and says
+nothing below a one-minute remainder — which is rounding, and would also print a sentence whose two
+spans render identically at the minute resolution the note is phrased at. The denominator is the
+profile's span rather than `Dive.duration` because that is what the attribution actually ran over;
+`Dive.duration` is the diver's own record and may have been hand-edited, which would make the
+fraction unfalsifiable.
+
+It also returns null when `attributed >= total`, rather than printing "covers 45min of the 40min
+recorded". That is unreachable from a correct API but is the exact shape a degenerate profile or
+self-overlapping attribution would take, and the failure mode of trusting it is a sentence that
+destroys confidence in the numbers above it.
+
+**The denominator names the dive computer, because the page prints a different number for the same
+thing.** `duration_seconds` is the profile's span and routinely outruns the dive's logged duration —
+4300 against 4001 on dive #493, five minutes of a computer still sampling after the diver surfaced.
+The note first read "38min of the 42min recorded", which on real data became "35min of the 1h 12min
+recorded" sitting a card below a header reading **Duration 1h 7min**. Two right numbers for two
+different spans, presented as if one of them were wrong. "the 1h 12min _the dive computer recorded_"
+costs four words and says whose span it is. This is the cost of choosing the profile's span, and it
+is still the right choice — it is what the attribution actually ran over — but the choice has to be
+visible in the sentence, not just in this file.
+
+## The total row is dropped when it would restate the only row above it
+
+The API attributes what the gas switches support, and the corpus supports one cylinder: **19 of 19
+multi-gas dives yield exactly one `tanks` entry**, because a diver carries one transmitter on the
+back gas and the deco bottle records no pressures to derive anything from. This is the normal shape,
+not a degenerate one.
+
+On it, an "All tanks" row is worse than nothing. It repeats the single filled row's time, litres and
+RMV verbatim, and prints a dash under SAC — where the row directly above it prints `0.56 bar/min`.
+The dash is correct in the abstract (there is no dive-wide bar/min) and actively misleading in
+context: it reads as "no SAC available" two cells from a SAC.
+
+So the total renders only when two or more cylinders were attributed, which is the only case where
+it reconciles anything.
+
+The condition is "how many rows carry figures", counted after the join — and it is worth being
+precise about what that does and doesn't buy, because it is easy to overclaim. **For this condition
+`tanks.length > 1` would be exactly equivalent**, and provably so: every tank reaches exactly one
+row, matched to a mixture or appended as `Gas N`, so the count of rows carrying figures _is_ the
+count of tanks. (There is a test pinning that invariant, and before the tank-side duplicate guard
+above it did not hold — a collapsed duplicate was the one way a tank could reach no row at all.)
+`attributedCount` is preferred for saying the reason directly rather than through an invariant that
+has already been broken once, not because it decides differently.
+
+Where the two genuinely part company is **the layout switch**, which is `rows.length > 0`. There
+`tanks.length > 1` would be a real bug rather than a stylistic choice: it would send this entire
+corpus back to the single-tank headline figures and hide the deco bottle's row, since one attributed
+tank is what all 19 of these dives produce.
+
+The "Not attributed" row stays regardless. On a one-transmitter dive it _is_ the second piece of
+information the card has: the diver carried a deco bottle, and this log can't say what it cost.
+
+## The dashboard chart stopped naming a depth the rate wasn't divided by
+
+Multi-cylinder dives reach `GET /user/gas-use-history` for the first time in Phase 4, and their RMV
+is normalized against each cylinder's own mean depth over the stretch it was breathed for. The chart
+predates all of that and framed every dot the single-tank way —
+`{avg_depth}m average · {gas_used} L used` in the tooltip, and `at {avg_depth}m average` in the
+dot's accessible name.
+
+On dive #493 that renders "12.4 liters per minute at 20.87m average" for a figure derived at **33.99
+m**. The depth is a true fact about the dive and a false claim about the number beside it, which is
+the worst of both: quoting the denominator is exactly what made this tooltip checkable on a
+single-tank dive, so a wrong one is trusted for the same reason the right one was.
+
+The litres are understated in the same breath — `gas_used` on a multi-tank point is the sum over
+_attributed_ tanks only, so a partly-attributed dive reads low against whole-dive points on the same
+trend line. Both are dropped together rather than leaving one quietly wrong beside the other, and
+what replaces them is the one thing needed to read the dot correctly: this rate is per cylinder, and
+the dive page has the split.
+
+`point.gas_use.tanks?.length` is the switch, the same one the consumption card uses. **The
+accessible name gets the same treatment and not a simplified version of it**, because it is the only
+form of this sentence a screen-reader user ever gets; a visual fix alone would have left them with
+precisely the claim that was wrong. Both are covered by `gas-use-chart.render.test.tsx`, which
+asserts the absence of `20.87` as directly as it asserts the presence of the replacement.
+
+**The general shape, and the reason this was missed once:** a derivation that changes what a number
+_means_ has to be chased to every consumer of that number, not just the one being built. The card
+was where the work was, so the card is where the two paragraphs of explanation went — while a second
+consumer kept rendering the old meaning for the new figure, in a file this branch never opened.
+
+## No profile, no attribution — and that is 18 of the 19 multi-gas dives
+
+`gas_attribution` is a column _on_ `dive_profile`. A dive without a profile therefore cannot reach
+the multi-tank derivation whatever the diver types, and `gasUseUnavailableReason` tests that before
+anything else.
+
+This was found late and is not an edge case. Of the 19 multi-gas dives in the corpus, **18 have no
+profile and no source file at all** — they were logged by hand. Every one of them was being told
+"needs an import whose gas switches account for every cylinder on the dive", about an import that
+does not exist; and the bare-pressures branch would have sent the ones missing pressures off to fill
+in fields that change nothing, to be met with a different refusal on the next render. The one
+imported dive is #493.
+
+The browser can see this for itself: `dive.profile` is on the detail response, and the `mixtures`
+guard higher up has already returned for a list dive, so a missing `profile` here is a real absence
+rather than a field the endpoint withheld.
+
+**The lesson is about which fixtures a message gets tested against.** Every test for this branch was
+built from the imported shape, because that is the shape the feature is _for_ — and the sentence was
+wrong for the overwhelming majority of dives that would actually see it. A user-facing string wants
+a fixture drawn from the corpus's ordinary case, not from the case the code was written for.
+
+## "Not attributed" named one of the two states behind an empty row
+
+`TankGasUseRow.use` is null for two different server outcomes: the attribution never mentioned the
+cylinder, or it did and `_tank_arithmetic` declined it — no pressures, no drop, or a degenerate
+stretch (`seconds <= 0`, `mean_depth_cm <= 0`, which a gas switched to at the surface at the end of
+a dive really produces). The label said "Not attributed", which is the first of those, and on the
+second it is flatly contradicted by the coverage note three lines below reporting that cylinder's
+seconds as attributed.
+
+The row now says **"No pressures recorded"** where the mixture carries no pressure pair — which the
+browser can check for itself, is certain, and is the corpus's deco bottle with no transmitter, the
+only unattributed row any real dive here renders — and **"No figures"** otherwise, which claims only
+what is known. `TankGasUseRow` carries a `hasPressures` flag for the purpose, read only when `use`
+is null.
+
+The general rule: when a null collapses several upstream states, a label naming one of them is a
+guess wearing a fact's clothing. Either distinguish them or say less.
+
+## One dot, two sentences, one predicate
+
+The gas chart describes each point twice — the visible tooltip and the dot's accessible name — and
+after the multi-tank split those two had to agree on whether the RMV was derived per cylinder. Both
+computed `(point.gas_use.tanks?.length ?? 0) > 0` independently, with a comment on the second saying
+they "have to" agree and nothing enforcing it. `isPerTankPoint` is now the single predicate.
+
+Worse than the duplication was where the tests sat. The accessible name was pinned in both
+directions — the presence of the replacement _and_ the absence of `20.87` — while the tooltip, which
+is the path almost every diver takes, had none. A regression putting `avg_depth` back into the
+tooltip and leaving the aria label alone would have shipped green. Confirmed by breaking the
+predicate on purpose: the aria tests stayed green and only the new tooltip test failed.
+
+**Testing the accessible name is not a proxy for testing the visible one**, even where both come
+from the same data. They are two renderings, and a test that covers only the one you had to think
+hardest about covers the one users are least likely to hit.

@@ -49,6 +49,46 @@ export interface DiveSiteSummary {
   location?: string;
 }
 
+// One cylinder's share of a dive's consumption, on a dive where the API could tell
+// which tank was breathed when.
+//
+// That knowledge comes from **the gas switches the dive computer recorded**, and from
+// nothing else (`dive_profile.gas_attribution`, derived by `derive_gas_attribution`).
+// The obvious second source - watching each cylinder's pressure curve for activity -
+// was considered and rejected on both counts: the exports carry one pressure channel
+// per file, and a cylinder's pressure moves with its temperature long after the diver
+// has switched away from it. Without switches, a dive with several cylinders yields no
+// figures at all rather than a guess (see `DiveGasUse.tanks`).
+//
+// The litres still come from `DiveMixture.start_pressure`/`end_pressure`, which
+// round-trip through the form - not from the profile's pressure curve, which disagrees
+// with the recorded header by several bar on a cylinder that kept cooling after the
+// switch. The attribution column deliberately carries no pressures at all: only which
+// cylinder, for how long, at what mean depth.
+export interface DiveTankGasUse {
+  // Which cylinder this is, joined against `DiveMixture.gas_number`. Carries that
+  // field's warning with it: a device's own label, not an index, and 0 is a real
+  // one. The API only emits a row it could match to exactly one mixture, so a
+  // number here identifies a single cylinder - but the browser re-checks, since a
+  // duplicate on the *mixture* side would otherwise show one tank's litres twice.
+  gas_number: number;
+  // The same three figures as the dive-wide ones below, computed over just the
+  // stretch of the dive this cylinder was breathed for - which is what makes them
+  // worth showing at all. A deco bottle emptied at 6 m and a back gas breathed at
+  // 40 m produce wildly different RMVs, and dividing either by the whole dive's
+  // average depth is the misattribution `compute_gas_use` refuses to commit.
+  gas_used: number;
+  rmv: number;
+  sac_bar_per_min: number;
+  // The segmentation the three figures above rest on: how long this cylinder was
+  // breathed, and the mean depth over that stretch. Displayed rather than kept
+  // internal because the split is an inference from the profile, not a recorded
+  // fact, and a diver who can see "12 min at 6.4 m" can judge whether it matches
+  // the dive they remember.
+  seconds_on_gas: number;
+  mean_depth: number;
+}
+
 // Surface-normalized gas consumption for a dive, derived by the API from the
 // dive's duration, average depth and cylinder pressures - see the API's
 // `services/dive_gas.py` for the arithmetic and the assumptions baked into it.
@@ -58,14 +98,51 @@ export interface DiveSiteSummary {
 // this is a pure function of stored fields and can never go stale. There is one
 // implementation of the formula and it lives in the API.
 export interface DiveGasUse {
-  // Gas breathed, in liters at surface pressure.
+  // Gas breathed, in liters at surface pressure. The sum across `tanks` where
+  // there are several.
   gas_used: number;
   // Respiratory minute volume: liters/minute at surface pressure. Independent
   // of cylinder size, so this is the figure to compare across dives.
   rmv: number;
   // The same consumption as a pressure drop rate, meaningful only alongside
   // this dive's cylinder volume - but it's what a pressure gauge shows.
-  sac_bar_per_min: number;
+  //
+  // **Null on a multi-tank dive**, where there is no such thing: 10 bar out of an
+  // 11 L stage and 10 bar out of a 22 L twinset are different amounts of gas, so a
+  // sum across cylinders of different sizes is not a rate of anything. Each entry
+  // in `tanks` carries its own, which is meaningful because a tank has one volume.
+  sac_bar_per_min: number | null;
+  // Per-cylinder breakdown. The API sends `[]` - not null, not an absent key -
+  // on every dive it derived the single-tank way, so "is this array non-empty"
+  // is the whole test for which layout the consumption card should render.
+  // Typed optional and nullable anyway, because this field is younger than the
+  // interface and a response cached before it existed has neither.
+  //
+  // **A one-entry array is the normal multi-cylinder shape, not a degenerate
+  // one**: every multi-gas dive in the corpus is one entry, because a diver
+  // carries a single transmitter on the back gas and the deco bottle logs no
+  // pressures to derive anything from. It still arrives with two mixtures, so
+  // the table has a row the attribution never reached - which is a fact worth
+  // rendering, and the reason nothing keys off `tanks.length > 1`.
+  tanks?: DiveTankGasUse[] | null;
+  // How much of the recorded dive the per-tank split accounts for, against the
+  // span it was splitting. The two exist because attribution can leave a
+  // remainder - a stretch before the first gas switch on a file that records
+  // switches but not the gas carried into the water, say - and figures covering
+  // 38 of 42 minutes should say so rather than pass for the whole dive.
+  //
+  // Both null outside the multi-tank path. Seconds, matching `Dive.duration` and
+  // `DiveProfileInfo.duration_seconds`; `duration_seconds` is the profile's span,
+  // not `Dive.duration`, because that is what the attribution actually ran over
+  // and a hand-edited dive duration would make the fraction unfalsifiable.
+  //
+  // Those two are routinely different, and `duration_seconds` is usually the
+  // larger: a dive computer goes on recording after the diver surfaces (4300
+  // against a logged 4001 on dive #493). Anything rendering this denominator has
+  // to say whose number it is, or it reads as contradicting the duration shown
+  // at the top of the same page - see `gasAttributionNote`.
+  attributed_seconds?: number | null;
+  duration_seconds?: number | null;
 }
 
 export interface Dive {
@@ -124,12 +201,14 @@ export interface Dive {
   // list is the app's hottest query and nothing in it renders this. Don't
   // "fix" a missing value in the list by adding it server-side.
   source_file?: DiveFileInfo | null;
-  // Set only when the dive records everything needed to derive it: exactly one
-  // mixture, an average depth, and both of that mixture's pressures. Optional
-  // for the same reason as `source_file` - it's a detail-response field, and it
-  // additionally derives from `mixtures`, which the list response doesn't carry
-  // either. Use `gasUseUnavailableReason()` (`lib/dive-gas.ts`) to explain a
-  // missing value to the user rather than showing nothing.
+  // Set only when the dive records everything needed to derive it. For one
+  // mixture that is an average depth plus both of its pressures; for several it
+  // additionally needs a profile the API could attribute per cylinder, and the
+  // result then carries `tanks`. Optional for the same reason as `source_file` -
+  // it's a detail-response field, and it additionally derives from `mixtures`,
+  // which the list response doesn't carry either. Use
+  // `gasUseUnavailableReason()` (`lib/dive-gas.ts`) to explain a missing value
+  // to the user rather than showing nothing.
   gas_use?: DiveGasUse | null;
   // Summary of the dive's per-sample profile, if one was extracted from its
   // imported file. Optional for the same reason as `source_file` above: the API

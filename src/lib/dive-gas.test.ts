@@ -1,13 +1,20 @@
 import { describe, expect, it } from "vitest";
-import type { Dive, DiveMixture } from "@/lib/api/dives";
+import type {
+  Dive,
+  DiveGasUse,
+  DiveMixture,
+  DiveTankGasUse,
+} from "@/lib/api/dives";
 import {
   bandRanges,
+  gasAttributionNote,
   gasUseUnavailableReason,
   rollingMean,
   rollingStdDev,
   scopeRange,
   segmentByGap,
   summarizeGasUse,
+  tankGasUseRows,
   trendWindow,
 } from "@/lib/dive-gas";
 // `periodRange`/`periodLabel`/`stepPeriod`/`availablePeriods` moved to
@@ -45,6 +52,53 @@ function dive(overrides: Partial<Dive> = {}): Dive {
   };
 }
 
+// Enough of a `DiveProfileInfo` to say "this dive was imported and a profile came
+// out of it", which is the only thing `gasUseUnavailableReason` asks of it. Without
+// one there is no `gas_attribution` column for the multi-tank derivation to read, so
+// every fixture below that is *about* a later branch has to carry it.
+function profile(): NonNullable<Dive["profile"]> {
+  return {
+    uuid: "p1",
+    duration_seconds: 4300,
+    depth_sample_count: 431,
+    channels: ["depth"],
+  };
+}
+
+function tank(overrides: Partial<DiveTankGasUse> = {}): DiveTankGasUse {
+  return {
+    gas_number: 1,
+    gas_used: 1800,
+    rmv: 18.2,
+    sac_bar_per_min: 1.5,
+    seconds_on_gas: 1800,
+    mean_depth: 32.4,
+    ...overrides,
+  };
+}
+
+function multiTankUse(
+  tanks: DiveTankGasUse[],
+  overrides: Partial<DiveGasUse> = {},
+): DiveGasUse {
+  return {
+    gas_used: tanks.reduce((sum, entry) => sum + entry.gas_used, 0),
+    rmv: 17.4,
+    // Null on every multi-tank dive - see `DiveGasUse.sac_bar_per_min`.
+    sac_bar_per_min: null,
+    tanks,
+    attributed_seconds: tanks.reduce(
+      (sum, entry) => sum + entry.seconds_on_gas,
+      0,
+    ),
+    duration_seconds: tanks.reduce(
+      (sum, entry) => sum + entry.seconds_on_gas,
+      0,
+    ),
+    ...overrides,
+  };
+}
+
 describe("gasUseUnavailableReason", () => {
   it("says nothing when the API already derived a figure", () => {
     const derived = dive({
@@ -75,8 +129,138 @@ describe("gasUseUnavailableReason", () => {
     );
 
     expect(reason).toMatch(/multi-tank/i);
-    // It must not ask the diver to add anything - the data is all there.
+    // It must not ask the diver to add anything - the data is all there, and
+    // what's missing is an import that says which tank was breathed when.
     expect(reason).not.toMatch(/^Add /);
+    expect(reason).toMatch(/import/i);
+  });
+
+  it("blames attribution on the shape the whole corpus actually has", () => {
+    // One transmitter on the back gas, none on the deco bottle - every multi-gas
+    // dive in the corpus. The pressures that exist are usable, so the missing
+    // piece is the attribution, not anything the diver left out.
+    const oneTransmitter = gasUseUnavailableReason(
+      dive({
+        profile: profile(),
+        mixtures: [
+          mixture({ gas_number: 0 }),
+          mixture({
+            id: 2,
+            gas_number: 1,
+            start_pressure: null,
+            end_pressure: null,
+          }),
+        ],
+      }),
+    );
+
+    expect(oneTransmitter).toMatch(/multi-tank/i);
+    expect(oneTransmitter).not.toMatch(/^Add /);
+    // It must not claim the import records no gas switches. Two of the three
+    // refusals this sentence covers happen on dives that *do* record them - a
+    // breathed cylinder the switches never named, and a switch timed so late the
+    // per-tank RMV comes out impossible - and on those the profile chart is
+    // drawing the switch markers ten lines up the same page.
+    expect(oneTransmitter).not.toMatch(/records which tank/);
+    expect(oneTransmitter).toMatch(/account for every cylinder/);
+  });
+
+  it("names an unbreathed pair on a multi-tank dive rather than asking for it", () => {
+    // Pressures present on every cylinder and equal on all of them, so the API's
+    // per-tank arithmetic drops each in turn and the dive comes back empty.
+    // "Add your pressures" would be wrong twice: they are there, and adding more
+    // wouldn't help.
+    const reason = gasUseUnavailableReason(
+      dive({
+        profile: profile(),
+        mixtures: [
+          mixture({ start_pressure: 200, end_pressure: 200 }),
+          mixture({ id: 2, start_pressure: 150, end_pressure: 150 }),
+        ],
+      }),
+    );
+
+    expect(reason).toMatch(/no gas used to divide up/);
+    expect(reason).not.toMatch(/^Add /);
+  });
+
+  it("asks a multi-tank dive for pressures when no cylinder has a pair", () => {
+    // The one multi-tank case the diver can act on. Both cylinders bare, so the
+    // attribution inference has nothing to go on either way and the pressures
+    // are needed whatever the profile turns out to hold.
+    const reason = gasUseUnavailableReason(
+      dive({
+        profile: profile(),
+        mixtures: [
+          mixture({ start_pressure: null, end_pressure: null }),
+          mixture({ id: 2, start_pressure: null, end_pressure: null }),
+        ],
+      }),
+    );
+
+    expect(reason).toBe(
+      "Add each cylinder's start and end pressure to see your gas consumption.",
+    );
+    // Never the singular sentence the one-tank branch uses - "this tank's"
+    // points at a row the diver is not looking at.
+    expect(reason).not.toMatch(/this tank/i);
+    // The multi-tank path takes depth per cylinder from the profile, so asking
+    // for an average depth would send the diver to a field that changes nothing.
+    expect(reason).not.toMatch(/average depth/i);
+  });
+
+  it("blames attribution when only one of several cylinders has pressures", () => {
+    // Half-filled is enough to rule the pressures out as the blocker: the API
+    // would have produced a partial result from the cylinder it could measure.
+    const reason = gasUseUnavailableReason(
+      dive({
+        profile: profile(),
+        mixtures: [
+          mixture(),
+          mixture({ id: 2, start_pressure: null, end_pressure: null }),
+        ],
+      }),
+    );
+
+    expect(reason).toMatch(/multi-tank/i);
+  });
+
+  it("doesn't ask a hand-logged multi-tank dive for anything", () => {
+    // 18 of the 19 multi-gas dives in the corpus: logged by hand, so no source
+    // file and no profile - and `gas_attribution` is a column *on* the profile.
+    // Nothing the diver types can produce a figure, so the sentence must not
+    // send them to a field, nor imply their import is deficient when they made
+    // none. Both pressures deliberately present on one cylinder, so the
+    // attribution branch would otherwise have claimed exactly that.
+    const handLogged = gasUseUnavailableReason(
+      dive({
+        mixtures: [
+          mixture(),
+          mixture({ id: 2, start_pressure: null, end_pressure: null }),
+        ],
+      }),
+    );
+
+    expect(handLogged).toMatch(/doesn't have one/);
+    expect(handLogged).not.toMatch(/^Add /);
+    expect(handLogged).not.toMatch(/account for every cylinder/);
+  });
+
+  it("asks for pressures only once a profile could actually use them", () => {
+    // The same bare dive with an import behind it. Now the pressures are worth
+    // asking for, because there is a profile whose switches might attribute
+    // them.
+    expect(
+      gasUseUnavailableReason(
+        dive({
+          profile: profile(),
+          mixtures: [
+            mixture({ start_pressure: null, end_pressure: null }),
+            mixture({ id: 2, start_pressure: null, end_pressure: null }),
+          ],
+        }),
+      ),
+    ).toMatch(/^Add each cylinder/);
   });
 
   it("asks for an average depth when only that is missing", () => {
@@ -120,6 +304,266 @@ describe("gasUseUnavailableReason", () => {
     });
 
     expect(gasUseUnavailableReason(untouched)).toMatch(/no gas used/);
+  });
+});
+
+describe("tankGasUseRows", () => {
+  it("is empty for a dive the API derived the single-tank way", () => {
+    // No `tanks` on the wire, so there is no split to render and the card keeps
+    // its three headline figures. This emptiness is the switch between the two
+    // layouts, not just an absence.
+    const single = dive({
+      gas_use: { gas_used: 1800, rmv: 14.29, sac_bar_per_min: 1.19 },
+    });
+
+    expect(tankGasUseRows(single)).toEqual([]);
+  });
+
+  it("joins each tank to its cylinder and keeps the dive's own order", () => {
+    const withTanks = dive({
+      mixtures: [
+        mixture({ id: 1, name: "Back Gas", gas_number: 1, role: "bottom" }),
+        mixture({
+          id: 2,
+          name: "Deco Gas 1",
+          gas_number: 2,
+          oxygen: 50,
+          role: "deco",
+        }),
+      ],
+      gas_use: multiTankUse([
+        // Deliberately the reverse of the dive's order: the API is free to emit
+        // tanks in whatever order it walked the profile in, and the table has to
+        // read against the mixtures card above it regardless.
+        tank({ gas_number: 2, gas_used: 400, rmv: 12.1, mean_depth: 6.4 }),
+        tank({ gas_number: 1 }),
+      ]),
+    });
+
+    const rows = tankGasUseRows(withTanks);
+
+    expect(rows.map((row) => row.label)).toEqual(["Back Gas", "Deco Gas 1"]);
+    expect(rows.map((row) => row.gas)).toEqual(["Air", "EAN50"]);
+    expect(rows.map((row) => row.role)).toEqual(["bottom", "deco"]);
+    expect(rows.map((row) => row.use?.gas_number)).toEqual([1, 2]);
+  });
+
+  it("joins on gas number 0, which a Suunto Ocean really uses", () => {
+    // The zero trap: a falsy gas number is a real label, and every `!number`
+    // shortcut in this join would drop the whole first cylinder of an Ocean
+    // export.
+    const ocean = dive({
+      mixtures: [mixture({ gas_number: 0 })],
+      gas_use: multiTankUse([tank({ gas_number: 0 })]),
+    });
+
+    expect(tankGasUseRows(ocean)[0].use?.gas_number).toBe(0);
+  });
+
+  it("names a cylinder by position when it has no name of its own", () => {
+    // The same fallback the mixtures card uses, so the two tables agree on what
+    // to call an unnamed tank - and 1-based position, never the gas number.
+    const unnamed = dive({
+      mixtures: [mixture({ name: null, gas_number: 0 })],
+      gas_use: multiTankUse([tank({ gas_number: 0 })]),
+    });
+
+    expect(tankGasUseRows(unnamed)[0].label).toBe("Tank 1");
+  });
+
+  it("attributes nothing to either of two cylinders sharing a gas number", () => {
+    // The failure this join exists to prevent. A naive lookup hands the same
+    // tank to both rows, showing one cylinder's litres twice under a total that
+    // counted them once - a table that visibly doesn't add up.
+    const ambiguous = dive({
+      mixtures: [
+        mixture({ id: 1, gas_number: 1 }),
+        mixture({ id: 2, gas_number: 1 }),
+      ],
+      gas_use: multiTankUse([tank({ gas_number: 1 })]),
+    });
+
+    const rows = tankGasUseRows(ambiguous);
+
+    expect(rows.slice(0, 2).map((row) => row.use)).toEqual([null, null]);
+    // And the now-orphaned tank still appears, so its litres are visible
+    // somewhere rather than only inside the total.
+    expect(rows).toHaveLength(3);
+    expect(rows[2].label).toBe("Gas 1");
+    expect(rows[2].use?.gas_number).toBe(1);
+  });
+
+  it("attributes nothing from two tanks sharing a gas number either", () => {
+    // The mirror of the case above, and the worse one: a lookup keyed by gas
+    // number keeps the last writer, so the 100 L tank would match nothing, be
+    // skipped by an append loop testing the number rather than the tank, and
+    // vanish - while its litres stayed inside the dive-wide total.
+    const ambiguous = dive({
+      mixtures: [mixture({ gas_number: 1 })],
+      gas_use: multiTankUse([
+        tank({ gas_number: 1, gas_used: 100 }),
+        tank({ gas_number: 1, gas_used: 50 }),
+      ]),
+    });
+
+    const rows = tankGasUseRows(ambiguous);
+
+    expect(rows[0].use).toBeNull();
+    // Every litre the total claims is visible in a row.
+    expect(rows.reduce((sum, row) => sum + (row.use?.gas_used ?? 0), 0)).toBe(
+      150,
+    );
+    expect(new Set(rows.map((row) => row.key)).size).toBe(rows.length);
+  });
+
+  it("puts every tank in exactly one row, whatever the join does", () => {
+    // The invariant the whole function rests on, and what makes "the visible
+    // rows sum to the stated total" checkable rather than asserted.
+    const messy = dive({
+      mixtures: [
+        mixture({ id: 1, gas_number: 0 }),
+        mixture({ id: 2, gas_number: 4 }),
+        mixture({ id: 3, gas_number: 4 }),
+        mixture({ id: 4, gas_number: null }),
+      ],
+      gas_use: multiTankUse([
+        tank({ gas_number: 0 }),
+        tank({ gas_number: 4 }),
+        tank({ gas_number: 9 }),
+      ]),
+    });
+
+    const rows = tankGasUseRows(messy);
+    const placed = rows.map((row) => row.use).filter((use) => use !== null);
+
+    expect(placed).toHaveLength(3);
+    expect(new Set(placed).size).toBe(3);
+  });
+
+  it("leaves a cylinder with no gas number unattributed", () => {
+    // A hand-added cylinder on an imported dive. Nothing to join on, and
+    // guessing by position is exactly the guess the API refuses to make.
+    const handAdded = dive({
+      mixtures: [mixture({ gas_number: null })],
+      gas_use: multiTankUse([tank({ gas_number: 1 })]),
+    });
+
+    const rows = tankGasUseRows(handAdded);
+
+    expect(rows[0].use).toBeNull();
+    expect(rows[1].label).toBe("Gas 1");
+  });
+
+  it("appends a tank matching no cylinder rather than dropping it", () => {
+    // Its litres are already inside the dive-wide total, so a hidden row would
+    // leave a total the visible rows don't sum to.
+    const orphan = dive({
+      mixtures: [mixture({ gas_number: 1 })],
+      gas_use: multiTankUse([tank({ gas_number: 1 }), tank({ gas_number: 7 })]),
+    });
+
+    const rows = tankGasUseRows(orphan);
+
+    expect(rows).toHaveLength(2);
+    expect(rows[1].label).toBe("Gas 7");
+    expect(rows[1].gas).toBeNull();
+    expect(rows[1].use?.gas_number).toBe(7);
+  });
+
+  it("gives every row a distinct key", () => {
+    // Two unnamed, unnumbered cylinders share a label; React still needs to tell
+    // their rows apart.
+    const twins = dive({
+      mixtures: [
+        mixture({ id: 1, name: null, gas_number: null }),
+        mixture({ id: 2, name: null, gas_number: null }),
+      ],
+      gas_use: multiTankUse([tank({ gas_number: 1 })]),
+    });
+
+    const keys = tankGasUseRows(twins).map((row) => row.key);
+
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+});
+
+describe("gasAttributionNote", () => {
+  it("says nothing when the split covers the whole recorded dive", () => {
+    expect(
+      gasAttributionNote(
+        multiTankUse([tank()], {
+          attributed_seconds: 2700,
+          duration_seconds: 2700,
+        }),
+      ),
+    ).toBeNull();
+  });
+
+  it("says nothing when the remainder is under a minute of rounding", () => {
+    expect(
+      gasAttributionNote(
+        multiTankUse([tank()], {
+          attributed_seconds: 2655,
+          duration_seconds: 2700,
+        }),
+      ),
+    ).toBeNull();
+  });
+
+  it("names both spans once a minute or more is unassigned", () => {
+    const note = gasAttributionNote(
+      multiTankUse([tank()], {
+        attributed_seconds: 2280,
+        duration_seconds: 2520,
+      }),
+    );
+
+    expect(note).toBe(
+      "These figures cover 38min of the 42min the dive computer recorded - the rest couldn't be assigned to a cylinder.",
+    );
+  });
+
+  it("attributes the denominator, which outruns the dive's own duration", () => {
+    // Dive #493's real numbers: 2075 s attributed against a 4300 s profile span,
+    // on a dive whose logged duration is 4001 s and prints as "1h 7min" at the
+    // top of the same page. Unattributed, "of the 1h 12min recorded" reads as
+    // contradicting that header rather than as the computer's own span.
+    const note = gasAttributionNote(
+      multiTankUse([tank()], {
+        attributed_seconds: 2075,
+        duration_seconds: 4300,
+      }),
+    );
+
+    expect(note).toMatch(/35min of the 1h 12min the dive computer recorded/);
+  });
+
+  it("says nothing when the API sent no coverage figures", () => {
+    // Every single-tank dive, and any older response predating the pair.
+    expect(
+      gasAttributionNote({ gas_used: 1800, rmv: 14.29, sac_bar_per_min: 1.19 }),
+    ).toBeNull();
+  });
+
+  it("says nothing rather than claiming more of the dive than it has", () => {
+    // A degenerate profile, or attribution that overlapped itself. Silence beats
+    // "covers 45min of the 40min recorded".
+    expect(
+      gasAttributionNote(
+        multiTankUse([tank()], {
+          attributed_seconds: 2700,
+          duration_seconds: 2400,
+        }),
+      ),
+    ).toBeNull();
+    expect(
+      gasAttributionNote(
+        multiTankUse([tank()], {
+          attributed_seconds: 0,
+          duration_seconds: 0,
+        }),
+      ),
+    ).toBeNull();
   });
 });
 
