@@ -23,6 +23,9 @@ function parsed(overrides: Partial<ParsedDiveMixture> = {}): ParsedDiveMixture {
     end_pressure: null,
     oxygen: null,
     helium: null,
+    po2_limit: null,
+    gas_number: null,
+    role: null,
     ...overrides,
   };
 }
@@ -42,6 +45,9 @@ describe("mergeMixture", () => {
         end_pressure: 122.44,
         oxygen: 32,
         helium: 0,
+        po2_limit: 1.4,
+        gas_number: 1,
+        role: "bottom",
       }),
       0,
     ).value;
@@ -53,7 +59,52 @@ describe("mergeMixture", () => {
       end_pressure: 122.44,
       oxygen: 32,
       helium: 0,
+      po2_limit: 1.4,
+      gas_number: 1,
+      role: "bottom",
     });
+  });
+
+  it("leaves the tech fields empty when the file recorded none", () => {
+    // Unlike volume and the gas fractions, these have no default tier: an absent
+    // ppO2 limit falls back to PPO2_WORKING where a MOD is computed, and an absent
+    // role or gas number simply isn't shown. So there is nothing to guess and
+    // nothing for the import note to warn about.
+    const mixture = mergeMixture(parsed({ oxygen: 21, helium: 0 }), 0).value;
+
+    // `""` for the two the form has an input for - the cleared state their
+    // fields read back - and `undefined` for the one it doesn't.
+    expect(mixture.po2_limit).toBe("");
+    expect(mixture.gas_number).toBeUndefined();
+    expect(mixture.role).toBe("");
+  });
+
+  it("carries the form's tech fields when the file has none of its own", () => {
+    // The middle tier, same as the pressures: importing a second export for one dive
+    // (the Ocean's FIT and JSON are complementary) must not erase what the first
+    // contributed.
+    const mixture = mergeMixture(
+      parsed({ oxygen: 21, helium: 0 }),
+      0,
+      onForm({ po2_limit: 1.6, gas_number: 2, role: "deco" }),
+    ).value;
+
+    expect(mixture.po2_limit).toBe(1.6);
+    expect(mixture.gas_number).toBe(2);
+    expect(mixture.role).toBe("deco");
+  });
+
+  it("prefers the file's tech fields over the form's", () => {
+    const mixture = mergeMixture(
+      parsed({ oxygen: 21, helium: 0, po2_limit: 1.4, gas_number: 0 }),
+      0,
+      onForm({ po2_limit: 1.6, gas_number: 2 }),
+    ).value;
+
+    expect(mixture.po2_limit).toBe(1.4);
+    // Zero is a value, not an absence - a Suunto Ocean numbers its cylinders from 0,
+    // so `??` rather than `||` is what keeps that number from being replaced.
+    expect(mixture.gas_number).toBe(0);
   });
 
   it("fills gas and volume the export never recorded from DEFAULT_MIXTURE", () => {

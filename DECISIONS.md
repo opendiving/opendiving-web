@@ -3376,3 +3376,211 @@ the diver to act on. The refine mirrors that CHECK.
 
 Reported on `path: ["helium"]` rather than `oxygen`: helium is the box being filled in second on the
 trimix entries where this happens at all, so the message lands under the field being looked at.
+
+## The Exposure card renders stored numbers and derives nothing
+
+`components/dives/dive-exposure-card.tsx` shows CNS, OTU and surface pressure exactly as the API
+sends them. That makes it the odd one out on a page where the mixtures card computes gas names and
+MODs, the consumption card explains a missing RMV, and the profile chart rescales everything it
+draws — so the absence of maths here is worth stating rather than leaving to look like an oversight.
+
+There is nothing to derive from. CNS and OTU are the output of whichever decompression algorithm the
+device ran, over an exposure history that includes dives this log may not hold. The browser has no
+model to recompute them with and no second source to check them against, and a "corrected" figure
+that disagreed with the number on the diver's wrist would be worse than useless. Surface pressure is
+the same kind of value: a barometer reading, not a function of anything else stored.
+
+Which is also why the fields are **read-only and absent from the dive form entirely** — the API
+keeps them off its create/update schemas (see its DECISIONS.md), so there is no input to add here.
+
+Three smaller choices inside it:
+
+- **Start → end, not just the end.** A repetitive dive that went CNS 8 % → 9 % added almost nothing,
+  and one that went 0 % → 9 % is a different dive with the same final number. A missing half renders
+  as an em dash rather than collapsing the pair, because "recorded only the end" is the normal shape
+  for a FIT file — the format has no start-OTU field at all.
+- **Renders nothing when the dive has none of the three**, unlike the gas-consumption card next to
+  it, which stays and explains itself. That card can be empty _despite_ the diver having filled in
+  the pressures, so silence would read as a bug; these are readings a diver never had the option to
+  enter, so an absent card cannot read as something they forgot.
+- **Titled "Exposure & Pressure", not "Oxygen Exposure"** — which is what only two of the three
+  readings are. The card shows on any one of them, and **42 of the 384 XML exports in the corpus
+  record a surface pressure with neither CNS nor OTU**, so the original title headed a lone
+  barometer reading for 11 % of a real log. Retitling rather than gating the card on CNS/OTU: that
+  gate would have dropped a stored reading for those 42 dives, and moving surface pressure to the
+  conditions block is a bigger change into a component this feature otherwise doesn't touch.
+- **Past 100 % CNS is emphasis on the number, not a warning sentence.** The limit is a conservative
+  table value rather than a physiological edge, and the diver already saw it on their computer —
+  this is their log agreeing, not advice. `text-warning`, not `text-warning-foreground`: the same
+  trap the MOD warnings hit, where the `-foreground` token is the white that sits _on_ `bg-warning`
+  and vanishes as text on a card in light mode.
+- **The emphasis needs a second channel, and it is `sr-only` text rather than an icon.** Colour on
+  its own reaches neither a screen reader nor a greyscale or red/green-deficient reader — WCAG 2.1
+  SC 1.4.1 — so "CNS 8 % → 105 %" arrived with nothing marking the second number. Everything else in
+  this feature pairs `text-warning` with an `AlertTriangle` (the mixtures table, the form's gas
+  warning), and that is deliberately _not_ what this does: a visible icon is visible advice, which
+  is the thing the bullet above argues the card should not give. An `sr-only` span says the same
+  sentence to a reader who cannot see the colour and nothing at all to one who can, which is the
+  only version that keeps both properties. Carried as `alert?: string` on `Reading` rather than a
+  boolean plus a hardcoded message, so a caller cannot light a value up without saying why — and so
+  the CNS constant stays at the call site instead of leaking into a helper that also renders OTU.
+
+  It is asserted through the accessible name in `dive-exposure-card.render.test.tsx`, not through
+  the class. A test that checked for `text-warning` would have passed against the version that
+  reached no screen reader at all, which is precisely the bug.
+
+## A recorded ppO₂ limit moves the MOD, and pointedly not the warning
+
+`DiveMixture.po2_limit` is what the dive computer planned a gas to — a Suunto writes 1.4 on the back
+gas and 1.6 on the deco bottle of the same dive — so `ppO2Limit()` feeds it into every MOD the app
+displays, falling back to `PPO2_WORKING` when a dive doesn't record one.
+
+It deliberately does **not** reach `modWarning`/`diveModWarning`. Those judge against the
+`PPO2_WORKING`/`PPO2_DECO` constants, whose own comment says they are constants precisely to prevent
+"the edit that turns an over-MOD warning into silence". A limit arriving from a file is that edit,
+just through a different door: a cylinder recorded at ppO₂ 2.0 would otherwise become unwarnable.
+
+The two are different claims and both are true at once — the column says what the diver planned this
+gas to, the sentence below says what the gas can physiologically take. `OxygenFractions` declares
+`po2_limit` and never reads it, so the answer to "does the limit feed the warning?" is visible in
+the type rather than surviving as an excess-property error at one call site.
+
+**The MOD column's header is conditional**, which is the one piece of cleverness here and earns its
+place: `sharedPpO2Limit()` returns the single limit when every cylinder agrees — every recreational
+dive, and every dive imported before the column existed, since an unrecorded limit counts as the 1.4
+default rather than as _different_ — and the header stays the compact `MOD @ ppO₂ 1.4`. Only when a
+dive genuinely mixes limits does it drop to a bare `MOD` and move the qualifier into the rows. A
+header naming one limit above a column computed from two is the failure being avoided, and the shape
+that would cause it is exactly the two-gas technical dive this work is for.
+
+`DEFAULT_MIXTURE` leaves `po2_limit` blank rather than seeding 1.4, and the field's placeholder
+reads `1.4 (default)`. Pre-filling it would make every hand-added cylinder claim a limit the diver
+never chose; the fallback is the same number either way, but naming it as a fallback keeps the
+printed "@ ppO₂ 1.4" describing where the figure came from.
+
+## `gas_number` round-trips through the form untouched, and 0 is a real value
+
+`DiveMixture.gas_number` is on `diveMixtureSchema` and `normalizeMixtures` but has **no input** —
+the form's whole job is to carry it through a save unchanged. It is the source export's own
+identifier for a cylinder and the join key to that cylinder's pressure curve on the profile chart;
+retyping it could only break the pairing, and an edit form that silently dropped it would strip the
+numbering off every imported dive the first time the diver fixed a typo in their notes.
+
+It is also the one field in `mergeMixture` where `??` versus `||` matters. A Suunto Ocean numbers
+its cylinders **from 0** (7 107 readings on gas 0 across the 2026 corpus), so `||` would treat a
+perfectly good gas number as absent and fall through to whatever was on the form. The zod rule is
+`min(0)`, mirroring the API's `ck_dive_mixture_gas_number_non_negative` — which was itself `>= 1`
+until the backfill's first run rejected the real corpus on it.
+
+`role` is the opposite case: a plain `<select>` rather than the shadcn `Select` used elsewhere on
+this form, because it needs "unset" as a real selectable option and Radix reserves `""` for
+clearing. Expressing that through `Select` would need a sentinel value mapped back to `undefined` on
+both edges — more machinery than a four-option optional field is worth, on a field most cylinders
+will never set.
+
+**And that selectable option then didn't work**, which is the part worth recording. The `<select>`'s
+`onChange` mapped its empty value to `undefined` (`e.target.value || undefined`), and
+react-hook-form re-displays a field's default whenever the current value resolves to `undefined` —
+so on a cylinder imported with `role: "deco"`, choosing **Not recorded** snapped straight back to
+Deco. The one thing the plain `<select>` was chosen for.
+
+This is the trap `diveMixtureSchema` already documents and the numeric fields already dodge: `""` is
+the live cleared state, converted to `undefined` by `normalizeMixtures` at the edge. `po2_limit`,
+added in the same block on the same day, used `""` and was fine. The rule generalizes past numbers —
+**any** optional form field needs a non-`undefined` empty value, and a `<select>` with a real
+"unset" option is exactly as exposed as a text box. `role` is now
+`z.union([z.literal(""), z.enum(GAS_ROLES)]).optional()` for that reason and not for symmetry.
+
+`MixtureFields role input > lets an imported role actually be cleared` pins it, and fails on the
+`|| undefined` version.
+
+## `mod()` returns null below the surface, where `end`/`ead` floor at zero
+
+`mod()` had no floor, which was unreachable until this phase: it was only ever called with the
+1.4/1.6 constants, and oxygen would have to exceed 140 % to drive the result negative. A
+diver-editable `po2_limit` across the schema's `[0.4, 2.0]` band puts it one plausible cylinder away
+— `mod(50, 0.4)` is **−2.0 m**, and an EAN50 bottle planned to 0.4 rendered `-2.0 m` in the mixtures
+table under a `MOD @ ppO₂ 0.4` header, and `MOD -2.0 m @ ppO₂ 0.4` in the form hint. Both values
+pass `diveMixtureSchema` and the API's `ck_dive_mixture_po2_limit_range`, so nothing upstream stops
+them.
+
+`null`, deliberately **not** the `Math.max(0, …)` that `endDepth` and `ead` use, though those two
+sit twenty lines away and floor for what looks like the same reason. It isn't the same reason: 0 m
+is a real answer for an END or an EAD — a rich mix in shallow water genuinely is equivalent to the
+surface — whereas "MOD 0.0 m" reads as a depth the gas may be breathed at, which is the opposite of
+what a negative result means. A gas already past its limit at the surface has no operating depth at
+all, and both call sites already render `-` for `null`. Exactly 0 stays a number: `mod(40, 0.4)` is
+0 m and that is the honest boundary, so only strictly negative becomes `null`.
+
+## The role badge costs the mixtures table 73 px it did not have
+
+Measured on the two-gas verification dive at a 1280 px viewport, where the table's card gives it 667
+px:
+
+|                          | table width | over its slot |
+| ------------------------ | ----------- | ------------- |
+| Phase 1 (Gas badge only) | 719 px      | 52 px         |
+| with the role badge      | 792 px      | 125 px        |
+
+So the table was **already** overflowing before this work — the `overflow-x-auto` wrapper and the
+`whitespace-nowrap` rows were doing real work, not sitting idle — and the role badge roughly doubled
+it. That matters more than the raw number, because MOD is the last column: past ~117 px of overflow
+it is off-screen by default, on exactly the multi-gas dives it exists for.
+
+Two cuts were made and both are improvements on their own terms, not just width savings:
+
+- **`GAS_ROLE_LABELS` lost the word "gas"** — "Bottom gas" inside a column headed _Gas_ was saying
+  it twice. Worth 0 px on the dive measured above, whose widest row happens to carry the
+  already-short "Oxygen", and up to ~30 px on one carrying "Bottom".
+- **The per-row ppO₂ suffix is `@ 1.6`, not `@ ppO₂ 1.6`** — 36 px, and only rendered at all when a
+  dive mixes limits, since the header carries it otherwise. "@" in a MOD column is not ambiguous.
+
+That leaves ~125 px of overflow, and it is **left there deliberately** rather than paid for by
+re-opening a Phase 1 decision. The candidates were all worse: moving `bar` out of the pressure cells
+into the headers reverses a choice that section explicitly argues for, and dropping `O₂`/`He` would
+lose the unrounded fractions that exist because the `Gas` badge is rounded shorthand. Eight columns
+in a two-thirds-width card is the actual problem, and narrowing it is a change to the table as a
+whole — worth doing on its own, with its own before/after, not smuggled in behind a badge.
+
+**If this is revisited, the thing to reconsider is the column set, not the badge.**
+`Volume`/`Start`/ `End` are the gas-consumption inputs and `Gas`/`O₂`/`He`/`MOD` the planning facts;
+they may simply be two tables, or one table with the consumption columns folded into the card below
+that already consumes them.
+
+## The API sends `null`, the form schema only understood `""` — and the save button did nothing
+
+Three fields were added to `diveMixtureSchema` in this phase, and all three rejected the value the
+API actually sends. `DiveMixtureBase` declares them `X | None` with no `exclude_none` anywhere, so
+an unrecorded field arrives as an explicit `"po2_limit": null`, not as an absent key — and every
+mixture stored before this branch is unrecorded for all three. `null` is a member of no field's
+union: `po2_limit` and `role` spell their empty state `""`, and `gas_number` has no empty state at
+all.
+
+The edit page seeded the form with `{ ...m, start_pressure: …, end_pressure: … }`, coercing exactly
+the two fields that had needed it before, so the three new ones went in as `null` and `zodResolver`
+refused the submit. **The form did not report this.** `handleSubmit`'s valid callback never fired,
+so there was no request, no toast and no error — the diver pressed **Save Changes** and watched
+nothing happen. `gas_number` is the reason it stayed invisible rather than merely confusing: it has
+no input, so its `FormMessage` had nowhere to render. The create page had the same bug by a
+different door, its prefill-from-last-dive writing a bare `role: m.role` one line below a correctly
+coerced `po2_limit: m.po2_limit ?? ""`.
+
+None of the 760 tests caught it because **every mixture fixture in the suite was form-shaped** —
+`""` and `undefined`, the shape the form produces, never the shape the API returns. A suite can be
+green over an unusable form if nothing in it has ever seen a real response body.
+
+Three changes, and the order matters:
+
+- **`DiveMixture`'s optional fields are `| null`.** They always were on the wire; the type was
+  vouching for a promise the response never made. This is the load-bearing one — with it, the bare
+  `role: m.role` on the create page is a compile error rather than a runtime rejection.
+- **`toDiveMixtureInput` in `lib/validations/dive.ts`** is now the one API→form conversion, sitting
+  beside `normalizeMixtures`, which is the form→API direction. Field-by-field, no spread: a spread
+  is what let three new fields join the response and reach the resolver unconverted.
+- **A fixture written the way the API serializes it**, with the `null`s spelled out, parsed through
+  `diveMixtureSchema` and round-tripped back through `normalizeMixtures`.
+
+The general rule this leaves: **a field arriving from the API needs a conversion at the boundary the
+moment the form gives it a sentinel empty value**, and a spread cannot be that conversion, because
+it silently admits whatever gets added next. Note `name` was in the same position and only survived
+on luck — every path that writes it happened to coerce it first.

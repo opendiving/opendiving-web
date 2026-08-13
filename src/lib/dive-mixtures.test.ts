@@ -6,6 +6,8 @@ import {
   ead,
   endDepth,
   gasHintParts,
+  ppO2Limit,
+  sharedPpO2Limit,
   gasName,
   mod,
   modWarning,
@@ -105,6 +107,20 @@ describe("mod", () => {
     expect(mod(null)).toBeNull();
     expect(mod(undefined)).toBeNull();
     expect(mod(NaN)).toBeNull();
+  });
+
+  it("returns null for a mix already past its limit at the surface", () => {
+    // Reachable only since `po2_limit` became diver-editable across [0.4, 2.0]: with
+    // the 1.4/1.6 constants this needed oxygen above 140 %. EAN50 planned to 0.4
+    // used to render "-2.0 m" on the mixtures card and in the form hint.
+    expect(mod(50, 0.4)).toBeNull();
+    expect(mod(100, 0.4)).toBeNull();
+  });
+
+  it("still answers 0 m for a mix that is exactly at its limit at the surface", () => {
+    // The boundary is a real answer, not the failure above: 0.4 / 0.4 = 1 bar
+    // ambient, which is the surface. Only *below* zero is meaningless.
+    expect(mod(40, 0.4)).toBeCloseTo(0, 5);
   });
 });
 
@@ -402,5 +418,82 @@ describe("diveModWarning", () => {
   it("ignores an unusable cylinder when judging the rest", () => {
     // A half-typed row must not drag the deepest-capable figure around.
     expect(diveModWarning([AIR, { oxygen: null }], 80)).toContain("66.2 m");
+  });
+});
+
+describe("ppO2Limit", () => {
+  it("uses what the dive recorded", () => {
+    expect(ppO2Limit({ po2_limit: 1.6 })).toBe(1.6);
+  });
+
+  it("falls back to the working limit when nothing was recorded", () => {
+    expect(ppO2Limit({})).toBe(PPO2_WORKING);
+    expect(ppO2Limit({ po2_limit: null })).toBe(PPO2_WORKING);
+  });
+
+  it("falls back rather than propagating a non-number", () => {
+    // A MOD of NaN would render, and a MOD computed from NaN would render as an
+    // empty cell that reads like "this gas has no limit".
+    expect(ppO2Limit({ po2_limit: NaN })).toBe(PPO2_WORKING);
+  });
+});
+
+describe("sharedPpO2Limit", () => {
+  it("is the common limit when every cylinder agrees", () => {
+    expect(sharedPpO2Limit([{ po2_limit: 1.4 }, { po2_limit: 1.4 }])).toBe(1.4);
+  });
+
+  it("treats an unrecorded limit as the working default, not as different", () => {
+    // Every dive imported before the column existed has none, so the ordinary case
+    // has to stay the compact "MOD @ ppO₂ 1.4" header.
+    expect(sharedPpO2Limit([{}, { po2_limit: 1.4 }])).toBe(PPO2_WORKING);
+    expect(sharedPpO2Limit([{}, {}])).toBe(PPO2_WORKING);
+  });
+
+  it("is null when the dive genuinely mixes limits", () => {
+    // A Suunto records exactly this: 1.4 on the back gas, 1.6 on the deco bottle.
+    expect(
+      sharedPpO2Limit([{ po2_limit: 1.4 }, { po2_limit: 1.6 }]),
+    ).toBeNull();
+  });
+
+  it("is null for no cylinders at all", () => {
+    expect(sharedPpO2Limit([])).toBeNull();
+  });
+});
+
+describe("gasHintParts with a recorded ppO2 limit", () => {
+  it("computes the MOD at the dive's own limit and names it", () => {
+    // EAN50 at 1.6 reaches 22 m, against 18 m at the 1.4 working limit - which is
+    // the whole point of staging it.
+    const parts = gasHintParts({
+      oxygen: 50,
+      helium: 0,
+      depth: null,
+      ppO2: 1.6,
+    });
+
+    expect(parts).toContain("MOD 22.0 m @ ppO₂ 1.6");
+  });
+
+  it("names the fallback it used when the dive recorded none", () => {
+    // The label always describes the number beside it, so an absent limit still
+    // says which one the MOD came from rather than leaving it unqualified.
+    const parts = gasHintParts({ oxygen: 50, helium: 0, depth: null });
+
+    expect(parts).toContain(`MOD 18.0 m @ ppO₂ ${PPO2_WORKING}`);
+  });
+});
+
+describe("a recorded ppO2 limit does not move the warning thresholds", () => {
+  it("still warns about a gas the dive recorded a high limit for", () => {
+    // The MOD column would show 30 m for this gas at ppO₂ 2.0, and 32 m is inside
+    // it. The warning is about what the gas can physiologically take, not about
+    // what the dive planned - see `diveModWarning`. A file must not be able to
+    // silence it.
+    const warning = diveModWarning([{ oxygen: 50, po2_limit: 2.0 }], 32);
+
+    expect(warning).not.toBeNull();
+    expect(warning).toContain("22.0 m");
   });
 });

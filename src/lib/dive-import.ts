@@ -128,6 +128,18 @@ export function mergeMixture(
         mixture.end_pressure ?? carriedPressures?.end_pressure ?? "",
       oxygen: oxygen.value,
       helium: helium.value,
+      // File, then form, then nothing - these three deliberately have no default
+      // tier, so they are absent from `DefaultedMixtureField` and never appear in
+      // the import note. There is nothing to warn about: a missing ppO₂ limit falls
+      // back to `PPO2_WORKING` at the point a MOD is computed, and a missing role or
+      // gas number simply isn't displayed. Compare `volume`, where the form showing
+      // 11.1 L for a cylinder the file never described is a claim worth flagging.
+      po2_limit: mixture.po2_limit ?? existing?.po2_limit ?? "",
+      gas_number: mixture.gas_number ?? existing?.gas_number,
+      // `""` rather than `undefined` for the same reason as `po2_limit` above: it
+      // is the cleared state the `<select>` and `normalizeMixtures` agree on, so
+      // the row this replaces reads the same whether it came from a file or a form.
+      role: mixture.role ?? existing?.role ?? "",
     },
     sources: {
       volume: volume.source,

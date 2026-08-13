@@ -12,6 +12,7 @@ import {
   buildDiveUpdate,
   diveUpdateSchema,
   DiveUpdateInput,
+  toDiveMixtureInput,
 } from "@/lib/validations/dive";
 import {
   DEFAULT_MIXTURE,
@@ -88,12 +89,12 @@ function EditDivePageContent() {
         dive_site_uuids: diveData.dive_sites?.map((site) => site.uuid) ?? [],
         gear_item_uuids: diveData.gear_items?.map((item) => item.uuid) ?? [],
         notes: diveData.notes || "",
+        // Converted field by field rather than spread: every optional field
+        // arrives as an explicit `null` when the mixture doesn't record it, and
+        // `null` satisfies none of their unions in `diveMixtureSchema`. See
+        // `toDiveMixtureInput`.
         mixtures: diveData.mixtures?.length
-          ? diveData.mixtures.map((m) => ({
-              ...m,
-              start_pressure: m.start_pressure ?? "",
-              end_pressure: m.end_pressure ?? "",
-            }))
+          ? diveData.mixtures.map(toDiveMixtureInput)
           : [{ ...DEFAULT_MIXTURE, name: getDefaultMixtureName(0) }],
       });
     },

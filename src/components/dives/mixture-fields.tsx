@@ -10,7 +10,7 @@ import {
   useWatch,
 } from "react-hook-form";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, inputClassName } from "@/components/ui/input";
 import {
   FormControl,
   FormField,
@@ -22,10 +22,13 @@ import { AlertTriangle, Plus, Trash2 } from "lucide-react";
 import { DiveMixtureInput } from "@/lib/validations/dive";
 import {
   DEFAULT_MIXTURE,
+  GAS_ROLE_LABELS,
+  PPO2_WORKING,
   diveModWarning,
   gasHintParts,
   getDefaultMixtureName,
 } from "@/lib/dive-mixtures";
+import { GAS_ROLES } from "@/lib/api/dives";
 import { VolumeCombobox } from "@/components/dives/volume-combobox";
 
 export { DEFAULT_MIXTURE, getDefaultMixtureName };
@@ -105,6 +108,7 @@ function MixtureGasHint({
 }) {
   const oxygen = useWatch({ control, name: `mixtures.${index}.oxygen` });
   const helium = useWatch({ control, name: `mixtures.${index}.helium` });
+  const po2Limit = useWatch({ control, name: `mixtures.${index}.po2_limit` });
   const maxDepth = useWatch({ control, name: "max_depth" });
 
   // `depth` is null unless this is the only cylinder, which is what keeps END/EAD
@@ -113,6 +117,10 @@ function MixtureGasHint({
     oxygen,
     helium,
     depth: isOnlyMixture ? maxDepth : null,
+    // `""` is the cleared state, not a limit of zero - normalized here so
+    // `gasHintParts` deals only in numbers and nulls, the way every other caller
+    // hands it values.
+    ppO2: po2Limit === "" ? null : po2Limit,
   });
   if (parts.length === 0) return null;
 
@@ -377,6 +385,80 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                         field.onChange(raw === "" ? "" : parseFloat(raw));
                       }}
                     />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={control}
+              name={`mixtures.${index}.po2_limit` as Path<TFieldValues>}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>ppO₂ limit (bar)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      min="0.4"
+                      max="2"
+                      // The fallback is named rather than pre-filled, so an empty
+                      // box still says what the MOD above it was worked out from.
+                      // Seeding 1.4 would make every cylinder claim a limit the
+                      // diver never chose - see `DEFAULT_MIXTURE`.
+                      placeholder={`${PPO2_WORKING} (default)`}
+                      {...field}
+                      value={field.value ?? ""}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        field.onChange(raw === "" ? "" : parseFloat(raw));
+                      }}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={control}
+              name={`mixtures.${index}.role` as Path<TFieldValues>}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Role</FormLabel>
+                  {/* A plain `<select>` rather than the shadcn `Select` used
+                      elsewhere on this form, because this one has to express
+                      "unset" as a real, selectable option. `Select` has no empty
+                      `SelectItem` (Radix reserves `""` for clearing), so the
+                      escape hatch would have to be a sentinel value mapped back
+                      to `undefined` on both edges - more machinery than a
+                      four-option optional field is worth. Most cylinders have no
+                      recorded role and that has to stay easy to leave alone. */}
+                  <FormControl>
+                    <select
+                      // `Input`'s own classes rather than a copy of them: this
+                      // sits in the same grid row as the ppO₂ box, and the copy
+                      // it started as had drifted to a shorter, differently-ringed
+                      // control beside it.
+                      className={inputClassName}
+                      {...field}
+                      value={field.value ?? ""}
+                      // `""` straight through, not `|| undefined`: react-hook-form
+                      // re-displays a field's default whenever its value resolves to
+                      // `undefined`, so mapping the "Not recorded" option to it made
+                      // choosing that option snap back to the imported role. Same
+                      // sentinel and same reason as `po2_limit` above; converted at
+                      // the edge by `normalizeMixtures`.
+                      onChange={(e) => field.onChange(e.target.value)}
+                    >
+                      <option value="">Not recorded</option>
+                      {GAS_ROLES.map((role) => (
+                        <option key={role} value={role}>
+                          {GAS_ROLE_LABELS[role]}
+                        </option>
+                      ))}
+                    </select>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
