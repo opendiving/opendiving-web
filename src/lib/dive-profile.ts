@@ -1,15 +1,18 @@
 import type {
   DiveProfile,
+  DiveProfileEvent,
   DiveProfilePressureSeries,
   DiveProfileSeries,
 } from "@/lib/api/dives";
+import { niceDomain, type Domain } from "@/lib/chart-scale";
 
 // All of the dive profile chart's arithmetic, kept out of the component per the
 // repo convention: pure functions in `lib/` get Vitest coverage, components
 // aren't rendered in tests. If a number on that chart could be wrong, its
 // derivation belongs here.
 
-export type ProfileChannelKey = "depth" | "temperature" | "pressure";
+export type ProfileChannelKey =
+  "depth" | "ceiling" | "temperature" | "pressure";
 
 export interface ProfileChannel {
   key: ProfileChannelKey;
@@ -29,6 +32,32 @@ export interface ProfileChannel {
   // to every other chart in the app. The flag lives here rather than as an `if`
   // in the component, so nothing else has to remember which channel is special.
   inverted: boolean;
+  // Drawn as a dashed line rather than a solid one - in the plot *and* in the
+  // legend swatch, which is the reason this is a property of the channel rather
+  // than a check at the one place that draws a polyline. A solid swatch next to
+  // a dashed curve is the one thing a legend must not say, and the two live far
+  // enough apart in the component to drift if each decided for itself.
+  dashed: boolean;
+  // What a gap in this channel's samples means, and so how hard the chart works
+  // to avoid drawing across one.
+  //
+  // For a measured channel a gap means "not recorded", and with fewer than three
+  // samples there is no cadence to judge one by - so joining them is the only
+  // honest thing left, and `gapThreshold`'s `Infinity` says exactly that. For
+  // the deco ceiling a gap means **no obligation existed**, which is a fact
+  // about the dive rather than about the sensor, and joining across it draws a
+  // forbidden zone over water the diver was free to be in.
+  //
+  // Only the second kind is worth refusing to draw for, and refusing has a real
+  // cost: a two-sample channel splits into two runs of one, which draw nothing,
+  // and a channel with nothing drawable is not plotted at all. Paid for the
+  // ceiling; not paid for depth, where it would replace a two-point line with
+  // "this dive's imported file recorded no samples to plot" over a dive that
+  // recorded two.
+  //
+  // Coincides with `dashed` today and says something different: that one is how
+  // the curve is drawn, this is what its absence means.
+  gapsAreMeaningful: boolean;
 }
 
 export const PROFILE_CHANNELS: Record<ProfileChannelKey, ProfileChannel> = {
@@ -40,6 +69,30 @@ export const PROFILE_CHANNELS: Record<ProfileChannelKey, ProfileChannel> = {
     decimals: 1,
     colorClass: "text-teal",
     inverted: true,
+    dashed: false,
+    gapsAreMeaningful: false,
+  },
+  ceiling: {
+    key: "ceiling",
+    label: "Deco ceiling",
+    unit: "m",
+    // Depth's scale, not one of its own - see `CEILING_SCALE` in the API's
+    // `schemas/dive_profile.py`. A ceiling is a depth, and it is drawn against
+    // the depth axis, so the two have to divide by the same number or the
+    // shaded region would not line up with the curve it bounds.
+    scale: 100, // centimeters
+    decimals: 1,
+    colorClass: "text-ceiling",
+    inverted: true,
+    // The only dashed curve on the chart, and the dash is load-bearing: this is
+    // the one line here that was never measured. Depth, temperature and
+    // pressure are readings; a ceiling is a computed limit that moved as the
+    // diver's tissues loaded, and a solid line would present the two as the
+    // same kind of fact.
+    dashed: true,
+    // A break in this series is a stretch of dive with no decompression
+    // obligation, not a sensor dropping out.
+    gapsAreMeaningful: true,
   },
   temperature: {
     key: "temperature",
@@ -49,6 +102,8 @@ export const PROFILE_CHANNELS: Record<ProfileChannelKey, ProfileChannel> = {
     decimals: 1,
     colorClass: "text-coral",
     inverted: false,
+    dashed: false,
+    gapsAreMeaningful: false,
   },
   pressure: {
     key: "pressure",
@@ -58,6 +113,8 @@ export const PROFILE_CHANNELS: Record<ProfileChannelKey, ProfileChannel> = {
     decimals: 0,
     colorClass: "text-pressure",
     inverted: false,
+    dashed: false,
+    gapsAreMeaningful: false,
   },
 };
 
@@ -67,6 +124,7 @@ export const PROFILE_CHANNELS: Record<ProfileChannelKey, ProfileChannel> = {
 // happens to be written.
 export const PROFILE_CHANNEL_KEYS: readonly ProfileChannelKey[] = [
   "depth",
+  "ceiling",
   "temperature",
   "pressure",
 ];
@@ -87,7 +145,7 @@ export interface ChannelSeries {
 // noise the integer encoding was chosen to remove.
 export function toChannelSeries(
   profile: DiveProfile,
-  key: "depth" | "temperature",
+  key: "depth" | "ceiling" | "temperature",
 ): ChannelSeries | null {
   const series: DiveProfileSeries | null | undefined = profile[key];
   if (!series || series.t.length === 0) return null;
@@ -114,6 +172,116 @@ export function toPressureSeries(
       t: cylinder.t,
       values: cylinder.v.map((value) => value / channel.scale),
     }));
+}
+
+// The one vertical axis depth and the deco ceiling are both scaled against.
+//
+// One domain across both, exactly as every cylinder shares one pressure domain
+// and for a sharper version of the same reason: a ceiling is a bound *on* the
+// depth curve, so on an axis of its own a 3 m ceiling could be drawn below a
+// 40 m depth. Anchored at the surface by feeding `niceDomain` the `0` that makes
+// `Math.floor(0 / step) * step` land on it, the same way depth alone used to.
+//
+// Both channels' values go in whether or not they're currently plotted, so the
+// axis doesn't shift under the curves when the ceiling is toggled. On real data
+// that costs nothing - a ceiling is always shallower than the depth it was
+// computed at - but a domain that depends on what's visible is a needless way
+// for the picture to move.
+export function depthDomain(
+  depthValues: readonly number[],
+  ceilingValues: readonly number[],
+): Domain {
+  return niceDomain([0, ...depthValues, ...ceilingValues]);
+}
+
+// The event nearest `seconds`, or null when the closest is further away than
+// `maxDeltaSeconds`.
+//
+// A tolerance rather than a nearest-always, because unlike a channel readout an
+// event marker is a discrete thing at a discrete instant: naming the dive's only
+// gas switch while the cursor sits twenty minutes away from it would be a
+// caption for something that isn't under the crosshair. The caller sets the
+// tolerance from the chart's own geometry, so it stays a fixed distance in
+// pixels rather than a fixed number of seconds - a tolerance that reads well on
+// a 20-minute dive is invisible on a three-hour one.
+//
+// A linear scan over a list the API caps at 200, and deliberately not a binary
+// search: the saving is unmeasurable and the scan doesn't care whether the list
+// arrived sorted.
+//
+// **Ties go to the earlier event**, and that is compared on `t` rather than left
+// to iteration order. `delta < bestDelta` alone would mean "first in the array",
+// which is only the same thing on a sorted list - and not assuming sorted input
+// is the whole reason this is a scan. The API does sort in `normalize`, so this
+// decides nothing today; a comment claiming one rule while the code follows
+// another is the part that would eventually cost someone an afternoon.
+export function nearestEvent(
+  events: readonly DiveProfileEvent[],
+  seconds: number,
+  maxDeltaSeconds: number,
+): DiveProfileEvent | null {
+  let best: DiveProfileEvent | null = null;
+  let bestDelta = Number.POSITIVE_INFINITY;
+
+  for (const event of events) {
+    const delta = Math.abs(event.t - seconds);
+    if (delta > maxDeltaSeconds) continue;
+
+    if (
+      best === null ||
+      delta < bestDelta ||
+      (delta === bestDelta && event.t < best.t)
+    ) {
+      best = event;
+      bestDelta = delta;
+    }
+  }
+
+  return best;
+}
+
+// What a marker says, in words - for the crosshair readout and for the chart's
+// accessible summary.
+//
+// An `other` is the device's own wording and is passed through as it stands:
+// that is the entire point of the type, and rephrasing "Mandatory Safety Stop
+// Broken" into something tidier would be inventing a claim about a dive. The
+// API guarantees a label on an `other` (its `_validate_events` rejects one
+// without), so the fallback here is only for a payload that broke that promise -
+// an unlabelled tick with no words is still better than the string "undefined".
+//
+// The `default` is not dead code, however much the exhaustive `case` list makes
+// it look like one. `ProfileEventType` is closed *today*, and the two repos
+// deploy independently: an API that grows a sixth type reaches a browser still
+// running this bundle, where `event.type` is a string TypeScript merely believes
+// is one of five. Without the branch the switch falls off the end and returns
+// `undefined` from a function typed `: string`, which renders as an empty
+// tooltip line and puts the literal word "undefined" in the chart's
+// `aria-label`. Degrading to the device's own wording, or to a neutral noun,
+// costs three lines.
+export function describeEvent(event: DiveProfileEvent): string {
+  switch (event.type) {
+    case "gas_switch":
+      // The cylinder's own number, the same label the mixtures table and the
+      // pressure curves carry - and `0` is a real gas number on a Suunto Ocean,
+      // so this tests for null rather than for falsiness.
+      return event.gas_number == null
+        ? "Gas switch"
+        : `Gas switch to gas ${event.gas_number}`;
+    case "deep_stop":
+      return "Deep stop";
+    case "safety_stop":
+      return "Safety stop";
+    case "bookmark":
+      return "Bookmark";
+    // `other` and an unknown type take the same branch, and deliberately share
+    // one `return` rather than repeating it: they want identical handling for
+    // almost the same reason - the device said something this vocabulary has no
+    // word for - and two identical branches are two things to keep in step.
+    case "other":
+    default:
+      return event.label?.trim() || "Device event";
+  }
 }
 
 // Split a series into runs of consecutive samples, as arrays of indices, so a
@@ -165,6 +333,44 @@ export function gapThreshold(t: number[]): number {
   return Math.max(MIN_GAP_SECONDS, median * GAP_FACTOR);
 }
 
+// The same threshold, made safe to compare a *distance* against - which is what
+// the crosshair does and the segmenter doesn't.
+//
+// `gapThreshold` answers `Infinity` for a series of one or two samples, and for
+// segmenting that is exactly right: there is no cadence to derive, and no gap
+// that could be judged a dropout, so the honest answer is "never break this".
+// Fed to `sampleIndexAt` the same value means "no distance is too far", which
+// silently turns the guard back into the clamping `nearestSampleIndex` it exists
+// to replace.
+//
+// **That is not a hypothetical shape for the deco ceiling.** The API drops zero
+// ceilings, so the channel carries samples only while an obligation existed - a
+// dive that tips into deco for one or two 10-second samples produces a two-point
+// series and nothing else. With an infinite tolerance the crosshair then reports
+// that ceiling at *every instant of the dive*, which is precisely the invented
+// obligation this guard was written to prevent, arriving on the shortest and
+// least expected obligations rather than the long obvious ones. The one-sample
+// case is worse still: `segmentByTimeGap` yields a single-point run that draws
+// nothing, so the chart shows no ceiling at all while the tooltip insists on one.
+//
+// The floor rather than the median, because a series this short has no median
+// worth having. It errs toward refusing: on two samples 70 s apart the line is
+// drawn across the whole span while the readout only answers within 15 s of
+// either end. Silence where a curve exists is a cosmetic loss; a number where no
+// obligation existed is not.
+//
+// **Named for the readout, but on a channel whose gaps are meaningful it is the
+// segmentation threshold too** - see `gapsAreMeaningful` and the `runs()` helper
+// in `dive-profile-chart.tsx`. That is the point rather than an overload: on the
+// ceiling the line and the crosshair have to be cut at one number, and this is
+// the one that is finite. Anyone looking for "the threshold the line was cut at"
+// on the ceiling should stop here rather than re-deriving it.
+export function readoutTolerance(t: number[]): number {
+  const threshold = gapThreshold(t);
+
+  return Number.isFinite(threshold) ? threshold : MIN_GAP_SECONDS;
+}
+
 // The index of the sample nearest `seconds`, by binary search, clamped at both
 // ends.
 //
@@ -191,6 +397,94 @@ export function nearestSampleIndex(t: number[], seconds: number): number {
   // `low` and `high` now bracket `seconds`; pick whichever is closer, ties going
   // to the earlier sample.
   return seconds - t[low] <= t[high] - seconds ? low : high;
+}
+
+// The sample that can honestly be called this channel's reading at `seconds`,
+// or -1 when there isn't one.
+//
+// `nearestSampleIndex` clamps at both ends, which is right for finding a
+// neighbour and wrong for captioning one: it answers "the closest sample" even
+// when the closest sample is twenty minutes away. The chart already refuses to
+// *draw* a line across a stretch a channel didn't record (`segmentByTimeGap`),
+// and the crosshair has to refuse to quote a number there for the same reason -
+// no line, no dot, no readout.
+//
+// The deco ceiling is what makes this unmistakable rather than merely untidy. A
+// gap in that channel means the dive owed no decompression, so a clamped reading
+// before the first sample reports a 3.0 m ceiling five minutes into a dive that
+// was still well inside no-deco limits - inventing an obligation, on the one
+// curve where that is a safety claim rather than a cosmetic slip. The same
+// clamp was already quoting tank pressure through a transmitter dropout; that
+// was a lie too, just a quieter one.
+//
+// `maxDeltaSeconds` is the channel's own `readoutTolerance` - deliberately not
+// `gapThreshold`, which is the number this looks like it should take and is the
+// wrong one: its `Infinity` below three samples reads here as "no distance is
+// too far to quote". The caller passes the same value it cut the line at, so the
+// two cannot disagree about the same stretch of dive.
+//
+// Being close enough is necessary and not sufficient. A sample can clear this
+// and still have been dropped from the picture for sitting in a run too short to
+// draw - which is what `drawnSampleIndexAt` below exists to handle, and what
+// every caller in the chart actually wants.
+export function sampleIndexAt(
+  t: number[],
+  seconds: number,
+  maxDeltaSeconds: number,
+): number {
+  const index = nearestSampleIndex(t, seconds);
+  if (index < 0) return -1;
+
+  return Math.abs(t[index] - seconds) <= maxDeltaSeconds ? index : -1;
+}
+
+// The nearest sample that is close enough to quote **and** made it onto the
+// chart, or -1.
+//
+// Not `sampleIndexAt` followed by a membership test, which is what this replaced
+// and which fails in one specific way: the nearest sample overall may be one the
+// chart dropped, and rejecting it outright then reports nothing even though a
+// drawn sample sits just behind it, well inside the tolerance. On
+// `t = [1000, 1010, 1020, 1060]` with a 30 s tolerance and 1060 dropped as an
+// isolated run, hovering at 1045 s resolved to 1060, failed the membership test,
+// and went silent - with 1020 only 25 s away and visibly drawn.
+//
+// So the search walks outward from the nearest sample and takes the first drawn
+// one, stopping as soon as both frontiers are past the tolerance. That makes the
+// rule sayable in one line - *the nearest drawn sample within tolerance* - rather
+// than as two rules whose interaction has to be reasoned about.
+export function drawnSampleIndexAt(
+  t: number[],
+  seconds: number,
+  maxDeltaSeconds: number,
+  drawn: ReadonlySet<number>,
+): number {
+  const nearest = nearestSampleIndex(t, seconds);
+  if (nearest < 0) return -1;
+
+  let low = nearest;
+  let high = nearest + 1;
+
+  while (low >= 0 || high < t.length) {
+    const lowDelta =
+      low >= 0 ? Math.abs(t[low] - seconds) : Number.POSITIVE_INFINITY;
+    const highDelta =
+      high < t.length ? Math.abs(t[high] - seconds) : Number.POSITIVE_INFINITY;
+
+    // Both frontiers are out of reach, and they only get further away.
+    if (Math.min(lowDelta, highDelta) > maxDeltaSeconds) return -1;
+
+    // Ties to the earlier sample, matching `nearestSampleIndex`.
+    if (lowDelta <= highDelta) {
+      if (drawn.has(low)) return low;
+      low--;
+    } else {
+      if (drawn.has(high)) return high;
+      high++;
+    }
+  }
+
+  return -1;
 }
 
 // Candidate x-axis steps, in seconds. Minute-shaped throughout: `axisTicks`
