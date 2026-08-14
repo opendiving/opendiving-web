@@ -9,7 +9,7 @@ import { divesAPI, Dive } from "@/lib/api/dives";
 import { tripsAPI, Trip } from "@/lib/api/trips";
 import { DiveDetailMain } from "@/components/dives/dive-detail-main";
 import { DiveDetailSidebar } from "@/components/dives/dive-detail-sidebar";
-import { formatDiveStartTime } from "@/lib/date-time";
+import { DiveDateNav } from "@/components/dives/dive-date-nav";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { PageHeader } from "@/components/ui/page-header";
@@ -18,6 +18,7 @@ import { NotFoundState } from "@/components/ui/not-found-state";
 import { Edit, Trash2, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { PageSpinner } from "@/components/ui/page-spinner";
+import { cn } from "@/lib/utils";
 
 export default function DiveDetailPage() {
   const router = useRouter();
@@ -84,7 +85,12 @@ export default function DiveDetailPage() {
     return null; // Will redirect to signin
   }
 
-  if (isLoadingDive) {
+  // Only the *first* load blanks the page. Stepping to a neighbouring dive with the
+  // header's arrows is a same-route id change, which flips `isLoadingDive` again while
+  // `useResource` still holds the dive being left - and returning a spinner there tore
+  // the whole page down mid-step, taking the arrow that was just clicked with it. What
+  // the diver sees now is the dive they came from, dimmed, until the next one lands.
+  if (isLoadingDive && !dive) {
     return (
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <SectionSpinner />
@@ -105,7 +111,10 @@ export default function DiveDetailPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div
+      className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
+      aria-busy={isLoadingDive}
+    >
       <PageHeader
         backHref="/dives"
         backLabel="Back to Dives"
@@ -113,7 +122,10 @@ export default function DiveDetailPage() {
         // The time of day sits here with the date rather than in a card of its
         // own below: the two are one fact, and splitting them put the dive's
         // date in the header and the clock it was on two scroll positions away.
-        subtitle={formatDiveStartTime(dive.start_time)}
+        // The arrows around it step to the chronologically adjacent dives.
+        subtitle={
+          <DiveDateNav diveUuid={dive.uuid} startTime={dive.start_time} />
+        }
         actions={
           <>
             <Button variant="outline" asChild>
@@ -148,7 +160,15 @@ export default function DiveDetailPage() {
         onConfirm={del.confirmDelete}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Dimmed, not replaced, while the next dive loads: these cards still describe
+          the dive being stepped away from, and fading them says "this is on its way
+          out" without the page losing its height and scroll position. */}
+      <div
+        className={cn(
+          "grid grid-cols-1 lg:grid-cols-3 gap-6 transition-opacity",
+          isLoadingDive && "opacity-50",
+        )}
+      >
         <DiveDetailMain dive={dive} />
         <DiveDetailSidebar
           dive={dive}

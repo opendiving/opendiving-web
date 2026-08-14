@@ -7,7 +7,12 @@ export interface PageHeaderProps {
   backHref: string;
   backLabel: string;
   title: string;
-  subtitle?: string;
+  /**
+   * Usually a plain string. A node, so the dive page can hang its prev/next
+   * arrows off either end of the date - the `<p>` below styles the line either
+   * way, and anything richer must stay phrasing content to sit inside it.
+   */
+  subtitle?: ReactNode;
   /** Optional right-aligned actions (e.g. Edit/Delete buttons on detail pages). */
   actions?: ReactNode;
 }

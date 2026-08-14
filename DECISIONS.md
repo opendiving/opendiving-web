@@ -4651,3 +4651,97 @@ next person looking for a rate-limit bug that the client layer already prevents.
 Letting all three run at once is deliberate. The API rate-limits exports per user, so a diver firing
 all three is spending their own budget, which is their call to make rather than a state for this
 card to prevent.
+
+## `<` is the earlier dive, which is the opposite of what the log list would suggest
+
+The dive page's date line got a chevron on each side, stepping to the chronologically adjacent
+dives. The direction is the whole design decision, and it is the one thing that renders perfectly
+while being wrong: `GET /dives` lists newest first, so on the log page the dive _above_ the current
+one is the later one. Inheriting that would have made `>` mean "up the list", i.e. backwards in
+time. The arrows read as a timeline instead — `<` is the earlier dive, `>` the later one — so
+stepping through a trip goes in the order the trip happened.
+
+**Neighbours come from `GET /dive/{uuid}/neighbors`, not from the list.** Finding "the dive just
+before this one" against the paginated list means either paging through the log (N/100 requests, and
+every page carries each dive's sites and gear) or binary-searching it with `items_per_page=1` and
+leaning on the sort order being stable. Both were considered and neither survives a diver with a few
+hundred dives. The endpoint answers with two indexed `ORDER BY start_time LIMIT 1` queries and
+`{previous, next}` carrying only the uuid, number and date — enough to label a link and follow it.
+
+**They are keyed by `start_time`, never by `dive_number`.** `DiveNumberingSummary` exists because
+logs have gaps, duplicates and runs that don't follow the dates; `#213` is a label, not a position.
+
+**Stepping to a neighbour no longer blanks the page, and that is what makes the arrows usable more
+than once.** The detail page returned a `SectionSpinner` for any `isLoadingDive`, which is a
+same-route id change here — so every click tore down the header, the date line and the arrow that
+had just been clicked, then rebuilt them a fetch later. A mouse user saw a flash per step; a
+keyboard user got focus dumped on `<body>` and had to tab back to the arrow on every single dive,
+which is precisely the flow this control exists for. The spinner is now the _first_ load only
+(`isLoadingDive && !dive` — `useResource` keeps the dive being left, it never nulls `resource`), and
+a step dims the card grid to `opacity-50` under `aria-busy` instead. The page keeps its height and
+its scroll position, and what is dimmed is honestly what is on the way out.
+
+**The fetched neighbours are stored with the uuid they were fetched for**, and read back only when
+that uuid still matches. This is what the fix above makes load-bearing: the component now stays
+mounted across a step, so plain `neighbors` state would leave the _previous_ dive's neighbours on
+screen from the moment the new dive lands until its neighbours do — beside a header already naming
+the new dive. That window is long enough to click, and the click would land two dives from where it
+appeared to point. Nulling the state in the effect would also work, at the cost of a second render
+and an eslint suppression.
+
+**The neighbours are fetched for the dive being _displayed_, not for the route param**, which costs
+a round trip: the component only mounts once `getDive` has resolved, so the two requests run in
+series rather than together. Reading `params.id` instead would overlap them, and would also aim the
+arrows at the incoming dive while the date beside them still reads the outgoing one — a `>` click in
+that window skipping a dive relative to everything on screen. The arrows and the date they sit
+around have to describe the same dive; a second round trip on a control this small is the cheaper
+side of that trade.
+
+**An end of the log leaves its arrow dead rather than dropping it.** Dropping it slides the date
+sideways exactly as the diver arrives at the oldest dive, and says nothing about why stepping
+stopped; a dead arrow says "this is the end" without moving anything.
+
+**Each arrow is one `<a>` that swaps its `href`, which is why this doesn't use `next/link`.** The
+obvious build — `<Button asChild><Link>` when there's a neighbour, `<Button disabled>` when there
+isn't — alternates two element types at one position, and React answers that by replacing the DOM
+node. Every step goes through that state: the new dive lands, `diveUuid` changes, the uuid guard
+above nulls the neighbours, and both arrows are unavailable until a second round trip. So the node
+holding focus is destroyed on _every_ step, the browser drops focus to `<body>`, and a keyboard
+diver tabs back to `>` for each dive in a trip — the exact cost the page-blanking fix was supposed
+to remove, one layer further in. `disabled` on a focused `<button>` loses focus the same way, so the
+unavailable state is `aria-disabled` plus `pointer-events-none`, not `disabled`.
+
+Two things follow from hand-rolling the anchor. A plain click has to `router.push` (and a
+cmd/ctrl/shift/alt-click has to be left alone, so a dive still opens in a new tab), and the
+unavailable arrow needs an explicit `role="link"` — an `<a>` with no `href` is `generic` to the
+accessibility tree, and a generic node has no accessible name, so without it the arrow would go from
+"unavailable" to unannounced. `dive-date-nav.render.test.tsx` pins the node identity and the focus
+directly, because nothing else about the rendered output changes when this regresses.
+
+The one thing the shared node costs is that its accessible name and `aria-disabled` both flip on
+every step, so a screen reader announces the arrow as unavailable each time — indistinguishable from
+genuinely reaching the oldest dive. `aria-busy` separates the two: dead-because-unknown carries it,
+dead-because-there-is-nothing-there doesn't.
+
+**A failed neighbours fetch is silent**, the same call as `DiveNumberingStatus` makes: this is a
+shortcut to the rest of the log, not part of the dive the diver came to read, and a toast on top of
+a page that loaded fine would claim otherwise. Both arrows stay dead, which is also what they look
+like before the fetch lands — deliberately the same state, since "loading" and "unavailable" are the
+same thing from the diver's side for a control this small.
+
+**The line is inline flow, not a flex row.** As a flex row the date is a single item that stretches
+to the full width of the line before it wraps, so on a phone `>` ends up pinned to the right edge of
+the header, a screen-width from the date it belongs to. Inline, it follows the last word wherever
+that word lands. The arrows take `align-middle`, since an `inline-flex` box baselines on its bottom
+edge and would otherwise hang below the text.
+
+`PageHeader`'s `subtitle` widened from `string` to `ReactNode` for this. It stays inside the same
+`<p>`, so whatever a caller passes has to be phrasing content.
+
+**The header is still cramped on a phone, and that is knowingly left alone.** `PageHeader` puts the
+title block and the actions in one `justify-between` row at every width, which leaves the title
+block about 150 px on a 375 px screen — so this date wraps over about five lines with Edit and
+Delete beside it. Stacking that row below `sm` fixes it and was tried, but it moves every detail
+page's header and belongs to whoever takes that on rather than to this control. Inline flow is what
+keeps the arrows tolerable in the meantime: they wrap with the text instead of stranding at the
+edges of a five-line block.
