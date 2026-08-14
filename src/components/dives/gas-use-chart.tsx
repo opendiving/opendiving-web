@@ -399,7 +399,7 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
             )}
 
             {/* The spread band, then the trend, then the dots on top - back to
-                front. The band is what a bare 2px line was missing: it gives
+                front. The band is what a bare line was missing: it gives
                 the trend body, and it says how tightly the dives it averages
                 were clustered, which is most of what improving actually looks
                 like. */}
@@ -422,7 +422,7 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
                   d={segment.line}
                   fill="none"
                   stroke="currentColor"
-                  strokeWidth={2}
+                  strokeWidth={1.5}
                   strokeLinecap="round"
                   className="text-coral"
                 />

@@ -760,8 +760,10 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
 
               {/* Depth is the chart's subject, so it gets a filled area under the
               curve - which also makes "which side is the water" unambiguous on
-              an inverted axis - and everything else is a thin line on top. One
-              per run, so the fill breaks wherever the line does. */}
+              an inverted axis - and everything else is a bare line on top. The
+              fill is what marks it out, not a heavier stroke: every channel is
+              drawn at the same weight. One per run, so the fill breaks wherever
+              the line does. */}
               {depthAreas.map((area, index) => (
                 <path
                   key={index}
@@ -802,7 +804,7 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
                         .join(" ")}
                       fill="none"
                       stroke="currentColor"
-                      strokeWidth={channel.key === "depth" ? 2 : 1.5}
+                      strokeWidth={1.5}
                       // From the channel rather than from this line's key, so the
                       // legend swatch below can read the same flag - see `dashed`
                       // on `ProfileChannel` for why the dash is load-bearing.
