@@ -79,58 +79,56 @@ export function GearSetsCard({
             </Button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Gear</TableHead>
-                  <TableHead>Weight</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Gear</TableHead>
+                <TableHead>Weight</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sets.map((set) => (
+                <TableRow key={set.uuid}>
+                  <TableCell className="font-medium">{set.name}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {set.gear_items.length === 0
+                      ? "Empty"
+                      : set.gear_items.map(gearItemLabel).join(", ")}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground whitespace-nowrap">
+                    {set.weight != null ? `${set.weight} kg` : "—"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label="Edit"
+                        onClick={() => onEdit(set)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label="Delete"
+                        onClick={() => onDelete(set.uuid)}
+                        disabled={deletingId === set.uuid}
+                      >
+                        {deletingId === set.uuid ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sets.map((set) => (
-                  <TableRow key={set.uuid}>
-                    <TableCell className="font-medium">{set.name}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {set.gear_items.length === 0
-                        ? "Empty"
-                        : set.gear_items.map(gearItemLabel).join(", ")}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground whitespace-nowrap">
-                      {set.weight != null ? `${set.weight} kg` : "—"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          aria-label="Edit"
-                          onClick={() => onEdit(set)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          aria-label="Delete"
-                          onClick={() => onDelete(set.uuid)}
-                          disabled={deletingId === set.uuid}
-                        >
-                          {deletingId === set.uuid ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+              ))}
+            </TableBody>
+          </Table>
         )}
 
         <PaginationFooter

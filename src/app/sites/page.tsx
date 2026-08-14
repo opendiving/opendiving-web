@@ -116,61 +116,59 @@ export default function SitesPage() {
               </Button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {diveSites.map((diveSite) => (
-                    <TableRow key={diveSite.uuid}>
-                      <TableCell className="font-medium">
-                        <Link
-                          href={`/sites/${diveSite.uuid}`}
-                          className="hover:underline"
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Location</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {diveSites.map((diveSite) => (
+                  <TableRow key={diveSite.uuid}>
+                    <TableCell className="font-medium">
+                      <Link
+                        href={`/sites/${diveSite.uuid}`}
+                        className="hover:underline"
+                      >
+                        {diveSite.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell>{diveSite.location || "-"}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link href={`/sites/${diveSite.uuid}`}>
+                            <Eye className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label="Edit"
+                          onClick={() => setEditingSite(diveSite)}
                         >
-                          {diveSite.name}
-                        </Link>
-                      </TableCell>
-                      <TableCell>{diveSite.location || "-"}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="sm" asChild>
-                            <Link href={`/sites/${diveSite.uuid}`}>
-                              <Eye className="h-4 w-4" />
-                            </Link>
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            aria-label="Edit"
-                            onClick={() => setEditingSite(diveSite)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => requestDeleteDiveSite(diveSite.uuid)}
-                            disabled={deletingId === diveSite.uuid}
-                          >
-                            {deletingId === diveSite.uuid ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => requestDeleteDiveSite(diveSite.uuid)}
+                          disabled={deletingId === diveSite.uuid}
+                        >
+                          {deletingId === diveSite.uuid ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
 
           <PaginationFooter

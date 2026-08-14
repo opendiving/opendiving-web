@@ -111,43 +111,41 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
           </CardHeader>
           <CardContent className="space-y-4">
             {dive.gear_items && dive.gear_items.length > 0 && (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Brand</TableHead>
-                      <TableHead>Name</TableHead>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Brand</TableHead>
+                    <TableHead>Name</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {dive.gear_items.map((item) => (
+                    <TableRow key={item.uuid}>
+                      <TableCell className="text-muted-foreground">
+                        {gearTypeLabel(item.type) ?? "-"}
+                      </TableCell>
+                      <TableCell>{item.brand || "-"}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Link
+                            href={`/gear/${item.uuid}`}
+                            className="hover:underline"
+                          >
+                            {item.name}
+                          </Link>
+                          {item.rented && (
+                            <Badge variant="secondary">Rented</Badge>
+                          )}
+                          {item.is_archived && (
+                            <Badge variant="outline">Archived</Badge>
+                          )}
+                        </div>
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {dive.gear_items.map((item) => (
-                      <TableRow key={item.uuid}>
-                        <TableCell className="text-muted-foreground">
-                          {gearTypeLabel(item.type) ?? "-"}
-                        </TableCell>
-                        <TableCell>{item.brand || "-"}</TableCell>
-                        <TableCell className="font-medium">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Link
-                              href={`/gear/${item.uuid}`}
-                              className="hover:underline"
-                            >
-                              {item.name}
-                            </Link>
-                            {item.rented && (
-                              <Badge variant="secondary">Rented</Badge>
-                            )}
-                            {item.is_archived && (
-                              <Badge variant="outline">Archived</Badge>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                  ))}
+                </TableBody>
+              </Table>
             )}
             {dive.weight != null && (
               <div>

@@ -138,77 +138,75 @@ export default function DivesPage() {
               </Button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>#</TableHead>
-                    <TableHead>Date & Time</TableHead>
-                    <TableHead>Dive Site</TableHead>
-                    <TableHead>Duration</TableHead>
-                    <TableHead>Max Depth</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {dives.map((dive) => (
-                    <TableRow key={dive.uuid}>
-                      <TableCell className="font-medium">
-                        #{dive.dive_number}
-                      </TableCell>
-                      <TableCell>
-                        <Link
-                          href={`/dives/${dive.uuid}`}
-                          className="text-sm font-medium hover:underline"
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>#</TableHead>
+                  <TableHead>Date & Time</TableHead>
+                  <TableHead>Dive Site</TableHead>
+                  <TableHead>Duration</TableHead>
+                  <TableHead>Max Depth</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {dives.map((dive) => (
+                  <TableRow key={dive.uuid}>
+                    <TableCell className="font-medium">
+                      #{dive.dive_number}
+                    </TableCell>
+                    <TableCell>
+                      <Link
+                        href={`/dives/${dive.uuid}`}
+                        className="text-sm font-medium hover:underline"
+                      >
+                        {formatDiveDateTime(dive.start_time)}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      <DiveSitesLabel sites={dive.dive_sites} />
+                    </TableCell>
+                    <TableCell>
+                      {formatDurationHoursMinutes(dive.duration)}
+                    </TableCell>
+                    <TableCell>
+                      {dive.max_depth ? `${dive.max_depth}m` : "-"}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link href={`/dives/${dive.uuid}`}>
+                            <Eye className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label="Edit"
+                          asChild
                         >
-                          {formatDiveDateTime(dive.start_time)}
-                        </Link>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        <DiveSitesLabel sites={dive.dive_sites} />
-                      </TableCell>
-                      <TableCell>
-                        {formatDurationHoursMinutes(dive.duration)}
-                      </TableCell>
-                      <TableCell>
-                        {dive.max_depth ? `${dive.max_depth}m` : "-"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="sm" asChild>
-                            <Link href={`/dives/${dive.uuid}`}>
-                              <Eye className="h-4 w-4" />
-                            </Link>
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            aria-label="Edit"
-                            asChild
-                          >
-                            <Link href={`/dives/${dive.uuid}/edit?from=/dives`}>
-                              <Edit className="h-4 w-4" />
-                            </Link>
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => requestDeleteDive(dive.uuid)}
-                            disabled={deletingId === dive.uuid}
-                          >
-                            {deletingId === dive.uuid ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                          <Link href={`/dives/${dive.uuid}/edit?from=/dives`}>
+                            <Edit className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => requestDeleteDive(dive.uuid)}
+                          disabled={deletingId === dive.uuid}
+                        >
+                          {deletingId === dive.uuid ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
 
           <PaginationFooter
