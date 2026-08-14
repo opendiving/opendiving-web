@@ -25,7 +25,6 @@ import { type ChartScope, periodRange } from "@/lib/chart-period";
 function mixture(overrides: Partial<DiveMixture> = {}): DiveMixture {
   return {
     id: 1,
-    name: "Back Gas",
     volume: 12,
     start_pressure: 200,
     end_pressure: 50,
@@ -125,7 +124,7 @@ describe("gasUseUnavailableReason", () => {
 
   it("names multi-tank as a limitation, not a missing field", () => {
     const reason = gasUseUnavailableReason(
-      dive({ mixtures: [mixture(), mixture({ id: 2, name: "Deco Gas 1" })] }),
+      dive({ mixtures: [mixture(), mixture({ id: 2 })] }),
     );
 
     expect(reason).toMatch(/multi-tank/i);
@@ -322,10 +321,9 @@ describe("tankGasUseRows", () => {
   it("joins each tank to its cylinder and keeps the dive's own order", () => {
     const withTanks = dive({
       mixtures: [
-        mixture({ id: 1, name: "Back Gas", gas_number: 1, role: "bottom" }),
+        mixture({ id: 1, gas_number: 1, role: "bottom" }),
         mixture({
           id: 2,
-          name: "Deco Gas 1",
           gas_number: 2,
           oxygen: 50,
           role: "deco",
@@ -342,7 +340,7 @@ describe("tankGasUseRows", () => {
 
     const rows = tankGasUseRows(withTanks);
 
-    expect(rows.map((row) => row.label)).toEqual(["Back Gas", "Deco Gas 1"]);
+    expect(rows.map((row) => row.label)).toEqual(["Tank 1", "Tank 2"]);
     expect(rows.map((row) => row.gas)).toEqual(["Air", "EAN50"]);
     expect(rows.map((row) => row.role)).toEqual(["bottom", "deco"]);
     expect(rows.map((row) => row.use?.gas_number)).toEqual([1, 2]);
@@ -360,15 +358,22 @@ describe("tankGasUseRows", () => {
     expect(tankGasUseRows(ocean)[0].use?.gas_number).toBe(0);
   });
 
-  it("names a cylinder by position when it has no name of its own", () => {
-    // The same fallback the mixtures card uses, so the two tables agree on what
-    // to call an unnamed tank - and 1-based position, never the gas number.
-    const unnamed = dive({
-      mixtures: [mixture({ name: null, gas_number: 0 })],
-      gas_use: multiTankUse([tank({ gas_number: 0 })]),
+  it("names a cylinder by its position, never by its gas number", () => {
+    // The same label the mixtures card uses, so the two tables agree on what to
+    // call a tank - and 1-based position, which a Suunto Ocean's 0-based
+    // numbering is off by one from all the way down.
+    const ocean = dive({
+      mixtures: [
+        mixture({ id: 1, gas_number: 0 }),
+        mixture({ id: 2, gas_number: 1 }),
+      ],
+      gas_use: multiTankUse([tank({ gas_number: 0 }), tank({ gas_number: 1 })]),
     });
 
-    expect(tankGasUseRows(unnamed)[0].label).toBe("Tank 1");
+    expect(tankGasUseRows(ocean).map((row) => row.label)).toEqual([
+      "Tank 1",
+      "Tank 2",
+    ]);
   });
 
   it("attributes nothing to either of two cylinders sharing a gas number", () => {
@@ -471,12 +476,12 @@ describe("tankGasUseRows", () => {
   });
 
   it("gives every row a distinct key", () => {
-    // Two unnamed, unnumbered cylinders share a label; React still needs to tell
+    // Two unnumbered cylinders match no tank at all; React still needs to tell
     // their rows apart.
     const twins = dive({
       mixtures: [
-        mixture({ id: 1, name: null, gas_number: null }),
-        mixture({ id: 2, name: null, gas_number: null }),
+        mixture({ id: 1, gas_number: null }),
+        mixture({ id: 2, gas_number: null }),
       ],
       gas_use: multiTankUse([tank({ gas_number: 1 })]),
     });

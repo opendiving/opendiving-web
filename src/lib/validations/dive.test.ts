@@ -313,7 +313,6 @@ describe("toDiveMixtureInput", () => {
   // form that could not be saved at all passed the suite.
   const fromApi: DiveMixture = {
     id: 7,
-    name: null,
     volume: 11.1,
     start_pressure: null,
     end_pressure: null,
@@ -332,7 +331,6 @@ describe("toDiveMixtureInput", () => {
   it("puts every cleared field into the '' state the form fields expect", () => {
     expect(toDiveMixtureInput(fromApi)).toEqual({
       id: 7,
-      name: "",
       volume: 11.1,
       start_pressure: "",
       end_pressure: "",
@@ -348,7 +346,6 @@ describe("toDiveMixtureInput", () => {
   it("carries recorded values through untouched", () => {
     const recorded: DiveMixture = {
       ...fromApi,
-      name: "Deco 50",
       start_pressure: 200,
       end_pressure: 50,
       po2_limit: 1.6,
@@ -358,7 +355,6 @@ describe("toDiveMixtureInput", () => {
 
     expect(toDiveMixtureInput(recorded)).toEqual({
       id: 7,
-      name: "Deco 50",
       volume: 11.1,
       start_pressure: 200,
       end_pressure: 50,
@@ -381,7 +377,6 @@ describe("toDiveMixtureInput", () => {
   it("round-trips through normalizeMixtures back to the stored values", () => {
     expect(normalizeMixtures([toDiveMixtureInput(fromApi)])).toEqual([
       {
-        name: "",
         volume: 11.1,
         start_pressure: undefined,
         end_pressure: undefined,
@@ -400,7 +395,6 @@ describe("normalizeMixtures", () => {
     const result = normalizeMixtures([
       {
         id: 5,
-        name: "Air",
         volume: 12,
         start_pressure: "",
         end_pressure: "",
@@ -410,7 +404,6 @@ describe("normalizeMixtures", () => {
     ]);
     expect(result).toEqual([
       {
-        name: "Air",
         volume: 12,
         start_pressure: undefined,
         end_pressure: undefined,

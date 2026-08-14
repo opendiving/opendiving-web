@@ -15,7 +15,6 @@ import {
 } from "@/lib/validations/dive";
 import {
   DEFAULT_MIXTURE,
-  getDefaultMixtureName,
   useMixtureFieldArray,
 } from "@/components/dives/mixture-fields";
 import { DiveFormCard } from "@/components/dives/dive-form-card";
@@ -71,7 +70,7 @@ function NewDivePageContent() {
         initialDiveSiteId !== undefined ? [initialDiveSiteId] : [],
       gear_item_uuids: [],
       notes: "",
-      mixtures: [{ ...DEFAULT_MIXTURE, name: getDefaultMixtureName(0) }],
+      mixtures: [{ ...DEFAULT_MIXTURE }],
     },
   });
   const mixtureFieldArray = useMixtureFieldArray(form.control);
@@ -145,8 +144,7 @@ function NewDivePageContent() {
             .map((item) => item.uuid),
           notes: "",
           mixtures: lastDive.mixtures?.length
-            ? lastDive.mixtures.map((m, i) => ({
-                name: m.name ?? getDefaultMixtureName(i),
+            ? lastDive.mixtures.map((m) => ({
                 volume: m.volume,
                 oxygen: m.oxygen,
                 helium: m.helium,
@@ -160,7 +158,7 @@ function NewDivePageContent() {
                 start_pressure: "" as const,
                 end_pressure: "" as const,
               }))
-            : [{ ...DEFAULT_MIXTURE, name: getDefaultMixtureName(0) }],
+            : [{ ...DEFAULT_MIXTURE }],
         });
       } catch (error) {
         console.error("Failed to fetch last dive for pre-fill:", error);

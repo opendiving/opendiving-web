@@ -10,13 +10,11 @@ import type { Dive, DiveMixture, GasRole } from "@/lib/api/dives";
 // dive's maximum depth, which fires on every correctly planned decompression dive.
 
 const AIR: DiveMixture = {
-  name: "Back Gas",
   volume: 22.2,
   oxygen: 21,
   helium: 0,
 };
 const EAN54: DiveMixture = {
-  name: "Deco Gas 1",
   volume: 11.1,
   oxygen: 54,
   helium: 0,
@@ -85,6 +83,21 @@ describe("DiveMixturesCard warnings", () => {
 
     expect(screen.getByText("O₂ 50% / He 60%")).toBeInTheDocument();
     expect(screen.queryByText(/\d+\.\d m$/)).not.toBeInTheDocument();
+  });
+});
+
+// A cylinder has no name of its own, so its row is identified by position - and by the
+// same 1-based position the consumption card below numbers its own rows with, which is
+// the only thing letting the two tables be read against each other.
+describe("DiveMixturesCard tank column", () => {
+  it("numbers the rows by position, under a header that says so", () => {
+    render(<DiveMixturesCard dive={dive([AIR, EAN54], 30)} />);
+
+    expect(
+      screen.getByRole("columnheader", { name: "Tank" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "Tank 1" })).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "Tank 2" })).toBeInTheDocument();
   });
 });
 

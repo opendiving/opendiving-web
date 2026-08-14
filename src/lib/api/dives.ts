@@ -18,7 +18,6 @@ export type GasRole = (typeof GAS_ROLES)[number];
 // member of any field's union - were the ones that paid for it.
 export interface DiveMixture {
   id?: number;
-  name?: string | null;
   volume: number;
   start_pressure?: number | null;
   end_pressure?: number | null;
@@ -485,15 +484,13 @@ export type PaginatedDivesResponse = PaginatedResponse<Dive>;
 // A gas mixture as read out of a dive-computer export, mirroring the API's
 // `DiveMixtureSchema`. Every field is nullable and `null` means "the file didn't
 // record this" - the API's parsers report what they read and never substitute a
-// plausible value. `name` is always `null`: mixture names aren't parsed even
-// when the source file has one (see DECISIONS.md), so the diver names them.
+// plausible value.
 //
 // Fill the gaps with `DEFAULT_MIXTURE` (`components/dives/mixture-fields.tsx`),
 // which is what the form shows for a cylinder added by hand - and say so, via
 // `describeMixtureImport`. A guessed cylinder size feeds `gas_use`, so a diver
 // who cannot tell it from a reading gets an RMV presented as a derived fact.
 export interface ParsedDiveMixture {
-  name: string | null;
   volume: number | null;
   start_pressure: number | null;
   end_pressure: number | null;

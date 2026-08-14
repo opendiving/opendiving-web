@@ -71,7 +71,10 @@ export function DiveMixturesCard({ dive }: DiveMixturesCardProps) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
+                {/* Position, not a name - cylinders have none. It is the column
+                    the consumption card below joins to, which numbers its own
+                    rows the same way and heads them the same word. */}
+                <TableHead>Tank</TableHead>
                 <TableHead>Gas</TableHead>
                 <TableHead>Volume</TableHead>
                 {/* "Start"/"End" rather than "Start Pressure"/"End Pressure": every
@@ -104,9 +107,8 @@ export function DiveMixturesCard({ dive }: DiveMixturesCardProps) {
 
                 return (
                   // Nothing in a body row wraps: a broken "212 bar" or "56.7 m" reads
-                  // as two values, and a cylinder name split across lines ("Back /
-                  // Gas") just made every row a line taller. The table scrolls
-                  // instead, inside the wrapper shadcn's `Table` already provides.
+                  // as two values. The table scrolls instead, inside the wrapper
+                  // shadcn's `Table` already provides.
                   // Set once here rather than on seven cells, since `white-space`
                   // inherits. The headers stay wrappable - they are the only slack
                   // left if a column ever gets long again.
@@ -115,7 +117,7 @@ export function DiveMixturesCard({ dive }: DiveMixturesCardProps) {
                     className="whitespace-nowrap"
                   >
                     <TableCell className="font-medium">
-                      {mixture.name || `Tank ${index + 1}`}
+                      Tank {index + 1}
                     </TableCell>
                     <TableCell>
                       {/* Role sits beside the gas rather than in a column of its own:

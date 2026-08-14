@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useForm } from "react-hook-form";
 import { DiveFileImport } from "./dive-file-import";
-import { DEFAULT_MIXTURE, getDefaultMixtureName } from "./mixture-fields";
+import { DEFAULT_MIXTURE } from "./mixture-fields";
 import type { DiveFormValues } from "./dive-form-fields";
 import type { ParsedDive, ParsedDiveMixture } from "@/lib/api/dives";
 
@@ -53,7 +53,7 @@ function parsedDive(mixtures: ParsedDiveMixture[]): ParsedDive {
 function Harness() {
   const form = useForm<DiveFormValues>({
     defaultValues: {
-      mixtures: [{ ...DEFAULT_MIXTURE, name: getDefaultMixtureName(0) }],
+      mixtures: [{ ...DEFAULT_MIXTURE }],
     },
   });
   return (
@@ -110,7 +110,6 @@ describe("DiveFileImport", () => {
     vi.mocked(divesAPI.parseDiveFile).mockResolvedValue(
       parsedDive([
         {
-          name: null,
           volume: null,
           start_pressure: null,
           end_pressure: null,
@@ -143,7 +142,6 @@ describe("DiveFileImport", () => {
     vi.mocked(divesAPI.parseDiveFile).mockResolvedValue(
       parsedDive([
         {
-          name: null,
           volume: null,
           start_pressure: null,
           end_pressure: null,

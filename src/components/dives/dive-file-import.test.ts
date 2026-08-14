@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { applyParsedDiveToForm } from "./dive-file-import";
 import { describeMixtureImport } from "@/lib/dive-import";
-import { DEFAULT_MIXTURE, getDefaultMixtureName } from "./mixture-fields";
+import { DEFAULT_MIXTURE } from "./mixture-fields";
 import type { ParsedDiveMixture } from "@/lib/api/dives";
 import type { DiveMixtureInput } from "@/lib/validations/dive";
 
@@ -10,7 +10,6 @@ import type { DiveMixtureInput } from "@/lib/validations/dive";
 // omission, so the fixture spells all of them out.
 function parsed(overrides: Partial<ParsedDiveMixture> = {}): ParsedDiveMixture {
   return {
-    name: null,
     volume: null,
     start_pressure: null,
     end_pressure: null,
@@ -62,8 +61,7 @@ describe("applyParsedDiveToForm", () => {
   // Both dive forms seed `mixtures` with a complete cylinder before any import
   // happens, so this is what an import actually meets - not the hand-picked
   // `existing` the unit tests above pass in.
-  const seededForm = () =>
-    formHolding([{ ...DEFAULT_MIXTURE, name: getDefaultMixtureName(0) }]);
+  const seededForm = () => formHolding([{ ...DEFAULT_MIXTURE }]);
 
   it("flags a cylinder size the file didn't record, against a seeded form", () => {
     // The bug this pins: `defaulted` used to require that *no* source had the

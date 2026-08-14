@@ -16,7 +16,6 @@ import {
 } from "@/lib/validations/dive";
 import {
   DEFAULT_MIXTURE,
-  getDefaultMixtureName,
   useMixtureFieldArray,
 } from "@/components/dives/mixture-fields";
 import { DiveFormCard } from "@/components/dives/dive-form-card";
@@ -66,7 +65,7 @@ function EditDivePageContent() {
       dive_site_uuids: [],
       gear_item_uuids: [],
       notes: "",
-      mixtures: [{ ...DEFAULT_MIXTURE, name: getDefaultMixtureName(0) }],
+      mixtures: [{ ...DEFAULT_MIXTURE }],
     },
   });
   const mixtureFieldArray = useMixtureFieldArray(form.control);
@@ -95,7 +94,7 @@ function EditDivePageContent() {
         // `toDiveMixtureInput`.
         mixtures: diveData.mixtures?.length
           ? diveData.mixtures.map(toDiveMixtureInput)
-          : [{ ...DEFAULT_MIXTURE, name: getDefaultMixtureName(0) }],
+          : [{ ...DEFAULT_MIXTURE }],
       });
     },
     [form],

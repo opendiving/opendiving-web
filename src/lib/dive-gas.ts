@@ -535,10 +535,10 @@ export function tankGasUseRows(dive: Dive): TankGasUseRow[] {
       // here, and it should be true for the reason it states.
       key:
         mixture.id != null ? `mixture-id-${mixture.id}` : `mixture-at-${index}`,
-      // Same fallback as the mixtures card's first column, down to the 1-based
+      // Same label as the mixtures card's first column, down to the 1-based
       // position - which is the cylinder's place in the list, and deliberately
       // not its gas number, since a Suunto Ocean numbers from 0.
-      label: mixture.name || `Tank ${index + 1}`,
+      label: `Tank ${index + 1}`,
       gas: gasName(mixture.oxygen, mixture.helium),
       role: mixture.role ?? null,
       hasPressures:

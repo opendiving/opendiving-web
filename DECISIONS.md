@@ -920,6 +920,11 @@ Imported cylinders are also named via `getDefaultMixtureName`, as hand-added one
 are never parsed, and multi-gas FIT imports are routine enough (4 of 19 dives in the API's Ocean
 corpus) that leaving them anonymous is a chore repeated every dive.
 
+(That last paragraph no longer holds: mixtures have no `name` at all now, and
+`getDefaultMixtureName` is gone with it - see "The mixture `name` is gone, and position is what a
+cylinder is called now" below. `mergeMixture` lost the `index` parameter that fed it; the merge
+tiers this section describes are otherwise unchanged.)
+
 ## Parsed dive-file mixtures need `useFieldArray().replace()`, not `form.setValue()`
 
 `applyParsedDiveToForm` (`dive-file-import.tsx`) filled in every top-level field from
@@ -3584,8 +3589,10 @@ Three changes, and the order matters:
 
 The general rule this leaves: **a field arriving from the API needs a conversion at the boundary the
 moment the form gives it a sentinel empty value**, and a spread cannot be that conversion, because
-it silently admits whatever gets added next. Note `name` was in the same position and only survived
-on luck — every path that writes it happened to coerce it first.
+it silently admits whatever gets added next. (The `name` field that used to illustrate this — same
+position, surviving on luck, since every path that wrote it happened to coerce it first — is gone;
+see "The mixture `name` is gone, and position is what a cylinder is called now" below. The rule
+stands without it.)
 
 ## The deco ceiling rides depth's axis, and hiding depth hides the water, not the scale
 
@@ -4471,3 +4478,50 @@ the markers, by rendering one dive, toggling, `cleanup()`, and rendering another
 session the single-render tests could never have caught.
 `DiveProfileChart remembered selection that plots no curve here` pins both halves of the fallback,
 and the second of its two tests fails against the naive fix as well as against the bug.
+
+## The mixture `name` is gone, and position is what a cylinder is called now
+
+`DiveMixture.name` is being dropped from the API, so it is dropped here: the schema field, the form
+input, the column, the label fallbacks, and `getDefaultMixtureName` with them. Nothing is left
+behind for a future re-add — a `name` still typed on this side would be a field the API rejects.
+
+**What names a cylinder instead is its 1-based position**, which is not a downgrade so much as an
+admission of what was already happening. The name was never parsed out of any export
+(`ParsedDiveMixture.name` was always `null`), so every imported cylinder got
+`getDefaultMixtureName(index)` — "Back Gas", "Deco Gas 1" — which is position with prettier words on
+it. Both display sites already fell back to `Tank ${index + 1}` for a cylinder without one, so the
+fallback is now simply the only case.
+
+Three things follow from that:
+
+- **The mixtures card's first column is headed `Tank`, not `Name`**, and its cells read `Tank 1`,
+  `Tank 2`. That is the consumption card's header and cell format exactly, which is the point: the
+  two tables are meant to be read against each other row by row, and `TankGasUseRow.label` derives
+  the same string from the same position. A cylinder that matches no mixture is still `Gas N` from
+  the device's own number — unchanged, and still deliberately not `Tank N`, so it cannot be misread
+  as the Nth row of the table above.
+- **The column stays rather than being dropped for the width**, and it turns out not to cost
+  anything. Dropping it was tempting — the role-badge section above names the column set as the
+  thing to reconsider — but the identifier column is the one the consumption card joins to, and the
+  per-cylinder pressure channels on the profile chart are numbered against it too. Keeping it is
+  free because `Tank 1` is so much narrower than the `Deco Gas 1` it replaces: **the same two-gas
+  dive at 1280 px now measures 667 px in its 667 px slot, so the table finally fits and
+  `overflow-x-auto` has nothing to scroll.** Against the 719 px that section records for this
+  configuration (gas badge, no role badge — which is what this dive carries), that is the 52 px of
+  overflow gone. The before figure is quoted from there rather than re-measured: the API has already
+  dropped its column, so there is no longer a local state that renders a name.
+- **`mergeMixture` lost its `index` parameter**, which existed only to name the cylinder. The two
+  remaining tiers — the file, then whatever the form held — are both keyed on the caller's pairing,
+  so position is no longer this function's business.
+
+The form loses its **Name** field, leaving seven inputs in the per-tank card. `DEFAULT_MIXTURE` is
+now complete on its own, so `append({ ...DEFAULT_MIXTURE })` and the two pages' seeds no longer
+spread a name over it — which also removes the one place a hand-added cylinder and an imported one
+were seeded differently.
+
+**Seven boxes in a two-column grid needs one of them widened, or every pair below it breaks.** The
+eight fields paired up (name/volume, O₂/He, start/end, ppO₂/role); removing one shifted all of them
+by a slot, splitting O₂ from He and start from end, and leaving Role alone on a half-empty last row.
+Volume takes `md:col-span-2` — it is the field with no partner to be split from, having spent its
+life beside the name — which restores every remaining pair to a row of its own. Measured at 1280 px:
+Volume 556 px full width, then O₂ | He, Start | End, ppO₂ | Role at 270 px each.
