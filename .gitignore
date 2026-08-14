@@ -23,6 +23,9 @@
 # of scratch checkouts - never wanted in a commit or a Docker build context.
 .claude/
 
+# Playwright MCP server scratch output (accessibility snapshots, console logs).
+.playwright-mcp/
+
 # debug
 npm-debug.log*
 yarn-debug.log*
