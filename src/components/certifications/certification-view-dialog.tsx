@@ -67,8 +67,9 @@ export function CertificationViewDialog({
 
   // Downloading goes through the API client for the same reason rendering does:
   // the endpoint needs an `Authorization` header, so a plain `<a href>` to it
-  // would 401. The object URL is revoked immediately - the browser has already
-  // taken its own copy by the time the synthetic click returns.
+  // would 401. See `lib/download.ts` for why the object URL outlives the click -
+  // revoking it synchronously looks fine in Chrome and silently cancels the
+  // download in Firefox and Safari.
   const handleDownload = async (side: CertificationSide) => {
     const file = certificationFile(certification, side);
     if (!file) return;

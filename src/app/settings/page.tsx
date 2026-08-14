@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DataExportCard } from "@/components/settings/data-export-card";
 import { EmailChangeCard } from "@/components/settings/email-change-card";
 import { NotificationsCard } from "@/components/settings/notifications-card";
 import { User, Save } from "lucide-react";
@@ -204,6 +205,13 @@ export default function SettingsPage() {
         <EmailChangeCard currentEmail={user.email} />
 
         <NotificationsCard />
+      </div>
+
+      {/* Full width rather than a fourth cell in the grid above: the three rows each
+          carry a sentence of prose, and at half the page every one of them wraps to
+          four lines. */}
+      <div className="mt-8">
+        <DataExportCard username={user.username} />
       </div>
 
       {/* Account Actions */}

@@ -4525,3 +4525,130 @@ by a slot, splitting O₂ from He and start from end, and leaving Role alone on 
 Volume takes `md:col-span-2` — it is the field with no partner to be split from, having spent its
 life beside the name — which restores every remaining pair to a row of its own. Measured at 1280 px:
 Volume 556 px full width, then O₂ | He, Start | End, ppO₂ | Role at 270 px each.
+
+## The export filename is the server's, derived locally — because CORS won't hand it over
+
+The plan for the settings export card said, in as many words: "Filename comes from the server's
+`Content-Disposition` — parse it rather than re-deriving." The API does send one, correctly:
+
+```
+content-disposition: attachment; filename="opendiving-aleskiontherun-20260814.zip"
+```
+
+`fetch` from `http://localhost:3000` reads it as `null`. `Content-Disposition` is not one of the
+CORS-safelisted response headers, the API's `CORSMiddleware` (`core/setup.py`) sets no
+`expose_headers`, and the browser therefore hides a header that is plainly there in the network tab.
+Measured from the real app rather than reasoned about — the only three headers JS can read off an
+export response today are `cache-control`, `content-length` and `content-type`.
+
+So `lib/api/export.ts` carries `exportFilename`, a line-for-line mirror of `export_filename` in the
+API's `services/export/naming.py` — same `opendiving-<username>-<YYYYMMDD>.<ext>` shape, same
+`[^a-z0-9]+` scrub, same `"export"` substitute when the username scrubs to nothing. **This is not
+the fallback branch; it is the branch that runs.** `filenameFromContentDisposition` is still called
+first, and still parses both RFC 6266 forms, because the day the API adds one line of
+`expose_headers` the server's answer should win without anything here changing.
+
+**The mirror is the interim, not the position.** `expose_headers=["Content-Disposition"]` on the
+API's `CORSMiddleware` (`core/setup.py`) deletes this duplication outright — it demotes
+`exportFilename` to a genuine fallback and makes the parser the live path, which is the arrangement
+this file would rather record. It is not done here only because it is a change in the other repo,
+and this one shipped first. Anyone reading this because they are about to touch the naming rule in
+two languages: do the API line instead.
+
+Two things follow from duplicating a naming rule across two languages:
+
+- **The date is stamped in UTC**, from `getUTC*`, not local time. The server names the file from
+  `datetime.now(UTC)`. A diver in UTC+13 downloading at 09:00 would otherwise get a name a day ahead
+  of the one `curl` saves from the same request, and the two would look like different exports.
+- **`export.test.ts` is the coupling**, and its job is to fail when the API's rule moves. There is
+  nothing structural keeping the two in step, so the tests spell out the scrub cases (`Alex.Vesnin`,
+  a username that scrubs to nothing) rather than only the happy path.
+
+Verified end-to-end against a real Chrome: all three buttons save
+`opendiving-aleskiontherun-20260814.{uddf,csv,zip}`, and the CSV the browser saves is hash-identical
+to the one `curl` fetches. The UDDF differs by nine bytes between any two requests — the timestamp
+in its `<generator>` — and the zip likewise, so those two are equal modulo the clock, not
+byte-equal.
+
+## The whole export is buffered in browser memory, and the escape hatch is a signed URL
+
+All three exports are fetched with axios `responseType: "blob"` and saved through `downloadBlob`,
+which is the same path the dive source file and the c-card images take, and for the same reason: the
+endpoints require an `Authorization` header, and a plain `<a href>` cannot send one because the
+access token lives in memory rather than in a cookie.
+
+The difference is size. Those two are bounded by the API's own upload limits — 5 MB for a dive
+computer file, 10 MB for a card scan. **An archive is bounded by the size of the account.** The dev
+corpus, 44 dives with imported profiles and c-card scans, comes to 3.5 MB; a diver with a decade of
+imports and two-sided scans of eight certifications could reach hundreds of MB, and every byte is
+held in browser RAM before the file is written, then held for another 60 seconds while
+`REVOKE_DELAY_MS` runs out.
+
+Accepted rather than solved, because the fix is not a frontend one. The escape hatch, recorded here
+and deliberately not built: a short-lived signed download URL, served as a plain `<a href>` with no
+`Authorization` header, which streams straight to disk and never enters a JS heap. That needs a new
+API endpoint and a token scheme, which is a great deal of machinery for a ceiling nobody has hit —
+but it is the thing to build when someone does, rather than reaching for a streaming-download
+library on this side.
+
+## Three buttons named "Download" need three accessible names
+
+The export card's rows are visually distinct — an icon, a title, a sentence of prose — and its
+buttons are not: all three read `Download`. A screen reader listing the page's buttons gets
+"Download, Download, Download" and no way to tell which file is which, so each carries an
+`aria-label` naming its row. The visible label stays one word, because the row above it has already
+said which file this is.
+
+**The label has to change with the busy state, not just name the row.** An `aria-label` _overrides_
+the button's own text, so a static one hides the switch to "Preparing..." completely — the only
+thing left for a screen reader user to notice is the button going disabled, on the slowest control
+on the page. So the name is `Preparing Full archive export` while fetching and
+`Download Full archive` otherwise, with `aria-busy` backing it up rather than carrying it alone
+(support for announcing `aria-busy` on a button is inconsistent). The render tests query by
+accessible name for exactly this reason: finding the idle name _is_ the assertion that the row is
+idle.
+
+**And then the busy button has to be `aria-disabled`, not `disabled`, or none of that is audible.**
+This is the one place in the repo where a busy button departs from the `disabled` every other form
+here uses, so the argument is worth spelling out: a real `disabled` attribute drops focus to
+`<body>` in Chrome and removes the button from the tab order. The diver who just pressed it is left
+standing nowhere, and the name change written for them is announced to no one — `disabled` eats the
+exact announcement the paragraph above exists to produce. That costs nothing on a Save button that
+resolves in 200 ms, and quite a lot on an archive that can take many seconds.
+
+`aria-disabled` is advisory, so the button still receives clicks, and three things carry what the
+attribute no longer does: an early `if (busy.has(row.format)) return` in the handler (the part that
+actually makes the row inert), `aria-disabled:opacity-50` in the class list (Tailwind's `disabled:`
+variant keys off the real attribute and would never fire), and a render test that clicks a busy
+button and asserts a second request was never made. Worth knowing before copying this pattern
+elsewhere: it is three moving parts where `disabled` is one, and it only pays for itself on a
+control slow enough that the announcement matters.
+
+**The busy state is a `Set<ExportFormat>`, and the two simpler shapes are both wrong.**
+
+- A **boolean** disables all three buttons because one of them is running. The archive is the
+  slowest of the three by an order of magnitude, so it is precisely the one that would make the
+  other two look broken for the length of its request.
+- A **single `ExportFormat | null`** — which this shipped as, briefly — looks right until a diver
+  does the thing the enabled buttons invite: start a second export while the first is still
+  fetching. Both handlers' `finally` blocks run `setBusy(null)`, so whichever request lands first
+  clears the _other_ row's spinner and re-enables its button, leaving a row that is still fetching
+  looking idle.
+
+Both updates are functional (`setBusy((current) => ...)`), because concurrent handlers reading the
+same stale `busy` would each write a set missing the other's format — the same race one level down.
+
+**What a click on a row that looks idle but isn't actually costs is a second _save_, not a second
+request** — worth being exact about, because the obvious guess is wrong and this file is where the
+wrong guess would have survived. `apiClient.get` is wrapped in an in-flight dedupe keyed on url +
+params + `responseType` (see the map above `getRequestKey`), so a duplicate `GET /export/archive`
+while one is pending joins the pending promise: no second request reaches the API and no second unit
+of the caller's hourly export budget is spent. Both callers then resolve with the same blob and both
+call `downloadBlob`, so what the diver gets is the same file written twice and a second copy of a
+possibly-large blob pinned for `REVOKE_DELAY_MS`. Annoying rather than expensive — but it is what
+the `Set` and the handler's early return are for, and naming the wrong cost here would have sent the
+next person looking for a rate-limit bug that the client layer already prevents.
+
+Letting all three run at once is deliberate. The API rate-limits exports per user, so a diver firing
+all three is spending their own budget, which is their call to make rather than a state for this
+card to prevent.
