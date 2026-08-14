@@ -3676,17 +3676,21 @@ drawn as a dashed line over a shaded region. **Colour is doing the least of the 
 is the condition that makes the overlap acceptable**; a fifth accent that had to be told apart from
 coral by hue alone would not get the same answer.
 
-## Markers are annotations, so they have no toggle and no axis
+## Markers are annotations, so they have no axis
 
 `events` renders as a tick standing on the x-axis with a glyph on top, at `x(t)` — where a dive
 computer's own display puts them, and the only anchor that still works with depth toggled off. They
 are deliberately **not** a fifth channel: no scale, no unit, nothing to invert, and a
-`PROFILE_CHANNELS` entry would have had to invent all three. A handful of ticks on the baseline is
-the same order of visual noise as the gridlines, which nobody offers a switch for either, and they
-sit at 0.9 opacity until the crosshair reaches one, which is where a dive with a dozen of them stops
-reading as a picket fence in front of the curves they annotate without the marks becoming too faint
-to aim at — see the contrast note further down for why that number is 0.9 and not the 0.55 it
-started at.
+`PROFILE_CHANNELS` entry would have had to invent all three. They sit at 0.9 opacity until the
+crosshair reaches one, which is where a dive with a dozen of them stops reading as a picket fence in
+front of the curves they annotate without the marks becoming too faint to aim at — see the contrast
+note further down for why that number is 0.9 and not the 0.55 it started at.
+
+This section also said **"and no toggle"**, on the argument that a handful of ticks on the baseline
+is the same order of visual noise as the gridlines, which nobody offers a switch for either. They
+now have one; see _"The markers got a switch, and it is not a fifth channel"_ below for why that
+argument did not survive contact with a dive that has a dozen of them. Everything else here still
+holds — having a switch in the legend did not make them a channel.
 
 **Three glyph families, not five.** At this size a shape is worth about one bit, and spending it on
 "gas plan / a stop / the computer talking" beats five outlines nobody can tell apart. The readout
@@ -4229,3 +4233,241 @@ predicate on purpose: the aria tests stayed green and only the new tooltip test 
 **Testing the accessible name is not a proxy for testing the visible one**, even where both come
 from the same data. They are two renderings, and a test that covers only the one you had to think
 hardest about covers the one users are least likely to hit.
+
+## The dive's clock went up to the header, and two cards became one
+
+The detail page opened with a `Time & Duration` card holding the start time and the duration, then a
+`Depth Information` card holding the maximum and average depth. Between them that is four figures,
+two card headers, and a scroll position separating "45min" from "30.5 m" — two numbers nobody reads
+apart.
+
+**The start time belongs with the date, and the date was already in the page header.** `Dive #21`'s
+subtitle read `Sunday, April 4, 2021`, and the clock time for that same instant sat in a card below
+it. `formatDiveStartTime` now prints all three parts — date, wall-clock time, and the offset that
+clock was on — as one line, and the card is gone. The offset stays because dropping it would make
+the time unverifiable: this app deliberately shows a dive in its own timezone rather than the
+viewer's (see _"A dive's `start_time` displays/edits in its own timezone, never the browser's"_),
+and `10:04` with nothing after it is a number the reader cannot check.
+
+It is composed from `formatDiveDateTime` + `formatDiveTimeOnly` rather than asking `Intl` for the
+date and the time in one call. en-US does join them with `" at "`, but which separator a locale
+picks is an ICU detail, and the offset has to be appended by hand at the end regardless — so either
+the whole line is assembled here or half of it is inherited from a formatter that could change it.
+
+What is left is one `Duration & Depth` card of three stat blocks at one weight. Duration was
+previously body text beside a clock icon while the depths were `text-2xl font-bold`; they are all
+figures about the same dive and there was no reason for two typographic ranks. The grid is
+`md:grid-cols-3` and the depths stay individually conditional, so a hand-logged dive with no depths
+leaves the duration on its own rather than stretching one number across the card.
+
+## The ppO₂ limit is picked from a list, and an unlisted one is added to it
+
+`po2_limit` was a `<input type="number" step="0.1" min="0.4" max="2">`. The band is the schema's,
+which is deliberately wide because it exists to catch a unit error — a Suunto JSON export writes
+140000 Pa for 1.4 bar — and not because a diver picks from all of it. Every value in it anyone would
+actually choose is one of seven: 1.4 for a back gas, 1.6 for a deco bottle, and the conservative
+steps below them. What free entry bought over those seven was typos, `1.45` from a slipped keypress,
+and a save that comes back 422 on `ck_dive_mixture_po2_limit_range` with nothing the diver can act
+on.
+
+So it is a `<select>`, for the same two reasons `role` beside it is one: it needs "unset" as a real
+selectable option, which Radix's `Select` reserves `""` for, and `""` has to reach react-hook-form
+as the live cleared value rather than `undefined` — the trap _"The API sends `null`, the form schema
+only understood `""`"_ documents, and which `role` shipped with before it was found.
+
+**The options are strings, not numbers**, and that is the one non-obvious line in it. An
+`<option>`'s value is a string either way, so a numeric list has to be formatted on the way out and
+parsed on the way back — and `String(1.0)` is `"1"`, so an option labelled `"1.0"` would never match
+its own stored value and the box would render blank on a cylinder holding 1.0. Written as the tokens
+they are displayed as, the label, the value and the round trip are all the same characters. The
+selected option is likewise found by `Number(option) === value` rather than by formatting the value,
+so the comparison happens in one direction only.
+
+**A limit that isn't on the list is inserted into it**, sorted, rather than dropped. Anything in the
+0.4–2.0 band can arrive from a file, and a `<select>` whose value matches no option renders blank
+while the form goes on holding the value: the box would read "Not recorded" over a cylinder that
+records 1.45, and the only way to find out would be to save and watch the MOD not move. The same
+class of bug as the blank-looking role field, arrived at from the other end.
+
+**That rescue only lasts while the value is still selected, and the narrowing is a one-way door we
+are accepting.** Change the imported 1.45 to 1.4 and there is no route back to it, and nothing in
+the form reaches the 0.4–0.9 the DB constraint allows. The floor is 1.0 by decision rather than by
+inheritance: below that a figure is a CCR _setpoint_ rather than a ceiling a MOD is computed at, and
+this field feeds a MOD. Written down because "why can't I type 0.8" is a fair question with an
+answer, and because the trade is asymmetric — a diver who needs an unlisted number has lost
+something real, while a diver who fat-fingers `14` into a free text box gets a 422 they cannot read,
+and there are many more of the second.
+
+## The profile's left edge always carries a scale, and an all-hidden chart is still a chart
+
+Two reports about the same block of code, and they turn out to be the same mistake made twice: the
+chart derived what it drew from the channels it had, and treated "none of the ones I was thinking
+of" as "nothing".
+
+**The left-hand axis was `depthChannel ?? ceilingChannel`.** Switch both off — a perfectly
+reasonable thing to do on a dive where you want to read the temperature curve — and the left margin
+went blank while the gridlines went on running out of it, because they take their positions from the
+left axis. Meanwhile pressure, which shares the right-hand side with temperature and deliberately
+goes unlabelled there, had no scale on the chart at all.
+
+The plot holds at most **three scales** however many curves are on it, because depth and the ceiling
+are one — the same meters on the same domain, see _"The deco ceiling rides depth's axis"_ — and the
+rule is now stated over those rather than over channels:
+
+**Sides are fixed while there are two scales to tell apart.** Meters on the left, temperature on the
+right, pressure taking whichever of the two the others left free. A diver reads this chart across a
+logbook of dives, and an axis that changed edges with the channel mix would make them re-read the
+colour of the numbers every time — the labels are coloured, but hue is a slower thing to check than
+position. Pressure is the one that moves, and it is the right one to move: on a full three-scale
+plot it is the channel that goes unlabelled anyway, since three sets of numbers on one edge is
+unreadable and the crosshair gives the exact figure for any instant.
+
+**A single scale goes on the left, and the right edge stays empty.** Nothing shares the plot with
+it, so there is no side to protect; the left is where the eye goes for a primary axis and where the
+gridlines are already anchored. This is the one case where "temperature is always on the right"
+gives way, and it gives way because the reason for fixing the sides has evaporated.
+
+Mirroring the single scale onto both edges was tried in between and is wrong: two columns of
+identical figures either side of a plot invite exactly the reading that they are two scales.
+
+So, as an invariant: **the left edge is labelled whenever anything is plotted, and the right edge
+exactly when the plot holds a second scale.**
+
+`DiveProfileChart vertical axes` sweeps all fifteen non-empty selections and asserts both halves,
+seeded through the remembered selection rather than through fifteen click sequences. The expected
+right-hand answer is computed rather than listed — `distinctScales` counts the domains a selection
+puts on the plot, collapsing the ceiling into depth — so the test states the rule instead of
+restating the implementation's fifteen outcomes. Six more tests pin _which_ edge each scale lands on
+by reading back the colour class on the labels, which is the half a count can't see. Confirmed by
+restoring the old `depth ?? ceiling` rule: four cells of the sweep fail, and the one everybody would
+have hand-written — depth plus temperature — is not among them.
+
+**And switching the last channel off returned a bare sentence in place of the whole chart.** The
+card collapsed to two lines, which dragged the legend — the only way back — up the page after the
+cursor that had just clicked it. The plot now stays: same box, same elapsed-time axis (which no
+channel was holding up), same event markers, with the sentence over the middle of it and
+`pointer-events-none` so the crosshair underneath still works. Neither edge carries numbers there,
+and that is the honest rendering — with no channel on screen there is no domain to label one with.
+
+The general shape, for the next `??` chain in this file: a fallback list that runs out is a case,
+not an absence. Both of these were written as though the tail of the chain could not be reached.
+
+## The depth fill was built from the whole series while its line was built from segments
+
+`segmentByTimeGap` cuts every channel into runs so no line is drawn across data that isn't there —
+_"The profile's line breaks are derived from the series' own cadence"_ — and the depth polylines
+have always honoured it. The teal fill underneath them did not: `depthArea` was a single
+`buildAreaPath` over `depthChannel.series.t` entire, every sample the channel carried, dropouts
+included. So on a dive with a real mid-dive hole the curve broke where the recording stopped and the
+shaded water went straight on across the gap beneath it.
+
+That is worse than an untidy shape. The fill is the thing that says which side of the curve is
+water; spanning a dropout with it is a claim that the diver was down there through a stretch the
+device recorded nothing about — the same claim the broken line above it is refusing to make, in the
+same picture.
+
+It is now one path per segment, from the same `segments` the polylines use, which is exactly what
+the ceiling has done since it was added. Two consumers of one segmentation, and the one that came
+first was the one that got it wrong.
+
+The tests assert the geometry rather than only the count: two fills that happened to overlap would
+pass a count and reproduce the bug, so `leaves the dropout unfilled rather than spanning it` reads
+the `d` attributes back and checks that the first ends at x(900) and the second starts at x(2400).
+
+## The markers got a switch, and it is not a fifth channel
+
+_"Markers are annotations, so they have no toggle"_ argued that a few ticks on the baseline are the
+same order of visual noise as the gridlines. That holds for a dive with three markers and fails for
+one with a dozen, which the corpus has: the row of ticks becomes a picket fence in front of the
+curves it is annotating, and the diver had no way to put it down. The 0.9 opacity was already the
+compromise reached for that problem, and it is the wrong instrument — it trades legibility of the
+marks against legibility of the plot, and the contrast note two sections down is the record of how
+little room there was to move.
+
+**The switch does not make them a channel.** `ProfileChannelKey` stays "a thing with a domain",
+which is what every axis, readout, domain and segmenter in `lib/dive-profile.ts` is written against
+and none of which can say anything about a marker. What the legend switches is a wider set,
+`PROFILE_VIEW_KEYS = [...PROFILE_CHANNEL_KEYS, "events"]`, and `parseSeriesVisibility` is already
+generic over its key list, so the stored entry carries both without either type learning about the
+other. `ChannelToggles` became `LegendToggles` to stop the name claiming otherwise.
+
+**It goes in the legend, and nowhere else.** That follows from _"Both charts' legends are the
+control for what they plot"_: a marker switch anywhere else on the card would be the first thing on
+this chart you could turn off from outside its legend, and the pact that makes the legend readable
+as a control is that it is the only one.
+
+**The swatch is an uncoloured dot**, which is two decisions. A circle rather than the diamond or the
+triangle, because those mean "gas switch" and "a stop" specifically and one entry standing for all
+five types has no business claiming to be one of them — the circle is what the two general types
+already draw. And uncoloured in both states, unlike every swatch above it: marker colour answers the
+narrow question _does this join to something else on the chart_, true only of a gas switch, so a
+violet legend swatch would be making that claim on behalf of the four types for which it is false.
+
+**Hiding them hides them everywhere.** The glyphs, the crosshair readout and the accessible summary
+all read one `eventsShown`. This chart has been talked out of the "drawn in one view, named in
+another" disagreement four separate times — see _"The crosshair quoted readings from stretches the
+chart refused to draw"_ and its three follow-ups — and a toggle is a fifth way in, so the two tests
+that matter most here are that a hidden marker stops being announced to a screen reader and stops
+being quoted by the crosshair.
+
+**Adding the key cost a version bump**, per the rule this file already states: every stored
+selection names only channels, all of them still available, so it would restore cleanly with the
+markers switched off — hiding annotations that have always been drawn, with a legend entry sitting
+right there implying the diver turned them off themselves. `-v2` became `-v3`, and the `-v2` entry
+is left behind for the same reason `-v1` was.
+
+**The empty-plot message now checks the markers too.** "Every channel is hidden. Pick one below to
+plot it." is held back while the markers are up: with every curve off and the markers on, the plot
+has content, and printing that sentence across a row of them describes a chart nobody is looking at.
+
+## A remembered selection is held over every key, not over the keys one dive has
+
+`available` is per-dive — a no-deco dive offers no ceiling toggle, a dive whose computer logged
+nothing offers no markers switch — while the stored selection is **one entry for the whole app**.
+The chart narrowed the selection to `available` before storing it, in two places at once:
+`rememberedHere` filtered the restored value, and `toggleSeries(current ?? visible, key, available)`
+passed the narrowed list as its `order`, which is also what the result is rebuilt from.
+
+So every toggle click re-emitted a selection stripped of whatever this dive happens to lack. Hide
+the temperature curve on a dive with no markers, and the entry written back says nothing about
+markers — which `parseSeriesVisibility` reads as "off". The next dive that has markers opens with
+them hidden and the legend entry rendering `aria-pressed="false"`: the chart telling the diver they
+turned something off that they never touched.
+
+That is exactly the failure a `DIVE_PROFILE_SERIES_KEY` version bump exists to fix — and the bump
+fixes it **once, at migration**, while this reopened it on every dive missing a key. It was already
+live for the ceiling before the markers existed; markers merely made it common, since dives without
+events vastly outnumber dives without a deco obligation.
+
+The selection is now held at full width (`chosen ?? remembered ?? PROFILE_VIEW_KEYS`) and
+intersected with `available` only to decide what to draw. Four things fall out of that and each
+needed saying:
+
+- **`visible` is the intersection**, and everything that describes the chart — `shown`,
+  `eventsShown`, `shownValues`, the empty-plot overlay — reads it rather than the selection, or a
+  stored `"events"` on a dive with none would suppress the "Every channel is hidden" message.
+- **An empty `chosen` is still honored** where an empty remembered selection is not. The test is
+  `chosen !== null`, not truthiness or length: `[]` is a choice just made on this dive ("hide
+  everything"), while a _remembered_ selection that plots nothing here means the dive recorded only
+  what you'd hidden, and it should open showing what it does have.
+- **The "plots nothing here" test asks whether a _curve_ survives, not whether a key does.** The
+  markers are in `available` now, so `selectedHere.length > 0` was satisfied by them alone: a stored
+  `["temperature", "events"]` opened on a depth-and-markers dive came through as `["events"]` — no
+  curve, no vertical axis, no gridlines, and no message either, since the overlay stands down while
+  the markers are up. Precisely the blank chart this fallback exists to prevent, let through by the
+  one key that cannot draw a curve.
+- **And the fallback restores the curves only**, carrying the markers choice through untouched.
+  Falling back to `available` wholesale is the obvious fix and is wrong in the other direction:
+  under this key a marker preference's absence is a real "off", so sweeping it up would switch
+  markers back on for a diver who had switched them off — the same class of erasure as the leak this
+  section is about. Nothing about that preference caused the blank plot, so nothing about it needs
+  overriding to fix one.
+- **The toggle's base is `visible` lifted back over the full list**, not the raw selection. In the
+  fallback case above the chart is showing everything while the stored selection names none of it,
+  so flipping a key against the stored value would _add_ the curve the diver just clicked to hide.
+
+`DiveProfileChart selection across dives` pins the leak, including the ceiling case that predates
+the markers, by rendering one dive, toggling, `cleanup()`, and rendering another — the two-dive
+session the single-render tests could never have caught.
+`DiveProfileChart remembered selection that plots no curve here` pins both halves of the fallback,
+and the second of its two tests fails against the naive fix as well as against the bug.

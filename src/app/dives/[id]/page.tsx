@@ -9,7 +9,7 @@ import { divesAPI, Dive } from "@/lib/api/dives";
 import { tripsAPI, Trip } from "@/lib/api/trips";
 import { DiveDetailMain } from "@/components/dives/dive-detail-main";
 import { DiveDetailSidebar } from "@/components/dives/dive-detail-sidebar";
-import { formatDiveDateTime } from "@/lib/date-time";
+import { formatDiveStartTime } from "@/lib/date-time";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { PageHeader } from "@/components/ui/page-header";
@@ -110,12 +110,10 @@ export default function DiveDetailPage() {
         backHref="/dives"
         backLabel="Back to Dives"
         title={`Dive #${dive.dive_number}`}
-        subtitle={formatDiveDateTime(dive.start_time, {
-          weekday: "long",
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        })}
+        // The time of day sits here with the date rather than in a card of its
+        // own below: the two are one fact, and splitting them put the dive's
+        // date in the header and the clock it was on two scroll positions away.
+        subtitle={formatDiveStartTime(dive.start_time)}
         actions={
           <>
             <Button variant="outline" asChild>

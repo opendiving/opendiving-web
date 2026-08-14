@@ -5,6 +5,7 @@ import {
   formatDateTime,
   formatDateTimeForForm,
   formatDiveDateTime,
+  formatDiveStartTime,
   formatDiveTimeOnly,
   formatDurationForForm,
   formatDurationHoursMinutes,
@@ -261,6 +262,37 @@ describe("formatDiveDateTime/formatDiveTimeOnly", () => {
         day: "numeric",
       }),
     ).toBe("Apr 4, 2021");
+  });
+});
+
+describe("formatDiveStartTime", () => {
+  it("puts the date, the wall-clock time and the offset on one line", () => {
+    expect(formatDiveStartTime("2021-04-04T10:04:47+02:00")).toBe(
+      "Sunday, April 4, 2021 at 10:04 (UTC+02:00)",
+    );
+  });
+
+  it("reads the dive's own offset rather than the browser's", () => {
+    // The whole point of the dive-specific formatters: a dive logged at 09:00 in
+    // Thailand reads 09:00 from anywhere, and the header has to name the offset it
+    // is quoting or the number is unverifiable.
+    const spy = vi
+      .spyOn(Date.prototype, "getTimezoneOffset")
+      .mockReturnValue(300); // e.g. UTC-05:00
+
+    expect(formatDiveStartTime("2021-04-04T09:00:00+07:00")).toBe(
+      "Sunday, April 4, 2021 at 09:00 (UTC+07:00)",
+    );
+
+    spy.mockRestore();
+  });
+
+  it("keeps the date on the dive's own side of midnight", () => {
+    // 23:30+02:00 is the 4th where the dive happened and the 4th at 21:30 UTC, so
+    // this only bites where the offset would carry it over - here, a negative one.
+    expect(formatDiveStartTime("2021-04-04T23:30:00-05:00")).toBe(
+      "Sunday, April 4, 2021 at 23:30 (UTC-05:00)",
+    );
   });
 });
 

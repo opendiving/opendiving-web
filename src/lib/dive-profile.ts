@@ -118,16 +118,37 @@ export const PROFILE_CHANNELS: Record<ProfileChannelKey, ProfileChannel> = {
   },
 };
 
-// The channels in the order they're plotted, listed in the legend and stored in
-// a remembered selection. A separate list rather than `Object.keys` on the
-// record above, which gives this order only by accident of how the object
-// happens to be written.
+// The channels in the order they're plotted and listed in the legend. A separate
+// list rather than `Object.keys` on the record above, which gives this order only
+// by accident of how the object happens to be written.
 export const PROFILE_CHANNEL_KEYS: readonly ProfileChannelKey[] = [
   "depth",
   "ceiling",
   "temperature",
   "pressure",
 ];
+
+// Everything the legend switches, which is the four channels plus the event
+// markers - and the markers are emphatically *not* a fifth channel. They have no
+// scale, no unit and nothing to invert, so a `PROFILE_CHANNELS` entry would have
+// had to invent all three; what they share with a channel is only that the
+// legend names them and the diver can turn them off.
+//
+// A second list rather than a widened `ProfileChannelKey`, so that stays the type
+// of "a thing with a domain" - which is what every axis, readout and segmenter in
+// this module is written against, and none of them can say anything about a
+// marker.
+export type ProfileViewKey = ProfileChannelKey | "events";
+
+export const PROFILE_VIEW_KEYS: readonly ProfileViewKey[] = [
+  ...PROFILE_CHANNEL_KEYS,
+  "events",
+];
+
+// What the legend calls the markers. No unit follows it, unlike every channel
+// beside it - "Markers" is already the word the profile card's description and
+// the chart's accessible summary use for them.
+export const EVENTS_LABEL = "Markers";
 
 export interface ChannelSeries {
   channel: ProfileChannel;

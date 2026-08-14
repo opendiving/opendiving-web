@@ -217,6 +217,32 @@ export function formatDiveTimeOnly(
   });
 }
 
+// A dive's start as one line: the date, the wall-clock time it was entered in,
+// and the offset that clock was on - "Sunday, April 4, 2021 at 10:04
+// (UTC+02:00)". What the dive detail page's header says under the dive number,
+// which is the one place all three belong together.
+//
+// Composed from the two functions above rather than asking `Intl` for the date
+// and the time in one call. en-US does join them with " at ", but which
+// separator a locale reaches for is an ICU detail, and the offset has to be
+// appended by hand at the end either way - so the whole line is assembled here
+// rather than half of it being inherited.
+//
+// The offset is printed as `+00:00` for a `start_time` that carries none, on the
+// same assumption `shiftByEmbeddedOffset` makes for the clock time beside it. The
+// API always sends one, so this is a degenerate case rather than a supported one.
+export function formatDiveStartTime(startTime: string): string {
+  const date = formatDiveDateTime(startTime, {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+  const offset = formatUtcOffset(parseUtcOffsetMinutes(startTime) ?? 0);
+
+  return `${date} at ${formatDiveTimeOnly(startTime)} (UTC${offset})`;
+}
+
 // Formats a plain "YYYY-MM-DD" date (no time component, e.g. a trip's start
 // or end date) without going through timezone-sensitive UTC parsing - using
 // `new Date(dateString)` directly can shift the displayed day by one in

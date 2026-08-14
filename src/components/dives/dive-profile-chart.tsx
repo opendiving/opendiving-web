@@ -8,8 +8,11 @@ import {
   type ChannelSeries,
   type ProfileChannel,
   type ProfileChannelKey,
+  type ProfileViewKey,
+  EVENTS_LABEL,
   PROFILE_CHANNELS,
   PROFILE_CHANNEL_KEYS,
+  PROFILE_VIEW_KEYS,
   depthDomain,
   describeEvent,
   elapsedTicks,
@@ -157,9 +160,10 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
   // recorded nothing near enough to be quoted.
   const [hoveredSeconds, setHoveredSeconds] = useState<number | null>(null);
 
-  // Which channels the diver picked in *this* visit, and null until they pick -
-  // which is what leaves room for the remembered selection underneath.
-  const [chosen, setChosen] = useState<ProfileChannelKey[] | null>(null);
+  // What the diver picked in *this* visit, and null until they pick - which is
+  // what leaves room for the remembered selection underneath. Channels and the
+  // event markers together, because they are one legend and one stored entry.
+  const [chosen, setChosen] = useState<ProfileViewKey[] | null>(null);
 
   // The selection remembered from last time.
   //
@@ -176,7 +180,7 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
     () => null,
   );
   const remembered = useMemo(
-    () => parseSeriesVisibility(storedChannels, PROFILE_CHANNEL_KEYS),
+    () => parseSeriesVisibility(storedChannels, PROFILE_VIEW_KEYS),
     [storedChannels],
   );
 
@@ -378,11 +382,24 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
   // rather than used as stored: dives differ in what they carry, and
   // "temperature only" is a perfectly reasonable thing to have chosen on a dive
   // that had temperature.
-  const available = PROFILE_CHANNEL_KEYS.filter((key) =>
+  //
+  // The markers ride along on the same test: they are offered when the dive has
+  // any that land inside the plot, and a dive with none gets no switch for them,
+  // exactly as a dive with no ceiling gets no ceiling switch. Kept as two lists
+  // rather than one filter over `PROFILE_VIEW_KEYS`, because "which channels can
+  // this dive draw" is a question the fallback below has to ask on its own.
+  const availableChannels = PROFILE_CHANNEL_KEYS.filter((key) =>
     channels.some((channel) => channel.channelKey === key),
   );
+  const available: ProfileViewKey[] =
+    events.length > 0 ? [...availableChannels, "events"] : availableChannels;
 
-  if (available.length === 0) {
+  // On the *channels*, not on `available`, which now also counts the markers. A
+  // profile carrying events and no drawable series would otherwise render a plot
+  // box with a time axis, a row of ticks and a legend reading only "Markers",
+  // with nothing to say why it is bare - and the sentence below is still true of
+  // it, since markers are annotations rather than samples.
+  if (channels.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
         This dive&apos;s imported file recorded no samples to plot.
@@ -390,25 +407,87 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
     );
   }
 
-  const rememberedHere = remembered?.filter((key) => available.includes(key));
+  // The selection, over **every key the legend can switch** rather than over the
+  // ones this dive happens to offer. Three sources, most specific first: what the
+  // diver toggled in this visit, then what they were reading last visit, then
+  // everything.
+  //
+  // Held at full width because `available` is per-dive while the stored entry is
+  // one entry for the whole app, so anything that narrows the selection to this
+  // dive's keys erases the diver's opinion about the keys it lacks. Hide the
+  // temperature curve on a dive whose computer logged no markers, and a selection
+  // narrowed to that dive would be written back without `events` - so the next
+  // dive that *has* markers opens with them hidden and a legend entry claiming
+  // the diver turned them off. That is precisely the failure `DIVE_PROFILE_SERIES_KEY`
+  // bumps a version to fix once, at migration, reopened on every marker-less dive.
+  //
+  // The same leak was already live for the ceiling before the markers existed - a
+  // no-deco dive offers no ceiling toggle - which is why this is written over the
+  // key list rather than patched for `events`.
+  const selectedKeys = chosen ?? remembered ?? PROFILE_VIEW_KEYS;
 
-  // Three sources, most specific first: what the diver toggled in this visit,
-  // then what they were reading last visit, then everything. The remembered
-  // selection is skipped when it plots nothing *here* - a dive that recorded
-  // only what you'd hidden should open showing what it does have, not blank.
-  // An empty `chosen`, by contrast, is honored: that is a choice just made.
+  // What that selection plots *here*.
+  const selectedHere = selectedKeys.filter((key) => available.includes(key));
+
+  // Whether that selection draws a **curve** here. The markers deliberately do not
+  // count: a plot with nothing on it but marker ticks is the blank chart the
+  // fallback below exists to avoid, not a selection that plots something. Asking
+  // `selectedHere.length > 0` instead let a stored `["temperature", "events"]`
+  // opened on a depth-and-markers dive survive as `["events"]` - no curve, no
+  // vertical axis, no gridlines, and no message either, because the overlay stands
+  // down while the markers are up.
+  const plotsACurveHere = selectedHere.some((key) => key !== "events");
+
+  // A *remembered* selection that draws no curve here is skipped - a dive that
+  // recorded only what you'd hidden should open showing what it does have, not
+  // blank. An empty `chosen` is honored, by contrast: that is a choice just made,
+  // on this dive, and the `!== null` is what tells the two apart.
+  //
+  // The fallback restores the **curves only**, carrying the markers choice through
+  // untouched. Falling back to `available` wholesale would switch the markers back
+  // on, and under this key their absence from a selection is a real "off" rather
+  // than a gap - which is the whole reason the selection is held at full width.
+  // Nothing about the marker preference caused the blank plot, so nothing about it
+  // needs overriding to fix one.
   const visible =
-    chosen ?? (rememberedHere?.length ? rememberedHere : available);
+    chosen !== null || plotsACurveHere
+      ? selectedHere
+      : [
+          ...availableChannels,
+          ...selectedHere.filter((key) => key === "events"),
+        ];
 
-  // The updater form, not `toggleSeries(visible, ...)`. `visible` is this
+  // What's on screen, lifted back over the full key list by re-attaching the keys
+  // this dive can't show. Toggling from this rather than from `visible` is the
+  // whole of the fix above; taking it from `visible` rather than from
+  // `selectedKeys` is what keeps a click honest in the fallback case, where the
+  // remembered selection plots nothing here and the chart is showing everything -
+  // there, flipping a key against the stored selection would *add* the curve the
+  // diver just asked to hide.
+  const selection = [
+    ...visible,
+    ...selectedKeys.filter((key) => !available.includes(key)),
+  ];
+
+  // The updater form, not `toggleSeries(selection, ...)`. `selection` is this
   // render's value, and two toggles clicked inside one batch would both compute
   // from it - so the second would silently undo the first.
-  const toggle = (key: ProfileChannelKey) =>
-    setChosen((current) => toggleSeries(current ?? visible, key, available));
+  const toggle = (key: ProfileViewKey) =>
+    setChosen((current) =>
+      toggleSeries(current ?? selection, key, PROFILE_VIEW_KEYS),
+    );
 
   const shown = channels.filter((channel) =>
     visible.includes(channel.channelKey),
   );
+
+  // Whether the markers are on the plot right now. Read by everything that says
+  // anything about them - the glyphs, the crosshair and the accessible summary -
+  // so a marker the diver has switched off can't go on being named by the card
+  // or read out to a screen reader. The same rule `shownValues` enforces for the
+  // channels, and for the same reason: the chart has three ways of describing
+  // itself and they have to agree.
+  const eventsShown = visible.includes("events");
 
   // Whether a channel is on screen right now: recorded, drawable, and not
   // toggled off. What `describeProfile` is built from, so the sentence a screen
@@ -427,34 +506,77 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
           .flatMap((channel) => drawnValues(channel.series, channel.drawn))
       : [];
 
-  // Gridlines come from whichever axis is drawn on the left, so the horizontal
-  // rules always line up with a labelled value rather than floating between two.
-  // Both axes follow what's actually plotted: with depth hidden, temperature is
-  // the only channel worth reading a value off, so it takes the gridlines - and
-  // with only pressure left, the right-hand labels are pressure's, which is the
-  // one case they aren't temperature's.
   const depthChannel = shown.find((channel) => channel.key === "depth") ?? null;
   const ceilingChannel =
     shown.find((channel) => channel.key === "ceiling") ?? null;
-  // Either of the two shares the same domain, so the labels are the same either
-  // way - which is what makes a ceiling-only view (depth hidden on a deco dive)
-  // a readable chart rather than an unscaled one.
-  const leftChannel = depthChannel ?? ceilingChannel;
-  const rightChannel =
-    shown.find((channel) => channel.key === "temperature") ??
-    shown.find((channel) => channel.channelKey === "pressure") ??
-    null;
-  const gridChannel = leftChannel ?? rightChannel;
+  const temperatureChannel =
+    shown.find((channel) => channel.key === "temperature") ?? null;
+  const pressureChannel =
+    shown.find((channel) => channel.channelKey === "pressure") ?? null;
 
-  const depthArea =
-    depthChannel &&
-    buildAreaPath(
-      depthChannel.series.t.map((seconds, index) => ({
-        x: x(seconds),
-        y: depthChannel.y(depthChannel.series.values[index]),
-      })),
-      PADDING.top,
-    );
+  // Depth and the ceiling are one scale, not two - the same meters on the same
+  // domain, labelled in whichever of the two colours is drawing it. So the plot
+  // holds at most three scales however many curves are on it, and this is the
+  // first of them.
+  const verticalChannel = depthChannel ?? ceilingChannel;
+  const scales = [verticalChannel, temperatureChannel, pressureChannel].filter(
+    (channel): channel is PlottedChannel => channel !== null,
+  );
+
+  // **Sides are fixed while there are two scales to tell apart**: meters on the
+  // left, temperature on the right, and pressure taking whichever of the two the
+  // others left free. A diver reads this chart across a logbook of dives, and an
+  // axis that changes sides with the channel mix makes them re-read the colour
+  // of the numbers every time - the labels are coloured, but hue is a slower
+  // thing to check than position.
+  //
+  // Pressure is the one that moves, and it is the right one to move: it is the
+  // channel that goes unlabelled anyway on a full three-scale plot, where
+  // temperature has the right and the crosshair gives the exact figure for any
+  // instant. Three sets of numbers on one edge is unreadable.
+  //
+  // **A single scale goes on the left and the right edge stays empty.** There is
+  // no side to protect when nothing shares the plot with it, the left is where
+  // the eye goes for a primary axis, and it is where the gridlines are already
+  // anchored. The two rules together: the left edge is labelled whenever
+  // anything is plotted, and the right edge exactly when the plot holds a second
+  // scale.
+  const hasTwoScales = scales.length > 1;
+  const leftChannel = hasTwoScales
+    ? (verticalChannel ?? pressureChannel)
+    : (scales[0] ?? null);
+  // Reachable only with meters on the left, since two scales without temperature
+  // means depth (or the ceiling) and pressure - so this can never hand pressure
+  // to both edges at once.
+  const rightChannel = hasTwoScales
+    ? (temperatureChannel ?? pressureChannel)
+    : null;
+
+  // The water column: one filled region per run of consecutive depth samples,
+  // from the surface down to the curve.
+  //
+  // Per segment, and built from the same `segments` the polylines are, which is
+  // the whole of the fix. It was one path over `series.t` entire - every sample
+  // the channel carried, dropouts included - so on a dive whose depth series has
+  // a real hole in it the line broke where the recording stopped and the teal
+  // fill went straight on across the gap underneath it. That is the one thing
+  // `segmentByTimeGap` exists to prevent, stated on the line and contradicted by
+  // the shape under it: a filled region is a claim that the diver was in that
+  // water, and here it spanned the stretch where nothing was recorded at all.
+  //
+  // Real, not hypothetical - `Dive_2025-03-08-1440.xml` has a 1 341-second hole,
+  // and the same class of bug was already found and fixed on the ceiling, which
+  // has shaded per segment since it was added.
+  const depthAreas =
+    depthChannel?.segments.map((segment) =>
+      buildAreaPath(
+        segment.map((position) => ({
+          x: x(depthChannel.series.t[position]),
+          y: depthChannel.y(depthChannel.series.values[position]),
+        })),
+        PADDING.top,
+      ),
+    ) ?? [];
 
   // The forbidden zone: one filled region per run of consecutive ceiling
   // samples, from the surface down to the ceiling. That is the water the diver
@@ -476,7 +598,7 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
   // The marker the crosshair is close enough to be naming, if any. In seconds,
   // from a distance in viewBox units - see `EVENT_HOVER_UNITS`.
   const hoveredEvent =
-    hoveredSeconds === null
+    hoveredSeconds === null || !eventsShown
       ? null
       : nearestEvent(
           events,
@@ -517,21 +639,6 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
           })
           .filter((readout): readout is Readout => readout !== null);
 
-  if (shown.length === 0) {
-    return (
-      <div>
-        <p className="text-sm text-muted-foreground">
-          Every channel is hidden. Pick one below to plot it.
-        </p>
-        <ChannelToggles
-          available={available}
-          visible={visible}
-          onToggle={toggle}
-        />
-      </div>
-    );
-  }
-
   return (
     <div>
       {/* Wide content scrolls in its own container rather than shrinking the
@@ -542,203 +649,214 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
           and on a phone the container's own horizontal scrollbar is drawn
           across the bottom of whatever it contains - straight through the
           legend. */}
-      <div className="overflow-x-auto">
-        {/* Sized to exactly the chart, and the positioning context the
-            tooltip's percentage offsets are resolved against. */}
-        <div className="relative min-w-[560px]">
-          <svg
-            viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-            className="w-full h-auto"
-            role="img"
-            // Only what's on screen. A summary naming a temperature range the
-            // diver has hidden describes a chart nobody is looking at.
-            aria-label={describeProfile({
-              depth: shownValues("depth"),
-              ceiling: shownValues("ceiling"),
-              temperature: shownValues("temperature"),
-              pressure: shownValues("pressure"),
-              events,
-              duration,
-            })}
-          >
-            {/* Horizontal gridlines, from whichever channel holds the labelled
-              axis. `currentColor` throughout, so light/dark is inherited from
-              the surrounding text colors rather than hardcoded per theme.
+      {/* `relative` at the *viewport's* width rather than the plot's, which is
+          what the empty-plot message below is positioned against. Centring it on
+          the 560-unit plot box instead puts it at x≈280 of a box that is wider
+          than a phone, so on a 375 px screen the sentence starts near the right
+          edge and runs off it - and the one thing that has to be readable
+          without scrolling is the sentence explaining why there is nothing to
+          scroll to. */}
+      <div className="relative">
+        <div className="overflow-x-auto">
+          {/* Sized to exactly the chart, and the positioning context the
+              tooltip's percentage offsets are resolved against. */}
+          <div className="relative min-w-[560px]">
+            <svg
+              viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+              className="w-full h-auto"
+              role="img"
+              // Only what's on screen. A summary naming a temperature range the
+              // diver has hidden describes a chart nobody is looking at.
+              aria-label={describeProfile({
+                depth: shownValues("depth"),
+                ceiling: shownValues("ceiling"),
+                temperature: shownValues("temperature"),
+                pressure: shownValues("pressure"),
+                // Emptied rather than filtered, since the toggle is all-or-nothing
+                // - and this is the same "only what's on screen" rule the four
+                // channels above go through `shownValues` for.
+                events: eventsShown ? events : [],
+                duration,
+              })}
+            >
+              {/* Horizontal gridlines, from the left-hand axis, so every rule
+              lines up with a labelled value rather than floating between two.
+              `currentColor` throughout, so light/dark is inherited from the
+              surrounding text colors rather than hardcoded per theme.
 
               `aria-hidden`, here and on the two axes below: an axis is a
               reading aid for the eye, and `role="img"` on the svg does not
               reliably keep bare `<text>` out of the accessibility tree - it
               surfaces as a run of unlabelled numbers ahead of anything useful.
               `describeProfile` on the svg says what they say, in a sentence. */}
-            {gridChannel &&
-              axisTicks(gridChannel.domain).map((tick) => (
-                <line
+              {leftChannel &&
+                axisTicks(leftChannel.domain).map((tick) => (
+                  <line
+                    key={tick}
+                    aria-hidden
+                    className="text-border"
+                    x1={PADDING.left}
+                    x2={WIDTH - PADDING.right}
+                    y1={leftChannel.y(tick)}
+                    y2={leftChannel.y(tick)}
+                    stroke="currentColor"
+                    strokeWidth={1}
+                  />
+                ))}
+
+              {/* The primary scale, labelled in the colour of whichever channel
+              is holding it - see `leftChannel` for which one that is and why
+              it is never nothing while a curve is on the plot. */}
+              {leftChannel &&
+                axisTicks(leftChannel.domain).map((tick) => (
+                  <text
+                    key={tick}
+                    aria-hidden
+                    x={PADDING.left - 6}
+                    y={leftChannel.y(tick)}
+                    textAnchor="end"
+                    dominantBaseline="middle"
+                    fontSize={11}
+                    fill="currentColor"
+                    className={leftChannel.series.channel.colorClass}
+                  >
+                    {tick}
+                  </text>
+                ))}
+
+              {/* The second scale, where the selection holds one - see
+              `rightChannel`. */}
+              {rightChannel &&
+                axisTicks(rightChannel.domain).map((tick) => (
+                  <text
+                    key={tick}
+                    aria-hidden
+                    x={WIDTH - PADDING.right + 6}
+                    y={rightChannel.y(tick)}
+                    textAnchor="start"
+                    dominantBaseline="middle"
+                    fontSize={11}
+                    fill="currentColor"
+                    className={rightChannel.series.channel.colorClass}
+                  >
+                    {tick}
+                  </text>
+                ))}
+
+              {elapsedTicks(duration).map((tick) => (
+                <text
                   key={tick}
                   aria-hidden
-                  className="text-border"
-                  x1={PADDING.left}
-                  x2={WIDTH - PADDING.right}
-                  y1={gridChannel.y(tick)}
-                  y2={gridChannel.y(tick)}
-                  stroke="currentColor"
-                  strokeWidth={1}
+                  x={x(tick)}
+                  y={HEIGHT - 8}
+                  textAnchor="middle"
+                  fontSize={11}
+                  fill="currentColor"
+                  className="text-muted-foreground"
+                >
+                  {formatDurationForForm(tick)}
+                </text>
+              ))}
+
+              {/* Depth is the chart's subject, so it gets a filled area under the
+              curve - which also makes "which side is the water" unambiguous on
+              an inverted axis - and everything else is a thin line on top. One
+              per run, so the fill breaks wherever the line does. */}
+              {depthAreas.map((area, index) => (
+                <path
+                  key={index}
+                  d={area}
+                  fill="currentColor"
+                  className={`${PROFILE_CHANNELS.depth.colorClass} opacity-15`}
                 />
               ))}
 
-            {/* The left scale is depth's, whenever depth is plotted - and the
-              ceiling's on a deco dive with depth toggled off, which is the same
-              scale reading in the same meters, only labelled in the colour of
-              whichever of the two is drawing it. */}
-            {leftChannel &&
-              axisTicks(leftChannel.domain).map((tick) => (
-                <text
-                  key={tick}
-                  aria-hidden
-                  x={PADDING.left - 6}
-                  y={leftChannel.y(tick)}
-                  textAnchor="end"
-                  dominantBaseline="middle"
-                  fontSize={11}
-                  fill="currentColor"
-                  className={leftChannel.series.channel.colorClass}
-                >
-                  {tick}
-                </text>
-              ))}
-
-            {/* The right axis is labelled for temperature, the channel most worth
-              reading a value off. Pressure shares the side but not the labels:
-              three sets of numbers on one edge is unreadable, and the tooltip
-              gives the exact figure for any instant. It does get them when it
-              is the only thing left plotted on that side - an unlabelled axis
-              is only a fair trade while something else is labelling it. */}
-            {rightChannel &&
-              axisTicks(rightChannel.domain).map((tick) => (
-                <text
-                  key={tick}
-                  aria-hidden
-                  x={WIDTH - PADDING.right + 6}
-                  y={rightChannel.y(tick)}
-                  textAnchor="start"
-                  dominantBaseline="middle"
-                  fontSize={11}
-                  fill="currentColor"
-                  className={rightChannel.series.channel.colorClass}
-                >
-                  {tick}
-                </text>
-              ))}
-
-            {elapsedTicks(duration).map((tick) => (
-              <text
-                key={tick}
-                aria-hidden
-                x={x(tick)}
-                y={HEIGHT - 8}
-                textAnchor="middle"
-                fontSize={11}
-                fill="currentColor"
-                className="text-muted-foreground"
-              >
-                {formatDurationForForm(tick)}
-              </text>
-            ))}
-
-            {/* Depth is the chart's subject, so it gets a filled area under the
-              curve - which also makes "which side is the water" unambiguous on
-              an inverted axis - and everything else is a thin line on top. */}
-            {depthArea && (
-              <path
-                d={depthArea}
-                fill="currentColor"
-                className={`${PROFILE_CHANNELS.depth.colorClass} opacity-15`}
-              />
-            )}
-
-            {/* Over the depth fill, not under it: the ceiling zone is a subset
+              {/* Over the depth fill, not under it: the ceiling zone is a subset
               of the water column by construction - a ceiling is always
               shallower than the depth it was computed at - so underneath it
               would be invisible. Denser than depth's 15% for the same reason it
               is red: this is the one region on the chart that is a rule rather
               than a reading. */}
-            {ceilingAreas.map((area, index) => (
-              <path
-                key={index}
-                d={area}
-                fill="currentColor"
-                className={`${PROFILE_CHANNELS.ceiling.colorClass} opacity-25`}
-              />
-            ))}
+              {ceilingAreas.map((area, index) => (
+                <path
+                  key={index}
+                  d={area}
+                  fill="currentColor"
+                  className={`${PROFILE_CHANNELS.ceiling.colorClass} opacity-25`}
+                />
+              ))}
 
-            {shown.map((channel) => (
-              <g
-                key={channel.key}
-                className={channel.series.channel.colorClass}
-              >
-                {channel.segments.map((segment, index) => (
-                  <polyline
-                    key={index}
-                    points={segment
-                      .map(
-                        (position) =>
-                          `${x(channel.series.t[position])},${channel.y(channel.series.values[position])}`,
-                      )
-                      .join(" ")}
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={channel.key === "depth" ? 2 : 1.5}
-                    // From the channel rather than from this line's key, so the
-                    // legend swatch below can read the same flag - see `dashed`
-                    // on `ProfileChannel` for why the dash is load-bearing.
-                    strokeDasharray={
-                      channel.series.channel.dashed ? "5 3" : undefined
-                    }
-                    strokeLinejoin="round"
-                    strokeLinecap="round"
+              {shown.map((channel) => (
+                <g
+                  key={channel.key}
+                  className={channel.series.channel.colorClass}
+                >
+                  {channel.segments.map((segment, index) => (
+                    <polyline
+                      key={index}
+                      points={segment
+                        .map(
+                          (position) =>
+                            `${x(channel.series.t[position])},${channel.y(channel.series.values[position])}`,
+                        )
+                        .join(" ")}
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth={channel.key === "depth" ? 2 : 1.5}
+                      // From the channel rather than from this line's key, so the
+                      // legend swatch below can read the same flag - see `dashed`
+                      // on `ProfileChannel` for why the dash is load-bearing.
+                      strokeDasharray={
+                        channel.series.channel.dashed ? "5 3" : undefined
+                      }
+                      strokeLinejoin="round"
+                      strokeLinecap="round"
+                    />
+                  ))}
+                </g>
+              ))}
+
+              {/* Event markers, on the axis rather than on the depth curve, and
+              behind a switch of their own in the legend. They are still not a
+              channel - no axis, no unit, nothing to scale - and the switch does
+              not make them one; what it grants is that a dive with a dozen of
+              them can be read without them, which "annotations are cheap enough
+              to always draw" was the wrong answer to. See `PROFILE_VIEW_KEYS`
+              for why they are a separate list rather than a fifth channel. */}
+              {eventsShown &&
+                events.map((event, index) => (
+                  <EventMarker
+                    key={`${event.t}-${event.type}-${index}`}
+                    event={event}
+                    cx={x(event.t)}
+                    hovered={event === hoveredEvent}
                   />
                 ))}
-              </g>
-            ))}
 
-            {/* Event markers, on the axis rather than on the depth curve, and
-              always drawn rather than behind a toggle of their own. They are
-              annotations, not a channel - no axis, no unit, nothing to scale -
-              and a handful of ticks on the baseline is the same order of visual
-              noise as the gridlines, which nobody offers a switch for either.
-              The legend stays a list of curves, which is what it claims to be. */}
-            {events.map((event, index) => (
-              <EventMarker
-                key={`${event.t}-${event.type}-${index}`}
-                event={event}
-                cx={x(event.t)}
-                hovered={event === hoveredEvent}
-              />
-            ))}
+              {hoveredSeconds !== null && (
+                <line
+                  x1={x(hoveredSeconds)}
+                  x2={x(hoveredSeconds)}
+                  y1={PADDING.top}
+                  y2={PLOT_BOTTOM}
+                  stroke="currentColor"
+                  strokeWidth={1}
+                  className="text-muted-foreground"
+                />
+              )}
 
-            {hoveredSeconds !== null && (
-              <line
-                x1={x(hoveredSeconds)}
-                x2={x(hoveredSeconds)}
-                y1={PADDING.top}
-                y2={PLOT_BOTTOM}
-                stroke="currentColor"
-                strokeWidth={1}
-                className="text-muted-foreground"
-              />
-            )}
+              {readouts.map((readout) => (
+                <circle
+                  key={readout.key}
+                  cx={x(readout.seconds)}
+                  cy={readout.cy}
+                  r={3.5}
+                  fill="currentColor"
+                  className={readout.channel.colorClass}
+                />
+              ))}
 
-            {readouts.map((readout) => (
-              <circle
-                key={readout.key}
-                cx={x(readout.seconds)}
-                cy={readout.cy}
-                r={3.5}
-                fill="currentColor"
-                className={readout.channel.colorClass}
-              />
-            ))}
-
-            {/* One transparent hit target over the whole plot. The gas chart hangs
+              {/* One transparent hit target over the whole plot. The gas chart hangs
               its hover off per-dot `<a>` elements; a continuous line has no dots
               to hang anything off, so the analogue is a rect that turns the
               cursor's x into a time. `transparent` rather than `none` -
@@ -749,45 +867,73 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
               focus for free from the links its dots already are, and there is no
               equivalent here without inventing a focus model for a polyline. The
               `aria-label` above carries the summary instead. */}
-            <rect
-              x={PADDING.left}
-              y={PADDING.top}
-              width={PLOT_WIDTH}
-              height={PLOT_HEIGHT}
-              fill="transparent"
-              onMouseMove={(event) => {
-                const bounds = event.currentTarget.getBoundingClientRect();
-                const ratio = (event.clientX - bounds.left) / bounds.width;
-                setHoveredSeconds(
-                  Math.min(duration, Math.max(0, ratio * duration)),
-                );
-              }}
-              onMouseLeave={() => setHoveredSeconds(null)}
-            />
-          </svg>
+              <rect
+                x={PADDING.left}
+                y={PADDING.top}
+                width={PLOT_WIDTH}
+                height={PLOT_HEIGHT}
+                fill="transparent"
+                onMouseMove={(event) => {
+                  const bounds = event.currentTarget.getBoundingClientRect();
+                  const ratio = (event.clientX - bounds.left) / bounds.width;
+                  setHoveredSeconds(
+                    Math.min(duration, Math.max(0, ratio * duration)),
+                  );
+                }}
+                onMouseLeave={() => setHoveredSeconds(null)}
+              />
+            </svg>
 
-          {hoveredSeconds !== null && (readouts.length > 0 || hoveredEvent) && (
-            <ProfileTooltip
-              seconds={hoveredSeconds}
-              readouts={readouts}
-              event={hoveredEvent}
-              cx={x(hoveredSeconds)}
-              // The topmost of the dots being described, which is only used to
-              // decide which end of the plot the card sits at - see
-              // `tooltipVerticalAnchor`. `PLOT_BOTTOM` is the degenerate
-              // fallback for a card with an event and no readouts to hang off,
-              // which puts it at the top, clear of the marker on the baseline.
-              topmostY={
-                readouts.length > 0
-                  ? Math.min(...readouts.map((readout) => readout.cy))
-                  : PLOT_BOTTOM
-              }
-            />
-          )}
+            {hoveredSeconds !== null &&
+              (readouts.length > 0 || hoveredEvent) && (
+                <ProfileTooltip
+                  seconds={hoveredSeconds}
+                  readouts={readouts}
+                  event={hoveredEvent}
+                  cx={x(hoveredSeconds)}
+                  // The topmost of the dots being described, which is only used to
+                  // decide which end of the plot the card sits at - see
+                  // `tooltipVerticalAnchor`. `PLOT_BOTTOM` is the degenerate
+                  // fallback for a card with an event and no readouts to hang off,
+                  // which puts it at the top, clear of the marker on the baseline.
+                  topmostY={
+                    readouts.length > 0
+                      ? Math.min(...readouts.map((readout) => readout.cy))
+                      : PLOT_BOTTOM
+                  }
+                />
+              )}
+          </div>
         </div>
+
+        {/* Switching the last channel off used to return a bare sentence in
+            place of the whole chart, which collapsed the card to two lines and
+            dragged the legend - the only way back - up the page after it. The
+            plot stays: same box, same elapsed-time axis, with the sentence over
+            the middle of it. Nothing moves, and the toggle that undid this is
+            still under the cursor that clicked it.
+
+            A sibling of the scroll container rather than a child of the plot
+            box, so it centres on what the diver can see - see the note on the
+            `relative` wrapper above.
+
+            Not shown while the markers are up, even with every curve hidden: the
+            plot has content then, and "pick one below to plot it" printed across
+            a row of markers describes a chart nobody is looking at.
+
+            `pointer-events-none` so the hit target underneath still tracks the
+            crosshair, which markers are still worth hovering for - and so the
+            plot underneath can still be scrolled sideways. */}
+        {shown.length === 0 && !eventsShown && (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <p className="text-sm text-muted-foreground">
+              Every channel is hidden. Pick one below to plot it.
+            </p>
+          </div>
+        )}
       </div>
 
-      <ChannelToggles
+      <LegendToggles
         available={available}
         visible={visible}
         onToggle={toggle}
@@ -1035,23 +1181,35 @@ function ProfileTooltip({
 // the crosshair readout still names each cylinder ("Tank pressure (gas 2)").
 // Toggling by channel is also what makes the choice worth remembering: "gas 2"
 // means a different cylinder on the next dive, while "tank pressure" doesn't.
-function ChannelToggles({
+//
+// The markers get an entry too, last, and it is the one that is not a curve -
+// see `PROFILE_VIEW_KEYS`. Putting it here rather than anywhere else on the card
+// follows from the same pact as the rest: *"Both charts' legends are the control
+// for what they plot"*, and a marker switch sitting somewhere else would be the
+// first thing on this chart you could turn off from outside its legend.
+function LegendToggles({
   available,
   visible,
   onToggle,
 }: {
-  available: readonly ProfileChannelKey[];
-  visible: readonly ProfileChannelKey[];
-  onToggle: (key: ProfileChannelKey) => void;
+  available: readonly ProfileViewKey[];
+  visible: readonly ProfileViewKey[];
+  onToggle: (key: ProfileViewKey) => void;
 }) {
   return (
     <div
       className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs"
       role="group"
-      aria-label="Channels"
+      // Named for what this dive's legend actually holds. Most dives carry no
+      // markers and get no switch for them, and a group announcing a control it
+      // does not contain is the same disagreement the chart polices everywhere
+      // else, one level up in the accessibility tree.
+      aria-label={
+        available.includes("events") ? "Channels and markers" : "Channels"
+      }
     >
       {available.map((key) => {
-        const channel = PROFILE_CHANNELS[key];
+        const channel = key === "events" ? null : PROFILE_CHANNELS[key];
         const on = visible.includes(key);
 
         return (
@@ -1071,31 +1229,53 @@ function ChannelToggles({
               on ? "text-muted-foreground" : "text-muted-foreground/50",
             )}
           >
-            <span
-              aria-hidden
-              className={cn(
-                "inline-block w-4",
-                // A dashed curve gets a dashed swatch. The legend is the only
-                // thing that says the red dashed line is the ceiling, so a
-                // solid swatch beside it would be describing a curve that isn't
-                // on the chart - and the dash is what separates the ceiling
-                // from temperature when hue alone is close (see `--ceiling`).
-                //
-                // A top border rather than a background, because CSS has no way
-                // to dash a fill: `border-current` picks up the same
-                // `currentColor` `bg-current` does, so both branches inherit
-                // the colour the same way.
-                channel.dashed
-                  ? "border-t-2 border-dashed border-current"
-                  : "h-0.5 rounded-full bg-current",
-                // Hidden channels keep their swatch, in the button's own muted
-                // color rather than the channel's: a grey line where the teal
-                // one was is the whole of "this is off, and this is what it
-                // would be".
-                on && channel.colorClass,
-              )}
-            />
-            {channel.label} ({channel.unit})
+            {channel ? (
+              <span
+                aria-hidden
+                className={cn(
+                  "inline-block w-4",
+                  // A dashed curve gets a dashed swatch. The legend is the only
+                  // thing that says the red dashed line is the ceiling, so a
+                  // solid swatch beside it would be describing a curve that
+                  // isn't on the chart - and the dash is what separates the
+                  // ceiling from temperature when hue alone is close (see
+                  // `--ceiling`).
+                  //
+                  // A top border rather than a background, because CSS has no
+                  // way to dash a fill: `border-current` picks up the same
+                  // `currentColor` `bg-current` does, so both branches inherit
+                  // the colour the same way.
+                  channel.dashed
+                    ? "border-t-2 border-dashed border-current"
+                    : "h-0.5 rounded-full bg-current",
+                  // Hidden channels keep their swatch, in the button's own
+                  // muted color rather than the channel's: a grey line where the
+                  // teal one was is the whole of "this is off, and this is what
+                  // it would be".
+                  on && channel.colorClass,
+                )}
+              />
+            ) : (
+              // The markers' swatch is a mark, not a line, because that is what
+              // they are on the plot - a swatch of the same width so the labels
+              // stay in one column, with the glyph centred in it.
+              //
+              // A circle rather than the diamond or the triangle: those two mean
+              // "gas switch" and "a stop" specifically, and one entry standing
+              // for all five types has no business claiming to be one of them.
+              // The circle is already what the two general types draw, and the
+              // crosshair names the particular one in words.
+              //
+              // Deliberately uncoloured in both states, unlike every swatch
+              // above. Marker colour answers "does this join to something else
+              // on the chart" - only a gas switch does, in the cylinders' violet
+              // - so a coloured legend swatch would be making that claim on
+              // behalf of the four types for which it is false.
+              <span aria-hidden className="inline-flex w-4 justify-center">
+                <span className="h-1.5 w-1.5 rounded-full bg-current" />
+              </span>
+            )}
+            {channel ? `${channel.label} (${channel.unit})` : EVENTS_LABEL}
           </button>
         );
       })}
