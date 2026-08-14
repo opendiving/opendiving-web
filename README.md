@@ -40,6 +40,10 @@ no shutdown, acquisition, or paywall can ever take your logbook with it.
   hydro test…) with due-soon reminders on the dashboard and by email.
 - **Certifications** — keep photos of your c-cards on hand at the dive shop without digging out the
   plastic.
+- **Full export** — one click to take _everything_ out in open formats: a **UDDF** document other
+  programs import, a **CSV** for a spreadsheet, or a complete **archive** with the structured JSON,
+  every CSV, every dive-computer file you uploaded and both sides of every c-card. A data-ownership
+  log without an exit door is a contradiction.
 - **Passwordless sign-in** — email magic links or Google; no passwords stored, ever.
 - **Dark mode & responsive** — works on the boat, in the dive shop, and on your desk.
 
@@ -51,9 +55,6 @@ no shutdown, acquisition, or paywall can ever take your logbook with it.
 
 Roadmap items, roughly in priority order — contributions welcome:
 
-- **Full export** — one click to take _everything_ out in open formats (UDDF, CSV, and a complete
-  JSON + original-files archive). A data-ownership log without an exit door is a contradiction; this
-  ships before anything else.
 - **More importers** — Subsurface XML and UDDF (which also covers Apple Watch dives via Oceanic+'s
   UDDF export), then Shearwater Cloud exports; a pluggable importer layer so every format someone is
   stranded with is a migration path in. Longer term,
