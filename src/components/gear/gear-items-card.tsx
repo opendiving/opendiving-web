@@ -112,101 +112,95 @@ export function GearItemsCard({
             </Button>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Brand</TableHead>
-                  <TableHead className="text-right">Dives</TableHead>
-                  <TableHead>Service</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {items.map((item) => (
-                  <TableRow key={item.uuid}>
-                    <TableCell className="font-medium">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Link
-                          href={`/gear/${item.uuid}`}
-                          className="hover:underline"
-                        >
-                          {item.name}
-                        </Link>
-                        {item.rented && (
-                          <Badge variant="secondary">Rented</Badge>
-                        )}
-                        {item.is_archived && (
-                          <Badge variant="outline">Archived</Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {gearTypeLabel(item.type) ?? (
-                        <span className="text-muted-foreground">-</span>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Brand</TableHead>
+                <TableHead className="text-right">Dives</TableHead>
+                <TableHead>Service</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {items.map((item) => (
+                <TableRow key={item.uuid}>
+                  <TableCell className="font-medium">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Link
+                        href={`/gear/${item.uuid}`}
+                        className="hover:underline"
+                      >
+                        {item.name}
+                      </Link>
+                      {item.rented && <Badge variant="secondary">Rented</Badge>}
+                      {item.is_archived && (
+                        <Badge variant="outline">Archived</Badge>
                       )}
-                    </TableCell>
-                    <TableCell>{item.brand || "-"}</TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {item.dive_count}
-                    </TableCell>
-                    {/* No extra fetch - the API embeds each item's schedules, and
-                        the status is derived from them in the browser. */}
-                    <TableCell>
-                      <ServiceStatusBadge
-                        status={worstServiceStatus(
-                          item.service ?? [],
-                          item.dive_count,
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {gearTypeLabel(item.type) ?? (
+                      <span className="text-muted-foreground">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell>{item.brand || "-"}</TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {item.dive_count}
+                  </TableCell>
+                  {/* No extra fetch - the API embeds each item's schedules, and
+                      the status is derived from them in the browser. */}
+                  <TableCell>
+                    <ServiceStatusBadge
+                      status={worstServiceStatus(
+                        item.service ?? [],
+                        item.dive_count,
+                      )}
+                    />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label="Edit"
+                        onClick={() => onEdit(item)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label={item.is_archived ? "Unarchive" : "Archive"}
+                        disabled={isArchiving}
+                        onClick={() => onArchiveToggle(item)}
+                      >
+                        {item.is_archived ? (
+                          <ArchiveRestore className="h-4 w-4" />
+                        ) : (
+                          <Archive className="h-4 w-4" />
                         )}
-                      />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          aria-label="Edit"
-                          onClick={() => onEdit(item)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          aria-label={
-                            item.is_archived ? "Unarchive" : "Archive"
-                          }
-                          disabled={isArchiving}
-                          onClick={() => onArchiveToggle(item)}
-                        >
-                          {item.is_archived ? (
-                            <ArchiveRestore className="h-4 w-4" />
-                          ) : (
-                            <Archive className="h-4 w-4" />
-                          )}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          aria-label="Delete"
-                          onClick={() => onDelete(item.uuid)}
-                          disabled={deletingId === item.uuid}
-                        >
-                          {deletingId === item.uuid ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label="Delete"
+                        onClick={() => onDelete(item.uuid)}
+                        disabled={deletingId === item.uuid}
+                      >
+                        {deletingId === item.uuid ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
 
         <PaginationFooter

@@ -114,66 +114,64 @@ export default function TripsPage() {
               </Button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Dates</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {trips.map((trip) => (
-                    <TableRow key={trip.uuid}>
-                      <TableCell className="font-medium">
-                        <Link
-                          href={`/trips/${trip.uuid}`}
-                          className="hover:underline"
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Dates</TableHead>
+                  <TableHead>Location</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {trips.map((trip) => (
+                  <TableRow key={trip.uuid}>
+                    <TableCell className="font-medium">
+                      <Link
+                        href={`/trips/${trip.uuid}`}
+                        className="hover:underline"
+                      >
+                        {trip.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      {formatTripDateRange(trip.start_date, trip.end_date) ??
+                        "-"}
+                    </TableCell>
+                    <TableCell>{trip.location || "-"}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link href={`/trips/${trip.uuid}`}>
+                            <Eye className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label="Edit"
+                          onClick={() => setEditingTrip(trip)}
                         >
-                          {trip.name}
-                        </Link>
-                      </TableCell>
-                      <TableCell>
-                        {formatTripDateRange(trip.start_date, trip.end_date) ??
-                          "-"}
-                      </TableCell>
-                      <TableCell>{trip.location || "-"}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="sm" asChild>
-                            <Link href={`/trips/${trip.uuid}`}>
-                              <Eye className="h-4 w-4" />
-                            </Link>
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            aria-label="Edit"
-                            onClick={() => setEditingTrip(trip)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => requestDeleteTrip(trip.uuid)}
-                            disabled={deletingId === trip.uuid}
-                          >
-                            {deletingId === trip.uuid ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => requestDeleteTrip(trip.uuid)}
+                          disabled={deletingId === trip.uuid}
+                        >
+                          {deletingId === trip.uuid ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
 
           <PaginationFooter

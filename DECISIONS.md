@@ -4794,6 +4794,13 @@ wrapped _that_ in its own `overflow-x-auto`. The inner one is what actually scro
 did. Both outer wrappers are now gone, and the phrasing in the two sections above — "both scroll
 inside their own `overflow-x-auto` wrapper" — was describing the div that wasn't doing it.
 
+**No `Table` in the app carries one any more.** The other seven call sites — the `/dives`, `/sites`,
+`/trips` and `/certifications` tables, the gear table on the dive page, and both gear cards —
+dropped theirs too, verified at 375 px as byte-identical screenshots with the inner div still
+scrolling by the same amount. The `overflow-x-auto` wrappers that remain in
+`dive-profile-chart.tsx`, `gas-use-chart.tsx` and `dive-activity-chart.tsx` are **load-bearing**:
+they wrap an SVG, which brings no scroll container of its own.
+
 **This is a live trap when measuring.** `closest('[class*="overflow-x-auto"]')` used to find the
 outer div, whose `scrollWidth` equals its `clientWidth`, and so reported a comfortable **0 px
 overflow for a table that was visibly scrolling** — which is exactly the reassuring, wrong number to

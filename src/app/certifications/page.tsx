@@ -150,112 +150,108 @@ export default function CertificationsPage() {
               </Button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Card</TableHead>
-                    <TableHead>Certification</TableHead>
-                    <TableHead>Agency</TableHead>
-                    <TableHead>Number</TableHead>
-                    <TableHead>Certified</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {certifications.map((certification) => {
-                    const expiry = certificationExpiryStatus(
-                      certification.expires_on,
-                    );
-                    return (
-                      <TableRow key={certification.uuid}>
-                        <TableCell>
-                          {/* No extra request for cards with no image - the API
-                              embeds each row's file metadata. */}
-                          <CertificationCardImage
-                            certificationUuid={certification.uuid}
-                            side="front"
-                            file={certificationFile(certification, "front")}
-                            compact
-                          />
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <button
-                              type="button"
-                              className="hover:underline text-left"
-                              onClick={() => setViewing(certification)}
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Card</TableHead>
+                  <TableHead>Certification</TableHead>
+                  <TableHead>Agency</TableHead>
+                  <TableHead>Number</TableHead>
+                  <TableHead>Certified</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {certifications.map((certification) => {
+                  const expiry = certificationExpiryStatus(
+                    certification.expires_on,
+                  );
+                  return (
+                    <TableRow key={certification.uuid}>
+                      <TableCell>
+                        {/* No extra request for cards with no image - the API
+                            embeds each row's file metadata. */}
+                        <CertificationCardImage
+                          certificationUuid={certification.uuid}
+                          side="front"
+                          file={certificationFile(certification, "front")}
+                          compact
+                        />
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            className="hover:underline text-left"
+                            onClick={() => setViewing(certification)}
+                          >
+                            {certification.name}
+                          </button>
+                          {expiry && (
+                            <Badge
+                              variant={certificationExpiryBadgeVariant(expiry)}
                             >
-                              {certification.name}
-                            </button>
-                            {expiry && (
-                              <Badge
-                                variant={certificationExpiryBadgeVariant(
-                                  expiry,
-                                )}
-                              >
-                                {certificationExpiryLabel(expiry)}
-                              </Badge>
+                              {certificationExpiryLabel(expiry)}
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {certificationAgencyLabel(
+                          certification.agency,
+                          certification.agency_other,
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {certification.certification_number || (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {certification.certified_on ? (
+                          formatDateOnly(certification.certified_on)
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            aria-label="Card images"
+                            onClick={() => setManagingFiles(certification)}
+                          >
+                            <Images className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            aria-label="Edit"
+                            onClick={() => setEditing(certification)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            aria-label="Delete"
+                            onClick={() => requestDelete(certification.uuid)}
+                            disabled={deletingId === certification.uuid}
+                          >
+                            {deletingId === certification.uuid ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
                             )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {certificationAgencyLabel(
-                            certification.agency,
-                            certification.agency_other,
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {certification.certification_number || (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          {certification.certified_on ? (
-                            formatDateOnly(certification.certified_on)
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              aria-label="Card images"
-                              onClick={() => setManagingFiles(certification)}
-                            >
-                              <Images className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              aria-label="Edit"
-                              onClick={() => setEditing(certification)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              aria-label="Delete"
-                              onClick={() => requestDelete(certification.uuid)}
-                              disabled={deletingId === certification.uuid}
-                            >
-                              {deletingId === certification.uuid ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Trash2 className="h-4 w-4" />
-                              )}
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           )}
 
           <PaginationFooter
