@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { DiveMixturesCard } from "./dive-mixtures-card";
 import type { Dive, DiveMixture, GasRole } from "@/lib/api/dives";
 
@@ -89,23 +89,65 @@ describe("DiveMixturesCard warnings", () => {
 // A cylinder has no name of its own, so its row is identified by position - and by the
 // same 1-based position the consumption card below numbers its own rows with, which is
 // the only thing letting the two tables be read against each other.
-describe("DiveMixturesCard tank column", () => {
+describe("DiveMixturesCard identity column", () => {
   it("numbers the rows by position, under a header that says so", () => {
     render(<DiveMixturesCard dive={dive([AIR, EAN54], 30)} />);
 
+    // Named "Tank" rather than "#", which a screen reader reads as punctuation
+    // or not at all - the visible header is still the character.
     expect(
       screen.getByRole("columnheader", { name: "Tank" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("cell", { name: "Tank 1" })).toBeInTheDocument();
-    expect(screen.getByRole("cell", { name: "Tank 2" })).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "1" })).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "2" })).toBeInTheDocument();
+  });
+
+  it("gives the gas a column of its own, beside the position rather than in it", () => {
+    // The consumption card below heads its own second column the same way, which
+    // is what puts the two tables' badges in one line down the page.
+    render(<DiveMixturesCard dive={dive([AIR, EAN54], 30)} />);
+
+    expect(
+      screen.getByRole("columnheader", { name: "Gas" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "Air" })).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "EAN54" })).toBeInTheDocument();
   });
 });
 
-// `sharedPpO2Limit` is unit-tested in `lib/dive-mixtures.test.ts`. What only a render
-// reaches is whether its answer and the column under it were wired to the same limit -
-// a header naming one number above cells computed from another is the exact failure the
-// helper exists to prevent, and neither half can show it alone.
-describe("DiveMixturesCard ppO₂ column header", () => {
+// Helium is the one fraction a dive can have nothing to say about: air and nitrox
+// record a flat 0, which is most dives and a column of zeroes on every one of them.
+describe("DiveMixturesCard helium column", () => {
+  it("is absent when no cylinder carries any", () => {
+    render(<DiveMixturesCard dive={dive([AIR, EAN54], 30)} />);
+
+    expect(
+      screen.queryByRole("columnheader", { name: "He" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "O₂" }),
+    ).toBeInTheDocument();
+  });
+
+  it("returns for every row once one cylinder has helium", () => {
+    // Including the air cylinder's own 0, which is a real contrast on a dive that
+    // carries both rather than the noise it is on a dive that carries neither.
+    const trimix: DiveMixture = { volume: 24, oxygen: 21, helium: 35 };
+    render(<DiveMixturesCard dive={dive([AIR, trimix], 30)} />);
+
+    expect(
+      screen.getByRole("columnheader", { name: "He" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("35%")).toBeInTheDocument();
+    expect(screen.getByText("0%")).toBeInTheDocument();
+  });
+});
+
+// The MOD column states the limit its number was computed at on every row, and the
+// header stays bare. What only a render reaches is that the two halves of a cell are
+// wired to the same limit - a depth printed beside a ppO₂ it wasn't derived from is
+// worse than no MOD at all, and neither half can show it alone.
+describe("DiveMixturesCard ppO₂ qualifier", () => {
   const at = (po2_limit: number, oxygen: number): DiveMixture => ({
     volume: 11.1,
     helium: 0,
@@ -113,34 +155,50 @@ describe("DiveMixturesCard ppO₂ column header", () => {
     po2_limit,
   });
 
-  it("names the limit in the header when every cylinder shares one", () => {
+  // The MOD is the last cell of every body row. Asserted on `textContent` rather than
+  // by accessible name: the depth and its limit are two elements so the muted one can
+  // be muted, and `dom-accessibility-api` trims each node before joining them, which
+  // turns the rendered "56.7 m @ 1.4" into the name "56.7 m@ 1.4". The space is really
+  // in the DOM - this reads what the diver sees rather than pinning that quirk.
+  function modCells(): (string | null)[] {
+    return screen
+      .getAllByRole("row")
+      .slice(1)
+      .map((row) => {
+        const cells = within(row).getAllByRole("cell");
+        return cells[cells.length - 1].textContent;
+      });
+  }
+
+  it("qualifies every row, including the dive where all cylinders agree", () => {
+    // Neither records a limit, so both fall back to the same working default - and
+    // both say so, rather than the header saying it once for them.
     render(<DiveMixturesCard dive={dive([AIR, EAN54], 30)} />);
 
-    // Neither records a limit, so both fall back to the same working default.
-    expect(screen.getByText("MOD @ ppO₂ 1.4")).toBeInTheDocument();
-    expect(screen.queryByText(/@ 1\.4$/)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "MOD" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/MOD @ ppO₂/)).not.toBeInTheDocument();
+    // 15.9 m, not the 19.6 m the warning above quotes for the same gas: that one is
+    // the 1.6 deco ceiling. Two different numbers for one cylinder is exactly why
+    // every MOD says which limit produced it.
+    expect(modCells()).toEqual(["56.7 m @ 1.4", "15.9 m @ 1.4"]);
   });
 
-  it("moves the qualifier into the rows when the cylinders disagree", () => {
+  it("carries each cylinder's own limit when the dive mixes them", () => {
     // The real shape: a Suunto records 1.4 on the back gas and 1.6 on the deco bottle
     // of the same dive.
     render(<DiveMixturesCard dive={dive([at(1.4, 21), at(1.6, 50)], 30)} />);
 
-    expect(screen.getByText("MOD")).toBeInTheDocument();
-    expect(screen.queryByText(/MOD @ ppO₂/)).not.toBeInTheDocument();
-    // Both rows carry their own, not just the one that differs from the default:
-    // an unqualified cell beside a qualified one reads as "no limit", not "1.4".
-    expect(screen.getByText(/56\.7 m @ 1\.4/)).toBeInTheDocument();
-    expect(screen.getByText(/22\.0 m @ 1\.6/)).toBeInTheDocument();
+    expect(modCells()).toEqual(["56.7 m @ 1.4", "22.0 m @ 1.6"]);
   });
 
   it("computes each row at its own recorded limit, not the default", () => {
-    // EAN50 at ppO₂ 1.6 is 22.0 m; at the 1.4 default it would be 18.0 m. A header
-    // that said 1.4 over this cell would be naming a limit the number didn't use.
+    // EAN50 at ppO₂ 1.6 is 22.0 m; at the 1.4 default it would be 18.0 m. A cell
+    // saying 1.4 beside this number would be naming a limit it didn't use.
     render(<DiveMixturesCard dive={dive([at(1.6, 50)], 20)} />);
 
-    expect(screen.getByText("MOD @ ppO₂ 1.6")).toBeInTheDocument();
-    expect(screen.getByText("22.0 m")).toBeInTheDocument();
+    expect(modCells()).toEqual(["22.0 m @ 1.6"]);
   });
 });
 

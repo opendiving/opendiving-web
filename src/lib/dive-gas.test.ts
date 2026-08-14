@@ -340,7 +340,7 @@ describe("tankGasUseRows", () => {
 
     const rows = tankGasUseRows(withTanks);
 
-    expect(rows.map((row) => row.label)).toEqual(["Tank 1", "Tank 2"]);
+    expect(rows.map((row) => row.label)).toEqual(["1", "2"]);
     expect(rows.map((row) => row.gas)).toEqual(["Air", "EAN50"]);
     expect(rows.map((row) => row.role)).toEqual(["bottom", "deco"]);
     expect(rows.map((row) => row.use?.gas_number)).toEqual([1, 2]);
@@ -370,10 +370,7 @@ describe("tankGasUseRows", () => {
       gas_use: multiTankUse([tank({ gas_number: 0 }), tank({ gas_number: 1 })]),
     });
 
-    expect(tankGasUseRows(ocean).map((row) => row.label)).toEqual([
-      "Tank 1",
-      "Tank 2",
-    ]);
+    expect(tankGasUseRows(ocean).map((row) => row.label)).toEqual(["1", "2"]);
   });
 
   it("attributes nothing to either of two cylinders sharing a gas number", () => {

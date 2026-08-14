@@ -422,8 +422,10 @@ export interface TankGasUseRow {
   // React key. Built from the cylinder's identity rather than its gas number,
   // which is neither unique nor always present.
   key: string;
-  // Named exactly as the mixtures card names the same cylinder, so the two
-  // tables can be read against each other row by row.
+  // Named exactly as the mixtures card names the same cylinder - its 1-based
+  // position, written bare - so the two tables can be read against each other
+  // row by row. A tank matching no mixture has no position to state and carries
+  // the device's `Gas N` instead.
   label: string;
   // `gasName`'s output, so the badge here and the badge there are the same
   // string - null for a cylinder whose fractions can't be named, and for a tank
@@ -537,8 +539,9 @@ export function tankGasUseRows(dive: Dive): TankGasUseRow[] {
         mixture.id != null ? `mixture-id-${mixture.id}` : `mixture-at-${index}`,
       // Same label as the mixtures card's first column, down to the 1-based
       // position - which is the cylinder's place in the list, and deliberately
-      // not its gas number, since a Suunto Ocean numbers from 0.
-      label: `Tank ${index + 1}`,
+      // not its gas number, since a Suunto Ocean numbers from 0. Bare, because
+      // both tables now head this column `#` and carry the word nowhere.
+      label: `${index + 1}`,
       gas: gasName(mixture.oxygen, mixture.helium),
       role: mixture.role ?? null,
       hasPressures:
@@ -554,8 +557,12 @@ export function tankGasUseRows(dive: Dive): TankGasUseRow[] {
       // tanks labelled gas 1 would otherwise render under one React key.
       key: `tank-${index}`,
       // The device's own label is all there is to call it by. "Gas 3" rather
-      // than "Tank 3", so it can't be misread as the third row of the mixtures
+      // than a bare "3", so it can't be misread as the third row of the mixtures
       // table - the whole point of this row is that it matches none of them.
+      // This is why the rows above lost the word and this one keeps it: the
+      // distinction was never "tank" versus "gas", it was numbered-by-position
+      // versus named-by-the-device, and only one of those needs saying now that
+      // the column is headed `#`.
       label: `Gas ${tank.gas_number}`,
       gas: null,
       role: null,

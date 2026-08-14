@@ -1,0 +1,66 @@
+- generic [active] [ref=f1e1]:
+  - generic [ref=f1e2]:
+    - banner [ref=f1e3]:
+      - generic [ref=f1e6]:
+        - link "OpenDiving" [ref=f1e7] [cursor=pointer]:
+          - /url: /
+        - navigation [ref=f1e13]:
+          - link "Features" [ref=f1e14] [cursor=pointer]:
+            - /url: /#features
+          - link "Community" [ref=f1e15] [cursor=pointer]:
+            - /url: /#community
+          - link "About" [ref=f1e16] [cursor=pointer]:
+            - /url: /#about
+    - main [ref=f1e19]
+    - contentinfo [ref=f1e24]:
+      - generic [ref=f1e25]:
+        - generic [ref=f1e26]:
+          - generic [ref=f1e27]:
+            - generic [ref=f1e28]: OpenDiving
+            - paragraph [ref=f1e34]: Open source diving platform for the global diving community.
+          - generic [ref=f1e35]:
+            - heading "Platform" [level=4] [ref=f1e36]
+            - list [ref=f1e37]:
+              - listitem [ref=f1e38]:
+                - link "Dive Log" [ref=f1e39] [cursor=pointer]:
+                  - /url: /dives
+              - listitem [ref=f1e40]:
+                - link "Trips" [ref=f1e41] [cursor=pointer]:
+                  - /url: /trips
+              - listitem [ref=f1e42]:
+                - link "Dive Sites" [ref=f1e43] [cursor=pointer]:
+                  - /url: /sites
+              - listitem [ref=f1e44]:
+                - link "Equipment" [ref=f1e45] [cursor=pointer]:
+                  - /url: /gear
+          - generic [ref=f1e46]:
+            - heading "Resources" [level=4] [ref=f1e47]
+            - list [ref=f1e48]:
+              - listitem [ref=f1e49]:
+                - link "GitHub" [ref=f1e50] [cursor=pointer]:
+                  - /url: https://github.com/opendiving
+              - listitem [ref=f1e51]:
+                - link "API" [ref=f1e52] [cursor=pointer]:
+                  - /url: https://github.com/opendiving/opendiving-api
+              - listitem [ref=f1e53]:
+                - link "Contributing" [ref=f1e54] [cursor=pointer]:
+                  - /url: https://github.com/opendiving/opendiving-web/blob/main/CONTRIBUTING.md
+              - listitem [ref=f1e55]:
+                - link "Code of Conduct" [ref=f1e56] [cursor=pointer]:
+                  - /url: https://github.com/opendiving/opendiving-web/blob/main/CODE_OF_CONDUCT.md
+          - generic [ref=f1e57]:
+            - heading "Support" [level=4] [ref=f1e58]
+            - list [ref=f1e59]:
+              - listitem [ref=f1e60]:
+                - link "Contact" [ref=f1e61] [cursor=pointer]:
+                  - /url: /contact
+              - listitem [ref=f1e62]:
+                - link "Privacy" [ref=f1e63] [cursor=pointer]:
+                  - /url: /privacy
+              - listitem [ref=f1e64]:
+                - link "Terms of Service" [ref=f1e65] [cursor=pointer]:
+                  - /url: /terms
+        - paragraph [ref=f1e67]: © 2026 OpenDiving. Open source diving platform.
+  - region "Notifications (F8)":
+    - list
+  - button "Open Next.js Dev Tools" [ref=f1e73] [cursor=pointer]

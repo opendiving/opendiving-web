@@ -3554,6 +3554,13 @@ whole — worth doing on its own, with its own before/after, not smuggled in beh
 they may simply be two tables, or one table with the consumption columns folded into the card below
 that already consumes them.
 
+**It was revisited, and the answer was mostly elsewhere** — see "Both gas tables finally fit their
+slot" below. The column set did change (`He` is dropped on a dive with no helium, which is most of
+them), but the ~125 px recorded above came off chiefly through cell padding, which no one had
+counted: at `p-4` a seven-column table spends 224 px of its width on it. Merging the `Gas` column
+away was also tried and reverted — worth only ~26 px, and it cost the badge alignment down the
+column.
+
 ## The API sends `null`, the form schema only understood `""` — and the save button did nothing
 
 Three fields were added to `diveMixtureSchema` in this phase, and all three rejected the value the
@@ -4047,6 +4054,15 @@ enough to trim: it is a **mean** depth over the stretch a cylinder was breathed,
 a per-tank row invites reading it as that gas's deepest point. That misreading is the one this
 feature must not encourage — see `diveModWarning`, which refuses to warn per tank precisely because
 a mean depth is the wrong input for a MOD.
+
+**Both figures are superseded** — see "Both gas tables finally fit their slot" below. `Tank 175` was
+the widest column here and it was the _label_ driving it, not the figures: `Tank 1` plus two badges.
+Split into a `#` of 29 px and a `Gas` of 100 px, and with the cell padding halved, the table fits.
+
+The paragraph above is still right that `RMV` and `SAC` are content-driven and have nothing to give
+— but it reasons entirely about text, and the lever it never considers is the padding around it.
+That is the general lesson worth carrying: **before shortening a header, check what fraction of the
+table is `p-4`.** Here it was over a third.
 
 ## The tank↔mixture join applies the API's duplicate rule rather than trusting it
 
@@ -4745,3 +4761,156 @@ Delete beside it. Stacking that row below `sm` fixes it and was tried, but it mo
 page's header and belongs to whoever takes that on rather than to this control. Inline flow is what
 keeps the arrows tolerable in the meantime: they wrap with the text instead of stranding at the
 edges of a five-line block.
+
+## Both gas tables finally fit their slot
+
+The mixtures table had eight columns and the consumption table six, in a card that gives them 582 px
+at the width where the main column is narrowest. Both scrolled. Measured on dive #493 — the corpus's
+two-gas, one-transmitter dive, and the same dive both sections above measure — at a 1024 px
+viewport:
+
+|                 | before | after  | slot   |
+| --------------- | ------ | ------ | ------ |
+| Gas Mixtures    | 648 px | 471 px | 582 px |
+| Gas Consumption | 596 px | 497 px | 582 px |
+
+Both figures are the table's minimum width, which is what "before" was too — a table that overflows
+is already at its minimum, so the two columns compare like for like. After, each has ~85–110 px of
+slack in the slot rather than 14–66 px of overflow.
+
+Two levers got them there, and the second is the one that did the work: **the cells went from `p-4`
+to `px-2`**, worth ~112 px per table on its own. The column changes below are worth far less than
+that, and are made for what they say rather than for what they save.
+
+**1024 px is the pinch, and it is a ceiling rather than a floor.** The page is `max-w-6xl` with the
+main column at `lg:col-span-2`, so the card gets 582 px at 1024 px and 667 px at 1280 px — but one
+pixel _below_ `lg` the grid collapses to a single column and the same card jumps to ~925 px. So the
+tables are at their narrowest just _above_ the breakpoint, and going down to `md` makes them wider,
+not narrower. Anything measured "at md" is measuring the roomy case.
+
+**The scroll container is shadcn's, not the card's — and both cards used to add a second one.**
+`Table` wraps itself in a `relative w-full overflow-auto` div (`ui/table.tsx`), and each card then
+wrapped _that_ in its own `overflow-x-auto`. The inner one is what actually scrolls; the outer never
+did. Both outer wrappers are now gone, and the phrasing in the two sections above — "both scroll
+inside their own `overflow-x-auto` wrapper" — was describing the div that wasn't doing it.
+
+**This is a live trap when measuring.** `closest('[class*="overflow-x-auto"]')` used to find the
+outer div, whose `scrollWidth` equals its `clientWidth`, and so reported a comfortable **0 px
+overflow for a table that was visibly scrolling** — which is exactly the reassuring, wrong number to
+get while deciding whether a table fits. `table.scrollWidth` against
+`table.parentElement.clientWidth` is the pair that tells the truth, and with the extra div removed
+the parent is now unambiguously shadcn's own.
+
+**`px-2`, and how much of the table was padding.** `TableCell` is `p-4` and `TableHead` `px-4`, so
+every column spent 32 px on padding — on a seven-column table, 224 px, well over a third of its
+width. `[&_th]:px-2 [&_td]:px-2` on the two `Table` elements halves that and clears ~112 px, more
+than every column change here put together. It is scoped to these two tables rather than applied to
+`ui/table.tsx`, which leaves the dive page carrying two tables at one density and the gear table
+below them at another — **a known inconsistency, deliberately parked**. The question it raises is
+whether the whole app wants `px-2`, and that is a change to every table in it, not a footnote to
+this one.
+
+Five changes, and only the padding above was made for the width:
+
+- **The gas keeps a column of its own, in both tables.** It was briefly merged into the identity
+  cell — one cell holding number, gas badge and role badge, which is how the consumption card had
+  always written it — and that did fit the mixtures table in its slot without any padding change. It
+  was reverted after seeing both: a badge that starts wherever the number ended puts every pill at a
+  different offset down the page, where a column of its own keeps them in one line. Merging was
+  worth only ~26 px anyway, not the ~94 px the header widths suggest — the identity column simply
+  grows to hold the badge, so the saving is the column gap, not the column. **The consumption table
+  gained the same column** rather than the mixtures table losing it, which puts the gas name on the
+  page twice. That is the price of the two tables agreeing, and this one has to be legible on its
+  own: "which of these is the deco bottle" is the question its rows exist to answer.
+- **`Gas Used` → `Used`.** Only once the Gas column existed: two headers three apart both leading
+  with the same word, one naming a mix and one a volume. The unit is in every cell under it, so the
+  noun was never doing the work. The single-tank layout's headline stat keeps the full `Gas Used` —
+  it has no Gas column beside it to collide with.
+- **`He` is dropped when no cylinder on the dive has any.** Air and nitrox record a flat 0, so on
+  most dives it was a column of zeroes. It returns for every row the moment one cylinder carries
+  helium, including the 0 of an air cylinder beside it — that 0 is a real contrast on a trimix dive
+  and noise on a dive that has no helium anywhere.
+- **`Tank` → `#`, and the cells lost the word and the weight.** `Tank 1` under a header saying
+  `Tank` said it twice; the number is how a row is addressed rather than anything it says, so it is
+  muted and the badge beside it carries the emphasis. `TankGasUseRow.label` is now `"1"` rather than
+  `"Tank 1"`, since the two tables have to keep naming the same cylinder identically. **A tank
+  matching no mixture keeps its `Gas 3`** — the distinction was never "tank" versus "gas", it was
+  numbered-by-position versus named-by-the-device, and only the second needs saying now. The
+  consumption footer says `Total` rather than `All tanks`, which was answering a question the `#`
+  header no longer asks.
+- **Every MOD states the ppO₂ it was computed at; the header stays bare.** This reverses the "-36 px
+  per row" saving the role-badge section records, and it is worth paying. The header could only
+  carry the qualifier on a dive where every cylinder shared one limit, so `MOD @ ppO₂ 1.4` and a
+  bare `MOD` alternated depending on the dive, and the same column looked like two different
+  columns. The suffix is muted, so the depth stays the figure and the limit reads as the condition
+  on it. `sharedPpO2Limit` existed only to choose between those two spellings and is deleted with
+  them.
+
+**The worst case is now a rounding error rather than a scroll.** A trimix dive with a role on both
+cylinders — `He` back, role badges on every row of both tables — synthesized into the live DOM at
+1024 px puts the mixtures table 6 px over its 582 px slot and the consumption table exactly on it.
+Before any of this, the same shape was roughly 721 px, 139 px over. No such dive exists in the
+corpus, so the 6 px is measured on a constructed row rather than seen; it is recorded so the next
+person knows the margin is thin there and nowhere else.
+
+**Mobile still scrolls, and always did.** Minimum widths are 471 px and 497 px against a ~308 px
+card at 390 px, so both tables scroll inside their own container on a phone while the page body does
+not scroll sideways. That is the same resolution the two sections above record, and no column
+arrangement gets seven columns of figures onto a phone.
+
+**Three smaller things landed with it**, all consistency rather than width:
+
+- `tabular-nums` on both tables, since most of their columns are figures read down rather than
+  across.
+- Muted dashes in the mixtures table, which wrote absences at full contrast while the consumption
+  table below already muted its own. The mute goes on the `TableCell`, not round a `-` in a span —
+  that is how the consumption card had been spelling it, and one pattern spelled two ways in two
+  tables being read against each other is the thing this whole change is about.
+- **The `#` header spells its word out for a screen reader**: a visible `aria-hidden` `#` beside an
+  `sr-only` "Tank". `#` is punctuation, read aloud as "number sign" or skipped entirely, so heading
+  the column with it alone left every row's first cell a bare number with nothing naming what it
+  counts. The `sr-only` captions name the table; this names the column. Both tables do it
+  identically, and the render tests query that header by the name "Tank".
+- **A fixed-width gas badge**, `GAS_BADGE_CLASS` in `lib/dive-mixtures.ts`, so every pill is 72 px
+  and its label centred. A badge that shrank to fit `Air` and grew for `EAN54` put the role badge
+  pinned to its right at a different offset on every row. 4.5 rem is measured against `Oxygen` at
+  66.8 px — the widest label `gasName` can return for a real gas, and deliberately not `EAN100`,
+  which looks wider and cannot occur (anything at or above `OXYGEN_MIN` is named `Oxygen`, so EAN
+  tops out at `EAN99`). It is a `min-width`, so the one label that can exceed it — the spelled-out
+  `O₂ 50% / He 60%` of an impossible mix, at 122 px — still fits and breaks the alignment, which is
+  correct for the row that isn't a gas.
+
+**The two tables' badges do not line up with each other, and the gap is not three pixels.** The `#`
+column sizes itself in each table against different neighbours, so the pills below start at
+different offsets. On dive #493 that is 64 px against 61 px and easy to dismiss — **and #493 is
+exactly the dive that hides it.** It has one attributed cylinder, so the consumption table renders
+no `tfoot`; the moment a second cylinder is attributed, that column has to hold `Total` under
+`whitespace-nowrap` and jumps from 29 px to 53 px. Measured with the footer forced in: **the badges
+diverge by 22 px**, on precisely the multi-tank dives the whole alignment argument is about.
+
+The general trap, since it cost a wrong number here: **a table's column widths are set by its widest
+row, and `tfoot` is a row.** Measuring a conditional footer's table on the dive that doesn't render
+one measures a different table.
+
+A shared `w-16` on that header does line the two up, and was tried and reverted. It costs the
+mixtures table ~22 px of whitespace to carry a `Gas 12` and a `Total` that only the other table has,
+and it silently collapses to 25 px under narrow-pane pressure anyway, since a width on a
+`table-layout: auto` column is a preference rather than a rule. So the choice was between two
+imperfect answers and the imperfection was left visible; it is recorded here with the honest 22 px
+rather than the flattering 3 px, so whoever revisits it is deciding against the real number.
+
+`GAS_BADGE_CLASS` is unaffected by any of this — it fixes the role badge's offset _within_ a row,
+which holds whatever the column beside it does.
+
+**The edit form still heads each block `Tank 1`, and that is not an oversight.** It is the third
+surface naming a cylinder, so it looks like a straggler — but the two tables dropped the word
+because a `#` header was already carrying it, and the form has no header to carry anything. A block
+of inputs under a bare `1` says nothing about what the 1 counts. The rule is "don't say it twice",
+not "never say tank".
+
+**A note for whoever tests the MOD cell.** The depth and its ppO₂ are two elements so the limit can
+be muted, and the separating space lives at the front of the muted span's own string rather than as
+JSX text between them, where a reflow could drop it. `dom-accessibility-api` trims each node before
+joining, so the _accessible name_ comes out `56.7 m@ 1.4` while the DOM and the screen both have the
+space. The render test asserts on `textContent` for that reason — `getByRole("cell", { name: … })`
+pins a quirk of the accname implementation rather than anything about the card.
