@@ -4526,36 +4526,35 @@ Volume takes `md:col-span-2` — it is the field with no partner to be split fro
 life beside the name — which restores every remaining pair to a row of its own. Measured at 1280 px:
 Volume 556 px full width, then O₂ | He, Start | End, ppO₂ | Role at 270 px each.
 
-## The export filename is the server's, derived locally — because CORS won't hand it over
+## The export filename is the server's, with a local mirror behind it
 
 The plan for the settings export card said, in as many words: "Filename comes from the server's
-`Content-Disposition` — parse it rather than re-deriving." The API does send one, correctly:
+`Content-Disposition` — parse it rather than re-deriving." That is what runs: `lib/api/export.ts`
+calls `filenameFromContentDisposition` on the response and saves what the API named the file.
+
+It took a change in the other repo to get there, and the trap is worth keeping because nothing about
+it is visible from this side. The API always sent the header, correctly:
 
 ```
 content-disposition: attachment; filename="opendiving-aleskiontherun-20260814.zip"
 ```
 
-`fetch` from `http://localhost:3000` reads it as `null`. `Content-Disposition` is not one of the
-CORS-safelisted response headers, the API's `CORSMiddleware` (`core/setup.py`) sets no
-`expose_headers`, and the browser therefore hides a header that is plainly there in the network tab.
-Measured from the real app rather than reasoned about — the only three headers JS can read off an
-export response today are `cache-control`, `content-length` and `content-type`.
+and `fetch` from `http://localhost:3000` still read it as `null`. `Content-Disposition` is not one
+of the CORS-safelisted response headers, so a browser hides a header that is plainly there in the
+network tab — the only three JS could read off an export response were `cache-control`,
+`content-length` and `content-type`. The fix is one line of `expose_headers` on the API's
+`CORSMiddleware` (`core/setup.py`), shipped as opendiving-api #33; the API's own DECISIONS.md
+carries it under _"`Content-Disposition` has to be named in `expose_headers` or the browser hides
+it"_. Anything else the web app ever needs to read off a response has the same shape of problem.
 
-So `lib/api/export.ts` carries `exportFilename`, a line-for-line mirror of `export_filename` in the
-API's `services/export/naming.py` — same `opendiving-<username>-<YYYYMMDD>.<ext>` shape, same
-`[^a-z0-9]+` scrub, same `"export"` substitute when the username scrubs to nothing. **This is not
-the fallback branch; it is the branch that runs.** `filenameFromContentDisposition` is still called
-first, and still parses both RFC 6266 forms, because the day the API adds one line of
-`expose_headers` the server's answer should win without anything here changing.
+Behind the parser, `exportFilename` mirrors `export_filename` in the API's
+`services/export/naming.py` — same `opendiving-<username>-<YYYYMMDD>.<ext>` shape, same `[^a-z0-9]+`
+scrub, same `"export"` substitute when the username scrubs to nothing. It shipped as the live path
+while the header was unreadable and is now a genuine fallback, kept rather than deleted because a
+self-hosted API behind a proxy that strips the header would otherwise save every export as the
+browser's guess.
 
-**The mirror is the interim, not the position.** `expose_headers=["Content-Disposition"]` on the
-API's `CORSMiddleware` (`core/setup.py`) deletes this duplication outright — it demotes
-`exportFilename` to a genuine fallback and makes the parser the live path, which is the arrangement
-this file would rather record. It is not done here only because it is a change in the other repo,
-and this one shipped first. Anyone reading this because they are about to touch the naming rule in
-two languages: do the API line instead.
-
-Two things follow from duplicating a naming rule across two languages:
+Two things follow from keeping a naming rule in two languages:
 
 - **The date is stamped in UTC**, from `getUTC*`, not local time. The server names the file from
   `datetime.now(UTC)`. A diver in UTC+13 downloading at 09:00 would otherwise get a name a day ahead
