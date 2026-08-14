@@ -1,13 +1,13 @@
-// The shape a mixture form field starts from, how a cylinder is named by its
-// position, and the breathing-gas maths that turns an O₂/He pair into something a
-// diver recognizes - a gas name, a maximum operating depth, an equivalent narcotic
-// or air depth. Pure data and pure functions with no React in it, and imported by
-// `lib/dive-import.ts` - which is why it lives here rather than in
-// `mixture-fields.tsx`: a `lib` module reaching into a `"use client"` component to
-// pull react-hook-form, lucide-react and three shadcn components along with two
-// constants is the wrong direction.
+// The shape a mixture form field starts from, how a cylinder's role is written, and the
+// breathing-gas maths that turns an O₂/He pair into something a diver recognizes - a gas
+// name, a maximum operating depth, an equivalent narcotic or air depth. Pure data and
+// pure functions with no React in it, and imported by `lib/dive-import.ts` - which is
+// why it lives here rather than in `mixture-fields.tsx`: a `lib` module reaching into a
+// `"use client"` component to pull react-hook-form, lucide-react and three shadcn
+// components along with one constant is the wrong direction.
 //
-// Re-exported from `mixture-fields.tsx` so existing call sites are unchanged.
+// `DEFAULT_MIXTURE` is re-exported from `mixture-fields.tsx` so existing call sites are
+// unchanged.
 //
 // **Why the maths is client-side.** `services/dive_gas.py` draws the line at values
 // derivable purely from stored columns; `gear_service.py` has a web twin because the
@@ -49,18 +49,11 @@ export const DEFAULT_MIXTURE = {
   role: "" as const,
 };
 
-// Default name for a mixture based on its position in the list: the first
-// tank is assumed to be the "Back Gas", and every subsequent tank is a
-// numbered "Deco Gas".
-export function getDefaultMixtureName(index: number): string {
-  return index === 0 ? "Back Gas" : `Deco Gas ${index}`;
-}
-
 // How each `GasRole` is written for a diver. Separate from the wire values, which are
 // the API's vocabulary (`GasRole` in `schemas/dive_mixture.py`) - capitalized, and
-// free to diverge if a role is ever better named than its enum member. Lives here
-// beside `getDefaultMixtureName` because it is the same kind of thing - what to call a
-// cylinder - and keeps the form's picker and the detail badge naming a role identically.
+// free to diverge if a role is ever better named than its enum member. Lives in this
+// module, beside the maths, so the form's picker and the detail badge name a role
+// identically rather than each keeping their own copy of the mapping.
 //
 // One word each, and the "gas" that "Bottom gas"/"Deco gas" would naturally carry is
 // deliberately dropped. Both places these appear supply that word already - a badge in

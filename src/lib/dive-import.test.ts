@@ -5,10 +5,7 @@ import {
   mixtureImportNotes,
   type MixtureImportNotes,
 } from "./dive-import";
-import {
-  DEFAULT_MIXTURE,
-  getDefaultMixtureName,
-} from "@/components/dives/mixture-fields";
+import { DEFAULT_MIXTURE } from "@/lib/dive-mixtures";
 import type { ParsedDiveMixture } from "@/lib/api/dives";
 import type { DiveMixtureInput } from "@/lib/validations/dive";
 
@@ -17,7 +14,6 @@ import type { DiveMixtureInput } from "@/lib/validations/dive";
 // omission, so the fixture spells all of them out.
 function parsed(overrides: Partial<ParsedDiveMixture> = {}): ParsedDiveMixture {
   return {
-    name: null,
     volume: null,
     start_pressure: null,
     end_pressure: null,
@@ -39,7 +35,6 @@ describe("mergeMixture", () => {
   it("keeps every value the export actually recorded", () => {
     const mixture = mergeMixture(
       parsed({
-        name: "Back Gas",
         volume: 12,
         start_pressure: 207.14,
         end_pressure: 122.44,
@@ -49,11 +44,9 @@ describe("mergeMixture", () => {
         gas_number: 1,
         role: "bottom",
       }),
-      0,
     ).value;
 
     expect(mixture).toEqual({
-      name: "Back Gas",
       volume: 12,
       start_pressure: 207.14,
       end_pressure: 122.44,
@@ -70,7 +63,7 @@ describe("mergeMixture", () => {
     // ppO2 limit falls back to PPO2_WORKING where a MOD is computed, and an absent
     // role or gas number simply isn't shown. So there is nothing to guess and
     // nothing for the import note to warn about.
-    const mixture = mergeMixture(parsed({ oxygen: 21, helium: 0 }), 0).value;
+    const mixture = mergeMixture(parsed({ oxygen: 21, helium: 0 })).value;
 
     // `""` for the two the form has an input for - the cleared state their
     // fields read back - and `undefined` for the one it doesn't.
@@ -85,7 +78,6 @@ describe("mergeMixture", () => {
     // contributed.
     const mixture = mergeMixture(
       parsed({ oxygen: 21, helium: 0 }),
-      0,
       onForm({ po2_limit: 1.6, gas_number: 2, role: "deco" }),
     ).value;
 
@@ -97,7 +89,6 @@ describe("mergeMixture", () => {
   it("prefers the file's tech fields over the form's", () => {
     const mixture = mergeMixture(
       parsed({ oxygen: 21, helium: 0, po2_limit: 1.4, gas_number: 0 }),
-      0,
       onForm({ po2_limit: 1.6, gas_number: 2 }),
     ).value;
 
@@ -114,7 +105,6 @@ describe("mergeMixture", () => {
     // happens here - where it is the same one a hand-added cylinder starts with.
     const mixture = mergeMixture(
       parsed({ start_pressure: 205.11, end_pressure: 91.55 }),
-      0,
     ).value;
 
     expect(mixture.volume).toBe(DEFAULT_MIXTURE.volume);
@@ -129,7 +119,7 @@ describe("mergeMixture", () => {
     // 0 % helium on a nitrox fill is a real recorded value. `??` (not `||`) is
     // what keeps it from being replaced by the default - which for `helium`
     // happens to be 0 too, so `oxygen` is the field that would actually break.
-    const mixture = mergeMixture(parsed({ helium: 0, oxygen: 0 }), 0).value;
+    const mixture = mergeMixture(parsed({ helium: 0, oxygen: 0 })).value;
 
     expect(mixture.helium).toBe(0);
     expect(mixture.oxygen).toBe(0);
@@ -139,18 +129,10 @@ describe("mergeMixture", () => {
     // "" is the form's unset placeholder for the pressure fields - an
     // untransmitted deco cylinder has no start pressure, and 0 bar would read as
     // an empty tank.
-    const mixture = mergeMixture(parsed({ oxygen: 49, volume: 11 }), 0).value;
+    const mixture = mergeMixture(parsed({ oxygen: 49, volume: 11 })).value;
 
     expect(mixture.start_pressure).toBe("");
     expect(mixture.end_pressure).toBe("");
-  });
-
-  it("names an unnamed cylinder the way a hand-added one is named", () => {
-    // Mixture names are never parsed, and multi-gas FIT imports are routine (4
-    // of 19 dives in the API's Ocean corpus), so leaving them anonymous is a
-    // chore the diver repeats every dive.
-    expect(mergeMixture(parsed(), 0).value.name).toBe(getDefaultMixtureName(0));
-    expect(mergeMixture(parsed(), 1).value.name).toBe(getDefaultMixtureName(1));
   });
 
   it("keeps what the form already held for anything the file lacks", () => {
@@ -160,7 +142,6 @@ describe("mergeMixture", () => {
     // Before this, the second import silently erased the first one's half.
     const mixture = mergeMixture(
       parsed({ oxygen: 21, helium: 0 }),
-      0,
       onForm({ volume: 15, start_pressure: 211.62, end_pressure: 127.16 }),
     ).value;
 
@@ -177,7 +158,6 @@ describe("mergeMixture", () => {
     // and feeds `compute_gas_use` a consumption spanning two different fills.
     const partial = mergeMixture(
       parsed({ start_pressure: 180, oxygen: 21 }),
-      0,
       onForm({ start_pressure: 100, end_pressure: 127 }),
     ).value;
 
@@ -187,7 +167,6 @@ describe("mergeMixture", () => {
     // The carry-over still happens when the file supplies neither.
     const carried = mergeMixture(
       parsed({ oxygen: 21 }),
-      0,
       onForm({ start_pressure: 211.62, end_pressure: 127.16 }),
     ).value;
 
@@ -198,7 +177,6 @@ describe("mergeMixture", () => {
   it("prefers the file's values over the form's", () => {
     const mixture = mergeMixture(
       parsed({ volume: 12, start_pressure: 200 }),
-      0,
       onForm({ volume: 15, start_pressure: 180 }),
     ).value;
 
@@ -309,9 +287,7 @@ describe("describeMixtureImport", () => {
         volume: 11,
       }),
     ];
-    const merged = cylinders.map((mixture, index) =>
-      mergeMixture(mixture, index, undefined),
-    );
+    const merged = cylinders.map((mixture) => mergeMixture(mixture));
     const notes = mixtureImportNotes(cylinders, merged, [
       onForm({ start_pressure: 200, end_pressure: 60 }),
     ]);

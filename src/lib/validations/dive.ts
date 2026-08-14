@@ -50,7 +50,6 @@ const weightField = () =>
 export const diveMixtureSchema = z
   .object({
     id: z.number().optional(),
-    name: z.string().max(50, "Name cannot exceed 50 characters").optional(),
     volume: z.number().positive("Volume must be positive"),
     start_pressure: z
       .union([
@@ -141,7 +140,6 @@ export const diveMixtureSchema = z
 export type DiveMixtureInput = z.input<typeof diveMixtureSchema>;
 
 export interface NormalizedDiveMixture {
-  name?: string;
   volume: number;
   start_pressure?: number;
   end_pressure?: number;
@@ -167,7 +165,6 @@ export interface NormalizedDiveMixture {
 export function normalizeMixtures(
   mixtures: {
     id?: number;
-    name?: string;
     volume: number;
     start_pressure?: number | "";
     end_pressure?: number | "";
@@ -179,7 +176,6 @@ export function normalizeMixtures(
   }[],
 ): NormalizedDiveMixture[] {
   return mixtures.map((mixture) => ({
-    name: mixture.name,
     volume: mixture.volume,
     start_pressure:
       mixture.start_pressure === "" ? undefined : mixture.start_pressure,
@@ -211,11 +207,6 @@ export function normalizeMixtures(
 export function toDiveMixtureInput(mixture: DiveMixture): DiveMixtureInput {
   return {
     id: mixture.id,
-    // `""` rather than `getDefaultMixtureName()` as the create form's prefill
-    // uses: loading a dive for editing must show what is stored, and an empty
-    // box is the honest rendering of an unnamed cylinder - the mixtures card
-    // already reads one as "Tank N" without a name being saved for it.
-    name: mixture.name ?? "",
     volume: mixture.volume,
     start_pressure: mixture.start_pressure ?? "",
     end_pressure: mixture.end_pressure ?? "",

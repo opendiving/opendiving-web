@@ -11,7 +11,6 @@ import type { Dive, DiveMixture, DiveTankGasUse } from "@/lib/api/dives";
 function mixture(overrides: Partial<DiveMixture> = {}): DiveMixture {
   return {
     id: 1,
-    name: "Back Gas",
     volume: 22,
     start_pressure: 200,
     end_pressure: 60,
@@ -60,7 +59,6 @@ function twoTankDive(overrides: Partial<Dive> = {}): Dive {
       mixture({ role: "bottom" }),
       mixture({
         id: 2,
-        name: "Deco Gas 1",
         volume: 11,
         oxygen: 49,
         gas_number: 2,
@@ -99,7 +97,6 @@ function oneTransmitterDive(overrides: Partial<Dive> = {}): Dive {
       mixture({ gas_number: 0, start_pressure: 212, end_pressure: 127 }),
       mixture({
         id: 2,
-        name: "Deco Gas 1",
         volume: 11.1,
         oxygen: 54,
         gas_number: 1,
@@ -203,7 +200,7 @@ describe("DiveGasConsumptionCard per-tank table", () => {
     expect(rows).toHaveLength(4);
 
     const backGas = within(rows[1]);
-    expect(backGas.getByText("Back Gas")).toBeInTheDocument();
+    expect(backGas.getByText("Tank 1")).toBeInTheDocument();
     expect(backGas.getByText("Air")).toBeInTheDocument();
     expect(backGas.getByText("32.4 m")).toBeInTheDocument();
     expect(backGas.getByText("18.2 L/min")).toBeInTheDocument();
@@ -249,7 +246,7 @@ describe("DiveGasConsumptionCard per-tank table", () => {
         dive={twoTankDive({
           mixtures: [
             mixture({ role: "bottom" }),
-            mixture({ id: 2, name: "Pony", gas_number: null }),
+            mixture({ id: 2, gas_number: null }),
           ],
         })}
       />,

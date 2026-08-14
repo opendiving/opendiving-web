@@ -26,12 +26,11 @@ import {
   PPO2_WORKING,
   diveModWarning,
   gasHintParts,
-  getDefaultMixtureName,
 } from "@/lib/dive-mixtures";
 import { GAS_ROLES } from "@/lib/api/dives";
 import { VolumeCombobox } from "@/components/dives/volume-combobox";
 
-export { DEFAULT_MIXTURE, getDefaultMixtureName };
+export { DEFAULT_MIXTURE };
 
 // The minimal field shape `MixtureFields` needs: any form values type that
 // has a `mixtures` array (both `DiveCreateInput` and `DiveUpdateInput` from
@@ -254,12 +253,7 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
           type="button"
           variant="outline"
           size="sm"
-          onClick={() =>
-            append({
-              ...DEFAULT_MIXTURE,
-              name: getDefaultMixtureName(fields.length),
-            })
-          }
+          onClick={() => append({ ...DEFAULT_MIXTURE })}
         >
           <Plus className="h-4 w-4 mr-2" />
           Add Mixture
@@ -287,28 +281,14 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               control={control}
-              name={`mixtures.${index}.name` as Path<TFieldValues>}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Name</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="text"
-                      placeholder="e.g. Back Gas"
-                      {...field}
-                      value={field.value ?? ""}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={control}
               name={`mixtures.${index}.volume` as Path<TFieldValues>}
               render={({ field }) => (
-                <FormItem>
+                // Full width, so the six fields under it keep their pairs on one
+                // row each: O₂ beside He, start beside end, ppO₂ beside role.
+                // With seven boxes in a two-column grid, an odd one out is
+                // unavoidable - volume is the one with no partner to be split
+                // from, and it used to sit beside the name.
+                <FormItem className="md:col-span-2">
                   <FormLabel>Volume (L)</FormLabel>
                   <FormControl>
                     <VolumeCombobox

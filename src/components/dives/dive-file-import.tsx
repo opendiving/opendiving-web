@@ -109,7 +109,6 @@ export function applyParsedDiveToForm<TFieldValues extends DiveFormValues>(
   const merged = parsed.mixtures.map((mixture, index) =>
     mergeMixture(
       mixture,
-      index,
       existingMixtureFor(existing, parsed.mixtures.length, index),
     ),
   );

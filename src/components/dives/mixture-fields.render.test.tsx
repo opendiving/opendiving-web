@@ -29,7 +29,7 @@ function Harness({
   );
 }
 
-const EAN54 = { name: "Deco", volume: 11.1, oxygen: 54, helium: 0 };
+const EAN54 = { volume: 11.1, oxygen: 54, helium: 0 };
 
 afterEach(() => {
   vi.useRealTimers();

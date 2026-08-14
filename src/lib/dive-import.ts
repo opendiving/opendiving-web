@@ -7,7 +7,7 @@
 // `src/lib/**` coverage window, which is where the logic worth unit-testing is
 // supposed to live - and this is the densest logic in the import path.
 
-import { DEFAULT_MIXTURE, getDefaultMixtureName } from "@/lib/dive-mixtures";
+import { DEFAULT_MIXTURE } from "@/lib/dive-mixtures";
 import type { ParsedDiveMixture } from "@/lib/api/dives";
 import type { DiveMixtureInput } from "@/lib/validations/dive";
 
@@ -80,15 +80,9 @@ export interface MergedMixture {
  * documented way to log a multi-gas dive (see the API's DECISIONS.md). Without
  * it the second import silently erased whatever the first one contributed, and
  * a dive that had a `gas_use` before quietly stopped having one after.
- *
- * `name` falls back to `getDefaultMixtureName(index)` for the same reason the
- * numeric fields fall back to `DEFAULT_MIXTURE`: an imported cylinder should
- * arrive as a hand-added one does, and multi-gas imports are routine enough
- * that leaving them anonymous is a chore the diver repeats every dive.
  */
 export function mergeMixture(
   mixture: ParsedDiveMixture,
-  index: number,
   existing?: DiveMixtureInput,
 ): MergedMixture {
   // The pressures move as a pair. Falling back field-by-field would let a start
@@ -120,7 +114,6 @@ export function mergeMixture(
 
   return {
     value: {
-      name: mixture.name ?? existing?.name ?? getDefaultMixtureName(index),
       volume: volume.value,
       start_pressure:
         mixture.start_pressure ?? carriedPressures?.start_pressure ?? "",
