@@ -4804,11 +4804,14 @@ the parent is now unambiguously shadcn's own.
 **`px-2`, and how much of the table was padding.** `TableCell` is `p-4` and `TableHead` `px-4`, so
 every column spent 32 px on padding — on a seven-column table, 224 px, well over a third of its
 width. `[&_th]:px-2 [&_td]:px-2` on the two `Table` elements halves that and clears ~112 px, more
-than every column change here put together. It is scoped to these two tables rather than applied to
-`ui/table.tsx`, which leaves the dive page carrying two tables at one density and the gear table
-below them at another — **a known inconsistency, deliberately parked**. The question it raises is
-whether the whole app wants `px-2`, and that is a change to every table in it, not a footnote to
-this one.
+than every column change here put together.
+
+**Those two local overrides are gone; `px-2` is the default in `ui/table.tsx` now.** They were
+scoped to these two tables at first, which left the dive page carrying two tables at one density and
+the gear table below them at another — parked as a known inconsistency, and since measured across
+every table in the app and resolved in favour of `px-2` everywhere. See "Cell padding is `px-2`
+app-wide" at the end of this file. Every figure in this section still holds: it was `px-2` that was
+measured, and `px-2` is what the tables get.
 
 Five changes, and only the padding above was made for the width:
 
@@ -4914,3 +4917,77 @@ JSX text between them, where a reflow could drop it. `dom-accessibility-api` tri
 joining, so the _accessible name_ comes out `56.7 m@ 1.4` while the DOM and the screen both have the
 space. The render test asserts on `textContent` for that reason — `getByRole("cell", { name: … })`
 pins a quirk of the accname implementation rather than anything about the card.
+
+## Cell padding is `px-2` app-wide
+
+`ui/table.tsx` diverges from shadcn: `TableHead` is `px-2` rather than `px-4`, and `TableCell` is
+`px-2 py-4` rather than `p-4`. It arrived as a local override on the two gas tables — see "Both gas
+tables finally fit their slot" — and was promoted after measuring every table in the app rather than
+just those two. Vertical padding is untouched throughout: the row height was never the problem, and
+halving it would have changed how the tables read on every page for no width at all.
+
+**Measured, not eyeballed**, and the method matters because the obvious one lies.
+`table.scrollWidth` against `table.parentElement.clientWidth` is the pair that tells the truth — the
+previous section records why `closest('[class*="overflow-x-auto"]')` reports a comfortable 0 px for
+a table that is visibly scrolling. All three paddings were forced into the same live DOM at the same
+width with an injected `table th, table td { padding-inline: Npx !important }`, so the numbers below
+compare one page against itself rather than three builds against each other. Nine tables across
+seven pages, at 375 / 640 / 768 / 1023 / 1024 / 1280 / 1440 px.
+
+**Overflow in pixels, `px-4` → `px-3` → `px-2`.** Zero means the table fits its container.
+
+| table               | 375 px          | 640 px        | ≥ 768 px               |
+| ------------------- | --------------- | ------------- | ---------------------- |
+| Dive Log            | 292 · 244 · 196 | 43 · 0 · 0    | 0 (1024 px: 117 slack) |
+| Your Certifications | 364 · 316 · 268 | 115 · 67 · 19 | 0 (768 px: 10 short)   |
+| Your Gear           | 335 · 287 · 239 | 86 · 38 · 0   | 0                      |
+| Gear Sets           | 98 · 66 · 34    | 0             | 0                      |
+| Trip List           | 154 · 122 · 90  | 0             | 0                      |
+| Dive Site List      | 91 · 67 · 43    | 0             | 0                      |
+| Gas Mixtures        | 290 · 234 · 178 | 41 · 0 · 0    | 1 · 0 · 0 at 1024 px   |
+| Gas Consumption     | 316 · 260 · 204 | 67 · 11 · 0   | 27 · 0 · 0 at 1024 px  |
+| Gear (dive page)    | 1 · 0 · 0       | 0             | 0                      |
+
+Three bands, and only the middle one is an argument:
+
+- **At 1024 px and above, nothing overflows at any padding.** Slack at `px-4` runs from 84 px on the
+  mixtures table to 521 px on the site list, so padding there is taste rather than fit, and the
+  visible change is a few pixels of column drift. The one exception is Gear Sets, whose `Gear` cell
+  is a list of item names and wants ~213 px more at 1440 px whatever the padding — it wraps by
+  design and no padding fixes it.
+- **640–768 px is where it earns its keep.** At 640 px, `px-2` clears every overflow but the
+  certifications table's, which goes from 115 px over to 19 px. At 768 px nothing overflows either
+  way, but the dive log's table drops from 878 px to 774 px tall: `Date & Time` stops wrapping in
+  the header and `Apr 16, 2026, 12:59` stops breaking across three lines in every row. That is the
+  clearest single before/after in the app, and it is invisible in an overflow number.
+- **At 375 px everything scrolls regardless.** `px-2` shortens the scroll by ~100 px per table and
+  removes it nowhere. No padding gets six columns onto a phone; that resolution is a card layout,
+  not a padding value.
+
+**`px-3` was the obvious compromise and it buys less than it looks.** It fixes the dive page at 1024
+px too — both gas tables land at 0 px over — but leaves the consumption table 16 px of slack there
+against `px-2`'s 72 px, and 16 px is one longer gas name from scrolling again. It also leaves
+certifications 67 px over and gear 38 px over at 640 px, which is most of what the change was for.
+So it is the gentler edit that solves the smaller half of the problem.
+
+**The cost, in full: one gutter.** Cell padding between two columns is the sum of both cells', so a
+right-aligned column butted against a left-aligned one loses 32 px of separation rather than 16.
+That happens exactly once — `Dives` beside `Service` in `gear-items-card.tsx`, where `40 —` now sits
+noticeably tighter. Every other table puts its right-aligned `Actions` column last, where the gutter
+has no neighbour to collide with. If that pair ever reads as one number, the fix is a `pr-` on that
+column, not 8 px back on every table in the app.
+
+**Nothing hugs a card edge, because the card is doing that job.** `CardContent` is `p-6`, so the
+first column's text sits 32 px from the card border rather than 40 px — against a card title at 24
+px, which is slightly closer to lining up than before rather than further.
+
+**No table anywhere overrides cell padding**, so changing the default was the whole change; grepping
+`TableCell`/`TableHead`/`TableRow` for padding utilities returns nothing. Upstream shadcn ships
+`p-4`/`px-4`, so re-adding this component from the registry silently reverts all of it — hence the
+comment in `ui/table.tsx` saying the divergence is deliberate.
+
+**Two caveats for whoever re-measures.** The figures come from one account's data, so a longer dive
+site name or a trimix cylinder moves the list-page numbers by more than the padding did — treat the
+band boundaries as the finding, not the individual pixels. And the five list pages still wrap their
+`Table` in an `overflow-x-auto` div of their own, the inert second scroll container the gas cards
+dropped; it is what makes the wrong measurement so easy to take on exactly these pages.

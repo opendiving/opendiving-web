@@ -66,6 +66,10 @@ const TableRow = React.forwardRef<
 ));
 TableRow.displayName = "TableRow";
 
+// `px-2` rather than shadcn's `px-4`, here and on `TableCell` below - a deliberate
+// divergence from upstream, so re-adding this component from the registry would quietly
+// revert it. Vertical padding is untouched: the row height is not what was wrong.
+// See "Cell padding is `px-2` app-wide" in DECISIONS.md.
 const TableHead = React.forwardRef<
   HTMLTableCellElement,
   React.ThHTMLAttributes<HTMLTableCellElement>
@@ -73,7 +77,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      "h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0",
+      "h-12 px-2 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0",
       className,
     )}
     {...props}
@@ -87,7 +91,10 @@ const TableCell = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <td
     ref={ref}
-    className={cn("p-4 align-middle [&:has([role=checkbox])]:pr-0", className)}
+    className={cn(
+      "px-2 py-4 align-middle [&:has([role=checkbox])]:pr-0",
+      className,
+    )}
     {...props}
   />
 ));

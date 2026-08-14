@@ -79,7 +79,7 @@ export function DiveMixturesCard({ dive }: DiveMixturesCardProps) {
 
             `tabular-nums` because all but the gas column hold numbers read down
             rather than across, and proportional digits leave them visibly ragged. */}
-        <Table className="tabular-nums [&_th]:px-2 [&_td]:px-2">
+        <Table className="tabular-nums">
           {/* The card title names this table on screen but not to a screen reader,
               which announces the `table` element itself with no name at all. */}
           <TableCaption className="sr-only">
