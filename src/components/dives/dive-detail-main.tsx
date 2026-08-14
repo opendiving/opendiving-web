@@ -1,12 +1,7 @@
 import Link from "next/link";
 import { Dive } from "@/lib/api/dives";
 import { gearTypeLabel } from "@/lib/api/gear";
-import {
-  formatDiveTimeOnly,
-  formatDurationHoursMinutes,
-  formatUtcOffset,
-  parseUtcOffsetMinutes,
-} from "@/lib/date-time";
+import { formatDurationHoursMinutes } from "@/lib/date-time";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DiveProfileCard } from "@/components/dives/dive-profile-card";
@@ -21,14 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Backpack,
-  Calendar,
-  Clock,
-  FileText,
-  Gauge,
-  Weight,
-} from "lucide-react";
+import { Backpack, FileText, Timer, Weight } from "lucide-react";
 
 interface DiveDetailMainProps {
   dive: Dive;
@@ -36,88 +24,67 @@ interface DiveDetailMainProps {
 
 /**
  * The dive detail page's main column, ordered so each card's inputs are already on screen
- * by the time a card derived from them appears: the depth numbers, then the profile that
- * is their detailed form, then the mixtures whose pressures its third curve traces, then
- * the consumption figures derived from all three.
+ * by the time a card derived from them appears: the duration and depth numbers, then the
+ * profile that is their detailed form, then the mixtures whose pressures its third curve
+ * traces, then the consumption figures derived from all three.
  *
  * Every card past the first renders only when the dive carries the relevant data, so a
- * hand-logged dive shows just the time and whatever else was filled in.
+ * hand-logged dive shows just the duration and whatever else was filled in.
  */
 export function DiveDetailMain({ dive }: DiveDetailMainProps) {
   const hasGearInfo = (dive.gear_items?.length ?? 0) > 0 || dive.weight != null;
 
   return (
     <div className="lg:col-span-2 space-y-6">
+      {/* The three numbers that describe the shape of the dive, in one card and
+          at one weight. They were two - a "Time & Duration" card holding the
+          start time and the duration, and a "Depth Information" card below it -
+          which spent a whole card's header on a single figure and put "45min"
+          and "30.5 m" in different boxes despite being read together. The start
+          time went up to the page header, where the date already was. */}
       <Card>
         <CardHeader>
+          {/* `Timer`, not the `Gauge` the old "Depth Information" card carried:
+              `DiveExposureCard` further down this same column heads itself with
+              a gauge too, and two cards a scroll apart under one icon is the
+              icon saying nothing. The merged card leads with duration, so it
+              takes the icon for the word it leads with. */}
           <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
-            Time & Duration
+            <Timer className="h-5 w-5" />
+            Duration & Depth
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <div className="text-sm font-medium text-muted-foreground mb-1">
-                Start Time
-              </div>
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-muted-foreground" />
-                <span>
-                  {formatDiveTimeOnly(dive.start_time)}{" "}
-                  <span className="text-muted-foreground">
-                    (UTC
-                    {formatUtcOffset(
-                      parseUtcOffsetMinutes(dive.start_time) ?? 0,
-                    )}
-                    )
-                  </span>
-                </span>
-              </div>
-            </div>
+        <CardContent>
+          {/* Three columns for three figures, and a dive that recorded no depths
+              simply leaves the duration on its own rather than stretching it. */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <div className="text-sm font-medium text-muted-foreground mb-1">
                 Duration
               </div>
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-muted-foreground" />
-                <span>{formatDurationHoursMinutes(dive.duration)}</span>
+              <div className="text-2xl font-bold">
+                {formatDurationHoursMinutes(dive.duration)}
               </div>
             </div>
+            {dive.max_depth != null && (
+              <div>
+                <div className="text-sm font-medium text-muted-foreground mb-1">
+                  Maximum Depth
+                </div>
+                <div className="text-2xl font-bold">{dive.max_depth}m</div>
+              </div>
+            )}
+            {dive.avg_depth != null && (
+              <div>
+                <div className="text-sm font-medium text-muted-foreground mb-1">
+                  Average Depth
+                </div>
+                <div className="text-2xl font-bold">{dive.avg_depth}m</div>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
-
-      {(dive.max_depth != null || dive.avg_depth != null) && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Gauge className="h-5 w-5" />
-              Depth Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {dive.max_depth != null && (
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground mb-1">
-                    Maximum Depth
-                  </div>
-                  <div className="text-2xl font-bold">{dive.max_depth}m</div>
-                </div>
-              )}
-              {dive.avg_depth != null && (
-                <div>
-                  <div className="text-sm font-medium text-muted-foreground mb-1">
-                    Average Depth
-                  </div>
-                  <div className="text-2xl font-bold">{dive.avg_depth}m</div>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Renders nothing for a dive logged by hand. */}
       <DiveProfileCard dive={dive} />

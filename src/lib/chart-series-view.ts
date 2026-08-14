@@ -21,20 +21,24 @@
 // dead key names that would have to be carried, kept correct, and grown on every
 // future bump - in code whose whole job is to be forgotten.
 
-// Versioned, and the suffix was added when the deco ceiling became a fourth
-// channel. `parseSeriesVisibility` filters a stored selection down to the keys
-// this build plots, which is exactly right for a key that has *gone* and exactly
-// wrong for one that has arrived: every selection written before the ceiling
-// existed names three channels, all of them still available, so it would restore
-// cleanly and leave the ceiling switched off - hiding the one mark the diver
-// came to a deco dive's profile to see, with a legend entry sitting right there
-// claiming they had turned it off themselves.
+// Versioned, and now on its third: `-v2` when the deco ceiling became a fourth
+// channel, `-v3` when the event markers gained a toggle of their own.
+// `parseSeriesVisibility` filters a stored selection down to the keys this build
+// plots, which is exactly right for a key that has *gone* and exactly wrong for
+// one that has arrived: every selection written before the markers were
+// switchable names only channels, all of them still available, so it would
+// restore cleanly and leave the markers switched off - hiding annotations that
+// have always been drawn, with a legend entry sitting right there claiming the
+// diver had turned them off themselves.
 //
 // Bumping the key drops those selections and opens on everything plotted, which
 // is what a first visit already does. The cost is one diver's hidden temperature
 // line coming back once; the alternative is a feature that is invisible to
 // precisely the people who have used the chart before.
-export const DIVE_PROFILE_SERIES_KEY = "opendiving:dive-profile-series-v2";
+//
+// **The general rule, twice applied now: adding a key to a
+// `parseSeriesVisibility` list needs a key bump; removing one does not.**
+export const DIVE_PROFILE_SERIES_KEY = "opendiving:dive-profile-series-v3";
 export const GAS_USE_SERIES_KEY = "opendiving:gas-use-series";
 
 // The stored entry, raw and unparsed.

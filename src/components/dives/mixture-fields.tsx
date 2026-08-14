@@ -127,6 +127,52 @@ function MixtureGasHint({
   return <p className="text-xs text-muted-foreground">{parts.join(" · ")}</p>;
 }
 
+// The ppO₂ ceilings a cylinder is actually planned to, offered in place of a free
+// number box. The schema's band is 0.4-2.0 - wide because it exists to catch a unit
+// error (a Suunto JSON export writes 140000 Pa for 1.4 bar), not because a diver picks
+// from all of it - and every value in it that a diver would ever choose is one of
+// these seven: 1.4 for a back gas, 1.6 for a deco bottle, and the conservative steps
+// below them that a few agencies and most CCR plans use.
+//
+// Strings rather than numbers, which is the one thing here worth stating: an
+// `<option>`'s value is a string either way, and going through `Number` in both
+// directions puts float formatting between the stored value and the option that has to
+// match it - `String(1.0)` is `"1"`, so a `1.0` option labelled `"1.0"` would never
+// match its own value. Written as the tokens they are displayed as, the label, the
+// value and the round trip are all the same characters.
+//
+// **The narrowing is a one-way door, and that is accepted.** `ppO2LimitChoices` below
+// keeps an unlisted recorded value selectable, but only while it is still the field's
+// value: change an imported 1.45 to 1.4 and there is no way back to it, and nothing
+// here can reach the 0.4-0.9 band the API's `ck_dive_mixture_po2_limit_range` allows.
+// The floor is 1.0 on purpose rather than by inheritance - below that a figure is a
+// CCR *setpoint* rather than a limit a MOD is worked out at, and this field feeds a
+// MOD. A diver who genuinely needs a number this list doesn't offer has lost
+// something; a diver who fat-fingers 14 into a free text box gets an unreadable 422 on
+// save, and there are many more of the second.
+const PPO2_LIMIT_OPTIONS = ["1.0", "1.1", "1.2", "1.3", "1.4", "1.5", "1.6"];
+
+// The options to offer for a cylinder currently holding `value`.
+//
+// Normally just the list above. A limit that came from a file and isn't on it -
+// anything in the schema's band is possible on the wire - is inserted in its place,
+// because a `<select>` whose value matches no option renders blank while the form goes
+// on holding the value: the box would say "not recorded" over a cylinder that records
+// 1.45, and the diver's only way to find out would be to save and watch the MOD not
+// move.
+function ppO2LimitChoices(value: number | "" | undefined): string[] {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return PPO2_LIMIT_OPTIONS;
+  }
+  if (PPO2_LIMIT_OPTIONS.some((option) => Number(option) === value)) {
+    return PPO2_LIMIT_OPTIONS;
+  }
+
+  return [...PPO2_LIMIT_OPTIONS, String(value)].sort(
+    (first, second) => Number(first) - Number(second),
+  );
+}
+
 // How long the gas warning has to hold still before it is announced. Long enough to
 // cover typing a two-digit depth without a pause being mistaken for a finished edit.
 const ANNOUNCE_SETTLE_MS = 700;
@@ -394,31 +440,61 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
             <FormField
               control={control}
               name={`mixtures.${index}.po2_limit` as Path<TFieldValues>}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>ppO₂ limit (bar)</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      step="0.1"
-                      min="0.4"
-                      max="2"
-                      // The fallback is named rather than pre-filled, so an empty
-                      // box still says what the MOD above it was worked out from.
-                      // Seeding 1.4 would make every cylinder claim a limit the
-                      // diver never chose - see `DEFAULT_MIXTURE`.
-                      placeholder={`${PPO2_WORKING} (default)`}
-                      {...field}
-                      value={field.value ?? ""}
-                      onChange={(e) => {
-                        const raw = e.target.value;
-                        field.onChange(raw === "" ? "" : parseFloat(raw));
-                      }}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              render={({ field }) => {
+                const choices = ppO2LimitChoices(field.value);
+
+                return (
+                  <FormItem>
+                    <FormLabel>ppO₂ limit (bar)</FormLabel>
+                    {/* A plain `<select>` for the same two reasons as `role`
+                        below: it needs "unset" as a real selectable option,
+                        which Radix reserves `""` for, and `""` has to reach
+                        react-hook-form as the live cleared value rather than
+                        `undefined`, which it re-displays the default over.
+
+                        A picker rather than the number box this started as
+                        because the field has an actual vocabulary. Every value
+                        it could usefully hold is one of seven, while the box
+                        accepted any two decimals in a 0.4-2.0 band - so the
+                        only things free entry bought were typos and a 422 on
+                        save. */}
+                    <FormControl>
+                      <select
+                        className={inputClassName}
+                        {...field}
+                        // From the offered list rather than from the raw value,
+                        // so the two can't disagree about formatting: `1.0` on
+                        // the form has to find the `"1.0"` option, and
+                        // `String(1.0)` is `"1"`.
+                        value={
+                          choices.find(
+                            (option) => Number(option) === field.value,
+                          ) ?? ""
+                        }
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          field.onChange(raw === "" ? "" : parseFloat(raw));
+                        }}
+                      >
+                        {/* The fallback is named rather than pre-selected, so a
+                            cylinder with no recorded limit still says what the
+                            MOD beneath it was worked out from. Selecting 1.4
+                            here would make it claim a limit the diver never
+                            chose - see `DEFAULT_MIXTURE`. */}
+                        <option value="">
+                          Not recorded ({PPO2_WORKING} default)
+                        </option>
+                        {choices.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
 
             <FormField
