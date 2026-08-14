@@ -80,7 +80,7 @@ export function DiveGasConsumptionCard({ dive }: DiveGasConsumptionCardProps) {
 
                 `tabular-nums` for the same reason that table carries it: five
                 columns of figures read down a column. */}
-            <Table className="tabular-nums [&_th]:px-2 [&_td]:px-2">
+            <Table className="tabular-nums">
               {/* "per gas", not "per cylinder" as the mixtures table above says:
                   this one can also carry a `Gas N` row for a tank the profile
                   attributed that matches none of the dive's cylinders, and the
