@@ -200,7 +200,7 @@ describe("DiveGasConsumptionCard per-tank table", () => {
     expect(rows).toHaveLength(4);
 
     const backGas = within(rows[1]);
-    expect(backGas.getByText("Tank 1")).toBeInTheDocument();
+    expect(backGas.getByText("1")).toBeInTheDocument();
     expect(backGas.getByText("Air")).toBeInTheDocument();
     expect(backGas.getByText("32.4 m")).toBeInTheDocument();
     expect(backGas.getByText("18.2 L/min")).toBeInTheDocument();
@@ -214,11 +214,43 @@ describe("DiveGasConsumptionCard per-tank table", () => {
     expect(decoGas.getByText("12.1 L/min")).toBeInTheDocument();
   });
 
+  it("heads its first two columns as the mixtures table above does", () => {
+    // The gas is a column here rather than a badge pinned to the position, which
+    // is what lets the two tables be read against each other down the page.
+    render(<DiveGasConsumptionCard dive={twoTankDive()} />);
+
+    const headers = screen
+      .getAllByRole("columnheader")
+      .map((header) => header.textContent);
+    // "#Tank" is the visible character plus the sr-only word behind it, which the
+    // mixtures table heads identically.
+    expect(headers.slice(0, 2)).toEqual(["#Tank", "Gas"]);
+    // "Used", not "Gas Used": two headers leading with the same word, one naming
+    // a mix and one a volume, is what the Gas column would otherwise create.
+    expect(headers).toContain("Used");
+  });
+
+  it("dashes the gas of a tank that matches no cylinder", () => {
+    // A `Gas N` row is the device's own tank, not one of the dive's mixtures, so
+    // there is no mix to name in the column beside it.
+    render(
+      <DiveGasConsumptionCard
+        dive={twoTankDive({
+          mixtures: [mixture({ gas_number: 1 })],
+        })}
+      />,
+    );
+
+    const orphan = within(screen.getAllByRole("row")[2]);
+    expect(orphan.getByText("Gas 2")).toBeInTheDocument();
+    expect(orphan.getByText("-")).toBeInTheDocument();
+  });
+
   it("totals the dive under the rows and dashes the SAC it cannot state", () => {
     render(<DiveGasConsumptionCard dive={twoTankDive()} />);
 
     const total = within(screen.getAllByRole("row")[3]);
-    expect(total.getByText("All tanks")).toBeInTheDocument();
+    expect(total.getByText("Total")).toBeInTheDocument();
     expect(total.getByText("3620 L")).toBeInTheDocument();
     expect(total.getByText("17.4 L/min")).toBeInTheDocument();
     // Bar/min across a 22 L twinset and an 11 L stage is not a rate of anything,
@@ -265,7 +297,7 @@ describe("DiveGasConsumptionCard per-tank table", () => {
     const rows = screen.getAllByRole("row");
     // Header, back gas, deco bottle - and no total.
     expect(rows).toHaveLength(3);
-    expect(screen.queryByText("All tanks")).not.toBeInTheDocument();
+    expect(screen.queryByText("Total")).not.toBeInTheDocument();
     // The one real SAC still shows; it is only the dive-wide one that doesn't
     // exist.
     expect(screen.getByText("0.56 bar/min")).toBeInTheDocument();

@@ -4,13 +4,14 @@ import {
   gasUseUnavailableReason,
   tankGasUseRows,
 } from "@/lib/dive-gas";
-import { GAS_ROLE_LABELS } from "@/lib/dive-mixtures";
+import { GAS_BADGE_CLASS, GAS_ROLE_LABELS } from "@/lib/dive-mixtures";
 import { formatDurationHoursMinutes } from "@/lib/date-time";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
+  TableCaption,
   TableCell,
   TableFooter,
   TableHead,
@@ -73,98 +74,134 @@ export function DiveGasConsumptionCard({ dive }: DiveGasConsumptionCardProps) {
           <p className="text-sm text-muted-foreground">{reason}</p>
         ) : rows.length > 0 ? (
           <>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Tank</TableHead>
-                    {/* The two inputs of the split, before the three figures
-                        derived from them, so a row reads left to right as the
-                        arithmetic it is: this long, this deep, therefore this
-                        much. */}
-                    <TableHead>Time</TableHead>
-                    <TableHead>Avg Depth</TableHead>
-                    <TableHead>Gas Used</TableHead>
-                    <TableHead>RMV</TableHead>
-                    <TableHead>SAC</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {rows.map((row) => (
-                    // Nothing in a body row wraps, for the reason the mixtures
-                    // table gives: a broken "18.4 L/min" reads as two values.
-                    <TableRow key={row.key} className="whitespace-nowrap">
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-1.5">
-                          {row.label}
-                          {row.gas && (
-                            <Badge variant="secondary">{row.gas}</Badge>
-                          )}
-                          {row.role && (
-                            // Same hand-maintained map and same fallback as the
-                            // mixtures card - a role the API has and this build
-                            // hasn't renders as its wire value rather than as an
-                            // empty badge.
-                            <Badge variant="outline">
-                              {GAS_ROLE_LABELS[row.role] ?? row.role}
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      {row.use ? (
-                        <>
-                          <TableCell>
-                            {formatTimeOnGas(row.use.seconds_on_gas)}
-                          </TableCell>
-                          <TableCell>{row.use.mean_depth} m</TableCell>
-                          <TableCell>{row.use.gas_used} L</TableCell>
-                          <TableCell className="font-medium">
-                            {row.use.rmv} L/min
-                          </TableCell>
-                          <TableCell>
-                            {row.use.sac_bar_per_min} bar/min
-                          </TableCell>
-                        </>
-                      ) : (
-                        // Spelled out rather than left as five blank cells,
-                        // which reads as a rendering fault.
-                        //
-                        // Not "Not attributed", which names only one of the two
-                        // states behind an empty `use` (see `TankGasUseRow`) and
-                        // would be contradicted by the coverage note three lines
-                        // below on the other. Where the cylinder records no
-                        // pressures the browser can say something both certain
-                        // and useful — that is the corpus's deco bottle with no
-                        // transmitter, and the only unattributed row any dive
-                        // here actually renders. Otherwise it says what it
-                        // knows, which is that there are no figures.
-                        <TableCell
-                          colSpan={5}
-                          className="text-muted-foreground"
-                        >
-                          {row.hasPressures
-                            ? "No figures"
-                            : "No pressures recorded"}
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  ))}
-                </TableBody>
-                {/* "Which of these is the dive's RMV" is the question a table of
-                    per-tank rates raises, and it deserves an answer on screen
-                    rather than a mental sum - but only once there is more than
-                    one rate to reconcile.
+            {/* No wrapper of its own, for the reason the mixtures card above
+                states: shadcn's `Table` brings its own scroll container and the
+                second one never scrolled.
 
-                    A `tfoot`, not a seventh body row: this summarizes the rows
-                    above rather than joining them, and `TableFooter` brings the
-                    separator and weight that were otherwise hand-applied. */}
-                {attributedCount > 1 && (
-                  <TableFooter>
-                    <TotalRow gasUse={gasUse} />
-                  </TableFooter>
-                )}
-              </Table>
-            </div>
+                `tabular-nums` for the same reason that table carries it: five
+                columns of figures read down a column. */}
+            <Table className="tabular-nums [&_th]:px-2 [&_td]:px-2">
+              {/* "per gas", not "per cylinder" as the mixtures table above says:
+                  this one can also carry a `Gas N` row for a tank the profile
+                  attributed that matches none of the dive's cylinders, and the
+                  caption is the only place that shape is stated rather than shown. */}
+              <TableCaption className="sr-only">
+                Gas consumption, one row per gas
+              </TableCaption>
+              <TableHeader>
+                <TableRow>
+                  {/* `#` and `Gas`, matching the mixtures table's own first two
+                      columns - the two tables are meant to be read against each
+                      other, so they head, number and badge them identically. The
+                      gas name is therefore on the page twice; that is the price of
+                      the two tables agreeing, and this table has to be legible on
+                      its own since "which of these is the deco bottle" is the
+                      question its rows exist to answer. */}
+                  {/* `#` is punctuation to a screen reader - see the mixtures
+                      card, which spells the word out the same way. */}
+                  <TableHead>
+                    <span aria-hidden>#</span>
+                    <span className="sr-only">Tank</span>
+                  </TableHead>
+                  <TableHead>Gas</TableHead>
+                  {/* The two inputs of the split, before the three figures
+                      derived from them, so a row reads left to right as the
+                      arithmetic it is: this long, this deep, therefore this
+                      much. */}
+                  <TableHead>Time</TableHead>
+                  <TableHead>Avg Depth</TableHead>
+                  {/* "Used", not the "Gas Used" this said before the table grew
+                      a Gas column: two headers three apart both leading with the
+                      same word, one naming a mix and one a volume. The unit is in
+                      every cell under it, so the noun was never doing the work. */}
+                  <TableHead>Used</TableHead>
+                  <TableHead>RMV</TableHead>
+                  <TableHead>SAC</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((row) => (
+                  // Nothing in a body row wraps, for the reason the mixtures
+                  // table gives: a broken "18.4 L/min" reads as two values.
+                  <TableRow key={row.key} className="whitespace-nowrap">
+                    {/* Muted and unweighted, as the mixtures table writes the
+                        same cell: the position addresses the row rather than
+                        saying anything about it. */}
+                    <TableCell className="text-muted-foreground">
+                      {row.label}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1.5">
+                        {row.gas ? (
+                          <Badge
+                            variant="secondary"
+                            className={GAS_BADGE_CLASS}
+                          >
+                            {row.gas}
+                          </Badge>
+                        ) : (
+                          // A tank matching no mixture has no gas to name.
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                        {row.role && (
+                          // Same hand-maintained map and same fallback as the
+                          // mixtures card - a role the API has and this build
+                          // hasn't renders as its wire value rather than as an
+                          // empty badge.
+                          <Badge variant="outline">
+                            {GAS_ROLE_LABELS[row.role] ?? row.role}
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    {row.use ? (
+                      <>
+                        <TableCell>
+                          {formatTimeOnGas(row.use.seconds_on_gas)}
+                        </TableCell>
+                        <TableCell>{row.use.mean_depth} m</TableCell>
+                        <TableCell>{row.use.gas_used} L</TableCell>
+                        <TableCell className="font-medium">
+                          {row.use.rmv} L/min
+                        </TableCell>
+                        <TableCell>{row.use.sac_bar_per_min} bar/min</TableCell>
+                      </>
+                    ) : (
+                      // Spelled out rather than left as five blank cells,
+                      // which reads as a rendering fault.
+                      //
+                      // Not "Not attributed", which names only one of the two
+                      // states behind an empty `use` (see `TankGasUseRow`) and
+                      // would be contradicted by the coverage note three lines
+                      // below on the other. Where the cylinder records no
+                      // pressures the browser can say something both certain
+                      // and useful — that is the corpus's deco bottle with no
+                      // transmitter, and the only unattributed row any dive
+                      // here actually renders. Otherwise it says what it
+                      // knows, which is that there are no figures.
+                      <TableCell colSpan={5} className="text-muted-foreground">
+                        {row.hasPressures
+                          ? "No figures"
+                          : "No pressures recorded"}
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))}
+              </TableBody>
+              {/* "Which of these is the dive's RMV" is the question a table of
+                  per-tank rates raises, and it deserves an answer on screen
+                  rather than a mental sum - but only once there is more than
+                  one rate to reconcile.
+
+                  A `tfoot`, not a seventh body row: this summarizes the rows
+                  above rather than joining them, and `TableFooter` brings the
+                  separator and weight that were otherwise hand-applied. */}
+              {attributedCount > 1 && (
+                <TableFooter>
+                  <TotalRow gasUse={gasUse} />
+                </TableFooter>
+              )}
+            </Table>
             <p className="text-xs text-muted-foreground mt-4">
               Each tank&apos;s figures cover the stretch of the dive it was
               breathed for, at that stretch&apos;s average depth — which is what
@@ -277,7 +314,13 @@ function TotalRow({ gasUse }: { gasUse: NonNullable<Dive["gas_use"]> }) {
     // No `font-medium` here - `TableFooter` already carries it, along with the
     // separator this row used to lack.
     <TableRow className="whitespace-nowrap">
-      <TableCell>All tanks</TableCell>
+      {/* "Total", not the "All tanks" this said while the column was headed
+          `Tank` - under a `#` the old phrasing was answering a question the
+          header no longer asks, and this is the word a `tfoot` conventionally
+          carries. */}
+      <TableCell>Total</TableCell>
+      {/* The total is across gases, so the Gas column has nothing to say for it. */}
+      <TableCell className="text-muted-foreground">-</TableCell>
       <TableCell
         className={attributed == null ? "text-muted-foreground" : undefined}
       >

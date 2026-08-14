@@ -1,0 +1,404 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e25]:
+    - banner [ref=e26]:
+      - generic [ref=e28]:
+        - generic [ref=e29]:
+          - link "OpenDiving" [ref=e30] [cursor=pointer]:
+            - /url: /
+          - navigation [ref=e36]:
+            - link "Dashboard" [ref=e37] [cursor=pointer]:
+              - /url: /dashboard
+            - link "Trips" [ref=e38] [cursor=pointer]:
+              - /url: /trips
+            - link "Dives" [ref=e39] [cursor=pointer]:
+              - /url: /dives
+            - link "Dive Sites" [ref=e40] [cursor=pointer]:
+              - /url: /sites
+            - link "Gear" [ref=e41] [cursor=pointer]:
+              - /url: /gear
+        - generic [ref=e42]:
+          - button "Create new" [ref=e43] [cursor=pointer]
+          - button "Account menu" [ref=e45] [cursor=pointer]:
+            - img "Fin Diesel's avatar" [ref=e47]
+    - main [ref=e48]:
+      - generic [ref=e50]:
+        - generic [ref=e51]:
+          - generic [ref=e52]:
+            - heading "Good evening, Fin Diesel!" [level=1] [ref=e53]
+            - paragraph [ref=e54]: Your logbook, your trips and your stats, at a glance
+          - link "Log a dive" [ref=e55] [cursor=pointer]:
+            - /url: /dives/new?from=/dashboard
+        - generic [ref=e57]:
+          - heading "Service due" [level=3] [ref=e59]
+          - link "Apeks XTX50 / DST Service (Annual service) Due soon Due in 21 days" [ref=e63] [cursor=pointer]:
+            - /url: /gear/019ff320-8b7d-7db2-bc12-7cc142ec651b
+            - generic [ref=e64]:
+              - generic [ref=e65]: Apeks XTX50 / DST
+              - generic [ref=e66]: Service (Annual service)
+            - generic [ref=e67]:
+              - generic [ref=e68]: Due soon
+              - generic [ref=e69]: Due in 21 days
+        - generic [ref=e70]:
+          - generic [ref=e71]:
+            - heading "Total Dives" [level=3] [ref=e73]
+            - generic [ref=e78]:
+              - generic [ref=e79]: "506"
+              - paragraph [ref=e80]: Logged in your logbook
+          - generic [ref=e81]:
+            - heading "Max Depth" [level=3] [ref=e83]
+            - generic [ref=e86]:
+              - generic [ref=e87]: 47.42m
+              - paragraph [ref=e88]: Personal best
+          - generic [ref=e89]:
+            - heading "Total Time" [level=3] [ref=e91]
+            - generic [ref=e95]:
+              - generic [ref=e96]: 450h 39min
+              - paragraph [ref=e97]: Underwater
+        - generic [ref=e98]:
+          - generic [ref=e100]:
+            - generic [ref=e101]:
+              - heading "Gas Consumption" [level=3] [ref=e102]
+              - paragraph [ref=e105]: Surface-equivalent gas breathed per minute (RMV). Lower is better.
+            - generic [ref=e106]:
+              - generic [ref=e107]:
+                - 'button "Gas consumption: previous period with dives" [ref=e108] [cursor=pointer]'
+                - generic [ref=e111]: Gas consumption period
+                - combobox [ref=e112] [cursor=pointer]:
+                  - generic: July 2025
+                - 'button "Gas consumption: next period with dives" [ref=e115] [cursor=pointer]'
+              - 'group "Gas consumption: time range" [ref=e118]':
+                - button "All" [ref=e119] [cursor=pointer]
+                - button "Year" [ref=e120] [cursor=pointer]
+                - button "Month" [pressed] [ref=e121] [cursor=pointer]
+          - generic [ref=e122]:
+            - generic [ref=e123]:
+              - generic [ref=e124]:
+                - generic [ref=e125]: Average
+                - generic [ref=e126]:
+                  - generic [ref=e127]: "13.4"
+                  - generic [ref=e128]: L/min
+                  - generic [ref=e129]: 10% vs June 2025
+              - generic [ref=e133]:
+                - generic [ref=e134]: Best dive
+                - generic [ref=e135]:
+                  - generic [ref=e136]: "9.9"
+                  - generic [ref=e137]: L/min
+              - generic [ref=e138]:
+                - generic [ref=e139]: Dives
+                - generic [ref=e140]: "43"
+            - generic [ref=e142]:
+              - group "Gas consumption over 43 dives, against an all-time average of 12.6 liters per minute." [ref=e145]:
+                - generic [ref=e146]: "5"
+                - generic [ref=e148]: "10"
+                - generic [ref=e150]: "15"
+                - generic [ref=e152]: "20"
+                - generic [ref=e154]: "25"
+                - generic [ref=e156]: "1"
+                - generic [ref=e157]: "8"
+                - generic [ref=e158]: "15"
+                - generic [ref=e159]: "22"
+                - generic [ref=e160]: "29"
+                - 'link "Dive #350, Jul 4, 2025 - 13.11 liters per minute at 16.62m average" [ref=e163] [cursor=pointer]':
+                  - /url: /dives/019fcee1-27a1-71ac-a8b2-241d53abea8f
+                - 'link "Dive #351, Jul 4, 2025 - 12.6 liters per minute at 12.94m average" [ref=e166] [cursor=pointer]':
+                  - /url: /dives/019fcee1-27b9-79b8-9cff-8695c5d5c2fb
+                - 'link "Dive #352, Jul 5, 2025 - 17.77 liters per minute at 5.27m average" [ref=e169] [cursor=pointer]':
+                  - /url: /dives/019fcee1-27cf-78d1-8a6f-249c074f35ef
+                - 'link "Dive #353, Jul 5, 2025 - 14.82 liters per minute at 9.47m average" [ref=e172] [cursor=pointer]':
+                  - /url: /dives/019fcee1-27dd-7976-be18-e33060378b73
+                - 'link "Dive #354, Jul 6, 2025 - 14.32 liters per minute at 4.1m average" [ref=e175] [cursor=pointer]':
+                  - /url: /dives/019fcee1-27eb-7238-a346-2119c9edb5ae
+                - 'link "Dive #355, Jul 6, 2025 - 16.03 liters per minute at 6.86m average" [ref=e178] [cursor=pointer]':
+                  - /url: /dives/019fcee1-27f8-7c51-a31f-760ceff58297
+                - 'link "Dive #356, Jul 7, 2025 - 11.72 liters per minute at 12.2m average" [ref=e181] [cursor=pointer]':
+                  - /url: /dives/019fcee1-2806-7854-b552-2eaecbb7d6bb
+                - 'link "Dive #357, Jul 7, 2025 - 13.69 liters per minute at 11.72m average" [ref=e184] [cursor=pointer]':
+                  - /url: /dives/019fcee1-2814-7cc7-930e-2354de2b901b
+                - 'link "Dive #358, Jul 8, 2025 - 15.33 liters per minute at 3.81m average" [ref=e187] [cursor=pointer]':
+                  - /url: /dives/019fcee1-2820-780c-81ea-210ced5e0b1e
+                - 'link "Dive #359, Jul 8, 2025 - 15.93 liters per minute at 4.74m average" [ref=e190] [cursor=pointer]':
+                  - /url: /dives/019fcee1-282f-7694-841e-d21506bab2f1
+                - 'link "Dive #360, Jul 11, 2025 - 9.95 liters per minute at 12.9m average" [ref=e193] [cursor=pointer]':
+                  - /url: /dives/019fcee1-2849-7914-9950-35ddf5d96157
+                - 'link "Dive #361, Jul 11, 2025 - 10.27 liters per minute at 13.84m average" [ref=e196] [cursor=pointer]':
+                  - /url: /dives/019fcee1-2859-7608-b840-70c516498013
+                - 'link "Dive #362, Jul 13, 2025 - 11.83 liters per minute at 14.31m average" [ref=e199] [cursor=pointer]':
+                  - /url: /dives/019fcee1-2867-700b-ad72-b2a574c89501
+                - 'link "Dive #363, Jul 13, 2025 - 12.54 liters per minute at 11.55m average" [ref=e202] [cursor=pointer]':
+                  - /url: /dives/019fcee1-2874-7152-a373-23c97d564fb2
+                - 'link "Dive #364, Jul 14, 2025 - 20.54 liters per minute at 5.7m average" [ref=e205] [cursor=pointer]':
+                  - /url: /dives/019fcee1-2882-7fff-89d5-29b123593909
+                - 'link "Dive #365, Jul 14, 2025 - 14.81 liters per minute at 6.67m average" [ref=e208] [cursor=pointer]':
+                  - /url: /dives/019fcee1-2890-7bde-b256-01032a841233
+                - 'link "Dive #366, Jul 15, 2025 - 16.49 liters per minute at 8.41m average" [ref=e211] [cursor=pointer]':
+                  - /url: /dives/019fcee1-289e-7026-b9fe-e2f06ae13376
+                - 'link "Dive #367, Jul 15, 2025 - 13.43 liters per minute at 9.32m average" [ref=e214] [cursor=pointer]':
+                  - /url: /dives/019fcee1-28ab-789f-ada5-ba2fd6416877
+                - 'link "Dive #368, Jul 17, 2025 - 11.68 liters per minute at 16.87m average" [ref=e217] [cursor=pointer]':
+                  - /url: /dives/019fcee1-28c5-7361-a3e9-f50d95c64f7d
+                - 'link "Dive #369, Jul 17, 2025 - 11.93 liters per minute at 11.92m average" [ref=e220] [cursor=pointer]':
+                  - /url: /dives/019fcee1-28d7-7738-b589-5f5f0115db86
+                - 'link "Dive #370, Jul 18, 2025 - 11.14 liters per minute at 9.61m average" [ref=e223] [cursor=pointer]':
+                  - /url: /dives/019fcee1-28e7-71a2-840b-e0a3bb587696
+                - 'link "Dive #371, Jul 18, 2025 - 11.18 liters per minute at 17.78m average" [ref=e226] [cursor=pointer]':
+                  - /url: /dives/019fcee1-28f4-74f6-8cff-709126365d7b
+                - 'link "Dive #372, Jul 18, 2025 - 11.21 liters per minute at 13.93m average" [ref=e229] [cursor=pointer]':
+                  - /url: /dives/019fcee1-290a-772c-b693-fd6106bcf7cd
+                - 'link "Dive #373, Jul 19, 2025 - 12.07 liters per minute at 17.33m average" [ref=e232] [cursor=pointer]':
+                  - /url: /dives/019fcee1-291f-7bd8-8894-f26e6f8e92b1
+                - 'link "Dive #374, Jul 19, 2025 - 10.29 liters per minute at 16.43m average" [ref=e235] [cursor=pointer]':
+                  - /url: /dives/019fcee1-292c-7ca7-acc0-743db1b6bc34
+                - 'link "Dive #375, Jul 20, 2025 - 14.88 liters per minute at 8.28m average" [ref=e238] [cursor=pointer]':
+                  - /url: /dives/019fcee1-2939-7a74-be54-4cf125ca8cae
+                - 'link "Dive #376, Jul 20, 2025 - 13.06 liters per minute at 11.91m average" [ref=e241] [cursor=pointer]':
+                  - /url: /dives/019fcee1-2946-7596-8920-802c6cc47410
+                - 'link "Dive #377, Jul 20, 2025 - 14.13 liters per minute at 12.07m average" [ref=e244] [cursor=pointer]':
+                  - /url: /dives/019fcee1-2953-7d7f-aa68-44d10aa66d9f
+                - 'link "Dive #378, Jul 21, 2025 - 13.29 liters per minute at 13.2m average" [ref=e247] [cursor=pointer]':
+                  - /url: /dives/019fcee1-2964-7b2e-945e-7a76e6de354a
+                - 'link "Dive #379, Jul 21, 2025 - 13.35 liters per minute at 13.63m average" [ref=e250] [cursor=pointer]':
+                  - /url: /dives/019fcee1-2972-790c-8554-12f4a48a95ed
+                - 'link "Dive #380, Jul 22, 2025 - 10.62 liters per minute at 16.83m average" [ref=e253] [cursor=pointer]':
+                  - /url: /dives/019fcee1-297e-7c58-ba5b-3ac18aded3ba
+                - 'link "Dive #381, Jul 22, 2025 - 11.53 liters per minute at 13.7m average" [ref=e256] [cursor=pointer]':
+                  - /url: /dives/019fcee1-298b-7baf-8af3-f98b227b035f
+                - 'link "Dive #382, Jul 23, 2025 - 11.58 liters per minute at 11.5m average" [ref=e259] [cursor=pointer]':
+                  - /url: /dives/019fcee1-29a3-702e-b3f1-7bd9c04e4311
+                - 'link "Dive #383, Jul 23, 2025 - 12.22 liters per minute at 12.12m average" [ref=e262] [cursor=pointer]':
+                  - /url: /dives/019fcee1-29b2-717c-9972-fd232eedcab6
+                - 'link "Dive #384, Jul 24, 2025 - 12.02 liters per minute at 7.81m average" [ref=e265] [cursor=pointer]':
+                  - /url: /dives/019fcee1-29c0-724e-aedb-ce403f8fee53
+                - 'link "Dive #384, Jul 24, 2025 - 15.72 liters per minute at 9.96m average" [ref=e268] [cursor=pointer]':
+                  - /url: /dives/019fcee1-29cf-7b0d-92e8-6216bfa616d2
+                - 'link "Dive #385, Jul 25, 2025 - 13.49 liters per minute at 6.86m average" [ref=e271] [cursor=pointer]':
+                  - /url: /dives/019fcee1-29e5-7449-bb60-b183f9351fb8
+                - 'link "Dive #386, Jul 25, 2025 - 12.36 liters per minute at 11.7m average" [ref=e274] [cursor=pointer]':
+                  - /url: /dives/019fcee1-29fc-7b5a-9c6e-df3ee776cf90
+                - 'link "Dive #387, Jul 27, 2025 - 14.22 liters per minute at 5.62m average" [ref=e277] [cursor=pointer]':
+                  - /url: /dives/019fcee1-2a08-7398-b7dc-8bb74885a7ed
+                - 'link "Dive #388, Jul 27, 2025 - 15.98 liters per minute at 13.66m average" [ref=e280] [cursor=pointer]':
+                  - /url: /dives/019fcee1-2a15-71f0-a088-fb477748c488
+                - 'link "Dive #389, Jul 27, 2025 - 15.23 liters per minute at 11.55m average" [ref=e283] [cursor=pointer]':
+                  - /url: /dives/019fcee1-2a23-7566-9859-32a87150190b
+                - 'link "Dive #390, Jul 29, 2025 - 15.19 liters per minute at 6.78m average" [ref=e286] [cursor=pointer]':
+                  - /url: /dives/019fcee1-2a30-759a-9d8f-1ea16fb6c23f
+                - 'link "Dive #391, Jul 29, 2025 - 14.3 liters per minute at 10.57m average" [ref=e289] [cursor=pointer]':
+                  - /url: /dives/019fcee1-2a3e-7627-b8ba-e45c62a14694
+              - group "Plotted series" [ref=e292]:
+                - button "Dive (L/min)" [pressed] [ref=e293] [cursor=pointer]
+                - button "5-dive trend and spread" [pressed] [ref=e295] [cursor=pointer]
+                - button "All-time average" [pressed] [ref=e299] [cursor=pointer]
+        - generic [ref=e301]:
+          - generic [ref=e303]:
+            - generic [ref=e304]:
+              - heading "Dive Activity" [level=3] [ref=e305]
+              - paragraph [ref=e308]: How many dives you logged, by day, month or year.
+            - 'group "Dive activity: time range" [ref=e310]':
+              - button "All" [pressed] [ref=e311] [cursor=pointer]
+              - button "Year" [ref=e312] [cursor=pointer]
+              - button "Month" [ref=e313] [cursor=pointer]
+          - generic [ref=e314]:
+            - generic [ref=e315]:
+              - generic [ref=e316]:
+                - generic [ref=e317]: Dives
+                - generic [ref=e318]: "506"
+              - generic [ref=e320]:
+                - generic [ref=e321]: Busiest year
+                - generic [ref=e322]:
+                  - generic [ref=e323]: "2025"
+                  - generic [ref=e324]: 223 dives
+            - generic [ref=e325]:
+              - 'img "Dives per year, 506 in total. Busiest year: 2025, 223 dives." [ref=e328]':
+                - generic [ref=e329]: "0"
+                - generic [ref=e331]: "50"
+                - generic [ref=e333]: "100"
+                - generic [ref=e335]: "150"
+                - generic [ref=e337]: "200"
+                - generic [ref=e339]: "250"
+                - generic [ref=e367]: "2014"
+                - generic [ref=e368]: "2015"
+                - generic [ref=e369]: "2016"
+                - generic [ref=e370]: "2017"
+                - generic [ref=e371]: "2018"
+                - generic [ref=e372]: "2019"
+                - generic [ref=e373]: "2020"
+                - generic [ref=e374]: "2021"
+                - generic [ref=e375]: "2022"
+                - generic [ref=e376]: "2023"
+                - generic [ref=e377]: "2024"
+                - generic [ref=e378]: "2025"
+                - generic [ref=e379]: "2026"
+              - list [ref=e380]:
+                - listitem [ref=e381]: "2014: 5 dives"
+                - listitem [ref=e382]: "2015: 5 dives"
+                - listitem [ref=e383]: "2016: no dives"
+                - listitem [ref=e384]: "2017: no dives"
+                - listitem [ref=e385]: "2018: no dives"
+                - listitem [ref=e386]: "2019: no dives"
+                - listitem [ref=e387]: "2020: 5 dives"
+                - listitem [ref=e388]: "2021: 18 dives"
+                - listitem [ref=e389]: "2022: 37 dives"
+                - listitem [ref=e390]: "2023: 78 dives"
+                - listitem [ref=e391]: "2024: 116 dives"
+                - listitem [ref=e392]: "2025: 223 dives"
+                - listitem [ref=e393]: "2026: 19 dives"
+        - generic [ref=e394]:
+          - generic [ref=e395]:
+            - generic [ref=e397]:
+              - generic [ref=e398]:
+                - heading "Recent Dives" [level=3] [ref=e399]
+                - paragraph [ref=e404]: Your latest underwater adventures
+              - link "View All Dives" [ref=e405] [cursor=pointer]:
+                - /url: /dives
+            - generic [ref=e407]:
+              - 'link "Dive #493 Apr 17, 2026 · Tiger Reef, Dahab, Egypt 1h 7min 46m" [ref=e408] [cursor=pointer]':
+                - /url: /dives/019fcee1-2219-76df-9e5c-b20e3473f304
+                - generic [ref=e409]:
+                  - generic [ref=e410]: "Dive #493"
+                  - generic [ref=e411]:
+                    - text: Apr 17, 2026
+                    - generic [ref=e412]:
+                      - text: ·
+                      - generic [ref=e413]: Tiger Reef, Dahab, Egypt
+                - generic [ref=e414]:
+                  - generic [ref=e415]: 1h 7min
+                  - generic [ref=e419]: 46m
+              - 'link "Dive #492 Apr 16, 2026 · The Canyon, Dahab, Egypt 1h 11min 47m" [ref=e422] [cursor=pointer]':
+                - /url: /dives/019fcee1-220b-7dfb-8f5c-9aaa79cbd2b3
+                - generic [ref=e423]:
+                  - generic [ref=e424]: "Dive #492"
+                  - generic [ref=e425]:
+                    - text: Apr 16, 2026
+                    - generic [ref=e426]:
+                      - text: ·
+                      - generic [ref=e427]: The Canyon, Dahab, Egypt
+                - generic [ref=e428]:
+                  - generic [ref=e429]: 1h 11min
+                  - generic [ref=e433]: 47m
+              - 'link "Dive #491 Apr 16, 2026 · Tiger Reef, Dahab, Egypt 1h 46m" [ref=e436] [cursor=pointer]':
+                - /url: /dives/019fcee1-21fc-7499-b829-8c365a30b824
+                - generic [ref=e437]:
+                  - generic [ref=e438]: "Dive #491"
+                  - generic [ref=e439]:
+                    - text: Apr 16, 2026
+                    - generic [ref=e440]:
+                      - text: ·
+                      - generic [ref=e441]: Tiger Reef, Dahab, Egypt
+                - generic [ref=e442]:
+                  - generic [ref=e443]: 1h
+                  - generic [ref=e447]: 46m
+              - 'link "Dive #490 Apr 14, 2026 · Lighthouse, Dahab, Egypt 1h 14min 46m" [ref=e450] [cursor=pointer]':
+                - /url: /dives/019fcee1-21e1-7086-bc81-df788a2cda5f
+                - generic [ref=e451]:
+                  - generic [ref=e452]: "Dive #490"
+                  - generic [ref=e453]:
+                    - text: Apr 14, 2026
+                    - generic [ref=e454]:
+                      - text: ·
+                      - generic [ref=e455]: Lighthouse, Dahab, Egypt
+                - generic [ref=e456]:
+                  - generic [ref=e457]: 1h 14min
+                  - generic [ref=e461]: 46m
+              - 'link "Dive #489 Apr 13, 2026 · The Canyon, Dahab, Egypt 58min 25m" [ref=e464] [cursor=pointer]':
+                - /url: /dives/019fcee1-21d1-795c-b79b-0c67f1cd7c7c
+                - generic [ref=e465]:
+                  - generic [ref=e466]: "Dive #489"
+                  - generic [ref=e467]:
+                    - text: Apr 13, 2026
+                    - generic [ref=e468]:
+                      - text: ·
+                      - generic [ref=e469]: The Canyon, Dahab, Egypt
+                - generic [ref=e470]:
+                  - generic [ref=e471]: 58min
+                  - generic [ref=e475]: 25m
+          - generic [ref=e478]:
+            - generic [ref=e480]:
+              - generic [ref=e481]:
+                - heading "Recent Trips" [level=3] [ref=e482]
+                - paragraph [ref=e488]: Your latest diving trips
+              - link "View All Trips" [ref=e489] [cursor=pointer]:
+                - /url: /trips
+            - generic [ref=e491]:
+              - link "Dahab 2026 Dahab, Egypt Apr 2 - Apr 17, 2026" [ref=e492] [cursor=pointer]:
+                - /url: /trips/019fcee1-2060-7abe-8a85-835f77d6af70
+                - generic [ref=e493]:
+                  - generic [ref=e494]: Dahab 2026
+                  - generic [ref=e495]: Dahab, Egypt
+                - generic [ref=e496]: Apr 2 - Apr 17, 2026
+              - link "Red Sea 2025, MV Legend Red Sea, Egypt Oct 26 - Oct 31, 2025" [ref=e499] [cursor=pointer]:
+                - /url: /trips/019fcee1-2226-76b3-b499-6f150a8b167e
+                - generic [ref=e500]:
+                  - generic [ref=e501]: Red Sea 2025, MV Legend
+                  - generic [ref=e502]: Red Sea, Egypt
+                - generic [ref=e503]: Oct 26 - Oct 31, 2025
+              - link "Dahab 2025 (October) Dahab, Egypt Oct 17 - Oct 21, 2025" [ref=e506] [cursor=pointer]:
+                - /url: /trips/019fcee1-238e-7bd7-8713-a2276f68290e
+                - generic [ref=e507]:
+                  - generic [ref=e508]: Dahab 2025 (October)
+                  - generic [ref=e509]: Dahab, Egypt
+                - generic [ref=e510]: Oct 17 - Oct 21, 2025
+              - link "Koh Tao 2025 Koh Tao, Thailand Sep 4 - Oct 13, 2025" [ref=e513] [cursor=pointer]:
+                - /url: /trips/019fcee1-2475-7283-b2ca-33ecd02fde7e
+                - generic [ref=e514]:
+                  - generic [ref=e515]: Koh Tao 2025
+                  - generic [ref=e516]: Koh Tao, Thailand
+                - generic [ref=e517]: Sep 4 - Oct 13, 2025
+              - link "DMT Mexico 2025 Cabo San Lucas, Mexico Jul 4 - Aug 7, 2025" [ref=e520] [cursor=pointer]:
+                - /url: /trips/019fcee1-278e-7464-81bb-d228fefdcadd
+                - generic [ref=e521]:
+                  - generic [ref=e522]: DMT Mexico 2025
+                  - generic [ref=e523]: Cabo San Lucas, Mexico
+                - generic [ref=e524]: Jul 4 - Aug 7, 2025
+    - contentinfo [ref=e527]:
+      - generic [ref=e528]:
+        - generic [ref=e529]:
+          - generic [ref=e530]:
+            - generic [ref=e531]: OpenDiving
+            - paragraph [ref=e537]: Open source diving platform for the global diving community.
+          - generic [ref=e538]:
+            - heading "Platform" [level=4] [ref=e539]
+            - list [ref=e540]:
+              - listitem [ref=e541]:
+                - link "Dive Log" [ref=e542] [cursor=pointer]:
+                  - /url: /dives
+              - listitem [ref=e543]:
+                - link "Trips" [ref=e544] [cursor=pointer]:
+                  - /url: /trips
+              - listitem [ref=e545]:
+                - link "Dive Sites" [ref=e546] [cursor=pointer]:
+                  - /url: /sites
+              - listitem [ref=e547]:
+                - link "Equipment" [ref=e548] [cursor=pointer]:
+                  - /url: /gear
+          - generic [ref=e549]:
+            - heading "Resources" [level=4] [ref=e550]
+            - list [ref=e551]:
+              - listitem [ref=e552]:
+                - link "GitHub" [ref=e553] [cursor=pointer]:
+                  - /url: https://github.com/opendiving
+              - listitem [ref=e554]:
+                - link "API" [ref=e555] [cursor=pointer]:
+                  - /url: https://github.com/opendiving/opendiving-api
+              - listitem [ref=e556]:
+                - link "Contributing" [ref=e557] [cursor=pointer]:
+                  - /url: https://github.com/opendiving/opendiving-web/blob/main/CONTRIBUTING.md
+              - listitem [ref=e558]:
+                - link "Code of Conduct" [ref=e559] [cursor=pointer]:
+                  - /url: https://github.com/opendiving/opendiving-web/blob/main/CODE_OF_CONDUCT.md
+          - generic [ref=e560]:
+            - heading "Support" [level=4] [ref=e561]
+            - list [ref=e562]:
+              - listitem [ref=e563]:
+                - link "Contact" [ref=e564] [cursor=pointer]:
+                  - /url: /contact
+              - listitem [ref=e565]:
+                - link "Privacy" [ref=e566] [cursor=pointer]:
+                  - /url: /privacy
+              - listitem [ref=e567]:
+                - link "Terms of Service" [ref=e568] [cursor=pointer]:
+                  - /url: /terms
+        - paragraph [ref=e570]: © 2026 OpenDiving. Open source diving platform.
+  - region "Notifications (F8)":
+    - list
+  - button "Open Next.js Dev Tools" [ref=e20] [cursor=pointer]
+  - alert [ref=e24]

@@ -56,18 +56,34 @@ export const DEFAULT_MIXTURE = {
 // identically rather than each keeping their own copy of the mapping.
 //
 // One word each, and the "gas" that "Bottom gas"/"Deco gas" would naturally carry is
-// deliberately dropped. Both places these appear supply that word already - a badge in
-// the mixtures table's **Gas** column, and an option under the form's **Role** label -
-// so it was pure redundancy, and redundancy is expensive in that table: it has eight
-// columns in a 667 px card and was already ~52 px wider than its slot before this badge
-// existed. See DECISIONS.md - the width is a real, measured trade-off, not a rounding
-// error, and shortening these was the cheap half of it.
+// deliberately dropped. Both places these appear supply that word already - a badge
+// beside the gas name in a column headed **Gas**, and an option under the form's
+// **Role** label - so it was pure redundancy, and redundancy is expensive in that
+// table: it ran to eight columns in a 667 px card and was ~52 px wider than its slot
+// before this badge existed. See DECISIONS.md - the width is a real, measured trade-off,
+// not a rounding error, and shortening these was the cheap half of it.
 export const GAS_ROLE_LABELS: Record<GasRole, string> = {
   bottom: "Bottom",
   deco: "Deco",
   diluent: "Diluent",
   oxygen: "Oxygen",
 };
+
+// The gas badge, sized so every cylinder's pill is the same width whatever it holds.
+// Both tables render this badge and are read against each other row by row, so a pill
+// that shrank to fit "Air" and grew for "EAN54" put the two tables' badges - and the
+// role badges pinned to their right - at different offsets on every row.
+//
+// 4.5rem is 72 px, against the widest label `gasName` can return for a real gas:
+// "Oxygen" at 66.8 px, measured in the rendered table at 12 px semibold. Not "EAN100",
+// which looks wider and cannot occur - anything at or above `OXYGEN_MIN` is named
+// "Oxygen" - so EAN tops out at "EAN99" and trimix at five characters. The remaining
+// 5 px absorbs the font falling back to something a shade wider.
+//
+// A `min-width`, so the one label that can exceed it still fits: the spelled-out
+// "O₂ 50% / He 60%" of an impossible mix, at 122 px. That row breaking the alignment
+// is correct - it is the row that isn't a gas.
+export const GAS_BADGE_CLASS = "min-w-[4.5rem] justify-center";
 
 // Meters of seawater per bar of ambient pressure. Deliberately the round 10 the
 // API's `METERS_PER_BAR` (`services/dive_gas.py`) already uses, not the ~10.06 a
@@ -221,27 +237,12 @@ export function ppO2Limit(mixture: { po2_limit?: number | null }): number {
   return limit != null && Number.isFinite(limit) ? limit : PPO2_WORKING;
 }
 
-/**
- * The one ppO₂ limit every cylinder on this dive shares, or `null` when they differ.
- *
- * Exists so the mixtures table can put the qualifier in its column header - "MOD @
- * ppO₂ 1.4" - in the ordinary case where it applies to every row, and move it into
- * the rows only when it genuinely varies. A header naming one limit above a column
- * computed from two is the failure this prevents, and it is a real shape: a Suunto
- * records 1.4 on the back gas and 1.6 on the deco bottle of the same dive.
- *
- * An empty list has nothing to share and returns `null`; the caller renders no table
- * at all in that case.
- */
-export function sharedPpO2Limit(
-  mixtures: readonly { po2_limit?: number | null }[],
-): number | null {
-  if (mixtures.length === 0) return null;
-  const first = ppO2Limit(mixtures[0]);
-  return mixtures.every((mixture) => ppO2Limit(mixture) === first)
-    ? first
-    : null;
-}
+// `sharedPpO2Limit` lived here: the one ppO₂ every cylinder on a dive shared, or null
+// when they differed, so the mixtures table could hoist "MOD @ ppO₂ 1.4" into its
+// column header and drop into per-row qualifiers only when a dive mixed limits. The
+// table now states the limit on every row unconditionally, so nothing asks the
+// question - and the helper's whole purpose was choosing between two spellings of the
+// same column, which was itself the thing making that column look like two columns.
 
 export interface EndOptions {
   // Whether oxygen is counted as narcotic. Default true, which is the conservative

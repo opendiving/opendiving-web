@@ -1,0 +1,9 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e4]:
+    - link "OpenDiving" [ref=e6] [cursor=pointer]:
+      - /url: /
+    - paragraph [ref=e14]: Checking your sign-in link...
+  - region "Notifications (F8)":
+    - list
+  - button "Open Next.js Dev Tools" [ref=e20] [cursor=pointer]
+  - alert [ref=e24]

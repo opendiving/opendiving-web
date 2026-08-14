@@ -7,7 +7,6 @@ import {
   endDepth,
   gasHintParts,
   ppO2Limit,
-  sharedPpO2Limit,
   gasName,
   mod,
   modWarning,
@@ -435,30 +434,6 @@ describe("ppO2Limit", () => {
     // A MOD of NaN would render, and a MOD computed from NaN would render as an
     // empty cell that reads like "this gas has no limit".
     expect(ppO2Limit({ po2_limit: NaN })).toBe(PPO2_WORKING);
-  });
-});
-
-describe("sharedPpO2Limit", () => {
-  it("is the common limit when every cylinder agrees", () => {
-    expect(sharedPpO2Limit([{ po2_limit: 1.4 }, { po2_limit: 1.4 }])).toBe(1.4);
-  });
-
-  it("treats an unrecorded limit as the working default, not as different", () => {
-    // Every dive imported before the column existed has none, so the ordinary case
-    // has to stay the compact "MOD @ ppO₂ 1.4" header.
-    expect(sharedPpO2Limit([{}, { po2_limit: 1.4 }])).toBe(PPO2_WORKING);
-    expect(sharedPpO2Limit([{}, {}])).toBe(PPO2_WORKING);
-  });
-
-  it("is null when the dive genuinely mixes limits", () => {
-    // A Suunto records exactly this: 1.4 on the back gas, 1.6 on the deco bottle.
-    expect(
-      sharedPpO2Limit([{ po2_limit: 1.4 }, { po2_limit: 1.6 }]),
-    ).toBeNull();
-  });
-
-  it("is null for no cylinders at all", () => {
-    expect(sharedPpO2Limit([])).toBeNull();
   });
 });
 
