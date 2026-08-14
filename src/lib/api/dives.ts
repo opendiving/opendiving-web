@@ -479,6 +479,30 @@ export interface DiveRenumberResult {
   changes: DiveRenumberChange[];
 }
 
+// One of the two dives chronologically adjacent to another, from
+// `/dive/{uuid}/neighbors`. Just enough to label a link and follow it - the
+// neighbour itself is loaded when the diver actually goes there.
+export interface DiveNeighbor {
+  uuid: string;
+  dive_number: number;
+  start_time: string;
+}
+
+// A dive's chronological neighbours, ordered by `start_time` and **not** by
+// `dive_number`: numbers can have gaps, duplicates and runs that don't follow
+// the dates (see `DiveNumberingSummary`), so they are a label, not a sequence.
+//
+// `next` is the *later* dive. That's the opposite end of the log from where
+// `getDives` starts - it lists newest first, so a dive's `next` is the one
+// above it there - and it is the direction a `>` control has to move for the
+// arrows to read as a timeline rather than as list navigation.
+//
+// Either side is null at the ends of the log; a log of one dive has both null.
+export interface DiveNeighbors {
+  previous: DiveNeighbor | null;
+  next: DiveNeighbor | null;
+}
+
 export type PaginatedDivesResponse = PaginatedResponse<Dive>;
 
 // A gas mixture as read out of a dive-computer export, mirroring the API's
@@ -579,6 +603,18 @@ export const divesAPI = {
   // Get a specific dive by uuid
   async getDive(diveUuid: string): Promise<Dive> {
     const response = await apiClient.get(`/dive/${diveUuid}`);
+    return response.data;
+  },
+
+  // The dives immediately before and after `diveUuid` in the signed-in user's
+  // log, by start time. Either side is null at the ends of the log.
+  //
+  // Separate from `getDive` rather than embedded in it: the neighbours change
+  // whenever any *other* dive is added, moved or deleted, so folding them into
+  // the dive would tie the detail response's cache lifetime to edits that have
+  // nothing to do with the dive being shown.
+  async getDiveNeighbors(diveUuid: string): Promise<DiveNeighbors> {
+    const response = await apiClient.get(`/dive/${diveUuid}/neighbors`);
     return response.data;
   },
 
