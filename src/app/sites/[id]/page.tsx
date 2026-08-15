@@ -7,6 +7,7 @@ import { useResource } from "@/hooks/useResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
 import { formatDateTime } from "@/lib/date-time";
+import { formatCoordinates } from "@/lib/validations/dive-site";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -77,6 +78,8 @@ export default function DiveSiteDetailPage() {
       </div>
     );
   }
+
+  const coordinates = formatCoordinates(diveSite.latitude, diveSite.longitude);
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -156,6 +159,14 @@ export default function DiveSiteDetailPage() {
                     Location
                   </div>
                   <div className="text-sm">{diveSite.location}</div>
+                </div>
+              )}
+              {coordinates && (
+                <div>
+                  <div className="text-sm font-medium text-muted-foreground mb-1">
+                    Coordinates
+                  </div>
+                  <div className="text-sm tabular-nums">{coordinates}</div>
                 </div>
               )}
               <div>

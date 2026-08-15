@@ -8,6 +8,9 @@ import { Loader2, Plus, Save } from "lucide-react";
 import {
   diveSiteFormSchema,
   DiveSiteFormInput,
+  formatCoordinateForForm,
+  parseCoordinatePair,
+  parseFormCoordinate,
 } from "@/lib/validations/dive-site";
 import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
 import { getApiErrorMessage } from "@/lib/api/error";
@@ -22,6 +25,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -30,6 +34,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+
+const COORDINATE_HINT =
+  "Paste a “27.8506, 34.3136” pair from a map into either field to fill both.";
 
 interface DiveSiteDialogProps {
   userId: string;
@@ -44,7 +51,7 @@ interface DiveSiteDialogProps {
 
 // The one create/edit form for a dive site, used by the dive sites list and
 // detail pages, the header's quick-create menu and the dive form's site picker.
-// Three fields, so a dialog beats navigating away from wherever the diver was -
+// Short enough that a dialog beats navigating away from wherever the diver was -
 // which matters most in the dive form, where a page would mean abandoning a
 // half-filled dive.
 export function DiveSiteDialog({
@@ -60,18 +67,26 @@ export function DiveSiteDialog({
 
   const form = useForm<DiveSiteFormInput>({
     resolver: zodResolver(diveSiteFormSchema),
-    defaultValues: { name: "", location: "", notes: "" },
+    defaultValues: {
+      name: "",
+      location: "",
+      latitude: "",
+      longitude: "",
+      notes: "",
+    },
   });
 
   // Reload the form whenever the dialog is opened, so it shows the dive site
   // being edited (or a clean slate) rather than whatever the previous
   // invocation left behind.
-  const { reset } = form;
+  const { reset, setValue } = form;
   useEffect(() => {
     if (!open) return;
     reset({
       name: diveSite?.name ?? "",
       location: diveSite?.location ?? "",
+      latitude: formatCoordinateForForm(diveSite?.latitude),
+      longitude: formatCoordinateForForm(diveSite?.longitude),
       notes: diveSite?.notes ?? "",
     });
   }, [open, diveSite, reset]);
@@ -81,21 +96,47 @@ export function DiveSiteDialog({
     onOpenChange(next);
   };
 
+  // A pasted "27.8506, 34.3136" fills both fields rather than landing whole in
+  // whichever one had focus. Anything that isn't a pair pastes as usual.
+  const handleCoordinatePaste = (
+    event: React.ClipboardEvent<HTMLInputElement>,
+  ) => {
+    const pair = parseCoordinatePair(event.clipboardData.getData("text"));
+    if (!pair) return;
+    event.preventDefault();
+    setValue("latitude", pair.latitude, { shouldValidate: true });
+    setValue("longitude", pair.longitude, { shouldValidate: true });
+  };
+
   const onSubmit = async (data: DiveSiteFormInput) => {
     setApiError(null);
     try {
       setIsSubmitting(true);
 
+      // The form holds coordinates as strings; the API wants numbers, or
+      // `null` for a pair the diver cleared.
+      const latitude = parseFormCoordinate(data.latitude);
+      const longitude = parseFormCoordinate(data.longitude);
+
       if (diveSite) {
         // The API answers a PATCH with just a status message, so the updated
         // dive site is assembled here for the caller.
-        await diveSitesAPI.updateDiveSite(diveSite.uuid, data);
-        onSaved({ ...diveSite, ...data });
+        const update = {
+          name: data.name,
+          location: data.location,
+          latitude,
+          longitude,
+          notes: data.notes,
+        };
+        await diveSitesAPI.updateDiveSite(diveSite.uuid, update);
+        onSaved({ ...diveSite, ...update });
       } else {
         const created = await diveSitesAPI.createDiveSite({
           user_uuid: userId,
           name: data.name,
           location: data.location || undefined,
+          latitude,
+          longitude,
           notes: data.notes || undefined,
         });
         onSaved(created);
@@ -157,6 +198,65 @@ export function DiveSiteDialog({
                 </FormItem>
               )}
             />
+
+            {/* Deliberately no `inputMode="decimal"`/`"numeric"`: iOS shows a
+                keypad with no minus key and no way to switch, which would make
+                every southern/western coordinate untypeable. */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="latitude"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Latitude</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="e.g. 27.8506"
+                        onPaste={handleCoordinatePaste}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription className="sr-only">
+                      {COORDINATE_HINT}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="longitude"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Longitude</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="e.g. 34.3136"
+                        onPaste={handleCoordinatePaste}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription className="sr-only">
+                      {COORDINATE_HINT}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* The hint belongs to the pair, so it renders once visually here,
+                and again as an `sr-only` <FormDescription> inside each field so
+                both announce it. Putting the id on this <p> and pointing the
+                inputs at it instead would look equivalent and silently break
+                error announcement: <FormControl> already sets
+                `aria-describedby`, and the Slot lets the child's value win, so
+                the message id would be dropped. Hidden from AT to avoid
+                reading the same sentence a third time. */}
+            <p className="-mt-2 text-sm text-muted-foreground" aria-hidden>
+              {COORDINATE_HINT}
+            </p>
 
             <FormField
               control={form.control}

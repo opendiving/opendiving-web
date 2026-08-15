@@ -1,10 +1,18 @@
 import { apiClient } from "./client";
 import type { PaginatedResponse } from "./client";
 
+// `latitude`/`longitude` are both-or-neither on the API, and the rule is about
+// the request body rather than the resulting row: naming one without the other
+// is a 422, so is naming both with only one value, and the stored row is never
+// consulted. Sending both as `null` is how a position is cleared, and moving a
+// site means sending both numbers even when only one changed.
+// `lib/validations/dive-site.ts` enforces the same rule in the form.
 export interface DiveSite {
   uuid: string;
   name: string;
   location?: string;
+  latitude?: number | null;
+  longitude?: number | null;
   notes?: string;
   user_uuid: string;
   created_at: string;
@@ -14,12 +22,16 @@ export interface DiveSiteCreate {
   user_uuid: string;
   name: string;
   location?: string;
+  latitude?: number | null;
+  longitude?: number | null;
   notes?: string;
 }
 
 export interface DiveSiteUpdate {
   name?: string;
   location?: string;
+  latitude?: number | null;
+  longitude?: number | null;
   notes?: string;
 }
 

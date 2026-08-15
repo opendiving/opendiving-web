@@ -4998,3 +4998,79 @@ site name or a trimix cylinder moves the list-page numbers by more than the padd
 band boundaries as the finding, not the individual pixels. And the five list pages still wrap their
 `Table` in an `overflow-x-auto` div of their own, the inert second scroll container the gas cards
 dropped; it is what makes the wrong measurement so easy to take on exactly these pages.
+
+## Dive site coordinates are two free-typed strings, validated as a pair
+
+`latitude`/`longitude` are `number | null` on the API but plain strings in the form, converted by
+`parseFormCoordinate()`/`formatCoordinateForForm()` right at the API boundary. That is the same
+shape as the dive form's "MM:SS" duration and for the same reason: a `z.preprocess()`/`.transform()`
+coercing the string to a number would collapse the `z.input<>`-derived form type (see the Zod rule
+above). `""` is the live "cleared" value, never `undefined`, per the RHF quirk above.
+
+**Both-or-neither is enforced as two separate `.refine()`s, not one.** A refinement carries a single
+`path`, so one combined check would have to park its message on a fixed field — and half the time
+that is the field the diver already filled in. Splitting it into "latitude is required when
+longitude is given" and its mirror puts the message on the empty one. So the client rule is a better
+error message, not the enforcement — the API rejects the same bodies on its own.
+
+**The API's rule is about the request body, not the stored row**, which is worth knowing before
+reasoning about what a PATCH will do. `WholeCoordinatePair` 422s a body that names one coordinate
+without the other (`{"latitude": 27.7}`) and a body that names both with only one value
+(`{"latitude": 27.7, "longitude": null}`), and it never reads the existing row — so "nudge one
+coordinate of a pair that is already whole" is a 422 too, and moving a site means sending both
+numbers even when only one changed. A body naming _neither_ coordinate is untouched by the rule,
+which is what keeps a site holding a half pair renameable. The dialog always submits the pair, so
+none of this constrains it.
+
+**Paste splits a pair across both fields.** Divers copy `27.8506, 34.3136` out of a map as one
+string far more often than they type two fields, so `parseCoordinatePair()` recognises a
+comma/semicolon/whitespace-separated decimal pair on paste into _either_ input and fills both.
+Anything else — a DMS string like `27°51'02.2"N`, a lone number — falls through to a normal paste
+and the per-field validation rejects it. Degrees-minutes-seconds is deliberately not parsed; it has
+enough variants that guessing wrong silently misplaces a site.
+
+**The same reasoning forced one shape back out of the parser: a bare comma between two dot-less
+integers.** Across most of Europe `-16,5` is how you write `-16.5`, so splitting it into the pair
+`(-16, 5)` moves a Bali site to the Atlantic off Angola — and nothing catches it, because both
+halves are in range and the pair is complete. That is a silent misplacement, the exact failure DMS
+was excluded for, and it is the one shape where a plausible reading of the input disagrees with the
+parser's. `AMBIGUOUS_DECIMAL_COMMA` refuses it so the raw text stays in the field and the per-field
+regex rejects it with a message. Nothing else needs the guard: a decimal point anywhere settles the
+question (`27.8506,34.3136`), and so does a space after the comma (`1, 2`), because a decimal comma
+is never followed by one.
+
+**A half pair loaded from the API can't be saved until it's resolved, and that is the one deliberate
+difference from the API.** Nothing enforces the pair at the database level, so a half-set row can
+exist — only raw SQL can produce one, since every application path in goes through a write schema
+that inherits the rule. The API leaves such a row renameable, because a body naming neither
+coordinate never trips its check. The dialog always submits the pair, so it asks the diver to
+resolve the half before any save goes through, a rename included. Kept that way on purpose: filling
+the missing half or clearing both is one keystroke and either repairs the row, whereas preserving
+half a position keeps a site that can never be mapped. Worth knowing before "fixing" the dialog to
+match the API.
+
+**Coordinates format with `String()`, not `toFixed()` — with one guard.** JS already prints the
+shortest round-tripping representation of a double, so `27.8506` comes back as `"27.8506"`; the
+float noise `toFixed()` looks like it guards against only arises from arithmetic, and there is none
+here, while blanket rounding would drift the value every time a site was opened and saved. The
+exception is that `String()` switches to exponent notation below 1e-6 — `String(5e-7)` is `"5e-7"`,
+which `COORDINATE_REGEX` rejects — so `toDecimalString()` falls back to fixed notation for those.
+Without it, a stored sub-1e-6 coordinate nobody typed makes every save of that site fail validation,
+a rename included. There is a round-trip test asserting that anything the API can return survives
+format → validate → parse unchanged.
+
+**The pair-level hint is rendered twice, and the obvious single-copy version is a trap.**
+`<FormDescription>` calls `useFormField()` and throws outside a `FormField`, so the hint under the
+lat/lon row is a plain `<p>` — but a plain `<p>` is announced to nobody. The fix that looks right is
+to give that `<p>` an `id` and point both inputs at it with `aria-describedby`; it silently breaks
+error announcement. `<FormControl>` already sets `aria-describedby` to `formDescriptionId` (plus
+`formMessageId` once there is an error), and the Radix `Slot` lets the child's props win, so the
+child's value replaces it and the validation message stops being read. What works instead: the
+visible `<p>` is `aria-hidden`, and each field carries its own `sr-only` `<FormDescription>` with
+the same sentence, which `FormControl` wires up for free and composes with the error message.
+Verified in the browser — with a half pair submitted, longitude's `aria-describedby` resolves to
+both the hint and "Longitude is required when latitude is given".
+
+The inputs also deliberately carry **no** `inputMode="decimal"`/`"numeric"`: iOS renders those as a
+keypad with no minus key and no way to switch to one, which makes every southern-hemisphere latitude
+and western longitude impossible to type — most of the Caribbean, Indonesia and the Pacific.
