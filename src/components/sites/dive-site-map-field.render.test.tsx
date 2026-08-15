@@ -2,7 +2,11 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { useState } from "react";
 import { DiveSiteMapField } from "./dive-site-map-field";
-import { geocodingAPI, GeocodeResult } from "@/lib/api/geocoding";
+import {
+  geocodingAPI,
+  GeocodeResult,
+  ReverseGeocode,
+} from "@/lib/api/geocoding";
 
 vi.mock("@/lib/api/geocoding", () => ({
   geocodingAPI: { reverseGeocode: vi.fn() },
@@ -33,11 +37,16 @@ const RESULT: GeocodeResult = {
   attribution: "Data © OpenStreetMap contributors, ODbL 1.0.",
 };
 
+const named = (result: GeocodeResult): ReverseGeocode => ({
+  status: "named",
+  result,
+});
+
 const reverseGeocode = vi.mocked(geocodingAPI.reverseGeocode);
 
 beforeEach(() => {
   reverseGeocode.mockReset();
-  reverseGeocode.mockResolvedValue(RESULT);
+  reverseGeocode.mockResolvedValue(named(RESULT));
 });
 
 // Stands in for the dialog: holds the coordinate strings the map writes into,
@@ -45,11 +54,15 @@ beforeEach(() => {
 // rather than simulated.
 function Harness({
   onUseLocation = vi.fn(),
+  initialLocation = "",
 }: {
   onUseLocation?: (value: string) => void;
+  // Stands in for a location the diver typed *before* placing the pin, which is
+  // the only thing a nameless position has to clear.
+  initialLocation?: string;
 }) {
   const [position, setPosition] = useState({ latitude: "", longitude: "" });
-  const [location, setLocation] = useState("");
+  const [location, setLocation] = useState(initialLocation);
   return (
     <>
       <DiveSiteMapField
@@ -162,20 +175,102 @@ describe("DiveSiteMapField", () => {
     expect(reverseGeocode).toHaveBeenCalledTimes(1);
   });
 
-  it("leaves the location alone when the API answers with no result", async () => {
-    // `null` is four different things over one wire: no name for the position,
-    // geocoding switched off, the instance over its provider cap, or the
-    // provider timing out. Only the first would justify emptying a field, and
-    // none of them are distinguishable from here - so nudging a pin twice
-    // inside a second must not silently wipe a location the diver typed.
-    reverseGeocode.mockResolvedValue(null);
+  it("leaves the location alone when the API could not ask", async () => {
+    // `unknown` covers geocoding being switched off, the instance being over its
+    // provider cap, and the provider timing out - three facts about us, none of
+    // them a fact about the position. So nudging a pin twice inside a second
+    // must not silently wipe a location the diver typed.
+    reverseGeocode.mockResolvedValue({ status: "unknown" });
+    const onUseLocation = vi.fn();
+    render(
+      <Harness
+        onUseLocation={onUseLocation}
+        initialLocation="Blue Hole (north entry)"
+      />,
+    );
+    (await placePin()).click();
+
+    await waitFor(() => expect(reverseGeocode).toHaveBeenCalled());
+    expect(onUseLocation).not.toHaveBeenCalled();
+    expect(credit()).not.toBeInTheDocument();
+  });
+
+  it("clears the location when the position genuinely has no name", async () => {
+    // The other half of the same distinction: the API asked and there is no name
+    // there, so whatever is in the field describes where the pin used to be.
+    reverseGeocode.mockResolvedValue({ status: "nameless" });
+    const onUseLocation = vi.fn();
+    render(
+      <Harness
+        onUseLocation={onUseLocation}
+        initialLocation="Blue Hole (north entry)"
+      />,
+    );
+    (await placePin()).click();
+
+    await waitFor(() => expect(onUseLocation).toHaveBeenCalledWith(""));
+    // Nothing was named, so there is nothing to credit.
+    expect(credit()).not.toBeInTheDocument();
+  });
+
+  it("says nothing when a nameless position has nothing to clear", async () => {
+    // The commonest flow of all: a new site, Location still empty, pin dropped
+    // in open water. Writing "" over "" is invisible on screen but not in the
+    // status region, which would announce a clearing that cleared nothing.
+    reverseGeocode.mockResolvedValue({ status: "nameless" });
     const onUseLocation = vi.fn();
     render(<Harness onUseLocation={onUseLocation} />);
     (await placePin()).click();
 
     await waitFor(() => expect(reverseGeocode).toHaveBeenCalled());
     expect(onUseLocation).not.toHaveBeenCalled();
-    expect(credit()).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("");
+  });
+
+  it("counts a whitespace-only location as nothing to clear", async () => {
+    // Same guard, and the same reason: emptying "  " looks exactly like emptying
+    // "" on screen, so announcing a clearing is wrong for exactly the reader who
+    // cannot check. `isSet` in `lib/validations/dive-site.ts` trims for the rest
+    // of this form.
+    reverseGeocode.mockResolvedValue({ status: "nameless" });
+    const onUseLocation = vi.fn();
+    render(<Harness onUseLocation={onUseLocation} initialLocation="   " />);
+    (await placePin()).click();
+
+    await waitFor(() => expect(reverseGeocode).toHaveBeenCalled());
+    expect(onUseLocation).not.toHaveBeenCalled();
+    expect(screen.getByRole("status")).toHaveTextContent("");
+  });
+
+  it("announces a clearing, which is otherwise entirely silent", async () => {
+    reverseGeocode.mockResolvedValue({ status: "nameless" });
+    render(<Harness initialLocation="Blue Hole (north entry)" />);
+    (await placePin()).click();
+
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "This position has no name, so the location was cleared.",
+      ),
+    );
+  });
+
+  it("never clears a location typed while the lookup was in the air", async () => {
+    // The clearing path runs the same guards as the naming one: an edit made
+    // after the placement is the newer intent, and emptying it is the more
+    // destructive of the two ways to get this wrong.
+    let resolve: (value: ReverseGeocode) => void = () => {};
+    reverseGeocode.mockImplementationOnce(
+      () => new Promise((keep) => (resolve = keep)),
+    );
+
+    const onUseLocation = vi.fn();
+    render(<Harness onUseLocation={onUseLocation} />);
+    (await placePin()).click();
+    screen.getByRole("button", { name: "type a location" }).click();
+
+    resolve({ status: "nameless" });
+    await waitFor(() => expect(reverseGeocode).toHaveBeenCalled());
+    expect(onUseLocation).not.toHaveBeenCalled();
   });
 
   it("leaves the location alone when the lookup fails", async () => {
@@ -197,7 +292,7 @@ describe("DiveSiteMapField", () => {
     // Typing into the coordinate fields starts no lookup, so nothing bumps the
     // request counter - but a reply still in flight would name a pin that is no
     // longer there, or clear a name the diver had just typed.
-    let resolve: (value: GeocodeResult) => void = () => {};
+    let resolve: (value: ReverseGeocode) => void = () => {};
     reverseGeocode.mockImplementationOnce(
       () => new Promise((keep) => (resolve = keep)),
     );
@@ -207,7 +302,7 @@ describe("DiveSiteMapField", () => {
     (await placePin()).click();
     screen.getByRole("button", { name: "type something else" }).click();
 
-    resolve(RESULT);
+    resolve(named(RESULT));
     await waitFor(() => expect(reverseGeocode).toHaveBeenCalled());
     expect(onUseLocation).not.toHaveBeenCalled();
     expect(credit()).not.toBeInTheDocument();
@@ -217,7 +312,7 @@ describe("DiveSiteMapField", () => {
     // The pin has not moved, so the coordinate guard passes - but an edit made
     // after the placement is the newer intent. "Moving the pin overwrites what
     // you typed" is the accepted cost; this is not.
-    let resolve: (value: GeocodeResult) => void = () => {};
+    let resolve: (value: ReverseGeocode) => void = () => {};
     reverseGeocode.mockImplementationOnce(
       () => new Promise((keep) => (resolve = keep)),
     );
@@ -227,7 +322,7 @@ describe("DiveSiteMapField", () => {
     (await placePin()).click();
     screen.getByRole("button", { name: "type a location" }).click();
 
-    resolve(RESULT);
+    resolve(named(RESULT));
     await waitFor(() => expect(reverseGeocode).toHaveBeenCalled());
     expect(onUseLocation).not.toHaveBeenCalledWith("Dahab, Egypt");
     expect(credit()).not.toBeInTheDocument();
@@ -238,14 +333,13 @@ describe("DiveSiteMapField", () => {
     // the first request can land last. Now that the result is written straight
     // into the field, a late arrival would overwrite the right answer rather
     // than merely offering a stale suggestion.
-    let resolveFirst: (value: GeocodeResult) => void = () => {};
+    let resolveFirst: (value: ReverseGeocode) => void = () => {};
     reverseGeocode.mockImplementationOnce(
       () => new Promise((resolve) => (resolveFirst = resolve)),
     );
-    reverseGeocode.mockResolvedValueOnce({
-      ...RESULT,
-      location: "Newer, Egypt",
-    });
+    reverseGeocode.mockResolvedValueOnce(
+      named({ ...RESULT, location: "Newer, Egypt" }),
+    );
 
     const onUseLocation = vi.fn();
     render(<Harness onUseLocation={onUseLocation} />);
@@ -256,7 +350,7 @@ describe("DiveSiteMapField", () => {
     await waitFor(() =>
       expect(onUseLocation).toHaveBeenCalledWith("Newer, Egypt"),
     );
-    resolveFirst({ ...RESULT, location: "Staler, Egypt" });
+    resolveFirst(named({ ...RESULT, location: "Staler, Egypt" }));
     await waitFor(() => expect(reverseGeocode).toHaveBeenCalledTimes(2));
     expect(onUseLocation).not.toHaveBeenCalledWith("Staler, Egypt");
   });
