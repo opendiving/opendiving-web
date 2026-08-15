@@ -5,6 +5,7 @@ import {
   formatCoordinates,
   parseCoordinatePair,
   parseFormCoordinate,
+  parseFormPosition,
 } from "./dive-site";
 
 describe("diveSiteFormSchema", () => {
@@ -168,6 +169,44 @@ describe("formatCoordinateForForm", () => {
     for (const value of [34.3136, -145, 180, -180]) {
       roundTrip(value, "longitude");
     }
+  });
+});
+
+describe("parseFormPosition", () => {
+  it("reads a complete, in-range pair", () => {
+    expect(parseFormPosition("27.8506", "34.3136")).toEqual({
+      latitude: 27.8506,
+      longitude: 34.3136,
+    });
+    expect(parseFormPosition("0", "0")).toEqual({ latitude: 0, longitude: 0 });
+  });
+
+  it("refuses half a position", () => {
+    expect(parseFormPosition("27.8506", "")).toBeNull();
+    expect(parseFormPosition("", "34.3136")).toBeNull();
+    expect(parseFormPosition(undefined, undefined)).toBeNull();
+  });
+
+  // This is read on every keystroke, so it sees text on its way to being a
+  // coordinate. Pointing the map at NaN, or at a latitude off the planet, is
+  // worse than leaving it where it was.
+  it("refuses half-typed and out-of-range text", () => {
+    expect(parseFormPosition("-", "34.3136")).toBeNull();
+    expect(parseFormPosition("27.", "34.3136")).toBeNull();
+    expect(parseFormPosition("abc", "34.3136")).toBeNull();
+    expect(parseFormPosition("91", "0")).toBeNull();
+    expect(parseFormPosition("0", "181")).toBeNull();
+  });
+
+  it("accepts the poles and the antimeridian", () => {
+    expect(parseFormPosition("90", "180")).toEqual({
+      latitude: 90,
+      longitude: 180,
+    });
+    expect(parseFormPosition("-90", "-180")).toEqual({
+      latitude: -90,
+      longitude: -180,
+    });
   });
 });
 

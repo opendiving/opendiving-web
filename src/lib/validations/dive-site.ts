@@ -85,6 +85,34 @@ export function formatCoordinateForForm(value?: number | null): string {
   return value === null || value === undefined ? "" : toDecimalString(value);
 }
 
+/**
+ * The form's coordinate pair as numbers, or `null` when there isn't a usable
+ * one yet.
+ *
+ * A different question from `parseFormCoordinate`'s. That one asks what the API
+ * should be sent, per field, and trusts the resolver to have run first. This
+ * one asks whether the map can point at something *right now* - it is read on
+ * every keystroke, including the half-typed "-" and the "91" that is on its way
+ * to "9.1" - so it validates rather than trusting, and answers for the pair,
+ * since half a position is nowhere.
+ */
+export function parseFormPosition(
+  latitude?: string,
+  longitude?: string,
+): { latitude: number; longitude: number } | null {
+  if (!isSet(latitude) || !isSet(longitude)) return null;
+  if (!COORDINATE_REGEX.test(latitude!.trim())) return null;
+  if (!COORDINATE_REGEX.test(longitude!.trim())) return null;
+
+  const parsed = {
+    latitude: Number(latitude!.trim()),
+    longitude: Number(longitude!.trim()),
+  };
+  if (Math.abs(parsed.latitude) > 90) return null;
+  if (Math.abs(parsed.longitude) > 180) return null;
+  return parsed;
+}
+
 // A coordinate pair for display, or `null` when the site has no position.
 export function formatCoordinates(
   latitude?: number | null,
