@@ -5164,20 +5164,40 @@ text input, so anyone who disagrees types over it. The cost of the reversal is r
 stating — moving the pin overwrites a name the diver typed themselves — and it is accepted because
 the name is answering the pin, so a new pin means a new answer.
 
-**A name fills the field; anything else leaves it alone.** The first cut cleared the field when the
-API answered with no result, on the reasoning that whatever is in there describes where the pin used
-to be. That reasoning is right and the implementation was still wrong, because `null` is four things
-over one wire: no name for the position, geocoding switched off, the instance over its provider cap
-(one request a second, counted across _everybody_), and the provider timing out. Only the first
-would justify emptying a field, and the client cannot tell them apart — so nudging a pin twice
-inside a second silently wiped a location the diver had typed, a round trip after they had scrolled
-on to Notes. The premise had also quietly expired: the API names open water from vendored marine
-polygons now, so `null` overwhelmingly means "could not ask" rather than "nowhere I can name".
+**A name fills the field, "no name here" empties it, and "we could not ask" leaves it alone.** The
+first cut had only the first two, clearing whenever the API answered with no result, on the
+reasoning that whatever is in there describes where the pin used to be. That reasoning is right and
+the implementation was still wrong, because `null` was four things over one wire: no name for the
+position, geocoding switched off, the instance over its provider cap (one request a second, counted
+across _everybody_), and the provider timing out. Only the first would justify emptying a field, and
+the client could not tell them apart — so nudging a pin twice inside a second silently wiped a
+location the diver had typed, a round trip after they had scrolled on to Notes. The premise had also
+quietly expired: the API names open water from vendored marine polygons now, so `null`
+overwhelmingly meant "could not ask" rather than "nowhere I can name". The interim fix was to never
+clear, which lost a small convenience and removed a mode that destroyed a diver's own typing.
 
-Clearing properly needs the API to separate the two — a `204` for "no name here", or a
-`{ result, available }` envelope — at which point this becomes a one-line change here. Until then
-the field is left alone, which loses a small convenience and removes a mode that destroyed a diver's
-own typing.
+The API now spends a second status code on the difference — `204` for "we asked, and this position
+has no name", a `200` with `null` for "we never got to ask" — and `reverseGeocode` returns a
+three-way `ReverseGeocode` rather than `GeocodeResult | null`, because a two-valued return is
+exactly what lost the distinction the first time. **The branch is on `response.status`, not on the
+body**, and that is the whole trap: axios gives a 204 a `data` of `""`, not `null` and not
+`undefined`, so the natural `response.data ?? null` reads a nameless position as an unavailable
+geocoder and the bug survives the fix that was made for it. A `200` with `null` is also what an API
+older than the 204 answers for a nameless position, and reading that as "could not ask" is the safe
+direction to be wrong in.
+
+Clearing runs the same guards as naming — the request counter, the coordinates as they stand when
+the reply lands, and the location as it stands — since emptying a field is the more destructive of
+the two ways to get this wrong, not the more casual. It gets its own announcement too: a field that
+empties itself a round trip after a click, with nobody watching, is worse unremarked than one that
+fills itself.
+
+And it carries one guard the naming path does not need: **a nameless position with an empty field
+does nothing at all**. That is the commonest flow there is — a new site, Location untouched, a pin
+dropped in open water — and writing `""` over `""` is invisible on screen but not in the status
+region, which would announce a clearing that cleared nothing. Being wrong only to a screen reader is
+what makes it worth a guard rather than a shrug: the sr-only text is exactly the text nobody
+reviewing the page can see is wrong.
 
 The result is keyed to the coordinates that were **clicked**, not to the result's own — a reverse
 geocode answers with the matched _place's_ position, which for a point offshore is a headland

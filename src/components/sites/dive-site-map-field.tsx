@@ -56,7 +56,10 @@ export function DiveSiteMapField({
   const [geocoded, setGeocoded] = useState<{
     latitude: string;
     longitude: string;
-    result: GeocodeResult;
+    // Null for a position the API looked up and found no name for. There is
+    // nothing to credit in that case, but there is still something to announce -
+    // the field was emptied, and nobody is watching it.
+    result: GeocodeResult | null;
   } | null>(null);
 
   const position = parseFormPosition(latitude, longitude);
@@ -92,7 +95,7 @@ export function DiveSiteMapField({
     setGeocoded(null);
     geocodingAPI
       .reverseGeocode(picked.latitude, picked.longitude)
-      .then((result) => {
+      .then((outcome) => {
         if (request !== requestRef.current) return;
         const live = liveRef.current;
         if (
@@ -105,26 +108,32 @@ export function DiveSiteMapField({
         // while the reply was in the air - and that edit is the newer intent.
         // "Moving the pin overwrites what you typed" is the accepted cost;
         // "typing after placing the pin gets overwritten anyway" is not, and it
-        // is the very thing the `null`-does-not-clear rule below protects.
+        // is the very thing the `unknown`-does-not-clear rule below protects.
         if (live.location !== locationAtPick) return;
-        // Written straight into the field rather than offered for confirmation.
-        // The field stays a plain text input, so a diver who prefers "Blue Hole
-        // (north entry)" types over it - the trade being that moving the pin
-        // afterwards writes over whatever they typed, since a placement is what
-        // this is answering.
-        //
-        // A `null` does *not* clear it, and that is deliberate rather than
-        // lazy. The API answers 200 with `null` for four different things: no
-        // name for the position, geocoding switched off, the instance over its
-        // provider cap (one request a second, counted across everybody), and
-        // the provider timing out. Only the first is grounds to empty a field,
-        // and none of them are distinguishable from here. Clearing on all four
-        // means nudging a pin twice inside a second silently wipes a location
-        // the diver typed - so the field is left alone until the API can say
-        // which of the four it meant.
-        if (!result?.location) return;
+        // An `unknown` outcome is not an answer about the position - geocoding
+        // switched off, the instance over its provider cap (one request a
+        // second, counted across everybody), or the provider timing out. None of
+        // those are grounds to empty a field, and clearing on them means nudging
+        // a pin twice inside a second silently wipes a location the diver typed.
+        if (outcome.status === "unknown") return;
+        // A nameless position with an empty field is a clearing that clears
+        // nothing, and the announcement below would still say it happened -
+        // telling a screen reader user something was destroyed when nothing
+        // was, in text nobody looking at the screen can see is wrong. Trimmed,
+        // the way `isSet` in `lib/validations/dive-site.ts` treats every other
+        // field here: a stray space is not something a diver typed on purpose,
+        // and emptying it looks identical on screen to emptying nothing.
+        if (outcome.status === "nameless" && !live.location?.trim()) return;
+        // Whereas `nameless` *is* an answer: the API looked the position up and
+        // there is no name there, so whatever is in the field describes where
+        // the pin used to be and goes. Both branches write straight into the
+        // field rather than offering a confirmation - it stays a plain text
+        // input, so a diver who prefers "Blue Hole (north entry)" types over it,
+        // the trade being that moving the pin afterwards writes over whatever
+        // they typed, since a placement is what this is answering.
+        const result = outcome.status === "named" ? outcome.result : null;
         setGeocoded({ ...placed, result });
-        onUseLocation(result.location);
+        onUseLocation(result?.location ?? "");
       })
       // A failure is not an answer, so the location is left exactly as it is.
       // Geocoding is optional on the API - it can be switched off, the provider
@@ -142,11 +151,14 @@ export function DiveSiteMapField({
     (geocoded.latitude !== latitude || geocoded.longitude !== longitude);
 
   const current = isStale ? null : geocoded;
-  const credit = current?.result.attribution;
-  // Said out loud because the Location field fills itself a round trip after the
-  // pin was placed, and nobody is looking at it when it happens.
+  const credit = current?.result?.attribution;
+  // Said out loud because the Location field writes itself a round trip after
+  // the pin was placed, and nobody is looking at it when it happens - least of
+  // all when what it did was empty the field.
   const announcement = current
-    ? `Location set to ${current.result.location}.`
+    ? current.result
+      ? `Location set to ${current.result.location}.`
+      : "This position has no name, so the location was cleared."
     : "";
 
   return (
