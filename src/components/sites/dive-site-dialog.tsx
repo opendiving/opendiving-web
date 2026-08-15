@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useDialogApiError } from "@/hooks/useDialogApiError";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Plus, Save } from "lucide-react";
 import {
@@ -13,6 +13,7 @@ import {
   parseFormCoordinate,
 } from "@/lib/validations/dive-site";
 import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
+import { DiveSiteMapField } from "@/components/sites/dive-site-map-field";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { dialogFormSubmit } from "@/lib/dialog-form";
 import {
@@ -36,7 +37,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 
 const COORDINATE_HINT =
-  "Paste a “27.8506, 34.3136” pair from a map into either field to fill both.";
+  "Paste a “27.8506, 34.3136” pair into either field to fill both, or place the site on the map below.";
 
 interface DiveSiteDialogProps {
   userId: string;
@@ -90,6 +91,18 @@ export function DiveSiteDialog({
       notes: diveSite?.notes ?? "",
     });
   }, [open, diveSite, reset]);
+
+  // `useWatch` rather than `form.watch()`, which is what `mixture-fields.tsx`
+  // does and for the same reason: a subscription scoped to the fields that are
+  // actually read, instead of one that re-renders this dialog on every
+  // keystroke in the notes field. (`react-hooks/incompatible-library` also
+  // rejects `watch()` here - it returns a fresh function each render, which
+  // cannot be memoized safely.)
+  const watched = useWatch({
+    control: form.control,
+    name: ["latitude", "longitude", "location"],
+  });
+  const [watchedLatitude, watchedLongitude, watchedLocation] = watched;
 
   const handleOpenChange = (next: boolean) => {
     if (!next) setApiError(null);
@@ -257,6 +270,36 @@ export function DiveSiteDialog({
             <p className="-mt-2 text-sm text-muted-foreground" aria-hidden>
               {COORDINATE_HINT}
             </p>
+
+            {/* The map writes into the same two fields rather than holding a
+                position of its own, so there is one source of truth and the
+                pair stays typeable, pasteable and clearable exactly as before.
+                `shouldValidate` because a placed pin completes the
+                both-or-neither rule and should clear its message. */}
+            <DiveSiteMapField
+              latitude={watchedLatitude}
+              longitude={watchedLongitude}
+              location={watchedLocation}
+              onPick={(picked) => {
+                setValue("latitude", picked.latitude, {
+                  shouldValidate: true,
+                  shouldDirty: true,
+                });
+                setValue("longitude", picked.longitude, {
+                  shouldValidate: true,
+                  shouldDirty: true,
+                });
+              }}
+              // The geocoded place name is written straight into the Location
+              // field. It stays an ordinary text input, so a diver who wants
+              // something else types over it.
+              onUseLocation={(value) =>
+                setValue("location", value, {
+                  shouldValidate: true,
+                  shouldDirty: true,
+                })
+              }
+            />
 
             <FormField
               control={form.control}

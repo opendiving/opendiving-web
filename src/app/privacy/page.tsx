@@ -195,7 +195,47 @@ export default function PrivacyPage() {
             </ul>
 
             <h3 className="text-xl font-semibold text-foreground mb-3">
-              4.4 Legal Requirements
+              4.4 Map Tiles
+            </h3>
+            <p className="text-foreground mb-4">
+              The dive site form shows a map, and your browser loads its images
+              directly from a third-party tile provider. That provider therefore
+              sees your IP address and which part of the world the map is
+              showing — which is, roughly, where your dive sites are. It does
+              not receive your account, your dive log, or the name of the site.
+            </p>
+            <p className="text-foreground mb-4">
+              This happens whenever you open the form to add or edit a dive
+              site, whether or not you use the map. Opening an existing site for
+              editing shows it on the map straight away, so the provider sees
+              approximately where that site is. Nothing else in the app loads
+              anything from them.
+            </p>
+            <p className="text-foreground mb-4">
+              If you run your own copy of OpenDiving you can point it at your
+              own tile server, and none of this leaves your machine.
+            </p>
+
+            <h3 className="text-xl font-semibold text-foreground mb-3">
+              4.5 Place Names
+            </h3>
+            <p className="text-foreground mb-4">
+              After you place a dive site on the map, we ask a geocoding
+              provider what that spot is called, so we can offer you a location
+              like &ldquo;Dahab, Egypt&rdquo; to save with the site. Only the
+              coordinates are sent, and they are sent by our servers rather than
+              by your browser, so the provider never sees your IP address or
+              anything else about you. The answer is cached, so the same spot is
+              not looked up twice.
+            </p>
+            <p className="text-foreground mb-4">
+              This happens once per pin you place, never when you view a site
+              you have already saved. Type or paste coordinates instead of using
+              the map and nothing is sent.
+            </p>
+
+            <h3 className="text-xl font-semibold text-foreground mb-3">
+              4.6 Legal Requirements
             </h3>
             <p className="text-foreground mb-4">
               We may disclose your information when required by law or to:

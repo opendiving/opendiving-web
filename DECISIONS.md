@@ -5074,3 +5074,263 @@ both the hint and "Longitude is required when latitude is given".
 The inputs also deliberately carry **no** `inputMode="decimal"`/`"numeric"`: iOS renders those as a
 keypad with no minus key and no way to switch to one, which makes every southern-hemisphere latitude
 and western longitude impossible to type — most of the Caribbean, Indonesia and the Pacific.
+
+## The map picker is hand-rolled, and `img-src` is the whole bill
+
+`components/sites/map-picker.tsx` draws a slippy map out of `<img>` tiles and about ninety lines of
+Web-Mercator arithmetic (`lib/map-tiles.ts`), rather than pulling in a mapping library. The reason
+is the CSP, not the bundle.
+
+**MapLibre GL JS** — the best-looking option, vector tiles, restyleable for dark mode — runs its
+renderer in a web worker created from a blob URL. That needs `worker-src blob:` (and
+`child-src blob:` for older browsers) in a policy whose entire point is that nothing executes
+without the per-request nonce. Upstream's own security note describes a blob-worker allowance as
+equivalent to `unsafe-eval`, which would undo `proxy.ts` wholesale. **Leaflet** wants only
+`img-src`, and at ~40 kB would have been the sane default in most codebases — it stays the fallback
+if this picker ever grows past its weight. What made it unnecessary is that
+raster-plus-a-dark-tileset is exactly what the hand-rolled version already gives, and the repo has
+hand-rolled its SVG charts, its drag-reorder and its combobox for the same kind of reason.
+
+What the hand-rolled version actually costs is smaller than it looks, because the interesting half
+is pure arithmetic that belongs in a tested module either way: projection, its inverse, which tiles
+a viewport touches, and which copy of a repeating world to draw a marker in. The tests pin those
+against analytic anchors — the null island at the centre of the map, ±180° at its edges, and
+`atan(sinh(π/2))` = 66.51326°N a quarter of the way down, which is _not_ the Arctic Circle at
+66.56°N. Checking against a second implementation would only have proved the two agree.
+
+**The tile host reaches `img-src` from the same function that builds the tile URLs.** `proxy.ts`
+calls `tileOrigins()` out of `lib/map-tiles.ts`, next to the `apiOrigin` derivation and subject to
+the same origin-not-path caveat documented there. A tile host named in the renderer but missing from
+the policy does not fail as a wrong URL — it fails as a blocked request with a console line nobody
+reads, which is a far worse thing to debug. A malformed `NEXT_PUBLIC_MAP_TILE_URL` yields no origin
+rather than throwing: this runs in middleware on every request, and a typo in an optional map's env
+var must not take the site down.
+
+Carto's Positron/Dark Matter are the keyless default over OSM's own standard tiles, for two reasons:
+there is a dark variant matching the app's theme, and the OSMF tile policy discourages pointing a
+broad user base at their servers by default. The bare `basemaps.cartocdn.com` host is used rather
+than the documented `{s}.` subdomain rotation — sharding is an HTTP/1.1 workaround, and one fixed
+host is one exact CSP source instead of a wildcard. Verified in the browser: tiles render and the
+console reports **zero** CSP violations, which is the single check that says this approach paid off.
+
+## The map writes into the coordinate fields, and can tell its own echo from a diver typing
+
+The picker holds no position of its own. It reads `latitude`/`longitude` off the form and writes
+back through `setValue`, so the pair stays typeable, pasteable and clearable exactly as it was
+before there was a map, and there is one source of truth for what gets saved.
+
+That round trip creates the one genuinely fiddly bit. A click emits a position, the form stores it,
+and it arrives back as a prop — which is indistinguishable, at the props level, from the diver
+having typed it. Treating it as an outside change re-centres and zooms the map on every single
+click, dragging it out from under the cursor. So `emit` records what it handed out, and it rounds to
+five decimals _there_ rather than in the caller, precisely so the value that comes back is identical
+to the one that went out. Coordinates typed into the fields by hand still recentre the map, because
+nothing recorded those.
+
+Recording that is deliberately _separate_ from remembering the previous props, and collapsing the
+two into one "position last accounted for" looks equivalent but is not. The emitting render commits
+before the form's value reaches these props, and in that intermediate render the single piece of
+state would already have been overwritten with the stale props — so the echo arrives unrecognised.
+It only worked as long as the parent happened to update in the same batch.
+
+Two narrower traps sit inside the same mechanism, both found by review rather than by use, and both
+now pinned by tests that go _through_ the intermediate state instead of stepping over it. **A
+recorded placement has to be spent once it is matched**, or returning to that position by hand much
+later reads as an echo: place a pin, type your way to Bali, type the first pair back, and the map
+stays over Bali with the pin off-screen behind `overflow-hidden`. **And it must not be recorded at
+all when it changes nothing** — Enter pressed twice without panning emits the same position, no
+props change is coming to consume the record, and it stays armed with exactly the same consequence.
+
+**Whether the site has ever had a position is latched, not inferred from the previous render.** The
+zoom is raised only on a first placement, and the tempting test for that is "were the previous props
+null?". Half-typed text is not a position: `parseFormPosition` rejects `34.` mid-backspace and the
+field passes `(null, null)` for that render, so the very next keystroke would read as a first
+placement and zoom a deliberately wide view back to street level — the exact thing the rule exists
+to prevent.
+
+The comparison is against the last _props_ seen, not against the current view: the view moves every
+frame during a pan, and comparing against it would yank the map back to the pin mid-gesture. It runs
+during render rather than in an effect — React re-runs the render before committing, so the map
+never paints at the old centre first, and `react-hooks/set-state-in-effect` rejects the effect
+version outright. The same rule is why the geocode suggestion's staleness is _derived_ rather than
+cleared in an effect; a pleasant side effect is that retyping the original coordinates brings the
+suggestion back instead of having silently lost it.
+
+**The geocoded place name is written straight into the Location field.** It was first built as a
+suggestion with Use/Dismiss buttons, on the reasoning that "Dahab, Egypt" is usually better than
+whatever a geocoder returns for open water. In use that reasoning did not survive: the confirmation
+was a step on the happy path for a value that was almost always right, and the field is an ordinary
+text input, so anyone who disagrees types over it. The cost of the reversal is real and worth
+stating — moving the pin overwrites a name the diver typed themselves — and it is accepted because
+the name is answering the pin, so a new pin means a new answer.
+
+**A name fills the field; anything else leaves it alone.** The first cut cleared the field when the
+API answered with no result, on the reasoning that whatever is in there describes where the pin used
+to be. That reasoning is right and the implementation was still wrong, because `null` is four things
+over one wire: no name for the position, geocoding switched off, the instance over its provider cap
+(one request a second, counted across _everybody_), and the provider timing out. Only the first
+would justify emptying a field, and the client cannot tell them apart — so nudging a pin twice
+inside a second silently wiped a location the diver had typed, a round trip after they had scrolled
+on to Notes. The premise had also quietly expired: the API names open water from vendored marine
+polygons now, so `null` overwhelmingly means "could not ask" rather than "nowhere I can name".
+
+Clearing properly needs the API to separate the two — a `204` for "no name here", or a
+`{ result, available }` envelope — at which point this becomes a one-line change here. Until then
+the field is left alone, which loses a small convenience and removes a mode that destroyed a diver's
+own typing.
+
+The result is keyed to the coordinates that were **clicked**, not to the result's own — a reverse
+geocode answers with the matched _place's_ position, which for a point offshore is a headland
+kilometres away, so comparing against that would drop the credit the instant it arrived. The
+out-of-order guard matters more now than it did as a suggestion: a cached answer returns far faster
+than one that reaches the provider, so a late arrival would overwrite the right name rather than
+merely offering a stale one.
+
+Because the field fills on its own, a round trip after the pin was placed and with nobody looking at
+it, that is announced through a `role="status"`.
+
+**The map is an enhancement, and the fields are the accessible path** — but the map is still
+operable without a pointer (arrows pan, `+`/`-` zoom, `Enter` places at a crosshair that appears on
+focus), because a control that only answers to a mouse is a dead end. `role="application"` is there
+so a screen reader hands those arrow keys to the map instead of spending them on its own reading
+cursor, which is only defensible _because_ the same position can always be typed into the fields
+beside it. Pan, pinch and tap live in `hooks/useMapGesture.ts` rather than in the component, which
+the pinch work pushed past the length where that stops being a choice; its listeners go on `window`
+and `setPointerCapture` is unused, for the reasons `hooks/useDragSort.ts` already documents. The
+crosshair follows how the map is being driven right now, not how it was focused. The gesture hook
+focuses the surface itself so the keys work straight after a drag, so `:focus-visible` read once in
+`onFocus` is wrong in both directions — click then arrow-key and there is no crosshair to place
+against, Tab in then click and one lingers beside the pin the click just placed. Any handled key
+turns it on, a pointerdown turns it off.
+
+Placing from the keyboard also announces the coordinates through a visually-hidden `role="status"`.
+Nothing else confirms it: the numbers land in two inputs elsewhere in the dialog, silently, and the
+geocode suggestion that would otherwise have said something never arrives when the geocoder is
+switched off, unreachable, or older than the endpoint — the exact degradations the rest of this code
+handles on purpose.
+
+**One finger belongs to the page, two fingers to the map.** `touch-action: none` is what a map wants
+— it is the only way a one-finger drag reaches a pan handler instead of scrolling — and it is what
+`useDragSort` correctly uses for a drag handle a few pixels tall. A map is not a drag handle. This
+one sits inside a `max-h-[90vh] overflow-y-auto` dialog and covers a large share of it on a phone,
+so claiming the vertical axis leaves a thumb landing on the map unable to reach Notes or Save at
+all. Scrolling _past_ a control beats panning _within_ it. So the surface keeps
+`touch-action: pan-y`, a lone finger scrolls the dialog, and two fingers pan and pinch-zoom — the
+bargain every embedded map makes. A one-finger drag is not silently ignored: it raises a brief "use
+two fingers to move the map", because a gesture that does nothing and says nothing reads as broken.
+
+That needs two mechanisms, not one. `touch-action` cannot express "one finger yes, two fingers no",
+so `pan-y` alone would let a two-finger vertical drag scroll the page out from under a pinch — hence
+`useMultiTouchScrollLock`, a native non-passive `touchmove` listener that calls `preventDefault()`
+only once a second touch is down. Native because React attaches `onTouchMove` passively, where
+`preventDefault()` is ignored.
+
+**Ctrl/⌘ + wheel zooms; a plain wheel is left alone**, for the same reason and with a bonus. The
+plain wheel is how a diver scrolls to Save, and swallowing it would trap them exactly as
+`touch-action: none` would. The pairing is not arbitrary: a trackpad pinch already arrives as a
+ctrl+wheel, so this one branch is also what makes pinch-to-zoom work on a laptop without a line of
+gesture code. It needs a native non-passive listener too — React attaches `onWheel` passively, and
+without a `preventDefault()` the _browser_ zooms the whole page, which is what ctrl+wheel means to
+it.
+
+**Zoom is continuous; tiles are not.** A zoom level _is_ a doubling, so a pinch's level count is the
+log base 2 of how far the fingers spread, and a wheel's is its pixels over a constant — both
+fractional, both applied on every event. Two earlier attempts are worth keeping because each was
+wrong in a different way. Spending a whole level per event is unusable for exactly the gesture the
+ctrl+wheel branch exists to serve: a trackpad pinch fires continuously, so one flick crossed the
+entire range and left everything between the two ends unreachable. Banking the movement and spending
+it a level at a time fixed the speed and still read as a series of jumps — because the jumps were
+the problem, not their rate.
+
+So the fractional part is carried by the render instead. The grid is drawn at `Math.round(zoom)` —
+computed in that level's own pixel space, with the centre and the viewport both divided down — and
+the whole tile layer is then CSS-scaled by `2 ** (zoom - tileZoom)` to make up the difference.
+`visibleTiles` never learns that zoom can be fractional, and the geography (`project`, `unproject`,
+`clampCenter`, the marker) needed no change at all, since `2 ** zoom` was always happy with a float.
+Rounding rather than flooring keeps that scale within `[1/√2, √2]`, so a tile is never stretched by
+more than ~41% in either direction; flooring would only ever magnify, up to 2×, and look softer for
+it. One `origin-top-left` on the layer is what lets each tile keep its offset in tile-level pixels
+and still land in the right place once scaled.
+
+**A two-finger event is a zoom _and_ a pan, and both are reported for it.** Handling the zoom and
+returning — the obvious shape, and what the first continuous version did — silently killed
+two-finger panning altogether: `pointermove` fires once per pointer, so only one finger moves per
+event and the spread changes on essentially all of them, which meant the pan branch was never
+reached. On touch that is the only way to pan at all, since one finger belongs to the page; a 100px
+drag moved the map about 2px. The suite missed it because the pinch test moved the fingers
+symmetrically, holding the centroid exactly fixed — the one two-finger case where dropping the pan
+is invisible. There is now a case that moves both fingers the same way and asserts the _magnitude_
+of the result.
+
+Composing the two correctly is the fiddly part, and it is why the gesture's baseline is held as a
+whole view rather than as a centre. The zoom is anchored on the centroid the gesture _started_ at,
+not the live one, because the pan is measured from there too; the pinch zooms that baseline rather
+than the live view, and the pan is then applied to the result. Zooming the live view instead counts
+the previous event's pan twice. Only the spread is re-based between events, so successive zooms
+compose while the pan stays an absolute delta from one fixed origin — no accumulated rounding, and
+nothing to lose when a zoom is refused at a limit, since the baseline is only replaced when the zoom
+actually happened.
+
+**Each event composes onto the last, so the zoom is read from a ref rather than from the render.**
+Wheel and pointer events arrive faster than React commits — a 120 Hz trackpad against a 60 Hz render
+— and every one of them computes the next view from the current one. Taken from the render closure,
+a burst of thirty pinch events all start from the same stale zoom and twenty-nine are thrown away:
+measured in the browser at **0.04 levels where 1.2 were asked for**, which is precisely the "not
+smooth" that the fractional rendering was supposed to have fixed. `viewRef` is written by the same
+helper that calls `setView`, so it is current for the next event whether or not React has
+re-rendered — and everything that composes onto the current view reads it, the gesture baselines
+included, or a wheel zoom followed straight away by a drag baselines the drag against the pre-zoom
+view and snaps back a step.
+
+The pan path never had the bug, because it measures an absolute delta against a snapshot taken at
+the start of the gesture instead of composing one change onto the last. That is the general lesson,
+and why zoom was the only mover affected.
+
+This is not pinned by a test. `fireEvent` commits between events, and batching them inside one `act`
+does not reproduce it either — jsdom's scheduling is not the browser's. It was found, reproduced and
+verified in the browser instead, and the numbers above are from there.
+
+`deltaMode` is normalized before any of that, since Firefox reports whole lines and Safari can
+report pages — a raw `deltaY` means three different speeds in three browsers. At 100px per level a
+mouse notch is one level, which also keeps the wheel consistent with the buttons and the `+`/`-`
+keys. Those still step by a whole level instantly rather than animating: a discrete control should
+answer immediately, and there is no gesture in flight for the motion to be continuous with.
+
+**Zoom is always about a point that must not move.** The anchor is the cursor under a wheel, the
+centroid of a pinch, and — for the buttons and the keyboard, which have no pointer — the pin, or the
+crosshair when there is no pin. One formula, four callers. **The pin is only the anchor while it is
+on screen:** anchoring on one the diver has panned away from inverts the intent, holding the _old_
+position still and throwing whatever was under the crosshair — the bay they panned to in order to
+zoom in on it — twice as far out, doubling again on every press.
+
+**The view centre is clamped against the viewport, not just against the poles.** `unproject` already
+holds latitude inside Mercator's ±85.0511, which is not the same thing: the _centre_ can sit exactly
+on the world's top edge with half the viewport hanging above it, where `visibleTiles` rightly
+refuses to ask for tiles that do not exist and the overhang renders as bare background. At the
+widest zoom the whole world is 512 px tall against a 224 px surface, so a short downward drag
+reaches it. The clamp lives in `lib/map-tiles.ts` where it is testable, and is applied both before a
+moved centre is stored — clamping only at render would let a drag keep pushing an invisible centre
+past the pole, with an equal amount of dead movement on the way back — and at render, because a
+latitude typed into the field arrives through neither mover.
+
+**Attribution is parsed into parts, not injected as HTML.** Every mapping library ships attribution
+as an HTML string and every consumer hands it to `innerHTML`; `react/no-danger` is an error in this
+repo, and this particular string comes from an environment variable, which is exactly how a
+self-hoster's typo would become an injection. `parseAttribution` reads the one piece of markdown
+worth supporting — `[label](href)` — into text runs and links that render as React elements, and
+drops any href that is not `http`/`https` while keeping its label, since a credit that cannot be
+followed is still a credit. The links open in a new tab because the map sits in a dialog holding a
+half-filled form, and they force `pointer-events-auto` on that corner, which costs a drag that
+happens to start there — the same trade every map makes. The gesture hook ignores a pointerdown on
+an anchor or button for a subtler reason than "don't pan": its `preventDefault` suppresses the
+compatibility mouse events, so swallowing that pointerdown would leave the link silently dead.
+
+**The default tile host sees your divers' IP addresses and roughly where their sites are.** Tiles
+are fetched by the browser, so opening the picker discloses the caller's IP and the z/x/y of the
+area being browsed to `basemaps.cartocdn.com`. It is the tile coordinates only — the
+`Referrer-Policy: strict-origin-when-cross-origin` in `next.config.js` keeps the site UUID out of
+the `Referer` — but for a private dive log that is still location data about the user. It is an
+accepted trade for a feature that has to work with no account and no configuration — said out loud
+in `/privacy` §4.4 as well as here, since it is the only outbound flow in the app a diver could not
+guess at — and it is the one place where self-hosting buys real privacy: `NEXT_PUBLIC_MAP_TILE_URL`
+points at your own tile server and the CSP follows it automatically.

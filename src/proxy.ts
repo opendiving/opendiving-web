@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { tileOrigins } from "@/lib/map-tiles";
 
 // Nonce-based, strict Content-Security-Policy. This is computed fresh per
 // request (the nonce must never be reused/predictable) and threaded through
@@ -13,6 +14,12 @@ import { NextRequest, NextResponse } from "next/server";
 // (`output: "standalone"`, see the Dockerfile) - it would silently do
 // nothing under a static export, which has no per-request server code to
 // generate a fresh nonce.
+// Derived once, not per request: `NEXT_PUBLIC_*` is fixed at build time, so the
+// answer cannot change while the process lives - and the dev-mode warning for a
+// malformed template would otherwise repeat on every request, burying the one
+// diagnostic it exists to give.
+const TILE_ORIGIN_SOURCES = tileOrigins().join(" ");
+
 export function proxy(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
   const isDev = process.env.NODE_ENV !== "production";
@@ -25,6 +32,14 @@ export function proxy(request: NextRequest) {
   const apiOrigin = new URL(
     process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000",
   ).origin;
+  // The map picker's raster tiles, and the *only* thing the map needs from CSP
+  // - which is the whole reason it is hand-rolled rather than MapLibre, whose
+  // web worker would have forced `worker-src blob:` into a strict nonce policy.
+  // Derived by the same module that builds the tile URLs (`lib/map-tiles.ts`)
+  // for the same origin-not-path reason as above: a host named in one place and
+  // not the other fails as a silently blocked image, which is a much worse
+  // thing to debug than a wrong URL.
+  const tileOriginSources = TILE_ORIGIN_SOURCES;
 
   const cspDirectives = [
     "default-src 'self'",
@@ -69,7 +84,7 @@ export function proxy(request: NextRequest) {
     // by `'self'`, so without this the `<img>` is blocked. It widens nothing an
     // attacker could reach: a `blob:` URL can only name data this document
     // already created.
-    `img-src 'self' data: blob: ${apiOrigin} https://www.gravatar.com`,
+    `img-src 'self' data: blob: ${apiOrigin} https://www.gravatar.com ${tileOriginSources}`,
     "font-src 'self' data:",
     // `accounts.google.com` - the "Continue with Google" button
     // (`components/auth/google-auth-button.tsx`) renders Google's own iframe
