@@ -1,5 +1,5 @@
 // Web-Mercator slippy-map arithmetic for the hand-rolled maps
-// (`components/sites/map-picker.tsx`, `components/trips/trip-locations-map.tsx`),
+// (`components/sites/map-picker.tsx`, `components/map/locations-map.tsx`),
 // in the spirit of `lib/chart-scale.ts`: the maths lives here, pure and tested,
 // and the components only render what it returns.
 //
@@ -154,10 +154,11 @@ export interface FittedView {
   zoom: number;
 }
 
-// How far in `fitBounds` is allowed to go. A trip location is a locality - a
-// town, an island, a sea - not a dive entry point, so a single pin opens at the
-// zoom where the surrounding coast is recognisable rather than at street level,
-// where a lone marker on a grid of house numbers says nothing.
+// How far in `fitBounds` is allowed to go, for a lone place that would otherwise
+// fit at any zoom you like and open at the deepest. A single pin opens where the
+// surrounding coast is recognisable rather than at street level, where a lone
+// marker on a grid of house numbers says nothing - and, for the half of dive
+// sites that are offshore, on nothing but open water. See DECISIONS.md.
 export const MAX_FIT_ZOOM = 10;
 
 // A latitude's projected y as a fraction of the world's height, which is the

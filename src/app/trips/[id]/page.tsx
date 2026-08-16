@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { TripDialog } from "@/components/trips/trip-dialog";
-import { TripLocationsMap } from "@/components/trips/trip-locations-map-lazy";
+import { LocationsMap } from "@/components/map/locations-map-lazy";
 import { PageHeader } from "@/components/ui/page-header";
 import { DetailPageSkeleton } from "@/components/ui/page-skeleton";
 import { NotFoundState } from "@/components/ui/not-found-state";
@@ -200,7 +200,10 @@ export default function TripDetailPage() {
               )}
 
               {mappedLocations.length > 0 && (
-                <TripLocationsMap locations={mappedLocations} />
+                <LocationsMap
+                  locations={mappedLocations}
+                  subject="the trip's locations"
+                />
               )}
               {tripDateRange && (
                 <div>
