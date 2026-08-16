@@ -203,6 +203,32 @@ describe("CreateMenu", () => {
     expect(notes).toHaveFocus();
   });
 
+  it("returns the caret to the form even after the pointer crossed the menu", async () => {
+    // Radix focuses whichever item the pointer settles on, so a peek can end up
+    // holding focus without the diver ever asking for it. Handing that back to
+    // the "+" - Radix's default - leaves the caret on a header button and the
+    // form they were typing in abandoned.
+    render(
+      <>
+        <input aria-label="Notes" />
+        <CreateMenu />
+      </>,
+    );
+    const session = user();
+    const notes = screen.getByRole("textbox", { name: "Notes" });
+
+    await session.click(notes);
+    await session.hover(trigger());
+    await waitFor(() => expect(isOpen()).toBe(true));
+    await session.hover(screen.getByRole("menuitem", { name: "New Trip" }));
+    expect(notes).not.toHaveFocus();
+
+    await session.unhover(screen.getByRole("menuitem", { name: "New Trip" }));
+
+    await waitFor(() => expect(isOpen()).toBe(false));
+    expect(notes).toHaveFocus();
+  });
+
   it("gives focus back to the + when the menu had it", async () => {
     render(<CreateMenu />);
     const session = user();
