@@ -137,14 +137,17 @@ export function useResource<T>(
         onLoadedRef.current?.(data);
       } catch (error) {
         console.error(errorMessage, error);
-        // The guard matters most here: without it a request that outlives the page
-        // toasts and redirects on top of wherever the diver went next.
-        if (cancelled) return;
 
         // A record that is gone stays gone: drop the cached copy, or every later
         // visit to this URL would render it from cache and bounce again for the
-        // next five minutes.
+        // next five minutes. Above the guard below, and for the same reason the
+        // success path caches above it - this is a cache operation, not a UI one,
+        // and the answer is just as true if the diver has already moved on.
         if (key && isResourceGoneError(error)) evictResourceCache(key);
+
+        // The guard matters most here: without it a request that outlives the page
+        // toasts and redirects on top of wherever the diver went next.
+        if (cancelled) return;
 
         // Before the cache, a failure meant nothing had rendered and leaving was
         // the only option. Now the diver may be *reading* the record while the

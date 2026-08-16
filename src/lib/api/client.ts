@@ -267,8 +267,14 @@ apiClient.get = ((url: string, config?: AxiosRequestConfig) => {
     return pending;
   }
 
-  const request = rawGet(url, config).finally(() => {
-    pendingGetRequests.delete(key);
+  const request: Promise<AxiosResponse> = rawGet(url, config).finally(() => {
+    // Only if it is still *this* request under that key. A write clears the whole
+    // map, so a GET issued after one can be registered under a key an earlier,
+    // still-running GET is about to delete - and an unconditional delete would
+    // drop the newcomer's entry, sending the next concurrent caller to the
+    // network instead of sharing. Nothing incorrect is served either way; this
+    // just keeps the deduplication working across a mutation.
+    if (pendingGetRequests.get(key) === request) pendingGetRequests.delete(key);
   });
   pendingGetRequests.set(key, request);
   return request;
