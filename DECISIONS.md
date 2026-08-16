@@ -5937,3 +5937,38 @@ flash. And nothing here caches: returning to `/dives` still refetches and still 
 where a stale-while-revalidate layer under `usePaginatedResource` would show the previous rows
 immediately and never enter a loading state at all. Both are worth doing; neither is worth doing
 before the layout stops moving.
+
+## The project instructions live in AGENTS.md, and CLAUDE.md is an import
+
+`CLAUDE.md` used to hold everything. It now holds a `@AGENTS.md` import and the handful of lines
+that are genuinely about Claude Code; the instructions themselves moved to `AGENTS.md`. Two reasons,
+and the second is the one that forced it.
+
+One: `AGENTS.md` is the cross-tool convention, so one file serves every coding agent instead of a
+copy per tool that drifts apart. Claude Code does not read `AGENTS.md` on its own — the documented
+bridge is exactly the import used here, so nothing is lost by moving the content out.
+
+Two: `next dev` writes to these files. Next 16 ships
+`node_modules/next/dist/server/lib/generate-agent-files.js`, and `start-server.js` calls it on every
+dev-server start, gated on `agentRules !== false` in `next.config.js` and on `@vercel/detect-agent`
+finding an agent in the environment (`CLAUDECODE`, `CURSOR_AGENT`, `CODEX`, `GEMINI_CLI` and
+friends). Started from a plain terminal it does nothing; started from an agent session it appends a
+managed block delimited by `<!-- BEGIN:nextjs-agent-rules -->`. It prefers `AGENTS.md` when that
+exists and falls back to `CLAUDE.md`, which is how the block kept landing in a file we author. Now
+there is a file for it to write to that nobody hand-maintains.
+
+Deleting the block is not a fix — the write is an upsert keyed on those markers, so removing it only
+restores the precondition for the next dev-server start to add it back, in every worktree
+separately. `agentRules: false` would stop it outright, and was rejected because the advice it
+carries is real: `node_modules/next/dist/docs/` is the shipped Next 16 documentation, and this app
+is on a version whose conventions predate most training data.
+
+### The Prettier override is load-bearing
+
+`.prettierrc.json` gives `AGENTS.md` `proseWrap: "preserve"`, against the `*.md` default of
+`"always"` at 100 columns. Without it the two tools fight forever: Prettier rewraps the block's long
+lines, `hasCurrentAgentRules` compares the installed block against the expected text **exactly**,
+the comparison fails, and the next dev-server start rewrites it unwrapped — so `npm run format` and
+`next dev` each undo the other, and whoever runs `format:check` after a dev server fails on a file
+they never touched. `preserve` keeps the file in the formatter for everything else and costs only
+hand-wrapping the prose, which is noted at the top of `AGENTS.md`.
