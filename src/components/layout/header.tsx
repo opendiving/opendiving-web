@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/components/ui/use-toast";
 import { getApiErrorMessage } from "@/lib/api/error";
-import { isFormPath } from "@/lib/return-to";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { ThemeMenuItems, ThemeToggle } from "@/components/theme-toggle";
@@ -18,49 +17,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  LogOut,
-  Settings,
-  Menu,
-  Plus,
-  Waves,
-  MapPin,
-  Luggage,
-  Backpack,
-  BadgeCheck,
-  type LucideIcon,
-} from "lucide-react";
+import { LogOut, Settings, Menu, BadgeCheck } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import {
-  useQuickCreate,
-  type QuickCreateKind,
-} from "@/components/layout/quick-create";
-
-// Everything the "+" menu can start. It's the single way to create from the
-// chrome at every width - the mobile menu deliberately doesn't repeat these, so
-// the hamburger is navigation and "+" is creation. A dive is the only form big
-// enough to warrant its own page; the rest open a dialog over whatever the
-// diver is looking at.
-type CreateAction = { label: string; icon: LucideIcon } & (
-  { href: string } | { kind: QuickCreateKind }
-);
-
-const CREATE_ACTIONS: CreateAction[] = [
-  { label: "New Dive", icon: Waves, href: "/dives/new" },
-  { label: "New Trip", icon: Luggage, kind: "trip" },
-  { label: "New Dive Site", icon: MapPin, kind: "site" },
-  { label: "New Gear", icon: Backpack, kind: "gear" },
-  { label: "New Certification", icon: BadgeCheck, kind: "certification" },
-];
-
-// The create menu is reachable from every page, so the form it opens is told
-// where it was launched from - otherwise its Back/Cancel would guess. Nothing is
-// appended when the current page is itself a form (see `isFormPath`), which
-// would otherwise send Cancel straight back to the form being cancelled.
-function withReturnTo(href: string, pathname: string | null): string {
-  if (!pathname || isFormPath(pathname)) return href;
-  return `${href}?from=${encodeURIComponent(pathname)}`;
-}
+import { CreateMenu } from "@/components/layout/create-menu";
 
 // Maps URL path prefixes to the nav item that should be highlighted as active.
 const NAV_SECTIONS: { prefix: string; page: string }[] = [
@@ -81,7 +40,6 @@ function getCurrentPage(pathname: string | null): string | undefined {
 
 export function Header() {
   const { user, isAuthenticated, signOut, isLoading } = useAuth();
-  const openCreate = useQuickCreate();
   const pathname = usePathname();
   const currentPage = getCurrentPage(pathname);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -237,39 +195,7 @@ export function Header() {
           {/* Tighter gaps on the narrowest phones, where the wordmark and the
               three controls would otherwise be squeezed against each other. */}
           <div className="flex flex-shrink-0 items-center space-x-1 sm:space-x-3">
-            {isAuthenticated && user && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" aria-label="Create new">
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  {CREATE_ACTIONS.map((action) => {
-                    const Icon = action.icon;
-                    return "href" in action ? (
-                      <DropdownMenuItem key={action.label} asChild>
-                        <Link
-                          href={withReturnTo(action.href, pathname)}
-                          className="flex items-center"
-                        >
-                          <Icon className="mr-2 h-4 w-4" />
-                          {action.label}
-                        </Link>
-                      </DropdownMenuItem>
-                    ) : (
-                      <DropdownMenuItem
-                        key={action.label}
-                        onSelect={() => openCreate(action.kind)}
-                      >
-                        <Icon className="mr-2 h-4 w-4" />
-                        {action.label}
-                      </DropdownMenuItem>
-                    );
-                  })}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
+            {isAuthenticated && user && <CreateMenu />}
             {/* Signed in, the theme choices live in the user menu with the
                 other account preferences; signed out there's no such menu, so
                 the standalone control stands in. */}

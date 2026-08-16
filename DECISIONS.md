@@ -5887,3 +5887,46 @@ flash. And nothing here caches: returning to `/dives` still refetches and still 
 where a stale-while-revalidate layer under `usePaginatedResource` would show the previous rows
 immediately and never enter a loading state at all. Both are worth doing; neither is worth doing
 before the layout stops moving.
+
+## The "+" menu opens on hover, and the four Radix seams that takes
+
+The create menu (`components/layout/create-menu.tsx`, lifted out of `header.tsx` when this landed)
+opens when the pointer arrives on the "+" rather than only when it is clicked. Radix's
+`DropdownMenu` is click-driven and has no hover mode, so the root is controlled (`open` /
+`onOpenChange`) and `pointerenter`/`pointerleave` drive that state from the trigger and the content
+alike. Four things about that are not obvious, and each one was a real failure before it was a
+guard:
+
+- **`modal={false}` is load-bearing, not tidying.** A modal menu sets `pointer-events: none` on
+  everything outside it. Hovering the rest of the page while the menu is open is the whole point,
+  and worse, the trigger stops receiving events too — so the `pointerleave` that closes the menu
+  never fires and it hangs open until something else dismisses it.
+- **Focus has to be suppressed on a hover-open, and only on a hover-open.** Radix moves focus into
+  the content on open and back to the trigger on close. For a click or a keypress that is right; for
+  a pointer merely crossing the header it pulls the caret out of whatever form the diver is filling
+  in — verified against `dives/new`, where the field keeps focus through an open and a close.
+  `onOpenAutoFocus` is the only thing that stops the first half, and Radix omits it from the public
+  content props (it is reserved for the menu's internals) while still spreading it through to the
+  focus scope untouched, hence the one-off widened type. `openedByHover` gates both handlers, and
+  because every Radix-driven close routes through `onOpenChange` — which clears the flag before the
+  content unmounts — picking an item still hands focus back to the trigger.
+- **A click on a menu that hover already opened must not dismiss it.** Clicking "+" is habit, and
+  Radix reads the click as a toggle, so the menu would vanish out from under the click that was
+  aimed at it. Two separate mechanisms have to be headed off: the trigger's own `pointerdown`
+  toggle, and — because a non-modal menu counts its own trigger as _outside_ itself — the
+  dismissable layer's outside-pointer dismissal. Hence `onPointerDown` on the trigger plus
+  `onPointerDownOutside` on the content. The `pointerdown` handler has to sit on
+  `DropdownMenuTrigger` rather than on the `Button` it renders: Radix composes a trigger's own props
+  with its internal ones through `composeEventHandlers`, which stops at a `preventDefault`, whereas
+  `asChild` merges a child's handlers unconditionally and the toggle would run anyway. A click
+  therefore _pins_ the menu — it turns a hover peek into a deliberate open that outlives the pointer
+  — and a second click closes it.
+- **Only the hover that opens the menu counts as a hover-open.** Re-entering an already-open menu
+  must not relabel a pinned one as a peek, or the next click pins what is already pinned instead of
+  closing it. That is the `if (!isOpen)` in the enter handler.
+
+Two smaller ones: the close is on a 150ms timer because the content sits 4px below the trigger
+(`sideOffset`) and a pointer travelling between them is briefly over neither, and the hover path is
+gated on `pointerType === "mouse"` because a tap fires `pointerenter` too — opening there would race
+the tap's own click into closing the menu again. Touch is unchanged: the tap opens the menu through
+Radix exactly as before, and never arms the hover-close.
