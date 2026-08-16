@@ -85,15 +85,18 @@ export function readResourceCache<T>(key: string): T | undefined {
  * Stores `value` under `key`, evicting the least recently read entry if full.
  *
  * `atGeneration` is the value `resourceCacheGeneration()` returned before the
- * request started. The write is dropped if the cache has been cleared since.
+ * request started, and is required rather than optional: a caller that forgot it
+ * would fail open, silently losing the in-flight protection, and the whole point
+ * of putting the clear in the response interceptor was that nobody should have
+ * to remember this invariant.
  */
 export function writeResourceCache(
   key: string,
   value: unknown,
-  atGeneration?: number,
+  atGeneration: number,
 ): void {
   if (!isBrowser()) return;
-  if (atGeneration !== undefined && atGeneration !== generation) return;
+  if (atGeneration !== generation) return;
 
   entries.delete(key);
   entries.set(key, { value, storedAt: Date.now() });
@@ -103,6 +106,11 @@ export function writeResourceCache(
     if (oldest === undefined) break;
     entries.delete(oldest);
   }
+}
+
+/** Drops one entry, for a record the API has just said no longer exists. */
+export function evictResourceCache(key: string): void {
+  entries.delete(key);
 }
 
 /**

@@ -42,3 +42,18 @@ export function getApiErrorMessage(error: unknown, fallback: string): string {
 
   return fallback;
 }
+
+/**
+ * True when the API's answer was a definite "this isn't yours / isn't there" -
+ * 404, 403 or 410 - rather than a failure to answer at all.
+ *
+ * The distinction only started mattering with the resource cache: a detail page
+ * can now be on screen from a cached copy while its refresh fails behind it, and
+ * a network blip or a 500 should leave the diver reading rather than throw them
+ * back to the list. A record that is genuinely gone still should.
+ */
+export function isResourceGoneError(error: unknown): boolean {
+  const status = (error as { response?: { status?: number } })?.response
+    ?.status;
+  return status === 404 || status === 403 || status === 410;
+}

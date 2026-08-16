@@ -117,10 +117,15 @@ export function usePaginatedResource<T>(
 
       try {
         const response = await fetchFn(page, itemsPerPage);
+
+        // Cached before the supersede guard, not after. A page-2 response that
+        // lost the race to page 3 must not be *rendered*, but it is still a
+        // correct answer under its own unambiguous key, and throwing it away
+        // means paging back to it stands the table in again for nothing.
+        if (key) writeResourceCache(key, response, atGeneration);
         if (latestRequest.current !== requestId) return;
 
         applyPage(response, page);
-        if (key) writeResourceCache(key, response, atGeneration);
       } catch (error) {
         if (latestRequest.current !== requestId) return;
         console.error(errorMessage, error);

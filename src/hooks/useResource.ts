@@ -4,10 +4,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/use-toast";
 import {
+  evictResourceCache,
   readResourceCache,
   resourceCacheGeneration,
   writeResourceCache,
 } from "@/lib/resource-cache";
+import { isResourceGoneError } from "@/lib/api/error";
 
 interface UseResourceOptions<T> {
   /** Hold off fetching until this is true (typically until `user` is known). */
@@ -124,15 +126,33 @@ export function useResource<T>(
       try {
         if (!cached) setIsLoading(true);
         const data = await fetchFn(id);
-        if (cancelled) return;
-        setResource(data);
+
+        // Before the unmount guard: navigating away the instant a dive opens
+        // otherwise discards the fresh copy and leaves the stale entry it was
+        // about to replace sitting there.
         if (key) writeResourceCache(key, data, atGeneration);
+        if (cancelled) return;
+
+        setResource(data);
         onLoadedRef.current?.(data);
       } catch (error) {
         console.error(errorMessage, error);
         // The guard matters most here: without it a request that outlives the page
         // toasts and redirects on top of wherever the diver went next.
         if (cancelled) return;
+
+        // A record that is gone stays gone: drop the cached copy, or every later
+        // visit to this URL would render it from cache and bounce again for the
+        // next five minutes.
+        if (key && isResourceGoneError(error)) evictResourceCache(key);
+
+        // Before the cache, a failure meant nothing had rendered and leaving was
+        // the only option. Now the diver may be *reading* the record while the
+        // revalidation fails behind it, and throwing them back to the list over a
+        // blip would be worse than the slightly stale copy already on screen. So
+        // only a definite answer that it is gone - 404/403/410 - still redirects.
+        if (cached && !isResourceGoneError(error)) return;
+
         toast({
           title: "Error",
           description: errorMessage,

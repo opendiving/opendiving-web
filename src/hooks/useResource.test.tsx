@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useResource } from "./useResource";
-import { clearResourceCache } from "@/lib/resource-cache";
+import { clearResourceCache, readResourceCache } from "@/lib/resource-cache";
 
 const push = vi.fn();
 const toast = vi.fn();
@@ -217,5 +217,64 @@ describe("useResource with a cacheKey", () => {
     const second = renderHook(() => useResource(fetchFn, OPTIONS));
     expect(second.result.current.isLoading).toBe(true);
     expect(second.result.current.resource).toBeNull();
+  });
+});
+
+// Axios shapes: what the hook branches on is the status, not the message.
+const httpError = (status: number) => ({ response: { status } });
+
+describe("useResource when a revalidation fails", () => {
+  const options = { ...OPTIONS, cacheKey: "dive" };
+
+  async function warmThenFail(error: unknown) {
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValueOnce({ uuid: "dive-1", notes: "cached" })
+      .mockRejectedValueOnce(error);
+
+    const first = renderHook(() => useResource(fetchFn, options));
+    await waitFor(() => expect(first.result.current.isLoading).toBe(false));
+    first.unmount();
+
+    const second = renderHook(() => useResource(fetchFn, options));
+    await waitFor(() => expect(fetchFn).toHaveBeenCalledTimes(2));
+    return second;
+  }
+
+  it("leaves the diver on the page when the refresh merely fails", async () => {
+    const second = await warmThenFail(httpError(500));
+
+    // The record is on screen and being read. A blip behind it is not a reason
+    // to throw the diver back to the list.
+    expect(push).not.toHaveBeenCalled();
+    expect(toast).not.toHaveBeenCalled();
+    expect(second.result.current.resource).toEqual({
+      uuid: "dive-1",
+      notes: "cached",
+    });
+  });
+
+  it.each([404, 403, 410])(
+    "still redirects when the API says the record is gone (%i)",
+    async (status) => {
+      await warmThenFail(httpError(status));
+
+      expect(push).toHaveBeenCalledWith("/dives");
+      expect(toast).toHaveBeenCalled();
+      // And the stale copy goes with it, or every later visit to this URL would
+      // render the record from cache and bounce again for five minutes.
+      expect(readResourceCache("dive:dive-1")).toBeUndefined();
+    },
+  );
+
+  it("keeps redirecting when there was nothing cached to fall back on", async () => {
+    const fetchFn = vi.fn().mockRejectedValue(httpError(500));
+    const { result } = renderHook(() => useResource(fetchFn, options));
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    // Unchanged from before the cache existed: a first load that fails has
+    // nothing to show, so leaving is still the only option.
+    expect(push).toHaveBeenCalledWith("/dives");
   });
 });

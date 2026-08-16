@@ -18,7 +18,11 @@ afterEach(() => {
 
 describe("resource cache", () => {
   it("hands back what was stored", () => {
-    writeResourceCache("dives:u1:page:1:per:10", { data: [1, 2] });
+    writeResourceCache(
+      "dives:u1:page:1:per:10",
+      { data: [1, 2] },
+      resourceCacheGeneration(),
+    );
 
     expect(readResourceCache("dives:u1:page:1:per:10")).toEqual({
       data: [1, 2],
@@ -31,7 +35,7 @@ describe("resource cache", () => {
 
   it("drops an entry once it is older than the max age", () => {
     vi.useFakeTimers();
-    writeResourceCache("dive:1", { uuid: "1" });
+    writeResourceCache("dive:1", { uuid: "1" }, resourceCacheGeneration());
 
     // Just inside five minutes, then just outside it. A tab left open should
     // stand the page in again rather than show figures from before lunch.
@@ -45,13 +49,14 @@ describe("resource cache", () => {
   });
 
   it("evicts the least recently read entry once full", () => {
-    for (let i = 0; i < 50; i++) writeResourceCache(`dive:${i}`, i);
+    for (let i = 0; i < 50; i++)
+      writeResourceCache(`dive:${i}`, i, resourceCacheGeneration());
     expect(resourceCacheSize()).toBe(50);
 
     // Touching the oldest entry makes it the newest, so the *next* one along is
     // what the following write pushes out.
     expect(readResourceCache("dive:0")).toBe(0);
-    writeResourceCache("dive:50", 50);
+    writeResourceCache("dive:50", 50, resourceCacheGeneration());
 
     expect(resourceCacheSize()).toBe(50);
     expect(readResourceCache("dive:0")).toBe(0);
@@ -60,8 +65,12 @@ describe("resource cache", () => {
   });
 
   it("empties completely, since that is what every write falls back on", () => {
-    writeResourceCache("dives:u1:page:1:per:10", { data: [] });
-    writeResourceCache("dive:1", { uuid: "1" });
+    writeResourceCache(
+      "dives:u1:page:1:per:10",
+      { data: [] },
+      resourceCacheGeneration(),
+    );
+    writeResourceCache("dive:1", { uuid: "1" }, resourceCacheGeneration());
 
     clearResourceCache();
 
@@ -103,7 +112,7 @@ describe("resource cache generations", () => {
 
   it("still stores when no generation is supplied", () => {
     clearResourceCache();
-    writeResourceCache("dive:1", { uuid: "1" });
+    writeResourceCache("dive:1", { uuid: "1" }, resourceCacheGeneration());
 
     expect(readResourceCache("dive:1")).toEqual({ uuid: "1" });
   });

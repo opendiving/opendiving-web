@@ -2,9 +2,11 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 import { AuthProvider, useAuth } from "./AuthContext";
+import { usePaginatedResource } from "@/hooks/usePaginatedResource";
 import { AUTH_SESSION_EXPIRED_EVENT } from "@/lib/api/client";
 import {
   clearResourceCache,
+  resourceCacheGeneration,
   resourceCacheSize,
   writeResourceCache,
 } from "@/lib/resource-cache";
@@ -263,7 +265,11 @@ describe("AuthProvider resource cache clearing", () => {
     const { result } = renderHook(() => useAuth(), { wrapper });
     await waitFor(() => expect(result.current.user).toEqual(USER));
 
-    writeResourceCache("dives:u1:page:1:per:10", { data: ["u1's dive"] });
+    writeResourceCache(
+      "dives:u1:page:1:per:10",
+      { data: ["u1's dive"] },
+      resourceCacheGeneration(),
+    );
     expect(resourceCacheSize()).toBe(1);
 
     act(() => {
@@ -284,11 +290,54 @@ describe("AuthProvider resource cache clearing", () => {
     const { result } = renderHook(() => useAuth(), { wrapper });
     await waitFor(() => expect(result.current.user).toEqual(USER));
 
-    writeResourceCache("dives:u1:page:1:per:10", { data: ["u1's dive"] });
+    writeResourceCache(
+      "dives:u1:page:1:per:10",
+      { data: ["u1's dive"] },
+      resourceCacheGeneration(),
+    );
 
     authAPI.getCurrentUser.mockResolvedValue({ ...USER, name: "Aleksei V" });
     await act(() => result.current.refreshUser());
 
+    expect(resourceCacheSize()).toBe(1);
+  });
+});
+
+describe("AuthProvider does not discard the first page's own response", () => {
+  beforeEach(() => clearResourceCache());
+
+  it("caches a fetch that started before the user resolved", async () => {
+    // The ordering bug this pins: effects flush child-before-parent, so a page's
+    // fetch captures the cache generation *before* the provider's effect runs.
+    // Clearing on the null -> user transition therefore bumped the generation
+    // out from under the response, and the page a diver loaded directly was the
+    // one page never cached - so coming back to it stood the skeleton in again.
+    refreshAccessToken.mockResolvedValue("token");
+    authAPI.getCurrentUser.mockResolvedValue(USER);
+
+    const fetchFn = vi.fn(async () => ({
+      data: [{ uuid: "d1" }],
+      total_count: 1,
+      has_more: false,
+      page: 1,
+      items_per_page: 10,
+    }));
+
+    const { result } = renderHook(
+      () => {
+        const { user } = useAuth();
+        return usePaginatedResource(fetchFn, {
+          enabled: !!user,
+          cacheKey: user ? `dives:${user.uuid}` : undefined,
+        });
+      },
+      { wrapper },
+    );
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.items).toHaveLength(1);
+
+    // The response the page fetched for itself has to survive into the cache.
     expect(resourceCacheSize()).toBe(1);
   });
 });
