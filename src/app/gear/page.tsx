@@ -59,6 +59,7 @@ export default function GearPage() {
   } = usePaginatedResource<GearItem>(fetchGearItems, {
     enabled: !!user,
     errorMessage: "Failed to load gear. Please try again.",
+    cacheKey: user ? `gear-items:${user.uuid}` : undefined,
   });
 
   const {
@@ -73,6 +74,7 @@ export default function GearPage() {
   } = usePaginatedResource<GearSet>(fetchGearSets, {
     enabled: !!user,
     errorMessage: "Failed to load gear sets. Please try again.",
+    cacheKey: user ? `gear-sets:${user.uuid}` : undefined,
   });
 
   // Deleting an item can change what a set contains, so both lists are refreshed.

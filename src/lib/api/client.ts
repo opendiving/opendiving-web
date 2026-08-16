@@ -1,4 +1,5 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
+import { clearResourceCache } from "@/lib/resource-cache";
 
 /**
  * Dispatched when a token refresh fails so `AuthContext` can clear the stale
@@ -180,7 +181,20 @@ export async function unwrapBlobErrorBody(error: unknown): Promise<void> {
 
 // Response interceptor to handle token refresh
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Anything that isn't a read invalidates the whole resource cache.
+    //
+    // Here rather than at each call site because "did this write make some
+    // cached list stale?" is a question every future endpoint would have to be
+    // asked, and one forgotten answer shows the diver a dive they just deleted.
+    // A request that reached a response has been through auth and the retry
+    // path, so this fires once per real write - and the cost of over-clearing
+    // is one refetch of whatever gets looked at next.
+    if (response.config.method && response.config.method !== "get") {
+      clearResourceCache();
+    }
+    return response;
+  },
   async (error) => {
     const originalRequest = error.config;
 

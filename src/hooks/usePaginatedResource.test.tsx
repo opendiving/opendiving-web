@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { usePaginatedResource } from "./usePaginatedResource";
+import { clearResourceCache } from "@/lib/resource-cache";
 import type { PaginatedResponse } from "@/lib/api/client";
 
 const toast = vi.fn();
@@ -38,6 +39,7 @@ function deferredFetcher() {
 
 beforeEach(() => {
   toast.mockClear();
+  clearResourceCache();
 });
 
 describe("usePaginatedResource", () => {
@@ -155,5 +157,86 @@ describe("usePaginatedResource", () => {
     await act(() => result.current.refetch());
 
     expect(fetchFn).toHaveBeenCalledWith(3, 10);
+  });
+});
+
+describe("usePaginatedResource with a cacheKey", () => {
+  it("shows the rows it showed last time without a loading state", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(page(1));
+    const options = { cacheKey: "dives:u1" };
+
+    const first = renderHook(() => usePaginatedResource(fetchFn, options));
+    await waitFor(() => expect(first.result.current.isLoading).toBe(false));
+    first.unmount();
+
+    const second = renderHook(() => usePaginatedResource(fetchFn, options));
+    expect(second.result.current.items).toHaveLength(10);
+    expect(second.result.current.isLoading).toBe(false);
+    expect(second.result.current.totalCount).toBe(30);
+  });
+
+  it("keys on the page, so page 2 is not served page 1's rows", async () => {
+    const fetchFn = vi.fn((n: number) => Promise.resolve(page(n)));
+    const options = { cacheKey: "dives:u1" };
+
+    const first = renderHook(() => usePaginatedResource(fetchFn, options));
+    await waitFor(() => expect(first.result.current.isLoading).toBe(false));
+    first.unmount();
+
+    const second = renderHook(() => usePaginatedResource(fetchFn, options));
+    await act(() => second.result.current.fetchPage(2));
+
+    expect(second.result.current.items[0].uuid).toBe("p2-0");
+    expect(second.result.current.currentPage).toBe(2);
+  });
+
+  it("keys on the page size as well as the number", async () => {
+    const fetchFn = vi.fn((n: number, perPage: number) =>
+      Promise.resolve(page(n, { perPage })),
+    );
+
+    const ten = renderHook(() =>
+      usePaginatedResource(fetchFn, { cacheKey: "dives:u1", itemsPerPage: 10 }),
+    );
+    await waitFor(() => expect(ten.result.current.isLoading).toBe(false));
+    ten.unmount();
+
+    // Same list, same page number, different size - a hit here would show ten
+    // rows in a table that holds five.
+    const five = renderHook(() =>
+      usePaginatedResource(fetchFn, { cacheKey: "dives:u1", itemsPerPage: 5 }),
+    );
+    expect(five.result.current.isLoading).toBe(true);
+    await waitFor(() => expect(five.result.current.isLoading).toBe(false));
+    expect(five.result.current.items).toHaveLength(5);
+  });
+
+  it("still refetches behind the cached rows", async () => {
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValueOnce(page(1, { total: 30 }))
+      .mockResolvedValueOnce(page(1, { total: 40 }));
+    const options = { cacheKey: "dives:u1" };
+
+    const first = renderHook(() => usePaginatedResource(fetchFn, options));
+    await waitFor(() => expect(first.result.current.isLoading).toBe(false));
+    first.unmount();
+
+    const second = renderHook(() => usePaginatedResource(fetchFn, options));
+    expect(second.result.current.totalCount).toBe(30);
+    await waitFor(() => expect(second.result.current.totalCount).toBe(40));
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+  });
+
+  it("caches nothing without a cacheKey", async () => {
+    const fetchFn = vi.fn().mockResolvedValue(page(1));
+
+    const first = renderHook(() => usePaginatedResource(fetchFn));
+    await waitFor(() => expect(first.result.current.isLoading).toBe(false));
+    first.unmount();
+
+    const second = renderHook(() => usePaginatedResource(fetchFn));
+    expect(second.result.current.isLoading).toBe(true);
+    expect(second.result.current.items).toHaveLength(0);
   });
 });

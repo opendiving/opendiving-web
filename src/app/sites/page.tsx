@@ -51,6 +51,7 @@ export default function SitesPage() {
   } = usePaginatedResource<DiveSite>(fetchDiveSites, {
     enabled: !!user,
     errorMessage: "Failed to load dive sites. Please try again.",
+    cacheKey: user ? `sites:${user.uuid}` : undefined,
   });
 
   const {
