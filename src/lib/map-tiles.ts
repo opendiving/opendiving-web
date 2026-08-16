@@ -1,7 +1,7 @@
-// Web-Mercator slippy-map arithmetic for the hand-rolled map picker
-// (`components/sites/map-picker.tsx`), in the spirit of `lib/chart-scale.ts`:
-// the maths lives here, pure and tested, and the component only renders what it
-// returns.
+// Web-Mercator slippy-map arithmetic for the hand-rolled maps
+// (`components/sites/map-picker.tsx`, `components/trips/trip-locations-map.tsx`),
+// in the spirit of `lib/chart-scale.ts`: the maths lives here, pure and tested,
+// and the components only render what it returns.
 //
 // No mapping library. A raster tile grid needs one CSP relaxation - the tile
 // host in `img-src` - where MapLibre would have forced `worker-src blob:`, which
@@ -131,6 +131,128 @@ export function clampCenter(
       height >= world
         ? world / 2
         : Math.min(world - half, Math.max(half, center.y)),
+  };
+}
+
+/**
+ * A rectangular extent in degrees, as a geocoder reports a place's footprint.
+ *
+ * `west` may be greater than `east`: a box straddling the antimeridian is not
+ * malformed, and the API deliberately does not reject one. A single point is
+ * the degenerate case where both pairs are equal, which is what lets a place
+ * with a position but no footprint go through the same path.
+ */
+export interface LatLonBounds {
+  south: number;
+  north: number;
+  west: number;
+  east: number;
+}
+
+export interface FittedView {
+  center: LatLon;
+  zoom: number;
+}
+
+// How far in `fitBounds` is allowed to go. A trip location is a locality - a
+// town, an island, a sea - not a dive entry point, so a single pin opens at the
+// zoom where the surrounding coast is recognisable rather than at street level,
+// where a lone marker on a grid of house numbers says nothing.
+export const MAX_FIT_ZOOM = 10;
+
+// A latitude's projected y as a fraction of the world's height, which is the
+// same at every zoom. Comparing extents against the viewport only needs that
+// ratio, so it is computed once instead of per candidate zoom.
+const unitY = (latitude: number) =>
+  project({ latitude, longitude: 0 }, 0).y / TILE_SIZE;
+
+/**
+ * The view that shows every one of `boxes` inside a `width` x `height`
+ * viewport, with `padding` pixels to spare on each side.
+ *
+ * Integer zooms only - this is for a static map that draws tiles at their own
+ * level and never scales them - so the answer is the deepest whole level the
+ * union still fits in, found by walking down from `MAX_FIT_ZOOM`. Nothing fits
+ * at `MIN_ZOOM`? Then `MIN_ZOOM` it is: the widest view there is.
+ *
+ * Longitudes are unwrapped against the first box before the union, the way
+ * `nearestWrappedX` picks a marker's nearest copy. A trip to Fiji and Samoa
+ * spans six degrees across the antimeridian, and unioning their raw
+ * coordinates would instead describe the 354 degrees of ocean going the other
+ * way round the planet - a whole-world view with both pins at its edges.
+ *
+ * No boxes at all is not an error, it is a map with nothing to show yet: the
+ * caller gets the widest view rather than having to special-case a null.
+ */
+export function fitBounds(
+  boxes: LatLonBounds[],
+  width: number,
+  height: number,
+  padding = 0,
+): FittedView {
+  if (boxes.length === 0) {
+    return { center: { latitude: 0, longitude: 0 }, zoom: MIN_ZOOM };
+  }
+
+  let south = MAX_LATITUDE;
+  let north = -MAX_LATITUDE;
+  let west = Infinity;
+  let east = -Infinity;
+  // The first box's west edge, which every later box is unwrapped against.
+  let reference = 0;
+
+  boxes.forEach((box, index) => {
+    // Min/max rather than trusting the order: this also renders form state on
+    // its way to the API, so it meets boxes the API's validation has not seen.
+    south = Math.min(south, clampLatitude(Math.min(box.south, box.north)));
+    north = Math.max(north, clampLatitude(Math.max(box.south, box.north)));
+
+    // The box's width taken as a signed span first, so the antimeridian case
+    // (east folding back behind west) stays one interval instead of becoming a
+    // negative one, while a genuinely zero-width point stays a point.
+    const signed = box.east - box.west;
+    const span = signed >= 0 ? Math.min(signed, 360) : signed + 360;
+    let boxWest = wrapLongitude(box.west);
+
+    if (index === 0) {
+      reference = boxWest;
+    } else {
+      boxWest += Math.round((reference - boxWest) / 360) * 360;
+    }
+    west = Math.min(west, boxWest);
+    east = Math.max(east, boxWest + span);
+  });
+
+  const spanX = Math.min(east - west, 360) / 360;
+  const spanY = unitY(south) - unitY(north);
+
+  // A padding wider than the frame would otherwise demand a negative extent and
+  // force MIN_ZOOM; one pixel is the smallest honest ask.
+  const availableWidth = Math.max(1, width - 2 * padding);
+  const availableHeight = Math.max(1, height - 2 * padding);
+
+  let zoom = MIN_ZOOM;
+  for (let candidate = MAX_FIT_ZOOM; candidate > MIN_ZOOM; candidate--) {
+    const scale = worldSize(candidate);
+    if (spanX * scale <= availableWidth && spanY * scale <= availableHeight) {
+      zoom = candidate;
+      break;
+    }
+  }
+
+  // The midpoint of the *projected* extent, not the average of the two
+  // latitudes: Mercator stretches towards the poles, so the two differ by
+  // degrees on a view spanning hemispheres, and it is the projected one that
+  // puts equal amounts of map above and below.
+  const centerY = ((unitY(south) + unitY(north)) / 2) * worldSize(zoom);
+  const clamped = clampCenter({ x: 0, y: centerY }, height, zoom);
+
+  return {
+    center: {
+      latitude: unproject(clamped, zoom).latitude,
+      longitude: wrapLongitude((west + east) / 2),
+    },
+    zoom,
   };
 }
 

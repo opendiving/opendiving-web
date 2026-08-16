@@ -5,7 +5,12 @@ import {
   DEFAULT_DARK_TILE_URL,
   DEFAULT_TILE_ATTRIBUTION,
   DEFAULT_TILE_URL,
+  fitBounds,
+  FittedView,
+  LatLonBounds,
+  MAX_FIT_ZOOM,
   MAX_LATITUDE,
+  MIN_ZOOM,
   nearestWrappedX,
   parseAttribution,
   project,
@@ -266,6 +271,144 @@ describe("clampCenter", () => {
     expect(clampCenter({ x: scale + 500, y: scale / 2 }, 224, 3).x).toBe(
       scale + 500,
     );
+  });
+});
+
+describe("fitBounds", () => {
+  const VIEWPORT = { width: 320, height: 180 };
+
+  const point = (latitude: number, longitude: number) => ({
+    south: latitude,
+    north: latitude,
+    west: longitude,
+    east: longitude,
+  });
+
+  // Whether every corner of `box` lands inside the viewport the view describes,
+  // which is the whole contract - asserting on the zoom alone would pass a view
+  // that fits by being centred somewhere else entirely.
+  const contains = (view: FittedView, box: LatLonBounds) => {
+    const center = project(view.center, view.zoom);
+    const origin = {
+      x: center.x - VIEWPORT.width / 2,
+      y: center.y - VIEWPORT.height / 2,
+    };
+    return [box.west, box.east].every((longitude) =>
+      [box.south, box.north].every((latitude) => {
+        const corner = project({ latitude, longitude }, view.zoom);
+        const x = nearestWrappedX(corner.x, center.x, view.zoom) - origin.x;
+        const y = corner.y - origin.y;
+        return x >= 0 && x <= VIEWPORT.width && y >= 0 && y <= VIEWPORT.height;
+      }),
+    );
+  };
+
+  it("opens a single place at locality zoom, centred on it", () => {
+    const view = fitBounds(
+      [point(9.9494, 123.3986)],
+      VIEWPORT.width,
+      VIEWPORT.height,
+    );
+    expect(view.zoom).toBe(MAX_FIT_ZOOM);
+    expect(view.center.latitude).toBeCloseTo(9.9494, 6);
+    expect(view.center.longitude).toBeCloseTo(123.3986, 6);
+  });
+
+  // A town's footprint would fit at street level, and a trip location shown
+  // that close is a lone pin among house numbers.
+  it("does not go deeper than locality zoom for a tiny box", () => {
+    const view = fitBounds(
+      [{ south: 9.94, north: 9.96, west: 123.39, east: 123.41 }],
+      VIEWPORT.width,
+      VIEWPORT.height,
+    );
+    expect(view.zoom).toBe(MAX_FIT_ZOOM);
+  });
+
+  it("finds the deepest zoom that still holds a union of boxes", () => {
+    const boxes = [
+      { south: 9.9, north: 10.1, west: 123.3, east: 123.5 },
+      { south: 9.5, north: 9.7, west: 124.0, east: 124.4 },
+    ];
+    const view = fitBounds(boxes, VIEWPORT.width, VIEWPORT.height);
+    expect(boxes.every((box) => contains(view, box))).toBe(true);
+    // Tight, not merely sufficient: one level further in and it would spill.
+    const tighter = { center: view.center, zoom: view.zoom + 1 };
+    expect(boxes.every((box) => contains(tighter, box))).toBe(false);
+  });
+
+  // The union of 178°E and 172°W is six degrees of ocean, not the 354 the raw
+  // numbers describe - the difference between a readable pair of pins and a
+  // whole-world view with one at each edge.
+  it("unwraps a pair straddling the antimeridian", () => {
+    const view = fitBounds(
+      [point(-17.7, 178.0), point(-13.8, -172.0)],
+      VIEWPORT.width,
+      VIEWPORT.height,
+    );
+    expect(view.center.longitude).toBeCloseTo(-177, 6);
+    expect(view.zoom).toBeGreaterThan(MIN_ZOOM);
+  });
+
+  // Same place, described the way Nominatim describes it: a box whose east edge
+  // reads as smaller than its west one.
+  it("reads a box that crosses the antimeridian as one interval", () => {
+    const view = fitBounds(
+      [{ south: -18, north: -13, west: 170, east: -170 }],
+      VIEWPORT.width,
+      VIEWPORT.height,
+    );
+    // 170°E to 170°W is twenty degrees wide, centred on the antimeridian.
+    expect(view.center.longitude).toBeCloseTo(-180, 6);
+    expect(view.zoom).toBe(4);
+  });
+
+  it("gives up a zoom level to keep the padding it was asked for", () => {
+    const boxes = [{ south: 0, north: 0, west: -20, east: 20 }];
+    const tight = fitBounds(boxes, VIEWPORT.width, VIEWPORT.height);
+    const padded = fitBounds(boxes, VIEWPORT.width, VIEWPORT.height, 60);
+    expect(padded.zoom).toBe(tight.zoom - 1);
+  });
+
+  it("falls back to the widest view when nothing fits", () => {
+    const view = fitBounds(
+      [point(-80, -170), point(80, 170)],
+      VIEWPORT.width,
+      VIEWPORT.height,
+    );
+    expect(view.zoom).toBe(MIN_ZOOM);
+  });
+
+  // Mercator stretches towards the poles, so the halfway *latitude* of a view
+  // spanning hemispheres is not the latitude halfway down its picture.
+  it("centres on the middle of the projected extent, not the mean latitude", () => {
+    const view = fitBounds(
+      [point(0, 0), point(60, 0)],
+      VIEWPORT.width,
+      VIEWPORT.height,
+    );
+    expect(view.center.latitude).toBeGreaterThan(30);
+    expect(view.center.latitude).toBeCloseTo(
+      unproject(
+        {
+          x: 0,
+          y:
+            (project({ latitude: 60, longitude: 0 }, 8).y +
+              project({ latitude: 0, longitude: 0 }, 8).y) /
+            2,
+        },
+        8,
+      ).latitude,
+      6,
+    );
+  });
+
+  // A map with nothing to show yet is not an error the caller has to answer.
+  it("answers an empty list with the widest view", () => {
+    expect(fitBounds([], VIEWPORT.width, VIEWPORT.height)).toEqual({
+      center: { latitude: 0, longitude: 0 },
+      zoom: MIN_ZOOM,
+    });
   });
 });
 

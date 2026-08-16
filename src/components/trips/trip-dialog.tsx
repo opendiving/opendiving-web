@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useDialogApiError } from "@/hooks/useDialogApiError";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Plus, Save } from "lucide-react";
 import {
@@ -32,6 +32,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Button } from "@/components/ui/button";
+import { TripLocationMultiSelect } from "@/components/trips/trip-location-multi-select";
+import { TripLocationsMap } from "@/components/trips/trip-locations-map-lazy";
 
 interface TripDialogProps {
   userId: string;
@@ -64,12 +66,24 @@ export function TripDialog({
     resolver: zodResolver(tripFormSchema),
     defaultValues: {
       name: "",
-      location: "",
+      locations: [],
       start_date: "",
       end_date: "",
       notes: "",
     },
   });
+
+  // `useWatch` rather than `form.watch()`: the map below the picker is the only
+  // thing that re-renders when a place is added or dragged, and `watch()` would
+  // re-render the whole dialog - every keystroke in the notes field included.
+  const locations = useWatch({ control: form.control, name: "locations" });
+
+  // Places typed in by hand have no position, so a trip with only those shows
+  // no map rather than an empty frame - and gating on this also keeps the map's
+  // chunk unfetched until there is something in it to see.
+  const mappedLocations = (locations ?? []).filter(
+    (location) => location.latitude != null && location.longitude != null,
+  );
 
   // Reload the form whenever the dialog is opened, so it shows the trip being
   // edited (or a clean slate) rather than whatever the previous invocation left
@@ -79,7 +93,7 @@ export function TripDialog({
     if (!open) return;
     reset({
       name: trip?.name ?? "",
-      location: trip?.location ?? "",
+      locations: trip?.locations ?? [],
       start_date: trip?.start_date ?? "",
       end_date: trip?.end_date ?? "",
       notes: trip?.notes ?? "",
@@ -99,12 +113,20 @@ export function TripDialog({
       if (trip) {
         // The API answers a PATCH with just a status message, so the updated
         // trip is assembled here for the caller.
-        const changes = normalizeTripDates(data);
+        //
+        // Locations are always sent, never omitted: the form shows the whole
+        // list and the API replaces it wholesale, so an unchanged list costs a
+        // re-insert while a missing key would make "remove them all" impossible
+        // to express.
+        const changes = {
+          ...normalizeTripDates(data),
+          locations: data.locations ?? [],
+        };
         await tripsAPI.updateTrip(trip.uuid, changes);
         onSaved({
           ...trip,
           name: data.name,
-          location: data.location,
+          locations: changes.locations,
           start_date: changes.start_date,
           end_date: changes.end_date,
           notes: data.notes,
@@ -113,7 +135,7 @@ export function TripDialog({
         const created = await tripsAPI.createTrip({
           user_uuid: userId,
           name: data.name,
-          location: data.location || undefined,
+          locations: data.locations ?? [],
           start_date: data.start_date,
           end_date: data.end_date || undefined,
           notes: data.notes || undefined,
@@ -144,9 +166,18 @@ export function TripDialog({
         <Form {...form}>
           {/* `dialogFormSubmit` keeps this submit from bubbling into the dive
               form this dialog can be opened from - see `lib/dialog-form.ts`. */}
+          {/* `min-w-0` is load-bearing, and not where the problem looks like it
+              is. `DialogContent` is a grid, this form is its item, and a grid
+              item's default `min-width: auto` is its min-content - so one
+              location row of "Ko Tao, Ko Tao, Ko Pha-ngan District, Surat Thani
+              Province, Thailand", held on one line by `truncate`, widened the
+              whole dialog to 888px and pushed every other field out past its
+              edge. Truncating the row is necessary and does nothing on its own:
+              only the grid item can decide it is allowed to be narrower than
+              its contents. */}
           <form
             onSubmit={dialogFormSubmit(form.handleSubmit(onSubmit))}
-            className="space-y-4"
+            className="min-w-0 space-y-4"
           >
             <FormField
               control={form.control}
@@ -168,17 +199,29 @@ export function TripDialog({
 
             <FormField
               control={form.control}
-              name="location"
+              name="locations"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Location</FormLabel>
+                  <FormLabel>
+                    {(field.value?.length ?? 0) > 1 ? "Locations" : "Location"}
+                  </FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. Koh Tao, Thailand" {...field} />
+                    <TripLocationMultiSelect
+                      value={field.value ?? []}
+                      onChange={field.onChange}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
+            {/* Confirmation only, and deliberately below the picker: the diver
+                searched for a name, and this answers "yes, that is the place I
+                meant" without asking them to do anything with it. */}
+            {mappedLocations.length > 0 && (
+              <TripLocationsMap locations={mappedLocations} />
+            )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField

@@ -3,6 +3,7 @@ import {
   ComboboxItem,
   clampActiveIndex,
   commitAction,
+  emptyMenuLabel,
   nextActiveIndex,
   searchDelayMs,
   visibleItems,
@@ -64,6 +65,18 @@ describe("searchDelayMs", () => {
     // There was no keystroke to wait for, and a delay here is visible as the
     // list not appearing when you click the field.
     expect(searchDelayMs("")).toBe(0);
+  });
+
+  it("takes a caller's own debounce", () => {
+    // The trip location picker searches through the geocoding proxy, which is
+    // rate-limited across the whole instance - it waits longer on purpose.
+    expect(searchDelayMs("moal", 450)).toBe(450);
+  });
+
+  it("still opens the menu straight away with a longer debounce", () => {
+    // The override must not creep into the one query that has nothing to
+    // coalesce, or the slower picker gets a slower-appearing menu too.
+    expect(searchDelayMs("", 450)).toBe(0);
   });
 });
 
@@ -144,6 +157,78 @@ describe("clampActiveIndex", () => {
   });
 });
 
+describe("emptyMenuLabel", () => {
+  const base = {
+    query: "",
+    minSearchLength: 1,
+    maxSearchLength: Infinity,
+    searchFailed: false,
+    isBusy: false,
+    noItemsLabel: "No dive sites yet.",
+    noMatchesLabel: "No dive sites match.",
+    searchErrorLabel: "Search is unavailable right now.",
+  };
+
+  it("says it is searching while there is no answer yet", () => {
+    // Including the debounce, which `isSearching` alone misses - the menu used
+    // to spend that window claiming nothing matched.
+    expect(emptyMenuLabel({ ...base, query: "dahab", isBusy: true })).toBe(
+      "Searching...",
+    );
+  });
+
+  it("keeps the empty open-query as a real search", () => {
+    // The regression this exists to stop: every remote field but the place
+    // picker fills its initial list with a search for "", so short-circuiting
+    // on "shorter than the minimum" announced "No dive sites yet." for the
+    // whole round trip - and hid the failure if it failed.
+    expect(emptyMenuLabel({ ...base, isBusy: true })).toBe("Searching...");
+    expect(emptyMenuLabel({ ...base, searchFailed: true })).toBe(
+      base.searchErrorLabel,
+    );
+    expect(emptyMenuLabel(base)).toBe(base.noItemsLabel);
+  });
+
+  it("does not report on a query outside what the search accepts", () => {
+    const picker = {
+      ...base,
+      minSearchLength: 2,
+      maxSearchLength: 200,
+      noItemsLabel: "Type to search places.",
+      noMatchesLabel: "No places found.",
+    };
+
+    expect(emptyMenuLabel({ ...picker, query: "m", isBusy: true })).toBe(
+      "Type to search places.",
+    );
+    // Opposite advice at the opposite end: "type to search" is nonsense with a
+    // pasted paragraph sitting in the field.
+    expect(
+      emptyMenuLabel({
+        ...picker,
+        query: "m".repeat(201),
+        queryTooLongLabel: "Too long to search.",
+      }),
+    ).toBe("Too long to search.");
+    expect(emptyMenuLabel({ ...picker, query: "m".repeat(201) })).toBe(
+      "Type to search places.",
+    );
+    expect(emptyMenuLabel({ ...picker, query: "mo" })).toBe("No places found.");
+  });
+
+  it("prefers a failure over a stale no-matches", () => {
+    expect(
+      emptyMenuLabel({ ...base, query: "dahab", searchFailed: true }),
+    ).toBe(base.searchErrorLabel);
+  });
+
+  it("falls back to the no-items text when a field has no no-matches text", () => {
+    expect(
+      emptyMenuLabel({ ...base, query: "dahab", noMatchesLabel: undefined }),
+    ).toBe(base.noItemsLabel);
+  });
+});
+
 describe("commitAction", () => {
   const base = {
     availableItems: SITES,
@@ -208,6 +293,39 @@ describe("commitAction", () => {
       // Results for "red" say nothing about whether "Red Sea 2026" exists.
       expect(
         commitAction({ ...remote, text: "Red Sea 2026", searchedQuery: "red" }),
+      ).toEqual({ type: "keep" });
+    });
+
+    it("creates from an unanswered query only where the field appends", () => {
+      // The trip location picker's outage hatch. Refusing protects a loaded
+      // value from a network blip, and an append-only field has none - what it
+      // has instead is a diver whose geocoder is down and who can otherwise add
+      // no location at all. The caller opts in; nobody else's behaviour moves.
+      expect(
+        commitAction({
+          ...remote,
+          text: "Zqxwv House Reef",
+          canCreate: true,
+          createWithoutSearch: true,
+        }),
+      ).toEqual({ type: "create", name: "Zqxwv House Reef" });
+
+      expect(
+        commitAction({
+          ...remote,
+          text: "Zqxwv House Reef",
+          canCreate: true,
+        }),
+      ).toEqual({ type: "keep" });
+
+      // Opting in without an inline creator changes nothing: there is nothing
+      // to create with.
+      expect(
+        commitAction({
+          ...remote,
+          text: "Zqxwv House Reef",
+          createWithoutSearch: true,
+        }),
       ).toEqual({ type: "keep" });
     });
 
