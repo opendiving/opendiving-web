@@ -5930,6 +5930,16 @@ guard:
   `asChild` merges a child's handlers unconditionally and the toggle would run anyway. A click
   therefore _pins_ the menu — it turns a hover peek into a deliberate open that outlives the pointer
   — and a second click closes it.
+
+  Two things follow from that `preventDefault`. It also costs the press its focus, and since a
+  hover-opened menu never took focus either, a pinned menu would sit there visible and keyboard-dead
+  — Radix's arrows, typeahead and Enter all live on the portaled content, which is not an ancestor
+  of whatever is actually focused, so only Escape (a document-level listener) would still work. The
+  pin therefore focuses the content itself, which is what a deliberate open would have done. And the
+  handler has to guard on `event.button !== 0 || event.ctrlKey` exactly as Radix's own toggle does:
+  a secondary press is a gesture Radix ignores, so taking the hover flag on one would leave the menu
+  with nothing to close it when the pointer left.
+
 - **Only the hover that opens the menu counts as a hover-open.** Re-entering an already-open menu
   must not relabel a pinned one as a peek, or the next click pins what is already pinned instead of
   closing it. That is the `if (!isOpen)` in the enter handler. The flag has to be cleared again when

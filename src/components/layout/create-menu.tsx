@@ -100,6 +100,7 @@ export function CreateMenu() {
   const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   const cancelScheduledOpen = () => {
     if (openTimer.current === null) return;
@@ -162,6 +163,10 @@ export function CreateMenu() {
   // default stops Radix's own toggle (it composes ours first), and dropping the
   // hover flag turns the peek into a deliberate open that outlives the pointer.
   const handlePointerDown = (event: PointerEvent) => {
+    // Radix's toggle ignores everything but a plain primary press, so this has
+    // to as well - a right-click that took the hover flag with it would leave
+    // the menu with nothing to close it once the pointer left.
+    if (event.button !== 0 || event.ctrlKey) return;
     // A click that beats the open delay is its own deliberate open: drop the
     // pending one so it can't land a moment later and relabel it a hover, and
     // leave the toggle to Radix.
@@ -170,6 +175,13 @@ export function CreateMenu() {
     openedByHover.current = false;
     cancelScheduledClose();
     event.preventDefault();
+    // That `preventDefault` is what stops Radix toggling the menu shut, but it
+    // costs the press its focus too - and the menu's arrow keys, typeahead and
+    // Enter all live on the content, which is portaled away from wherever focus
+    // actually is. Pinning is a deliberate open, so it takes the focus a
+    // deliberate open would have taken; `onFocusCapture` below picks that up,
+    // so the close hands it back to the trigger.
+    contentRef.current?.focus({ preventScroll: true });
   };
 
   // Everything Radix drives itself - the trigger's click, Enter/Space/ArrowDown,
@@ -206,6 +218,7 @@ export function CreateMenu() {
       </DropdownMenuTrigger>
       <HoverableDropdownMenuContent
         align="end"
+        ref={contentRef}
         onPointerEnter={handlePointerEnter}
         onPointerLeave={handlePointerLeave}
         // A menu that isn't modal counts its own trigger as outside itself, so

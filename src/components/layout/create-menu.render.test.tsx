@@ -126,6 +126,44 @@ describe("CreateMenu", () => {
     await waitFor(() => expect(isOpen()).toBe(false));
   });
 
+  it("hands the pinned menu the focus its keyboard handlers need", async () => {
+    // Pinning works by preventing the press's default, which costs it the focus
+    // it would otherwise have taken. Radix's arrows, typeahead and Enter all
+    // live on the portaled content, so without this the pinned menu is visible
+    // and keyboard-dead.
+    render(<CreateMenu />);
+    const session = user();
+
+    await session.hover(trigger());
+    await waitFor(() => expect(isOpen()).toBe(true));
+    await session.click(trigger());
+
+    expect(screen.getByRole("menu")).toContainElement(
+      document.activeElement as HTMLElement,
+    );
+    // And having taken focus, it owes it back.
+    await session.keyboard("{Escape}");
+    await waitFor(() => expect(isOpen()).toBe(false));
+    expect(trigger()).toHaveFocus();
+  });
+
+  it("doesn't let a right-click strand the menu open", async () => {
+    // Radix's toggle ignores a secondary press. Taking the hover flag on one
+    // anyway used to leave the menu with nothing to close it - the pointer
+    // leaving no longer did, and only Escape or a click elsewhere would. (The
+    // right-click may well dismiss it on the spot by moving focus off the
+    // content; what matters is that it is never left stuck.)
+    render(<CreateMenu />);
+    const session = user();
+
+    await session.hover(trigger());
+    await waitFor(() => expect(isOpen()).toBe(true));
+    await session.pointer({ target: trigger(), keys: "[MouseRight]" });
+    await session.unhover(trigger());
+
+    await waitFor(() => expect(isOpen()).toBe(false));
+  });
+
   it("opens on a tap that follows a hover it already closed", async () => {
     // The hover flag used to survive the timed close, which left the pin
     // swallowing the next tap on a touchscreen laptop.
