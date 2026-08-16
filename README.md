@@ -90,7 +90,7 @@ start that first (one `docker compose up`), then:
 
 ```bash
 npm install
-cp .env.example .env   # points at http://localhost:8000 by default
+cp .env.example .env   # points at http://localhost:8000/api/v1 by default
 npm run dev
 ```
 
