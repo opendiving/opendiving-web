@@ -9,6 +9,7 @@ import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
 import { formatDateTime } from "@/lib/date-time";
 import { formatCoordinates } from "@/lib/validations/dive-site";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
+import { LocationsMap } from "@/components/map/locations-map-lazy";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -166,6 +167,22 @@ export default function DiveSiteDetailPage() {
                   </div>
                   <div className="text-sm tabular-nums">{coordinates}</div>
                 </div>
+              )}
+
+              {/* Gated on the same both-or-neither pair the coordinates line
+                  is, so a site with no position costs nothing - not even the
+                  map's chunk. The map itself would draw nothing either way. */}
+              {coordinates && (
+                <LocationsMap
+                  locations={[
+                    {
+                      name: diveSite.name,
+                      latitude: diveSite.latitude,
+                      longitude: diveSite.longitude,
+                    },
+                  ]}
+                  subject="the dive site"
+                />
               )}
               <div>
                 <div className="text-sm font-medium text-muted-foreground mb-1">
