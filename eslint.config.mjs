@@ -4,7 +4,13 @@ import nextCoreWebVitals from "eslint-config-next/core-web-vitals"
 const config = [
   ...nextCoreWebVitals,
   {
-    ignores: [".next/**", "out/**", "node_modules/**", "coverage/**"],
+    // `.claude/**` is git-ignored for the same reason it belongs here: it holds
+    // agent worktrees, each a full checkout with its own `.next` and
+    // `node_modules`. Those nested build outputs don't match the bare `.next/**`
+    // pattern above, so linting the repo meant linting minified bundles - a few
+    // hundred errors about someone else's generated code, in a script that is
+    // supposed to fail only for ours.
+    ignores: [".next/**", "out/**", "node_modules/**", "coverage/**", ".claude/**"],
   },
   {
     rules: {
