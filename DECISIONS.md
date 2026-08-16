@@ -5901,15 +5901,24 @@ guard:
   everything outside it. Hovering the rest of the page while the menu is open is the whole point,
   and worse, the trigger stops receiving events too — so the `pointerleave` that closes the menu
   never fires and it hangs open until something else dismisses it.
-- **Focus has to be suppressed on a hover-open, and only on a hover-open.** Radix moves focus into
-  the content on open and back to the trigger on close. For a click or a keypress that is right; for
-  a pointer merely crossing the header it pulls the caret out of whatever form the diver is filling
-  in — verified against `dives/new`, where the field keeps focus through an open and a close.
-  `onOpenAutoFocus` is the only thing that stops the first half, and Radix omits it from the public
-  content props (it is reserved for the menu's internals) while still spreading it through to the
-  focus scope untouched, hence the one-off widened type. `openedByHover` gates both handlers, and
-  because every Radix-driven close routes through `onOpenChange` — which clears the flag before the
-  content unmounts — picking an item still hands focus back to the trigger.
+- **Focus is suppressed on the way in by _how_ the menu opened, and on the way out by whether it
+  ever held focus.** Radix moves focus into the content on open and back to the trigger on close.
+  For a click or a keypress that is right; for a pointer merely crossing the header it pulls the
+  caret out of whatever form the diver is filling in — verified against `dives/new`, where the field
+  keeps focus through a hover open, an Escape, and the close. `onOpenAutoFocus` is the only thing
+  that stops the first half, and Radix omits it from the public content props (it is reserved for
+  the menu's internals) while still spreading it through to the focus scope untouched, hence the
+  one-off widened type; `openedByHover` gates it.
+
+  The way out cannot use that same flag, and Escape is why. It dismisses from anywhere on the page —
+  `DismissableLayer` registers a document-level capture keydown — and it routes through
+  `onOpenChange`, which clears `openedByHover` before the content unmounts, so by the time
+  `onCloseAutoFocus` runs the menu no longer looks hover-opened and Radix's handler focuses the
+  trigger. A diver typing in Notes with the pointer resting on the "+" would lose the caret to a
+  keypress they meant for the page. So the close is gated on a separate `menuTookFocus`, set from
+  the content's `onFocusCapture`: hand focus back only if we took it. That also covers the pointer
+  settling on an item, which focuses it — a peek that ends up holding focus still owes it back.
+
 - **A click on a menu that hover already opened must not dismiss it.** Clicking "+" is habit, and
   Radix reads the click as a toggle, so the menu would vanish out from under the click that was
   aimed at it. Two separate mechanisms have to be headed off: the trigger's own `pointerdown`
@@ -5923,7 +5932,10 @@ guard:
   — and a second click closes it.
 - **Only the hover that opens the menu counts as a hover-open.** Re-entering an already-open menu
   must not relabel a pinned one as a peek, or the next click pins what is already pinned instead of
-  closing it. That is the `if (!isOpen)` in the enter handler.
+  closing it. That is the `if (!isOpen)` in the enter handler. The flag has to be cleared again when
+  the timer closes the menu, too — that close deliberately bypasses `onOpenChange`, and a stale flag
+  makes the pin swallow the next tap on a touchscreen laptop: `pointerdown` sees a hover that
+  finished long ago, prevents the default, and the menu doesn't open until the second tap.
 
 Two smaller ones: the close is on a 150ms timer because the content sits 4px below the trigger
 (`sideOffset`) and a pointer travelling between them is briefly over neither, and the hover path is

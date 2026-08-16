@@ -79,11 +79,18 @@ export function CreateMenu() {
   const openCreate = useQuickCreate();
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
-  // A hover-opened menu is closed and focused differently from a deliberate
-  // one: hovering away closes it (a click-opened menu stays put until it's
-  // dismissed), and it never takes focus, since the pointer only passing over
-  // the "+" shouldn't pull the caret out of whatever the diver is filling in.
+  // True only while a menu the pointer opened is showing. A hover-opened menu
+  // closes when the pointer leaves and never takes focus on the way in; a
+  // clicked or keyed-open one stays until it's dismissed and focuses normally.
   const openedByHover = useRef(false);
+  // Radix hands focus back to the trigger when the menu closes. That's only
+  // right if the menu had focus to give back - it never does when the pointer
+  // merely crossed the "+", and returning it anyway would pull the caret out of
+  // whatever form the diver is filling in. Escape is the reason this is tracked
+  // rather than derived from `openedByHover`: it dismisses from anywhere on the
+  // page, through `onOpenChange`, which has already cleared that flag by the
+  // time the focus handler runs.
+  const menuTookFocus = useRef(false);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
@@ -108,7 +115,10 @@ export function CreateMenu() {
     // over an already-open one mustn't relabel a deliberate open as a hover,
     // which would leave the next click pinning a menu that's already pinned
     // instead of closing it.
-    if (!isOpen) openedByHover.current = true;
+    if (!isOpen) {
+      openedByHover.current = true;
+      menuTookFocus.current = false;
+    }
     setIsOpen(true);
   };
 
@@ -117,6 +127,11 @@ export function CreateMenu() {
     cancelScheduledClose();
     closeTimer.current = setTimeout(() => {
       closeTimer.current = null;
+      // Closing here rather than through `onOpenChange` keeps Radix's own close
+      // handling out of it, so the flag has to be cleared by hand - a menu that
+      // isn't showing was not opened by hover, and leaving it set would have
+      // the pin below swallow the next tap.
+      openedByHover.current = false;
       setIsOpen(false);
     }, HOVER_CLOSE_DELAY_MS);
   };
@@ -134,12 +149,12 @@ export function CreateMenu() {
   };
 
   // Everything Radix drives itself - the trigger's click, Enter/Space/ArrowDown,
-  // Escape, a click outside, picking an item - is deliberate, so it gets the
-  // normal focus handling back. Note this also runs on those closes, which is
-  // what hands focus back to the trigger after an item is picked.
+  // Escape, a click outside, picking an item - is a deliberate open or close,
+  // so nothing here is a hover any more.
   const handleOpenChange = (open: boolean) => {
     cancelScheduledClose();
     openedByHover.current = false;
+    if (open) menuTookFocus.current = false;
     setIsOpen(open);
   };
 
@@ -180,8 +195,14 @@ export function CreateMenu() {
         onOpenAutoFocus={(event) => {
           if (openedByHover.current) event.preventDefault();
         }}
+        // The pointer settling on an item focuses it (Radix's doing), so a menu
+        // that started as a peek can still end up holding focus - and then it
+        // owes it back. One that never took focus keeps its hands off.
+        onFocusCapture={() => {
+          menuTookFocus.current = true;
+        }}
         onCloseAutoFocus={(event) => {
-          if (openedByHover.current) event.preventDefault();
+          if (!menuTookFocus.current) event.preventDefault();
         }}
       >
         {CREATE_ACTIONS.map((action) => {
