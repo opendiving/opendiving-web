@@ -278,3 +278,30 @@ describe("useResource when a revalidation fails", () => {
     expect(push).toHaveBeenCalledWith("/dives");
   });
 });
+
+describe("useResource evicting a record that is gone", () => {
+  it("drops the stale copy even if the diver has already navigated away", async () => {
+    // Cross-tab shape: the dive was deleted elsewhere, so nothing in this tab
+    // cleared the cache. The diver opens it (served stale), steps to the next
+    // dive before the revalidation lands, and the 404 arrives after unmount.
+    // Evicting has to happen anyway, or coming back renders the phantom and
+    // bounces for the rest of the five minutes.
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValueOnce({ uuid: "dive-1", notes: "cached" })
+      .mockRejectedValueOnce({ response: { status: 404 } });
+    const options = { ...OPTIONS, cacheKey: "dive" };
+
+    const first = renderHook(() => useResource(fetchFn, options));
+    await waitFor(() => expect(first.result.current.isLoading).toBe(false));
+    first.unmount();
+
+    const second = renderHook(() => useResource(fetchFn, options));
+    second.unmount();
+
+    await waitFor(() => expect(fetchFn).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(readResourceCache("dive:dive-1")).toBeUndefined(),
+    );
+  });
+});

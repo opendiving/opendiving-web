@@ -5997,9 +5997,23 @@ and redirects, and also evicts the stale entry, or every later visit to that URL
 from cache and bounce again for five minutes. Anything else keeps the copy already on screen and
 logs. A first load with nothing cached behaves exactly as it always did.
 
+Evicting a gone record happens above the unmount guard, like the success path's write and for the
+same reason: it is a cache operation, not a UI one, and a 404 that arrives after the diver stepped
+to the next dive is just as true. Without that, a record deleted on another device stayed cached for
+its full five minutes, rendering and then bouncing on every visit.
+
 `usePaginatedResource` makes the same call about its toast: a destructive "Failed to load dives"
 over a full and correct table says the page is broken, when what actually failed was a refresh of
 something the diver can already read. With nothing cached it still reports the failure.
+
+### Known trade: a sustained outage is quiet
+
+Both hooks suppress the error toast whenever there is cached content on screen, which is right for a
+blip and less right for a long outage - the diver reads minutes-old rows with only a
+`console.error`, and on a list the next page click fails the same silent way. Accepted rather than
+unnoticed: the alternative is a destructive toast over a full, correct table, which says the page is
+broken when it isn't. A "showing cached results" affordance would be the honest third option and is
+not built.
 
 ### Still uncached
 
