@@ -77,6 +77,7 @@ export default function CertificationsPage() {
   } = usePaginatedResource<Certification>(fetchCertifications, {
     enabled: !!user,
     errorMessage: "Failed to load certifications. Please try again.",
+    cacheKey: user ? `certifications:${user.uuid}` : undefined,
   });
 
   // After a card image changes, the list's embedded file metadata is stale. Refetch

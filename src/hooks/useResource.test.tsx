@@ -1,6 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useResource } from "./useResource";
+import { clearResourceCache } from "@/lib/resource-cache";
 
 const push = vi.fn();
 const toast = vi.fn();
@@ -28,6 +29,7 @@ beforeEach(() => {
   push.mockClear();
   toast.mockClear();
   params = { id: "dive-1" };
+  clearResourceCache();
 });
 
 describe("useResource", () => {
@@ -138,5 +140,82 @@ describe("useResource", () => {
       uuid: "dive-1",
       notes: "before",
     });
+  });
+});
+
+describe("useResource with a cacheKey", () => {
+  it("shows a record it has seen before without a loading state", async () => {
+    const fetchFn = vi.fn().mockResolvedValue({ uuid: "dive-1", notes: "viz" });
+    const options = { ...OPTIONS, cacheKey: "dive" };
+
+    const first = renderHook(() => useResource(fetchFn, options));
+    await waitFor(() => expect(first.result.current.isLoading).toBe(false));
+    first.unmount();
+
+    // The second visit is the point of the whole exercise: the record is on
+    // screen from the first render, with no pass through `isLoading`.
+    const second = renderHook(() => useResource(fetchFn, options));
+    expect(second.result.current.resource).toEqual({
+      uuid: "dive-1",
+      notes: "viz",
+    });
+    expect(second.result.current.isLoading).toBe(false);
+  });
+
+  it("still refetches behind the cached copy, and takes the fresh answer", async () => {
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValueOnce({ uuid: "dive-1", notes: "before" })
+      .mockResolvedValueOnce({ uuid: "dive-1", notes: "after" });
+    const options = { ...OPTIONS, cacheKey: "dive" };
+
+    const first = renderHook(() => useResource(fetchFn, options));
+    await waitFor(() => expect(first.result.current.isLoading).toBe(false));
+    first.unmount();
+
+    const second = renderHook(() => useResource(fetchFn, options));
+    expect(second.result.current.resource).toEqual({
+      uuid: "dive-1",
+      notes: "before",
+    });
+
+    // Stale-*while-revalidate*: showing the old copy must not mean skipping the
+    // request, or an edit made in another tab would never appear.
+    await waitFor(() =>
+      expect(second.result.current.resource).toEqual({
+        uuid: "dive-1",
+        notes: "after",
+      }),
+    );
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+  });
+
+  it("keys on the route id, so one record is not served for another", async () => {
+    const fetchFn = vi
+      .fn()
+      .mockImplementation((id: string) => Promise.resolve({ uuid: id }));
+    const options = { ...OPTIONS, cacheKey: "dive" };
+
+    const first = renderHook(() => useResource(fetchFn, options));
+    await waitFor(() => expect(first.result.current.isLoading).toBe(false));
+    first.unmount();
+
+    params = { id: "dive-2" };
+    const second = renderHook(() => useResource(fetchFn, options));
+    expect(second.result.current.isLoading).toBe(true);
+    await waitFor(() => expect(second.result.current.isLoading).toBe(false));
+    expect(second.result.current.resource).toEqual({ uuid: "dive-2" });
+  });
+
+  it("caches nothing without a cacheKey", async () => {
+    const fetchFn = vi.fn().mockResolvedValue({ uuid: "dive-1" });
+
+    const first = renderHook(() => useResource(fetchFn, OPTIONS));
+    await waitFor(() => expect(first.result.current.isLoading).toBe(false));
+    first.unmount();
+
+    const second = renderHook(() => useResource(fetchFn, OPTIONS));
+    expect(second.result.current.isLoading).toBe(true);
+    expect(second.result.current.resource).toBeNull();
   });
 });

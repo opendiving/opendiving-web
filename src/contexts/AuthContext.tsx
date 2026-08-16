@@ -6,6 +6,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   ReactNode,
 } from "react";
@@ -16,6 +17,7 @@ import {
   refreshAccessToken,
 } from "@/lib/api/client";
 import { rememberPostAuthRedirect } from "@/lib/auth-redirect";
+import { clearResourceCache } from "@/lib/resource-cache";
 import { hardNavigate } from "@/lib/navigation";
 
 // Carried from `/auth/verify` or the Google button to the profile-completion page
@@ -82,6 +84,22 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     initAuth();
   }, []);
+
+  // Whoever the cached lists and records belong to, it isn't the next person to
+  // use this tab. Signing out already takes the whole document with it
+  // (`hardNavigate`), so this exists for the paths that don't: a session that
+  // expires mid-visit clears the user in place, and the diver - or somebody
+  // else - can sign in again without the module ever being re-evaluated.
+  //
+  // Keyed on identity rather than on the object, which is replaced by
+  // `refreshUser` without anybody having changed.
+  const signedInAs = useRef<string | null>(null);
+  useEffect(() => {
+    const uuid = user?.uuid ?? null;
+    if (signedInAs.current === uuid) return;
+    signedInAs.current = uuid;
+    clearResourceCache();
+  }, [user]);
 
   // Clear the (now stale) user when a token refresh fails elsewhere in the
   // app (see client.ts). Existing per-page "redirect if unauthenticated"

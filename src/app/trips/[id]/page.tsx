@@ -34,6 +34,7 @@ export default function TripDetailPage() {
     enabled: !!user,
     errorMessage: "Failed to load trip details. Please try again.",
     redirectTo: "/trips",
+    cacheKey: "trip",
   });
 
   const del = useDeleteResource(tripsAPI.deleteTrip, {

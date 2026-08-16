@@ -61,6 +61,7 @@ export default function DivesPage() {
   } = usePaginatedResource<Dive>(fetchDives, {
     enabled: !!user,
     errorMessage: "Failed to load dives. Please try again.",
+    cacheKey: user ? `dives:${user.uuid}` : undefined,
   });
 
   const {

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/use-toast";
+import { readResourceCache, writeResourceCache } from "@/lib/resource-cache";
 
 interface UseResourceOptions<T> {
   /** Hold off fetching until this is true (typically until `user` is known). */
@@ -17,6 +18,21 @@ interface UseResourceOptions<T> {
    * function - the obvious thing to write - doesn't restart the fetch.
    */
   onLoaded?: (resource: T) => void;
+  /**
+   * Opt into stale-while-revalidate. Pass a prefix naming the kind of thing
+   * being fetched (`dive`, `gear`); the route's id is added to it. Stepping back
+   * into a record seen recently then shows it immediately and refreshes behind
+   * it, rather than standing the page in again.
+   *
+   * Omit it and the hook behaves exactly as it did before the cache existed.
+   *
+   * **Not for pages that seed a form from `onLoaded`.** A cache hit fires
+   * `onLoaded` twice - once with the stale record, once with the fresh one - and
+   * on the dive edit page the second call is a `form.reset` that would discard
+   * anything typed in between. Read-only pages have no such window, which is why
+   * `dives/[id]` opts in and `dives/[id]/edit` deliberately does not.
+   */
+  cacheKey?: string;
 }
 
 /**
@@ -35,7 +51,13 @@ interface UseResourceOptions<T> {
  */
 export function useResource<T>(
   fetchFn: (id: string) => Promise<T>,
-  { enabled = true, errorMessage, redirectTo, onLoaded }: UseResourceOptions<T>,
+  {
+    enabled = true,
+    errorMessage,
+    redirectTo,
+    onLoaded,
+    cacheKey,
+  }: UseResourceOptions<T>,
 ) {
   const params = useParams();
   const router = useRouter();
@@ -61,22 +83,42 @@ export function useResource<T>(
     try {
       const data = await fetchFn(id);
       setResource(data);
+      if (cacheKey) writeResourceCache(`${cacheKey}:${id}`, data);
       onLoadedRef.current?.(data);
     } catch (error) {
       console.error(errorMessage, error);
     }
-  }, [id, fetchFn, errorMessage]);
+  }, [id, fetchFn, errorMessage, cacheKey]);
 
   useEffect(() => {
     if (!enabled || !id) return;
     let cancelled = false;
 
+    const key = cacheKey ? `${cacheKey}:${id}` : undefined;
+    const cached = key ? readResourceCache<T>(key) : undefined;
+
     const load = async () => {
+      // A hit means the page has something to render, so this is a refresh and
+      // `isLoading` stays false: the record shows immediately and is replaced
+      // when the answer lands. `onLoaded` runs for it too - the dive edit page
+      // seeds its form there, and a form left empty until the network answered
+      // would be the one place a cache hit made things worse.
+      //
+      // Read inside the effect rather than in the `useState` initialiser, so the
+      // server's first render (where the cache is always empty) and the
+      // browser's agree and hydration has nothing to reconcile.
+      if (cached) {
+        setResource(cached);
+        setIsLoading(false);
+        onLoadedRef.current?.(cached);
+      }
+
       try {
-        setIsLoading(true);
+        if (!cached) setIsLoading(true);
         const data = await fetchFn(id);
         if (cancelled) return;
         setResource(data);
+        if (key) writeResourceCache(key, data);
         onLoadedRef.current?.(data);
       } catch (error) {
         console.error(errorMessage, error);
@@ -99,7 +141,7 @@ export function useResource<T>(
     return () => {
       cancelled = true;
     };
-  }, [enabled, id, fetchFn, errorMessage, redirectTo, toast, router]);
+  }, [enabled, id, fetchFn, errorMessage, redirectTo, toast, router, cacheKey]);
 
   return { id, resource, setResource, isLoading, refetch };
 }

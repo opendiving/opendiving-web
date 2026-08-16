@@ -51,6 +51,7 @@ export default function TripsPage() {
   } = usePaginatedResource<Trip>(fetchTrips, {
     enabled: !!user,
     errorMessage: "Failed to load trips. Please try again.",
+    cacheKey: user ? `trips:${user.uuid}` : undefined,
   });
 
   const {

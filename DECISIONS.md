@@ -5887,3 +5887,70 @@ flash. And nothing here caches: returning to `/dives` still refetches and still 
 where a stale-while-revalidate layer under `usePaginatedResource` would show the previous rows
 immediately and never enter a loading state at all. Both are worth doing; neither is worth doing
 before the layout stops moving.
+
+## Revisiting a page shows what it showed last time, and refetches behind it
+
+The skeleton work above made a load look deliberate rather than jerky. This removes the load:
+`usePaginatedResource` and `useResource` now read a cached copy of the last response before they
+fetch, so stepping back into `/dives` paints the rows it painted before and the request runs behind
+them. There is no loading state on a revisit at all.
+
+`lib/resource-cache.ts` is deliberately not a data-fetching library. No deduplication, no
+subscriptions, no polling, no fine-grained invalidation - a `Map` with a five-minute age limit and a
+fifty-entry LRU cap. Everything it doesn't do is a thing that can't go subtly wrong, and the two
+hooks were already the only places a list or a record is fetched.
+
+### Invalidation is all-or-nothing, on purpose
+
+Any non-GET response empties the entire cache, wired into the response interceptor in
+`lib/api/client.ts` rather than into the call sites.
+
+The alternative - invalidating what a write actually affected - is a dependency graph that has to be
+right every time somebody adds an endpoint. One deleted dive changes the dives list, that dive's
+page, its trip's dives, its site's dives, its gear's dive counts and the dashboard's stats; miss one
+and the diver is looking at a dive they just deleted. Emptying the map costs a refetch of whatever
+they open next, which is exactly what would have happened before any of this existed. The
+interceptor placement matters as much as the policy: it is the one point every write already passes
+through, so a new endpoint is covered without anybody remembering to cover it.
+
+The cache is also emptied whenever the signed-in user changes. Signing out already takes the whole
+document with it (`hardNavigate`), so that path was safe by accident; a session that expires
+mid-visit is not, because it clears the user in place and somebody else can sign in without the
+module ever being re-evaluated. Keys carry the user's uuid as well, which is belt and braces rather
+than redundancy: it means a bug in the clearing path still cannot show one diver another's list.
+
+### Read in the effect, not in the state initialiser
+
+The obvious way to make a cache hit paint on the _first_ render is to seed `useState` from it. That
+produces a hydration mismatch: these are client components, Next still renders them on the server,
+and the cache there is always empty - so the server's HTML and the browser's first render would
+disagree.
+
+Reading inside the fetch effect instead costs one frame of `isLoading`, which is invisible in
+practice for the same reason the skeleton work relies on: the placeholder that frame drives is
+transparent for its first 150ms.
+
+The module also refuses to read or write off the browser at all. Nothing writes from the server
+today - writes only happen after a fetch in an effect - but a module-level `Map` on a server is
+shared by every request the process handles, which is the exact shape of an "I can see someone
+else's dives" bug. It is worth closing structurally rather than relying on that staying true.
+
+### The edit page deliberately doesn't opt in
+
+`useResource`'s `onLoaded` fires for the cached record _and_ again for the fresh one. On a read-only
+page that is a swap nobody notices. On `dives/[id]/edit`, `onLoaded` is a `form.reset`, so the
+second call would discard whatever had been typed in the window between them - the one place where
+showing something sooner makes the page worse. Read-only detail pages pass `cacheKey`; the edit page
+doesn't, and the option's JSDoc says why.
+
+A failed revalidation still toasts and redirects to the list page, exactly as a failed first load
+does. It reads harshly - the record was on screen a moment ago - but the alternative is leaving a
+deleted dive up because the request that said so failed.
+
+### Still uncached
+
+The two hooks cover every list and every detail record. They do not cover the components that fetch
+straight into their own state: the dive profile card, and the dashboard's gas, activity,
+recent-dives and recent-trips cards. A revisited dive page is therefore instant except for its
+profile, and the dashboard still loads as it always did. Extending it means giving each of those a
+key of its own, which is a second piece of work rather than a line in this one.
