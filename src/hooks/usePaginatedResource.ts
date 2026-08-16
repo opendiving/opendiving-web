@@ -129,6 +129,13 @@ export function usePaginatedResource<T>(
       } catch (error) {
         if (latestRequest.current !== requestId) return;
         console.error(errorMessage, error);
+
+        // Nothing to report if the rows are already on screen: a destructive
+        // toast over a correct table says the page is broken when what actually
+        // failed was a refresh of something the diver can already read. Same
+        // call `useResource` makes for a detail page, and for the same reason.
+        if (cached) return;
+
         toast({
           title: "Error",
           description: errorMessage,
