@@ -58,6 +58,12 @@ function withReturnTo(href: string, pathname: string | null): string {
   return `${href}?from=${encodeURIComponent(pathname)}`;
 }
 
+// The "+" sits on the way to the avatar and above the page's own actions, so a
+// pointer crosses it without meaning anything by it. Waiting for the pointer to
+// settle keeps a five-item menu from dropping into the path of a click aimed at
+// something under it.
+const HOVER_OPEN_DELAY_MS = 150;
+
 // The menu sits 4px below the trigger, so a pointer travelling between the two
 // is briefly over neither. Closing on a delay rides out that gap instead of
 // flickering the menu shut halfway to it.
@@ -91,8 +97,15 @@ export function CreateMenu() {
   // page, through `onOpenChange`, which has already cleared that flag by the
   // time the focus handler runs.
   const menuTookFocus = useRef(false);
+  const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+
+  const cancelScheduledOpen = () => {
+    if (openTimer.current === null) return;
+    clearTimeout(openTimer.current);
+    openTimer.current = null;
+  };
 
   const cancelScheduledClose = () => {
     if (closeTimer.current === null) return;
@@ -102,28 +115,35 @@ export function CreateMenu() {
 
   useEffect(() => {
     return () => {
+      if (openTimer.current !== null) clearTimeout(openTimer.current);
       if (closeTimer.current !== null) clearTimeout(closeTimer.current);
     };
   }, []);
 
-  // Mice only. A tap fires `pointerenter` too, and opening on it would race the
-  // tap's own click, which toggles the menu straight back shut.
+  // Mice only. A tap fires `pointerenter` too, and a menu that opened from that
+  // would be racing the tap's own click, which toggles it straight back shut.
   const handlePointerEnter = (event: PointerEvent) => {
     if (event.pointerType !== "mouse") return;
     cancelScheduledClose();
-    // Only the hover that *opens* the menu counts. The pointer wandering back
-    // over an already-open one mustn't relabel a deliberate open as a hover,
-    // which would leave the next click pinning a menu that's already pinned
-    // instead of closing it.
-    if (!isOpen) {
+    // Re-entering an open menu has nothing to schedule, and mustn't relabel a
+    // deliberate open as a hover - the next click would pin what is already
+    // pinned instead of closing it.
+    if (isOpen) return;
+    cancelScheduledOpen();
+    openTimer.current = setTimeout(() => {
+      openTimer.current = null;
       openedByHover.current = true;
       menuTookFocus.current = false;
-    }
-    setIsOpen(true);
+      setIsOpen(true);
+    }, HOVER_OPEN_DELAY_MS);
   };
 
   const handlePointerLeave = (event: PointerEvent) => {
-    if (event.pointerType !== "mouse" || !openedByHover.current) return;
+    if (event.pointerType !== "mouse") return;
+    // Whatever else this is, the pointer has left before the menu was due: a
+    // crossing, not an approach.
+    cancelScheduledOpen();
+    if (!openedByHover.current) return;
     cancelScheduledClose();
     closeTimer.current = setTimeout(() => {
       closeTimer.current = null;
@@ -142,6 +162,10 @@ export function CreateMenu() {
   // default stops Radix's own toggle (it composes ours first), and dropping the
   // hover flag turns the peek into a deliberate open that outlives the pointer.
   const handlePointerDown = (event: PointerEvent) => {
+    // A click that beats the open delay is its own deliberate open: drop the
+    // pending one so it can't land a moment later and relabel it a hover, and
+    // leave the toggle to Radix.
+    cancelScheduledOpen();
     if (!openedByHover.current) return;
     openedByHover.current = false;
     cancelScheduledClose();
@@ -152,6 +176,7 @@ export function CreateMenu() {
   // Escape, a click outside, picking an item - is a deliberate open or close,
   // so nothing here is a hover any more.
   const handleOpenChange = (open: boolean) => {
+    cancelScheduledOpen();
     cancelScheduledClose();
     openedByHover.current = false;
     if (open) menuTookFocus.current = false;

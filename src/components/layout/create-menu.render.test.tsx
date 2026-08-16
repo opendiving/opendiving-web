@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CreateMenu } from "./create-menu";
 
@@ -9,7 +9,8 @@ import { CreateMenu } from "./create-menu";
 // and each is a `pointerType` or a Radix seam away from silently regressing -
 // see "The '+' menu opens on hover" in DECISIONS.md.
 
-vi.mock("next/navigation", () => ({ usePathname: () => "/dashboard" }));
+let pathname = "/dashboard";
+vi.mock("next/navigation", () => ({ usePathname: () => pathname }));
 
 const openCreate = vi.fn();
 vi.mock("@/components/layout/quick-create", () => ({
@@ -29,6 +30,7 @@ const afterTheGracePeriod = () => new Promise((r) => setTimeout(r, 250));
 
 beforeEach(() => {
   openCreate.mockClear();
+  pathname = "/dashboard";
 });
 
 describe("CreateMenu", () => {
@@ -49,15 +51,44 @@ describe("CreateMenu", () => {
     ]);
   });
 
-  it("opens on a tap and stays open, because touch never arms the hover", async () => {
-    // A tap fires `pointerenter` as well as `pointerdown`. If the hover path
-    // took it, the tap would open the menu and its own click would toggle it
-    // straight back shut - and the close timer would be armed besides.
+  it("stays shut for a pointer that only crosses the +", async () => {
+    // The "+" is on the way to the avatar and above the page's own actions, so
+    // an opening menu has to mean the pointer settled, not that it passed by.
+    render(<CreateMenu />);
+    const session = user();
+
+    await session.hover(trigger());
+    await session.unhover(trigger());
+
+    // Never opened on the way past, and no pending open lands afterwards
+    // either - the second half is what a check of the end state alone would
+    // miss, since the close delay would have tidied an early open away.
+    expect(isOpen()).toBe(false);
+    await afterTheGracePeriod();
+    expect(isOpen()).toBe(false);
+  });
+
+  it("doesn't treat a touch pointer arriving as a hover", async () => {
+    // Fired on its own, without the `pointerdown` a tap would put behind it,
+    // because that is the half the guard owns: a tap opens the menu through
+    // Radix's trigger either way (the case below), so a test that taps passes
+    // whether or not `handlePointerEnter` filters on `pointerType`.
+    render(<CreateMenu />);
+
+    fireEvent.pointerEnter(trigger(), { pointerType: "touch" });
+
+    expect(isOpen()).toBe(false);
+  });
+
+  it("opens on a tap and stays open, through the trigger rather than the hover", async () => {
     render(<CreateMenu />);
 
     await user().pointer({ target: trigger(), keys: "[TouchA]" });
 
     await waitFor(() => expect(isOpen()).toBe(true));
+    // Lifting the finger ends the touch pointer, which fires `pointerleave`.
+    // Nothing may be armed by it - a menu that closes itself a moment after a
+    // tap opened it is the failure this guards.
     await afterTheGracePeriod();
     expect(isOpen()).toBe(true);
   });
@@ -170,6 +201,20 @@ describe("CreateMenu", () => {
     expect(screen.getByRole("menuitem", { name: "New Dive" })).toHaveAttribute(
       "href",
       "/dives/new?from=%2Fdashboard",
+    );
+  });
+
+  it("sends nothing back when the page it was launched from is itself a form", async () => {
+    // Otherwise Cancel on the new form would point at the form being cancelled.
+    pathname = "/dives/new";
+    render(<CreateMenu />);
+
+    await user().hover(trigger());
+    await waitFor(() => expect(isOpen()).toBe(true));
+
+    expect(screen.getByRole("menuitem", { name: "New Dive" })).toHaveAttribute(
+      "href",
+      "/dives/new",
     );
   });
 });

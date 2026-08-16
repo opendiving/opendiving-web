@@ -5937,8 +5937,20 @@ guard:
   makes the pin swallow the next tap on a touchscreen laptop: `pointerdown` sees a hover that
   finished long ago, prevents the default, and the menu doesn't open until the second tap.
 
-Two smaller ones: the close is on a 150ms timer because the content sits 4px below the trigger
-(`sideOffset`) and a pointer travelling between them is briefly over neither, and the hover path is
-gated on `pointerType === "mouse"` because a tap fires `pointerenter` too — opening there would race
-the tap's own click into closing the menu again. Touch is unchanged: the tap opens the menu through
-Radix exactly as before, and never arms the hover-close.
+Both edges are on a 150ms timer, for different reasons. The close waits because the content sits 4px
+below the trigger (`sideOffset`) and a pointer travelling between them is briefly over neither, so
+an immediate close would flicker the menu shut halfway to it. The open waits because the "+" sits
+between the nav links and the avatar and above the page's own actions — without it, crossing the
+header pops a five-item menu open, and since the menu drops downward it lands in the path of a
+pointer heading for something below, where Radix focuses whatever item it crosses and a click fires
+the wrong action. A close delay without an open delay is only half the pointer-transit problem.
+
+The two timers cancel each other and are cancelled by every deliberate open: `pointerleave` drops a
+pending open before it can land (a crossing, not an approach), and both `pointerdown` and
+`onOpenChange` drop one too — a click that beats the delay is its own deliberate open, and a pending
+hover landing a moment later would relabel it a peek.
+
+Last one: the hover path is gated on `pointerType === "mouse"` because a tap fires `pointerenter`
+too, and a menu opened from that would be racing the tap's own click into closing again. Touch is
+otherwise unchanged — the tap opens the menu through Radix exactly as before, and never arms the
+hover-close.
