@@ -16,7 +16,7 @@ The web app is a frontend for the API, so start that first (one `docker compose 
 
 ```bash
 npm install
-cp .env.example .env   # points at http://localhost:8000 by default
+cp .env.example .env   # points at http://localhost:8000/api/v1 by default
 npm run dev
 ```
 

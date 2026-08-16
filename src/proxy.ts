@@ -30,7 +30,7 @@ export function proxy(request: NextRequest) {
   // directly as axios' `baseURL` in `lib/api/client.ts`), strip it down to
   // just the origin here.
   const apiOrigin = new URL(
-    process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000",
+    process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1",
   ).origin;
   // The map picker's raster tiles, and the *only* thing the map needs from CSP
   // - which is the whole reason it is hand-rolled rather than MapLibre, whose

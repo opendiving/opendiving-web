@@ -7,7 +7,10 @@ import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
  */
 export const AUTH_SESSION_EXPIRED_EVENT = "auth:session-expired";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// The full base every request is appended to, `/api/v1` prefix included - the API
+// mounts nothing at the bare origin, so a value without it 404s on every call.
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
 
 // The access token is intentionally kept in memory only, never in
 // localStorage/sessionStorage: those are readable by any JS running on the

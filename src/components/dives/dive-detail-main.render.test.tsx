@@ -23,28 +23,28 @@ function dive(overrides: Partial<Dive> = {}): Dive {
 }
 
 describe("DiveDetailMain duration and depth card", () => {
-  it("puts all three figures under one heading", () => {
+  it("puts all three figures in one card", () => {
     render(
       <DiveDetailMain dive={dive({ max_depth: 30.52, avg_depth: 18.2 })} />,
     );
 
-    expect(
-      screen.getByRole("heading", { name: /duration & depth/i }),
-    ).toBeInTheDocument();
     expect(screen.getByText("45min")).toBeInTheDocument();
     expect(screen.getByText("30.52m")).toBeInTheDocument();
     expect(screen.getByText("18.2m")).toBeInTheDocument();
   });
 
-  it("no longer heads a card for either half on its own", () => {
-    // The two headings this card replaced. A stray one would mean the merge only
-    // half happened, which a "does the number render" test would not notice.
+  it("heads the card with nothing at all", () => {
+    // The two headings the merge replaced, plus the merged card's own former
+    // title - each figure carries its own label, so a heading over them only
+    // restated those. A stray one would mean the removal half happened, which a
+    // "does the number render" test would not notice.
     render(
       <DiveDetailMain dive={dive({ max_depth: 30.52, avg_depth: 18.2 })} />,
     );
 
     expect(screen.queryByText(/time & duration/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/depth information/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/duration & depth/i)).not.toBeInTheDocument();
   });
 
   it("leaves the start time to the page header", () => {

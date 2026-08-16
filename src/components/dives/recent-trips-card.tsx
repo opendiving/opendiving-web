@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { ListRowsSkeleton } from "@/components/ui/skeleton";
 import { useQuickCreate } from "@/components/layout/quick-create";
 import { formatTripDateRange } from "@/lib/date-time";
-import { formatTripLocationNames } from "@/lib/trip-locations";
+import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
 import { Luggage, Plus, Calendar } from "lucide-react";
 
 const RECENT_TRIPS_COUNT = 5;
@@ -94,35 +94,27 @@ export function RecentTripsCard({ userId }: RecentTripsCardProps) {
           </div>
         ) : (
           <div className="space-y-3">
-            {recentTrips.map((trip) => {
-              const locationNames = formatTripLocationNames(trip.locations, {
-                max: 2,
-              });
-              return (
-                <Link
-                  key={trip.uuid}
-                  href={`/trips/${trip.uuid}`}
-                  className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 p-3 rounded-lg border hover:bg-muted transition-colors"
-                >
-                  <div className="min-w-0">
-                    <div className="font-medium text-foreground">
-                      {trip.name}
-                    </div>
-                    {locationNames && (
-                      <div className="text-sm text-muted-foreground">
-                        {locationNames}
-                      </div>
-                    )}
+            {recentTrips.map((trip) => (
+              <Link
+                key={trip.uuid}
+                href={`/trips/${trip.uuid}`}
+                className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 p-3 rounded-lg border hover:bg-muted transition-colors"
+              >
+                <div className="min-w-0">
+                  <div className="font-medium text-foreground">{trip.name}</div>
+                  <TripLocationsLabel
+                    locations={trip.locations}
+                    className="block text-sm text-muted-foreground"
+                  />
+                </div>
+                {formatTripDisplayDate(trip) && (
+                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <Calendar className="h-4 w-4" />
+                    {formatTripDisplayDate(trip)}
                   </div>
-                  {formatTripDisplayDate(trip) && (
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                      <Calendar className="h-4 w-4" />
-                      {formatTripDisplayDate(trip)}
-                    </div>
-                  )}
-                </Link>
-              );
-            })}
+                )}
+              </Link>
+            ))}
           </div>
         )}
       </CardContent>
