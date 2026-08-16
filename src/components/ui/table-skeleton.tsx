@@ -25,7 +25,11 @@ export function TableRowsSkeleton({
   return (
     <>
       {Array.from({ length: rows }, (_, row) => (
-        <TableRow key={row}>
+        // Hidden as a whole row, not just bar by bar. The `Skeleton`s inside
+        // are already `aria-hidden`, but that leaves the `<tr>`/`<td>` in the
+        // tree - so a screen reader opening /dives would be told the table has
+        // eleven rows, ten of them empty, where the spinner said nothing.
+        <TableRow key={row} aria-hidden>
           {Array.from({ length: columns }, (_, column) => (
             <TableCell key={column}>
               <Skeleton

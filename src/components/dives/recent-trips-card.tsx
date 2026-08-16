@@ -77,7 +77,7 @@ export function RecentTripsCard({ userId }: RecentTripsCardProps) {
       </CardHeader>
       <CardContent>
         {isLoadingTrips ? (
-          <ListRowsSkeleton />
+          <ListRowsSkeleton rows={RECENT_TRIPS_COUNT} />
         ) : recentTrips.length === 0 ? (
           <div className="text-center py-8">
             <Luggage className="h-12 w-12 text-muted-foreground mx-auto mb-4" />

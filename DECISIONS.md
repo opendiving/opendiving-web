@@ -5735,6 +5735,15 @@ against 536 loading.
 state and none on the swap that mattered. It is now a 150ms fade with no travel: what it animates is
 real page structure, so it only needs enough to mark that the route changed.
 
+### The placeholders are hidden from assistive tech, rows and all
+
+`Skeleton` carries `aria-hidden`, but that only hides the bar - the `<tr>`/`<td>` and the bordered
+row `<div>`s around them stay in the accessibility tree, so a screen reader opening `/dives` would
+be told the table has eleven rows, ten of them empty cells, where the spinner it replaced announced
+nothing at all. `TableRowsSkeleton` hides each placeholder row and `ListRowsSkeleton` its whole
+container. `page-skeleton.render.test.tsx` asserts that `getAllByRole("row")` finds none of them,
+which is the assertion that fails if a later change drops the attribute.
+
 ### Measured, not eyeballed
 
 Every height above came from `getBoundingClientRect()` on the real pages with the API held back by a
@@ -5743,6 +5752,12 @@ element. That is worth repeating rather than trusting a screenshot, because thre
 placeholders were wrong on the first attempt and none of the errors were visible by eye: the
 subtitle bar was `h-5` against a 24px line box, the table's skeleton row count disagreed with the
 page size, and the gas chart's legend was unaccounted for.
+
+`ListRowsSkeleton` is the same story as the table's row count: its bars are `h-5`/`h-4` against the
+real row's `text-base` over `text-sm`, and its count comes from the card's own
+`RECENT_DIVES_COUNT`/`RECENT_TRIPS_COUNT` rather than a default. At three shorter rows the two
+dashboard cards painted 186px and settled at 350px - a 164px jump on the page this work exists to
+fix. They now measure 522px in both states.
 
 Two shifts survive deliberately. The dive detail page still moves 4px, because its subtitle is
 `DiveDateNav` - buttons, so 28px rather than the 24px every other detail page's subtitle occupies -

@@ -117,7 +117,12 @@ export function RecentDivesCard({
       </CardHeader>
       <CardContent>
         {isLoadingDives ? (
-          <ListRowsSkeleton />
+          // Capped at `RECENT_DIVES_COUNT`, not just `limit`: on the dashboard
+          // the two are the same and the placeholder is exactly right, while
+          // the site/trip/gear detail pages pass a limit of 100 for "all of
+          // them", where the real count isn't knowable up front and five rows
+          // is a better guess than a hundred.
+          <ListRowsSkeleton rows={Math.min(limit, RECENT_DIVES_COUNT)} />
         ) : recentDives.length === 0 ? (
           <div className="text-center py-12">
             <Waves className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
