@@ -113,6 +113,14 @@ const config: Config = {
         // `both` is what holds opacity at 0 through the delay.
         skeleton:
           "skeleton-in 200ms ease-out 150ms both, skeleton-pulse 1.8s ease-in-out 350ms infinite",
+        // The reveal half on its own, for the *chrome* a placeholder draws - the
+        // card outlines and row borders. Those are real `Card`s and `TableRow`s,
+        // so without this they paint instantly and a fast response still flashes
+        // a grid of empty bordered boxes, which is most of what the delay exists
+        // to prevent. Deliberately not the full `skeleton` shorthand: a pulsing
+        // container multiplied by a pulsing bar would dip the bars to a quarter
+        // opacity instead of half.
+        "skeleton-reveal": "skeleton-in 200ms ease-out 150ms both",
       },
     },
   },
