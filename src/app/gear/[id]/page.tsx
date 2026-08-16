@@ -51,7 +51,7 @@ export default function GearItemDetailPage() {
     enabled: !!user,
     errorMessage: "Failed to load gear details. Please try again.",
     redirectTo: "/gear",
-    cacheKey: "gear",
+    cacheKey: user ? `gear:${user.uuid}` : undefined,
   });
 
   const del = useDeleteResource(gearAPI.deleteGearItem, {

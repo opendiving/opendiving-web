@@ -5913,11 +5913,33 @@ they open next, which is exactly what would have happened before any of this exi
 interceptor placement matters as much as the policy: it is the one point every write already passes
 through, so a new endpoint is covered without anybody remembering to cover it.
 
+A GET already in flight when a write clears the cache is carrying a body from before that write, and
+the hooks' `latestRequest` guard cannot see it - that only orders requests _within_ one hook, and
+stale-while-revalidate is exactly the state where a page is fully interactive with a revalidation
+still running, so a delete can land in the middle of one. `resource-cache.ts` keeps a generation
+counter that every clear bumps; readers capture it before fetching and hand it back on write, and a
+write from an older generation is dropped rather than resurrecting a deleted dive for the next five
+minutes.
+
 The cache is also emptied whenever the signed-in user changes. Signing out already takes the whole
 document with it (`hardNavigate`), so that path was safe by accident; a session that expires
 mid-visit is not, because it clears the user in place and somebody else can sign in without the
 module ever being re-evaluated. Keys carry the user's uuid as well, which is belt and braces rather
 than redundancy: it means a bug in the clearing path still cannot show one diver another's list.
+
+### A key has to cover everything the fetcher closes over
+
+The hook adds the page number and the page size, because those are the two inputs it knows about. It
+cannot see a filter, a search term or a sort order - and `/gear` has one. Its fetcher closes over
+`showArchived`, so with a key of `gear-items:<user>` the filtered and unfiltered lists shared an
+entry: tick "Show archived", come back with the toggle reset, and the page painted archived gear
+under a control that says it is hiding it, until the refetch corrected it. The toggle is in the key
+now, and the `cacheKey` JSDoc says the rule out loud, because the next filter anyone adds breaks the
+same way silently.
+
+Detail keys carry the user's uuid too, even though a record uuid is already globally unique. It buys
+nothing against collisions; it buys the same backstop the list keys have, which is only worth having
+if it holds when the clearing path doesn't.
 
 ### Read in the effect, not in the state initialiser
 

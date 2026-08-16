@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi, afterEach } from "vitest";
 import {
   clearResourceCache,
   readResourceCache,
+  resourceCacheGeneration,
   resourceCacheSize,
   writeResourceCache,
 } from "./resource-cache";
@@ -66,5 +67,44 @@ describe("resource cache", () => {
 
     expect(resourceCacheSize()).toBe(0);
     expect(readResourceCache("dive:1")).toBeUndefined();
+  });
+});
+
+describe("resource cache generations", () => {
+  it("drops a write whose request started before a clear", () => {
+    // The shape this guards: a GET is in flight, a delete lands and empties the
+    // cache, then the GET returns a body that still contains the deleted dive.
+    const atGeneration = resourceCacheGeneration();
+    clearResourceCache();
+
+    writeResourceCache(
+      "dives:u1:page:1:per:10",
+      { data: ["deleted"] },
+      atGeneration,
+    );
+
+    expect(resourceCacheSize()).toBe(0);
+  });
+
+  it("accepts a write whose request started after the clear", () => {
+    clearResourceCache();
+    const atGeneration = resourceCacheGeneration();
+
+    writeResourceCache(
+      "dives:u1:page:1:per:10",
+      { data: ["fresh"] },
+      atGeneration,
+    );
+
+    expect(readResourceCache("dives:u1:page:1:per:10")).toEqual({
+      data: ["fresh"],
+    });
+  });
+
+  it("still stores when no generation is supplied", () => {
+    clearResourceCache();
+    writeResourceCache("dive:1", { uuid: "1" });
+
+    expect(readResourceCache("dive:1")).toEqual({ uuid: "1" });
   });
 });

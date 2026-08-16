@@ -30,6 +30,21 @@ interface CacheEntry {
 
 const entries = new Map<string, CacheEntry>();
 
+// Bumped by every clear. A GET that was already in flight when a write emptied
+// the cache is carrying a body from before that write, and `latestRequest` in
+// the hooks can't see it: that guard only orders requests *within* one hook,
+// and stale-while-revalidate is precisely the state where a page is fully
+// interactive with a revalidation still running, so a delete can land in the
+// middle of one. Readers capture the generation before they fetch and hand it
+// back on write; a write from an older generation is dropped rather than
+// resurrecting a dive the diver just deleted for the next five minutes.
+let generation = 0;
+
+/** The current cache generation. Pass the value read before a fetch to `writeResourceCache`. */
+export function resourceCacheGeneration(): number {
+  return generation;
+}
+
 // The module is imported by client components, which Next still renders on the
 // server - and a module-level `Map` there is shared by every request the process
 // handles, which is exactly the shape of an "I can see someone else's dives"
@@ -66,9 +81,19 @@ export function readResourceCache<T>(key: string): T | undefined {
   return entry.value as T;
 }
 
-/** Stores `value` under `key`, evicting the least recently read entry if full. */
-export function writeResourceCache(key: string, value: unknown): void {
+/**
+ * Stores `value` under `key`, evicting the least recently read entry if full.
+ *
+ * `atGeneration` is the value `resourceCacheGeneration()` returned before the
+ * request started. The write is dropped if the cache has been cleared since.
+ */
+export function writeResourceCache(
+  key: string,
+  value: unknown,
+  atGeneration?: number,
+): void {
   if (!isBrowser()) return;
+  if (atGeneration !== undefined && atGeneration !== generation) return;
 
   entries.delete(key);
   entries.set(key, { value, storedAt: Date.now() });
@@ -93,6 +118,7 @@ export function writeResourceCache(key: string, value: unknown): void {
  */
 export function clearResourceCache(): void {
   entries.clear();
+  generation++;
 }
 
 /** The number of live entries. Exported for tests. */
