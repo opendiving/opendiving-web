@@ -29,6 +29,12 @@
         "printWidth": 100,
         "proseWrap": "always"
       }
+    },
+    {
+      "files": "AGENTS.md",
+      "options": {
+        "proseWrap": "preserve"
+      }
     }
   ]
 }
