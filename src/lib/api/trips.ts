@@ -1,10 +1,36 @@
 import { apiClient } from "./client";
 import type { PaginatedResponse } from "./client";
 
+/**
+ * One place a trip went, as the API stores it.
+ *
+ * A value object, not a resource: it has no uuid, it belongs to exactly one
+ * trip, and it is a snapshot of what the geocoder said at the time rather than a
+ * row in a shared gazetteer. `name` is the only field that is always there - a
+ * place typed in by hand, because the geocoder had nothing for it, has a name
+ * and nothing else.
+ */
+export interface TripLocation {
+  name: string;
+  display_name?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  bbox_south?: number | null;
+  bbox_north?: number | null;
+  bbox_west?: number | null;
+  bbox_east?: number | null;
+}
+
+// What a write sends. Identical in shape to `TripLocation` - locations are
+// replaced wholesale rather than patched, so there is nothing extra to send and
+// nothing read-only to strip.
+export type TripLocationInput = TripLocation;
+
 export interface Trip {
   uuid: string;
   name: string;
-  location?: string;
+  // Ordered as the diver arranged them; first is the one a compact surface shows.
+  locations: TripLocation[];
   start_date?: string;
   end_date?: string;
   notes?: string;
@@ -15,7 +41,7 @@ export interface Trip {
 export interface TripCreate {
   user_uuid: string;
   name: string;
-  location?: string;
+  locations?: TripLocationInput[];
   start_date: string;
   end_date?: string;
   notes?: string;
@@ -23,7 +49,9 @@ export interface TripCreate {
 
 export interface TripUpdate {
   name?: string;
-  location?: string;
+  // Omitted leaves the trip's locations untouched; any array - `[]` included -
+  // replaces them wholesale.
+  locations?: TripLocationInput[];
   start_date?: string;
   end_date?: string;
   notes?: string;
@@ -40,8 +68,9 @@ export const tripsAPI = {
   },
 
   // Get a user's trips (paginated, most recent first). `search` narrows to trips
-  // whose name *or* location contains it, case-insensitively - the API caps
-  // `items_per_page` at 100, so this is a page of matches, never the whole set.
+  // whose name *or* any of whose location names contains it, case-insensitively
+  // - the API caps `items_per_page` at 100, so this is a page of matches, never
+  // the whole set.
   async getTrips(
     userUuid: string,
     page: number = 1,

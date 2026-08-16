@@ -5354,3 +5354,296 @@ accepted trade for a feature that has to work with no account and no configurati
 in `/privacy` §4.4 as well as here, since it is the only outbound flow in the app a diver could not
 guess at — and it is the one place where self-hosting buys real privacy: `NEXT_PUBLIC_MAP_TILE_URL`
 points at your own tile server and the CSP follows it automatically.
+
+## A trip's locations are self-describing objects, so nothing has to be resolved
+
+The trip picker looks like `DiveSiteMultiSelect` and is built on the same `CreatableCombobox`, but
+roughly a third of that component is missing here, and the missing third is all label resolution. A
+dive site multiselect holds uuids: the form state is `["a1b2…", "c3d4…"]`, which means the component
+has to fetch the sites those ids name in order to draw a row, keep a cache so an id already seen
+isn't fetched twice, and handle the render where an id has arrived but its name has not.
+`TripLocationMultiSelect` holds `{name, display_name, latitude, longitude, bbox_*}` objects, because
+that is exactly what the API stores — a snapshot of what the geocoder said, not a pointer into a
+shared gazetteer — so a row already contains everything it renders. There is nothing to fetch, no
+loading state on an already-picked place, and no way for the list to be momentarily wrong.
+
+The cost is that rows have no id, and a `<ul>` needs keys, a menu needs to hide what has been
+picked, and a blur that re-commits the same place needs to be recognised as a duplicate.
+`locationKey` derives one from the content: `geo:{lat}:{lon}:{display_name}` for a geocoded place —
+the position plus the provider's full label, specific enough that "Moalboal, Cebu" and "Moalboal,
+Negros Oriental" never collide — and `txt:{name}` lowercased and trimmed for a typed-in one, so
+"moalboal" and "Moalboal " are one place typed twice. Identity from content is also why
+`mapSearchResults` collapses results that key identically: Nominatim occasionally returns the same
+place twice, and two menu rows sharing a React key is both a warning in the console and a row that
+cannot be excluded once picked.
+
+The _selected_ rows are keyed by position instead, which is where this diverges from
+`DiveSiteMultiSelect` — and the reason is that a dive cannot hold the same site twice while a trip
+_can_ hold the same place twice. The API allows it deliberately, and although this picker will never
+produce one (appending dedupes on the key), an already-saved trip can arrive holding it. Two rows
+sharing a key would then remove as one — the X on either taking both — and reorder ambiguously.
+Position is unambiguous, and these rows carry no state of their own for React to lose by reusing
+them.
+
+They do carry one thing, though, and it took a round of review to see it: **focus**. Keyed by
+position, React reuses the `<li>` and the drag handle inside it and only swaps their content — so
+after a keyboard reorder the focus ring sits on a handle that now belongs to the _neighbour_. The
+next Up/Down moves that one back, and the row being moved can never travel more than a single step,
+while a screen reader quietly re-labels the button mid-gesture. `useDragSort` now moves focus to the
+destination handle after a keyboard reorder (marked by `data-drag-handle`, a frame later so React
+has committed the new order). For the id-keyed lists that is already the focused element and the
+call is a no-op; here it is what makes the keyboard path work at all, and the keyboard path is the
+only reordering anyone without a pointer has.
+
+## An unmatched query is addable as text, and that is an outage hatch as much as a long tail
+
+Pressing Enter on a query the geocoder didn't answer adds the place as plain text, with a name and
+nothing else. The obvious reading is the long tail — a house reef with a local name no gazetteer
+carries — and that is real, but it is not why this is load-bearing. The API's geocode proxy answers
+`[]` when it is over the provider's instance-wide one-request-a-second limit, which is
+indistinguishable from "no such place" by design. Without the escape hatch, a throttled minute would
+be a picker that silently refuses to accept anything the diver types, at the exact moment they are
+typing fastest.
+
+A search can come back empty-handed in two ways, and the first attempt at this got the second one
+wrong. A search that _resolves_ empty sets `searchedQuery`, so `commitAction` reaches its create
+branch and Enter adds the text — the ordinary case, and the throttled-provider case with it. A
+search that _rejects_ — the per-user 429, a network blip — deliberately leaves `searchedQuery`
+stale, because an unanswered query is no evidence that a single-select's loaded value has gone. The
+empty menu, however, was labelled from `inputValue` alone, so it showed "No places found — press
+Enter to add as text" in that state too: an instruction that no-oped, and then erased what the diver
+had typed when the field closed. The menu was telling them to do something the component had decided
+not to allow.
+
+Both halves are now explicit. `CreatableCombobox` remembers the _query_ whose search threw — not a
+flag saying that one did, for the same reason `searchedQuery` is a query: an answer, "we couldn't
+ask" included, is only ever about the text it was asked for, and a flag would still be reporting an
+outage while the diver typed the next place, and letting Enter file that one as name-only text on
+the strength of it. It renders a `searchErrorLabel` for that third state rather than folding it into
+"nothing matches", and accepts a create from an unanswered query when the caller passes
+`createWithoutSearch` — which the picker opts into via `keepOpenOnSelect`, the flag that already
+means "this field appends". That restriction is the point: the stale-query guard exists to stop a
+blip clearing a value, and a field that only ever appends has no value to clear, while the cost of
+refusing is a diver whose quota just ran out being unable to add any location at all. No other
+caller combines `onCreate` with `keepOpenOnSelect`, so nothing else moved.
+
+**Typed text is committed by Enter, not by leaving the field** — and that is a change from what
+every other combobox in the app does. A single-select's input _is_ its value, so blurring has to
+commit or the typing is lost. An append-only picker inverts the odds: the diver's usual intent is to
+pick the row they can see, and the near-miss is typing "phil", seeing **Philippines** in the menu,
+and clicking Save instead of the row — which under blur-commit files a place called "phil" in the
+same gesture that closes the dialog, showing the added row for exactly as long as the dialog is
+open. `keepOpenOnSelect` now decides this too: an append-only field reaches `onCreate` from Enter
+only. Which is also what makes the menu's "press Enter to add as text" the whole truth rather than
+one of two ways.
+
+And that Enter is answer enough by itself, whatever the search is doing. Gating it on the query
+having been answered looked right and lost data: Enter blurs, the blur closes the menu, closing the
+menu runs the search effect's cleanup — so the in-flight query is cancelled by the very keystroke
+waiting on it, `commitAction` compares against whatever the _previous_ query answered, and the text
+is dropped with the field cleared and nothing said. That is exactly the diver who types a house reef
+no gazetteer carries and presses Enter inside the 450 ms debounce, without waiting for a menu they
+know will be empty. The cost of the other direction is a name-only row where a geocoded one was a
+moment away, which is visible and one X away from being fixed; a location that silently never
+existed is neither.
+
+Review raised the other side of that trade twice — a fast typist loses the geocode for a place the
+menu was a heartbeat from finding — and it was weighed and kept both times. The alternative on the
+table was to let Enter commit only for a search that actually _failed_, and to wait for one still in
+flight; the reason it stays as it is, beyond the added latency, is that Enter blurs, the blur closes
+the menu, and closing the menu cancels the search through the effect's cleanup — so "wait for the
+answer" is not a small change to this code, and what it buys is a better outcome in the case that is
+already visible and reversible.
+
+**An empty menu has four things it might mean, and saying the wrong one talks a diver into the wrong
+action.** The message is chosen in this order: below the search's minimum length, the field is still
+inviting you to type; a failed search says the search is down; a query still waiting on an answer —
+_including_ the 450 ms debounce, which `isSearching` misses entirely, since it only rises once the
+timer fires — says "Searching…"; and only what is left is "No places found — press Enter to add as
+text". Two of those were originally folded into the fourth, and both fold the same way: the menu
+asserted a negative nobody had checked, and then invited Enter to act on it. A diver typing "Bohol"
+briskly and pressing Enter got a name-only row for a place the geocoder knows, one that never
+reaches the confirmation map. `minSearchLength` and `searchPending` are the two branches that stop
+the field reporting on a search it never ran.
+
+**A row is only ever added by a deliberate act, and there turned out to be three doors, not one.**
+Enter and a click on a menu row are the deliberate ones. Leaving the field is not: an append-only
+combobox now commits _nothing_ on blur — not a create, and not the exact-match select either, which
+was quietly filing "Phil, Casey County, Kentucky" for a diver who typed "phil" on their way to the
+Philippines and then clicked Save. And typing is not choosing: `handleInputChange` fired
+`onChange(exactMatch?.id)` on every keystroke, which in a single-select fills the one field (this is
+how you pick a trip without a mouse) but in an append-only field _appends a row_ — so "Bohol" was
+added the instant the "l" landed, and stayed there while the diver finished typing "Bohol Sea". Both
+are now gated on `keepOpenOnSelect`, so `DiveSiteMultiSelect` and `GearItemMultiSelect` lose the
+same two surprises, and every single-select keeps its behaviour exactly.
+
+The flip side of that rule is that a deliberate act must always be _answered_. A picked row leaves
+the field ready for the next one — filter cleared, menu open, cursor in the input — and a typed row
+now does the same, which it did not get for free: Enter has to blur to reach `commit` at all, so it
+was landing the row and then leaving focus on `<body>` behind a closed menu, with a click needed
+before a second place could be typed and Tab restarting at the top of the dialog. And an act that is
+_refused_ says so: typing the name of a place already in the list adds nothing while the combobox
+clears the input on its way through, which is indistinguishable from the field having eaten the
+text. It now answers "The Boat is already in the list." in a `role="status"` line — status rather
+than error, because nothing has gone wrong.
+
+Typed-in rows carry a muted "not on the map" for a related reason: the map below draws only what has
+a position, and its absence should be explained rather than read as the map having missed one.
+
+Two consequences of all this are known and chosen rather than overlooked, and both were raised in
+review, so they are written down here to stop the next reader deciding them again from scratch.
+**Enter files a single character as a place** even though the menu above it is saying "Type to
+search places" — the one point where the menu's text and Enter's behaviour disagree. It is the
+mirror of the bug `minSearchLength` fixed, and the opposite call: the menu must not report on a
+search it never ran, but Enter is a deliberate act on text the diver typed, a one-character name is
+legal to the API, and refusing it would be the field overruling them about their own house reef.
+**And a place added as text does not collide with the same place added from the geocoder** —
+`txt:moalboal` and `geo:9.94:123.39:…` are different keys by construction — so a diver who types
+"Moalboal" during a throttled minute and picks the geocoded row once the provider recovers ends up
+with two rows reading "Moalboal". Both are visible, and one X fixes it. The alternative is matching
+text keys against geocoded _names_, which would silently refuse two genuinely different places that
+share one — the worse error, and the harder one to see.
+
+**A location row truncates, and carries its full label on `title`.** "Ko Tao, Ko Tao, Ko Pha-ngan
+District, Surat Thani Province, Thailand" is an ordinary answer from the geocoder, and one row of it
+was widening the dialog's form to 888px — pushing the name field, the dates and the buttons out past
+the edge of a 512px dialog, with no horizontal scrollbar to say so. It took two `min-w-0`s in two
+different places, and the interesting one is not where the problem appears:
+
+- On the row's text, so `truncate` can do anything at all. A flex item's default `min-width: auto`
+  resolves to its min-content, and min-content of a nowrap string is the whole string, so the row
+  simply refused to shrink.
+- **On the `<form>`**, because `DialogContent` is `display: grid` and the form is its grid item —
+  where the same `min-width: auto` rule applies and is the one actually holding the dialog open. A
+  grid item is allowed to overflow a definite-width container when its own min-content is wider, and
+  nothing further down the tree can overrule that: `min-w-0` on the picker, the `<ul>` or the row
+  each changed nothing, measured in the browser. Only the item can say it may be narrower than its
+  contents.
+
+The `title` matters more than it looks: the long tail of a display name is precisely what tells
+"Moalboal, Cebu" from "Moalboal, Negros Oriental", so an ellipsis that hides it needs somewhere to
+put it back.
+
+**On a saved trip, the geocoder's credit comes from the map's tile attribution — which is a coupling
+worth knowing about.** The API says the client should render a result's `attribution` wherever it
+shows that result, and the picker does, for the live search. But `trip_location` deliberately does
+not store it, so a location loaded from the API has no credit of its own to render. It works out
+today, and by luck rather than design: `display_name` is the only geocoder-derived field these
+surfaces show, it only exists on geocoded locations, and a geocoded location always has coordinates
+— so both places that render one (the detail page's location rows, the dialog's picker rows) also
+render `TripLocationsMap` right beneath, whose tile credit already names OpenStreetMap. Anything
+that breaks that pairing — making the map collapsible, gating it on something else, or a path that
+produces a `display_name` without coordinates — drops the credit silently, with no test to catch it.
+
+**Both of the API's ceilings are enforced as the list is built, not at submit** — the 20-location
+cap by closing the search field, the 255-character name by truncating what was typed. Leaving them
+to the schema is the obvious thing and is wrong twice over. A 21st location is rejected only once
+the diver has filled in the rest of the dialog and pressed Save, and then they are told they have
+too many and left to work out which of twenty-one identical-looking rows is the extra one. And a
+name over 255 characters — reachable only by pasting, since geocoded picks are truncated by the API
+— is worse than a rejection: react-hook-form reports that error at `locations.0.name`, so
+`errors.locations` is an _array_, and `FormMessage` renders `String(error.message)`, which for an
+array is the literal word "undefined" in red under the field. The diver would be told nothing at all
+by a form that had also silently stopped saving. This is the first field in the repo to put an array
+of objects under a single `FormField` — `mixtures` renders a `FormField` per element — which is why
+the hole hadn't surfaced before.
+
+## The picker types more slowly than the rest of the app, on purpose
+
+`searchDelayMs` gained an optional override and `CreatableCombobox` a `searchDebounceMs` prop so the
+trip picker can wait 450 ms where every other remote combobox waits 250. Our own list endpoints are
+happy to be asked four times a second; Nominatim is behind a proxy that enforces one request a
+second across the whole instance and answers `[]` rather than queueing once that is exceeded. A fast
+debounce there does not merely waste requests — it converts them into empty menus, so the diver
+types "Moalb" and watches the list go blank. The empty query fired on menu-open still skips the
+debounce entirely, since there was no keystroke to coalesce.
+
+`searchPlaces` answers a query outside the endpoint's own `2..200` without calling the API at all.
+Both ends would be a 422, and a 422 arrives as a _rejection_ — the one answer the picker cannot
+treat as "no match" — where returning `[]` locally leaves Enter-to-add-as-text working. The lower
+bound is the one that fires constantly, since the combobox probes with `""` the moment its menu
+opens; the upper is a pasted paragraph, and it is in the guard because the two are the same mistake.
+
+One line in the combobox's create branch changed with this:
+`setInputValue(keepOpenOnSelect ? "" : created.name)`. For a multi-select the created item has moved
+into the list above and the input is a filter, which belongs empty — and this was the one path
+filling it back in behind the component's own back, since closing the menu clears the input
+synchronously and the awaited `onCreate` then resolves a render or two later and writes the stale
+name into a field the diver is done with. No existing caller combines `onCreate` with
+`keepOpenOnSelect`, so the fix is inert everywhere else.
+
+## Coordinates that were picked, not typed, are numbers
+
+`lib/validations/dive-site.ts` validates coordinates as strings against a regex, and the reasoning
+above is still right for that form: a diver typing a latitude passes through "-" and "-17." on the
+way to "-17.9", and a numeric field would reject or mangle those intermediate states. None of that
+applies here. A trip location's coordinates arrive whole, inside an object the diver picked from a
+menu, or they are absent because the place was typed in by hand — there is no half-entered state to
+be tolerant of, and no text field they could be typed into. So `tripLocationSchema` uses plain
+`z.number()` with the API's own bounds, and a nonsense object is caught before the round trip rather
+than after it. No `z.preprocess` or `.transform` anywhere in it either, which is what keeps
+`z.input<>` inference working and `TripLocationFormValue` usable as the form's own type.
+
+## The confirmation map is not `MapPicker`, and that is most of why it is short
+
+`MapPicker` is 705 lines; `TripLocationsMap` is about 250 and shares only `lib/map-tiles.ts` with
+it. The difference is not restraint, it is that nearly everything in the picker exists to serve
+write-back — telling a position the map emitted apart from one the diver typed into the coordinate
+fields, and the gesture handling that lets them place a pin at all. This map emits nothing. Give it
+locations, it draws them; there is no echo to disambiguate because there is no output, and no
+gestures because there is nothing to aim. Reaching for `MapPicker` with its interactivity disabled
+would have inherited all of that machinery in order to switch it off.
+
+Whole zoom levels only, for the same reason. Fractional zoom exists in the picker so a pinch glides,
+and there is nothing here to pinch; tiles are drawn at their own level and never CSS-scaled, which
+is also the sharpest they can be. Pins are `bg-coral` rather than `bg-primary` — primary is
+near-black in light and mid-grey in dark, and mid-grey on Dark Matter's near-black tiles is an
+invisible marker. Coral is the one accent held constant across both themes.
+
+The attribution overlay sits _outside_ the `role="img"` surface rather than inside it, which is why
+the frame is two nested elements instead of one. A link inside an image role is dropped from the
+accessibility tree, and a licence credit nobody can follow is not much of a credit.
+
+The surface is measured through a **callback ref**, not the usual ref plus a mount-only effect. This
+map renders `null` when nothing it was given has a position, so the element it needs to observe is
+not always there at mount — and an effect that found no element then would never look again, leaving
+a caller who renders the map before its locations load with a frame measured at 0×0 for good. Tying
+the `ResizeObserver` to the element appearing rather than to the component mounting is what lets the
+component keep its promise that callers need not gate on having something to draw.
+
+## `fitBounds` unwraps longitudes before it unions them
+
+A trip to Fiji and Samoa spans about six degrees — across the antimeridian. Unioning the raw
+coordinates instead describes the 354 degrees of ocean going the other way round the planet, which
+fits at exactly one zoom: the whole world, with both pins at opposite edges of it. So every box is
+unwrapped against the first one before the union, the same trick `nearestWrappedX` plays for a
+marker — pick the copy of the place that is nearest, not the one whose number is smallest. Each
+box's width is taken as a signed span first, so a box whose east edge folds back behind its west
+stays one interval rather than becoming a negative one, while a genuinely zero-width point stays a
+point.
+
+Two smaller choices in there are worth naming. The vertical centre is the midpoint of the
+_projected_ extent rather than the average of the two latitudes: Mercator stretches towards the
+poles, so on a view spanning hemispheres those differ by degrees, and it is the projected midpoint
+that puts equal amounts of map above and below. And zoom is capped at `MAX_FIT_ZOOM` (10) rather
+than running to `MAX_ZOOM`, because a single location fits at any zoom you like and the deepest one
+is useless — a trip location is a town, an island, a sea, so it should open where the surrounding
+coast is recognisable, not at the street level where a lone dot sits in a grid of house numbers.
+
+## Locations are always sent on edit, never omitted
+
+The API's PATCH treats an omitted `locations` key as "leave them alone" and any provided list —
+including `[]` — as a wholesale replace. `TripDialog` always sends the list. The form shows the
+whole set of locations every time it opens, so there is no state in which the field is unknown to
+it, and omitting the key when nothing changed would buy one skipped re-insert at the price of making
+"remove them all" inexpressible — an empty form field and an untouched one would send the same
+request.
+
+The map beneath the picker is driven by `useWatch` rather than `form.watch()`. `watch()` re-renders
+the whole dialog on every change to any field, which would mean re-fitting and re-rendering a tile
+grid on each keystroke in the notes textarea. It is gated on there being at least one location with
+a position, which also keeps the map's chunk unfetched — it is a `next/dynamic` import with
+`ssr: false`, since it measures its own element and reads the resolved theme, neither of which
+exists on the server. The dynamic wrapper lives in its own file rather than at each of the two call
+sites, so the skeleton's height cannot drift from the map's and make the page jump when the chunk
+lands.

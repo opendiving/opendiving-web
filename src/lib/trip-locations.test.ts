@@ -1,0 +1,73 @@
+import { describe, expect, it } from "vitest";
+import { formatTripLocationNames } from "./trip-locations";
+
+describe("formatTripLocationNames", () => {
+  it("joins every name when no limit is given", () => {
+    expect(
+      formatTripLocationNames([
+        { name: "Moalboal" },
+        { name: "Bohol" },
+        { name: "Malapascua" },
+      ]),
+    ).toBe("Moalboal, Bohol, Malapascua");
+  });
+
+  it("counts the names past the limit rather than dropping them silently", () => {
+    expect(
+      formatTripLocationNames(
+        [
+          { name: "Moalboal" },
+          { name: "Bohol" },
+          { name: "Malapascua" },
+          { name: "Siquijor" },
+        ],
+        { max: 2 },
+      ),
+    ).toBe("Moalboal, Bohol +2");
+  });
+
+  it("adds no suffix when the list exactly fills the limit", () => {
+    expect(
+      formatTripLocationNames([{ name: "Moalboal" }, { name: "Bohol" }], {
+        max: 2,
+      }),
+    ).toBe("Moalboal, Bohol");
+  });
+
+  it("answers undefined for a trip with no locations", () => {
+    // Not "" - callers pick their own placeholder, and a table's "-" is not a
+    // subtitle's "render nothing".
+    expect(formatTripLocationNames([])).toBeUndefined();
+    expect(formatTripLocationNames(undefined)).toBeUndefined();
+    expect(formatTripLocationNames(null)).toBeUndefined();
+  });
+
+  it("drops blank names instead of joining around them", () => {
+    expect(
+      formatTripLocationNames([
+        { name: "Moalboal" },
+        { name: "   " },
+        { name: "Bohol" },
+      ]),
+    ).toBe("Moalboal, Bohol");
+  });
+
+  it("answers undefined when every name is blank", () => {
+    expect(formatTripLocationNames([{ name: "" }])).toBeUndefined();
+  });
+
+  it("trims the names it shows", () => {
+    expect(formatTripLocationNames([{ name: "  Bohol  " }])).toBe("Bohol");
+  });
+
+  it("counts the hidden names after the blank ones are dropped", () => {
+    // The "+N" has to match what a diver would count on the trip itself, so it
+    // is derived from the usable names, not from the raw array's length.
+    expect(
+      formatTripLocationNames(
+        [{ name: "Moalboal" }, { name: " " }, { name: "Bohol" }],
+        { max: 1 },
+      ),
+    ).toBe("Moalboal +1");
+  });
+});

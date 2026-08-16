@@ -52,6 +52,86 @@ describe("tripFormSchema", () => {
     const result = tripFormSchema.safeParse(validTrip);
     expect(result.success).toBe(true);
   });
+
+  it("accepts a location that is only a name", () => {
+    // The free-text escape hatch: a place the geocoder had nothing for is still
+    // somewhere the diver went.
+    const result = tripFormSchema.safeParse({
+      ...validTrip,
+      locations: [{ name: "Uncle Bob's house reef" }],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts a geocoded location whole", () => {
+    const result = tripFormSchema.safeParse({
+      ...validTrip,
+      locations: [
+        {
+          name: "Moalboal",
+          display_name: "Moalboal, Cebu, Central Visayas, Philippines",
+          latitude: 9.9366,
+          longitude: 123.396,
+          bbox_south: 9.87,
+          bbox_north: 10.0,
+          bbox_west: 123.3,
+          bbox_east: 123.45,
+        },
+      ],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts the nulls the API sends for an unknown position", () => {
+    // `trip.locations` is fed straight into the form when editing, and the API
+    // writes absent coordinates as `null`, not as a missing key.
+    const result = tripFormSchema.safeParse({
+      ...validTrip,
+      locations: [
+        {
+          name: "Somewhere",
+          display_name: null,
+          latitude: null,
+          longitude: null,
+          bbox_south: null,
+          bbox_north: null,
+          bbox_west: null,
+          bbox_east: null,
+        },
+      ],
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a location with no name", () => {
+    const result = tripFormSchema.safeParse({
+      ...validTrip,
+      locations: [{ name: "" }],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects an out-of-range coordinate", () => {
+    const result = tripFormSchema.safeParse({
+      ...validTrip,
+      locations: [{ name: "Nowhere", latitude: 91, longitude: 0 }],
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects more locations than the API accepts", () => {
+    const result = tripFormSchema.safeParse({
+      ...validTrip,
+      locations: Array.from({ length: 21 }, (_, index) => ({
+        name: `Place ${index}`,
+      })),
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("allows omitting locations entirely", () => {
+    expect(tripFormSchema.safeParse(validTrip).success).toBe(true);
+  });
 });
 
 describe("normalizeTripDates", () => {
@@ -75,14 +155,12 @@ describe("normalizeTripDates", () => {
     expect(result.end_date).toBe("2024-06-08");
   });
 
-  it("passes through name/location/notes unmodified", () => {
+  it("passes through name/notes unmodified", () => {
     const result = normalizeTripDates({
       name: "Trip",
-      location: "Egypt",
       notes: "Great viz",
     });
     expect(result.name).toBe("Trip");
-    expect(result.location).toBe("Egypt");
     expect(result.notes).toBe("Great viz");
   });
 });

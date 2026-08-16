@@ -266,7 +266,24 @@ export function useDragSort({
         if (to < 0 || to >= itemCount) return;
         event.preventDefault();
         onReorder(index, to);
+        // Move focus to where the row went. Where rows are keyed by their id the
+        // DOM node travels with the item and this is already the focused
+        // element, so it costs nothing - but a list keyed by *position*
+        // (`TripLocationMultiSelect`, whose rows are value objects that may
+        // legally repeat) reuses this button in place, leaving focus on a handle
+        // that now belongs to the neighbour. The next press would move that one
+        // back, and the row being moved could never travel more than one step.
+        //
+        // After a frame, because React has to commit the new order first.
+        requestAnimationFrame(() => {
+          itemRefs.current[to]
+            ?.querySelector<HTMLElement>("[data-drag-handle]")
+            ?.focus();
+        });
       },
+      // Marks the handle for the refocus above, and for anything else that needs
+      // to find it without knowing the caller's markup.
+      "data-drag-handle": "",
       // Without this the browser scrolls the page instead of letting the drag
       // through on touch.
       style: { touchAction: "none" as const },

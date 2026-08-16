@@ -1,5 +1,15 @@
 import { apiClient } from "./client";
 
+// The bounds `GET /geocode/search` declares on its own `q`. Mirrored rather than
+// discovered, because a query outside them is a 422 and a 422 is an exception,
+// and the place picker's whole error story is "an empty list is survivable, a
+// thrown error is not".
+//
+// Both are exported because a field that searches has to say something while the
+// query is outside them, and "no places found" is not it: nothing was looked for.
+export const MIN_PLACE_QUERY_LENGTH = 2;
+export const MAX_PLACE_QUERY_LENGTH = 200;
+
 /**
  * One place, normalized by the API away from whichever provider answered.
  *
@@ -20,6 +30,13 @@ export interface GeocodeResult {
   // The place's own name, where it has one. Absent for an address-only result.
   name?: string | null;
   attribution: string;
+  // The place's extent, when the provider gives one. All four or none: a box is
+  // only meaningful whole. West may be greater than east - a box straddling the
+  // antimeridian is not malformed. Absent for a reverse geocode.
+  bbox_south?: number | null;
+  bbox_north?: number | null;
+  bbox_west?: number | null;
+  bbox_east?: number | null;
 }
 
 /**
@@ -72,5 +89,30 @@ export const geocodingAPI = {
     return result?.location
       ? { status: "named", result }
       : { status: "unknown" };
+  },
+
+  /**
+   * Find places by name, for a picker that searches as the diver types.
+   *
+   * An empty array means "no match" and "the provider is down, throttled or
+   * switched off" alike - the API deliberately answers both the same way, and
+   * neither is an error to a form whose escape hatch is typing the place in.
+   * Only a thrown error (the per-user 429, a network failure) tells them apart,
+   * and callers that can't act on the difference shouldn't try.
+   *
+   * A query outside the endpoint's own `2..200` length is answered here without
+   * a request, since asking would be a 422 - which is a *rejection*, and so the
+   * one failure mode this function's callers can't treat as "no match". A
+   * combobox probes with "" the moment its menu opens, and a pasted paragraph
+   * is the other end of the same problem.
+   */
+  async searchPlaces(query: string): Promise<GeocodeResult[]> {
+    const q = query.trim();
+    if (q.length < MIN_PLACE_QUERY_LENGTH || q.length > MAX_PLACE_QUERY_LENGTH)
+      return [];
+    const response = await apiClient.get<GeocodeResult[]>(`/geocode/search`, {
+      params: { q },
+    });
+    return response.data;
   },
 };

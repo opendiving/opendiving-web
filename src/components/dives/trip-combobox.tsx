@@ -76,7 +76,7 @@ export function TripCombobox({
       );
       response.data.forEach(remember);
       return {
-        // Trips have a `location` too, but unlike dive sites it isn't shown
+        // Trips have `locations` too, but unlike dive sites they aren't shown
         // here - mapped to a bare `{id, name}` so the hint slot stays empty.
         items: response.data.map((trip) => ({
           id: trip.uuid,

@@ -6,6 +6,7 @@ import { usePaginatedResource } from "@/hooks/usePaginatedResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { tripsAPI, Trip } from "@/lib/api/trips";
 import { formatTripDateRange } from "@/lib/date-time";
+import { formatTripLocationNames } from "@/lib/trip-locations";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -119,7 +120,7 @@ export default function TripsPage() {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Dates</TableHead>
-                  <TableHead>Location</TableHead>
+                  <TableHead>Locations</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -138,7 +139,10 @@ export default function TripsPage() {
                       {formatTripDateRange(trip.start_date, trip.end_date) ??
                         "-"}
                     </TableCell>
-                    <TableCell>{trip.location || "-"}</TableCell>
+                    <TableCell>
+                      {formatTripLocationNames(trip.locations, { max: 2 }) ??
+                        "-"}
+                    </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Button variant="ghost" size="sm" asChild>
