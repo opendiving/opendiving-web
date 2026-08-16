@@ -5678,6 +5678,15 @@ full space from the first frame while being invisible, so a fast response swaps 
 old page to the new one and a slow one has already reserved the layout it will need. Gating the
 render itself on a timer would put the collapse-then-grow back, just 150ms later.
 
+The delay has to cover the _chrome_ too, and at first it didn't. `Skeleton` is only the grey bar;
+the card outlines and row borders around it are real `Card`s and `TableRow`s, so they painted
+instantly and a sub-150ms response still flashed a grid of empty ruled boxes — the exact thing the
+delay exists to prevent, with the mechanism only half applied. `animate-skeleton-reveal` is the fade
+without the pulse, and it goes on those containers. Traced in the browser, a placeholder row now
+sits at opacity 0 from mount (~85ms after the click) until ~240ms and reaches full opacity at
+~440ms. Using the full `skeleton` shorthand there instead would nest one pulse inside another and
+dip the bars to a quarter opacity rather than half.
+
 `motion-reduce:animate-none` drops both animations, which also drops the `both` fill and so leaves
 the skeleton visible from the start — correct for that setting: no delay is better than a delay you
 can't see coming.
@@ -5741,8 +5750,10 @@ real page structure, so it only needs enough to mark that the route changed.
 row `<div>`s around them stay in the accessibility tree, so a screen reader opening `/dives` would
 be told the table has eleven rows, ten of them empty cells, where the spinner it replaced announced
 nothing at all. `TableRowsSkeleton` hides each placeholder row and `ListRowsSkeleton` its whole
-container. `page-skeleton.render.test.tsx` asserts that `getAllByRole("row")` finds none of them,
-which is the assertion that fails if a later change drops the attribute.
+container — the latter as a busy wrapper around a hidden inner element, because the two attributes
+cancel out on one node: `aria-busy` says nothing to a reader already told to skip the subtree.
+`page-skeleton.render.test.tsx` asserts that `getAllByRole("row")` finds none of them, which is the
+assertion that fails if a later change drops the attribute.
 
 ### Measured, not eyeballed
 

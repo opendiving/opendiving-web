@@ -29,7 +29,15 @@ export function TableRowsSkeleton({
         // are already `aria-hidden`, but that leaves the `<tr>`/`<td>` in the
         // tree - so a screen reader opening /dives would be told the table has
         // eleven rows, ten of them empty, where the spinner said nothing.
-        <TableRow key={row} aria-hidden>
+        //
+        // `animate-skeleton-reveal` for the row's own `border-b`, which would
+        // otherwise draw instantly and give a fast response the grid of empty
+        // ruled rows the bars' delay is there to avoid.
+        <TableRow
+          key={row}
+          aria-hidden
+          className="animate-skeleton-reveal motion-reduce:animate-none"
+        >
           {Array.from({ length: columns }, (_, column) => (
             <TableCell key={column}>
               <Skeleton

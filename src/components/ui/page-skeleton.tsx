@@ -67,7 +67,7 @@ export function FormPageSkeleton({
         title={<Skeleton className="h-9 w-56" />}
         subtitle={<Skeleton className="h-6 w-64" />}
       />
-      <Card>
+      <Card className="animate-skeleton-reveal motion-reduce:animate-none">
         <CardHeader>
           <Skeleton className="h-6 w-40" />
         </CardHeader>

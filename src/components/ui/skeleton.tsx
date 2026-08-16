@@ -43,7 +43,12 @@ export function CardSkeleton({
   className?: string;
 }) {
   return (
-    <Card className={className}>
+    <Card
+      className={cn(
+        "animate-skeleton-reveal motion-reduce:animate-none",
+        className,
+      )}
+    >
       <CardHeader>
         <Skeleton className="h-6 w-40" />
       </CardHeader>
@@ -74,22 +79,30 @@ export function CardSkeleton({
  */
 export function ListRowsSkeleton({ rows = 1 }: { rows?: number }) {
   return (
-    // The bars are individually `aria-hidden`, but the boxes around them are
-    // not: without this a screen reader is handed a list of empty containers
-    // where the spinner this replaced announced nothing at all.
-    <div className="space-y-3" aria-busy aria-hidden>
-      {Array.from({ length: rows }, (_, row) => (
-        <div
-          key={row}
-          className="flex items-center justify-between gap-4 p-3 rounded-lg border"
-        >
-          <div className="min-w-0 space-y-2">
-            <Skeleton className="h-5 w-40" />
-            <Skeleton className="h-4 w-24" />
+    // Busy on the outside, hidden on the inside - the same split
+    // `DetailPageSkeleton` uses, and the reason it needs two elements: the two
+    // attributes cancel out on one node, since `aria-busy` says nothing to a
+    // reader that has already been told to skip the subtree. Without the hidden
+    // half, the boxes announce as a list of empty containers where the spinner
+    // this replaced announced nothing at all.
+    <div aria-busy>
+      <div
+        className="space-y-3 animate-skeleton-reveal motion-reduce:animate-none"
+        aria-hidden
+      >
+        {Array.from({ length: rows }, (_, row) => (
+          <div
+            key={row}
+            className="flex items-center justify-between gap-4 p-3 rounded-lg border"
+          >
+            <div className="min-w-0 space-y-2">
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-4 w-24" />
+            </div>
+            <Skeleton className="h-4 w-16 shrink-0" />
           </div>
-          <Skeleton className="h-4 w-16 shrink-0" />
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
