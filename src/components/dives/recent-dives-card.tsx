@@ -16,14 +16,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  Fish,
-  Waves,
-  Plus,
-  Clock,
-  ArrowDownToLine,
-  Loader2,
-} from "lucide-react";
+import { ListRowsSkeleton } from "@/components/ui/skeleton";
+import { Waves, Plus, Clock, ArrowDownToLine } from "lucide-react";
 
 const RECENT_DIVES_COUNT = 5;
 
@@ -123,9 +117,12 @@ export function RecentDivesCard({
       </CardHeader>
       <CardContent>
         {isLoadingDives ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
+          // Capped at `RECENT_DIVES_COUNT`, not just `limit`: on the dashboard
+          // the two are the same and the placeholder is exactly right, while
+          // the site/trip/gear detail pages pass a limit of 100 for "all of
+          // them", where the real count isn't knowable up front and five rows
+          // is a better guess than a hundred.
+          <ListRowsSkeleton rows={Math.min(limit, RECENT_DIVES_COUNT)} />
         ) : recentDives.length === 0 ? (
           <div className="text-center py-12">
             <Waves className="h-12 w-12 text-muted-foreground mx-auto mb-4" />

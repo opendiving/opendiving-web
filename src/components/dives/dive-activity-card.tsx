@@ -30,7 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SectionSpinner } from "@/components/ui/section-spinner";
+import { ChartSkeleton } from "@/components/dives/chart-skeleton";
 import { ChartStat } from "@/components/dives/chart-stat";
 import { DiveActivityChart } from "@/components/dives/dive-activity-chart";
 import { diveStatsAPI, DiveActivityPoint } from "@/lib/api/dive-stats";
@@ -315,7 +315,7 @@ export function DiveActivityCard() {
       </CardHeader>
       <CardContent>
         {points === null ? (
-          <SectionSpinner />
+          <ChartSkeleton stats={2} />
         ) : (
           <>
             {summary && (
