@@ -6021,3 +6021,39 @@ Last one: the hover path is gated on `pointerType === "mouse"` because a tap fir
 too, and a menu opened from that would be racing the tap's own click into closing again. Touch is
 otherwise unchanged — the tap opens the menu through Radix exactly as before, and never arms the
 hover-close.
+
+## A quick-create dialog opens after the menu closes, not from the item that picked it
+
+Picking "New Trip" from the "+" menu left the caret on `<body>`: the dialog opened, took focus, and
+then lost it again before the diver could type. With the caret parked in a form field beforehand it
+was worse — focus came to rest in that field, _behind_ the modal overlay, so every keystroke went
+into a form nobody could see.
+
+Neither is the dialog failing to take focus. It takes it correctly, and the closing menu takes it
+back. Opening from `onSelect` mounts the dialog _into_ the menu's teardown, and three things then
+land in the same commit, in this order:
+
+1. The dialog mounts and focuses its first field — correct, and immediately undone by
+2. Radix's `onItemLeave`, which refocuses the menu content whenever the pointer leaves an item. The
+   dialog's own overlay arriving under a stationary pointer is enough to fire the item's
+   `pointerleave`, so this happens on a plain click without the pointer moving at all.
+3. The menu unmounts, still holding that focus, and it falls to `<body>`.
+
+Nothing recovers it, because the rescue that would normally paper over this is gone too. Radix's
+`DropdownMenuContent` focuses the trigger on close, and on `main` that lands a real `focusin` the
+dialog's focus trap sees and answers by pulling focus back inside itself — the reason the same three
+steps are invisible there. This menu is `modal={false}` (it has to be; see the hover section above),
+and a non-modal `DismissableLayer` treats the dialog's mount-focus as an interaction outside itself,
+sets `hasInteractedOutsideRef`, and skips the trigger focus entirely. So the one thing that fired a
+`focusin` stops firing, and a focus move to `<body>` fires none of its own for the trap to catch.
+
+The fix is to stop the two overlapping: the item records what was picked, and `onCloseAutoFocus`
+opens it once the menu is gone. That handler is also where the hover-restore lives, so a pick takes
+the branch that `preventDefault`s and calls `openCreate` — no restore, no return-to-trigger, nothing
+competing with the dialog for the caret. The link item ("New Dive") needs none of this: it
+navigates.
+
+Worth knowing if you go looking: this reproduces only against a real browser. jsdom has no layout,
+so no overlay arrives under the pointer, no `pointerleave` fires, and step 2 never happens — the end
+state is correct there whether or not the bug is present. `create-menu.render.test.tsx` pins the
+ordering instead (the menu is gone by the time `openCreate` runs), which is the part jsdom can see.

@@ -229,6 +229,52 @@ describe("CreateMenu", () => {
     expect(notes).toHaveFocus();
   });
 
+  it("doesn't drag the caret back out of what picking an item opened", async () => {
+    // The restore is for a menu the diver walked away from, not one they used.
+    // Picking an item hands focus to whatever it opens - a quick-create dialog
+    // traps it on its first field - and restoring on top of that put the caret
+    // back in the page *behind* the modal, where every keystroke was swallowed
+    // by a form the diver couldn't see.
+    render(
+      <>
+        <input aria-label="Notes" />
+        <CreateMenu />
+      </>,
+    );
+    const session = user();
+    const notes = screen.getByRole("textbox", { name: "Notes" });
+
+    await session.click(notes);
+    await session.hover(trigger());
+    await waitFor(() => expect(isOpen()).toBe(true));
+    await session.click(screen.getByRole("menuitem", { name: "New Trip" }));
+
+    await waitFor(() => expect(isOpen()).toBe(false));
+    expect(notes).not.toHaveFocus();
+  });
+
+  it("opens the dialog only once the menu is out of the way", async () => {
+    // The two must not overlap. Opening from `onSelect` mounts the dialog into
+    // the menu's teardown: the dialog focuses its first field, then Radix
+    // refocuses the menu content because the overlay landing under the pointer
+    // fires the item's `pointerleave`, and the menu unmounts still holding the
+    // caret - leaving it on `<body>`, outside the dialog the diver just asked
+    // for. Nothing about that is visible from the markup, so pin the ordering.
+    const menuWhenOpened: (HTMLElement | null)[] = [];
+    openCreate.mockImplementationOnce(() =>
+      menuWhenOpened.push(screen.queryByRole("menu")),
+    );
+    render(<CreateMenu />);
+    const session = user();
+
+    await session.hover(trigger());
+    await waitFor(() => expect(isOpen()).toBe(true));
+    await session.click(screen.getByRole("menuitem", { name: "New Trip" }));
+
+    await waitFor(() => expect(openCreate).toHaveBeenCalledWith("trip"));
+    expect(menuWhenOpened).toEqual([null]);
+  });
+
   it("gives focus back to the + when the menu had it", async () => {
     render(<CreateMenu />);
     const session = user();

@@ -99,6 +99,16 @@ export function CreateMenu() {
   // clears that flag before the focus handler runs. Null means a deliberate
   // open, which gets Radix's own handling.
   const hoverOpenOrigin = useRef<HTMLElement | null>(null);
+  // What the diver picked, held until the menu has finished closing. Opening
+  // the dialog straight from `onSelect` mounts it *into* the menu's teardown,
+  // and the two then fight over the caret - the dialog focuses its first field,
+  // then Radix refocuses the menu content because the overlay appearing under
+  // the pointer fires the item's `pointerleave` (`onItemLeave`), and the menu
+  // unmounts a moment later holding the focus it just took. That's the
+  // `activeElement === body` this exists to prevent: not the dialog failing to
+  // take focus, but the menu taking it back afterwards. Opening once the menu
+  // is gone leaves the dialog the only thing claiming focus.
+  const pickedKind = useRef<QuickCreateKind | null>(null);
   const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -136,6 +146,7 @@ export function CreateMenu() {
     openTimer.current = setTimeout(() => {
       openTimer.current = null;
       openedByHover.current = true;
+      pickedKind.current = null;
       hoverOpenOrigin.current =
         document.activeElement instanceof HTMLElement
           ? document.activeElement
@@ -199,7 +210,10 @@ export function CreateMenu() {
     openedByHover.current = false;
     // Only on the way open: the close handler still has to read the origin of
     // the menu that is closing, and it runs after this.
-    if (open) hoverOpenOrigin.current = null;
+    if (open) {
+      hoverOpenOrigin.current = null;
+      pickedKind.current = null;
+    }
     setIsOpen(open);
   };
 
@@ -246,6 +260,16 @@ export function CreateMenu() {
         // have been mid-sentence in a form when it appeared. Anything else gets
         // Radix's own handling, which is the trigger.
         onCloseAutoFocus={(event) => {
+          const kind = pickedKind.current;
+          pickedKind.current = null;
+          // The dialog is mounted from here, once the menu is out of the way,
+          // and takes the focus itself - so nothing else may claim it, not the
+          // restore below and not Radix's return-to-trigger.
+          if (kind) {
+            event.preventDefault();
+            openCreate(kind);
+            return;
+          }
           const origin = hoverOpenOrigin.current;
           if (!origin) return;
           event.preventDefault();
@@ -267,7 +291,9 @@ export function CreateMenu() {
           ) : (
             <DropdownMenuItem
               key={action.label}
-              onSelect={() => openCreate(action.kind)}
+              onSelect={() => {
+                pickedKind.current = action.kind;
+              }}
             >
               <Icon className="mr-2 h-4 w-4" />
               {action.label}
