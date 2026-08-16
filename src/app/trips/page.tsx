@@ -6,7 +6,6 @@ import { usePaginatedResource } from "@/hooks/usePaginatedResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { tripsAPI, Trip } from "@/lib/api/trips";
 import { formatTripDateRange } from "@/lib/date-time";
-import { formatTripLocationNames } from "@/lib/trip-locations";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -21,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { PaginationFooter } from "@/components/ui/pagination-footer";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { TripDialog } from "@/components/trips/trip-dialog";
+import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
 import { Plus, Eye, Edit, Trash2, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { PageSpinner } from "@/components/ui/page-spinner";
@@ -140,8 +140,10 @@ export default function TripsPage() {
                         "-"}
                     </TableCell>
                     <TableCell>
-                      {formatTripLocationNames(trip.locations, { max: 2 }) ??
-                        "-"}
+                      <TripLocationsLabel
+                        locations={trip.locations}
+                        fallback="-"
+                      />
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
