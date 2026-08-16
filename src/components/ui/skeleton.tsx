@@ -66,18 +66,26 @@ export function CardSkeleton({
  * Placeholder rows for the bordered-row lists (recent dives, recent trips) -
  * a label and a sub-label on the left, one figure on the right, inside the
  * same `p-3 rounded-lg border` box the real rows use.
+ *
+ * The two bars are `h-5` and `h-4` because the real row stacks a `text-base`
+ * line on a `text-sm` one: 20 + 8 + 16 against 24 + 20, which with `p-3` and
+ * the border puts both at 70px. Pass `rows` to match what the card will
+ * actually show - the default of one row is only right for a list of one.
  */
-export function ListRowsSkeleton({ rows = 3 }: { rows?: number }) {
+export function ListRowsSkeleton({ rows = 1 }: { rows?: number }) {
   return (
-    <div className="space-y-3">
+    // The bars are individually `aria-hidden`, but the boxes around them are
+    // not: without this a screen reader is handed a list of empty containers
+    // where the spinner this replaced announced nothing at all.
+    <div className="space-y-3" aria-busy aria-hidden>
       {Array.from({ length: rows }, (_, row) => (
         <div
           key={row}
           className="flex items-center justify-between gap-4 p-3 rounded-lg border"
         >
           <div className="min-w-0 space-y-2">
-            <Skeleton className="h-4 w-40" />
-            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-4 w-24" />
           </div>
           <Skeleton className="h-4 w-16 shrink-0" />
         </div>

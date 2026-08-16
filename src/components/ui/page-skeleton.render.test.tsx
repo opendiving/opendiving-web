@@ -62,6 +62,23 @@ describe("FormPageSkeleton", () => {
 
 describe("TableRowsSkeleton", () => {
   it("fills every column, so the placeholder shares the real rows' grid", () => {
+    const { container } = render(
+      <Table>
+        <TableBody>
+          <TableRowsSkeleton columns={3} rows={2} />
+        </TableBody>
+      </Table>,
+    );
+
+    const rows = container.querySelectorAll("tbody tr");
+    expect(rows).toHaveLength(2);
+    rows.forEach((row) => expect(row.querySelectorAll("td")).toHaveLength(3));
+  });
+
+  it("keeps the empty rows out of the accessibility tree", () => {
+    // They hold the table's height, and that is all they are for. Left visible to
+    // assistive tech they'd announce a table of two rows with six empty cells, where
+    // the spinner they replaced announced nothing.
     render(
       <Table>
         <TableBody>
@@ -70,8 +87,6 @@ describe("TableRowsSkeleton", () => {
       </Table>,
     );
 
-    const rows = screen.getAllByRole("row");
-    expect(rows).toHaveLength(2);
-    rows.forEach((row) => expect(row.querySelectorAll("td")).toHaveLength(3));
+    expect(screen.queryAllByRole("row")).toHaveLength(0);
   });
 });
