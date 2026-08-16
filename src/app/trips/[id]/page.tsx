@@ -15,7 +15,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { TripDialog } from "@/components/trips/trip-dialog";
 import { TripLocationsMap } from "@/components/trips/trip-locations-map-lazy";
 import { PageHeader } from "@/components/ui/page-header";
-import { SectionSpinner } from "@/components/ui/section-spinner";
+import { DetailPageSkeleton } from "@/components/ui/page-skeleton";
 import { NotFoundState } from "@/components/ui/not-found-state";
 import { Edit, Trash2, Plus, Calendar, MapPin, Loader2 } from "lucide-react";
 import Link from "next/link";
@@ -77,11 +77,7 @@ export default function TripDetailPage() {
   }
 
   if (isLoadingTrip) {
-    return (
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <SectionSpinner />
-      </div>
-    );
+    return <DetailPageSkeleton backHref="/trips" backLabel="Back to Trips" />;
   }
 
   if (!trip) {

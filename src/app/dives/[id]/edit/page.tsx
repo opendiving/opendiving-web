@@ -21,7 +21,7 @@ import {
 import { DiveFormCard } from "@/components/dives/dive-form-card";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageSpinner } from "@/components/ui/page-spinner";
-import { SectionSpinner } from "@/components/ui/section-spinner";
+import { FormPageSkeleton } from "@/components/ui/page-skeleton";
 import { NotFoundState } from "@/components/ui/not-found-state";
 import { useToast } from "@/components/ui/use-toast";
 import { formatDurationForForm } from "@/lib/date-time";
@@ -185,9 +185,14 @@ function EditDivePageContent() {
 
   if (isLoadingDive) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <SectionSpinner />
-      </div>
+      <FormPageSkeleton
+        backHref={returnTo.href}
+        backLabel={returnTo.label}
+        // The dive form's first card is deeper than the six-field default -
+        // date, duration, depths, temperature, site and trip all land above
+        // the fold, and undersizing the placeholder puts the jump back.
+        fields={8}
+      />
     );
   }
 

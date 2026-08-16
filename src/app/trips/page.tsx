@@ -8,6 +8,8 @@ import { tripsAPI, Trip } from "@/lib/api/trips";
 import { formatTripDateRange } from "@/lib/date-time";
 import { formatTripLocationNames } from "@/lib/trip-locations";
 import { Button } from "@/components/ui/button";
+import { CountBadge } from "@/components/ui/count-badge";
+import { TableRowsSkeleton } from "@/components/ui/table-skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -17,7 +19,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { PaginationFooter } from "@/components/ui/pagination-footer";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { TripDialog } from "@/components/trips/trip-dialog";
@@ -94,17 +95,15 @@ export default function TripsPage() {
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>Trip List</span>
-            <Badge variant="secondary">
-              {totalCount} total trip{totalCount !== 1 ? "s" : ""}
-            </Badge>
+            <CountBadge
+              count={totalCount}
+              isLoading={isLoadingTrips}
+              label="total trip"
+            />
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {isLoadingTrips && trips.length === 0 ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
-          ) : trips.length === 0 ? (
+          {!isLoadingTrips && trips.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-muted-foreground mb-4">
                 No trips yet. Create your first trip to group your dives!
@@ -125,6 +124,9 @@ export default function TripsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
+                {trips.length === 0 && (
+                  <TableRowsSkeleton columns={4} rows={itemsPerPage} />
+                )}
                 {trips.map((trip) => (
                   <TableRow key={trip.uuid}>
                     <TableCell className="font-medium">

@@ -22,7 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageSpinner } from "@/components/ui/page-spinner";
-import { SectionSpinner } from "@/components/ui/section-spinner";
+import { DetailPageSkeleton } from "@/components/ui/page-skeleton";
 import { NotFoundState } from "@/components/ui/not-found-state";
 import {
   Edit,
@@ -101,11 +101,7 @@ export default function GearItemDetailPage() {
   }
 
   if (isLoadingGear) {
-    return (
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <SectionSpinner />
-      </div>
-    );
+    return <DetailPageSkeleton backHref="/gear" backLabel="Back to Gear" />;
   }
 
   if (!gearItem) {

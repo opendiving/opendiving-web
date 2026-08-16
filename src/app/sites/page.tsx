@@ -6,6 +6,8 @@ import { usePaginatedResource } from "@/hooks/usePaginatedResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
 import { Button } from "@/components/ui/button";
+import { CountBadge } from "@/components/ui/count-badge";
+import { TableRowsSkeleton } from "@/components/ui/table-skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -15,7 +17,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { PaginationFooter } from "@/components/ui/pagination-footer";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DiveSiteDialog } from "@/components/sites/dive-site-dialog";
@@ -94,17 +95,15 @@ export default function SitesPage() {
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>Dive Site List</span>
-            <Badge variant="secondary">
-              {totalCount} total dive site{totalCount !== 1 ? "s" : ""}
-            </Badge>
+            <CountBadge
+              count={totalCount}
+              isLoading={isLoadingDiveSites}
+              label="total dive site"
+            />
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {isLoadingDiveSites && diveSites.length === 0 ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
-          ) : diveSites.length === 0 ? (
+          {!isLoadingDiveSites && diveSites.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-muted-foreground mb-4">
                 No dive sites yet. Add your first dive site to start tracking
@@ -125,6 +124,9 @@ export default function SitesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
+                {diveSites.length === 0 && (
+                  <TableRowsSkeleton columns={3} rows={itemsPerPage} />
+                )}
                 {diveSites.map((diveSite) => (
                   <TableRow key={diveSite.uuid}>
                     <TableCell className="font-medium">
