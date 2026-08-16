@@ -12,8 +12,8 @@ export interface DiveSitesLabelProps {
 
 // Renders a dive's site(s) as its primary (first-visited) site, plus a
 // "+N" suffix when the dive includes additional sites (e.g. a drift dive that
-// crosses several named sites). The extra sites' names are available as a
-// hover tooltip on the "+N" badge.
+// crosses several named sites). Every name is available as a hover tooltip on
+// the whole label whenever the "+N" is hiding some of them.
 export function DiveSitesLabel({
   sites,
   linked = false,
@@ -27,7 +27,22 @@ export function DiveSitesLabel({
   const [primary, ...extra] = sites;
 
   return (
-    <span className={className}>
+    <span
+      className={className}
+      // The whole list, not just the hidden tail: the tooltip reads as the
+      // expansion of what is on screen, and a diver hovering "+2" to see what
+      // it stands for gets the same answer as one hovering the name. Left off
+      // entirely for a single site, where it would only repeat the label - and
+      // `title` on the wrapper still shows over the primary site's link, since
+      // the link carries none of its own.
+      //
+      // Joined without the blank-dropping `TripLocationsLabel` needs: a dive
+      // site is a saved row whose `name` the API holds to `min_length=1`, while
+      // a trip location is a snapshot that can arrive as free text.
+      title={
+        extra.length > 0 ? sites.map((site) => site.name).join(", ") : undefined
+      }
+    >
       {linked ? (
         <Link href={`/sites/${primary.uuid}`} className="hover:underline">
           {primary.name}
@@ -37,13 +52,7 @@ export function DiveSitesLabel({
       )}
       {showLocation && primary.location && `, ${primary.location}`}
       {extra.length > 0 && (
-        <span
-          className="text-muted-foreground"
-          title={`Also: ${extra.map((site) => site.name).join(", ")}`}
-        >
-          {" "}
-          +{extra.length}
-        </span>
+        <span className="text-muted-foreground"> +{extra.length}</span>
       )}
     </span>
   );

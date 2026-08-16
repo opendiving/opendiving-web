@@ -5647,3 +5647,80 @@ a position, which also keeps the map's chunk unfetched — it is a `next/dynamic
 exists on the server. The dynamic wrapper lives in its own file rather than at each of the two call
 sites, so the skeleton's height cannot drift from the map's and make the page jump when the chunk
 lands.
+
+## A "+N" is a promise that hovering will say what N was
+
+`Moalboal, Bohol +2` and `Pescador Island +1` compact a list to fit a table cell, and until now the
+only way to read the rest was to open the trip or the dive. The names are already in the payload
+that drew the row — nothing is being fetched to reveal them — so the compaction was hiding data the
+page was holding.
+
+Both surfaces now carry the full list as a `title`. Three details that are easy to get wrong:
+
+**The hint sits on the whole label, not on the "+N" itself.** `DiveSitesLabel` used to title the
+badge alone, with the text `Also: …` listing only the hidden tail. That is a smaller hover target
+than it looks — a two-character superscript — and it splits the answer in two, so a diver reading
+`Pescador Island +1` had to know that hovering the name and hovering the badge were different
+gestures. The tooltip is now the expansion of what is on screen: every name, from the same element
+the whole label occupies. A `title` on the wrapper still shows over the primary site's `<Link>`,
+because the link carries none of its own.
+
+**A hint that repeats the label is worse than no hint.** Neither surface titles a label that already
+shows everything, which is why `formatTripLocationNamesHint` exists beside `formatTripLocationNames`
+rather than callers simply calling the formatter twice with and without `max`. It answers
+`undefined` when nothing is hidden, and — the part that makes it more than a string comparison — it
+decides that against the same blank-dropping rule the label uses, so a trip carrying
+`["Moalboal", " ", "Bohol"]` under `max: 2` shows no "+N" and gets no tooltip. A hint computed
+against a different limit than the label would either repeat the cell or withhold a name the "+N"
+says is there, and neither would look wrong at the call site — so the two are no longer computed at
+the call site at all. `TripLocationsLabel` owns the limit and calls both functions with it, the way
+`DiveSitesLabel` already owned the dive half; the trips table and the dashboard's recent-trips card
+pass locations and a fallback and nothing else. The dive label joins its names unfiltered, because a
+dive site is a saved row whose `name` the API holds to `min_length=1` while a trip location is a
+geocoder snapshot that can arrive as free text.
+
+**`title` answers a mouse and nobody else, and that is the accepted limit here.** There is no hover
+on a touchscreen, and a `title` on a non-focusable `<span>` is not reachable by keyboard either — so
+on the phone a diver logs from, the "+2" is still unexplained. It is not a regression (the old
+`Also: …` title had the same limit on a smaller target), and the alternative is turning a label
+inside a table row that already links out into a `Popover` trigger — an interactive element nested
+in a link, for a hint whose whole content is one tap away on the trip's own page. Hover-only is the
+deliberate answer for now; a real tooltip primitive would change it, and this app has none yet.
+
+## `DialogFooter` is one row at every width, and its gap is `gap-2` not `space-x-2`
+
+shadcn's footer is `flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2`. Below `sm:` that
+is a column with no spacing rule at all — `space-x-2` only applies from `sm:` up, and it separates
+siblings horizontally regardless — so on a phone the Cancel and submit buttons sat flush against
+each other with no gap, which is the bug this fixes.
+
+The fix is not to add `space-y-2` to the column. Every dialog in this app ends in Cancel plus one
+action, and the widest pair is `Cancel` (80.5px) beside `Create Certification` with its `Plus` icon
+(186.9px) — 275.4px with the gap, against a dialog content box of viewport minus 50px (`p-6` and a
+border on each side). So one line needs about 326px, and measured in Chrome the certification dialog
+lays out on one row at 360, 375, 390 and 414 and wraps at 320. The column was spending a second row
+on something that never needed one, at every width a phone sold this decade reports.
+
+`gap-2` rather than `space-x-2` because the gap has to survive that wrap. `space-x` puts a margin
+between siblings on a line and knows nothing about the line breaking, so a footer that _did_ wrap —
+320px, a longer action label, a diver running a larger text size — would lose the spacing entirely,
+which is the same failure this section opened with. `flex-wrap-reverse` is what handles the rest of
+that case: the buttons stay on one line whenever they fit, and when they cannot, the action lands on
+the row _above_ Cancel exactly the way the old `flex-col-reverse` put it there, now with 8px between
+the rows.
+
+## The dive's duration and depths lost their card title
+
+The `Duration & Depth` header (see _"The dive's clock went up to the header, and two cards became
+one"_) is gone. Each figure under it is already labelled `Duration`, `Maximum Depth`,
+`Average Depth`, so the title restated the two labels beneath it in a heavier weight, and the
+`Timer` icon beside it named a dive property rather than a section of the page. What is left is a
+card of three stat blocks — the first thing on the page after the header, and legible without being
+told what it is.
+
+The `CardContent` takes an explicit `pt-6`. `CardContent`'s default is `p-6 pt-0`, which assumes a
+`CardHeader` supplied the top padding; without one the numbers would otherwise start hard against
+the card's top border. The dashboard's stats-error card (`app/dashboard/page.tsx`) already restores
+it the same way, so this is the second headerless card rather than the first — and two call sites is
+not enough to earn a `headerless` variant in `ui/card.tsx`, which would have to guess whether the
+next one wants the same padding or a tighter one.

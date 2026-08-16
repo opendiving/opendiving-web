@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { formatTripLocationNames } from "./trip-locations";
+import {
+  formatTripLocationNames,
+  formatTripLocationNamesHint,
+} from "./trip-locations";
 
 describe("formatTripLocationNames", () => {
   it("joins every name when no limit is given", () => {
@@ -69,5 +72,58 @@ describe("formatTripLocationNames", () => {
         { max: 1 },
       ),
     ).toBe("Moalboal +1");
+  });
+});
+
+describe("formatTripLocationNamesHint", () => {
+  it("spells out every name the label compacted away", () => {
+    expect(
+      formatTripLocationNamesHint(
+        [{ name: "Moalboal" }, { name: "Bohol" }, { name: "Malapascua" }],
+        { max: 2 },
+      ),
+    ).toBe("Moalboal, Bohol, Malapascua");
+  });
+
+  it("answers undefined when the label already shows them all", () => {
+    // Including the case where the list exactly fills the limit, since there is
+    // no "+N" on screen to explain.
+    expect(
+      formatTripLocationNamesHint([{ name: "Moalboal" }, { name: "Bohol" }], {
+        max: 2,
+      }),
+    ).toBeUndefined();
+    expect(
+      formatTripLocationNamesHint([{ name: "Moalboal" }, { name: "Bohol" }]),
+    ).toBeUndefined();
+  });
+
+  it("answers undefined for a trip with no usable locations", () => {
+    expect(formatTripLocationNamesHint([], { max: 2 })).toBeUndefined();
+    expect(formatTripLocationNamesHint(undefined, { max: 2 })).toBeUndefined();
+    expect(formatTripLocationNamesHint(null, { max: 2 })).toBeUndefined();
+    expect(
+      formatTripLocationNamesHint([{ name: "" }, { name: "  " }], { max: 1 }),
+    ).toBeUndefined();
+  });
+
+  it("ignores blank names when deciding whether anything is hidden", () => {
+    // Two usable names under a limit of two is nothing hidden, however many
+    // blanks the trip carries between them.
+    expect(
+      formatTripLocationNamesHint(
+        [{ name: "Moalboal" }, { name: " " }, { name: "Bohol" }],
+        { max: 2 },
+      ),
+    ).toBeUndefined();
+  });
+
+  it("trims the names it reveals", () => {
+    expect(
+      formatTripLocationNamesHint(
+        [{ name: "  Moalboal " }, { name: " Bohol" }],
+        { max: 1 },
+      ),
+    ).toBe("Moalboal, Bohol");
   });
 });

@@ -16,7 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Backpack, FileText, Timer, Weight } from "lucide-react";
+import { Backpack, FileText, Weight } from "lucide-react";
 
 interface DiveDetailMainProps {
   dive: Dive;
@@ -41,20 +41,13 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
           start time and the duration, and a "Depth Information" card below it -
           which spent a whole card's header on a single figure and put "45min"
           and "30.5 m" in different boxes despite being read together. The start
-          time went up to the page header, where the date already was. */}
+          time went up to the page header, where the date already was.
+
+          No header: each figure is already labelled, so a "Duration & Depth"
+          title above them only restated the two labels underneath it. `pt-6`
+          because `CardContent`'s own padding assumes a header sits above it. */}
       <Card>
-        <CardHeader>
-          {/* `Timer`, not the `Gauge` the old "Depth Information" card carried:
-              `DiveExposureCard` further down this same column heads itself with
-              a gauge too, and two cards a scroll apart under one icon is the
-              icon saying nothing. The merged card leads with duration, so it
-              takes the icon for the word it leads with. */}
-          <CardTitle className="flex items-center gap-2">
-            <Timer className="h-5 w-5" />
-            Duration & Depth
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           {/* Three columns for three figures, and a dive that recorded no depths
               simply leaves the duration on its own rather than stretching it. */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
