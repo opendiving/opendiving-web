@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { TripLocationsMap } from "./trip-locations-map";
+import { LocationsMap } from "./locations-map";
+import { MAX_FIT_ZOOM } from "@/lib/map-tiles";
 
 // The fit itself is unit-tested in `lib/map-tiles.test.ts`. What only a render
 // reaches is what this component does with it: which locations it draws at all,
@@ -37,18 +38,21 @@ const pins = () =>
 // The zoom two different sets of locations settle on, one render at a time:
 // leaving the first mounted would leave `tileZoom` reading its tiles.
 const zoomFor = (
-  locations: React.ComponentProps<typeof TripLocationsMap>["locations"],
+  locations: React.ComponentProps<typeof LocationsMap>["locations"],
 ) => {
-  const { unmount } = render(<TripLocationsMap locations={locations} />);
+  const { unmount } = render(
+    <LocationsMap locations={locations} subject="the trip's locations" />,
+  );
   const zoom = tileZoom();
   unmount();
   return zoom;
 };
 
-describe("TripLocationsMap", () => {
+describe("LocationsMap", () => {
   it("draws a pin for each place that has a position", () => {
     render(
-      <TripLocationsMap
+      <LocationsMap
+        subject="the trip's locations"
         locations={[
           { name: "Moalboal", latitude: 9.9494, longitude: 123.3986 },
           { name: "Bohol", latitude: 9.85, longitude: 124.14 },
@@ -65,7 +69,8 @@ describe("TripLocationsMap", () => {
   // "not on the map"; here it simply is not one.
   it("skips a place with no position", () => {
     render(
-      <TripLocationsMap
+      <LocationsMap
+        subject="the trip's locations"
         locations={[
           { name: "Moalboal", latitude: 9.9494, longitude: 123.3986 },
           { name: "That reef with the turtles" },
@@ -80,7 +85,10 @@ describe("TripLocationsMap", () => {
 
   it("renders nothing at all when no place has a position", () => {
     const { container } = render(
-      <TripLocationsMap locations={[{ name: "Somewhere warm" }]} />,
+      <LocationsMap
+        locations={[{ name: "Somewhere warm" }]}
+        subject="the trip's locations"
+      />,
     );
     expect(container).toBeEmptyDOMElement();
   });
@@ -91,10 +99,14 @@ describe("TripLocationsMap", () => {
   // locations load gets a frame that stays empty forever.
   it("measures a surface that only appears on a later render", () => {
     const { rerender } = render(
-      <TripLocationsMap locations={[{ name: "Somewhere warm" }]} />,
+      <LocationsMap
+        locations={[{ name: "Somewhere warm" }]}
+        subject="the trip's locations"
+      />,
     );
     rerender(
-      <TripLocationsMap
+      <LocationsMap
+        subject="the trip's locations"
         locations={[
           { name: "Moalboal", latitude: 9.9494, longitude: 123.3986 },
         ]}
@@ -138,11 +150,36 @@ describe("TripLocationsMap", () => {
     expect(asBox).toBeLessThan(asPoint);
   });
 
+  // A lone place fits at every zoom there is, so the cap is the whole answer for
+  // one - and it is the same cap for a dive site as for a trip location, because
+  // this map cannot be zoomed out and an offshore site at street level is a dot
+  // on blank water. See DECISIONS.md.
+  it("opens a lone place at locality zoom", () => {
+    expect(
+      zoomFor([{ name: "Blue Hole", latitude: 28.5721, longitude: 34.5372 }]),
+    ).toBe(MAX_FIT_ZOOM);
+  });
+
+  // Every place has a name, but nothing stops it being blank - and "Map of "
+  // is what a screen reader would otherwise read out.
+  it("falls back to the caller's subject when no name is usable", () => {
+    render(
+      <LocationsMap
+        locations={[{ name: " ", latitude: 9.9494, longitude: 123.3986 }]}
+        subject="the dive site"
+      />,
+    );
+    expect(screen.getByRole("img").getAttribute("aria-label")).toBe(
+      "Map of the dive site",
+    );
+  });
+
   // The licence links have to stay outside the labelled image: a link inside
   // `role="img"` is dropped from the accessibility tree.
   it("keeps the tile attribution reachable", () => {
     render(
-      <TripLocationsMap
+      <LocationsMap
+        subject="the trip's locations"
         locations={[
           { name: "Moalboal", latitude: 9.9494, longitude: 123.3986 },
         ]}

@@ -20,9 +20,10 @@ import { formatTripLocationNames } from "@/lib/trip-locations";
 const FIT_PADDING = 24;
 
 /**
- * As much of a trip location as this map needs, which is the position and the
- * name. Loose enough to take both what the API returns and what the form holds
- * while it is being edited.
+ * As much of a place as this map needs, which is the position and the name.
+ * Loose enough to take a trip location - both what the API returns and what the
+ * form holds while it is being edited - as well as a dive site, which is the
+ * same two fields under the same names.
  */
 export interface MappableLocation {
   name: string;
@@ -87,12 +88,23 @@ function placedLocations(locations: MappableLocation[]): PlacedLocation[] {
   return placed;
 }
 
-export interface TripLocationsMapProps {
+export interface LocationsMapProps {
   locations: MappableLocation[];
+  /**
+   * What the map is of, for the label a screen reader reads when the places
+   * turn out to have no usable names between them. Never seen otherwise - the
+   * names themselves are the label whenever there are any.
+   *
+   * Required despite having an obvious default, because the path that reads it
+   * has no visual tell: a caller who left it off would get a plausible but
+   * wrong label that no screenshot and no test of theirs would catch.
+   */
+  subject: string;
 }
 
 /**
- * Where a trip went, drawn once and not touched again.
+ * Where a trip went, or where a dive site is: places drawn once and not touched
+ * again.
  *
  * Deliberately not `MapPicker`: nearly all of that component's size is the
  * write-back problem - telling a position it emitted apart from one the diver
@@ -104,7 +116,7 @@ export interface TripLocationsMapProps {
  * pinch glides, and there is nothing to pinch. Tiles are drawn at their own
  * level and never scaled, which is also the sharpest they can be.
  */
-export function TripLocationsMap({ locations }: TripLocationsMapProps) {
+export function LocationsMap({ locations, subject }: LocationsMapProps) {
   const { resolvedTheme } = useTheme();
   const source = useMemo(() => tileSource(), []);
   const attribution = useMemo(
@@ -177,7 +189,9 @@ export function TripLocationsMap({ locations }: TripLocationsMapProps) {
   if (placed.length === 0) return null;
 
   // Every location has a name, but nothing stops one being blank, and "Map of
-  // " reads as a bug to anyone hearing it.
+  // " reads as a bug to anyone hearing it - hence the caller's `subject` as the
+  // fallback. `formatTripLocationNames` is the same joining rule the trip's own
+  // header uses, and it drops the blanks.
   const names = formatTripLocationNames(placed);
 
   return (
@@ -189,7 +203,7 @@ export function TripLocationsMap({ locations }: TripLocationsMapProps) {
       <div
         ref={measureSurface}
         role="img"
-        aria-label={names ? `Map of ${names}` : "Map of the trip's locations"}
+        aria-label={`Map of ${names ?? subject}`}
         className="absolute inset-0"
       >
         <div aria-hidden className="pointer-events-none absolute inset-0">
@@ -234,7 +248,7 @@ export function TripLocationsMap({ locations }: TripLocationsMapProps) {
       </div>
 
       {/* A licence condition of the tiles, so it is rendered over them.
-          `target="_blank"` is not decoration: this map appears inside a dialog
+          `target="_blank"` is not decoration: this map appears inside dialogs
           holding a half-filled form, and navigating away in the same tab would
           throw it away. */}
       <div className="absolute bottom-0 right-0 bg-background/80 px-1 text-[10px] leading-4 text-muted-foreground">
@@ -258,4 +272,4 @@ export function TripLocationsMap({ locations }: TripLocationsMapProps) {
   );
 }
 
-export default TripLocationsMap;
+export default LocationsMap;

@@ -33,7 +33,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Button } from "@/components/ui/button";
 import { TripLocationMultiSelect } from "@/components/trips/trip-location-multi-select";
-import { TripLocationsMap } from "@/components/trips/trip-locations-map-lazy";
+import { LocationsMap } from "@/components/map/locations-map-lazy";
 
 interface TripDialogProps {
   userId: string;
@@ -220,7 +220,10 @@ export function TripDialog({
                 searched for a name, and this answers "yes, that is the place I
                 meant" without asking them to do anything with it. */}
             {mappedLocations.length > 0 && (
-              <TripLocationsMap locations={mappedLocations} />
+              <LocationsMap
+                locations={mappedLocations}
+                subject="the trip's locations"
+              />
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
