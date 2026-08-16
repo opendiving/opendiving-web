@@ -13,11 +13,12 @@ wrapping by hand.
 - Dev server: http://localhost:3000
 - Environment: `.env` (create from `.env.example`)
 - **API access**: the browser calls the API directly — axios `baseURL` in `lib/api/client.ts` — with
-  no server-side proxy in between. Set `NEXT_PUBLIC_API_URL=http://localhost:8000` in `.env`.
-  Despite the name, `src/proxy.ts` is Next middleware that builds a nonce-based CSP, not a proxy; it
-  reads that same variable to derive `connect-src`, so repointing the app at another API host is a
-  one-variable change — and an API host hardcoded anywhere else will be blocked by CSP rather than
-  merely misconfigured.
+  no server-side proxy in between. Set `NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1` in `.env`
+  — it is the full base, `/api/v1` prefix included, not just the origin, and without the prefix
+  every request 404s. Despite the name, `src/proxy.ts` is Next middleware that builds a nonce-based
+  CSP, not a proxy; it reads that same variable to derive `connect-src`, so repointing the app at
+  another API host is a one-variable change — and an API host hardcoded anywhere else will be
+  blocked by CSP rather than merely misconfigured.
 
 Test, lint, format and type-check commands are in `CONTRIBUTING.md`.
 

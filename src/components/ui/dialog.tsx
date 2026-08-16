@@ -73,7 +73,16 @@ const DialogFooter = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2",
+      // One row at every width, not `flex-col-reverse` below `sm:`. Every
+      // dialog here ends in Cancel plus one action, and the pair fits a 320px
+      // viewport with room over - stacking them was spending two rows on
+      // something that never needed them. `gap-2` rather than `space-x-2` so
+      // the spacing survives the wrap: `space-x` only separates siblings on a
+      // line, so a footer that did wrap - a longer action label, a bigger font
+      // - lost the gap entirely, which is what left the buttons touching.
+      // `flex-wrap-reverse` puts the action on top if it ever comes to that,
+      // the same way the old mobile column did.
+      "flex flex-wrap-reverse items-center justify-end gap-2",
       className,
     )}
     {...props}

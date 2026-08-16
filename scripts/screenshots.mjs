@@ -20,7 +20,10 @@ const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = path.join(root, "docs", "screenshots");
 const API_DIR = process.env.API_DIR ?? path.join(root, "..", "opendiving-api");
 const WEB = process.env.WEB_URL ?? "http://localhost:3000";
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+// Same variable the app builds its axios `baseURL` from, so it carries the `/api/v1`
+// prefix and the fetches below append only the route. Appending the prefix here as well
+// would double it up for anyone who has the variable exported.
+const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
 
 const CHROME_CANDIDATES = [
   process.env.CHROME_PATH,
@@ -105,7 +108,7 @@ if (!chromePath) {
 
 // ------------------------------------------------------------------- sign in
 async function magicLink() {
-  const response = await fetch(`${API}/api/v1/auth/email/request`, {
+  const response = await fetch(`${API}/auth/email/request`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email }),
@@ -138,7 +141,7 @@ async function magicLink() {
 // rotates it out from under the page.
 async function pickSubjects(token) {
   const get = async (url) => {
-    const response = await fetch(`${API}/api/v1/${url}`, {
+    const response = await fetch(`${API}/${url}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return response.ok ? response.json() : null;
