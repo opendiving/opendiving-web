@@ -6,7 +6,12 @@ import { Button } from "@/components/ui/button";
 export interface PageHeaderProps {
   backHref: string;
   backLabel: string;
-  title: string;
+  /**
+   * Usually a plain string. A node so `DetailPageSkeleton` can put a
+   * `Skeleton` bar here while the record loads, which is what keeps the header
+   * the same height before and after it lands.
+   */
+  title: ReactNode;
   /**
    * Usually a plain string. A node, so the dive page can hang its prev/next
    * arrows off either end of the date - the `<p>` below styles the line either

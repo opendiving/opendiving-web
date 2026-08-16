@@ -13,7 +13,7 @@ import { DiveDateNav } from "@/components/dives/dive-date-nav";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { PageHeader } from "@/components/ui/page-header";
-import { SectionSpinner } from "@/components/ui/section-spinner";
+import { DetailPageSkeleton } from "@/components/ui/page-skeleton";
 import { NotFoundState } from "@/components/ui/not-found-state";
 import { Edit, Trash2, Loader2 } from "lucide-react";
 import Link from "next/link";
@@ -85,17 +85,14 @@ export default function DiveDetailPage() {
     return null; // Will redirect to signin
   }
 
-  // Only the *first* load blanks the page. Stepping to a neighbouring dive with the
-  // header's arrows is a same-route id change, which flips `isLoadingDive` again while
-  // `useResource` still holds the dive being left - and returning a spinner there tore
-  // the whole page down mid-step, taking the arrow that was just clicked with it. What
-  // the diver sees now is the dive they came from, dimmed, until the next one lands.
+  // Only the *first* load stands the page in. Stepping to a neighbouring dive with
+  // the header's arrows is a same-route id change, which flips `isLoadingDive` again
+  // while `useResource` still holds the dive being left - and returning a placeholder
+  // there tore the whole page down mid-step, taking the arrow that was just clicked
+  // with it. What the diver sees now is the dive they came from, dimmed, until the
+  // next one lands.
   if (isLoadingDive && !dive) {
-    return (
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <SectionSpinner />
-      </div>
-    );
+    return <DetailPageSkeleton backHref="/dives" backLabel="Back to Dives" />;
   }
 
   if (!dive) {

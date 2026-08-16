@@ -3,6 +3,8 @@ import { GearItem, gearTypeLabel } from "@/lib/api/gear";
 import { worstServiceStatus } from "@/lib/gear-service";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { CountBadge } from "@/components/ui/count-badge";
+import { TableRowsSkeleton } from "@/components/ui/table-skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -88,18 +90,12 @@ export function GearItemsCard({
                 Show archived
               </Label>
             </div>
-            <Badge variant="secondary">
-              {totalCount} item{totalCount !== 1 ? "s" : ""}
-            </Badge>
+            <CountBadge count={totalCount} isLoading={isLoading} label="item" />
           </div>
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {isLoading && items.length === 0 ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin" />
-          </div>
-        ) : items.length === 0 ? (
+        {!isLoading && items.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-muted-foreground mb-4">
               {showArchived
@@ -124,6 +120,9 @@ export function GearItemsCard({
               </TableRow>
             </TableHeader>
             <TableBody>
+              {items.length === 0 && (
+                <TableRowsSkeleton columns={6} rows={itemsPerPage} />
+              )}
               {items.map((item) => (
                 <TableRow key={item.uuid}>
                   <TableCell className="font-medium">

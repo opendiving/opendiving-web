@@ -5749,3 +5749,141 @@ the card's top border. The dashboard's stats-error card (`app/dashboard/page.tsx
 it the same way, so this is the second headerless card rather than the first — and two call sites is
 not enough to earn a `headerless` variant in `ui/card.tsx`, which would have to guess whether the
 next one wants the same padding or a tighter one.
+
+## Pages hold their shape while they load, instead of collapsing into a spinner
+
+Every page in this app is a client component that fetches on mount, and client-side navigation is
+instant, so the new route mounted and immediately early-returned a centred `Loader2`. The complaint
+that started this was that switching pages "looks jerky", and the jerkiness was never the spinner
+itself — it was that the spinner takes up almost no room. Each navigation went content → an empty
+column with a small mark in the middle of it → content, which is two layout changes and a flash, on
+every link, however fast the API answered.
+
+The fix is placeholders shaped like the thing they replace, so there is one layout, not three.
+`Skeleton` (`components/ui/skeleton.tsx`) is the primitive; `CardSkeleton` and `ListRowsSkeleton`
+sit beside it, `TableRowsSkeleton` goes inside a real `<TableBody>`, and
+`DetailPageSkeleton`/`FormPageSkeleton` (`components/ui/page-skeleton.tsx`) assemble whole page
+shells out of them. The page-level ones build on the _real_ `Card` and `PageHeader` primitives
+rather than re-describing their padding, which is the only way the header can be guaranteed the same
+height before and after the record lands.
+
+### The 150ms delay is what keeps a skeleton from being worse than a spinner
+
+A content-shaped placeholder that appears instantly trades a layout jump for a grey flash: against a
+local API most of these loads finish in well under 100ms, and a skeleton that paints and repaints
+inside that window is its own kind of jitter. So `animate-skeleton` (`tailwind.config.mts`) is two
+animations — a `skeleton-in` fade held at `opacity: 0` for 150ms by `both`, then `skeleton-pulse`
+breathing from 350ms on.
+
+The delay is on the _opacity_, deliberately, not on whether the skeleton renders. It takes up its
+full space from the first frame while being invisible, so a fast response swaps straight from the
+old page to the new one and a slow one has already reserved the layout it will need. Gating the
+render itself on a timer would put the collapse-then-grow back, just 150ms later.
+
+The delay has to cover the _chrome_ too, and at first it didn't. `Skeleton` is only the grey bar;
+the card outlines and row borders around it are real `Card`s and `TableRow`s, so they painted
+instantly and a sub-150ms response still flashed a grid of empty ruled boxes — the exact thing the
+delay exists to prevent, with the mechanism only half applied. `animate-skeleton-reveal` is the fade
+without the pulse, and it goes on those containers. Traced in the browser, a placeholder row now
+sits at opacity 0 from mount (~85ms after the click) until ~240ms and reaches full opacity at
+~440ms. Using the full `skeleton` shorthand there instead would nest one pulse inside another and
+dip the bars to a quarter opacity rather than half.
+
+`motion-reduce:animate-none` drops both animations, which also drops the `both` fill and so leaves
+the skeleton visible from the start — correct for that setting: no delay is better than a delay you
+can't see coming.
+
+### What renders for real, and what doesn't
+
+`DetailPageSkeleton` draws the actual back button rather than a bar where one will be. Where that
+link goes is known before the record is, and it is the one control on the page someone might want
+_during_ the wait — a stale or mistyped URL otherwise leaves them looking at grey boxes with nothing
+to click. For the same reason the list pages keep their `<TableHeader>` and its column labels on
+screen and put the skeleton rows in the body: the columns are static, and the table then has its
+real width from the first frame instead of snapping to it later.
+
+That restructure inverted each list page's branch. It used to read
+`isLoading && empty ? spinner : empty ? placeholder : table`; it now reads
+`!isLoading && empty ? placeholder : table`, with `items.length === 0` inside `<TableBody>` choosing
+skeleton rows. The four cases resolve identically — the point is that "loading" and "loaded" now
+differ by the contents of one element rather than by which subtree exists.
+
+`TableRowsSkeleton`'s bar widths cycle by `(row + column)` rather than being random. Random widths
+would differ between the server render and the client's and trip hydration; a fixed cycle still
+breaks up the grid.
+
+Its row count is `itemsPerPage`, not a fixed five. The page size is known before the first
+response - it is the hook's own configured value - so drawing five placeholders and then receiving
+ten put a card-height jump back exactly where this work removed one. It overshoots on a last page
+that isn't full, but the first load is always page 1.
+
+### Holding the shape means the header can no longer claim a count it doesn't have
+
+`totalCount` is 0 until the first response, and the list cards' title badges read straight off it.
+That was invisible while the body was a spinner and nobody looked at the badge; over ten placeholder
+rows, a badge saying "0 total dives" is the page stating something false. `CountBadge`
+(`components/ui/count-badge.tsx`) shows a placeholder instead, and keys on
+`isLoading && count === 0` rather than `isLoading` alone, so paging through a list that has already
+loaded keeps the total it knows instead of blinking it away and back.
+
+The pagination footer under the table is the same class of problem, left unsolved: it renders
+nothing while `totalCount <= itemsPerPage`, so it appears when the data lands and adds ~52px at the
+bottom of the card. Reserving that space would be a guess - a list of exactly ten items never
+paginates - and guessing wrong shifts the layout the other way instead.
+
+### The dashboard's chart cards, and the enter animation
+
+The two chart cards were the worst single offender: a `720 x 240` SVG drawn at `w-full h-auto`
+collapsing to a spinner and then growing back is most of the page's height moving twice.
+`ChartSkeleton` reserves the same `3:1` box, plus - behind a `legend` prop - the 24px the gas
+chart's `text-xs` legend occupies under its plot and the activity chart has nothing in. That one
+prop is the difference between the gas card measuring 560px in both states and measuring 560 loaded
+against 536 loading.
+
+`app/template.tsx` was the other half of it. Next remounts it on every navigation, and it ran
+`fade-in slide-in-from-bottom-1` over 300ms — which meant it spent the entire animation sliding a
+`Loader2` up the screen and then cut hard to the real content, putting the motion on the throwaway
+state and none on the swap that mattered. It is now a 150ms fade with no travel: what it animates is
+real page structure, so it only needs enough to mark that the route changed.
+
+### The placeholders are hidden from assistive tech, rows and all
+
+`Skeleton` carries `aria-hidden`, but that only hides the bar - the `<tr>`/`<td>` and the bordered
+row `<div>`s around them stay in the accessibility tree, so a screen reader opening `/dives` would
+be told the table has eleven rows, ten of them empty cells, where the spinner it replaced announced
+nothing at all. `TableRowsSkeleton` hides each placeholder row and `ListRowsSkeleton` its whole
+container — the latter as a busy wrapper around a hidden inner element, because the two attributes
+cancel out on one node: `aria-busy` says nothing to a reader already told to skip the subtree.
+`page-skeleton.render.test.tsx` asserts that `getAllByRole("row")` finds none of them, which is the
+assertion that fails if a later change drops the attribute.
+
+### Measured, not eyeballed
+
+Every height above came from `getBoundingClientRect()` on the real pages with the API held back by a
+patched `XMLHttpRequest.prototype.send`, comparing the loading and loaded geometry of the same
+element. That is worth repeating rather than trusting a screenshot, because three of the four
+placeholders were wrong on the first attempt and none of the errors were visible by eye: the
+subtitle bar was `h-5` against a 24px line box, the table's skeleton row count disagreed with the
+page size, and the gas chart's legend was unaccounted for.
+
+`ListRowsSkeleton` is the same story as the table's row count: its bars are `h-5`/`h-4` against the
+real row's `text-base` over `text-sm`, and its count comes from the card's own
+`RECENT_DIVES_COUNT`/`RECENT_TRIPS_COUNT` rather than a default. At three shorter rows the two
+dashboard cards painted 186px and settled at 350px - a 164px jump on the page this work exists to
+fix. They now measure 522px in both states.
+
+Two shifts survive deliberately. The dive detail page still moves 4px, because its subtitle is
+`DiveDateNav` - buttons, so 28px rather than the 24px every other detail page's subtitle occupies -
+and parameterising the shared skeleton for one page costs more than the 4px. The dashboard moves
+~134px when a gear-service reminder is due, which is not a placeholder problem at all: whether that
+card exists is one of the things the request answers.
+
+### Not done here
+
+Two things were considered and left out. A GitHub-style top progress bar is the natural next step
+but it is a _signal_, not a fix — GitHub's reads well because the old page stays on screen
+underneath it, and until these pages stopped blanking a bar would only have sat above the same
+flash. And nothing here caches: returning to `/dives` still refetches and still shows skeleton rows,
+where a stale-while-revalidate layer under `usePaginatedResource` would show the previous rows
+immediately and never enter a loading state at all. Both are worth doing; neither is worth doing
+before the layout stops moving.

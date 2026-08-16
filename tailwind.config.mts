@@ -91,10 +91,36 @@ const config: Config = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        "skeleton-in": {
+          from: { opacity: "0" },
+          to: { opacity: "1" },
+        },
+        "skeleton-pulse": {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.5" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        // Two animations, and the delay on the first is the point: a skeleton
+        // takes up its space immediately but stays *invisible* for 150ms, so a
+        // response that beats it (most of them, against a local API) swaps
+        // straight from the old page to the new one with no grey flash in
+        // between - while still reserving the layout, so nothing jumps when it
+        // lands. Only a load slow enough to be worth reporting is ever seen,
+        // and once seen it breathes so it reads as pending rather than broken.
+        // `both` is what holds opacity at 0 through the delay.
+        skeleton:
+          "skeleton-in 200ms ease-out 150ms both, skeleton-pulse 1.8s ease-in-out 350ms infinite",
+        // The reveal half on its own, for the *chrome* a placeholder draws - the
+        // card outlines and row borders. Those are real `Card`s and `TableRow`s,
+        // so without this they paint instantly and a fast response still flashes
+        // a grid of empty bordered boxes, which is most of what the delay exists
+        // to prevent. Deliberately not the full `skeleton` shorthand: a pulsing
+        // container multiplied by a pulsing bar would dip the bars to a quarter
+        // opacity instead of half.
+        "skeleton-reveal": "skeleton-in 200ms ease-out 150ms both",
       },
     },
   },

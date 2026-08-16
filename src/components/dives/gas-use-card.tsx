@@ -30,7 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SectionSpinner } from "@/components/ui/section-spinner";
+import { ChartSkeleton } from "@/components/dives/chart-skeleton";
 import { ChartStat } from "@/components/dives/chart-stat";
 import { GasUseChart } from "@/components/dives/gas-use-chart";
 import { diveStatsAPI, DiveGasUsePoint } from "@/lib/api/dive-stats";
@@ -315,7 +315,7 @@ export function GasUseCard() {
       </CardHeader>
       <CardContent>
         {points === null ? (
-          <SectionSpinner />
+          <ChartSkeleton stats={3} legend />
         ) : (
           <>
             {summary && <GasUseSummaryRow summary={summary} />}

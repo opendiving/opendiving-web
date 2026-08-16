@@ -1,6 +1,7 @@
 import { GearSet, gearItemLabel } from "@/lib/api/gear";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { CountBadge } from "@/components/ui/count-badge";
+import { TableRowsSkeleton } from "@/components/ui/table-skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PaginationFooter } from "@/components/ui/pagination-footer";
 import {
@@ -52,9 +53,7 @@ export function GearSetsCard({
         <CardTitle className="flex flex-wrap items-center justify-between gap-3">
           <span>Gear Sets</span>
           <div className="flex items-center gap-3">
-            <Badge variant="secondary">
-              {totalCount} set{totalCount !== 1 ? "s" : ""}
-            </Badge>
+            <CountBadge count={totalCount} isLoading={isLoading} label="set" />
             <Button variant="outline" size="sm" onClick={onCreate}>
               <Plus className="h-4 w-4 mr-2" />
               New Set
@@ -63,11 +62,7 @@ export function GearSetsCard({
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {isLoading && sets.length === 0 ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin" />
-          </div>
-        ) : sets.length === 0 ? (
+        {!isLoading && sets.length === 0 ? (
           <div className="text-center py-12">
             <div className="text-muted-foreground mb-4">
               No gear sets yet. Group the kit you use together — sidemount,
@@ -89,6 +84,9 @@ export function GearSetsCard({
               </TableRow>
             </TableHeader>
             <TableBody>
+              {sets.length === 0 && (
+                <TableRowsSkeleton columns={4} rows={itemsPerPage} />
+              )}
               {sets.map((set) => (
                 <TableRow key={set.uuid}>
                   <TableCell className="font-medium">{set.name}</TableCell>

@@ -22,12 +22,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { PaginationFooter } from "@/components/ui/pagination-footer";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Plus, Eye, Edit, Trash2, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { PageSpinner } from "@/components/ui/page-spinner";
+import { CountBadge } from "@/components/ui/count-badge";
+import { TableRowsSkeleton } from "@/components/ui/table-skeleton";
 
 export default function DivesPage() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
@@ -109,9 +110,11 @@ export default function DivesPage() {
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>Dive Log</span>
-            <Badge variant="secondary">
-              {totalCount} total dive{totalCount !== 1 ? "s" : ""}
-            </Badge>
+            <CountBadge
+              count={totalCount}
+              isLoading={isLoadingDives}
+              label="total dive"
+            />
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -121,11 +124,7 @@ export default function DivesPage() {
             onRenumbered={refetch}
           />
 
-          {isLoadingDives && dives.length === 0 ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
-          ) : dives.length === 0 ? (
+          {!isLoadingDives && dives.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-muted-foreground mb-4">
                 No dives logged yet. Start by adding your first dive!
@@ -150,6 +149,9 @@ export default function DivesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
+                {dives.length === 0 && (
+                  <TableRowsSkeleton columns={6} rows={itemsPerPage} />
+                )}
                 {dives.map((dive) => (
                   <TableRow key={dive.uuid}>
                     <TableCell className="font-medium">

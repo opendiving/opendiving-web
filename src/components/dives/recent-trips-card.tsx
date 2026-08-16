@@ -11,10 +11,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { ListRowsSkeleton } from "@/components/ui/skeleton";
 import { useQuickCreate } from "@/components/layout/quick-create";
 import { formatTripDateRange } from "@/lib/date-time";
 import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
-import { Luggage, Plus, Calendar, Loader2 } from "lucide-react";
+import { Luggage, Plus, Calendar } from "lucide-react";
 
 const RECENT_TRIPS_COUNT = 5;
 
@@ -76,9 +77,7 @@ export function RecentTripsCard({ userId }: RecentTripsCardProps) {
       </CardHeader>
       <CardContent>
         {isLoadingTrips ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
+          <ListRowsSkeleton rows={RECENT_TRIPS_COUNT} />
         ) : recentTrips.length === 0 ? (
           <div className="text-center py-8">
             <Luggage className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
