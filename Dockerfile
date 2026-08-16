@@ -23,9 +23,10 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 # `NEXT_PUBLIC_*` values are inlined into the client bundle at build time, not
 # read at runtime - so this has to be supplied here, with
-# `--build-arg NEXT_PUBLIC_API_URL=https://api.example.com`, and a rebuild is
-# the only way to change it. Without it the shipped bundle would call
-# http://localhost:8000 (the fallback in `lib/api/client.ts`) while
+# `--build-arg NEXT_PUBLIC_API_URL=https://api.example.com/api/v1` - the full
+# base, `/api/v1` prefix included - and a rebuild is the only way to change it.
+# Without it the shipped bundle would call
+# http://localhost:8000/api/v1 (the fallback in `lib/api/client.ts`) while
 # `src/proxy.ts` reads the real value at runtime and writes a CSP naming a
 # different origin - so the app would be blocked by its own CSP, in production
 # only. The build fails below rather than shipping that.

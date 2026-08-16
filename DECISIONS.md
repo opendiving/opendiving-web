@@ -308,6 +308,31 @@ just call `/auth/refresh` itself and ride the session for as long as the page st
 browser attaches the httpOnly cookie automatically. Actual XSS prevention (escaping, CSP - see
 below) is what closes that gap, not token storage choice alone.
 
+## `NEXT_PUBLIC_API_URL` is the full base, `/api/v1` included - not an origin
+
+The variable is handed straight to axios as `baseURL` in `lib/api/client.ts`, and every
+`lib/api/*.ts` module passes route-relative paths (`/dives`, `/user`) on top of it. The API mounts
+its whole surface under `/api/v1` (`APIRouter(prefix="/api")` + `APIRouter(prefix="/v1")` on the
+backend, not configurable), so the prefix has to be part of the variable. `.env.example` shipped it
+without one for a long time, which meant a fresh clone that followed the file to the letter 404'd on
+every single request - including the first sign-in, so it looked like a broken auth flow rather than
+a misconfiguration.
+
+The two other readers of the variable both cope with the path, in opposite ways, and that is the
+part worth remembering before changing any of them:
+
+- `src/proxy.ts` needs an _origin_ for the CSP's `connect-src` (a source expression with a path
+  matches that exact path only), so it runs the value through `new URL(...).origin` and the prefix
+  is discarded.
+- `scripts/screenshots.mjs` reads the same variable for its own `fetch` calls and used to append
+  `/api/v1` itself. Left that way, anyone with the variable exported in their shell got
+  `.../api/v1/api/v1/...`; it now appends only the route, like the app does.
+
+The alternative - keep the variable an origin and have `client.ts` append the prefix - was not
+taken. The prefix is fixed on the API side, but the path is not: an instance behind a reverse proxy
+that mounts the API under a subpath has nowhere else to say so, and `proxy.ts` was already written
+around the variable carrying a path.
+
 ## Strict, nonce-based CSP via `src/proxy.ts` - Node server only
 
 `src/proxy.ts` (Next.js 16 renamed the `middleware` file convention to `proxy` - see
