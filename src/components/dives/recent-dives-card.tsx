@@ -16,14 +16,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  Fish,
-  Waves,
-  Plus,
-  Clock,
-  ArrowDownToLine,
-  Loader2,
-} from "lucide-react";
+import { ListRowsSkeleton } from "@/components/ui/skeleton";
+import { Waves, Plus, Clock, ArrowDownToLine } from "lucide-react";
 
 const RECENT_DIVES_COUNT = 5;
 
@@ -123,9 +117,7 @@ export function RecentDivesCard({
       </CardHeader>
       <CardContent>
         {isLoadingDives ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
+          <ListRowsSkeleton />
         ) : recentDives.length === 0 ? (
           <div className="text-center py-12">
             <Waves className="h-12 w-12 text-muted-foreground mx-auto mb-4" />

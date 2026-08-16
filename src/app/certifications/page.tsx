@@ -18,6 +18,8 @@ import {
 } from "@/lib/certification";
 import { formatDateOnly } from "@/lib/date-time";
 import { Button } from "@/components/ui/button";
+import { CountBadge } from "@/components/ui/count-badge";
+import { TableRowsSkeleton } from "@/components/ui/table-skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -128,17 +130,15 @@ export default function CertificationsPage() {
         <CardHeader>
           <CardTitle className="flex flex-wrap items-center justify-between gap-3">
             <span>Your Certifications</span>
-            <Badge variant="secondary">
-              {totalCount} certification{totalCount !== 1 ? "s" : ""}
-            </Badge>
+            <CountBadge
+              count={totalCount}
+              isLoading={isLoading}
+              label="certification"
+            />
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {isLoading && certifications.length === 0 ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin" />
-            </div>
-          ) : certifications.length === 0 ? (
+          {!isLoading && certifications.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-muted-foreground mb-4">
                 No certifications yet. Add your c-cards so you always have them
@@ -162,6 +162,9 @@ export default function CertificationsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
+                {certifications.length === 0 && (
+                  <TableRowsSkeleton columns={6} rows={itemsPerPage} />
+                )}
                 {certifications.map((certification) => {
                   const expiry = certificationExpiryStatus(
                     certification.expires_on,
