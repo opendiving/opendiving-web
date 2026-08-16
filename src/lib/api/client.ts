@@ -192,6 +192,14 @@ apiClient.interceptors.response.use(
     // is one refetch of whatever gets looked at next.
     if (response.config.method && response.config.method !== "get") {
       clearResourceCache();
+      // The in-flight GETs go with it, for the same reason `clearAccessToken`
+      // flushes them: their promises are still shareable by key, so a refetch
+      // issued *after* this write could be handed one that was issued before it.
+      // That request would then be answered with a pre-mutation body while
+      // carrying the new cache generation - passing the very guard meant to stop
+      // a deleted dive from being stored - so `onDeleted -> refetch` could cache
+      // and re-serve the row it just deleted.
+      pendingGetRequests.clear();
     }
     return response;
   },

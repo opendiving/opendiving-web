@@ -240,3 +240,38 @@ describe("usePaginatedResource with a cacheKey", () => {
     expect(second.result.current.items).toHaveLength(0);
   });
 });
+
+describe("usePaginatedResource when a revalidation fails", () => {
+  it("stays quiet when the rows on screen are still good", async () => {
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValueOnce(page(1))
+      .mockRejectedValueOnce(new Error("500"));
+    const options = { cacheKey: "dives:u1" };
+
+    const first = renderHook(() => usePaginatedResource(fetchFn, options));
+    await waitFor(() => expect(first.result.current.isLoading).toBe(false));
+    first.unmount();
+
+    const second = renderHook(() => usePaginatedResource(fetchFn, options));
+    await waitFor(() => expect(fetchFn).toHaveBeenCalledTimes(2));
+
+    // A destructive toast over a full, correct table reads as "this page is
+    // broken" when all that failed was a refresh.
+    expect(toast).not.toHaveBeenCalled();
+    expect(second.result.current.items).toHaveLength(10);
+  });
+
+  it("still reports a failure with nothing to fall back on", async () => {
+    const fetchFn = vi.fn().mockRejectedValue(new Error("500"));
+
+    const { result } = renderHook(() =>
+      usePaginatedResource(fetchFn, { cacheKey: "dives:u1" }),
+    );
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(toast).toHaveBeenCalledWith(
+      expect.objectContaining({ variant: "destructive" }),
+    );
+  });
+});

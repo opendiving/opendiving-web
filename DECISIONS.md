@@ -5913,6 +5913,13 @@ they open next, which is exactly what would have happened before any of this exi
 interceptor placement matters as much as the policy: it is the one point every write already passes
 through, so a new endpoint is covered without anybody remembering to cover it.
 
+The in-flight GET dedupe map (`pendingGetRequests`) is flushed alongside it, for the same reason
+`clearAccessToken` already flushes it on sign-out. Those promises are shareable by key, so without
+this a refetch issued _after_ a delete could be handed one issued _before_ it - and because that
+caller captured the new generation, its write would sail through the very guard meant to stop a
+deleted row being stored. `onDeleted -> refetch` is exactly that sequence, so the hole was on the
+most-travelled path rather than a corner.
+
 A GET already in flight when a write clears the cache is carrying a body from before that write, and
 the hooks' `latestRequest` guard cannot see it - that only orders requests _within_ one hook, and
 stale-while-revalidate is exactly the state where a page is fully interactive with a revalidation
@@ -5989,6 +5996,10 @@ definite answer that the record is gone - 404, 403 or 410, via `isResourceGoneEr
 and redirects, and also evicts the stale entry, or every later visit to that URL would render it
 from cache and bounce again for five minutes. Anything else keeps the copy already on screen and
 logs. A first load with nothing cached behaves exactly as it always did.
+
+`usePaginatedResource` makes the same call about its toast: a destructive "Failed to load dives"
+over a full and correct table says the page is broken, when what actually failed was a refresh of
+something the diver can already read. With nothing cached it still reports the failure.
 
 ### Still uncached
 

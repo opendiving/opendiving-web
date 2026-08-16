@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi, afterEach } from "vitest";
 import {
   clearResourceCache,
+  evictResourceCache,
   readResourceCache,
   resourceCacheGeneration,
   resourceCacheSize,
@@ -110,10 +111,16 @@ describe("resource cache generations", () => {
     });
   });
 
-  it("still stores when no generation is supplied", () => {
+  it("drops one entry without disturbing the rest", () => {
     clearResourceCache();
     writeResourceCache("dive:1", { uuid: "1" }, resourceCacheGeneration());
+    writeResourceCache("dive:2", { uuid: "2" }, resourceCacheGeneration());
 
-    expect(readResourceCache("dive:1")).toEqual({ uuid: "1" });
+    // What the 404 path uses: a record the API says is gone must not sit in the
+    // map re-rendering and re-bouncing for the rest of its five minutes.
+    evictResourceCache("dive:1");
+
+    expect(readResourceCache("dive:1")).toBeUndefined();
+    expect(readResourceCache("dive:2")).toEqual({ uuid: "2" });
   });
 });

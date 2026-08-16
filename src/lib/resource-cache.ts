@@ -110,6 +110,7 @@ export function writeResourceCache(
 
 /** Drops one entry, for a record the API has just said no longer exists. */
 export function evictResourceCache(key: string): void {
+  if (!isBrowser()) return;
   entries.delete(key);
 }
 
