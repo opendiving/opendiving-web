@@ -5919,13 +5919,30 @@ stale-while-revalidate is exactly the state where a page is fully interactive wi
 still running, so a delete can land in the middle of one. `resource-cache.ts` keeps a generation
 counter that every clear bumps; readers capture it before fetching and hand it back on write, and a
 write from an older generation is dropped rather than resurrecting a deleted dive for the next five
-minutes.
+minutes. The argument is required rather than optional: a caller that forgot it would fail open and
+silently lose the protection, which is the same trap that putting the clear in the interceptor was
+meant to avoid.
 
-The cache is also emptied whenever the signed-in user changes. Signing out already takes the whole
+The write happens _before_ the hooks' cancelled/superseded guards, not after. Those guards are about
+what may be rendered - a page-2 response that lost the race to page 3 must not replace page 3's
+rows - but the body is still a correct answer under its own unambiguous key, and discarding it meant
+paging back to it stood the table in again for nothing.
+
+The cache is also emptied when the signed-in user changes - but only on the way _out_ of a session
+(signing out, expiring, swapping identity), never on the way in. Signing out already takes the whole
 document with it (`hardNavigate`), so that path was safe by accident; a session that expires
 mid-visit is not, because it clears the user in place and somebody else can sign in without the
 module ever being re-evaluated. Keys carry the user's uuid as well, which is belt and braces rather
 than redundancy: it means a bug in the clearing path still cannot show one diver another's list.
+
+Clearing on `null -> user` as well looks harmless and isn't. Effects flush child-before-parent, so
+the page's fetch effect has already captured the cache generation by the time the provider's runs,
+and bumping it there made the hook discard its own response as pre-clear - leaving the page a diver
+opened directly as the one page never cached, so returning to it stood the full skeleton in again.
+Nothing is lost by skipping it: that transition either follows a `user -> null` which already
+cleared, or runs in a module a full page load just evaluated fresh. The test in
+`AuthContext.test.tsx` mounts a real `cacheKey` hook under the provider and fails on the old
+behaviour.
 
 ### A key has to cover everything the fetcher closes over
 
@@ -5965,9 +5982,13 @@ second call would discard whatever had been typed in the window between them - t
 showing something sooner makes the page worse. Read-only detail pages pass `cacheKey`; the edit page
 doesn't, and the option's JSDoc says why.
 
-A failed revalidation still toasts and redirects to the list page, exactly as a failed first load
-does. It reads harshly - the record was on screen a moment ago - but the alternative is leaving a
-deleted dive up because the request that said so failed.
+A failed revalidation branches on what the failure was. Before the cache, a failure meant the page
+had never rendered and leaving was the only option; now the diver may be _reading_ the record while
+the refresh fails behind it, and a blip or a 500 is no reason to throw them back to the list. So a
+definite answer that the record is gone - 404, 403 or 410, via `isResourceGoneError` - still toasts
+and redirects, and also evicts the stale entry, or every later visit to that URL would render it
+from cache and bounce again for five minutes. Anything else keeps the copy already on screen and
+logs. A first load with nothing cached behaves exactly as it always did.
 
 ### Still uncached
 

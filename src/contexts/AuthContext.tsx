@@ -93,17 +93,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
   //
   // Keyed on identity rather than on the object, which is replaced by
   // `refreshUser` without anybody having changed.
-  //
-  // Second line of defence rather than first: effects run child-before-parent,
-  // so on a null -> user transition the page's own fetch effect has already read
-  // the cache by the time this fires. Harmless, because the earlier transition
-  // *to* null cleared it - which is the property to preserve if this ever moves.
   const signedInAs = useRef<string | null>(null);
   useEffect(() => {
     const uuid = user?.uuid ?? null;
-    if (signedInAs.current === uuid) return;
+    const previous = signedInAs.current;
+    if (previous === uuid) return;
     signedInAs.current = uuid;
-    clearResourceCache();
+
+    // Only on the way *out* of a session - signing out, expiring, or swapping
+    // identity. Clearing on the way in looks harmless and isn't: effects run
+    // child-before-parent, so on the null -> user transition the page's fetch
+    // effect has already captured the cache generation, and bumping it here
+    // makes the hook throw its own response away as pre-clear. The page that
+    // was loaded directly would then never be cached at all - so returning to
+    // it stood the whole skeleton in again, which is the one thing this is for.
+    //
+    // Nothing is lost by skipping it: a null -> user transition either follows
+    // a user -> null that already cleared, or runs in a module evaluated fresh
+    // by a full page load, where the cache is empty either way.
+    if (previous !== null) clearResourceCache();
   }, [user]);
 
   // Clear the (now stale) user when a token refresh fails elsewhere in the
