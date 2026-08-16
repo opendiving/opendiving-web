@@ -5556,8 +5556,8 @@ not store it, so a location loaded from the API has no credit of its own to rend
 today, and by luck rather than design: `display_name` is the only geocoder-derived field these
 surfaces show, it only exists on geocoded locations, and a geocoded location always has coordinates
 — so both places that render one (the detail page's location rows, the dialog's picker rows) also
-render `TripLocationsMap` right beneath, whose tile credit already names OpenStreetMap. Anything
-that breaks that pairing — making the map collapsible, gating it on something else, or a path that
+render `LocationsMap` right beneath, whose tile credit already names OpenStreetMap. Anything that
+breaks that pairing — making the map collapsible, gating it on something else, or a path that
 produces a `display_name` without coordinates — drops the credit silently, with no test to catch it.
 
 **Both of the API's ceilings are enforced as the list is built, not at submit** — the 20-location
@@ -5611,8 +5611,8 @@ than after it. No `z.preprocess` or `.transform` anywhere in it either, which is
 
 ## The confirmation map is not `MapPicker`, and that is most of why it is short
 
-`MapPicker` is 705 lines; `TripLocationsMap` is about 250 and shares only `lib/map-tiles.ts` with
-it. The difference is not restraint, it is that nearly everything in the picker exists to serve
+`MapPicker` is 705 lines; `LocationsMap` is about 250 and shares only `lib/map-tiles.ts` with it.
+The difference is not restraint, it is that nearly everything in the picker exists to serve
 write-back — telling a position the map emitted apart from one the diver typed into the coordinate
 fields, and the gesture handling that lets them place a pin at all. This map emits nothing. Give it
 locations, it draws them; there is no echo to disambiguate because there is no output, and no
@@ -5636,6 +5636,35 @@ a caller who renders the map before its locations load with a frame measured at 
 the `ResizeObserver` to the element appearing rather than to the component mounting is what lets the
 component keep its promise that callers need not gate on having something to draw.
 
+## The read-only map lives in `components/map/`, not in `components/trips/`
+
+It was `TripLocationsMap` under `components/trips/` while a trip was the only thing being drawn. The
+dive site page wants the same picture of a different subject, and a dive site is not a trip
+location, so it moved to `components/map/locations-map.tsx` and lost the `Trip` from its name rather
+than being imported across feature folders — which would have read as the site page depending on the
+trips feature for something neither of them owns.
+
+Nothing about the drawing changed, and exactly one thing became a prop: **`subject`**, the
+aria-label's fallback, which was the hardcoded string `"Map of the trip's locations"`. It is only
+ever read when the places have no usable names between them — but the trip's wording on a dive
+site's map would then be wrong in exactly the place nobody looking at the screen can see it. Names,
+when there are any, are still the label, and they are still joined by `formatTripLocationNames`,
+which despite its name is the general "drop the blanks and join what's left" rule.
+
+`subject` is **required**, despite having an obvious default, for the same reason it exists: the
+path that reads it has no visual tell. A caller who omitted it would get a plausible-sounding label
+on a screen-reader-only path that no screenshot and no test of theirs would ever exercise, so the
+mistake is worth spending three words at each call site to make a type error instead.
+
+What did _not_ become a prop is the frame's height, which lives in the component and is duplicated
+once in the `next/dynamic` skeleton beside it — deliberately, because a caller free to set it is a
+caller free to disagree with the skeleton and make the page jump when the chunk lands.
+
+The site page gates the map on the same `formatCoordinates` result the Coordinates line uses, rather
+than on the map's own "nothing to draw" behaviour. The map would render `null` either way; the gate
+is what keeps a site with no position from fetching the chunk at all. Both are the both-or-neither
+pair — a half-set position, which only raw SQL can produce, draws nothing and shows no coordinates.
+
 ## `fitBounds` unwraps longitudes before it unions them
 
 A trip to Fiji and Samoa spans about six degrees — across the antimeridian. Unioning the raw
@@ -5654,6 +5683,27 @@ that puts equal amounts of map above and below. And zoom is capped at `MAX_FIT_Z
 than running to `MAX_ZOOM`, because a single location fits at any zoom you like and the deepest one
 is useless — a trip location is a town, an island, a sea, so it should open where the surrounding
 coast is recognisable, not at the street level where a lone dot sits in a grid of house numbers.
+
+## A dive site's map opens further out than the picker that placed its pin
+
+`MapPicker` opens at zoom 12 for a site that already has a position; the map on the site's page fits
+to `MAX_FIT_ZOOM` (10), the same cap a trip location gets. Matching the picker is the obvious thing
+and was tried first — a site should not look like a different place on its page than it did while
+its pin was being placed — and it is wrong for one reason: **the picker can be zoomed out and a
+static map cannot.**
+
+The evidence is what settled it. Rendered at zoom 12 in the sidebar's ~300px column, an offshore
+site — Chumphon Pinnacle off Koh Tao, Kimud Shoal off Cebu — is a featureless grey square with a
+coral dot in it: about 11km across, and no land, no coastline, no labels anywhere in frame. The same
+two at zoom 10 show the island and the named towns opposite. A shore site (Dahab) reads well at
+either, gaining street names at 12 and losing nothing at 10. So the deeper zoom is better for some
+sites and useless for others, while the shallower one is never useless — and roughly half of dive
+sites are offshore, which is the half a dive log cannot afford to draw as blank water.
+
+That is also why `fitBounds` kept its single cap instead of taking one per caller. A `maxZoom`
+argument was written and then removed: with both maps wanting 10, the parameter had one value, one
+caller passing it explicitly, and a second plausible-looking number (12) sitting in `MapPicker`
+inviting somebody to pass that instead.
 
 ## Locations are always sent on edit, never omitted
 

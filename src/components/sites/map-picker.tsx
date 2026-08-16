@@ -34,7 +34,9 @@ import {
 import { Button } from "@/components/ui/button";
 
 // Close enough to street level to see a jetty, far enough out to see which bay
-// it is in - where the map opens when the site already has a position.
+// it is in - where the map opens when the site already has a position. Deeper
+// than the site page's own map fits to, which is deliberate: this one can be
+// zoomed out by hand, and that one cannot. See DECISIONS.md.
 const PLACED_ZOOM = 12;
 // Where it opens when it does not. Centred a little north of the equator
 // because that is where the land - and most of the world's diving - is.
