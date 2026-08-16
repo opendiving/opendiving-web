@@ -33,7 +33,7 @@ export default function DiveSiteDetailPage() {
     enabled: !!user,
     errorMessage: "Failed to load dive site details. Please try again.",
     redirectTo: "/sites",
-    cacheKey: "site",
+    cacheKey: user ? `site:${user.uuid}` : undefined,
   });
 
   const del = useDeleteResource(diveSitesAPI.deleteDiveSite, {

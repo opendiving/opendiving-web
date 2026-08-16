@@ -3,6 +3,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 import { AuthProvider, useAuth } from "./AuthContext";
 import { AUTH_SESSION_EXPIRED_EVENT } from "@/lib/api/client";
+import {
+  clearResourceCache,
+  resourceCacheSize,
+  writeResourceCache,
+} from "@/lib/resource-cache";
 
 // `vi.hoisted` because `vi.mock` is lifted above every other statement in the file,
 // so a plain `const` declared here would not exist yet when the factory runs.
@@ -242,5 +247,48 @@ describe("AuthProvider identity", () => {
     expect(() => renderHook(() => useAuth())).toThrow(
       "useAuth must be used within an AuthProvider",
     );
+  });
+});
+
+describe("AuthProvider resource cache clearing", () => {
+  beforeEach(() => clearResourceCache());
+
+  it("empties the cache when a session expires in place", async () => {
+    // The path that isn't safe by accident: signing out reloads the document and
+    // takes the cache with it, but an expiry clears the user in place and the
+    // next person to sign in does so in the same JS module instance.
+    refreshAccessToken.mockResolvedValue("token");
+    authAPI.getCurrentUser.mockResolvedValue(USER);
+
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.user).toEqual(USER));
+
+    writeResourceCache("dives:u1:page:1:per:10", { data: ["u1's dive"] });
+    expect(resourceCacheSize()).toBe(1);
+
+    act(() => {
+      window.dispatchEvent(new Event(AUTH_SESSION_EXPIRED_EVENT));
+    });
+
+    await waitFor(() => expect(resourceCacheSize()).toBe(0));
+  });
+
+  it("leaves the cache alone when refreshUser replaces an unchanged user", async () => {
+    // `refreshUser` hands back a new object for the same person. Clearing on the
+    // object rather than on the identity would throw the cache away on every
+    // refresh, which is the whole reason the provider keys on the uuid.
+    refreshAccessToken.mockResolvedValue("token");
+    authAPI.getCurrentUser.mockResolvedValue(USER);
+    authAPI.isAuthenticated.mockReturnValue(true);
+
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.user).toEqual(USER));
+
+    writeResourceCache("dives:u1:page:1:per:10", { data: ["u1's dive"] });
+
+    authAPI.getCurrentUser.mockResolvedValue({ ...USER, name: "Aleksei V" });
+    await act(() => result.current.refreshUser());
+
+    expect(resourceCacheSize()).toBe(1);
   });
 });

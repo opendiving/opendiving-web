@@ -2,7 +2,11 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useToast } from "@/components/ui/use-toast";
-import { readResourceCache, writeResourceCache } from "@/lib/resource-cache";
+import {
+  readResourceCache,
+  resourceCacheGeneration,
+  writeResourceCache,
+} from "@/lib/resource-cache";
 import type { PaginatedResponse } from "@/lib/api/client";
 
 // Re-exported for the pages that import the type alongside this hook. The
@@ -21,6 +25,13 @@ interface UsePaginatedResourceOptions {
    * *what* this is - `dives:<user uuid>` - and the page and page size are added
    * to it. Revisiting then paints the rows this page last showed and refetches
    * behind them instead of standing the table in again.
+   *
+   * **The key has to cover every input `fetchFn` closes over.** The hook adds
+   * the page and the page size because it knows about those; it cannot see a
+   * filter, a search term or a sort order, and two result sets sharing one entry
+   * means one of them gets painted under the other's controls. `/gear` puts its
+   * `showArchived` toggle in the key for exactly this reason - the next filter
+   * added anywhere has to do the same.
    *
    * Omit it and the hook behaves exactly as it did before the cache existed,
    * which is what `DiveNumberingStatus` and anything else short-lived wants.
@@ -84,6 +95,9 @@ export function usePaginatedResource<T>(
       const cached = key
         ? readResourceCache<PaginatedResponse<T>>(key)
         : undefined;
+      // Read before the request, checked on the write: a mutation landing while
+      // this one is in flight invalidates the answer it is about to bring back.
+      const atGeneration = resourceCacheGeneration();
 
       // A hit means there is something to show, so this is a refresh rather than
       // a load and `isLoading` stays false - the table keeps the rows it had and
@@ -106,7 +120,7 @@ export function usePaginatedResource<T>(
         if (latestRequest.current !== requestId) return;
 
         applyPage(response, page);
-        if (key) writeResourceCache(key, response);
+        if (key) writeResourceCache(key, response, atGeneration);
       } catch (error) {
         if (latestRequest.current !== requestId) return;
         console.error(errorMessage, error);

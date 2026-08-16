@@ -3,7 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/use-toast";
-import { readResourceCache, writeResourceCache } from "@/lib/resource-cache";
+import {
+  readResourceCache,
+  resourceCacheGeneration,
+  writeResourceCache,
+} from "@/lib/resource-cache";
 
 interface UseResourceOptions<T> {
   /** Hold off fetching until this is true (typically until `user` is known). */
@@ -80,10 +84,11 @@ export function useResource<T>(
   // so it doesn't redirect.
   const refetch = useCallback(async () => {
     if (!id) return;
+    const atGeneration = resourceCacheGeneration();
     try {
       const data = await fetchFn(id);
       setResource(data);
-      if (cacheKey) writeResourceCache(`${cacheKey}:${id}`, data);
+      if (cacheKey) writeResourceCache(`${cacheKey}:${id}`, data, atGeneration);
       onLoadedRef.current?.(data);
     } catch (error) {
       console.error(errorMessage, error);
@@ -96,13 +101,16 @@ export function useResource<T>(
 
     const key = cacheKey ? `${cacheKey}:${id}` : undefined;
     const cached = key ? readResourceCache<T>(key) : undefined;
+    // Read before the request, checked on the write - see `resource-cache.ts`.
+    const atGeneration = resourceCacheGeneration();
 
     const load = async () => {
       // A hit means the page has something to render, so this is a refresh and
       // `isLoading` stays false: the record shows immediately and is replaced
-      // when the answer lands. `onLoaded` runs for it too - the dive edit page
-      // seeds its form there, and a form left empty until the network answered
-      // would be the one place a cache hit made things worse.
+      // when the answer lands. `onLoaded` runs for it too, so a consumer that
+      // derives display state from the record has it for the cached copy as well
+      // as the fresh one - which is also why a consumer that seeds a *form* from
+      // `onLoaded` must not pass `cacheKey` at all. See its JSDoc above.
       //
       // Read inside the effect rather than in the `useState` initialiser, so the
       // server's first render (where the cache is always empty) and the
@@ -118,7 +126,7 @@ export function useResource<T>(
         const data = await fetchFn(id);
         if (cancelled) return;
         setResource(data);
-        if (key) writeResourceCache(key, data);
+        if (key) writeResourceCache(key, data, atGeneration);
         onLoadedRef.current?.(data);
       } catch (error) {
         console.error(errorMessage, error);

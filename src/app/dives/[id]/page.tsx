@@ -37,7 +37,7 @@ export default function DiveDetailPage() {
     enabled: !!user,
     errorMessage: "Failed to load dive details. Please try again.",
     redirectTo: "/dives",
-    cacheKey: "dive",
+    cacheKey: user ? `dive:${user.uuid}` : undefined,
   });
 
   const del = useDeleteResource(divesAPI.deleteDive, {

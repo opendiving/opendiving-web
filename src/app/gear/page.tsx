@@ -59,7 +59,13 @@ export default function GearPage() {
   } = usePaginatedResource<GearItem>(fetchGearItems, {
     enabled: !!user,
     errorMessage: "Failed to load gear. Please try again.",
-    cacheKey: user ? `gear-items:${user.uuid}` : undefined,
+    // `showArchived` is in the key because `fetchGearItems` closes over it:
+    // without it the filtered and unfiltered lists share one entry, and opening
+    // /gear with the toggle off would paint archived gear until the refetch
+    // corrected it.
+    cacheKey: user
+      ? `gear-items:${user.uuid}:archived:${showArchived}`
+      : undefined,
   });
 
   const {

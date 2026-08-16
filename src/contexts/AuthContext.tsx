@@ -93,6 +93,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
   //
   // Keyed on identity rather than on the object, which is replaced by
   // `refreshUser` without anybody having changed.
+  //
+  // Second line of defence rather than first: effects run child-before-parent,
+  // so on a null -> user transition the page's own fetch effect has already read
+  // the cache by the time this fires. Harmless, because the earlier transition
+  // *to* null cleared it - which is the property to preserve if this ever moves.
   const signedInAs = useRef<string | null>(null);
   useEffect(() => {
     const uuid = user?.uuid ?? null;
