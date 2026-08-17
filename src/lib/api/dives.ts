@@ -46,6 +46,18 @@ export interface DiveSiteSummary {
   uuid: string;
   name: string;
   location?: string;
+  // Where the site is, so a dive can be mapped from its own response instead of
+  // fetching every linked site separately. The API kept these off the embedded
+  // summary while no map view existed (see its DECISIONS.md); the dive page's
+  // map is what reversed that.
+  //
+  // Optional *and* nullable, and both halves are real: a site with no pin sends
+  // explicit `null`s, while a dive payload cached before the API started
+  // sending them at all has no keys - which is why nothing may read one without
+  // an `!= null` guard, and why they are a both-or-neither pair (the API's
+  // `WholeCoordinatePair` refuses to store half of one).
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 // One cylinder's share of a dive's consumption, on a dive where the API could tell
@@ -181,6 +193,23 @@ export interface Dive {
   // Ambient pressure at the surface, in bar. Display only - the API's gas-use maths
   // deliberately assumes 1 bar.
   surface_pressure_bar?: number | null;
+  // Where the diver actually entered and left the water, as the dive computer's GPS
+  // recorded it. On `DiveTechScalars` alongside the exposure fields above, so they
+  // carry all of that block's properties: written by the import, **not settable
+  // through the form**, explicit `null` rather than an absent key on a dive that has
+  // none, and absent entirely on a payload cached before the API sent them.
+  //
+  // These are also **not the dive site's position** - they are where this dive
+  // happened, which is why both can be shown at once and why a wide gap between them
+  // is worth seeing.
+  //
+  // **Exit-only is the normal case, not a half-filled pair**: every GPS-carrying file
+  // in the API's corpus logs its first fix after surfacing, so a lone exit pair is a
+  // complete recording and must read as one. Each pair is both-or-neither.
+  entry_latitude?: number | null;
+  entry_longitude?: number | null;
+  exit_latitude?: number | null;
+  exit_longitude?: number | null;
   // Total ballast carried on the dive, in kilograms. A plain per-dive number
   // rather than a gear item - see the API's DECISIONS.md.
   weight?: number;

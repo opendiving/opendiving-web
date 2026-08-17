@@ -198,18 +198,25 @@ export default function PrivacyPage() {
               4.4 Map Tiles
             </h3>
             <p className="text-foreground mb-4">
-              The dive site form shows a map, and your browser loads its images
-              directly from a third-party tile provider. That provider therefore
-              sees your IP address and which part of the world the map is
-              showing — which is, roughly, where your dive sites are. It does
-              not receive your account, your dive log, or the name of the site.
+              Several places in the app show a map, and your browser loads its
+              images directly from a third-party tile provider. That provider
+              therefore sees your IP address and which part of the world the map
+              is showing — which is, roughly, where you dive. It does not
+              receive your account, your dive log, or the name of anything on
+              the map.
             </p>
             <p className="text-foreground mb-4">
-              This happens whenever you open the form to add or edit a dive
-              site, whether or not you use the map. Opening an existing site for
-              editing shows it on the map straight away, so the provider sees
-              approximately where that site is. Nothing else in the app loads
-              anything from them.
+              This happens whenever a map is on screen, whether or not you
+              interact with it: the form to add or edit a dive site, a dive
+              site&rsquo;s own page, the form to add or edit a trip once
+              you&rsquo;ve picked a place for it, a trip with places on it, and
+              the page of a dive that has a position — either from the site it
+              was logged at or from the GPS reading in the file it was imported
+              from. Where the map shows a recorded position, that is where you
+              actually were rather than only which site you picked. Apart from
+              that form, which always loads a map so you have something to place
+              a pin on, a page with nothing to show loads no map and contacts
+              nobody.
             </p>
             <p className="text-foreground mb-4">
               If you run your own copy of OpenDiving you can point it at your
