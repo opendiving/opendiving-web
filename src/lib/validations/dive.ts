@@ -299,6 +299,36 @@ export const diveUpdateSchema = z.object({
 export type DiveCreateInput = z.input<typeof diveCreateSchema>;
 export type DiveUpdateInput = z.input<typeof diveUpdateSchema>;
 
+// What react-hook-form hands over as `formState.dirtyFields`: a field that
+// differs from what the form was seeded with is marked, an untouched one is
+// absent, and only the top-level keys matter here.
+//
+// Deliberately not `FieldNamesMarkedBoolean<DiveUpdateInput>`, which is the
+// library's own type for it. That type says an array field is marked per index
+// (`(boolean | undefined)[]`), and the library does not do that for a
+// *registered* array leaf like `dive_site_uuids` - it marks the whole field
+// `true`, so the accurate value doesn't type-check against the declared one.
+// `dive.render.test.tsx` pins the real shapes against a real `useForm`, since a
+// type that disagrees with the library can't be the thing this leans on.
+type DiveDirtyFields = Partial<
+  Readonly<Record<keyof DiveUpdateInput, unknown>>
+>;
+
+// Whether react-hook-form marked anything at or below this node dirty.
+//
+// Recursive because a field array's entry is a map of its own fields: editing
+// one cylinder's end pressure marks `mixtures[1].end_pressure`, and the answer
+// for `mixtures` has to be "yes" - the API replaces the list wholesale, so one
+// changed cylinder means sending all of them.
+function isDirty(marker: unknown): boolean {
+  if (marker === true) return true;
+  if (Array.isArray(marker)) return marker.some(isDirty);
+  if (marker && typeof marker === "object") {
+    return Object.values(marker).some(isDirty);
+  }
+  return false;
+}
+
 // Turns the edit form's values into the PATCH body for `divesAPI.updateDive`.
 //
 // The one rule, and the whole reason this isn't a plain spread: a field that is
@@ -309,11 +339,47 @@ export type DiveUpdateInput = z.input<typeof diveUpdateSchema>;
 // to `undefined`, the field was dropped, and the trip survived a save that
 // reported success.
 //
+// `dirtyFields` narrows it further, to the fields the diver actually changed,
+// and it is what keeps that same `null`-is-a-value rule from turning into a
+// data-loss bug in the other direction. The edit form seeds itself from the
+// dive's own response, so everything it submits is either an edit or an echo -
+// and once the API stopped rendering soft-deleted trips and sites on a dive
+// (see DECISIONS.md), some of those echoes became lies. A dive whose trip had
+// been deleted came back with `trip_uuid: null`, the form echoed the null back,
+// and `patch_dive` read it as "the diver cleared the trip" and unlinked it for
+// good; the same round trip re-sent a `dive_site_uuids` shortened by the sites
+// the API had hidden, which the API applies by deleting and reinserting the
+// join rows. Pressing Save on a dive nobody had edited destroyed both, with no
+// undelete path and no trace left in `export.json`.
+//
+// The two requests are identical on the wire, so the API cannot tell them
+// apart - "the diver cleared the trip" and "the client echoed back a null it
+// was handed" are the same PATCH. In the form they are trivially different, and
+// this is where that knowledge lives. Omitting it is still supported, for
+// callers with no form behind them.
+//
 // `duration` is the only shape change: the form edits it as an "MM:SS" string
 // and the API takes seconds. Done here rather than in the schema because
 // `z.transform()` on a field feeding a `z.input<>`-derived form type breaks
 // `useForm()`'s binding - see CONTRIBUTING.md.
-export function buildDiveUpdate(data: DiveUpdateInput): DiveUpdate {
+export function buildDiveUpdate(
+  values: DiveUpdateInput,
+  dirtyFields?: DiveDirtyFields,
+): DiveUpdate {
+  // Dropped to `undefined` rather than filtered out of the result afterwards:
+  // `undefined` is already this function's word for "don't send it", so an
+  // untouched field takes the same path as one the form never had a value for.
+  const data: DiveUpdateInput = dirtyFields
+    ? (Object.fromEntries(
+        Object.keys(values).map((field) => [
+          field,
+          isDirty(dirtyFields[field as keyof DiveDirtyFields])
+            ? values[field as keyof DiveUpdateInput]
+            : undefined,
+        ]),
+      ) as DiveUpdateInput)
+    : values;
+
   const update: DiveUpdate = {};
 
   if (data.dive_number !== undefined) update.dive_number = data.dive_number;
