@@ -2,9 +2,13 @@ import Link from "next/link";
 import { Dive } from "@/lib/api/dives";
 import { Trip } from "@/lib/api/trips";
 import { formatDateTime } from "@/lib/date-time";
+import { formatDistance, GeoPoint, haversineMeters } from "@/lib/geo-distance";
+import { formatCoordinates } from "@/lib/validations/dive-site";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DiveSitesLabel } from "@/components/dives/dive-sites-label";
 import { DiveSourceFileCard } from "@/components/dives/dive-source-file-card";
+import { LocationsMap } from "@/components/map/locations-map-lazy";
+import type { MappableLocation } from "@/components/map/locations-map";
 import { Eye, Luggage, MapPin, Thermometer } from "lucide-react";
 
 interface DiveDetailSidebarProps {
@@ -15,6 +19,18 @@ interface DiveDetailSidebarProps {
   trip: Trip | null;
   /** Called after the source file is deleted, so the dive can be re-read. */
   onSourceFileChanged: () => void;
+}
+
+// A recorded pair as a point, or null when the dive has no fix on that side.
+//
+// `== null`, not falsiness: a dive off West Africa exits at longitude 0 and one
+// in the Galápagos at latitude 0, and both are positions rather than absences.
+function fixPoint(
+  latitude?: number | null,
+  longitude?: number | null,
+): GeoPoint | null {
+  if (latitude == null || longitude == null) return null;
+  return { latitude, longitude };
 }
 
 /**
@@ -32,12 +48,52 @@ export function DiveDetailSidebar({
   const hasEnvironmentInfo =
     dive.bottom_temperature != null || dive.visibility != null;
 
+  // Where the dive computer put the diver, which is a different claim from where
+  // the site is pinned - so both are drawn, and the ring/dot pair is what tells
+  // them apart. Exit-only is the ordinary case, not half a reading: every
+  // GPS-carrying export in the API's corpus takes its first fix after surfacing.
+  const entry = fixPoint(dive.entry_latitude, dive.entry_longitude);
+  const exit = fixPoint(dive.exit_latitude, dive.exit_longitude);
+  const entryCoordinates =
+    entry && formatCoordinates(entry.latitude, entry.longitude);
+  const exitCoordinates =
+    exit && formatCoordinates(exit.latitude, exit.longitude);
+
+  // The map is capped at zoom 10, where a surface swim is well under a pixel, so
+  // the drift between the two fixes is a line of text or it is nothing.
+  const drift =
+    entry && exit ? formatDistance(haversineMeters(entry, exit)) : null;
+
+  const mapLocations: MappableLocation[] = [
+    ...dive.dive_sites.map((site) => ({
+      name: site.name,
+      latitude: site.latitude,
+      longitude: site.longitude,
+    })),
+    ...(entry ? [{ name: "Entry", ...entry, variant: "fix" as const }] : []),
+    ...(exit ? [{ name: "Exit", ...exit, variant: "fix" as const }] : []),
+  ];
+  // The map draws nothing without a position anyway; this gate is what keeps a
+  // dive with no positions at all from fetching its chunk (same as the site
+  // page). Linked sites are the reason it is not simply `entry || exit`: a dive
+  // may have a pinned site and no fixes of its own.
+  const hasMappableLocation = mapLocations.some(
+    (location) => location.latitude != null && location.longitude != null,
+  );
+
   return (
     <div className="space-y-6">
-      {(trip || dive.dive_sites.length > 0) && (
+      {(trip ||
+        dive.dive_sites.length > 0 ||
+        entryCoordinates ||
+        exitCoordinates) && (
         <Card>
           <CardHeader>
-            <CardTitle>Trip & Dive Site</CardTitle>
+            {/* "Location", not the "Trip & Dive Site" this card was called
+                while those were the only two things in it: a dive with GPS but
+                no trip and no site is now one of the cases it renders for, and
+                the blocks inside are each labelled anyway. */}
+            <CardTitle>Location</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {trip && (
@@ -63,6 +119,38 @@ export function DiveDetailSidebar({
                   <MapPin className="h-4 w-4 text-muted-foreground" />
                   <DiveSitesLabel sites={dive.dive_sites} linked />
                 </div>
+              </div>
+            )}
+
+            {hasMappableLocation && (
+              <LocationsMap
+                locations={mapLocations}
+                subject="the dive's location"
+              />
+            )}
+
+            {entryCoordinates && (
+              <div>
+                <div className="text-sm font-medium text-muted-foreground mb-1">
+                  Entry
+                </div>
+                <div className="text-sm tabular-nums">{entryCoordinates}</div>
+              </div>
+            )}
+            {exitCoordinates && (
+              <div>
+                <div className="text-sm font-medium text-muted-foreground mb-1">
+                  Exit
+                </div>
+                <div className="text-sm tabular-nums">{exitCoordinates}</div>
+              </div>
+            )}
+            {drift && (
+              <div>
+                <div className="text-sm font-medium text-muted-foreground mb-1">
+                  Entry → exit
+                </div>
+                <div className="text-sm tabular-nums">{drift}</div>
               </div>
             )}
           </CardContent>

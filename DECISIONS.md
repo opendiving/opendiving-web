@@ -5972,3 +5972,70 @@ the comparison fails, and the next dev-server start rewrites it unwrapped — so
 `next dev` each undo the other, and whoever runs `format:check` after a dev server fails on a file
 they never touched. `preserve` keeps the file in the formatter for everything else and costs only
 hand-wrapping the prose, which is noted at the top of `AGENTS.md`.
+
+## A recorded fix is a location with a different marker, not a second map
+
+The dive page draws three kinds of position at once — the pin of each site the dive was logged
+against, where the diver entered the water, and where they surfaced — and only the first is a place
+somebody chose. Two maps side by side was never seriously on the table, but a second component (or a
+`sites`/`fixes` pair of props on this one) was, and it is the wrong shape: everything about drawing
+them is identical, and only the marker differs.
+
+So `MappableLocation` gained one optional field, `variant?: "pin" | "fix"`, defaulting to the pin
+every existing caller already draws. That keeps the prop minimalism recorded above in "The read-only
+map lives in `components/map/`" — it still knows about positions and names and nothing about dives —
+while making the distinction visible. A domain-shaped `kind: "site" | "gps"` was rejected for the
+same reason `subject` is a string: the map has no business knowing what a dive site is.
+
+The fix inverts the pin's two colours rather than changing its size, shape or hue: same coral, same
+12px, `border-coral` with a `bg-background/80` centre against the pin's `border-background` over
+`bg-coral`. One accent reads as one legend where a second colour would read as a second meaning, and
+the tinted rather than transparent centre is what keeps the ring legible over a busy coastline on
+both Positron and Dark Matter. What this buys is the failure case: a site pinned a few kilometres
+from where the dive computer says the dive happened is a mis-pinned site, and the two shapes are
+what make that visible at a glance instead of arithmetic.
+
+## The drift between entry and exit is a line of text, not a line on the map
+
+Drawing a segment between the two fixes is the obvious rendering and it cannot work here. This map
+is capped at `MAX_FIT_ZOOM` (10) for reasons that have nothing to do with dives — see "A dive site's
+map opens further out than the picker that placed its pin" above — and at zoom 10 a pixel is about
+100 m of ocean — so a surface swim, which is what a diver's entry-to-exit separation usually is, is
+a sub-pixel line between two overlapping markers. Lifting the cap for this one case would trade a
+drawable line for the blank grey square that cap exists to avoid.
+
+`lib/geo-distance.ts` answers the same question in text instead: `haversineMeters` between the two
+pairs, `formatDistance` to whole metres below a kilometre and one decimal above. Haversine rather
+than projected-metre subtraction because it needs no antimeridian special case — it works on the
+difference between the longitudes, so 179.9999°E to 179.9999°W is the 22 m it looks like on a globe.
+Whole metres because a consumer GPS fix is good to something like five of them and "212.4 m" claims
+a precision the reading never had; the rounding happens before the unit is chosen, so 999.6 m
+renders as "1.0 km" rather than as a "1000 m" that looks like a different unit from the "1.0 km" a
+millimetre further on.
+
+The map still answers "where in the world was this", which is the question it is good at. The
+coordinate rows and the distance answer "what happened", and metres is the only unit they come in —
+nothing in this app has a unit preference to consult (the same sidebar hardcodes °C and m two cards
+down), and inventing one for a single row was not the place to start.
+
+## The dive's location card renders on GPS alone
+
+The card was gated on `trip || dive.dive_sites.length > 0`, which is exactly wrong for the dives
+this feature is for: an imported file carries fixes whether or not the diver ever attached the dive
+to a site, and that dive is the one whose position is most worth showing. The gate now also admits a
+dive with either coordinate pair, and the map inside it is gated separately on there being at least
+one position among the sites and the fixes — the same two-level arrangement the site page uses,
+where the inner gate's job is keeping the `next/dynamic` chunk unfetched rather than keeping an
+empty frame off the screen.
+
+Both gates use `!= null` per coordinate, never truthiness. A dive off West Africa exits at longitude
+0 and one in the Galápagos at latitude 0; `formatCoordinates` already guards this way and the map's
+own `placedLocations` does too, so the trap is only in code that reaches for the numbers directly,
+which is why the pair is turned into a point once at the top of the component and read from there.
+
+The card is now titled **"Location"** rather than "Trip & Dive Site", which is the other half of the
+same change: a heading naming the two things that used to be its whole contents is wrong on a card
+whose contents may be a map and two coordinate rows. One title for every combination rather than a
+conditional one — a heading that changes between two dives reads as two different cards, and every
+block inside is labelled anyway ("Trip", "Dive Site", "Entry", "Exit"), so nothing is lost by the
+heading getting shorter.

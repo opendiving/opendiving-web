@@ -14,6 +14,7 @@ import {
   visibleTiles,
 } from "@/lib/map-tiles";
 import { formatTripLocationNames } from "@/lib/trip-locations";
+import { cn } from "@/lib/utils";
 
 // Breathing room between the outermost place and the edge of the frame, so a
 // pin never sits on the border where half of its context is cropped away.
@@ -33,12 +34,25 @@ export interface MappableLocation {
   bbox_north?: number | null;
   bbox_west?: number | null;
   bbox_east?: number | null;
+  /**
+   * How the marker is drawn: the default solid dot for a place somebody chose,
+   * or a hollow ring for a `"fix"` - a position a device recorded, which is not
+   * the same claim at all. A dive's entry and exit fixes are the only ones so
+   * far, and a mis-pinned site or a fix a kilometre off the site is the thing
+   * the two shapes make visible at a glance.
+   *
+   * Deliberately not `kind: "site" | "gps"` or anything else domain-shaped:
+   * this component knows about positions and names, and one optional styling
+   * field is what keeps it that way.
+   */
+  variant?: "pin" | "fix";
 }
 
 interface PlacedLocation {
   name: string;
   latitude: number;
   longitude: number;
+  variant: "pin" | "fix";
   bounds: LatLonBounds;
 }
 
@@ -70,6 +84,7 @@ function placedLocations(locations: MappableLocation[]): PlacedLocation[] {
       name: location.name,
       latitude,
       longitude,
+      variant: location.variant ?? "pin",
       bounds: hasBox
         ? {
             south: bbox_south,
@@ -177,6 +192,7 @@ export function LocationsMap({ locations, subject }: LocationsMapProps) {
         const point = project(location, view.zoom);
         return {
           name: location.name,
+          variant: location.variant,
           left: nearestWrappedX(point.x, center.x, view.zoom) - origin.x,
           top: point.y - origin.y,
         };
@@ -240,8 +256,31 @@ export function LocationsMap({ locations, subject }: LocationsMapProps) {
                   `bg-coral`, not `bg-primary`: primary is near-black in light
                   and mid-grey in dark, which is invisible against Dark Matter's
                   near-black tiles. Coral is the one accent held constant across
-                  both themes. */}
-              <div className="h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-background bg-coral shadow" />
+                  both themes.
+
+                  A fix inverts the same two colours rather than changing size or
+                  hue: same coral, same 12px, so the pair reads as one legend
+                  where a second colour would read as a second meaning. The tinted
+                  rather than transparent centre is what keeps the ring a ring
+                  over a busy coastline in either theme. */}
+              <div
+                // Which marker is which, on hover. Two same-shaped rings a few
+                // hundred metres apart are one blob at this zoom, so "Entry" or
+                // "Exit" is worth an attribute even though the names are also
+                // in the surface's own aria-label.
+                //
+                // `pointer-events-auto` on the marker alone, against the grid's
+                // `pointer-events-none`: without it the title has nothing to
+                // fire on and is dead markup. Hover is all it buys - there are
+                // no handlers here, so the map still emits nothing.
+                title={marker.name || undefined}
+                className={cn(
+                  "pointer-events-auto h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 shadow",
+                  marker.variant === "fix"
+                    ? "border-coral bg-background/80"
+                    : "border-background bg-coral",
+                )}
+              />
             </div>
           ))}
         </div>

@@ -35,6 +35,13 @@ const tileZoom = () => {
 const pins = () =>
   document.querySelectorAll('div[style*="translate3d"]').length;
 
+// The marker itself, inside the positioned wrapper - which is where the shape
+// lives, the wrapper carrying only the placement.
+const markerClasses = () =>
+  Array.from(document.querySelectorAll('div[style*="translate3d"] > div')).map(
+    (marker) => marker.className,
+  );
+
 // The zoom two different sets of locations settle on, one render at a time:
 // leaving the first mounted would leave `tileZoom` reading its tiles.
 const zoomFor = (
@@ -62,6 +69,42 @@ describe("LocationsMap", () => {
     expect(pins()).toBe(2);
     expect(screen.getByRole("img").getAttribute("aria-label")).toBe(
       "Map of Moalboal, Bohol",
+    );
+  });
+
+  // A device's fix and a pin somebody placed are different claims about where
+  // something is, and a mis-pinned site is only visible if the two are drawn
+  // differently. Same size and same accent either way, so the inversion is the
+  // only difference.
+  it("draws a recorded fix as a ring and a placed pin as a dot", () => {
+    render(
+      <LocationsMap
+        subject="the dive's location"
+        locations={[
+          { name: "Blue Hole", latitude: 28.5721, longitude: 34.5372 },
+          {
+            name: "Exit",
+            latitude: 28.4375,
+            longitude: 34.4584,
+            variant: "fix",
+          },
+        ]}
+      />,
+    );
+
+    // Both are markers - the fix is not a second kind of thing the fit or the
+    // count could quietly drop.
+    expect(pins()).toBe(2);
+
+    const [pin, fix] = markerClasses();
+    expect(pin).toContain("bg-coral");
+    expect(pin).not.toContain("border-coral");
+    expect(fix).toContain("border-coral");
+    expect(fix).not.toContain("bg-coral");
+
+    // And its name is a name like any other, so it reaches the label.
+    expect(screen.getByRole("img").getAttribute("aria-label")).toBe(
+      "Map of Blue Hole, Exit",
     );
   });
 
