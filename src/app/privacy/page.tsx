@@ -15,7 +15,7 @@ export default function PrivacyPage() {
           <h1 className="text-3xl font-bold text-foreground mb-2">
             Privacy Policy
           </h1>
-          <p className="text-muted-foreground">Last updated: September 2025</p>
+          <p className="text-muted-foreground">Last updated: August 2026</p>
         </div>
 
         <div className="prose max-w-none">
