@@ -6039,3 +6039,86 @@ whose contents may be a map and two coordinate rows. One title for every combina
 conditional one — a heading that changes between two dives reads as two different cards, and every
 block inside is labelled anyway ("Trip", "Dive Site", "Entry", "Exit"), so nothing is lost by the
 heading getting shorter.
+
+## The edit form submits what the diver changed, not what it was handed
+
+`PATCH /dive` is a partial update, but the edit form was sending a whole one: every field it had
+been seeded with, on every save. That was harmless while the dive it echoed back was the dive the
+API held. It stopped being harmless when the API stopped rendering soft-deleted trips and dive sites
+on a dive read.
+
+After that change, a dive whose trip had been deleted comes back with `trip_uuid: null`, and one
+whose site had been comes back with a `dive_site_uuids` one entry short. The form seeds itself from
+that response, so pressing Save without touching anything sent the null back — and `buildDiveUpdate`
+forwards a null deliberately, because that is how a diver removes a trip. `patch_dive` read it as
+exactly that and unlinked the trip for real; the shortened site list went through the same
+delete-and-reinsert the picker uses. Both rows were then gone from the database and from
+`export.json`, with no undelete path, on a save nobody had made an edit in.
+
+The two requests are byte-identical. "The diver cleared the trip" and "the client echoed back a null
+it was handed" reach the API as the same PATCH, so **the API cannot fix this** — it has no way to
+tell them apart, and this is the only place that does. `buildDiveUpdate` now takes react-hook-form's
+`dirtyFields` and drops every field the diver did not touch, which closes both halves: an untouched
+trip picker sends nothing at all, and a trip the diver actually cleared still sends its null.
+
+Before the API change the same round trip failed loudly, with a 422 from `resolve_trip_id_for_user`
+refusing the deleted uuid. Trading a loud failure for a silent one is the shape of the regression,
+and worth remembering: a validation that was quietly holding a client's mistakes up is load-bearing
+until something replaces it.
+
+### `dirtyFields` has to be read during render, and nothing says so when it isn't
+
+The obvious way to write this — `buildDiveUpdate(data, form.formState.dirtyFields)` inside the
+submit handler — is wrong, and wrong in the way that costs a diver their work rather than throwing.
+
+`formState` is a Proxy. React Hook Form only starts maintaining a key once something has read it
+**during render**, and `useFieldArray`'s `replace` checks that flag before recomputing dirty state
+at all. Unsubscribed, `dirtyFields` is still `{}` at submit after a file import has replaced every
+cylinder — so the filter drops `mixtures`, and the import is discarded by a save that reports
+success. Scalars set through `setValue(..., { shouldDirty: true })` are marked either way, which is
+what makes this so easy to miss: the notes field, the depths and the trip picker all behave, and
+only the one path through the field array silently doesn't.
+
+The page therefore subscribes with `useFormState({ control })` and destructures `dirtyFields` in the
+render body. Calling the hook is not enough on its own — the destructuring is the subscription, on
+that proxy exactly as on `form.formState`, which is why the line reads the way it does and must not
+be "tidied" into the handler.
+
+`dive.render.test.tsx` pins both sides against a real `useForm`: one harness shaped like the page,
+and one with no render-time read anywhere, asserting that the second one loses the cylinders. That
+second test asserts broken behaviour on purpose. If a future react-hook-form makes the unsubscribed
+read work, it fails — which is the only way anyone would find out that the subscription had stopped
+being load-bearing.
+
+### What this does not close: editing a list on a dive with a hidden reference
+
+The untouched save is fixed. The diver who _does_ edit the site or gear list on a dive that still
+has a hidden reference is not, and cannot be from here.
+
+A dive linked to sites A (live) and B (soft-deleted) seeds the form with `["A"]`, because B is what
+the API now hides. The diver adds C. `dive_site_uuids` is legitimately dirty, so it is sent — as
+`["A", "C"]`, the only list the browser has — and `replace_dive_sites_for_dive` applies it by
+deleting every join row and reinserting those two. B's link is destroyed, on an edit where the diver
+never saw B and never asked to remove it.
+
+There is no client-side fix. The browser cannot preserve a reference the API refuses to render to
+it, and sending back a uuid it was never given is not something it can invent. Closing it would mean
+the API preserving join rows that point at soft-deleted rows across a wholesale replace.
+
+**Decided: we live with it**, and the reasoning is on the API side of the fence, in
+`replace_dive_sites_for_dive`'s docstring and its own DECISIONS.md. The scope is narrow — it takes a
+deleted site _plus_ an edit to the very list that site is missing from, and `move_dives_to` is the
+affordance for a diver who cares about those dives — while the fix is not: preserving hidden rows
+means deleting only the live ones, inserting the submitted list, then renumbering the survivors
+after it, which reintroduces the position-contiguity problem the bulk reassignment needed three
+statements and a wipe-guard to get right.
+
+`gear_item_uuids` is built the same way through `replace_gear_items_for_dive`, but **is not
+reachable today**: the gear loaders are still unfiltered, so a deleted gear item is handed to the
+browser, echoed back, and refused by `resolve_gear_item_ids_for_user` — a 422 the diver can see, not
+a silent deletion. Filtering the gear reads the way the site reads were filtered is exactly what
+would convert it, which is why that decision is being priced on its own rather than inheriting this
+one.
+
+Recorded rather than fixed, deliberately: the failure is real and worth knowing about when reading
+the section above, which otherwise reads as a closed chapter.

@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useState, useCallback } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useFormState } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
@@ -69,6 +69,16 @@ function EditDivePageContent() {
     },
   });
   const mixtureFieldArray = useMixtureFieldArray(form.control);
+  // Subscribed here, during render, and not read off `form.formState` inside
+  // the submit handler - which is where it was first written and where it
+  // quietly does not work. `formState` is a Proxy that only starts maintaining
+  // a key once something has *rendered* against it, and `useFieldArray`'s
+  // `replace` checks that flag before recomputing: unsubscribed, importing a
+  // file's cylinders leaves `dirtyFields` empty at submit and the whole
+  // `mixtures` edit is dropped from the PATCH. Scalars set with
+  // `shouldDirty: true` are marked either way, so the gap shows up on exactly
+  // one path and looks like nothing at all on the others.
+  const { dirtyFields } = useFormState({ control: form.control });
 
   // Seeds the form from the loaded dive. `start_time` is already the same
   // offset-aware shape the form's `DiveStartTimeField` edits, so it carries
@@ -124,7 +134,12 @@ function EditDivePageContent() {
     try {
       setIsSubmitting(true);
 
-      const updateData = buildDiveUpdate(data);
+      // Only what the diver actually changed. The form is seeded from the
+      // dive's own response, so anything else it holds is an echo - and an echo
+      // of a reference the API has hidden (a deleted trip arrives as
+      // `trip_uuid: null`) reads as a deliberate removal on the way back. See
+      // `buildDiveUpdate`.
+      const updateData = buildDiveUpdate(data, dirtyFields);
 
       await divesAPI.updateDive(diveId, updateData);
 

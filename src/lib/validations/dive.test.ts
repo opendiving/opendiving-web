@@ -524,3 +524,108 @@ describe("buildDiveUpdate", () => {
     expect(parsed.success).toBe(true);
   });
 });
+
+// The edit form seeds itself from the dive's own response, so every field it
+// submits is either an edit or an echo. Once the API stopped rendering
+// soft-deleted trips and sites on a dive, echoing became destructive: a hidden
+// trip arrives as `trip_uuid: null` and goes back as "the diver cleared it".
+// `dirtyFields` is what tells the two apart. `dive.render.test.tsx` pins the
+// same behaviour against a real `useForm`, where the markers come from
+// react-hook-form rather than from these literals.
+describe("buildDiveUpdate, given react-hook-form's dirtyFields", () => {
+  const SEEDED = {
+    dive_number: 42,
+    duration: "45:30",
+    trip_uuid: null,
+    dive_site_uuids: ["site-1"],
+    notes: "",
+  };
+
+  it("sends nothing at all when the diver changed nothing", () => {
+    // Save on an untouched form. Every value here is an echo of what the dive
+    // already holds, including a `trip_uuid: null` the API hid rather than the
+    // diver cleared, so a PATCH carrying any of it can only do damage.
+    expect(buildDiveUpdate(SEEDED, {})).toEqual({});
+  });
+
+  it("sends only the field that changed", () => {
+    const update = buildDiveUpdate(
+      { ...SEEDED, notes: "Thermocline at 18m" },
+      { notes: true },
+    );
+
+    expect(update).toEqual({ notes: "Thermocline at 18m" });
+  });
+
+  it("still sends a trip the diver cleared themselves", () => {
+    // The distinction the whole argument exists for: same `null` on the wire,
+    // opposite meanings, and only the form knows which one this is.
+    const update = buildDiveUpdate(SEEDED, { trip_uuid: true });
+
+    expect(update).toHaveProperty("trip_uuid");
+    expect(update.trip_uuid).toBeNull();
+  });
+
+  it("sends a shortened site list only when the diver shortened it", () => {
+    const withoutSites = { ...SEEDED, dive_site_uuids: [] };
+
+    // The API replaces this list wholesale by deleting and reinserting the join
+    // rows, so echoing back a list the API had already shortened is what
+    // deleted them for real.
+    expect(buildDiveUpdate(withoutSites, {})).not.toHaveProperty(
+      "dive_site_uuids",
+    );
+    // Two marker shapes, both accepted. A registered array field is marked with
+    // a bare `true` in react-hook-form 7.84 - which is what the edit form
+    // actually produces, and what `dive.render.test.tsx` pins against the real
+    // library - while a traversed array marks per index. Neither is worth
+    // depending on: the shape comes out of an `isRegisteredLeaf` heuristic that
+    // an upgrade can move, and answering both costs one `some()`.
+    expect(
+      buildDiveUpdate(withoutSites, { dive_site_uuids: true }).dive_site_uuids,
+    ).toEqual([]);
+    expect(
+      buildDiveUpdate(withoutSites, { dive_site_uuids: [true] })
+        .dive_site_uuids,
+    ).toEqual([]);
+  });
+
+  it("sends the whole mixture list when one cylinder changed", () => {
+    // `mixtures` is replaced wholesale too, so a marker anywhere below it means
+    // all of them - sending only the edited cylinder would delete the others.
+    const mixtures = [
+      { volume: 12, oxygen: 21, helium: 0 },
+      { volume: 11, oxygen: 32, helium: 0 },
+    ];
+
+    const update = buildDiveUpdate(
+      { mixtures },
+      { mixtures: [{}, { oxygen: true }] },
+    );
+
+    expect(update.mixtures).toHaveLength(2);
+  });
+
+  it("treats an all-false marker as untouched", () => {
+    // Defensive, not observed. 7.84 *deletes* a field's key once it matches
+    // what the form was seeded with again - `updateDirtyFields` drops keys
+    // absent from the recomputed set, and the scalar path unsets them - so a
+    // literal `false` is not a shape this version produces. Older ones wrote
+    // it, the meaning is unambiguous either way ("nothing here differs"), and
+    // reading it correctly costs nothing.
+    expect(
+      buildDiveUpdate(
+        { mixtures: [{ volume: 12, oxygen: 21, helium: 0 }] },
+        {
+          mixtures: [{ oxygen: false }],
+        },
+      ),
+    ).toEqual({});
+  });
+
+  it("behaves as before when no dirtyFields are passed", () => {
+    // The argument is optional: callers with no form behind them - and every
+    // existing test above - still get "everything that isn't undefined".
+    expect(buildDiveUpdate(SEEDED)).toHaveProperty("trip_uuid");
+  });
+});
