@@ -1,16 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useId, useRef, useState } from "react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import {
   ComboboxItem,
   ComboboxSearchResult,
   CreatableCombobox,
 } from "@/components/ui/creatable-combobox";
-import { diveCount } from "@/hooks/useDeleteWithReassign";
-import { divesAPI } from "@/lib/api/dives";
 import { diveSitesAPI } from "@/lib/api/dive-sites";
 import { tripsAPI } from "@/lib/api/trips";
 
@@ -21,33 +18,39 @@ export type DeleteTargetKind = "trip" | "dive-site";
 // form's own pickers - enough to scroll before typing, far short of the API's cap.
 const OPTIONS_PER_SEARCH = 25;
 
-// How long the confirm button waits for the count before giving up on it. Long
-// enough that a slow-but-working request still gets to make the offer, short
-// enough that a stalled one doesn't hold a Delete button hostage.
-const COUNT_TIMEOUT_MS = 5000;
-
 interface KindCopy {
-  moveLabel: (count: number) => string;
+  title: string;
+  // What deleting actually does, stated rather than asked about. True at any
+  // number of dives, including none, which is what lets the dialog say it
+  // without first going and counting them.
+  description: string;
   pickerLabel: string;
+  // The picker's empty state doubles as the "don't move anything" option, so the
+  // placeholder has to read as a choice rather than as an instruction.
   placeholder: string;
   noItemsLabel: string;
   noMatchesLabel: string;
+  // Shown while the field holds text that isn't a choice yet, since Delete is
+  // blocked for that and a disabled button with no explanation reads as broken.
+  unresolvedHint: string;
   search: (userId: string, query: string) => Promise<ComboboxSearchResult>;
-  count: (userId: string, uuid: string) => Promise<number>;
 }
 
-// Everything the two kinds of delete disagree about. The flow around it - count,
-// offer, hand the chosen replacement to the delete - is identical, and everything
-// the move itself involves (the ordered site list, the dedupe, the transaction)
-// happens on the API side of `move_dives_to`.
+// Everything the two kinds of delete disagree about. The flow around it - state
+// the consequence, offer a destination, hand back what was picked - is identical,
+// and everything the move itself involves (the ordered site list, the dedupe, the
+// transaction) happens on the API side of `move_dives_to`.
 const COPY: Record<DeleteTargetKind, KindCopy> = {
   trip: {
-    moveLabel: (count) => `Move ${diveCount(count)} to another trip first`,
-    pickerLabel: "Move dives to",
-    placeholder: "Select a trip...",
+    title: "Delete trip",
+    description:
+      "Deleting removes this trip from every dive logged on it. The dives themselves are not touched.",
+    pickerLabel: "Move its dives to",
+    placeholder: "No trip — just remove it",
     noItemsLabel: "No other trips yet.",
     noMatchesLabel: "No trips match.",
-    count: (userId, uuid) => divesAPI.countDives(userId, { tripUuid: uuid }),
+    unresolvedHint:
+      "Pick a trip from the list, or clear the field to delete without moving.",
     search: async (userId, query) => {
       const response = await tripsAPI.getTrips(
         userId,
@@ -65,13 +68,15 @@ const COPY: Record<DeleteTargetKind, KindCopy> = {
     },
   },
   "dive-site": {
-    moveLabel: (count) => `Move ${diveCount(count)} to another dive site first`,
-    pickerLabel: "Move dives to",
-    placeholder: "Select a dive site...",
+    title: "Delete dive site",
+    description:
+      "Deleting removes this site from every dive logged here. The dives themselves are not touched.",
+    pickerLabel: "Move those dives to",
+    placeholder: "No site — just remove it",
     noItemsLabel: "No other dive sites yet.",
     noMatchesLabel: "No dive sites match.",
-    count: (userId, uuid) =>
-      divesAPI.countDives(userId, { diveSiteUuid: uuid }),
+    unresolvedHint:
+      "Pick a dive site from the list, or clear the field to delete without moving.",
     search: async (userId, query) => {
       const response = await diveSitesAPI.getDiveSites(
         userId,
@@ -91,38 +96,19 @@ const COPY: Record<DeleteTargetKind, KindCopy> = {
   },
 };
 
-// Everything that has to start clean for each trip/site the diver opens the dialog
-// on, held as one object so resetting it is a single `setState`.
-interface ReassignState {
-  // Null while the count is still in flight - which is not the same as zero, and
-  // the reason the offer doesn't appear until the answer does.
-  count: number | null;
-  countFailed: boolean;
-  move: boolean;
-  replacement?: ComboboxItem;
-}
-
-const INITIAL_STATE: ReassignState = {
-  count: null,
-  countFailed: false,
-  move: false,
-};
-
 export interface DeleteWithReassignDialogProps {
   kind: DeleteTargetKind;
   userId: string;
   // The trip / dive site awaiting confirmation, or null when none is. Doubles as
   // the dialog's open state, matching `useDeleteResource`'s `pendingId`.
   targetId: string | null;
-  title: string;
-  description: string;
   // True while the delete itself is in flight.
   isDeleting: boolean;
   onCancel: () => void;
-  // Given the uuid to move the dives onto, or `undefined` to delete outright.
-  // The uuid goes straight to `deleteTrip`/`deleteDiveSite` as `move_dives_to`;
-  // the name comes along only so the toast afterwards can say where they went,
-  // since the API answers with a count and nothing to call the destination.
+  // Given the uuid to move the dives onto, or nothing to delete outright. The
+  // uuid goes straight to `deleteTrip`/`deleteDiveSite` as `move_dives_to`; the
+  // name comes along only so the toast afterwards can say where they went, since
+  // the API has no reason to know what the destination is called.
   onConfirm: (moveDivesTo?: string, name?: string) => void | Promise<void>;
 }
 
@@ -130,33 +116,31 @@ export interface DeleteWithReassignDialogProps {
  * The delete confirmation for a trip or a dive site, with the offer to hand its
  * dives to another one on the way out.
  *
- * Deleting either leaves the dives behind - the API soft-deletes the row and the
- * dives keep pointing at it - so a diver who merged two duplicate sites, or split a
- * trip in two, was left re-assigning them one dive at a time. The offer only appears
- * once the count has come back non-zero: "move 0 dives" is noise, and a checkbox
- * that appears after a beat is better than one that lies about how much it will do.
+ * The dialog states what deleting does - the dives keep their own records and
+ * lose this reference - and then offers somewhere to put that reference instead.
+ * The offer is always on screen, and leaving the picker empty is the plain delete
+ * this replaced. Merging two "Blue Hole" entries is the case it exists for.
  *
  * Moving and deleting are one request - `move_dives_to` on the delete itself - so
  * there is no ordering to get right and no half-done state to report: either the
  * dives are on the replacement and this is gone, or nothing happened. The dialog's
- * whole job is deciding whether to offer, and handing back the uuid that was
- * picked; a failure is an ordinary failed delete, toasted by `useDeleteResource`
- * with the API's own wording.
+ * whole job is handing back the uuid that was picked; a failure is an ordinary
+ * failed delete, toasted by `useDeleteResource` with the API's own wording.
  */
 export function DeleteWithReassignDialog({
   kind,
   userId,
   targetId,
-  title,
-  description,
   isDeleting,
   onCancel,
   onConfirm,
 }: DeleteWithReassignDialogProps) {
   const copy = COPY[kind];
-  const checkboxId = useId();
   const pickerId = useId();
-  const [state, setState] = useState<ReassignState>(INITIAL_STATE);
+  const [replacement, setReplacement] = useState<ComboboxItem | undefined>();
+  // What the picker's field currently reads, which is not the same question as
+  // what has been chosen - see `unresolved` below.
+  const [pickerText, setPickerText] = useState("");
   // Every option the picker has shown, so the input can keep displaying the chosen
   // one after the query behind it has changed. Same problem `TripCombobox` solves
   // with a name map, minus the lookup: this picker only ever holds something the
@@ -172,58 +156,35 @@ export function DeleteWithReassignDialog({
   // state that has to follow a prop (["adjusting state when a prop
   // changes"](https://react.dev/learn/you-might-not-need-an-effect)). An effect
   // would run *after* the dialog had already painted one frame of the previous
-  // trip's count, ticked checkbox and chosen replacement; this re-renders before
-  // anything reaches the screen. Held as one object so it is a single call.
+  // trip's chosen replacement; this re-renders before anything reaches the screen.
   const [renderedFor, setRenderedFor] = useState(targetId);
   if (targetId !== renderedFor) {
     setRenderedFor(targetId);
-    if (targetId) setState(INITIAL_STATE);
+    if (targetId) setReplacement(undefined);
   }
 
-  useEffect(() => {
-    if (!targetId || !userId) return;
-    let cancelled = false;
-
-    // A hang is not a rejection, and Delete stays disabled until one or the other
-    // arrives: `apiClient` sets no axios timeout, so a stalled count would leave
-    // the button looking broken for as long as the browser is willing to wait.
-    // This gives up on its own and falls into the state a *failed* count already
-    // has - a sentence saying so, and Delete clickable again. A late answer is
-    // still taken if it turns up, since a real count beats having given up on one.
-    const timer = setTimeout(() => {
-      if (!cancelled) setState((prev) => ({ ...prev, countFailed: true }));
-    }, COUNT_TIMEOUT_MS);
-
-    copy
-      .count(userId, targetId)
-      .then((count) => {
-        if (!cancelled)
-          setState((prev) => ({ ...prev, count, countFailed: false }));
-      })
-      .catch((error) => {
-        console.error("Failed to count the dives to reassign:", error);
-        // Said out loud rather than swallowed: with the count unknown the offer
-        // can't be made, and a dialog that silently drops it would read as "this
-        // trip has no dives" to a diver who knows perfectly well that it does.
-        if (!cancelled) setState((prev) => ({ ...prev, countFailed: true }));
-      })
-      .finally(() => clearTimeout(timer));
-
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [targetId, userId, copy]);
+  // A half-typed destination is not a chosen one. Typing clears the combobox's
+  // selection, and only an *exact* match re-fills it, so "Ceb" with "Cebu 2026"
+  // sitting in the menu leaves `replacement` undefined - and the click on Delete
+  // blurs the field, which for a prefix commits nothing. Confirming from there
+  // would quietly delete without the move the diver was in the middle of asking
+  // for, and neither half of that is undoable from the UI. Blocked rather than
+  // guessed at: a prefix can match several trips, and picking one for the diver
+  // is the kind of help that moves a log somewhere they didn't choose.
+  //
+  // An *empty* field stays a valid answer - it is the plain delete this dialog
+  // replaced, and the reason there is no checkbox any more.
+  const unresolved = pickerText.trim() !== "" && !replacement;
 
   // The target is filtered out *here*, at the source, rather than through
   // `CreatableCombobox`'s `excludeIds`. That prop only filters the rendered menu;
   // the exact-match paths - typing a name and blurring, or pressing Enter - read
   // the unfiltered result list. Two dive sites called "Blue Hole" is not a corner
   // case but the exact scenario this feature is for, and typing that name while
-  // deleting one of them would otherwise resolve to the site being deleted, enable
-  // Delete, and send `move_dives_to` equal to the uuid being deleted - a 422 the
-  // diver did nothing to deserve. Filtering the result keeps it out of the menu,
-  // the exact-match lookup and `seenRef` alike.
+  // deleting one of them would otherwise resolve to the site being deleted and
+  // send `move_dives_to` equal to the uuid being deleted - a 422 the diver did
+  // nothing to deserve. Filtering the result keeps it out of the menu, the
+  // exact-match lookup and `seenRef` alike.
   //
   // The other place this could be fixed is inside `CreatableCombobox`, teaching
   // its exact-match paths about `excludeIds` for every future single-select
@@ -240,99 +201,41 @@ export function DeleteWithReassignDialog({
     [copy, userId, targetId],
   );
 
-  const needsReplacement = state.move && !state.replacement;
-  // Held shut until the count lands, because the offer is not on screen yet and a
-  // diver who clicks Delete straight away would get the old behaviour without ever
-  // being asked - and orphaning them is not undoable from the UI, since a deleted
-  // trip no longer appears anywhere to re-point its dives from. A failed count is
-  // the exception: nothing more is coming, and deleting outright is still a choice
-  // the diver is entitled to make.
-  const isCounting = state.count === null && !state.countFailed;
-
-  const handleConfirm = () => {
-    // Bail rather than fall through to a plain delete. Unreachable while the
-    // button is disabled for exactly this state, but "a move was asked for and
-    // did not happen" must never end in a delete if that guard ever moves.
-    if (state.move && !state.replacement) return;
-
-    // `undefined` when the box is unchecked, which is what makes this the same
-    // delete it has always been - the parameter is simply absent.
-    return state.move && state.replacement
-      ? onConfirm(state.replacement.id, state.replacement.name)
-      : onConfirm();
-  };
-
   return (
     <ConfirmDialog
       open={targetId !== null}
       onOpenChange={(open) => !open && onCancel()}
-      title={title}
-      description={description}
+      title={copy.title}
+      description={copy.description}
       confirmText="Delete"
       isLoading={isDeleting}
-      confirmDisabled={needsReplacement || isCounting}
-      onConfirm={handleConfirm}
+      confirmDisabled={unresolved}
+      // `undefined` when nothing is picked, which is what makes this the same
+      // delete it has always been - the parameter is simply absent.
+      onConfirm={() =>
+        replacement ? onConfirm(replacement.id, replacement.name) : onConfirm()
+      }
     >
-      {(isCounting || state.countFailed || (state.count ?? 0) > 0) && (
-        <div className="space-y-3">
-          {/* Delete is disabled while this shows, and a disabled button with no
-              explanation reads as broken rather than as busy. */}
-          {isCounting && (
-            <p className="text-sm text-muted-foreground">
-              Checking which dives this would move...
-            </p>
-          )}
-
-          {state.countFailed && !isCounting && (
-            <p className="text-sm text-muted-foreground">
-              Couldn&apos;t check which dives this would leave behind.
-            </p>
-          )}
-
-          {(state.count ?? 0) > 0 && (
-            <>
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id={checkboxId}
-                  checked={state.move}
-                  disabled={isDeleting}
-                  onChange={(event) =>
-                    setState((prev) => ({
-                      ...prev,
-                      move: event.target.checked,
-                    }))
-                  }
-                />
-                <Label htmlFor={checkboxId} className="font-normal">
-                  {copy.moveLabel(state.count ?? 0)}
-                </Label>
-              </div>
-
-              {state.move && (
-                <div className="space-y-2">
-                  <Label htmlFor={pickerId}>{copy.pickerLabel}</Label>
-                  <CreatableCombobox
-                    id={pickerId}
-                    onSearch={search}
-                    value={state.replacement?.id}
-                    selectedItem={state.replacement}
-                    onChange={(id) =>
-                      setState((prev) => ({
-                        ...prev,
-                        replacement: id ? seenRef.current.get(id) : undefined,
-                      }))
-                    }
-                    disabled={isDeleting}
-                    placeholder={copy.placeholder}
-                    noItemsLabel={copy.noItemsLabel}
-                    noMatchesLabel={copy.noMatchesLabel}
-                  />
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      )}
+      <div className="space-y-2">
+        <Label htmlFor={pickerId}>{copy.pickerLabel}</Label>
+        <CreatableCombobox
+          id={pickerId}
+          onSearch={search}
+          value={replacement?.id}
+          selectedItem={replacement}
+          onChange={(id) =>
+            setReplacement(id ? seenRef.current.get(id) : undefined)
+          }
+          disabled={isDeleting}
+          placeholder={copy.placeholder}
+          onTextChange={setPickerText}
+          noItemsLabel={copy.noItemsLabel}
+          noMatchesLabel={copy.noMatchesLabel}
+        />
+        {unresolved && (
+          <p className="text-sm text-muted-foreground">{copy.unresolvedHint}</p>
+        )}
+      </div>
     </ConfirmDialog>
   );
 }

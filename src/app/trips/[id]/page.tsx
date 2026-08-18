@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useResource } from "@/hooks/useResource";
-import { useDeleteWithReassign } from "@/hooks/useDeleteWithReassign";
+import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { tripsAPI, Trip } from "@/lib/api/trips";
 import { formatDateTime, formatTripDateRange } from "@/lib/date-time";
 import { formatTripLocationNames } from "@/lib/trip-locations";
@@ -21,6 +21,10 @@ import { Edit, Trash2, Plus, Calendar, MapPin, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { PageSpinner } from "@/components/ui/page-spinner";
 
+// The plain-delete toast, and the first half of the one a move gets - "moved to
+// Cebu 2026" is an addition to what happened, not a replacement for it.
+const DELETED_MESSAGE = "Trip deleted successfully.";
+
 export default function TripDetailPage() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
@@ -36,10 +40,8 @@ export default function TripDetailPage() {
     redirectTo: "/trips",
   });
 
-  const del = useDeleteWithReassign(tripsAPI.deleteTrip, {
-    confirmMessage:
-      "Are you sure you want to delete this trip? This action cannot be undone.",
-    successMessage: "Trip deleted successfully.",
+  const del = useDeleteResource(tripsAPI.deleteTrip, {
+    successMessage: DELETED_MESSAGE,
     errorMessage: "Failed to delete trip. Please try again.",
     onDeleted: () => router.push("/trips"),
   });
@@ -137,11 +139,14 @@ export default function TripDetailPage() {
         kind="trip"
         userId={user?.uuid ?? ""}
         targetId={del.pendingId}
-        title="Delete trip"
-        description={del.confirmMessage}
         isDeleting={isDeleting}
         onCancel={del.cancelDelete}
-        onConfirm={del.confirmDelete}
+        onConfirm={(moveDivesTo, name) =>
+          del.confirmDelete(
+            moveDivesTo,
+            name ? `${DELETED_MESSAGE} Its dives moved to ${name}.` : undefined,
+          )
+        }
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

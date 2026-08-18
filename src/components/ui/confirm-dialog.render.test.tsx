@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ConfirmDialog } from "./confirm-dialog";
 
@@ -69,5 +69,28 @@ describe("ConfirmDialog secondaryAction", () => {
       screen.getByRole("button", { name: "Archive instead" }),
     ).toBeEnabled();
     expect(screen.getByRole("button", { name: "Delete" })).toBeDisabled();
+  });
+
+  it("does not let a press on the footer move focus", () => {
+    // The one line holding a real bug shut, and jsdom cannot show the bug
+    // itself: the focus change is the *browser's* default action for a pointer
+    // press, which jsdom does not perform, so only the `preventDefault` that
+    // suppresses it can be pinned here.
+    //
+    // What it prevents: a confirm button disabled by the dialog's own content
+    // gets `pointer-events: none`, so the press lands on the footer, blurs the
+    // field, and the blur can clear what was disabling the button - and since
+    // `disabled` is re-read at each event's dispatch, the same gesture's click
+    // then lands on a now-enabled button. The delete picker's half-typed
+    // destination was exactly that: the trip deleted and the move dropped.
+    open({ confirmDisabled: true });
+
+    const footer = screen.getByRole("button", {
+      name: "Delete",
+    }).parentElement!;
+    const press = fireEvent.mouseDown(footer);
+
+    // `fireEvent` returns false when a handler called `preventDefault`.
+    expect(press).toBe(false);
   });
 });

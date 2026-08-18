@@ -3,7 +3,7 @@
 import { useCallback, useState } from "react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { usePaginatedResource } from "@/hooks/usePaginatedResource";
-import { useDeleteWithReassign } from "@/hooks/useDeleteWithReassign";
+import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
 import { Button } from "@/components/ui/button";
 import { CountBadge } from "@/components/ui/count-badge";
@@ -23,6 +23,10 @@ import { DiveSiteDialog } from "@/components/sites/dive-site-dialog";
 import { Plus, Eye, Edit, Trash2, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { PageSpinner } from "@/components/ui/page-spinner";
+
+// The plain-delete toast, and the first half of the one a move gets - "moved to
+// Blue Hole" is an addition to what happened, not a replacement for it.
+const DELETED_MESSAGE = "Dive site deleted successfully.";
 
 export default function SitesPage() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
@@ -56,14 +60,11 @@ export default function SitesPage() {
   const {
     deletingId,
     pendingId,
-    confirmMessage,
     requestDelete: requestDeleteDiveSite,
     cancelDelete: cancelDeleteDiveSite,
     confirmDelete: confirmDeleteDiveSite,
-  } = useDeleteWithReassign(diveSitesAPI.deleteDiveSite, {
-    confirmMessage:
-      "Are you sure you want to delete this dive site? This action cannot be undone.",
-    successMessage: "Dive site deleted successfully.",
+  } = useDeleteResource(diveSitesAPI.deleteDiveSite, {
+    successMessage: DELETED_MESSAGE,
     errorMessage: "Failed to delete dive site. Please try again.",
     onDeleted: refetch,
   });
@@ -197,11 +198,14 @@ export default function SitesPage() {
         kind="dive-site"
         userId={user?.uuid ?? ""}
         targetId={pendingId}
-        title="Delete dive site"
-        description={confirmMessage}
         isDeleting={deletingId === pendingId}
         onCancel={cancelDeleteDiveSite}
-        onConfirm={confirmDeleteDiveSite}
+        onConfirm={(moveDivesTo, name) =>
+          confirmDeleteDiveSite(
+            moveDivesTo,
+            name ? `${DELETED_MESSAGE} Its dives moved to ${name}.` : undefined,
+          )
+        }
       />
     </div>
   );

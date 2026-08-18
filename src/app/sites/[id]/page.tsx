@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useResource } from "@/hooks/useResource";
-import { useDeleteWithReassign } from "@/hooks/useDeleteWithReassign";
+import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
 import { formatDateTime } from "@/lib/date-time";
 import { formatCoordinates } from "@/lib/validations/dive-site";
@@ -21,6 +21,10 @@ import { Edit, Trash2, Plus, MapPin, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { PageSpinner } from "@/components/ui/page-spinner";
 
+// The plain-delete toast, and the first half of the one a move gets - "moved to
+// Blue Hole" is an addition to what happened, not a replacement for it.
+const DELETED_MESSAGE = "Dive site deleted successfully.";
+
 export default function DiveSiteDetailPage() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
@@ -36,10 +40,8 @@ export default function DiveSiteDetailPage() {
     redirectTo: "/sites",
   });
 
-  const del = useDeleteWithReassign(diveSitesAPI.deleteDiveSite, {
-    confirmMessage:
-      "Are you sure you want to delete this dive site? This action cannot be undone.",
-    successMessage: "Dive site deleted successfully.",
+  const del = useDeleteResource(diveSitesAPI.deleteDiveSite, {
+    successMessage: DELETED_MESSAGE,
     errorMessage: "Failed to delete dive site. Please try again.",
     onDeleted: () => router.push("/sites"),
   });
@@ -121,11 +123,14 @@ export default function DiveSiteDetailPage() {
         kind="dive-site"
         userId={user?.uuid ?? ""}
         targetId={del.pendingId}
-        title="Delete dive site"
-        description={del.confirmMessage}
         isDeleting={isDeleting}
         onCancel={del.cancelDelete}
-        onConfirm={del.confirmDelete}
+        onConfirm={(moveDivesTo, name) =>
+          del.confirmDelete(
+            moveDivesTo,
+            name ? `${DELETED_MESSAGE} Its dives moved to ${name}.` : undefined,
+          )
+        }
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

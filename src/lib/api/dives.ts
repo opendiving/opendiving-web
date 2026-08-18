@@ -629,33 +629,6 @@ export const divesAPI = {
     return response.data;
   },
 
-  /**
-   * How many of a diver's dives belong to a given trip / were logged at a given
-   * site.
-   *
-   * A one-item page read for its `total_count`, with the body thrown away. There
-   * is no counting endpoint and none was asked for: the list route already
-   * answers this in one cheap request, and the delete dialog only needs the
-   * number to decide whether offering to move anything makes sense.
-   *
-   * Counts live dives only, which is what makes it the same number
-   * `move_dives_to` reports back as `moved_dives` - the dialog that asked and
-   * the toast that answers cannot contradict each other.
-   */
-  async countDives(
-    userUuid: string,
-    filter: { tripUuid?: string; diveSiteUuid?: string },
-  ): Promise<number> {
-    const response = await divesAPI.getDives(
-      userUuid,
-      1,
-      1,
-      filter.tripUuid,
-      filter.diveSiteUuid,
-    );
-    return response.total_count;
-  },
-
   // Get a specific dive by uuid
   async getDive(diveUuid: string): Promise<Dive> {
     const response = await apiClient.get(`/dive/${diveUuid}`);

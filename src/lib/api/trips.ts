@@ -1,5 +1,5 @@
 import { apiClient } from "./client";
-import type { DeletedWithMovedDives, PaginatedResponse } from "./client";
+import type { PaginatedResponse } from "./client";
 
 /**
  * One place a trip went, as the API stores it.
@@ -108,14 +108,13 @@ export const tripsAPI = {
    *
    * `moveDivesTo` re-points every one of the diver's live dives on this trip and
    * deletes it **in one transaction**: either the log ends up on the replacement
-   * and this trip is gone, or nothing happened. `moved_dives` in the response
-   * counts what moved, and is `0` when the argument is omitted - it reports what
-   * this call did, not how many dives the trip had.
+   * and this trip is gone, or nothing happened. The response says only that the
+   * trip is gone - the toast names the destination from the picker that chose
+   * it, since the API has no reason to know what it is called.
    *
    * Idempotent: deleting an already-deleted trip succeeds rather than 404ing,
    * and `moveDivesTo` is still honoured on one, since those dives are still
-   * attached. A retry after a lost response is therefore safe, and answers
-   * `moved_dives: 0` when the first attempt already moved them.
+   * attached. A retry after a lost response is therefore safe.
    *
    * A `moveDivesTo` that isn't one of the diver's own live trips, or that is
    * this trip, is a 422 - the same answer `PATCH /dive` gives for a `trip_uuid`
@@ -124,7 +123,7 @@ export const tripsAPI = {
   async deleteTrip(
     tripUuid: string,
     moveDivesTo?: string,
-  ): Promise<DeletedWithMovedDives> {
+  ): Promise<{ message: string }> {
     const response = await apiClient.delete(`/trip/${tripUuid}`, {
       params: moveDivesTo ? { move_dives_to: moveDivesTo } : undefined,
     });
