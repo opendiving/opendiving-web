@@ -4,14 +4,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useResource } from "@/hooks/useResource";
-import { useDeleteResource } from "@/hooks/useDeleteResource";
+import { useDeleteWithReassign } from "@/hooks/useDeleteWithReassign";
 import { tripsAPI, Trip } from "@/lib/api/trips";
 import { formatDateTime, formatTripDateRange } from "@/lib/date-time";
 import { formatTripLocationNames } from "@/lib/trip-locations";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DeleteWithReassignDialog } from "@/components/dives/delete-with-reassign-dialog";
 import { TripDialog } from "@/components/trips/trip-dialog";
 import { LocationsMap } from "@/components/map/locations-map-lazy";
 import { PageHeader } from "@/components/ui/page-header";
@@ -36,7 +36,7 @@ export default function TripDetailPage() {
     redirectTo: "/trips",
   });
 
-  const del = useDeleteResource(tripsAPI.deleteTrip, {
+  const del = useDeleteWithReassign(tripsAPI.deleteTrip, {
     confirmMessage:
       "Are you sure you want to delete this trip? This action cannot be undone.",
     successMessage: "Trip deleted successfully.",
@@ -133,13 +133,14 @@ export default function TripDetailPage() {
         onSaved={setTrip}
       />
 
-      <ConfirmDialog
-        open={del.pendingId !== null}
-        onOpenChange={(open) => !open && del.cancelDelete()}
+      <DeleteWithReassignDialog
+        kind="trip"
+        userId={user?.uuid ?? ""}
+        targetId={del.pendingId}
         title="Delete trip"
         description={del.confirmMessage}
-        confirmText="Delete"
-        isLoading={isDeleting}
+        isDeleting={isDeleting}
+        onCancel={del.cancelDelete}
         onConfirm={del.confirmDelete}
       />
 

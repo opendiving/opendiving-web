@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useResource } from "@/hooks/useResource";
-import { useDeleteResource } from "@/hooks/useDeleteResource";
+import { useDeleteWithReassign } from "@/hooks/useDeleteWithReassign";
 import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
 import { formatDateTime } from "@/lib/date-time";
 import { formatCoordinates } from "@/lib/validations/dive-site";
@@ -12,7 +12,7 @@ import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { LocationsMap } from "@/components/map/locations-map-lazy";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DeleteWithReassignDialog } from "@/components/dives/delete-with-reassign-dialog";
 import { DiveSiteDialog } from "@/components/sites/dive-site-dialog";
 import { PageHeader } from "@/components/ui/page-header";
 import { DetailPageSkeleton } from "@/components/ui/page-skeleton";
@@ -36,7 +36,7 @@ export default function DiveSiteDetailPage() {
     redirectTo: "/sites",
   });
 
-  const del = useDeleteResource(diveSitesAPI.deleteDiveSite, {
+  const del = useDeleteWithReassign(diveSitesAPI.deleteDiveSite, {
     confirmMessage:
       "Are you sure you want to delete this dive site? This action cannot be undone.",
     successMessage: "Dive site deleted successfully.",
@@ -117,13 +117,14 @@ export default function DiveSiteDetailPage() {
         onSaved={setDiveSite}
       />
 
-      <ConfirmDialog
-        open={del.pendingId !== null}
-        onOpenChange={(open) => !open && del.cancelDelete()}
+      <DeleteWithReassignDialog
+        kind="dive-site"
+        userId={user?.uuid ?? ""}
+        targetId={del.pendingId}
         title="Delete dive site"
         description={del.confirmMessage}
-        confirmText="Delete"
-        isLoading={isDeleting}
+        isDeleting={isDeleting}
+        onCancel={del.cancelDelete}
         onConfirm={del.confirmDelete}
       />
 

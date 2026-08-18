@@ -6122,3 +6122,146 @@ one.
 
 Recorded rather than fixed, deliberately: the failure is real and worth knowing about when reading
 the section above, which otherwise reads as a closed chapter.
+
+## A deleted trip or dive site can hand its dives to another one on the way out
+
+Deleting either used to leave its dives behind. The API soft-deletes the row, and every dive that
+pointed at it now reads back with the reference simply gone — so the diver who noticed they had
+logged the same reef under two names, or split one trip into two, got a confirmation dialog that
+would strand every dive attached to the loser. Re-attaching them meant opening each dive's edit form
+in turn. The confirmation now offers to move them, and the whole feature lives in that offer: same
+button, same dialog, one checkbox that appears only when there is something to move.
+
+**Moving and deleting are one request.** `DELETE /trip/{uuid}?move_dives_to={uuid}` re-points the
+dives and deletes the trip in a single transaction: either the log ends up on the replacement and
+this trip is gone, or nothing happened. There is no ordering for the browser to get right and no
+half-done state for it to report.
+
+That is worth stating because the browser-side version of this feature was written first, and it
+could not offer either. It paged `GET /dives?trip_uuid=`, sent one `PATCH` per dive, then deleted —
+which meant a failure partway left some dives moved and the trip standing, forty round trips for a
+liveaboard, and a race against any dive added between the last page fetch and the delete. All three
+are gone, along with the ~320 lines that implemented them. The lesson worth keeping is the
+sequencing one: the client-side version was complete, reviewed and verified against a live stack
+before it was deleted unmerged, because the API change it should have waited for was already
+written. Check what the other repo is holding before building the compensating half.
+
+**The count still comes from the browser**, because there is no counting endpoint and none was
+needed: `GET /dives?trip_uuid=X&items_per_page=1` answers `total_count` and the body is thrown away.
+It counts live dives only, which is exactly what `moved_dives` reports back — so the number in the
+dialog and the number in the toast afterwards cannot contradict each other.
+
+The offer waits for that answer rather than rendering optimistically: "move 0 dives" is noise, and a
+checkbox that appears after a beat is better than one that lies about how much it will do. A count
+that _fails_ says so inline instead of quietly dropping the offer, which would read as "this trip
+has no dives" to a diver who knows perfectly well that it does. Deleting outright stays available in
+that state — a failed count says nothing about whether the diver meant to delete.
+
+### The toast's sentence comes from two places, and the count is the half that decides
+
+`moved_dives` is what the API moved on _this call_, not how many dives the resource had. Those
+differ on a retry: both deletes are idempotent, so repeating one after a lost response succeeds and
+answers `0`, because the first attempt already moved them. The message is therefore driven off the
+count rather than off "did the diver tick the box" — at `0` it degrades to the plain "Trip deleted
+successfully." instead of announcing "0 dives moved to Cebu 2026".
+
+The name is the other half, and the API has no reason to know it: it answers with a count and
+nothing to call the destination. So the dialog hands the name back alongside the uuid, and
+`useDeleteWithReassign` holds it across the round trip. That hook exists for that one reason —
+without it, all four pages would keep their own ref for the same sentence.
+
+### Two things the confirm button has to know that are not about the diver
+
+**It stays shut while the count is in flight.** The dialog opens instantly and the count lands a
+beat later, so for that gap the offer is not on screen yet - and a diver who clicks Delete
+reflexively would get the pre-feature behaviour without ever being asked. That is the one outcome
+this whole feature exists to prevent, and it is not recoverable from the UI: a deleted trip stops
+appearing anywhere its dives could be re-pointed from. A count that _failed_ is the exception and
+stays clickable, because nothing more is coming and deleting outright is still a choice the diver is
+entitled to make.
+
+**On a list page it reports only its own delete.** `isDeleting` was briefly wired to
+`deletingId !== null`, which is true while _any_ row is being deleted - so deleting one trip and
+then opening the dialog for another showed the second one disabled, spinner and all, for a request
+that had nothing to do with it. `deletingId === pendingId` is the scoped version. The dialog is
+closed for the duration of its own delete anyway, since `confirmDelete` clears `pendingId` before it
+starts.
+
+Those two are related in a way worth writing down, because fixing one made the other reachable:
+while the unscoped `isDeleting` was disabling every other dialog, it was also the only thing
+serialising deletes - and `useDeleteWithReassign` was holding the replacement's _name_ in a single
+ref. Two deletes in flight, responses back in either order, and the slower one's toast would have
+named the faster one's destination. The name is filed under the id being deleted now.
+
+### The picker, and what it deliberately does not do
+
+It excludes the resource being deleted, which is the one choice that cannot work — and the API
+answers that choice with a 422 rather than a silent no-op, so leaving it in the list would be
+offering an error.
+
+It is a bare `CreatableCombobox` rather than `TripCombobox`/`DiveSiteMultiSelect`: those carry
+name-lookup machinery for a uuid handed to them by a form, and this field only ever holds something
+the diver just picked out of its own menu. It offers no "Add new..." either — a brand-new empty trip
+is not what "move these somewhere" means, and the create dialogs are one page away.
+
+`ConfirmDialog` grew a `children` slot and a `confirmDisabled` for this. The slot keeps the delete
+confirmation a single dialog instead of a second one layered on top; `confirmDisabled` is separate
+from `isLoading` on purpose, because an unfinished choice must still be cancellable while an
+in-flight delete must not be.
+
+### Concurrency is handled for the destination name and not for the spinner
+
+Two deletes can be in flight at once - two rows of a list, each confirmed from its own dialog - and
+the destination name is keyed by the id being deleted so their toasts cannot swap places.
+`deletingId` in `useDeleteResource` is still a single value, and was before this change: starting
+the second delete overwrites it, so the first row's spinner stops and its trash button comes back
+while its request is still out.
+
+Left alone deliberately. The cost is cosmetic and the worst case is bounded: firing the same delete
+twice gets two success toasts, because both routes are idempotent - the second answers 200 with
+`moved_dives: 0`, which the toast already degrades correctly for. The fix is a `Set<string>` and an
+`isDeleting(id)` helper across all seven call sites, which is a wider change than the symptom
+justifies. Written down rather than left as an inconsistency for the next person to rediscover: the
+name is concurrency-safe, the in-flight indicator is not.
+
+### `excludeIds` hides a row; it does not make the item unpickable
+
+The replacement picker has to keep the trip being deleted out of its own options, and
+`CreatableCombobox` has a prop that looks like exactly that. It isn't. `excludeIds` is applied in
+`visibleItems`, which builds the _rendered menu_ - while the exact-match paths (`findExactMatch` on
+every keystroke, `commitAction` on blur or Enter) read the unfiltered result list.
+
+So the row was gone and the item was still pickable by name. Typing "Blue Hole" while deleting one
+of two dive sites called "Blue Hole" resolved to the one being deleted, lit up Delete, and sent
+`move_dives_to` equal to the uuid in the path - which the API answers with "A dive site cannot be
+moved onto itself." Two sites sharing a name is not a corner case here; it is the duplicate-merge
+this feature exists for.
+
+The fix is to filter in this dialog's own `search` wrapper, so the target never enters the result
+list, the exact-match lookup, or the map of seen options. `excludeIds` then has nothing left to do
+and is gone from the call.
+
+The other repair - teaching `CreatableCombobox`'s exact-match paths about `excludeIds` - would cover
+every future single-select consumer, and was not done. Its only two existing consumers are
+append-only multi-selects whose `keepOpenOnSelect` branch never reaches the blur commit, so the
+change would be all risk and no current benefit. If a second single-select ever passes `excludeIds`,
+that is the moment to move the fix down into the component; the test here
+(`will not resolve a typed name to the target itself`) is what will catch it if nobody does.
+
+### Per-target state resets during render, not in an effect
+
+Everything the dialog holds — the count, the checkbox, the chosen replacement — belongs to the trip
+it was opened on, and has to be gone when it opens on another. Doing that in an effect means the
+dialog paints one frame of the previous trip's answers first; doing it in a `useLayoutEffect` avoids
+the frame but trips `react-hooks/set-state-in-effect`, which is an error here and is right to be.
+
+The fix is React's own
+[adjusting state when a prop changes](https://react.dev/learn/you-might-not-need-an-effect): compare
+the target against the one the last render was for, and reset during render when they differ. React
+re-runs the component immediately, before anything reaches the screen.
+
+One thing had to go to make that legal: the map of options the picker has seen is a ref, and
+touching a ref during render is its own lint error — correctly. It is no longer cleared at all,
+which turns out to be safe rather than merely tolerable. An entry is only ever read for an id the
+_current_ menu just offered, and offering it means the search that produced it has already written a
+fresh entry under that id, so the leftovers are unreachable rather than stale.
