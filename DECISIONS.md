@@ -1149,6 +1149,46 @@ losing that form or building draft-persistence for it. Both dialogs take an opti
 record: passing one edits it in place, omitting one creates. `/gear/[id]` still exists as a detail
 page, since it hosts the "Dives with this Gear" list that makes an item's dive count explorable.
 
+## The gear delete dialog offers "Archive instead", and had to stop lying first
+
+Both gear delete confirmations used to say "Dives you already logged it on keep showing it. To
+retire gear without touching your log, archive it instead." Neither half held up. The API stopped
+rendering soft-deleted gear on a dive read (`crud_dive_gear_items.py`) and in a set
+(`crud_gear_set_items.py`), so a deleted item drops off the log entirely; and the archive it pointed
+at was offered nowhere in that dialog, only behind a row action the diver had already walked past.
+
+Both are fixed together, because the honest sentence is what makes the button worth having:
+
+> Deleting removes this gear from your dives and gear sets. To keep it in your log and its service
+> history, archive it instead. Either way, its service reminders stop.
+
+`ConfirmDialog` grew a `secondaryAction?: { label, onClick }` for it, rendered between Cancel and
+confirm. Between, not beside Cancel: leaving by it is a deliberate action rather than a way out of
+one. It is disabled by `isLoading` and _not_ by `confirmDisabled` - `isLoading` means the
+destructive request is already gone and there is nothing left to divert, while `confirmDisabled`
+only means the dialog's own content is incomplete, which says nothing about the gentler action.
+
+**The offer is conditional on `is_archived`.** Both pages archive through a _toggle_
+(`toggleArchived` on the list, `handleToggleArchived` on the detail page), so wiring the button
+straight to one on an already-archived item would unarchive it - the exact opposite of its label,
+under a label that reads as the safe choice. Archived gear reaches the delete dialog through the
+list's "Show archived", so this is a real path, not a theoretical one.
+
+It also archives **directly**, skipping the separate archive confirmation the row action opens
+(`handleArchiveToggle` / `setIsArchiveConfirmOpen`). Stacking a second confirmation on a diver who
+is already reading one, to confirm the milder of the two things in front of them, is a dialog for
+its own sake - and the copy they are reading already says what the button does.
+
+**The reminders sentence stands on its own, and that placement is the whole point of it.** Archiving
+stops service reminders exactly as deleting does - `send_gear_service_digests` filters
+`GearItem.is_archived.is_(False)` alongside `is_deleted` (see the backend DECISIONS.md: silencing a
+retired item's rules without having to pause each one is why). The first draft hung the clause off
+the delete - "Deleting ... and stops its service reminders. To keep it ..., archive it instead" -
+where both halves are individually true and the contrast between them still reads as "archiving
+keeps them". That is the same shape of untruth this section exists to remove, one step subtler, so
+it went the same way. "Either way" is doing real work; a future edit that reattaches the clause to
+either verb reintroduces the claim. Pinned by a test.
+
 ## `ui/checkbox.tsx` is a plain `<input type="checkbox">`
 
 Every other `ui/` primitive wraps a Radix component, but `@radix-ui/react-checkbox` isn't a

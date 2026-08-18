@@ -29,6 +29,12 @@ interface ConfirmDialogProps {
   // asks something as well as telling (e.g. what to do with the dives attached
   // to the trip being deleted).
   children?: React.ReactNode;
+  // A third button offering the gentler thing the description points at - the
+  // gear delete dialog's "Archive instead". It sits between Cancel and confirm
+  // because it is neither: leaving the dialog by it is a deliberate action, not
+  // a way out of one. Blocked by `isLoading` alongside Cancel, since the
+  // destructive request it diverts from is already gone.
+  secondaryAction?: { label: string; onClick: () => void };
   onConfirm: () => void | Promise<void>;
 }
 
@@ -45,6 +51,7 @@ export function ConfirmDialog({
   isLoading = false,
   confirmDisabled = false,
   children,
+  secondaryAction,
   onConfirm,
 }: ConfirmDialogProps) {
   return (
@@ -69,6 +76,16 @@ export function ConfirmDialog({
           >
             {cancelText}
           </Button>
+          {secondaryAction && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => secondaryAction.onClick()}
+              disabled={isLoading}
+            >
+              {secondaryAction.label}
+            </Button>
+          )}
           <Button
             type="button"
             variant={variant}

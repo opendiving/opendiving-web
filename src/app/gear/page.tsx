@@ -90,7 +90,7 @@ export default function GearPage() {
     confirmDelete: confirmDeleteItem,
   } = useDeleteResource(gearAPI.deleteGearItem, {
     confirmMessage:
-      "Are you sure you want to delete this gear? Dives you already logged it on keep showing it. To retire gear without touching your log, archive it instead.",
+      "Deleting removes this gear from your dives and gear sets. To keep it in your log and its service history, archive it instead. Either way, its service reminders stop.",
     successMessage: "Gear deleted successfully.",
     errorMessage: "Failed to delete gear. Please try again.",
     onDeleted: refetchAll,
@@ -138,6 +138,11 @@ export default function GearPage() {
       setArchivingItem(null);
     }
   };
+
+  // The row the delete dialog is open for. It only ever names an item currently on
+  // screen, since that is where `requestDelete` was clicked from.
+  const pendingItem =
+    gearItems.find((item) => item.uuid === pendingItemId) ?? null;
 
   // Archiving asks first - it changes what the dive form offers - while unarchiving is
   // immediately reversible and doesn't.
@@ -247,6 +252,23 @@ export default function GearPage() {
         description={itemConfirmMessage}
         confirmText="Delete"
         isLoading={deletingItemId === pendingItemId}
+        // Offered only for gear that isn't archived already - `toggleArchived`
+        // would otherwise *un*archive it, which is the opposite of what the
+        // button says. Archived items are reachable here via "Show archived".
+        secondaryAction={
+          pendingItem && !pendingItem.is_archived
+            ? {
+                label: "Archive instead",
+                onClick: () => {
+                  // Straight to the archive, without the confirmation
+                  // `handleArchiveToggle` would open: the diver is already
+                  // reading one, and it says what this does.
+                  cancelDeleteItem();
+                  toggleArchived(pendingItem);
+                },
+              }
+            : undefined
+        }
         onConfirm={confirmDeleteItem}
       />
 
