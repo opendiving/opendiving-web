@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useDialogApiError } from "@/hooks/useDialogApiError";
-import { useForm } from "react-hook-form";
+import { useForm, useFormState } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Plus, Save, Weight } from "lucide-react";
 import { gearSetSchema, GearSetInput } from "@/lib/validations/gear";
@@ -10,6 +10,7 @@ import { gearAPI, GearSet, fetchAllGearSets } from "@/lib/api/gear";
 import { isAbortError } from "@/lib/api/client";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { dialogFormSubmit } from "@/lib/dialog-form";
+import { isDirty } from "@/lib/form-dirty";
 import {
   Dialog,
   DialogContent,
@@ -89,6 +90,12 @@ export function GearSetDialog({
     defaultValues: { name: "", weight: undefined, gear_item_uuids: [] },
   });
   const { reset, setValue } = form;
+  // Subscribed here, during render, and not read off `form.formState` inside
+  // the submit handler - `formState` is a Proxy that only starts maintaining a
+  // key once something has *rendered* against it, so the handler-side read
+  // comes back empty and every save looks untouched. See "`dirtyFields` has to
+  // be read during render, and nothing says so when it isn't" in DECISIONS.md.
+  const { dirtyFields } = useFormState({ control: form.control });
 
   // Reset to the dialog's inputs every time it opens, so a previous invocation's
   // half-filled state never leaks into the next one.
@@ -142,6 +149,19 @@ export function GearSetDialog({
     // the API spells as an explicit null on a PATCH so it can be unset again.
     const weight = data.weight ?? null;
     const saveToUuid = gearSet?.uuid ?? targetUuid;
+    // Sending `gear_item_uuids` makes the API replace the set's membership
+    // wholesale, and the form was seeded from a read that hides soft-deleted
+    // gear - so on an edit the diver never opened the picker for, that list is
+    // an echo one or more items short, and forwarding it destroys their rows
+    // for good. Omitting the field is how the API is told to leave the members
+    // alone, which is what a rename or a weight change should do.
+    //
+    // Both other paths still send it, because on both the list *is* the point:
+    // a new set has no membership until this request gives it one, and saving a
+    // dive's gear over an existing set is a deliberate overwrite the dialog
+    // says out loud ("This replaces everything currently in that set"). Neither
+    // arrives via the picker, so neither would ever read as dirty.
+    const replacesItems = !gearSet || isDirty(dirtyFields.gear_item_uuids);
 
     try {
       setIsSubmitting(true);
@@ -150,7 +170,7 @@ export function GearSetDialog({
         await gearAPI.updateGearSet(saveToUuid, {
           name: data.name,
           weight,
-          gear_item_uuids: items,
+          ...(replacesItems && { gear_item_uuids: items }),
         });
         // The API returns only a status message on PATCH, so re-read the set to
         // hand the caller its actual saved shape (including the item summaries).

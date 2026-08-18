@@ -6265,3 +6265,84 @@ touching a ref during render is its own lint error — correctly. It is no longe
 which turns out to be safe rather than merely tolerable. An entry is only ever read for an id the
 _current_ menu just offered, and offering it means the search that produced it has already written a
 fresh entry under that id, so the leftovers are unreachable rather than stale.
+
+## A gear set's members are sent only when the diver touched the picker
+
+`PATCH /gear-set` treats an absent `gear_item_uuids` as "leave the members alone" and any present
+one — `[]` included — as a wholesale replace: `replace_gear_items_for_set` deletes every
+`gear_set_item` row and reinserts the submitted list. `GearSetDialog` sent the key on every update,
+so that guard never fired.
+
+That was harmless while the list the dialog echoed back was the list the API held. It stopped being
+harmless when the API stopped returning soft-deleted gear items on a set read. After that, a set
+holding a deleted item seeds the form one entry short, and pressing Save on a _rename_ — or a weight
+change, or nothing at all — replaced the membership with the shortened list and destroyed the hidden
+row. There is no undelete path, and the row was the last surviving record of the association:
+`export.json` is built from the same joins, so it goes too.
+
+This is the gear-set half of the regression "The edit form submits what the diver changed, not what
+it was handed" describes, and it has the same fix and the same reason it can only be fixed here:
+"the diver emptied the set" and "the client echoed back a list it was handed" are the same PATCH on
+the wire. The dialog subscribes to `dirtyFields` with `useFormState({ control })`, read in the
+render body for the reason that section spells out, and omits `gear_item_uuids` when the picker is
+undirty.
+
+### Why this omits and `TripDialog` doesn't
+
+"Locations are always sent on edit, never omitted" reached the opposite conclusion about a field the
+API replaces the same way, and the difference is worth being explicit about, because the argument
+there does not survive being copied here.
+
+That argument rests on the form knowing the whole set: a trip's locations are all rendered, so an
+empty field and an untouched one would be the same request, and omitting the key would make "remove
+them all" inexpressible. Neither half holds for gear. The form does _not_ know the whole set — that
+is the entire bug — and emptying the picker is still expressible, because a list that differs from
+the one the dialog opened with is marked dirty and sent. `[]` reaches the API when the diver cleared
+the picker and never when they didn't, which is the property `TripDialog` gets for free from having
+nothing hidden from it.
+
+### Only the edit-in-place path omits
+
+The dialog is three flows behind one form, and `dirtyFields` is the right question for exactly one
+of them. `replacesItems` is therefore `!gearSet || isDirty(dirtyFields.gear_item_uuids)`, not the
+`isDirty` call alone:
+
+- **Editing a set on the gear page** (`gearSet` given) is the path above: the list is seeded from
+  the set's own read, so it is an echo until the diver touches the picker.
+- **Creating a set** has no membership until the request gives it one.
+- **Saving a dive's gear over an existing set** (`allowChoosingTarget`, a target picked) is a
+  deliberate overwrite the dialog promises out loud — "This replaces everything currently in that
+  set". Its items arrive from the dive through `initialItemUuids` and land via `reset`, so they are
+  the baseline rather than a change to it and would never read as dirty. Guarding this path on
+  `isDirty` would have quietly turned the feature into a rename.
+
+The two call sites never pass `gearSet` and `initialItemUuids` together, so `!gearSet` separates
+them cleanly; `gear-set-dialog.render.test.tsx` covers all three, and the three that must keep
+sending the list are the three that still pass with the fix reverted.
+
+### `isDirty` moved to `lib/form-dirty.ts`
+
+It was private to `buildDiveUpdate`. Two callers with the same question about the same library is
+enough to share one answer, and the interesting part of it — that a _registered_ array leaf like
+`gear_item_uuids` is marked with a bare `true` rather than per index, contradicting
+`FieldNamesMarkedBoolean` — is a fact about react-hook-form rather than about dives. `form-dirty.ts`
+carries that reasoning and the `DirtyFields<T>` type; `form-dirty.test.ts` pins the reading of the
+markers, and the two `.render.test.tsx` files pin which markers the library actually produces.
+
+### The API's docstring is now true, and wasn't
+
+`get_gear_items_for_set` documents that a rename or weight change leaves the membership rows alone.
+It always described the API correctly and the system incorrectly: no client ever exercised the
+absent-key path, so nothing was protected by it. Worth saying on the API side — a guard that reads
+as load-bearing while nothing reaches it is the same shape as the 422 from
+`resolve_trip_id_for_user` that was quietly holding this class of client bug up until it wasn't.
+
+### What this does not close
+
+The same residue as on dives, for the same reason. A set holding a live item and a soft-deleted one
+seeds the picker with just the live one. The diver adds a third; the picker is legitimately dirty,
+so the list is sent — as the two uuids the browser has, because it was never given the third — and
+the replace destroys the hidden row on an edit where the diver never saw it. The browser cannot send
+back a uuid it was never handed, so closing this means the API preserving membership rows that point
+at soft-deleted items across a wholesale replace. Narrower than the bug above (it takes a deleted
+item _plus_ an edit to the very list it is missing from) and recorded rather than fixed.
