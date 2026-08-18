@@ -868,17 +868,19 @@ supplies all three too. For the ordinary one-cylinder-file-against-a-one-cylinde
 counts always match, so the note appeared only when the cylinder counts differed - a minority path,
 and one that made it look like it worked.
 
-Half of that premise has since gone: the create form seeds `[]` rather than a cylinder (see "The
-create form proposes no cylinder, and the last one is removable" below), so an untouched create form
-holds nothing to consult. **The conclusion is unchanged and the reasoning is stronger for it**, not
-weaker - "no source had it" would still be dead on the edit form, on a create form the prefill
-filled in, and on the second of two complementary imports, which are exactly the cases the warning
-exists for. Do not re-derive it from the seed; the seed is not what makes it right.
+That premise has since gone entirely: the create form seeds `[]` rather than a cylinder (see "The
+create form proposes no cylinder, and the last one is removable" below), and the edit form seeds
+`[]` for a dive that records no gas (see "The edit form submits the whole dive, because the read is
+the whole dive"), so an untouched form on either page may hold nothing to consult. **The conclusion
+is unchanged and the reasoning is stronger for it**, not weaker - "no source had it" is still dead
+on any form the prefill filled in, on any dive that has cylinders, and on the second of two
+complementary imports, which are exactly the cases the warning exists for. Do not re-derive it from
+the seed; the seed is not what makes it right.
 
-What the empty create form does change is the _wording_ the same one-cylinder import gets. With no
-cylinder to pair against, `volume` and `helium` genuinely fall to `DEFAULT_MIXTURE`, so the note now
-reads "Those are defaults" where it used to say "already on this form" - which is the more urgent of
-the two sentences and, for a number the page supplied rather than the diver, the only true one.
+What an empty form does change is the _wording_ the same one-cylinder import gets. With no cylinder
+to pair against, `volume` and `helium` genuinely fall to `DEFAULT_MIXTURE`, so the note reads "Those
+are defaults" where it used to say "already on this form" - which is the more urgent of the two
+sentences and, for a number the page supplied rather than the diver, the only true one.
 
 `applyParsedDiveToForm` is tested against the pages' literal seeds rather than a hand-picked
 `existing` cylinder, because the bug lived entirely in that seam: every unit test of the merge
@@ -5769,6 +5771,14 @@ it, and omitting the key when nothing changed would buy one skipped re-insert at
 "remove them all" inexpressible — an empty form field and an untouched one would send the same
 request.
 
+This was written as a decision about locations and is now the rule for every list field the app
+edits: a dive's sites, a dive's gear, a dive's cylinders and a gear set's members are all sent on
+every save, on the same reasoning. It only ever read as an exception during the window when the API
+hid soft-deleted rows from a read, which made the _other_ forms' seeds untrustworthy while this one
+stayed whole — see "The edit form submits the whole dive, because the read is the whole dive" and "A
+gear set's members are sent on every save, like a trip's locations". The condition the argument
+actually turns on is the form knowing the whole set, and nothing is hidden from a read now.
+
 The map beneath the picker is driven by `useWatch` rather than `form.watch()`. `watch()` re-renders
 the whole dialog on every change to any field, which would mean re-fitting and re-rendering a tile
 grid on each keystroke in the notes textarea. It is gated on there being at least one location with
@@ -6095,88 +6105,109 @@ conditional one — a heading that changes between two dives reads as two differ
 block inside is labelled anyway ("Trip", "Dive Site", "Entry", "Exit"), so nothing is lost by the
 heading getting shorter.
 
-## The edit form submits what the diver changed, not what it was handed
+## The edit form submits the whole dive, because the read is the whole dive
 
-`PATCH /dive` is a partial update, but the edit form was sending a whole one: every field it had
-been seeded with, on every save. That was harmless while the dive it echoed back was the dive the
-API held. It stopped being harmless when the API stopped rendering soft-deleted trips and dive sites
-on a dive read.
+`PATCH /dive` is a partial update, and for a while the edit form used it as one: `buildDiveUpdate`
+took react-hook-form's `dirtyFields` and dropped every field the diver had not touched. That
+machinery is gone. The form sends everything it holds on every save.
 
-After that change, a dive whose trip had been deleted comes back with `trip_uuid: null`, and one
-whose site had been comes back with a `dive_site_uuids` one entry short. The form seeds itself from
-that response, so pressing Save without touching anything sent the null back — and `buildDiveUpdate`
-forwards a null deliberately, because that is how a diver removes a trip. `patch_dive` read it as
-exactly that and unlinked the trip for real; the shortened site list went through the same
-delete-and-reinsert the picker uses. Both rows were then gone from the database and from
-`export.json`, with no undelete path, on a save nobody had made an edit in.
+The filter existed because the API soft-deleted trips and dive sites and then hid them from a dive
+read, which made the form's own seed a lie. A dive whose trip had been deleted came back with
+`trip_uuid: null`; the form echoed that null, `patch_dive` read it as "the diver cleared the trip",
+and the link was gone. A dive whose site had been deleted came back one entry short, and echoing
+that list back put it through the same delete-and-reinsert the picker uses. Pressing Save on a dive
+nobody had edited destroyed both, with no undelete path and no trace left in `export.json`.
 
-The two requests are byte-identical. "The diver cleared the trip" and "the client echoed back a null
-it was handed" reach the API as the same PATCH, so **the API cannot fix this** — it has no way to
-tell them apart, and this is the only place that does. `buildDiveUpdate` now takes react-hook-form's
-`dirtyFields` and drops every field the diver did not touch, which closes both halves: an untouched
-trip picker sends nothing at all, and a trip the diver actually cleared still sends its null.
+**The API stopped hiding rows, so the echo stopped being a lie.** Trip, DiveSite, GearItem, GearSet
+and GearServiceSchedule are hard-deleted now, and the `ON DELETE` rules already declared on every
+referencing FK do the cleanup — a dive whose trip is deleted has `trip_id` set to null in the
+database, not merely rendered without one. A read is therefore the whole truth about the dive, and
+sending it back says exactly what the dive already holds.
 
-Before the API change the same round trip failed loudly, with a 422 from `resolve_trip_id_for_user`
-refusing the deleted uuid. Trading a loud failure for a silent one is the shape of the regression,
-and worth remembering: a validation that was quietly holding a client's mistakes up is load-bearing
-until something replaces it.
+What is worth keeping from the argument, because it is what made the fix land here rather than in
+the API: **"the diver cleared the trip" and "the client echoed back a null it was handed" are the
+same PATCH on the wire.** The API could not tell them apart and never will be able to. That is not
+an argument for filtering — it is an argument for never letting a read differ from the record, which
+is what the API change did. The client-side filter was the expensive way to live with a read filter,
+and it only ever covered the untouched save; the diver who edited the very list a hidden row was
+missing from lost it anyway, and no browser could have prevented that.
 
-### `dirtyFields` has to be read during render, and nothing says so when it isn't
+`buildDiveUpdate` keeps its one real rule, which predates all of this: `undefined` means "not sent",
+`null` means "the diver cleared it". Collapsing those two is what once made a trip impossible to
+remove.
 
-The obvious way to write this — `buildDiveUpdate(data, form.formState.dirtyFields)` inside the
-submit handler — is wrong, and wrong in the way that costs a diver their work rather than throwing.
+### Seeding the edit form has to be faithful, and `mixtures` is where that bites
+
+Sending the whole form is only safe if the form holds the dive. It did not, in one place: the edit
+page seeded `mixtures` with a synthetic `DEFAULT_MIXTURE` row when the dive had none —
+`diveData.mixtures?.length ? … : [{ ...DEFAULT_MIXTURE }]`. A dive with zero cylinders is a real
+record (`DiveCreate.mixtures` is `default_factory=list`) and `patch_dive` replaces the list
+wholesale on presence, so unfiltered that seed writes an 11.1 L cylinder of air to a dive whose only
+edit was to the notes — and `compute_gas_use` then derives an RMV from it. A new instance of exactly
+the class of bug this change exists to close.
+
+The fix is to seed from the dive faithfully, in an exported `diveToFormValues` beside
+`toDiveMixtureInput`, so the seeding is testable at the seam where it lives rather than inline in a
+page component. No synthetic row, and therefore no special case anywhere downstream.
+
+**The obvious narrower fix is wrong, and worth recording as wrong.** It was a guard in
+`buildDiveUpdate`: omit `mixtures` when the dive arrived with none _and_ the field still holds one
+pristine `DEFAULT_MIXTURE`. `DEFAULT_MIXTURE`'s `volume: 11.1` is the `"11.1 L (S80)"` preset — an
+aluminium 80 of air, the most common recreational cylinder there is. A guard keyed on value-equality
+with it makes exactly that cylinder unsavable: leave the row alone and it is dropped, type 11.2 and
+back to 11.1 and it is still dropped. It would also put a page-specific question back into
+`buildDiveUpdate` in the same change that took one out, and its natural unit test compares
+`DEFAULT_MIXTURE` against `DEFAULT_MIXTURE`, so it cannot detect the drift that would break it.
+
+**Two things this needed were already here.** `MixtureFields` renders `mixtures: []` cleanly and
+says "No cylinders recorded for this dive." over it, and its per-tank Trash button has no
+`index > 0` gate, so the last cylinder is removable and zero is reachable by hand. Both arrived with
+"The create form proposes no cylinder, and the last one is removable", which needed exactly the same
+two changes for its own reasons and landed first. Had it not, this change would have had to make
+them: a diver who clicks "Add Mixture" on a cylinder-less dive and cannot get back to zero
+reintroduces the phantom cylinder by hand.
+
+**Create and edit reach the same place by different arguments, which is worth keeping straight.**
+The create form starts empty because a form must not write gas the diver never entered, and because
+`diveModWarning` would raise a depth-safety warning derived from it. The edit form starts empty
+because it represents a stored record, and a row invented here is written back to the dive on the
+first save. Neither argument implies the other - this plan expected the create form to go on
+proposing a cylinder, and it would have been coherent for it to.
+
+### If `dirtyFields` ever comes back, it has to be read during render
+
+Nothing in the app reads it any more, and the trap is a property of the library rather than of this
+app, so it is recorded here rather than demonstrated by a test.
 
 `formState` is a Proxy. React Hook Form only starts maintaining a key once something has read it
 **during render**, and `useFieldArray`'s `replace` checks that flag before recomputing dirty state
-at all. Unsubscribed, `dirtyFields` is still `{}` at submit after a file import has replaced every
-cylinder — so the filter drops `mixtures`, and the import is discarded by a save that reports
-success. Scalars set through `setValue(..., { shouldDirty: true })` are marked either way, which is
-what makes this so easy to miss: the notes field, the depths and the trip picker all behave, and
-only the one path through the field array silently doesn't.
+at all. Read from inside a submit handler, `dirtyFields` is still `{}` after a file import has
+replaced every cylinder — so a filter keyed on it drops `mixtures`, and the import is discarded by a
+save that reports success. Scalars set through `setValue(..., { shouldDirty: true })` are marked
+either way, which is what made it so easy to miss: the notes field, the depths and the trip picker
+all behaved, and only the one path through the field array silently didn't. The subscription is
+`useFormState({ control })` **plus the destructuring**, in the render body; calling the hook alone
+is not it.
 
-The page therefore subscribes with `useFormState({ control })` and destructures `dirtyFields` in the
-render body. Calling the hook is not enough on its own — the destructuring is the subscription, on
-that proxy exactly as on `form.formState`, which is why the line reads the way it does and must not
-be "tidied" into the handler.
+`useSuggestedDiveNumber`, `dives/new/page.tsx` and `dive-form-fields.tsx` read react-hook-form's own
+`isDirty` for unrelated UX ("don't overwrite what the diver typed") and are untouched by any of
+this.
 
-`dive.render.test.tsx` pins both sides against a real `useForm`: one harness shaped like the page,
-and one with no render-time read anywhere, asserting that the second one loses the cylinders. That
-second test asserts broken behaviour on purpose. If a future react-hook-form makes the unsubscribed
-read work, it fails — which is the only way anyone would find out that the subscription had stopped
-being load-bearing.
+### What this closed that the filter could not
 
-### What this does not close: editing a list on a dive with a hidden reference
+The filter left a residue, recorded here at the time: a dive linked to sites A (live) and B
+(soft-deleted) seeded the form with `["A"]`, and a diver who added C sent `["A", "C"]` —
+legitimately dirty, and the only list the browser had — destroying B's link on an edit where B was
+never on screen. "There is no client-side fix" was correct: the browser cannot preserve a reference
+it was never handed.
 
-The untouched save is fixed. The diver who _does_ edit the site or gear list on a dive that still
-has a hidden reference is not, and cannot be from here.
+It is gone, and not by being fixed. There is no hidden reference left to lose, because a deleted
+site is deleted and its join row went with it. The same applies to `gear_item_uuids`, which had the
+same shape and was reachable only as a 422 from `resolve_gear_item_ids_for_user`.
 
-A dive linked to sites A (live) and B (soft-deleted) seeds the form with `["A"]`, because B is what
-the API now hides. The diver adds C. `dive_site_uuids` is legitimately dirty, so it is sent — as
-`["A", "C"]`, the only list the browser has — and `replace_dive_sites_for_dive` applies it by
-deleting every join row and reinserting those two. B's link is destroyed, on an edit where the diver
-never saw B and never asked to remove it.
-
-There is no client-side fix. The browser cannot preserve a reference the API refuses to render to
-it, and sending back a uuid it was never given is not something it can invent. Closing it would mean
-the API preserving join rows that point at soft-deleted rows across a wholesale replace.
-
-**Decided: we live with it**, and the reasoning is on the API side of the fence, in
-`replace_dive_sites_for_dive`'s docstring and its own DECISIONS.md. The scope is narrow — it takes a
-deleted site _plus_ an edit to the very list that site is missing from, and `move_dives_to` is the
-affordance for a diver who cares about those dives — while the fix is not: preserving hidden rows
-means deleting only the live ones, inserting the submitted list, then renumbering the survivors
-after it, which reintroduces the position-contiguity problem the bulk reassignment needed three
-statements and a wipe-guard to get right.
-
-`gear_item_uuids` is built the same way through `replace_gear_items_for_dive`, but **is not
-reachable today**: the gear loaders are still unfiltered, so a deleted gear item is handed to the
-browser, echoed back, and refused by `resolve_gear_item_ids_for_user` — a 422 the diver can see, not
-a silent deletion. Filtering the gear reads the way the site reads were filtered is exactly what
-would convert it, which is why that decision is being priced on its own rather than inheriting this
-one.
-
-Recorded rather than fixed, deliberately: the failure is real and worth knowing about when reading
-the section above, which otherwise reads as a closed chapter.
+The generalization that survives all of it belongs to the API and is stated there: **a read filter
+is not a local change.** Hiding rows from a read reshaped two client repos, cost a form-level filter
+and a shared `isDirty` helper, and still did not close the case it was introduced against.
 
 ## A deleted trip or dive site can hand its dives to another one on the way out
 
@@ -6411,86 +6442,61 @@ which turns out to be safe rather than merely tolerable. An entry is only ever r
 _current_ menu just offered, and offering it means the search that produced it has already written a
 fresh entry under that id, so the leftovers are unreachable rather than stale.
 
-## A gear set's members are sent only when the diver touched the picker
+## A gear set's members are sent on every save, like a trip's locations
 
 `PATCH /gear-set` treats an absent `gear_item_uuids` as "leave the members alone" and any present
 one — `[]` included — as a wholesale replace: `replace_gear_items_for_set` deletes every
-`gear_set_item` row and reinserts the submitted list. `GearSetDialog` sent the key on every update,
-so that guard never fired.
+`gear_set_item` row and reinserts the submitted list. `GearSetDialog` sends the key on all three of
+its flows, so that guard is once again never exercised from this client.
 
-That was harmless while the list the dialog echoed back was the list the API held. It stopped being
-harmless when the API stopped returning soft-deleted gear items on a set read. After that, a set
-holding a deleted item seeds the form one entry short, and pressing Save on a _rename_ — or a weight
-change, or nothing at all — replaced the membership with the shortened list and destroyed the hidden
-row. There is no undelete path, and the row was the last surviving record of the association:
-`export.json` is built from the same joins, so it goes too.
+It was briefly filtered, and the reason is the gear half of "The edit form submits the whole dive,
+because the read is the whole dive". While the API soft-deleted gear items and hid them from a set
+read, a set holding a deleted item seeded the picker one entry short, and pressing Save on a
+_rename_ — or a weight change, or nothing at all — replaced the membership with the shortened list
+and destroyed the hidden row. The dialog subscribed to `dirtyFields` and omitted `gear_item_uuids`
+unless the picker had been touched.
 
-This is the gear-set half of the regression "The edit form submits what the diver changed, not what
-it was handed" describes, and it has the same fix and the same reason it can only be fixed here:
-"the diver emptied the set" and "the client echoed back a list it was handed" are the same PATCH on
-the wire. The dialog subscribes to `dirtyFields` with `useFormState({ control })`, read in the
-render body for the reason that section spells out, and omits `gear_item_uuids` when the picker is
-undirty.
+Gear items are hard-deleted now, `gear_set_item.gear_item_id` is `ON DELETE CASCADE`, and a set read
+carries every member the set has. The picker shows the whole set, so echoing it back replaces the
+membership with itself — and the filter, its shared `isDirty` helper (`lib/form-dirty.ts`, deleted
+along with `buildDiveUpdate`'s use of it) and the three-way `replacesItems` expression all go with
+it.
 
-### Why this omits and `TripDialog` doesn't
+### Why `TripDialog`'s argument now applies here too
 
 "Locations are always sent on edit, never omitted" reached the opposite conclusion about a field the
-API replaces the same way, and the difference is worth being explicit about, because the argument
-there does not survive being copied here.
+API replaces the same way, and while gear was being hidden the two genuinely differed: that argument
+rests on the form knowing the whole set, and the gear dialog did not — that was the entire bug.
 
-That argument rests on the form knowing the whole set: a trip's locations are all rendered, so an
-empty field and an untouched one would be the same request, and omitting the key would make "remove
-them all" inexpressible. Neither half holds for gear. The form does _not_ know the whole set — that
-is the entire bug — and emptying the picker is still expressible, because a list that differs from
-the one the dialog opened with is marked dirty and sent. `[]` reaches the API when the diver cleared
-the picker and never when they didn't, which is the property `TripDialog` gets for free from having
-nothing hidden from it.
+Both halves hold now. The form knows the whole set, and `[]` is expressible and means what it says:
+the diver emptied the picker. There is no state left in which an empty or short list means "the API
+hid the rest", which is the property `TripDialog` always had for free by having nothing hidden from
+it. Two fields, one rule.
 
-### Only the edit-in-place path omits
+### The three flows no longer need telling apart
 
-The dialog is three flows behind one form, and `dirtyFields` is the right question for exactly one
-of them. `replacesItems` is therefore `!gearSet || isDirty(dirtyFields.gear_item_uuids)`, not the
-`isDirty` call alone:
+`replacesItems` was `!gearSet || isDirty(dirtyFields.gear_item_uuids)` because `dirtyFields` was the
+right question for exactly one of the dialog's three flows, and would have quietly turned the other
+two into renames. Editing a set on the gear page, creating a set, and saving a dive's gear over an
+existing set now all send the list; the two that arrive via `reset` rather than the picker
+(`initialItemUuids`, and the set's own read) are no longer distinguishable from a diver's edit, and
+no longer need to be. `gear-set-dialog.render.test.tsx` still covers all three, asserting what each
+one sends rather than which one omits.
 
-- **Editing a set on the gear page** (`gearSet` given) is the path above: the list is seeded from
-  the set's own read, so it is an echo until the diver touches the picker.
-- **Creating a set** has no membership until the request gives it one.
-- **Saving a dive's gear over an existing set** (`allowChoosingTarget`, a target picked) is a
-  deliberate overwrite the dialog promises out loud — "This replaces everything currently in that
-  set". Its items arrive from the dive through `initialItemUuids` and land via `reset`, so they are
-  the baseline rather than a change to it and would never read as dirty. Guarding this path on
-  `isDirty` would have quietly turned the feature into a rename.
+### What this closed that the filter could not
 
-The two call sites never pass `gearSet` and `initialItemUuids` together, so `!gearSet` separates
-them cleanly; `gear-set-dialog.render.test.tsx` covers all three, and the three that must keep
-sending the list are the three that still pass with the fix reverted.
+The same residue the dive form had, and gone for the same reason. A set holding a live item and a
+soft-deleted one seeded the picker with just the live one; a diver who added a third sent two uuids
+and destroyed the hidden row on an edit where they never saw it. The browser could not send back a
+uuid it was never handed. There is no hidden membership row left to lose.
 
-### `isDirty` moved to `lib/form-dirty.ts`
-
-It was private to `buildDiveUpdate`. Two callers with the same question about the same library is
-enough to share one answer, and the interesting part of it — that a _registered_ array leaf like
-`gear_item_uuids` is marked with a bare `true` rather than per index, contradicting
-`FieldNamesMarkedBoolean` — is a fact about react-hook-form rather than about dives. `form-dirty.ts`
-carries that reasoning and the `DirtyFields<T>` type; `form-dirty.test.ts` pins the reading of the
-markers, and the two `.render.test.tsx` files pin which markers the library actually produces.
-
-### The API's docstring is now true, and wasn't
+### The API's docstring was true, then wasn't, and is true again
 
 `get_gear_items_for_set` documents that a rename or weight change leaves the membership rows alone.
-It always described the API correctly and the system incorrectly: no client ever exercised the
-absent-key path, so nothing was protected by it. Worth saying on the API side — a guard that reads
-as load-bearing while nothing reaches it is the same shape as the 422 from
-`resolve_trip_id_for_user` that was quietly holding this class of client bug up until it wasn't.
-
-### What this does not close
-
-The same residue as on dives, for the same reason. A set holding a live item and a soft-deleted one
-seeds the picker with just the live one. The diver adds a third; the picker is legitimately dirty,
-so the list is sent — as the two uuids the browser has, because it was never given the third — and
-the replace destroys the hidden row on an edit where the diver never saw it. The browser cannot send
-back a uuid it was never handed, so closing this means the API preserving membership rows that point
-at soft-deleted items across a wholesale replace. Narrower than the bug above (it takes a deleted
-item _plus_ an edit to the very list it is missing from) and recorded rather than fixed.
+It describes the API accurately and has never described the system: no client exercised the
+absent-key path before the filter, and none does after it. Worth saying on the API side — a guard
+that reads as load-bearing while nothing reaches it is the same shape as the 422 from
+`resolve_trip_id_for_user` that was quietly holding a class of client bug up until it wasn't.
 
 ## The create form proposes no cylinder, and the last one is removable
 

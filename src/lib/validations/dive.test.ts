@@ -3,11 +3,12 @@ import {
   buildDiveUpdate,
   diveCreateSchema,
   diveMixtureSchema,
+  diveToFormValues,
   diveUpdateSchema,
   normalizeMixtures,
   toDiveMixtureInput,
 } from "./dive";
-import type { DiveMixture } from "@/lib/api/dives";
+import type { Dive, DiveMixture } from "@/lib/api/dives";
 
 const validDive = {
   dive_number: 1,
@@ -523,109 +524,164 @@ describe("buildDiveUpdate", () => {
     const parsed = diveUpdateSchema.safeParse({ trip_uuid: null });
     expect(parsed.success).toBe(true);
   });
+
+  // What the edit form now submits on every save: everything it holds. It used
+  // to be filtered down to the fields react-hook-form marked dirty, because a
+  // read that hid soft-deleted trips and sites made the form's own seed a lie.
+  // Nothing is hidden from a read any more, so the echo is the truth.
+  it("sends every field the form holds, not just the edited one", () => {
+    const update = buildDiveUpdate({
+      dive_number: 42,
+      duration: "45:30",
+      trip_uuid: "trip-7",
+      dive_site_uuids: ["site-1", "site-2"],
+      notes: "Thermocline at 18m",
+    });
+
+    expect(update).toEqual({
+      dive_number: 42,
+      duration: 2730,
+      trip_uuid: "trip-7",
+      dive_site_uuids: ["site-1", "site-2"],
+      notes: "Thermocline at 18m",
+    });
+  });
+
+  it("sends an empty cylinder list as an empty list", () => {
+    // Not the same as omitting it: `[]` is how a dive's cylinders are cleared,
+    // and it is what a dive that never had any seeds the form with.
+    const update = buildDiveUpdate({ mixtures: [] });
+
+    expect(update).toHaveProperty("mixtures");
+    expect(update.mixtures).toEqual([]);
+  });
 });
 
-// The edit form seeds itself from the dive's own response, so every field it
-// submits is either an edit or an echo. Once the API stopped rendering
-// soft-deleted trips and sites on a dive, echoing became destructive: a hidden
-// trip arrives as `trip_uuid: null` and goes back as "the diver cleared it".
-// `dirtyFields` is what tells the two apart. `dive.render.test.tsx` pins the
-// same behaviour against a real `useForm`, where the markers come from
-// react-hook-form rather than from these literals.
-describe("buildDiveUpdate, given react-hook-form's dirtyFields", () => {
-  const SEEDED = {
+// The other half of the round trip: what the edit form is seeded with. It is
+// faithful to the dive, which is the whole specification now that the form
+// submits everything it holds - a value invented here is a value written to the
+// dive on the first save.
+describe("diveToFormValues", () => {
+  const DIVE: Dive = {
+    uuid: "dive-1",
     dive_number: 42,
-    duration: "45:30",
-    trip_uuid: null,
-    dive_site_uuids: ["site-1"],
-    notes: "",
+    start_time: "2026-04-04T10:04:47+02:00",
+    duration: 2730,
+    max_depth: 31.4,
+    trip_uuid: "trip-7",
+    dive_sites: [
+      { uuid: "site-1", name: "Pescador Island" } as Dive["dive_sites"][number],
+    ],
+    gear_items: [
+      { uuid: "item-1", name: "MK25 EVO" } as Dive["gear_items"][number],
+    ],
+    notes: "Thermocline at 18m",
+    user_uuid: "user-1",
+    created_at: "2026-04-04T12:00:00+00:00",
+    mixtures: [],
   };
 
-  it("sends nothing at all when the diver changed nothing", () => {
-    // Save on an untouched form. Every value here is an echo of what the dive
-    // already holds, including a `trip_uuid: null` the API hid rather than the
-    // diver cleared, so a PATCH carrying any of it can only do damage.
-    expect(buildDiveUpdate(SEEDED, {})).toEqual({});
+  it("seeds no cylinders for a dive that has none", () => {
+    // The regression this guards: seeding a `DEFAULT_MIXTURE` here used to be
+    // harmless because the untouched row was filtered out of the PATCH. With
+    // the whole form submitted, it would write an 11.1 L air cylinder to a dive
+    // whose only edit was to the notes.
+    expect(diveToFormValues(DIVE).mixtures).toEqual([]);
   });
 
-  it("sends only the field that changed", () => {
-    const update = buildDiveUpdate(
-      { ...SEEDED, notes: "Thermocline at 18m" },
-      { notes: true },
-    );
-
-    expect(update).toEqual({ notes: "Thermocline at 18m" });
+  it("carries the scalars over, converting the duration to MM:SS", () => {
+    expect(diveToFormValues(DIVE)).toMatchObject({
+      dive_number: 42,
+      start_time: "2026-04-04T10:04:47+02:00",
+      duration: "45:30",
+      max_depth: 31.4,
+      trip_uuid: "trip-7",
+      dive_site_uuids: ["site-1"],
+      gear_item_uuids: ["item-1"],
+      notes: "Thermocline at 18m",
+    });
   });
 
-  it("still sends a trip the diver cleared themselves", () => {
-    // The distinction the whole argument exists for: same `null` on the wire,
-    // opposite meanings, and only the form knows which one this is.
-    const update = buildDiveUpdate(SEEDED, { trip_uuid: true });
-
-    expect(update).toHaveProperty("trip_uuid");
-    expect(update.trip_uuid).toBeNull();
-  });
-
-  it("sends a shortened site list only when the diver shortened it", () => {
-    const withoutSites = { ...SEEDED, dive_site_uuids: [] };
-
-    // The API replaces this list wholesale by deleting and reinserting the join
-    // rows, so echoing back a list the API had already shortened is what
-    // deleted them for real.
-    expect(buildDiveUpdate(withoutSites, {})).not.toHaveProperty(
-      "dive_site_uuids",
-    );
-    // Two marker shapes, both accepted. A registered array field is marked with
-    // a bare `true` in react-hook-form 7.84 - which is what the edit form
-    // actually produces, and what `dive.render.test.tsx` pins against the real
-    // library - while a traversed array marks per index. Neither is worth
-    // depending on: the shape comes out of an `isRegisteredLeaf` heuristic that
-    // an upgrade can move, and answering both costs one `some()`.
-    expect(
-      buildDiveUpdate(withoutSites, { dive_site_uuids: true }).dive_site_uuids,
-    ).toEqual([]);
-    expect(
-      buildDiveUpdate(withoutSites, { dive_site_uuids: [true] })
-        .dive_site_uuids,
-    ).toEqual([]);
-  });
-
-  it("sends the whole mixture list when one cylinder changed", () => {
-    // `mixtures` is replaced wholesale too, so a marker anywhere below it means
-    // all of them - sending only the edited cylinder would delete the others.
-    const mixtures = [
-      { volume: 12, oxygen: 21, helium: 0 },
-      { volume: 11, oxygen: 32, helium: 0 },
-    ];
-
-    const update = buildDiveUpdate(
-      { mixtures },
-      { mixtures: [{}, { oxygen: true }] },
-    );
-
-    expect(update.mixtures).toHaveLength(2);
-  });
-
-  it("treats an all-false marker as untouched", () => {
-    // Defensive, not observed. 7.84 *deletes* a field's key once it matches
-    // what the form was seeded with again - `updateDirtyFields` drops keys
-    // absent from the recomputed set, and the scalar path unsets them - so a
-    // literal `false` is not a shape this version produces. Older ones wrote
-    // it, the meaning is unambiguous either way ("nothing here differs"), and
-    // reading it correctly costs nothing.
-    expect(
-      buildDiveUpdate(
-        { mixtures: [{ volume: 12, oxygen: 21, helium: 0 }] },
+  it("round-trips a cylinder's carried fields back out unchanged", () => {
+    // `po2_limit`, `role` and `gas_number` are the three the form holds without
+    // the diver ever being asked about them - `gas_number` has no input at all -
+    // so an untouched save is the only thing keeping them on the dive. A
+    // `gas_number` of 0 is a real value (a Suunto Ocean numbers from 0) and the
+    // one a truthiness check would drop.
+    const dive: Dive = {
+      ...DIVE,
+      mixtures: [
         {
-          mixtures: [{ oxygen: false }],
-        },
-      ),
-    ).toEqual({});
+          id: 9,
+          volume: 11.1,
+          start_pressure: 205,
+          end_pressure: 90,
+          oxygen: 32,
+          helium: 0,
+          po2_limit: 1.4,
+          gas_number: 0,
+          role: "bottom",
+        } as Dive["mixtures"][number],
+      ],
+    };
+
+    const seeded = diveToFormValues(dive);
+    expect(seeded.mixtures).toEqual([
+      {
+        id: 9,
+        volume: 11.1,
+        start_pressure: 205,
+        end_pressure: 90,
+        oxygen: 32,
+        helium: 0,
+        po2_limit: 1.4,
+        gas_number: 0,
+        role: "bottom",
+      },
+    ]);
+
+    // ...and back out through the submit path, with the client-side `id` gone.
+    expect(buildDiveUpdate(seeded).mixtures).toEqual([
+      {
+        volume: 11.1,
+        start_pressure: 205,
+        end_pressure: 90,
+        oxygen: 32,
+        helium: 0,
+        po2_limit: 1.4,
+        gas_number: 0,
+        role: "bottom",
+      },
+    ]);
   });
 
-  it("behaves as before when no dirtyFields are passed", () => {
-    // The argument is optional: callers with no form behind them - and every
-    // existing test above - still get "everything that isn't undefined".
-    expect(buildDiveUpdate(SEEDED)).toHaveProperty("trip_uuid");
+  it("turns a mixture's unrecorded fields into the form's cleared state", () => {
+    // Every optional field arrives as an explicit `null`, which satisfies none
+    // of `diveMixtureSchema`'s unions - `toDiveMixtureInput` is what stops the
+    // resolver rejecting values the diver never entered.
+    const dive: Dive = {
+      ...DIVE,
+      mixtures: [
+        {
+          id: 9,
+          volume: 12,
+          start_pressure: null,
+          end_pressure: null,
+          oxygen: 21,
+          helium: 0,
+          po2_limit: null,
+          gas_number: null,
+          role: null,
+        } as Dive["mixtures"][number],
+      ],
+    };
+
+    expect(diveToFormValues(dive).mixtures?.[0]).toMatchObject({
+      start_pressure: "",
+      end_pressure: "",
+      po2_limit: "",
+      role: "",
+      gas_number: undefined,
+    });
   });
 });

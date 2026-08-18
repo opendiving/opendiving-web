@@ -1,8 +1,12 @@
 import { z } from "zod";
-import { parseFormDuration, parseUtcOffsetMinutes } from "@/lib/date-time";
-import { isDirty, type DirtyFields } from "@/lib/form-dirty";
+import {
+  formatDurationForForm,
+  parseFormDuration,
+  parseUtcOffsetMinutes,
+} from "@/lib/date-time";
 import {
   GAS_ROLES,
+  type Dive,
   type DiveMixture,
   type DiveUpdate,
   type GasRole,
@@ -221,6 +225,52 @@ export function toDiveMixtureInput(mixture: DiveMixture): DiveMixtureInput {
   };
 }
 
+/**
+ * The dive as the edit form holds it, seeded from the API's own response.
+ *
+ * Faithful, field for field, and that is the whole specification: the form
+ * submits everything it holds, so anything invented here is written back to the
+ * dive on the first save. `mixtures` is where that bites. A dive with no
+ * cylinders is a legitimate record - `DiveCreate.mixtures` defaults to an empty
+ * list - and seeding one `DEFAULT_MIXTURE` row for it, as this page did while
+ * the form only submitted what the diver had touched, now means editing the
+ * notes on a cylinder-less dive silently adds an 11.1 L air cylinder nobody
+ * entered.
+ *
+ * The narrower alternative - keep the synthetic row and have `buildDiveUpdate`
+ * drop `mixtures` when the dive arrived with none and the field still holds one
+ * pristine `DEFAULT_MIXTURE` - is worse than it looks. `DEFAULT_MIXTURE` is an
+ * aluminium 80 of air, the "11.1 L (S80)" preset and the most common
+ * recreational cylinder there is, so a guard keyed on value-equality with it
+ * makes exactly that cylinder unsavable on exactly the dives that need it.
+ *
+ * Lives here rather than inline on the page so the seeding is testable at the
+ * seam it belongs to, beside `toDiveMixtureInput`, which it is the caller of.
+ */
+export function diveToFormValues(dive: Dive): DiveUpdateInput {
+  return {
+    dive_number: dive.dive_number,
+    // Already the offset-aware shape `DiveStartTimeField` edits, so it carries
+    // straight over with no conversion.
+    start_time: dive.start_time,
+    duration: formatDurationForForm(dive.duration),
+    max_depth: dive.max_depth,
+    avg_depth: dive.avg_depth,
+    bottom_temperature: dive.bottom_temperature,
+    visibility: dive.visibility,
+    weight: dive.weight,
+    trip_uuid: dive.trip_uuid,
+    dive_site_uuids: dive.dive_sites?.map((site) => site.uuid) ?? [],
+    gear_item_uuids: dive.gear_items?.map((item) => item.uuid) ?? [],
+    notes: dive.notes || "",
+    // Converted field by field rather than spread: every optional field arrives
+    // as an explicit `null` when the mixture doesn't record it, and `null`
+    // satisfies none of their unions in `diveMixtureSchema`. See
+    // `toDiveMixtureInput`.
+    mixtures: dive.mixtures?.map(toDiveMixtureInput) ?? [],
+  };
+}
+
 export const diveCreateSchema = z.object({
   dive_number: z
     .number()
@@ -310,47 +360,21 @@ export type DiveUpdateInput = z.input<typeof diveUpdateSchema>;
 // to `undefined`, the field was dropped, and the trip survived a save that
 // reported success.
 //
-// `dirtyFields` narrows it further, to the fields the diver actually changed,
-// and it is what keeps that same `null`-is-a-value rule from turning into a
-// data-loss bug in the other direction. The edit form seeds itself from the
-// dive's own response, so everything it submits is either an edit or an echo -
-// and once the API stopped rendering soft-deleted trips and sites on a dive
-// (see DECISIONS.md), some of those echoes became lies. A dive whose trip had
-// been deleted came back with `trip_uuid: null`, the form echoed the null back,
-// and `patch_dive` read it as "the diver cleared the trip" and unlinked it for
-// good; the same round trip re-sent a `dive_site_uuids` shortened by the sites
-// the API had hidden, which the API applies by deleting and reinserting the
-// join rows. Pressing Save on a dive nobody had edited destroyed both, with no
-// undelete path and no trace left in `export.json`.
-//
-// The two requests are identical on the wire, so the API cannot tell them
-// apart - "the diver cleared the trip" and "the client echoed back a null it
-// was handed" are the same PATCH. In the form they are trivially different, and
-// this is where that knowledge lives. Omitting it is still supported, for
-// callers with no form behind them.
+// It used to take react-hook-form's `dirtyFields` as well, and drop every field
+// the diver had not touched. That existed because the API soft-deleted trips
+// and dive sites and then hid them from a dive read, which made the form's own
+// seed a lie: a dive whose trip had been deleted came back with
+// `trip_uuid: null`, and echoing that null back unlinked the trip for real. The
+// API hard-deletes those rows now and hides nothing, so a read is the whole
+// truth and an echo of it says exactly what the dive already holds - see "The
+// edit form submits the whole dive, because the read is the whole dive" in
+// DECISIONS.md.
 //
 // `duration` is the only shape change: the form edits it as an "MM:SS" string
 // and the API takes seconds. Done here rather than in the schema because
 // `z.transform()` on a field feeding a `z.input<>`-derived form type breaks
 // `useForm()`'s binding - see CONTRIBUTING.md.
-export function buildDiveUpdate(
-  values: DiveUpdateInput,
-  dirtyFields?: DirtyFields<DiveUpdateInput>,
-): DiveUpdate {
-  // Dropped to `undefined` rather than filtered out of the result afterwards:
-  // `undefined` is already this function's word for "don't send it", so an
-  // untouched field takes the same path as one the form never had a value for.
-  const data: DiveUpdateInput = dirtyFields
-    ? (Object.fromEntries(
-        Object.keys(values).map((field) => [
-          field,
-          isDirty(dirtyFields[field as keyof DiveUpdateInput])
-            ? values[field as keyof DiveUpdateInput]
-            : undefined,
-        ]),
-      ) as DiveUpdateInput)
-    : values;
-
+export function buildDiveUpdate(data: DiveUpdateInput): DiveUpdate {
   const update: DiveUpdate = {};
 
   if (data.dive_number !== undefined) update.dive_number = data.dive_number;

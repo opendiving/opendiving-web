@@ -37,9 +37,9 @@ const item = (uuid: string, name: string): GearItemSummary => ({
   is_archived: false,
 });
 
-// A set the diver sees as holding two items. Whether it also holds a third,
-// soft-deleted one is not knowable from here - the API stopped rendering those
-// on a read, which is exactly why echoing this list back is unsafe.
+// A set holding two items - all of them, now that the API hard-deletes gear
+// rather than hiding it from a set read. That is what makes echoing this list
+// back safe, and it is the whole reason the dialog stopped filtering.
 const SIDEMOUNT: GearSet = {
   uuid: "set-1",
   name: "Sidemount",
@@ -92,22 +92,22 @@ const editSidemount = () =>
   );
 
 // `PATCH /gear-set` routes any `gear_item_uuids` it is given through
-// `replace_gear_items_for_set`, which deletes every membership row and
-// reinserts the submitted list. The dialog seeds itself from a read that hides
-// soft-deleted gear, so sending that list back on an edit the diver made
-// elsewhere in the form destroys the hidden rows - permanently, and out of
-// `export.json` with them. Omitting the field is how the API is told to leave
-// the members alone.
+// `replace_gear_items_for_set`, which deletes every membership row and reinserts
+// the submitted list. The dialog sends the key on all three of its flows: the
+// picker is seeded from a read that hides nothing, so the list it holds is the
+// set's whole membership and replacing it with itself is a no-op. The filter
+// that used to omit it existed because soft-deleted items were hidden from that
+// read, which made the seeded list an echo one or more entries short.
 describe("the gear set dialog's PATCH body", () => {
-  it("says nothing about the items when the diver changed nothing", async () => {
+  it("sends the set's members even when the diver changed nothing", async () => {
     editSidemount();
 
     await save();
 
-    expect(await patchedBody()).not.toHaveProperty("gear_item_uuids");
+    expect((await patchedBody()).gear_item_uuids).toEqual(["item-1", "item-2"]);
   });
 
-  it("says nothing about the items when the set is renamed", async () => {
+  it("sends the members alongside a rename", async () => {
     editSidemount();
 
     const name = screen.getByLabelText("Set name *");
@@ -117,10 +117,10 @@ describe("the gear set dialog's PATCH body", () => {
 
     const body = await patchedBody();
     expect(body.name).toBe("Sidemount, cold water");
-    expect(body).not.toHaveProperty("gear_item_uuids");
+    expect(body.gear_item_uuids).toEqual(["item-1", "item-2"]);
   });
 
-  it("says nothing about the items when only the weight changed", async () => {
+  it("sends the members alongside a weight change", async () => {
     editSidemount();
 
     await userEvent.type(screen.getByLabelText("Weight (kg)"), "8");
@@ -128,14 +128,10 @@ describe("the gear set dialog's PATCH body", () => {
 
     const body = await patchedBody();
     expect(body.weight).toBe(68);
-    expect(body).not.toHaveProperty("gear_item_uuids");
+    expect(body.gear_item_uuids).toEqual(["item-1", "item-2"]);
   });
 
   it("carries the whole remaining list when the diver removes an item", async () => {
-    // The picker replaces the field's value wholesale on every edit, so this is
-    // the marker shape react-hook-form gives a registered array leaf - asserted
-    // against the real library rather than a literal, because that shape comes
-    // out of a heuristic an upgrade can move.
     editSidemount();
 
     await userEvent.click(screen.getAllByRole("button", { name: "Remove" })[0]);
@@ -144,11 +140,24 @@ describe("the gear set dialog's PATCH body", () => {
     expect((await patchedBody()).gear_item_uuids).toEqual(["item-2"]);
   });
 
+  it("empties the set when the diver removes every item", async () => {
+    // `[]` is a wholesale replace with nothing, which is how a set is emptied -
+    // and there is no longer any state in which an empty picker means "the API
+    // hid the rest", so it can be taken at its word.
+    editSidemount();
+
+    await userEvent.click(screen.getAllByRole("button", { name: "Remove" })[0]);
+    await userEvent.click(screen.getAllByRole("button", { name: "Remove" })[0]);
+    await save();
+
+    expect((await patchedBody()).gear_item_uuids).toEqual([]);
+  });
+
   it("forgets an edit that was abandoned by closing the dialog", async () => {
-    // The `reset` on open is what establishes the baseline every one of these
-    // tests reads against, and the dialog is mounted for the whole life of the
-    // page - so a picker edit the diver walked away from has to be gone by the
-    // next open, not still marked dirty and still replacing the members.
+    // The `reset` on open is what re-seeds the picker from the set, and the
+    // dialog is mounted for the whole life of the page - so a removal the diver
+    // walked away from has to be gone by the next open, not still sitting in the
+    // picker and about to be saved as a real one.
     const props = {
       userId: "user-1",
       onOpenChange: vi.fn(),
@@ -162,13 +171,12 @@ describe("the gear set dialog's PATCH body", () => {
     rerender(<GearSetDialog {...props} open />);
     await save();
 
-    expect(await patchedBody()).not.toHaveProperty("gear_item_uuids");
+    expect((await patchedBody()).gear_item_uuids).toEqual(["item-1", "item-2"]);
   });
 });
 
-// The other two paths through the same dialog, where the list is the point of
-// the request and arrives via `reset` rather than the picker - so it never
-// reads as dirty, and a filter that only asked `isDirty` would drop it.
+// The other two paths through the same dialog, where the list arrives from the
+// dive form through `initialItemUuids` rather than from the set being edited.
 describe("the gear set dialog's other save paths", () => {
   const saveDivesGear = () =>
     render(
@@ -199,8 +207,8 @@ describe("the gear set dialog's other save paths", () => {
 
   it("overwrites an existing set's members when one is chosen as the target", async () => {
     // "This replaces everything currently in that set" is what the dialog
-    // promises here, so this is the one update that must send the list - and
-    // the diver never touched the picker to produce it.
+    // promises here, and the list that does the replacing is the dive's, not the
+    // target set's - so this pins which of the two reaches the API.
     saveDivesGear();
 
     await userEvent.click(screen.getByRole("combobox", { name: "Save to" }));
