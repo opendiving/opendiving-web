@@ -861,15 +861,30 @@ defaulted - `""` means unknown, and 0 bar would read as an empty tank.
 
 **`guessed` is keyed off the file alone**, and getting that wrong made the whole warning dead code
 on both real forms. It first asked whether _no_ source had the value - file or carried-over
-cylinder - which reads sensibly and never fires: both dive pages seed `mixtures` with a complete
-`DEFAULT_MIXTURE` cylinder before any import happens, and the create form's last-dive prefill
-supplies all three too, so the carried cylinder is never null. For the ordinary
-one-cylinder-file-against-a-one-cylinder-form case the counts always match, so the note appeared
-only when the cylinder counts differed - a minority path, and one that made it look like it worked.
+cylinder - which reads sensibly and almost never fires, because a form that already holds a cylinder
+has all three values: at the time both dive pages seeded `mixtures` with a complete
+`DEFAULT_MIXTURE` cylinder before any import happened, and the create form's last-dive prefill
+supplies all three too. For the ordinary one-cylinder-file-against-a-one-cylinder-form case the
+counts always match, so the note appeared only when the cylinder counts differed - a minority path,
+and one that made it look like it worked.
 
-`applyParsedDiveToForm` is tested against the pages' literal seed rather than a hand-picked
+Half of that premise has since gone: the create form seeds `[]` rather than a cylinder (see "The
+create form proposes no cylinder, and the last one is removable" below), so an untouched create form
+holds nothing to consult. **The conclusion is unchanged and the reasoning is stronger for it**, not
+weaker - "no source had it" would still be dead on the edit form, on a create form the prefill
+filled in, and on the second of two complementary imports, which are exactly the cases the warning
+exists for. Do not re-derive it from the seed; the seed is not what makes it right.
+
+What the empty create form does change is the _wording_ the same one-cylinder import gets. With no
+cylinder to pair against, `volume` and `helium` genuinely fall to `DEFAULT_MIXTURE`, so the note now
+reads "Those are defaults" where it used to say "already on this form" - which is the more urgent of
+the two sentences and, for a number the page supplied rather than the diver, the only true one.
+
+`applyParsedDiveToForm` is tested against the pages' literal seeds rather than a hand-picked
 `existing` cylinder, because the bug lived entirely in that seam: every unit test of the merge
-passed, and none of them used the input the app actually produces.
+passed, and none of them used the input the app actually produces. There are two such seeds now -
+`[]` for an untouched create form and one `DEFAULT_MIXTURE` for anything the diver, the prefill or
+an earlier import has filled in - and `dive-file-import.test.ts` covers both.
 
 **The note says where the value came from, not just that it was guessed.** `mergeMixture` reports
 per field whether the number now in the box came from the file, from the cylinder already on the
@@ -6476,3 +6491,55 @@ the replace destroys the hidden row on an edit where the diver never saw it. The
 back a uuid it was never handed, so closing this means the API preserving membership rows that point
 at soft-deleted items across a wholesale replace. Narrower than the bug above (it takes a deleted
 item _plus_ an edit to the very list it is missing from) and recorded rather than fixed.
+
+## The create form proposes no cylinder, and the last one is removable
+
+`dives/new/page.tsx` seeded `mixtures: [{ ...DEFAULT_MIXTURE }]` in `defaultValues` and again in
+`prefillFromLastDive`'s fallback, `mixture-fields.tsx` gated its remove button on `index > 0`, and
+`onSubmit` sends `normalizeMixtures(data.mixtures ?? [])` unconditionally. Each is defensible alone.
+Together they made "this dive records no gas" unreachable: a diver who never opened the gas card
+still logged an 11.1 L cylinder of air, tank 1 had no way off the form, and the next dive's prefill
+carried the phantom forward.
+
+The state they made unreachable is one the API supports outright - `DiveCreate.mixtures` is
+`default_factory=list` - and one this app's own code already expected to meet:
+`dive-mixtures-card.tsx` says it "renders nothing when the dive has none, which is the common case
+for a dive logged by hand", describing something the web app could not produce.
+
+**Why a proposal is not the same as a default elsewhere on this form.** A create form proposing
+sensible starting values is ordinary, and `plans/hard-delete-instead-of-hiding.md` drew the line at
+the edit form for exactly that reason. Gas is the exception, on one ground: `diveModWarning`
+computes a MOD from whatever cylinders the form holds, so a hand-logged dive past ~56.7 m raised an
+oxygen-exposure warning about air the diver never entered. A safety warning derived from invented
+data is the worst kind of wrong - it is either believed, or it trains the diver to ignore the real
+ones. Nothing else this form pre-fills carries a consequence like that.
+
+`DEFAULT_MIXTURE` itself stays. It is the right proposal for the "Add Mixture" button and for the
+pressure/role placeholders; the only question was whether one is present before the diver asks for
+one. The convenience argument for the seed survives too, in the place it was actually doing work:
+`prefillFromLastDive` still copies the previous dive's cylinders, so a diver who logs gas gets it
+back. What it no longer does is invent one when the previous dive had none.
+
+**The remove button lost its `index > 0` gate**, which is required rather than cosmetic: without it
+a diver who clicks "Add Mixture" on an empty form can never get back to zero and reintroduces the
+fabrication by hand. It also fixes the same thing on the edit form, where no dive's cylinders could
+be cleared at all even though `DiveUpdate.mixtures` accepts an empty list.
+`plans/hard-delete-instead-of-hiding.md` PR 2 carries the same change - whichever lands first, the
+other should not redo it. The button gained an `aria-label` naming its tank while it was being
+touched: the icon is the whole button, and one per tank with no accessible name reads as a row of
+identical "button"s.
+
+**`[]` on the wire, not an omitted key.** The submit path already sent whatever the field held, so
+`mixtures: []` reaches the body as a real value rather than an absent one. On create the two amount
+to the same thing - `DiveCreate.mixtures` is `default_factory=list`, so an omitted key is also an
+empty list - but the explicit one is what the form sends and what was checked against a live
+`POST /dive`: 201, and the dive reads back with `mixtures: []` at 60 m, the depth that used to raise
+the phantom warning. The distinction only bites on the edit form's `PATCH`, where present-and-empty
+replaces and absent leaves alone; that is `plans/hard-delete-instead-of-hiding.md`'s territory.
+
+**Tested at the page, not just at the component.** The seeding lives in `defaultValues` and in the
+prefill's `form.reset`, and neither is reachable from a unit test - so
+`app/dives/new/page.render.test.tsx` renders the real page with the API stubbed and asserts what
+`createDive` is called with: `[]` for an untouched gas card, `[]` again after adding and removing a
+cylinder, and the cylinder itself when the diver enters one. Six of its eight cases fail against the
+old seed, which is the property that makes it worth its weight.

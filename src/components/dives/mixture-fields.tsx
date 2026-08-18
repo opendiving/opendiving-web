@@ -266,16 +266,25 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
             <span className="text-sm font-medium text-muted-foreground">
               Tank {index + 1}
             </span>
-            {index > 0 && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => remove(index)}
-              >
-                <Trash2 className="h-4 w-4 text-destructive" />
-              </Button>
-            )}
+            {/* On every row, tank 1 included. The gate here was `index > 0`, which
+                made "this dive records no gas" unreachable from either dive form -
+                a state the API supports outright (`DiveCreate.mixtures` is
+                `default_factory=list`) and that `dive-mixtures-card.tsx` already
+                describes as "the common case for a dive logged by hand". A
+                cylinder the diver cannot take off is one they may never have
+                entered. */}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              // Named per row, because the icon is the whole button and a form can
+              // hold several: an unlabelled one reads as "button" to a screen
+              // reader, and a constant "Remove tank" would name every row the same.
+              aria-label={`Remove tank ${index + 1}`}
+              onClick={() => remove(index)}
+            >
+              <Trash2 className="h-4 w-4 text-destructive" />
+            </Button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -532,6 +541,16 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
           />
         </div>
       ))}
+
+      {/* Not an error, and worded so it doesn't read as one: a dive with no
+          cylinders is a complete record, and most hand-logged dives are exactly
+          that. The line exists so the card says something rather than showing a
+          heading over nothing. */}
+      {fields.length === 0 && (
+        <p className="text-sm text-muted-foreground">
+          No cylinders recorded for this dive.
+        </p>
+      )}
 
       <MixtureSetWarning
         control={control as unknown as Control<MixtureFieldsValues>}

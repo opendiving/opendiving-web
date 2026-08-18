@@ -408,6 +408,13 @@ describe("diveModWarning", () => {
 
   it("says nothing for a dive logging no cylinders", () => {
     expect(diveModWarning([], 40)).toBeNull();
+    // Pinned at a depth that *would* warn against air, which is what the create form
+    // used to seed: 60 m is past air's 56.7 m working limit, so a dive whose gas card
+    // the diver never opened raised a warning about a cylinder the page invented.
+    // Both forms can now hold zero cylinders, so this guard is reachable rather than
+    // theoretical.
+    expect(diveModWarning([], 60)).toBeNull();
+    expect(diveModWarning([AIR], 60)).toContain("working limit");
   });
 
   it("says nothing when no cylinder has a usable oxygen fraction", () => {

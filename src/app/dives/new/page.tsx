@@ -13,10 +13,7 @@ import {
   DiveCreateInput,
   normalizeMixtures,
 } from "@/lib/validations/dive";
-import {
-  DEFAULT_MIXTURE,
-  useMixtureFieldArray,
-} from "@/components/dives/mixture-fields";
+import { useMixtureFieldArray } from "@/components/dives/mixture-fields";
 import { DiveFormCard } from "@/components/dives/dive-form-card";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageSpinner } from "@/components/ui/page-spinner";
@@ -70,7 +67,15 @@ function NewDivePageContent() {
         initialDiveSiteId !== undefined ? [initialDiveSiteId] : [],
       gear_item_uuids: [],
       notes: "",
-      mixtures: [{ ...DEFAULT_MIXTURE }],
+      // Empty, not a seeded cylinder. A form must not write gas the diver never
+      // entered: `DEFAULT_MIXTURE`'s 11.1 L of air is a plausible enough cylinder
+      // (it is the "11.1 L (S80)" preset in `volume-combobox.tsx`) that a diver who
+      // never opened the gas card could not tell it from something they logged - and
+      // `diveModWarning` would then raise a depth-safety warning derived from it. The
+      // prefill below still carries the last dive's cylinders over, which is where
+      // the convenience actually lives; "Add Mixture" still starts from
+      // `DEFAULT_MIXTURE`.
+      mixtures: [],
     },
   });
   const mixtureFieldArray = useMixtureFieldArray(form.control);
@@ -143,22 +148,25 @@ function NewDivePageContent() {
             .filter((item) => !item.is_archived)
             .map((item) => item.uuid),
           notes: "",
-          mixtures: lastDive.mixtures?.length
-            ? lastDive.mixtures.map((m) => ({
-                volume: m.volume,
-                oxygen: m.oxygen,
-                helium: m.helium,
-                // Same reasoning as the gas fractions above - a diver on the same
-                // 32/1.4 back gas and EAN50/1.6 deco bottle plans them the same way
-                // dive after dive. `gas_number` is deliberately *not* carried: it
-                // identifies a cylinder inside the previous dive's export file, and
-                // this dive has no file for it to point into.
-                po2_limit: m.po2_limit ?? ("" as const),
-                role: m.role ?? ("" as const),
-                start_pressure: "" as const,
-                end_pressure: "" as const,
-              }))
-            : [{ ...DEFAULT_MIXTURE }],
+          // Whatever the last dive recorded, and nothing when it recorded nothing -
+          // a diver who logs gas gets it carried over, a diver who doesn't keeps an
+          // empty card rather than acquiring a cylinder on dive two. See
+          // `defaultValues` above.
+          mixtures:
+            lastDive.mixtures?.map((m) => ({
+              volume: m.volume,
+              oxygen: m.oxygen,
+              helium: m.helium,
+              // Same reasoning as the gas fractions above - a diver on the same
+              // 32/1.4 back gas and EAN50/1.6 deco bottle plans them the same way
+              // dive after dive. `gas_number` is deliberately *not* carried: it
+              // identifies a cylinder inside the previous dive's export file, and
+              // this dive has no file for it to point into.
+              po2_limit: m.po2_limit ?? ("" as const),
+              role: m.role ?? ("" as const),
+              start_pressure: "" as const,
+              end_pressure: "" as const,
+            })) ?? [],
         });
       } catch (error) {
         console.error("Failed to fetch last dive for pre-fill:", error);
