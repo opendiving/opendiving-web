@@ -189,8 +189,35 @@ describe("the edit form's round trip", () => {
         gear_item_uuids: [],
         notes: "Thermocline at 18m",
         mixtures: [],
+        // An unrecorded water type goes out as the null it arrived as: the seed
+        // holds the select's `""` and `buildDiveUpdate` converts it back. A
+        // no-op against a dive that already has none, and the same echo every
+        // other untouched field makes.
+        water_type: null,
       }),
     );
+  });
+
+  it("hands a recorded water type and altitude back unchanged", async () => {
+    // The half a `""` sentinel could quietly break: the seed converts `null` to
+    // `""` for the picker, so a recorded value has to survive the same trip
+    // without being flattened into "not recorded".
+    const onSave = vi.fn();
+    render(
+      <Harness
+        dive={{ ...DIVE, water_type: "brackish", altitude: 372 }}
+        onSave={onSave}
+      />,
+    );
+    await seeded();
+
+    await save();
+
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    expect(onSave.mock.calls[0][0]).toMatchObject({
+      water_type: "brackish",
+      altitude: 372,
+    });
   });
 
   it("carries the whole cylinder list a file import replaced", async () => {

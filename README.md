@@ -18,9 +18,9 @@ no shutdown, acquisition, or paywall can ever take your logbook with it.
 
 ## Features
 
-- **Dive logging** — times, depths, duration, temperature, visibility, weight, notes, and any number
-  of gas mixtures (O₂/He, start/end pressures) per dive. A dive can span multiple dive sites (drift
-  dives happen), in order.
+- **Dive logging** — times, depths, duration, temperature, visibility, water type, altitude, weight,
+  notes, and any number of gas mixtures (O₂/He, start/end pressures) per dive. A dive can span
+  multiple dive sites (drift dives happen), in order.
 - **Technical diving** — trimix and nitrox mixes get derived gas names and per-mix **MOD** at your
   ppO₂ limit, plus END/EAD; the profile chart shades the **deco ceiling** and marks dive events;
   **CNS/OTU** oxygen exposure and surface pressure are kept from imports, per-cylinder ppO₂ limits

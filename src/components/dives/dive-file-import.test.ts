@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { applyParsedDiveToForm } from "./dive-file-import";
 import { describeMixtureImport } from "@/lib/dive-import";
 import { DEFAULT_MIXTURE } from "./mixture-fields";
-import type { ParsedDiveMixture } from "@/lib/api/dives";
+import type { ParsedDive, ParsedDiveMixture } from "@/lib/api/dives";
 import type { DiveMixtureInput } from "@/lib/validations/dive";
 
 // A mixture exactly as the API returns one, i.e. with every field explicitly
@@ -36,7 +36,10 @@ function formHolding(mixtures: DiveMixtureInput[]) {
   } as unknown as Parameters<typeof applyParsedDiveToForm>[0];
 }
 
-function parsedDive(mixtures: ParsedDiveMixture[]) {
+function parsedDive(
+  mixtures: ParsedDiveMixture[],
+  overrides: Partial<ParsedDive> = {},
+) {
   return {
     dive_number: null,
     start_time: null,
@@ -44,6 +47,9 @@ function parsedDive(mixtures: ParsedDiveMixture[]) {
     max_depth: null,
     avg_depth: null,
     bottom_temperature: null,
+    // Applied to the form like the scalars above, unlike the import-owned block
+    // below - null is the ordinary case, since only a FIT file records it at all.
+    water_type: null,
     mixtures,
     // Returned by the parse but never applied to the form - the API writes these
     // itself when the file is attached. Spelled out so this fixture stays a complete
@@ -54,7 +60,21 @@ function parsedDive(mixtures: ParsedDiveMixture[]) {
     otu_end: null,
     surface_pressure_bar: null,
     file_token: "token",
+    ...overrides,
   };
+}
+
+// Records what `applyParsedDiveToForm` wrote, for the scalar fields the mixture
+// tests above don't reach. `formHolding`'s stub swallows `setValue` entirely.
+function recordingForm(mixtures: DiveMixtureInput[] = []) {
+  const written: Record<string, unknown> = {};
+  const form = {
+    getValues: (name?: string) => (name === "mixtures" ? mixtures : undefined),
+    setValue: (name: string, value: unknown) => {
+      written[name] = value;
+    },
+  } as unknown as Parameters<typeof applyParsedDiveToForm>[0];
+  return { form, written };
 }
 
 describe("applyParsedDiveToForm", () => {
@@ -198,5 +218,30 @@ describe("applyParsedDiveToForm", () => {
       keptPressures: false,
       discardedPressures: false,
     });
+  });
+
+  it("applies the water type a FIT file recorded", () => {
+    const { form, written } = recordingForm();
+
+    applyParsedDiveToForm(
+      form,
+      parsedDive([], { water_type: "en13319" }),
+      () => {},
+    );
+
+    // `en13319` verbatim, not folded into "salt": it is what the computer was
+    // actually set to, and the parser refuses to substitute a plausible value
+    // for a recorded one. The diver corrects it on the form if it is wrong.
+    expect(written.water_type).toBe("en13319");
+  });
+
+  it("leaves the water type alone for a file that records none", () => {
+    // Every Suunto export, and any FIT file set to `custom`. Writing `""` here
+    // would clear a value the edit form was seeded with from the dive itself.
+    const { form, written } = recordingForm();
+
+    applyParsedDiveToForm(form, parsedDive([]), () => {});
+
+    expect(written).not.toHaveProperty("water_type");
   });
 });

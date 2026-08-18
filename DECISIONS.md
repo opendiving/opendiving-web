@@ -1402,9 +1402,10 @@ DECISIONS.md for why it isn't a gear item) is rendered directly below the gear p
 Temperature/Visibility.
 
 The split the form makes is _what the diver observed_ vs. _how the diver was configured_: depth,
-temperature and visibility are readings taken from the dive, while gear and weight are choices
-carried into it. Weight is also the field a diver most often looks up in an old log precisely to
-check it against the suit and cylinder they were using, so it wants to be next to them.
+temperature, visibility, water type and altitude are facts about the dive and the water it was in,
+while gear and weight are choices carried into it. Weight is also the field a diver most often looks
+up in an old log precisely to check it against the suit and cylinder they were using, so it wants to
+be next to them.
 
 Two follow-on details:
 
@@ -6549,3 +6550,39 @@ prefill's `form.reset`, and neither is reachable from a unit test - so
 `createDive` is called with: `[]` for an untouched gas card, `[]` again after adding and removing a
 cylinder, and the cylinder itself when the diver enters one. Six of its eight cases fail against the
 old seed, which is the property that makes it worth its weight.
+
+## A dive-level select carries the same three states, and the two submit paths disagree about the third
+
+`water_type` is the first `<select>` on the dive form that is not inside a mixture row, and it
+inherits the whole `""`/`null`/`undefined` tri-state the cylinder `role` field already carries - see
+"The 'cleared field resets to default' React Hook Form quirk" and "The API sends `null`, the form
+schema only understood `""`". Restated for a dive-level field, because the boundaries it crosses are
+different ones:
+
+- **`""` is the live cleared state**, the value of the "Not recorded" option, and it is what
+  `diveToFormValues` seeds from an unrecorded `null`. Never `undefined`: react-hook-form re-displays
+  a field's default whenever the value resolves to that, so clearing an imported water type would
+  snap it straight back.
+- **`undefined` means "the diver never touched this"** and is dropped from a PATCH.
+- **`null` means "the diver cleared it"** and must be sent.
+
+The part that is genuinely new, and the reason this is a section rather than a line: **the two
+submit paths convert `""` differently, and both are right.** `buildDiveUpdate` turns it into an
+explicit `null`, because on the edit form the dive may already hold a water type and dropping the
+key would leave it there while the toast says otherwise - the `trip_uuid` bug, one field over. The
+create page omits the field instead, because there is nothing to clear on a dive that does not exist
+yet; `trip_uuid` makes the same collapse in the same place for the same reason. What neither may do
+is send the `""` itself: the API's `WaterType` is a `StrEnum` and `DiveCreate` is `extra="forbid"`,
+so an empty string is a 422 rather than a no-op.
+
+Two smaller things worth not re-deriving:
+
+- **The altitude box is not a copy of the Visibility box**, though it is styled as one. Visibility
+  is `min="0"`; altitude is `min="-450" max="6500"`, mirroring the API's `ck_dive_altitude_range`.
+  Copying the `min="0"` would fight the negative values the bound exists to admit - the Dead Sea is
+  ~430 m below sea level and is a real dive site.
+- **Both fields carry over from the last dive**, decided rather than inherited by omission. The
+  create page's prefill is an explicit per-field policy, and the argument the weight carry-over
+  already makes - consecutive dives, same configuration - holds at least as strongly for "the same
+  water at the same elevation". `bottom_temperature` sits right beside them on the form and
+  deliberately does not carry: it is a reading taken on the day, not a property of the place.

@@ -6,6 +6,7 @@ import {
 } from "@/lib/date-time";
 import {
   GAS_ROLES,
+  WATER_TYPES,
   type Dive,
   type DiveMixture,
   type DiveUpdate,
@@ -43,6 +44,31 @@ const durationField = (
 // being written out twice.
 const weightField = () =>
   z.number().min(0, "Weight must be zero or positive").nullable().optional();
+
+// The water the dive was in, as a `<select>` edits it. `""` is the "Not recorded"
+// option's value and a live form state, never something sent to the API: it is the
+// cleared sentinel react-hook-form needs (see `diveMixtureSchema.role`, the same
+// pattern for the same reason), converted away by `buildDiveUpdate` and by the create
+// page's submit.
+const waterTypeField = () =>
+  z
+    .union([z.literal(""), z.enum(WATER_TYPES)])
+    .nullable()
+    .optional();
+
+// Metres above sea level of the water surface, mirroring the API's
+// `ck_dive_altitude_range`. The band is a unit/typo check rather than a judgement about
+// where people dive: the Dead Sea (~-430 m) is the lowest diveable surface there is,
+// and the highest attested dives are the Ojos del Salado pool at ~6390 m. Integer,
+// because metre resolution is already finer than anything reads it.
+const altitudeField = () =>
+  z
+    .number()
+    .int("Altitude must be a whole number of meters")
+    .min(-450, "Altitude must be at least -450 m")
+    .max(6500, "Altitude must be at most 6500 m")
+    .nullable()
+    .optional();
 
 // Optional numeric field that can also hold the literal empty string "" while
 // the user is editing. We deliberately never let the *live* form value become
@@ -258,6 +284,12 @@ export function diveToFormValues(dive: Dive): DiveUpdateInput {
     avg_depth: dive.avg_depth,
     bottom_temperature: dive.bottom_temperature,
     visibility: dive.visibility,
+    // `""`, not `null`: the picker's "Not recorded" option is what an unrecorded
+    // water type has to select, and `null` is a member of the field's union only so
+    // the *submit* direction can say "cleared". Same conversion at the same boundary
+    // as `toDiveMixtureInput`'s.
+    water_type: dive.water_type ?? "",
+    altitude: dive.altitude,
     weight: dive.weight,
     trip_uuid: dive.trip_uuid,
     dive_site_uuids: dive.dive_sites?.map((site) => site.uuid) ?? [],
@@ -295,6 +327,8 @@ export const diveCreateSchema = z.object({
     .positive("Visibility must be positive")
     .nullable()
     .optional(),
+  water_type: waterTypeField(),
+  altitude: altitudeField(),
   // Kilograms. `min(0)` rather than `positive()`, unlike the depths above:
   // diving with no lead at all is a real entry, and it's worth distinguishing
   // from not having recorded it - mirrors `ck_dive_weight_non_negative`.
@@ -334,6 +368,8 @@ export const diveUpdateSchema = z.object({
     .positive("Visibility must be positive")
     .nullable()
     .optional(),
+  water_type: waterTypeField(),
+  altitude: altitudeField(),
   weight: weightField(),
   // Nullable, not just optional: `null` is how the edit form says "detach this
   // dive from its trip". See `DiveUpdate.trip_uuid` in `lib/api/dives.ts`.
@@ -388,6 +424,14 @@ export function buildDiveUpdate(data: DiveUpdateInput): DiveUpdate {
     update.bottom_temperature = data.bottom_temperature;
   }
   if (data.visibility !== undefined) update.visibility = data.visibility;
+  if (data.water_type !== undefined) {
+    // The select's cleared state is `""`, which the API's enum would reject. It is
+    // still a value the diver chose, so it goes out as an explicit `null` - dropping
+    // the field instead would be the "cleared vs. untouched" collapse this whole
+    // helper exists to avoid.
+    update.water_type = data.water_type === "" ? null : data.water_type;
+  }
+  if (data.altitude !== undefined) update.altitude = data.altitude;
   if (data.weight !== undefined) update.weight = data.weight;
   if (data.trip_uuid !== undefined) update.trip_uuid = data.trip_uuid;
   if (data.dive_site_uuids !== undefined) {

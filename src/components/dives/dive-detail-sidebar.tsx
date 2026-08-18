@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Dive } from "@/lib/api/dives";
+import { Dive, WATER_TYPE_LABELS } from "@/lib/api/dives";
 import { Trip } from "@/lib/api/trips";
 import { formatDateTime } from "@/lib/date-time";
 import { formatDistance, GeoPoint, haversineMeters } from "@/lib/geo-distance";
@@ -9,7 +9,14 @@ import { DiveSitesLabel } from "@/components/dives/dive-sites-label";
 import { DiveSourceFileCard } from "@/components/dives/dive-source-file-card";
 import { LocationsMap } from "@/components/map/locations-map-lazy";
 import type { MappableLocation } from "@/components/map/locations-map";
-import { Eye, Luggage, MapPin, Thermometer } from "lucide-react";
+import {
+  Eye,
+  Luggage,
+  MapPin,
+  Mountain,
+  Thermometer,
+  Waves,
+} from "lucide-react";
 
 interface DiveDetailSidebarProps {
   dive: Dive;
@@ -46,7 +53,10 @@ export function DiveDetailSidebar({
   onSourceFileChanged,
 }: DiveDetailSidebarProps) {
   const hasEnvironmentInfo =
-    dive.bottom_temperature != null || dive.visibility != null;
+    dive.bottom_temperature != null ||
+    dive.visibility != null ||
+    dive.water_type != null ||
+    dive.altitude != null;
 
   // Where the dive computer put the diver, which is a different claim from where
   // the site is pinned - so both are drawn, and the ring/dot pair is what tells
@@ -182,6 +192,32 @@ export function DiveDetailSidebar({
                 <div className="flex items-center gap-2 text-xl font-semibold">
                   <Eye className="h-4 w-4 text-muted-foreground" />
                   {dive.visibility}m
+                </div>
+              </div>
+            )}
+            {dive.water_type != null && (
+              <div>
+                <div className="text-sm font-medium text-muted-foreground mb-1">
+                  Water Type
+                </div>
+                <div className="flex items-center gap-2 text-xl font-semibold">
+                  <Waves className="h-4 w-4 text-muted-foreground" />
+                  {/* Falls back to the wire value, like `gearTypeLabel` and the
+                      mixtures table's role badge: the API can grow a member
+                      before this build ships a label for it, and rendering the
+                      slug beats rendering a blank row. */}
+                  {WATER_TYPE_LABELS[dive.water_type] ?? dive.water_type}
+                </div>
+              </div>
+            )}
+            {dive.altitude != null && (
+              <div>
+                <div className="text-sm font-medium text-muted-foreground mb-1">
+                  Altitude
+                </div>
+                <div className="flex items-center gap-2 text-xl font-semibold">
+                  <Mountain className="h-4 w-4 text-muted-foreground" />
+                  {dive.altitude} m
                 </div>
               </div>
             )}
