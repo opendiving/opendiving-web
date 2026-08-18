@@ -1,7 +1,13 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import { DiveMixturesCard } from "./dive-mixtures-card";
 import type { Dive, DiveMixture, GasRole } from "@/lib/api/dives";
+
+// This render reads the diver's units, so it needs an auth context. Metric, which
+// is every existing account's default.
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({ user: { uuid: "user-1", units: "metric" } }),
+}));
 
 // `diveModWarning` itself is unit-tested in `lib/dive-mixtures.test.ts`. What only a
 // render reaches is the two rules layered on top of it here - which cylinder, if any,

@@ -206,6 +206,17 @@ describe("diveCreateSchema altitude", () => {
     ).toBe(false);
   });
 
+  // The bound messages name both systems, because form state is metric whichever
+  // way the diver types: an imperial diver enters 22,000 ft and would otherwise be
+  // told about a 6500 m ceiling they never typed.
+  it("states the altitude range in both systems", () => {
+    const result = diveCreateSchema.safeParse({ ...validDive, altitude: 9000 });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues.map((issue) => issue.message)).toContain(
+      "Altitude must be between -450 and 6500 m (-1,476 and 21,325 ft)",
+    );
+  });
+
   it("rejects a fractional altitude", () => {
     expect(
       diveCreateSchema.safeParse({ ...validDive, altitude: 372.5 }).success,
@@ -264,7 +275,7 @@ describe("diveMixtureSchema", () => {
     // 205203 is what the DM5 XML parser stored when it read millibar as bar, and
     // 3000 is a psi fill typed into a bar box. Both fail on the ceiling.
     expect(messagesFor({ start_pressure: 351 })).toContain(
-      "Start pressure must be at most 350 bar — check the units on that reading.",
+      "Start pressure must be at most 350 bar (5,076 psi) — check the units on that reading.",
     );
   });
 
@@ -287,7 +298,7 @@ describe("diveMixtureSchema", () => {
     // psi reading typed into a lone end box would reach the API unbounded and come
     // back a 422 toast instead of a message under the field.
     expect(messagesFor({ end_pressure: 3000 })).toContain(
-      "End pressure must be at most 350 bar — check the units on that reading.",
+      "End pressure must be at most 350 bar (5,076 psi) — check the units on that reading.",
     );
   });
 

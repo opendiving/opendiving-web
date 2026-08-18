@@ -5,10 +5,20 @@ import { Input } from "@/components/ui/input";
 import { nextActiveIndex } from "@/components/ui/creatable-combobox";
 import { cn } from "@/lib/utils";
 import type { FormControlSlotProps } from "@/components/ui/form";
+import { useUnits } from "@/hooks/useUnits";
+import type { UnitSystem } from "@/lib/units";
 
 export interface VolumeOption {
   value: number;
   label: string;
+  /**
+   * The cu-ft name this cylinder is known by, where it has one.
+   *
+   * Only the US aluminum sizes carry one. `24 L (2x12 L)`'s parenthetical looks
+   * like the same thing and is not - it is a metric composition, so it is part of
+   * `label` and never leads.
+   */
+  imperialName?: string;
 }
 
 // Common cylinder water capacities (liters). Plain-metric entries are typical
@@ -19,19 +29,38 @@ export interface VolumeOption {
 export const VOLUME_OPTIONS: VolumeOption[] = [
   { value: 3, label: "3 L" },
   { value: 5, label: "5 L" },
-  { value: 7.1, label: "7.1 L (S50)" },
-  { value: 9.2, label: "9.2 L (S63)" },
+  { value: 7.1, label: "7.1 L (S50)", imperialName: "S50" },
+  { value: 9.2, label: "9.2 L (S63)", imperialName: "S63" },
   { value: 10, label: "10 L" },
-  { value: 10.2, label: "10.2 L (S72)" },
-  { value: 11.1, label: "11.1 L (S80)" },
+  { value: 10.2, label: "10.2 L (S72)", imperialName: "S72" },
+  { value: 11.1, label: "11.1 L (S80)", imperialName: "S80" },
   { value: 12, label: "12 L" },
-  { value: 13.6, label: "13.6 L (S100)" },
+  { value: 13.6, label: "13.6 L (S100)", imperialName: "S100" },
   { value: 15, label: "15 L" },
   { value: 18, label: "18 L" },
   { value: 20, label: "20 L" },
-  { value: 22.2, label: "22.2 L (2x S80)" },
+  { value: 22.2, label: "22.2 L (2x S80)", imperialName: "2x S80" },
   { value: 24, label: "24 L (2x12 L)" },
 ];
+
+/**
+ * How a preset is written for a diver reading in `units`.
+ *
+ * Imperial leads with the cu-ft name where there is one - "S80 (11.1 L)" rather
+ * than "11.1 L (S80)" - and that relabel is the *whole* of what imperial mode does
+ * to this field. The stored value stays litres in both systems, because a
+ * cylinder's litres are its water capacity while its cubic feet are the gas it
+ * holds at a rated pressure the mixture doesn't record: converting one to the other
+ * needs a column that doesn't exist, and inventing a factor would be fake maths.
+ * A preset with no cu-ft identity is the same string in both systems.
+ */
+export function volumeOptionLabel(
+  option: VolumeOption,
+  units: UnitSystem,
+): string {
+  if (units === "metric" || !option.imperialName) return option.label;
+  return `${option.imperialName} (${option.value} L)`;
+}
 
 export interface VolumeComboboxProps extends FormControlSlotProps {
   value?: number;
@@ -63,6 +92,7 @@ export function VolumeCombobox({
   ...slotProps
 }: VolumeComboboxProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const units = useUnits();
   // Index of the keyboard-highlighted preset, or -1 for none - shares
   // `nextActiveIndex` with `CreatableCombobox` so both dropdowns in the dive
   // form move the same way.
@@ -175,7 +205,7 @@ export function VolumeCombobox({
               onMouseEnter={() => setActiveIndex(index)}
               onClick={() => handleSelect(option)}
             >
-              {option.label}
+              {volumeOptionLabel(option, units)}
             </button>
           ))}
         </div>

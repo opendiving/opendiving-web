@@ -6635,3 +6635,115 @@ rejected value reaches its own `<FormMessage />` the way it does on the page. Th
 separate - with every cylinder input mounted, a `replace()` of a partial row leaves the omitted
 fields' old values in place, which is the page's real behaviour but not what the round-trip tests
 are pinning.
+
+## Units convert at the edges: metric state, one formatter module
+
+Every measurement the app stores, sends, caches and exports is metric, and stays metric. What the
+`units` preference on the user row changes is _display and entry only_, at exactly two places: the
+formatters in `lib/units.ts` and the `UnitNumberInput` built on them. The rest of the app never
+learns which system the diver picked.
+
+**Form state is metric, whatever the box says.** `UnitNumberInput` renders feet and commits metres.
+That single choice is what keeps the rest unit-blind: the live MOD/END/EAD maths in
+`lib/dive-mixtures.ts` reads form values directly and its `METERS_PER_BAR = 10` is a fact about
+water rather than a display choice; `prefillFromLastDive` copies numbers between dives; the
+import-apply path writes parsed file values straight in. None of them changed. Neither did any
+validation logic - `lib/validations/dive.ts` validates the same metres it always did, and the only
+Zod edits in this work are message strings.
+
+The rejected alternative was form state in display units. It would have pushed unit-awareness
+through safety-adjacent gas maths, required per-system Zod schema factories (the bounds mirror DB
+`CHECK`s written in metres), and multiplied the places a conversion can be forgotten. A conversion
+can only be forgotten somewhere that has to remember it, and this design leaves two such places.
+
+**Whole imperial units are what makes entry stable.** 98 ft is 29.8704 m, committed as 29.87 and
+re-rendered as 98 ft, because `toCommittedMetric` inverts the conversion _before_ it rounds. A 2 dp
+metric commit is off by at most 0.005 of a unit, which is far under half an imperial display unit
+for every dimension here - 75 °F round-trips through 23.89, 3000 psi through 206.84. `units.test.ts`
+walks every whole imperial value across each dimension's plausible range rather than spot-checking,
+because the guarantee is the design and a counterexample is a bug in it.
+
+**Metric entry now rounds to two decimals, and that is the one deliberate metric-side change.** It
+generalizes what the temperature box already did (`Math.round(val * 100) / 100`) to its float
+siblings, and it is invisible for anything typed at the field's own `step`.
+
+**`visibility` and `altitude` lose something, on purpose.** Both are `Integer` columns, so imperial
+entry commits whole metres: 50 ft becomes 15 m and reads back as 49 ft. Widening them to `Float` was
+considered and rejected - whole-metre resolution is the recorded entry convention (`.int()`,
+`step=1`), visibility is an estimate, and altitude is bucketed into 300 m bands by the computers
+that care about it. Common values survive anyway (1,220 ft ↔ 372 m), and the loss is pinned by a
+test in both `units.test.ts` and `unit-number-input.render.test.tsx` so it cannot quietly become
+something worse.
+
+**The box keeps a draft of what is being typed, and the reason is not the obvious one.** A
+`<input type="number">` sanitizes its own value - a lone `-` or a trailing `.` arrives as `""`
+whatever state we keep - so the draft is not what makes those typeable. What it prevents is the
+_committed_ value being written back under the cursor on every keystroke: 50 ft commits 15 m, and 15
+m is 49 ft, so the "0" of "50" would turn into a "9" as it was typed. The same happens in metric the
+moment entry rounding bites. The correction belongs on blur.
+
+**Native `min`/`max` are declared in metres and converted inward.** The schema and the DB `CHECK`
+behind it are written in metric, so callers keep declaring them that way and `displayBound` rounds a
+minimum up and a maximum down: -450 m becomes -1476 ft (which is -449.9 m back), never the -1477 ft
+that would be -450.2 m. The spinner must never offer a value the schema rejects.
+
+**Bounded messages name both systems, computed rather than typed.** An imperial diver who enters
+5,500 psi has it stored as ~379 bar and would otherwise be told about a bar ceiling they never
+typed, so the pressure and altitude bound messages carry both figures. They are one static string
+each, not a per-system factory - the schema stays unaware of the preference, and the rare violation
+reads correctly in either mode. The imperial figures are derived from `PSI_PER_BAR` and
+`displayBound` at module load rather than written out, because a hand-typed 5,076 is a second place
+for the number to be wrong. Two adjacent metric-worded layers stay deliberately: altitude's
+`.int("…whole number of meters")`, which imperial entry cannot reach because the box commits whole
+metres itself, and the API's own constraint messages, which only direct API callers see and which
+speak metric by contract.
+
+**Deliberately not converted.** ppO₂ (`po2_limit`) and `surface_pressure_bar` are bar in both
+systems, as they are on every dive computer. O₂/He percentages, CNS/OTU, coordinates and duration
+have no imperial counterpart. **Tank volume is the interesting one**: litres is a cylinder's _water
+capacity_ while cubic feet is the _gas it holds at a rated pressure_ - converting between them needs
+a rated-working-pressure column the mixture does not have (cuft = litres × rated bar × expansion),
+so a conversion factor here would be fake maths. Imperial mode only relabels the presets, leading
+with the cu-ft name a diver already uses: "11.1 L (S80)" becomes "S80 (11.1 L)". Adding that column
+is the revisit point.
+
+**Spacing and precision were unified as a side effect, and both were previously inconsistent.**
+Display sites split between `{v}m` and `{v} m` - the Environment sidebar rendered both, two cards
+apart - and max depth appeared at three different precisions on three screens. Everything now goes
+through `formatDepth` and its siblings: value, separator, unit, with the separator a property of the
+dimension so degrees attach (`24°C`) and nothing else does. The profile chart's crosshair was the
+app's one _spaced_ degree symbol and now matches. Metric renders at up to two decimals with trailing
+zeros trimmed, which leaves every API-recorded value untouched and changes exactly two things:
+imported values carrying more decimals (`18.288` → `18.29 m`) and the corpus's float noise
+(`28.000000000000004` → `28 m`). Both align display with the API's recorded precision. Sites that
+genuinely want a coarser metric figure - the Recent Dives row's whole metres, the MOD/END/EAD
+strings' one decimal, the gas card's period-average RMV - pass `{ decimals }`, which tunes the
+**metric** side only: a whole foot is already finer than a tenth of a metre, and a hundredth of a
+cubic foot finer than a tenth of a litre, so there is nothing left to coarsen on the imperial side.
+
+**The charts convert once, where the wire scale is divided out.** `PROFILE_CHANNELS[*].scale` is a
+pair with `schemas/dive_profile.py` and describes how the API encodes an integer, not how a diver
+reads one - folding a unit conversion into it would make this app's idea of a centimetre disagree
+with the API's. So `toChannelSeries`/`toPressureSeries` divide by `scale` and _then_ convert, and
+everything downstream - `niceDomain`, `axisTicks`, the crosshair, the accessible extremes - is
+already in display units. That is what makes the axis land on round feet rather than round metres
+rescaled, and it leaves no per-use conversion to forget. `GasUseChart` does the same with its one
+RMV axis. **Depth and the deco ceiling share a dimension** in `CHANNEL_DIMENSION`, exactly as they
+already share a `scale` and a domain: a shaded deco region converted by any other factor would drift
+off the curve it bounds. The remembered-selection localStorage key does **not** bump - the channel
+set is unchanged and only its labels moved.
+
+**The accessible descriptions spell the units out.** "ft" read aloud is a word and "°C" is skipped
+entirely, so `unitWord` carries a second vocabulary for them - "feet", "degrees Fahrenheit", "psi",
+"cubic feet per minute" - and the chart summaries use it while the visible legend keeps the short
+labels.
+
+**Every component that renders a measurement now needs an `AuthProvider`.** `useUnits` reads
+`useAuth`, which throws outside one. In the app that is always true (`AppShell` wraps everything),
+but it made several render tests fail with an error about auth in a file that has nothing to do with
+auth. They each mock `@/contexts/AuthContext` now; where a test wants to switch systems the mock
+closes over a `vi.hoisted` box, since `vi.mock`'s factory is hoisted above the file and cannot see
+an ordinary `let`.
+
+**Metric is the default everywhere.** `useUnits` falls back to it when `user` has not loaded, which
+is also the column's server default and so the right answer for every existing row.

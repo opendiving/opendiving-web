@@ -1,3 +1,5 @@
+"use client";
+
 import { GearSet, gearItemLabel } from "@/lib/api/gear";
 import { Button } from "@/components/ui/button";
 import { CountBadge } from "@/components/ui/count-badge";
@@ -13,6 +15,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Edit, Loader2, Plus, Trash2 } from "lucide-react";
+import { useUnits } from "@/hooks/useUnits";
+import { formatWeight } from "@/lib/units";
 
 interface GearSetsCardProps {
   sets: GearSet[];
@@ -47,6 +51,8 @@ export function GearSetsCard({
   deletingId,
   onDelete,
 }: GearSetsCardProps) {
+  const units = useUnits();
+
   return (
     <Card>
       <CardHeader>
@@ -96,7 +102,7 @@ export function GearSetsCard({
                       : set.gear_items.map(gearItemLabel).join(", ")}
                   </TableCell>
                   <TableCell className="text-muted-foreground whitespace-nowrap">
-                    {set.weight != null ? `${set.weight} kg` : "—"}
+                    {set.weight != null ? formatWeight(set.weight, units) : "—"}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">

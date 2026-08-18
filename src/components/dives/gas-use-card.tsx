@@ -53,6 +53,8 @@ import {
 import { subscribeToNothing } from "@/lib/chart-series-view";
 import { diveWallClockTime } from "@/lib/date-time";
 import { cn } from "@/lib/utils";
+import { useUnits } from "@/hooks/useUnits";
+import { displayNumber, unitLabel, type UnitSystem } from "@/lib/units";
 
 // The dashboard's gas-consumption trend.
 //
@@ -63,6 +65,7 @@ import { cn } from "@/lib/utils";
 // `GasUseChart` owns that message, since it's the component that knows two
 // points are the minimum.
 export function GasUseCard() {
+  const units = useUnits();
   const [points, setPoints] = useState<DiveGasUsePoint[] | null>(null);
   // Both of these hold *this visit's* choice, and both are null until the diver
   // makes one - which is what leaves room for the remembered view underneath.
@@ -318,7 +321,7 @@ export function GasUseCard() {
           <ChartSkeleton stats={3} legend />
         ) : (
           <>
-            {summary && <GasUseSummaryRow summary={summary} />}
+            {summary && <GasUseSummaryRow summary={summary} units={units} />}
             <GasUseChart points={points} scope={scope} anchor={activeAnchor} />
           </>
         )}
@@ -332,15 +335,21 @@ export function GasUseCard() {
 // The chart shows the shape; this answers "am I improving", which is the
 // question the card exists for and the one a scatter of dots is worst at
 // answering at a glance.
-function GasUseSummaryRow({ summary }: { summary: GasUseSummary }) {
+function GasUseSummaryRow({
+  summary,
+  units,
+}: {
+  summary: GasUseSummary;
+  units: UnitSystem;
+}) {
   return (
     <div className="mb-5 flex flex-wrap items-end gap-x-8 gap-y-3">
       <ChartStat label="Average">
-        <Figure value={summary.average} />
+        <Figure value={summary.average} units={units} />
         <Change summary={summary} />
       </ChartStat>
       <ChartStat label="Best dive">
-        <Figure value={summary.best} />
+        <Figure value={summary.best} units={units} />
       </ChartStat>
       <ChartStat label="Dives">
         <span className="text-xl font-semibold tabular-nums">
@@ -351,17 +360,28 @@ function GasUseSummaryRow({ summary }: { summary: GasUseSummary }) {
   );
 }
 
-// One decimal. The API returns two, which is more resolution than a figure
-// derived from a hand-read pressure gauge honestly has - and these are averages
-// over a whole period, where the second decimal is noise about noise. (The hover
-// card on the chart still shows a single dive's own two, as it always has.)
-function Figure({ value }: { value: number }) {
+// One decimal in metric. The API returns two, which is more resolution than a
+// figure derived from a hand-read pressure gauge honestly has - and these are
+// averages over a whole period, where the second decimal is noise about noise.
+// (The hover card on the chart still shows a single dive's own two, as it always
+// has.)
+//
+// Imperial keeps both of its own, and that is not an inconsistency: a cubic foot
+// is 28 litres, so 0.64 cuft/min is already coarser than the 18.2 L/min this
+// prints beside it. Rounding it further would merge rates a diver can tell apart.
+//
+// Value and unit are drawn at different sizes, so this builds the string from the
+// two halves `lib/units.ts` exports rather than calling `formatRmv` - the numbers
+// and the label are the same either way.
+function Figure({ value, units }: { value: number; units: UnitSystem }) {
   return (
     <>
       <span className="text-xl font-semibold tabular-nums">
-        {value.toFixed(1)}
+        {displayNumber(value, "rmv", units, { decimals: 1 })}
       </span>
-      <span className="text-sm text-muted-foreground">L/min</span>
+      <span className="text-sm text-muted-foreground">
+        {unitLabel("rmv", units)}
+      </span>
     </>
   );
 }

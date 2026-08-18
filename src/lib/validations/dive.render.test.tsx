@@ -16,6 +16,12 @@ import {
 } from "./dive";
 import type { Dive, DiveUpdate } from "@/lib/api/dives";
 
+// `MixtureFields` reads the diver's units for its pressure labels and boxes.
+// Metric, so this file keeps testing the round trip and not the conversion.
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({ user: { uuid: "user-1", units: "metric" } }),
+}));
+
 // The edit form's round trip, end to end and against a real `useForm`: the dive
 // goes in through `diveToFormValues`, the form is submitted, and what comes out
 // of `buildDiveUpdate` has to be the dive it was seeded with. The unit tests one

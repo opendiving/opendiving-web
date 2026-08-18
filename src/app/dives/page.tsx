@@ -29,9 +29,12 @@ import Link from "next/link";
 import { PageSpinner } from "@/components/ui/page-spinner";
 import { CountBadge } from "@/components/ui/count-badge";
 import { TableRowsSkeleton } from "@/components/ui/table-skeleton";
+import { useUnits } from "@/hooks/useUnits";
+import { formatDepth } from "@/lib/units";
 
 export default function DivesPage() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
+  const units = useUnits();
   // Bumped whenever the log changes, to re-describe its numbering: deleting a
   // dive leaves the number it held unused, which the line above the table says
   // out loud.
@@ -172,7 +175,9 @@ export default function DivesPage() {
                       {formatDurationHoursMinutes(dive.duration)}
                     </TableCell>
                     <TableCell>
-                      {dive.max_depth ? `${dive.max_depth}m` : "-"}
+                      {dive.max_depth
+                        ? formatDepth(dive.max_depth, units)
+                        : "-"}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">

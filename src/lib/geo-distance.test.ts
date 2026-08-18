@@ -45,19 +45,35 @@ describe("haversineMeters", () => {
   });
 });
 
-describe("formatDistance", () => {
+describe("formatDistance in metric", () => {
   it("shows whole metres below a kilometre", () => {
-    expect(formatDistance(0)).toBe("0 m");
-    expect(formatDistance(211.6)).toBe("212 m");
-    expect(formatDistance(999.4)).toBe("999 m");
+    expect(formatDistance(0, "metric")).toBe("0 m");
+    expect(formatDistance(211.6, "metric")).toBe("212 m");
+    expect(formatDistance(999.4, "metric")).toBe("999 m");
   });
 
   // The boundary in both directions: 999.5 m rounds to 1000 metres, which must
   // not render as "1000 m" beside a "1.0 km" one millimetre further on.
   it("switches to kilometres at a kilometre", () => {
-    expect(formatDistance(999.5)).toBe("1.0 km");
-    expect(formatDistance(1000)).toBe("1.0 km");
-    expect(formatDistance(1249)).toBe("1.2 km");
-    expect(formatDistance(12345)).toBe("12.3 km");
+    expect(formatDistance(999.5, "metric")).toBe("1.0 km");
+    expect(formatDistance(1000, "metric")).toBe("1.0 km");
+    expect(formatDistance(1249, "metric")).toBe("1.2 km");
+    expect(formatDistance(12345, "metric")).toBe("12.3 km");
+  });
+});
+
+describe("formatDistance in imperial", () => {
+  it("shows whole feet below a mile", () => {
+    expect(formatDistance(0, "imperial")).toBe("0 ft");
+    expect(formatDistance(211.6, "imperial")).toBe("694 ft");
+    // One foot under the mile, which must not render as "5279 ft" beside a
+    // "1.0 mi" a foot further on - the same boundary the metric side has.
+    expect(formatDistance(1609, "imperial")).toBe("5279 ft");
+  });
+
+  it("switches to miles at a mile", () => {
+    expect(formatDistance(1609.344, "imperial")).toBe("1.0 mi");
+    expect(formatDistance(2000, "imperial")).toBe("1.2 mi");
+    expect(formatDistance(12345, "imperial")).toBe("7.7 mi");
   });
 });

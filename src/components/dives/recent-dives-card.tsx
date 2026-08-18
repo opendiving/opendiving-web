@@ -18,6 +18,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { ListRowsSkeleton } from "@/components/ui/skeleton";
 import { Waves, Plus, Clock, ArrowDownToLine } from "lucide-react";
+import { useUnits } from "@/hooks/useUnits";
+import { formatDepth } from "@/lib/units";
 
 const RECENT_DIVES_COUNT = 5;
 
@@ -66,6 +68,7 @@ export function RecentDivesCard({
   newDiveLabel = "Log Your First Dive",
 }: RecentDivesCardProps) {
   const [recentDives, setRecentDives] = useState<Dive[]>([]);
+  const units = useUnits();
   const [isLoadingDives, setIsLoadingDives] = useState(true);
 
   useEffect(() => {
@@ -175,7 +178,12 @@ export function RecentDivesCard({
                   </div>
                   <div className="flex items-center gap-1">
                     <ArrowDownToLine className="h-4 w-4" />
-                    {dive.max_depth ? `${Math.round(dive.max_depth)}m` : "-"}
+                    {/* Whole units in this row, unlike the detail page's two
+                        decimals: it is a scanning list, and the second decimal
+                        of a depth is not what anyone is scanning for. */}
+                    {dive.max_depth
+                      ? formatDepth(dive.max_depth, units, { decimals: 0 })
+                      : "-"}
                   </div>
                 </div>
               </Link>

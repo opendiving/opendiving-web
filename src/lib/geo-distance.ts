@@ -5,6 +5,8 @@
 // an entry and an exit fix a swim apart are drawn as one dot. The distance is
 // real and worth seeing, so it is text.
 
+import { FEET_PER_MILE, METERS_PER_FOOT, type UnitSystem } from "@/lib/units";
+
 // A position, in the same two field names everything else in the app uses.
 export interface GeoPoint {
   latitude: number;
@@ -39,14 +41,26 @@ export function haversineMeters(a: GeoPoint, b: GeoPoint): number {
 }
 
 /**
- * A distance for display: whole metres up to a kilometre, then one decimal.
+ * A distance for display: whole metres up to a kilometre, then one decimal -
+ * or whole feet up to a mile, then one decimal, for a diver reading in imperial.
  *
- * No decimals on the metres, deliberately - a consumer GPS fix is good to
+ * No decimals on the small unit, deliberately - a consumer GPS fix is good to
  * something like five metres, and "212.4 m" claims a precision the reading
- * never had. Above a kilometre the tenth is back, because "1 km" and "1.9 km"
- * are a real difference to anyone reading where their drift took them.
+ * never had. Past the big unit's threshold the tenth is back, because "1 km" and
+ * "1.9 km" are a real difference to anyone reading where their drift took them.
+ *
+ * Lives here rather than in `lib/units.ts` with the other formatters: the
+ * kilometre threshold and the tests behind it are this module's, and a drift is
+ * the only distance the app renders.
  */
-export function formatDistance(meters: number): string {
+export function formatDistance(meters: number, units: UnitSystem): string {
+  if (units === "imperial") {
+    const feet = meters / METERS_PER_FOOT;
+    const wholeFeet = Math.round(feet);
+    if (wholeFeet < FEET_PER_MILE) return `${wholeFeet} ft`;
+    return `${(feet / FEET_PER_MILE).toFixed(1)} mi`;
+  }
+
   // Rounded before the comparison, not after: 999.6 m is a thousand metres once
   // the decimals are gone, and "1000 m" beside a "1.0 km" a millimetre further
   // on would look like two different units for the same distance.

@@ -20,6 +20,12 @@
 // one implementation, here.
 
 import type { GasRole } from "@/lib/api/dives";
+import { formatDepth, type UnitSystem } from "@/lib/units";
+
+// Every depth this module *computes* is metres, and every depth it *prints* goes
+// through `formatDepth`. The maths below is unit-blind on purpose - `METERS_PER_BAR`
+// is a fact about water, not a display choice - so `units` reaches only the string
+// builders, and only ever as the last step.
 
 // Default values pre-filled when a new mixture (tank) is added. Start/end
 // pressure are deliberately left blank ("") rather than defaulted, since
@@ -364,6 +370,7 @@ export interface OxygenFractions {
 export function modWarning(
   mixture: OxygenFractions,
   breathedDepth: number | null | undefined,
+  units: UnitSystem,
 ): string | null {
   if (breathedDepth == null || !Number.isFinite(breathedDepth)) return null;
 
@@ -371,11 +378,14 @@ export function modWarning(
   const workingLimit = mod(mixture.oxygen, PPO2_WORKING);
   if (decoLimit == null || workingLimit == null) return null;
 
+  // The limits keep the one decimal they have always printed; the depth keeps the
+  // precision it was recorded at. In imperial both are whole feet, which is the
+  // resolution the number is honest at anyway.
   if (breathedDepth > decoLimit) {
-    return `${breathedDepth} m is past this mix's ${decoLimit.toFixed(1)} m limit at ppO₂ ${PPO2_DECO}.`;
+    return `${formatDepth(breathedDepth, units)} is past this mix's ${formatDepth(decoLimit, units, { decimals: 1 })} limit at ppO₂ ${PPO2_DECO}.`;
   }
   if (breathedDepth > workingLimit) {
-    return `${breathedDepth} m is past this mix's ${workingLimit.toFixed(1)} m working limit (ppO₂ ${PPO2_WORKING}); it is within the ${PPO2_DECO} ceiling used for decompression.`;
+    return `${formatDepth(breathedDepth, units)} is past this mix's ${formatDepth(workingLimit, units, { decimals: 1 })} working limit (ppO₂ ${PPO2_WORKING}); it is within the ${PPO2_DECO} ceiling used for decompression.`;
   }
 
   return null;
@@ -403,6 +413,7 @@ export function gasHintParts({
   helium,
   depth,
   ppO2,
+  units,
 }: {
   oxygen: number | null | undefined;
   helium: number | null | undefined;
@@ -411,6 +422,9 @@ export function gasHintParts({
   // to `PPO2_WORKING` - the same 1.4, but the fallback is what the printed "@ ppO₂
   // 1.4" then describes, so the label always names the limit the number came from.
   ppO2?: number | null | undefined;
+  // Which system the depths in these strings are written in. ppO₂ is not one of
+  // them: it is bar in both, as it is on every dive computer ever made.
+  units: UnitSystem;
 }): string[] {
   const name = gasName(oxygen, helium);
   if (name === null) return [];
@@ -428,7 +442,9 @@ export function gasHintParts({
   const limit = ppO2Limit({ po2_limit: ppO2 });
   const workingMod = mod(oxygen, limit);
   if (workingMod !== null) {
-    parts.push(`MOD ${workingMod.toFixed(1)} m @ ppO₂ ${limit}`);
+    parts.push(
+      `MOD ${formatDepth(workingMod, units, { decimals: 1 })} @ ppO₂ ${limit}`,
+    );
   }
 
   if (depth == null || !Number.isFinite(depth)) return parts;
@@ -446,14 +462,18 @@ export function gasHintParts({
     // taught the older nitrogen-only convention computes 14.2 m where this says
     // 25.8 m for the same gas, and nothing else on screen explains the gap.
     if (end !== null) {
-      parts.push(`END ${end.toFixed(1)} m at ${depth} m (O₂ narcotic)`);
+      parts.push(
+        `END ${formatDepth(end, units, { decimals: 1 })} at ${formatDepth(depth, units)} (O₂ narcotic)`,
+      );
     }
     return parts;
   }
 
   const equivalent = ead(depth, oxygen, helium);
   if (equivalent !== null) {
-    parts.push(`EAD ${equivalent.toFixed(1)} m at ${depth} m`);
+    parts.push(
+      `EAD ${formatDepth(equivalent, units, { decimals: 1 })} at ${formatDepth(depth, units)}`,
+    );
   }
 
   return parts;
@@ -493,11 +513,12 @@ export function gasHintParts({
 export function diveModWarning(
   mixtures: readonly OxygenFractions[],
   maxDepth: number | null | undefined,
+  units: UnitSystem,
 ): string | null {
   if (maxDepth == null || !Number.isFinite(maxDepth)) return null;
   if (mixtures.length === 0) return null;
 
-  if (mixtures.length === 1) return modWarning(mixtures[0], maxDepth);
+  if (mixtures.length === 1) return modWarning(mixtures[0], maxDepth, units);
 
   const limits = mixtures
     .map((mixture) => mod(mixture.oxygen, PPO2_DECO))
@@ -507,5 +528,5 @@ export function diveModWarning(
   const deepest = Math.max(...limits);
   if (maxDepth <= deepest) return null;
 
-  return `No gas logged for this dive can be breathed at ${maxDepth} m - the deepest-capable of them reaches ${deepest.toFixed(1)} m at ppO₂ ${PPO2_DECO}.`;
+  return `No gas logged for this dive can be breathed at ${formatDepth(maxDepth, units)} - the deepest-capable of them reaches ${formatDepth(deepest, units, { decimals: 1 })} at ppO₂ ${PPO2_DECO}.`;
 }

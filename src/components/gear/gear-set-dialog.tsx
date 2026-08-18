@@ -37,6 +37,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { GearItemMultiSelect } from "@/components/gear/gear-item-multi-select";
+import { UnitNumberInput } from "@/components/unit-number-input";
+import { useUnits } from "@/hooks/useUnits";
+import { unitLabel } from "@/lib/units";
 
 // Sentinel for the "Create a new set" option in the target picker. Radix's
 // `SelectItem` can't take an empty string value, so a real (uuid-shaped-free)
@@ -77,6 +80,7 @@ export function GearSetDialog({
 }: GearSetDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useDialogApiError(open);
+  const units = useUnits();
   const [existingSets, setExistingSets] = useState<GearSet[]>([]);
   // uuid of the set being overwritten, or `undefined` while creating a new one.
   const [targetUuid, setTargetUuid] = useState<string | undefined>(undefined);
@@ -282,22 +286,20 @@ export function GearSetDialog({
               name="weight"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Weight (kg)</FormLabel>
+                  <FormLabel>Weight ({unitLabel("weight", units)})</FormLabel>
                   <div className="relative">
                     <Weight className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
                     <FormControl>
-                      <Input
-                        type="number"
+                      <UnitNumberInput
+                        dimension="weight"
+                        units={units}
                         step="0.5"
-                        min="0"
-                        placeholder="e.g. 6"
+                        min={0}
+                        placeholderValue={6}
                         className="pl-9"
                         {...field}
-                        value={field.value ?? ""}
-                        onChange={(e) => {
-                          const val = parseFloat(e.target.value);
-                          field.onChange(Number.isNaN(val) ? null : val);
-                        }}
+                        value={field.value}
+                        onChange={field.onChange}
                       />
                     </FormControl>
                   </div>

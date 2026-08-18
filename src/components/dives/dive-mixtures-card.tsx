@@ -20,6 +20,8 @@ import {
   ppO2Limit,
 } from "@/lib/dive-mixtures";
 import { AlertTriangle, Wind } from "lucide-react";
+import { useUnits } from "@/hooks/useUnits";
+import { formatDepth, formatPressure } from "@/lib/units";
 
 interface DiveMixturesCardProps {
   dive: Dive;
@@ -39,13 +41,15 @@ interface DiveMixturesCardProps {
  * why the maths lives client-side.
  */
 export function DiveMixturesCard({ dive }: DiveMixturesCardProps) {
+  const units = useUnits();
+
   if (!dive.mixtures || dive.mixtures.length === 0) return null;
 
   // One warning for the dive, not one per cylinder - see `diveModWarning` for why a
   // multi-cylinder dive cannot blame any single mix. Spelled out under the table
   // rather than hidden in a `title`, which would put a safety note behind a hover and
   // out of reach on touch entirely.
-  const warning = diveModWarning(dive.mixtures, dive.max_depth);
+  const warning = diveModWarning(dive.mixtures, dive.max_depth, units);
 
   // The amber MOD cell is only meaningful when the warning is actually about that
   // row's gas, which is exactly the single-cylinder case. With several cylinders the
@@ -189,7 +193,7 @@ export function DiveMixturesCard({ dive }: DiveMixturesCardProps) {
                     }
                   >
                     {mixture.start_pressure != null
-                      ? `${mixture.start_pressure} bar`
+                      ? formatPressure(mixture.start_pressure, units)
                       : "-"}
                   </TableCell>
                   <TableCell
@@ -200,7 +204,7 @@ export function DiveMixturesCard({ dive }: DiveMixturesCardProps) {
                     }
                   >
                     {mixture.end_pressure != null
-                      ? `${mixture.end_pressure} bar`
+                      ? formatPressure(mixture.end_pressure, units)
                       : "-"}
                   </TableCell>
                   {/* Deliberately unrounded, matching the API's 2-decimal precision -
@@ -226,7 +230,9 @@ export function DiveMixturesCard({ dive }: DiveMixturesCardProps) {
                             aria-hidden
                           />
                         )}
-                        <span>{workingMod.toFixed(1)} m</span>
+                        <span>
+                          {formatDepth(workingMod, units, { decimals: 1 })}
+                        </span>
                         {/* `@ 1.4`, not `@ ppO₂ 1.4`: "@" in a MOD column is not
                             ambiguous, and the long form cost 36 px on every row
                             of a table that has none to spare. Muted, and muted

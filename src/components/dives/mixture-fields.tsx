@@ -29,6 +29,9 @@ import {
 } from "@/lib/dive-mixtures";
 import { GAS_ROLES } from "@/lib/api/dives";
 import { VolumeCombobox } from "@/components/dives/volume-combobox";
+import { UnitNumberInput } from "@/components/unit-number-input";
+import { useUnits } from "@/hooks/useUnits";
+import { unitLabel } from "@/lib/units";
 
 export { DEFAULT_MIXTURE };
 
@@ -109,6 +112,7 @@ function MixtureGasHint({
   const helium = useWatch({ control, name: `mixtures.${index}.helium` });
   const po2Limit = useWatch({ control, name: `mixtures.${index}.po2_limit` });
   const maxDepth = useWatch({ control, name: "max_depth" });
+  const units = useUnits();
 
   // `depth` is null unless this is the only cylinder, which is what keeps END/EAD
   // off a staged deco bottle - `gasHintParts` documents the rule.
@@ -120,6 +124,9 @@ function MixtureGasHint({
     // `gasHintParts` deals only in numbers and nulls, the way every other caller
     // hands it values.
     ppO2: po2Limit === "" ? null : po2Limit,
+    // The depths in the hint are converted; `maxDepth` itself is metric form
+    // state and stays that way.
+    units,
   });
   if (parts.length === 0) return null;
 
@@ -192,8 +199,9 @@ function MixtureSetWarning({
 }) {
   const mixtures = useWatch({ control, name: "mixtures" });
   const maxDepth = useWatch({ control, name: "max_depth" });
+  const units = useUnits();
 
-  const warning = diveModWarning(mixtures ?? [], maxDepth);
+  const warning = diveModWarning(mixtures ?? [], maxDepth, units);
 
   // Announced from a region that is always mounted and `sr-only` when there is
   // nothing to say. A `role="status"` that mounts together with its text is
@@ -244,6 +252,7 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
   fieldArray,
 }: MixtureFieldsProps<TFieldValues>) {
   const { fields, append, remove } = fieldArray;
+  const units = useUnits();
 
   return (
     <div className="space-y-4">
@@ -383,18 +392,23 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
               name={`mixtures.${index}.start_pressure` as Path<TFieldValues>}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Start pressure (bar)</FormLabel>
+                  <FormLabel>
+                    Start pressure ({unitLabel("pressure", units)})
+                  </FormLabel>
                   <FormControl>
-                    <Input
-                      type="number"
+                    {/* `emptyValue=""`, unlike every other number box in the
+                        dive form: these two pressures are the fields
+                        DECISIONS.md names as spelling cleared that way, and the
+                        submit path converts the sentinel at the edge. */}
+                    <UnitNumberInput
+                      dimension="pressure"
+                      units={units}
                       step="0.01"
-                      min="0"
+                      min={0}
+                      emptyValue=""
                       {...field}
-                      value={field.value ?? ""}
-                      onChange={(e) => {
-                        const raw = e.target.value;
-                        field.onChange(raw === "" ? "" : parseFloat(raw));
-                      }}
+                      value={field.value}
+                      onChange={field.onChange}
                     />
                   </FormControl>
                   <FormMessage />
@@ -407,18 +421,19 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
               name={`mixtures.${index}.end_pressure` as Path<TFieldValues>}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>End pressure (bar)</FormLabel>
+                  <FormLabel>
+                    End pressure ({unitLabel("pressure", units)})
+                  </FormLabel>
                   <FormControl>
-                    <Input
-                      type="number"
+                    <UnitNumberInput
+                      dimension="pressure"
+                      units={units}
                       step="0.01"
-                      min="0"
+                      min={0}
+                      emptyValue=""
                       {...field}
-                      value={field.value ?? ""}
-                      onChange={(e) => {
-                        const raw = e.target.value;
-                        field.onChange(raw === "" ? "" : parseFloat(raw));
-                      }}
+                      value={field.value}
+                      onChange={field.onChange}
                     />
                   </FormControl>
                   <FormMessage />
