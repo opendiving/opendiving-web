@@ -56,6 +56,10 @@ function EditDivePageContent() {
       avg_depth: undefined,
       bottom_temperature: undefined,
       visibility: undefined,
+      // The select's "Not recorded" option, for the same reason as on the create
+      // page: `undefined` is what react-hook-form re-displays a default for.
+      water_type: "",
+      altitude: undefined,
       weight: undefined,
       trip_uuid: undefined,
       dive_site_uuids: [],

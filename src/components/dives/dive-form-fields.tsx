@@ -6,10 +6,12 @@ import {
   ChevronsDownUp,
   Clock,
   Eye,
+  Mountain,
   Thermometer,
+  Waves,
   Weight,
 } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { Input, inputClassName } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { DiveStartTimeField } from "@/components/dives/dive-start-time-field";
 import {
@@ -27,8 +29,14 @@ import {
 import { TripCombobox } from "@/components/dives/trip-combobox";
 import { DiveSiteMultiSelect } from "@/components/dives/dive-site-multi-select";
 import { DiveGearField } from "@/components/gear/dive-gear-field";
+import { cn } from "@/lib/utils";
 import { DiveMixtureInput } from "@/lib/validations/dive";
-import { DiveSiteSummary } from "@/lib/api/dives";
+import {
+  DiveSiteSummary,
+  WATER_TYPES,
+  WATER_TYPE_LABELS,
+  type WaterType,
+} from "@/lib/api/dives";
 import { GearItemSummary } from "@/lib/api/gear";
 
 // The field shape shared by both `DiveCreateInput` and `DiveUpdateInput`
@@ -51,6 +59,12 @@ export interface DiveFormValues extends FieldValues {
   avg_depth?: number | null;
   bottom_temperature?: number | null;
   visibility?: number | null;
+  // `""` is the "Not recorded" option, and the live cleared state - never
+  // `undefined`, which react-hook-form re-displays the field's default for.
+  // `null` is what the submit path converts it to; both are in the union
+  // because `diveToFormValues` seeds one and `buildDiveUpdate` reads the other.
+  water_type?: WaterType | "" | null;
+  altitude?: number | null;
   weight?: number | null;
   // `null` means "no trip", and is distinct from `undefined` ("field not
   // touched") on the edit form - see `DiveUpdate.trip_uuid`.
@@ -336,6 +350,83 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                     step="1"
                     min="0"
                     placeholder="e.g. 15"
+                    className="pl-9"
+                    {...field}
+                    value={field.value ?? ""}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value);
+                      field.onChange(Number.isNaN(val) ? null : val);
+                    }}
+                  />
+                </FormControl>
+              </div>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
+
+      {/* Water & Altitude - what the water was and where it was, which the
+          computer treats as calibration settings and the log treats as facts
+          about the dive. They sit under the readings above rather than with the
+          gear because they are observations, not choices carried in. */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <FormField
+          control={control}
+          name={"water_type" as Path<TFieldValues>}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Water type</FormLabel>
+              {/* A plain `<select>` rather than the shadcn `Select` used
+                  elsewhere, for the same reason as the cylinder Role picker in
+                  `mixture-fields.tsx`: this one needs "unset" as a real,
+                  selectable option, and Radix reserves `""` for clearing. */}
+              <div className="relative">
+                <Waves className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                <FormControl>
+                  <select
+                    className={cn(inputClassName, "pl-9")}
+                    {...field}
+                    value={field.value ?? ""}
+                    // `""` straight through, not `|| undefined`: react-hook-form
+                    // re-displays a field's default whenever its value resolves
+                    // to `undefined`, so mapping "Not recorded" to it would snap
+                    // an imported water type back the moment it was cleared. The
+                    // submit paths convert the sentinel away.
+                    onChange={(e) => field.onChange(e.target.value)}
+                  >
+                    <option value="">Not recorded</option>
+                    {WATER_TYPES.map((waterType) => (
+                      <option key={waterType} value={waterType}>
+                        {WATER_TYPE_LABELS[waterType]}
+                      </option>
+                    ))}
+                  </select>
+                </FormControl>
+              </div>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={control}
+          name={"altitude" as Path<TFieldValues>}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Altitude (m)</FormLabel>
+              <div className="relative">
+                <Mountain className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                <FormControl>
+                  <Input
+                    type="number"
+                    step="1"
+                    // Not Visibility's `min="0"`, which this box otherwise
+                    // copies: the Dead Sea is below sea level and admitting it
+                    // is the whole reason the API's bound is -450 rather than 0.
+                    min="-450"
+                    max="6500"
+                    placeholder="e.g. 372"
                     className="pl-9"
                     {...field}
                     value={field.value ?? ""}

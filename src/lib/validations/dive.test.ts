@@ -8,7 +8,7 @@ import {
   normalizeMixtures,
   toDiveMixtureInput,
 } from "./dive";
-import type { Dive, DiveMixture } from "@/lib/api/dives";
+import { WATER_TYPES, type Dive, type DiveMixture } from "@/lib/api/dives";
 
 const validDive = {
   dive_number: 1,
@@ -140,6 +140,80 @@ describe("diveCreateSchema numeric fields", () => {
   it("allows a fractional weight", () => {
     const result = diveCreateSchema.safeParse({ ...validDive, weight: 4.5 });
     expect(result.success).toBe(true);
+  });
+});
+
+describe("diveCreateSchema water_type", () => {
+  it("accepts every member of the API's vocabulary", () => {
+    for (const waterType of WATER_TYPES) {
+      const result = diveCreateSchema.safeParse({
+        ...validDive,
+        water_type: waterType,
+      });
+      expect(result.success).toBe(true);
+    }
+  });
+
+  // The picker's "Not recorded" option. A live form state rather than something
+  // sent to the API, so the schema has to admit it or the resolver silently
+  // refuses the submit - the failure mode the mixture `role` field already hit.
+  it("accepts the cleared select's empty string", () => {
+    const result = diveCreateSchema.safeParse({ ...validDive, water_type: "" });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a value outside the vocabulary", () => {
+    const result = diveCreateSchema.safeParse({
+      ...validDive,
+      water_type: "soda",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts an explicit null, which is how the field is cleared", () => {
+    expect(diveUpdateSchema.safeParse({ water_type: null }).success).toBe(true);
+  });
+});
+
+describe("diveCreateSchema altitude", () => {
+  // The band mirrors the API's `ck_dive_altitude_range`, so the form says no
+  // before the database does - and both ends are real places rather than round
+  // numbers: the Dead Sea below, the Ojos del Salado pool above.
+  it("accepts a lake at altitude", () => {
+    expect(
+      diveCreateSchema.safeParse({ ...validDive, altitude: 372 }).success,
+    ).toBe(true);
+  });
+
+  it("accepts sea level and both bounds", () => {
+    for (const altitude of [0, -450, 6500]) {
+      expect(
+        diveCreateSchema.safeParse({ ...validDive, altitude }).success,
+      ).toBe(true);
+    }
+  });
+
+  it("rejects an altitude below the Dead Sea", () => {
+    expect(
+      diveCreateSchema.safeParse({ ...validDive, altitude: -451 }).success,
+    ).toBe(false);
+  });
+
+  it("rejects an altitude above the highest attested dive", () => {
+    // The typo/unit case this exists for: 9000 is feet mistaken for metres.
+    expect(
+      diveCreateSchema.safeParse({ ...validDive, altitude: 9000 }).success,
+    ).toBe(false);
+  });
+
+  it("rejects a fractional altitude", () => {
+    expect(
+      diveCreateSchema.safeParse({ ...validDive, altitude: 372.5 }).success,
+    ).toBe(false);
+  });
+
+  it("allows both fields to be omitted", () => {
+    expect(diveCreateSchema.safeParse(validDive).success).toBe(true);
   });
 });
 
@@ -499,6 +573,45 @@ describe("buildDiveUpdate", () => {
     expect(buildDiveUpdate({})).not.toHaveProperty("max_depth");
   });
 
+  // The select's cleared state has to reach the API as an explicit null: `""`
+  // is not a member of the API's enum, and dropping the field would leave the
+  // dive's old water type in place while the form and the toast both claim it
+  // was cleared - the `trip_uuid` bug, one field over.
+  it("sends an explicit null when the water type is cleared", () => {
+    const update = buildDiveUpdate({ water_type: "" });
+
+    expect(update).toHaveProperty("water_type");
+    expect(update.water_type).toBeNull();
+  });
+
+  it("leaves the water type alone when the field was untouched", () => {
+    expect(buildDiveUpdate({})).not.toHaveProperty("water_type");
+    expect(buildDiveUpdate({ water_type: undefined })).not.toHaveProperty(
+      "water_type",
+    );
+  });
+
+  it("sends a chosen water type through unchanged", () => {
+    expect(buildDiveUpdate({ water_type: "brackish" }).water_type).toBe(
+      "brackish",
+    );
+  });
+
+  it("distinguishes a cleared altitude from an untouched one", () => {
+    expect(buildDiveUpdate({ altitude: null }).altitude).toBeNull();
+    expect(buildDiveUpdate({ altitude: 372 }).altitude).toBe(372);
+    expect(buildDiveUpdate({})).not.toHaveProperty("altitude");
+  });
+
+  // Sea level is a recorded answer, not an absent one - the same distinction
+  // `weight: 0` carries, and the one a truthiness check would collapse.
+  it("sends an altitude of zero", () => {
+    const update = buildDiveUpdate({ altitude: 0 });
+
+    expect(update).toHaveProperty("altitude");
+    expect(update.altitude).toBe(0);
+  });
+
   it("converts the MM:SS duration to seconds", () => {
     expect(buildDiveUpdate({ duration: "45:30" }).duration).toBe(2730);
   });
@@ -653,6 +766,28 @@ describe("diveToFormValues", () => {
         role: "bottom",
       },
     ]);
+  });
+
+  it("seeds the water type as the select's cleared option when unrecorded", () => {
+    // `null` on the wire, `""` on the form: the option the picker actually has.
+    // Seeding the null straight through fails `diveCreateSchema`... and would do
+    // it silently, since a rejected resolver never calls the submit handler.
+    expect(diveToFormValues(DIVE).water_type).toBe("");
+    expect(diveToFormValues(DIVE).altitude).toBeUndefined();
+  });
+
+  it("carries a recorded water type and altitude through, and back out", () => {
+    const dive: Dive = { ...DIVE, water_type: "brackish", altitude: 0 };
+    const seeded = diveToFormValues(dive);
+
+    expect(seeded.water_type).toBe("brackish");
+    expect(seeded.altitude).toBe(0);
+
+    // The round trip an untouched save makes: what the dive holds is what goes
+    // back, sea level included.
+    const update = buildDiveUpdate(seeded);
+    expect(update.water_type).toBe("brackish");
+    expect(update.altitude).toBe(0);
   });
 
   it("turns a mixture's unrecorded fields into the form's cleared state", () => {

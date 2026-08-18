@@ -9,6 +9,30 @@ import { GearItemSummary } from "./gear";
 export const GAS_ROLES = ["bottom", "deco", "diluent", "oxygen"] as const;
 export type GasRole = (typeof GAS_ROLES)[number];
 
+// How the dive computer was calibrated for the water it was in, and what a logbook
+// records as a fact about the dive. Mirrors `WaterType` (`schemas/dive.py`), which is
+// the single source of truth - the same hand-kept mirroring as `GAS_ROLES` above and
+// `GEAR_TYPES` in `lib/api/gear.ts`.
+//
+// Declaration order is the picker's order, so the two real answers come first.
+// `en13319` is the European CE standard for depth instruments rather than a kind of
+// water, and it is here because it is what real files say: a computer left on the
+// EN13319 factory default exports exactly that, and the parser records what the file
+// recorded instead of folding it into "salt". The diver can correct it on the form.
+export const WATER_TYPES = ["salt", "fresh", "brackish", "en13319"] as const;
+export type WaterType = (typeof WATER_TYPES)[number];
+
+// Display labels, kept beside the vocabulary the way `GEAR_TYPE_LABELS` is. "Salt
+// water"/"Fresh water" rather than the bare adjective because the field's own label
+// is "Water type" and the option has to read as an answer to it; EN13319 keeps the
+// standard's own spelling, which is the only name it has.
+export const WATER_TYPE_LABELS: Record<WaterType, string> = {
+  salt: "Salt water",
+  fresh: "Fresh water",
+  brackish: "Brackish",
+  en13319: "EN13319",
+};
+
 // Every optional field is `| null` because that is what comes back on the wire, not
 // merely what could be missing: the API declares them `X | None` (`DiveMixtureBase`
 // in `schemas/dive_mixture.py`) and sets no `exclude_none`, so an unrecorded field
@@ -168,6 +192,18 @@ export interface Dive {
   avg_depth?: number;
   bottom_temperature?: number;
   visibility?: number;
+  // What the water was and where it was, both hand-enterable and both settable on the
+  // form - unlike the import-owned readings below. `water_type` is seeded from a FIT
+  // file's own `dive_settings` through the parse prefill, then owned by the diver;
+  // `altitude` is metres above sea level of the water surface, and is the fact a diver
+  // can actually type where `surface_pressure_bar` below is the barometer's reading of
+  // it.
+  //
+  // `| null` for the same reason as `cns_start` below: the API declares them
+  // `X | None` on `DiveBase` with no `exclude_none`, so an unrecorded field arrives as
+  // an explicit `null` rather than an absent key.
+  water_type?: WaterType | null;
+  altitude?: number | null;
   // Oxygen exposure and surface pressure as the dive computer recorded them, written
   // by the import and **not settable through the form** - the API keeps these off its
   // create/update schemas entirely (see its DECISIONS.md), because nothing on a logged
@@ -417,6 +453,10 @@ export interface DiveCreate {
   avg_depth?: number | null;
   bottom_temperature?: number | null;
   visibility?: number | null;
+  water_type?: WaterType | null;
+  // Metres above sea level of the water surface. Bounded by the API's
+  // `ck_dive_altitude_range` (-450 to 6500), which `diveCreateSchema` mirrors.
+  altitude?: number | null;
   weight?: number | null;
   trip_uuid?: string;
   dive_site_uuids?: string[];
@@ -434,6 +474,11 @@ export interface DiveUpdate {
   avg_depth?: number | null;
   bottom_temperature?: number | null;
   visibility?: number | null;
+  // Same "explicit null clears, absent means no change" contract as the nullable
+  // measurements around them, and the reason the form's `<select>` normalizes its
+  // cleared `""` to `null` rather than dropping the field - see `buildDiveUpdate`.
+  water_type?: WaterType | null;
+  altitude?: number | null;
   weight?: number | null;
   // `null` detaches the dive from its trip; omitting the field leaves whatever
   // trip it already has alone. Same "explicit null clears, absent means no
@@ -572,6 +617,12 @@ export interface ParsedDive {
   max_depth: number | null;
   avg_depth: number | null;
   bottom_temperature: number | null;
+  // Applied to the form like the fields above it, not held back like the block below:
+  // a FIT file records the computer's own salinity setting, and that is the diver's
+  // answer to "what water was this" until they say otherwise. Null for every Suunto
+  // export (neither format carries salinity) and for a FIT file set to `custom`, which
+  // is a density number rather than a type.
+  water_type: WaterType | null;
   mixtures: ParsedDiveMixture[];
   // Returned by the parse so a preview can show them, but deliberately **not** applied
   // to the form: the API writes these itself when the file is attached, from its own

@@ -161,3 +161,54 @@ describe("DiveDetailSidebar locations", () => {
     expect(screen.queryByTestId("locations-map")).not.toBeInTheDocument();
   });
 });
+
+// The Environment card has the same shape of gate as the Location one above: it
+// renders when *any* of its four rows has something to say, and each row is on
+// its own `!= null` guard.
+describe("DiveDetailSidebar environment", () => {
+  it("names the water type rather than showing the wire value", () => {
+    renderSidebar(dive({ water_type: "en13319" }));
+
+    expect(screen.getByText("Environment")).toBeInTheDocument();
+    expect(screen.getByText("Water Type")).toBeInTheDocument();
+    expect(screen.getByText("EN13319")).toBeInTheDocument();
+  });
+
+  it("shows the altitude in meters", () => {
+    renderSidebar(dive({ altitude: 372 }));
+
+    expect(screen.getByText("Altitude")).toBeInTheDocument();
+    expect(screen.getByText("372 m")).toBeInTheDocument();
+  });
+
+  // Sea level is a recorded answer. A truthiness guard would hide exactly the
+  // dives where "this was at sea level" is the interesting half of the pair.
+  it("shows an altitude of zero, which is a reading and not an absence", () => {
+    renderSidebar(dive({ altitude: 0 }));
+
+    expect(screen.getByText("0 m")).toBeInTheDocument();
+  });
+
+  it("carries the card on the new rows alone", () => {
+    // No temperature and no visibility: before these two fields the card would
+    // not have rendered at all, so the gate is what makes them reachable.
+    renderSidebar(dive({ water_type: "salt" }));
+
+    expect(screen.getByText("Environment")).toBeInTheDocument();
+    expect(screen.queryByText("Visibility")).not.toBeInTheDocument();
+  });
+
+  it("hides both rows on a dive that records neither", () => {
+    renderSidebar(dive({ bottom_temperature: 22.5 }));
+
+    expect(screen.getByText("Environment")).toBeInTheDocument();
+    expect(screen.queryByText("Water Type")).not.toBeInTheDocument();
+    expect(screen.queryByText("Altitude")).not.toBeInTheDocument();
+  });
+
+  it("renders no Environment card for a dive that records none of it", () => {
+    renderSidebar(dive());
+
+    expect(screen.queryByText("Environment")).not.toBeInTheDocument();
+  });
+});

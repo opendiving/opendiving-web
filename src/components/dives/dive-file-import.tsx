@@ -101,6 +101,12 @@ export function applyParsedDiveToForm<TFieldValues extends DiveFormValues>(
   if (parsed.bottom_temperature != null) {
     setDiveFormValue(form, "bottom_temperature", parsed.bottom_temperature);
   }
+  // No "guessed field" note for this one, unlike the mixtures below: the
+  // computer's own salinity setting is either in the file or it isn't, and
+  // nothing here invents a plausible value for an absent one.
+  if (parsed.water_type != null) {
+    setDiveFormValue(form, "water_type", parsed.water_type);
+  }
   if (parsed.mixtures.length === 0) {
     return { guessed: {}, keptPressures: false, discardedPressures: false };
   }

@@ -61,6 +61,11 @@ function NewDivePageContent() {
       avg_depth: undefined,
       bottom_temperature: undefined,
       visibility: undefined,
+      // `""`, not `undefined`: it is the select's "Not recorded" option, and the
+      // default the field falls back to whenever its value resolves to
+      // `undefined` - so it has to be the empty state rather than a gap.
+      water_type: "",
+      altitude: undefined,
       weight: undefined,
       trip_uuid: initialTripId,
       dive_site_uuids:
@@ -133,6 +138,12 @@ function NewDivePageContent() {
           avg_depth: undefined,
           bottom_temperature: undefined,
           visibility: undefined,
+          // Carried over, unlike the temperature and visibility above: those are
+          // readings taken on the day, while the water and its elevation are
+          // properties of where the diver is - and a second dive is usually in
+          // the same water at the same place. Same argument as the weight below.
+          water_type: lastDive.water_type ?? "",
+          altitude: lastDive.altitude,
           // Carried over for the same reason as the gear below: weight is a
           // property of the kit and exposure suit, so it rarely changes between
           // consecutive dives.
@@ -205,6 +216,11 @@ function NewDivePageContent() {
         // `DiveUpdate.trip_uuid`). On create there is nothing to detach from,
         // so the two collapse back into one and the field is simply omitted.
         trip_uuid: data.trip_uuid ?? undefined,
+        // The select's "Not recorded" option is `""`, which the API's enum would
+        // reject. On the edit form it converts to an explicit `null` ("the diver
+        // cleared this"); on create there is nothing to clear, so - exactly like
+        // `trip_uuid` above - the field is simply omitted.
+        water_type: data.water_type === "" ? undefined : data.water_type,
         mixtures: normalizeMixtures(data.mixtures ?? []),
       };
 

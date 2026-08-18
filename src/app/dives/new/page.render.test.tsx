@@ -279,4 +279,64 @@ describe("the last-dive prefill", () => {
     // on dive 1.
     expect(screen.queryByText(/^tank 1$/i)).not.toBeInTheDocument();
   });
+
+  it("carries the previous dive's water and altitude over", async () => {
+    // An explicit carry-over policy, decided rather than inherited: the two are
+    // properties of where the diver is, and dive two of a day is usually in the
+    // same water at the same elevation. Bottom temperature, right beside them on
+    // the form, deliberately does not carry - it is a reading taken on the day.
+    vi.mocked(divesAPI.getDives).mockResolvedValue({
+      ...emptyPage<Dive>(),
+      data: [storedDive()],
+      total_count: 1,
+    });
+    vi.mocked(divesAPI.getDive).mockResolvedValue(
+      storedDive({
+        water_type: "brackish",
+        altitude: 372,
+        bottom_temperature: 22.5,
+      }),
+    );
+
+    render(<NewDivePage />);
+
+    await waitFor(() =>
+      expect(screen.getByLabelText(/water type/i)).toHaveValue("brackish"),
+    );
+    expect(screen.getByLabelText(/altitude/i)).toHaveValue(372);
+    expect(screen.getByLabelText(/bottom temperature/i)).toHaveValue(null);
+  });
+});
+
+// The create page's own conversion, which no unit test reaches: the select's
+// cleared state is `""`, and `DiveCreate` would be 422'd for it.
+describe("the water type on the way to the API", () => {
+  it("omits the field when the picker was left at Not recorded", async () => {
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+    await fillRequiredFields();
+
+    await logDive();
+
+    await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
+    const body = vi.mocked(divesAPI.createDive).mock.calls[0][0];
+    expect(body.water_type).toBeUndefined();
+  });
+
+  it("sends the water type the diver chose", async () => {
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+    await fillRequiredFields();
+
+    await userEvent.selectOptions(
+      screen.getByLabelText(/water type/i),
+      "en13319",
+    );
+    await logDive();
+
+    await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
+    expect(vi.mocked(divesAPI.createDive).mock.calls[0][0].water_type).toBe(
+      "en13319",
+    );
+  });
 });
