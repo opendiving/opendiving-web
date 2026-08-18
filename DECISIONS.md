@@ -6586,3 +6586,52 @@ Two smaller things worth not re-deriving:
   already makes - consecutive dives, same configuration - holds at least as strongly for "the same
   water at the same elevation". `bottom_temperature` sits right beside them on the form and
   deliberately does not carry: it is a reading taken on the day, not a property of the place.
+
+## A start pressure of 0 is not a low reading, it is a missing one
+
+`diveMixtureSchema` has always rejected a non-positive `start_pressure` and always accepted a
+`end_pressure` of 0, and the inconsistency between two adjacent boxes reads as an oversight until it
+is written down. It isn't one, and the reason is a single sentence of diving: **you cannot start a
+dive on an empty cylinder, but you can finish one on an empty cylinder.** A regulator's first stage
+needs supply above ambient and ambient at the shallowest point of any dive is already 1 bar, so
+there is no dive whose first breath came from a cylinder reading 0. An out-of-gas ascent, a drained
+stage or bailout and an SPG pegged at zero are, by contrast, all things that happen and are worth
+logging honestly. So the domains are `start_pressure ∈ (0, 350]` and
+`end_pressure ∈ [0, start_pressure]`, each also admitting the blank box.
+
+What changed here is not the rule but the **message**, which is where the user-visible half of this
+lives. _"Start pressure must be positive"_ was accurate and useless: it named the constraint and
+left the diver to guess the way out. The one thing a diver will not guess is that **blank means
+unknown** - so the message says it, and it is the escape hatch for anyone who ever does meet a
+stored 0.
+
+The `max(350)` is new, and mirrors the API's `gt=0, le=350` and the `ck_dive_mixture_*_range` checks
+that ship alongside it. Framed like `po2_limit`'s band: it exists to catch a **unit error**, not to
+have an opinion about how hard someone fills a cylinder. 350 sits above any real 300 bar DIN fill,
+so what it can reject is a psi reading typed into a bar box, the millibar-for-bar error the DM5 XML
+parser once shipped (`start_pressure ~ 205203`), and a sidemount pair whose two pressures were
+summed as if they were one cylinder - the last of which is the interesting one, because every
+individual number in it was positive, correctly ordered, and inside every other constraint the table
+had. Only an upper bound could catch it.
+
+**The ceiling sits on both fields, and the `end <= start` rule is not a substitute for the end
+one.** That refinement returns early when the start box is blank, so a lone `end_pressure` would
+otherwise be bounded only from below - and a psi reading typed into an end box with no start beside
+it is exactly the shape this band exists to catch. Left off, it would reach the API and come back a
+422 toast rather than a message under the field, which is the failure this change was written to
+remove.
+
+**`toDiveMixtureInput`'s `??` stays a `??`.** Coercing a stored `0` to `""` on the way into the form
+was considered and rejected: it would silently repair exactly the data the API-side bound makes
+impossible, and on the day a 0 did arrive - from a database an `ALTER` never reached - it would hide
+it rather than show the diver a field with a message telling them what to do. The API's read schema
+stays unbounded for the same reason: the fallback has to be a legible form error, not a 500 that
+makes the dive unviewable.
+
+**The tests assert the message string, not `success: false`.** The message is the deliverable, and a
+`toBe(false)` would stay green through a rewrite that made it useless again. `dive.render.test.tsx`
+grows a second harness for this: unlike the round-trip one it renders the real `MixtureFields`, so a
+rejected value reaches its own `<FormMessage />` the way it does on the page. They are deliberately
+separate - with every cylinder input mounted, a `replace()` of a partial row leaves the omitted
+fields' old values in place, which is the page's real behaviour but not what the round-trip tests
+are pinning.

@@ -1,9 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { FormProvider, useForm } from "react-hook-form";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useMixtureFieldArray } from "@/components/dives/mixture-fields";
+import {
+  MixtureFields,
+  useMixtureFieldArray,
+} from "@/components/dives/mixture-fields";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
   buildDiveUpdate,
@@ -251,5 +254,77 @@ describe("the edit form's round trip", () => {
 
     await waitFor(() => expect(onSave).toHaveBeenCalled());
     expect(onSave.mock.calls[0][0].mixtures).toEqual([]);
+  });
+});
+
+// A second harness, deliberately not the one above: this one renders the real
+// `MixtureFields`, which is what a rejected pressure needs in order to reach a
+// `<FormMessage />`. The round-trip harness stays input-free on purpose - with
+// every cylinder input mounted, a `replace()` of a partial row leaves the
+// unmounted fields' old values behind, which is the page's real behaviour but
+// not what those tests are pinning.
+function CylinderForm({ onSave }: { onSave: (update: DiveUpdate) => void }) {
+  const form = useForm<DiveUpdateInput>({
+    resolver: zodResolver(diveUpdateSchema),
+    defaultValues: { notes: "", mixtures: [] },
+  });
+  const mixtureFieldArray = useMixtureFieldArray(form.control);
+
+  useEffect(() => {
+    form.reset(diveToFormValues(WITH_A_CYLINDER));
+  }, [form]);
+
+  return (
+    <FormProvider {...form}>
+      <form
+        onSubmit={form.handleSubmit((data) => onSave(buildDiveUpdate(data)))}
+      >
+        <MixtureFields control={form.control} fieldArray={mixtureFieldArray} />
+        <button type="submit">Save</button>
+      </form>
+    </FormProvider>
+  );
+}
+
+describe("a start pressure the API would refuse", () => {
+  it("says what to type instead, and saves nothing", async () => {
+    // The symptom this whole change was filed under - a dive that cannot be
+    // saved - is now only reachable by typing a 0, since no stored mixture can
+    // hold one. So the typed path is what there is to test, and the message is
+    // the deliverable: the old "Start pressure must be positive" was accurate
+    // and told the diver nothing about the blank box that means "unknown".
+    const onSave = vi.fn();
+    render(<CylinderForm onSave={onSave} />);
+
+    const start = await screen.findByLabelText("Start pressure (bar)");
+    await waitFor(() => expect(start).toHaveValue(205));
+
+    await userEvent.clear(start);
+    await userEvent.type(start, "0");
+    await userEvent.click(screen.getByText("Save"));
+
+    expect(
+      await screen.findByText(
+        "A cylinder can't start a dive empty — enter the fill pressure, or leave this blank if it wasn't recorded.",
+      ),
+    ).toBeInTheDocument();
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it("keeps saving a cylinder whose end pressure is 0", async () => {
+    // The asymmetry, through the form rather than through `safeParse`: an
+    // out-of-gas ascent is a real dive, and the diver has to be able to log it.
+    const onSave = vi.fn();
+    render(<CylinderForm onSave={onSave} />);
+
+    const end = await screen.findByLabelText("End pressure (bar)");
+    await waitFor(() => expect(end).toHaveValue(90));
+
+    await userEvent.clear(end);
+    await userEvent.type(end, "0");
+    await userEvent.click(screen.getByText("Save"));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    expect(onSave.mock.calls[0][0].mixtures[0].end_pressure).toBe(0);
   });
 });

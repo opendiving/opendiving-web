@@ -237,6 +237,72 @@ describe("diveMixtureSchema", () => {
     expect(result.success).toBe(true);
   });
 
+  // The pressure band, both ends and both fields. The message is the deliverable
+  // as much as the rejection is - "Start pressure must be positive" was accurate
+  // and useless, because it never said what to type instead - so these assert the
+  // string, not just `success: false`. Zod flattens the union to the failing
+  // branch's own message; the empty-string branch contributes nothing here.
+  const messagesFor = (mixture: Record<string, unknown>) => {
+    const result = diveMixtureSchema.safeParse({ ...validMixture, ...mixture });
+    expect(result.success).toBe(false);
+    return result.error!.issues.map((issue) => issue.message);
+  };
+
+  it("tells a diver what to do about a start_pressure of 0", () => {
+    expect(messagesFor({ start_pressure: 0 })).toContain(
+      "A cylinder can't start a dive empty — enter the fill pressure, or leave this blank if it wasn't recorded.",
+    );
+  });
+
+  it("rejects a negative start_pressure", () => {
+    expect(messagesFor({ start_pressure: -1 })).toContain(
+      "A cylinder can't start a dive empty — enter the fill pressure, or leave this blank if it wasn't recorded.",
+    );
+  });
+
+  it("reads a start_pressure above 350 as a unit error", () => {
+    // 205203 is what the DM5 XML parser stored when it read millibar as bar, and
+    // 3000 is a psi fill typed into a bar box. Both fail on the ceiling.
+    expect(messagesFor({ start_pressure: 351 })).toContain(
+      "Start pressure must be at most 350 bar — check the units on that reading.",
+    );
+  });
+
+  it("accepts the highest real fill there is", () => {
+    // A 300 bar DIN fill must not be collateral of the ceiling, and neither must
+    // 350 itself.
+    for (const start_pressure of [0.1, 200, 300, 350]) {
+      const result = diveMixtureSchema.safeParse({
+        ...validMixture,
+        start_pressure,
+      });
+      expect(result.success).toBe(true);
+    }
+  });
+
+  it("reads a lone end_pressure above 350 as a unit error", () => {
+    // The ceiling has to sit on `end_pressure` in its own right. The
+    // `end <= start` rule below would otherwise be the only thing bounding it
+    // from above, and that rule returns early when the start box is blank - so a
+    // psi reading typed into a lone end box would reach the API unbounded and come
+    // back a 422 toast instead of a message under the field.
+    expect(messagesFor({ end_pressure: 3000 })).toContain(
+      "End pressure must be at most 350 bar — check the units on that reading.",
+    );
+  });
+
+  it("accepts an end_pressure of 0", () => {
+    // The asymmetry, pinned deliberately: this is the one most likely to be
+    // "tidied up" into matching the start rule. An out-of-gas ascent, a drained
+    // stage and an SPG reading zero are all dives worth logging honestly.
+    const result = diveMixtureSchema.safeParse({
+      ...validMixture,
+      start_pressure: 200,
+      end_pressure: 0,
+    });
+    expect(result.success).toBe(true);
+  });
+
   it("rejects oxygen percentage above 100", () => {
     const result = diveMixtureSchema.safeParse({
       ...validMixture,
