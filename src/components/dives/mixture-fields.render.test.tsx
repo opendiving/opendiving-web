@@ -72,6 +72,46 @@ describe("MixtureFields announcements", () => {
   });
 });
 
+// Both dive forms can hold zero cylinders - a state the API supports outright and the
+// detail card calls the common case for a hand-logged dive - so the card has to say
+// something over an empty list, and the last row has to be removable to get there. A
+// gate of `index > 0` on the remove button made "no gas recorded" unreachable from
+// either form.
+describe("MixtureFields with no cylinders", () => {
+  it("says the dive records none, rather than showing a bare heading", () => {
+    render(<Harness mixtures={[]} maxDepth={30} />);
+
+    expect(
+      screen.getByText(/no cylinders recorded for this dive/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/^tank 1$/i)).not.toBeInTheDocument();
+  });
+
+  it("lets the last cylinder be removed", () => {
+    render(<Harness mixtures={[EAN54]} maxDepth={30} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /remove tank 1/i }));
+
+    expect(screen.queryByText(/^tank 1$/i)).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/no cylinders recorded for this dive/i),
+    ).toBeInTheDocument();
+  });
+
+  it("names each remove button after the tank it removes", () => {
+    // The button is an icon and nothing else, so without a label a screen reader
+    // reads "button" - once per tank, identically.
+    render(<Harness mixtures={[EAN54, EAN54]} maxDepth={30} />);
+
+    expect(
+      screen.getByRole("button", { name: /remove tank 1/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /remove tank 2/i }),
+    ).toBeInTheDocument();
+  });
+});
+
 // The options one `<select>` offers, in the order it offers them.
 function optionsOf(select: HTMLElement): string[] {
   return [...select.querySelectorAll("option")].map((option) => option.value);
