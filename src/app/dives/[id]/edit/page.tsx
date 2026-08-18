@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useState, useCallback } from "react";
-import { useForm, useFormState } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
@@ -10,21 +10,17 @@ import { useReturnTo } from "@/hooks/useReturnTo";
 import { divesAPI, Dive } from "@/lib/api/dives";
 import {
   buildDiveUpdate,
+  diveToFormValues,
   diveUpdateSchema,
   DiveUpdateInput,
-  toDiveMixtureInput,
 } from "@/lib/validations/dive";
-import {
-  DEFAULT_MIXTURE,
-  useMixtureFieldArray,
-} from "@/components/dives/mixture-fields";
+import { useMixtureFieldArray } from "@/components/dives/mixture-fields";
 import { DiveFormCard } from "@/components/dives/dive-form-card";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageSpinner } from "@/components/ui/page-spinner";
 import { FormPageSkeleton } from "@/components/ui/page-skeleton";
 import { NotFoundState } from "@/components/ui/not-found-state";
 import { useToast } from "@/components/ui/use-toast";
-import { formatDurationForForm } from "@/lib/date-time";
 import { getApiErrorMessage } from "@/lib/api/error";
 
 // `useReturnTo` reads the query string, which Next requires a Suspense boundary
@@ -65,47 +61,20 @@ function EditDivePageContent() {
       dive_site_uuids: [],
       gear_item_uuids: [],
       notes: "",
-      mixtures: [{ ...DEFAULT_MIXTURE }],
+      // Empty, and the same for the seed `diveToFormValues` overwrites this
+      // with: the whole form is submitted on save, so a cylinder invented here
+      // is a cylinder written to the dive. The create form starts empty too, on
+      // its own grounds - see "The create form proposes no cylinder" in
+      // DECISIONS.md.
+      mixtures: [],
     },
   });
   const mixtureFieldArray = useMixtureFieldArray(form.control);
-  // Subscribed here, during render, and not read off `form.formState` inside
-  // the submit handler - which is where it was first written and where it
-  // quietly does not work. `formState` is a Proxy that only starts maintaining
-  // a key once something has *rendered* against it, and `useFieldArray`'s
-  // `replace` checks that flag before recomputing: unsubscribed, importing a
-  // file's cylinders leaves `dirtyFields` empty at submit and the whole
-  // `mixtures` edit is dropped from the PATCH. Scalars set with
-  // `shouldDirty: true` are marked either way, so the gap shows up on exactly
-  // one path and looks like nothing at all on the others.
-  const { dirtyFields } = useFormState({ control: form.control });
 
-  // Seeds the form from the loaded dive. `start_time` is already the same
-  // offset-aware shape the form's `DiveStartTimeField` edits, so it carries
-  // straight over - no conversion needed.
+  // Seeds the form from the loaded dive.
   const resetFromDive = useCallback(
     (diveData: Dive) => {
-      form.reset({
-        dive_number: diveData.dive_number,
-        start_time: diveData.start_time,
-        duration: formatDurationForForm(diveData.duration),
-        max_depth: diveData.max_depth,
-        avg_depth: diveData.avg_depth,
-        bottom_temperature: diveData.bottom_temperature,
-        visibility: diveData.visibility,
-        weight: diveData.weight,
-        trip_uuid: diveData.trip_uuid,
-        dive_site_uuids: diveData.dive_sites?.map((site) => site.uuid) ?? [],
-        gear_item_uuids: diveData.gear_items?.map((item) => item.uuid) ?? [],
-        notes: diveData.notes || "",
-        // Converted field by field rather than spread: every optional field
-        // arrives as an explicit `null` when the mixture doesn't record it, and
-        // `null` satisfies none of their unions in `diveMixtureSchema`. See
-        // `toDiveMixtureInput`.
-        mixtures: diveData.mixtures?.length
-          ? diveData.mixtures.map(toDiveMixtureInput)
-          : [{ ...DEFAULT_MIXTURE }],
-      });
+      form.reset(diveToFormValues(diveData));
     },
     [form],
   );
@@ -134,12 +103,7 @@ function EditDivePageContent() {
     try {
       setIsSubmitting(true);
 
-      // Only what the diver actually changed. The form is seeded from the
-      // dive's own response, so anything else it holds is an echo - and an echo
-      // of a reference the API has hidden (a deleted trip arrives as
-      // `trip_uuid: null`) reads as a deliberate removal on the way back. See
-      // `buildDiveUpdate`.
-      const updateData = buildDiveUpdate(data, dirtyFields);
+      const updateData = buildDiveUpdate(data);
 
       await divesAPI.updateDive(diveId, updateData);
 
