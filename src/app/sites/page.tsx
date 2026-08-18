@@ -3,7 +3,7 @@
 import { useCallback, useState } from "react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { usePaginatedResource } from "@/hooks/usePaginatedResource";
-import { useDeleteResource } from "@/hooks/useDeleteResource";
+import { useDeleteWithReassign } from "@/hooks/useDeleteWithReassign";
 import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
 import { Button } from "@/components/ui/button";
 import { CountBadge } from "@/components/ui/count-badge";
@@ -18,7 +18,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PaginationFooter } from "@/components/ui/pagination-footer";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DeleteWithReassignDialog } from "@/components/dives/delete-with-reassign-dialog";
 import { DiveSiteDialog } from "@/components/sites/dive-site-dialog";
 import { Plus, Eye, Edit, Trash2, Loader2 } from "lucide-react";
 import Link from "next/link";
@@ -60,7 +60,7 @@ export default function SitesPage() {
     requestDelete: requestDeleteDiveSite,
     cancelDelete: cancelDeleteDiveSite,
     confirmDelete: confirmDeleteDiveSite,
-  } = useDeleteResource(diveSitesAPI.deleteDiveSite, {
+  } = useDeleteWithReassign(diveSitesAPI.deleteDiveSite, {
     confirmMessage:
       "Are you sure you want to delete this dive site? This action cannot be undone.",
     successMessage: "Dive site deleted successfully.",
@@ -193,13 +193,14 @@ export default function SitesPage() {
         onSaved={refetch}
       />
 
-      <ConfirmDialog
-        open={pendingId !== null}
-        onOpenChange={(open) => !open && cancelDeleteDiveSite()}
+      <DeleteWithReassignDialog
+        kind="dive-site"
+        userId={user?.uuid ?? ""}
+        targetId={pendingId}
         title="Delete dive site"
         description={confirmMessage}
-        confirmText="Delete"
-        isLoading={deletingId === pendingId}
+        isDeleting={deletingId === pendingId}
+        onCancel={cancelDeleteDiveSite}
         onConfirm={confirmDeleteDiveSite}
       />
     </div>

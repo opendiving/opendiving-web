@@ -3,7 +3,7 @@
 import { useCallback, useState } from "react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { usePaginatedResource } from "@/hooks/usePaginatedResource";
-import { useDeleteResource } from "@/hooks/useDeleteResource";
+import { useDeleteWithReassign } from "@/hooks/useDeleteWithReassign";
 import { tripsAPI, Trip } from "@/lib/api/trips";
 import { formatTripDateRange } from "@/lib/date-time";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PaginationFooter } from "@/components/ui/pagination-footer";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DeleteWithReassignDialog } from "@/components/dives/delete-with-reassign-dialog";
 import { TripDialog } from "@/components/trips/trip-dialog";
 import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
 import { Plus, Eye, Edit, Trash2, Loader2 } from "lucide-react";
@@ -60,7 +60,7 @@ export default function TripsPage() {
     requestDelete: requestDeleteTrip,
     cancelDelete: cancelDeleteTrip,
     confirmDelete: confirmDeleteTrip,
-  } = useDeleteResource(tripsAPI.deleteTrip, {
+  } = useDeleteWithReassign(tripsAPI.deleteTrip, {
     confirmMessage:
       "Are you sure you want to delete this trip? This action cannot be undone.",
     successMessage: "Trip deleted successfully.",
@@ -202,13 +202,14 @@ export default function TripsPage() {
         onSaved={refetch}
       />
 
-      <ConfirmDialog
-        open={pendingId !== null}
-        onOpenChange={(open) => !open && cancelDeleteTrip()}
+      <DeleteWithReassignDialog
+        kind="trip"
+        userId={user?.uuid ?? ""}
+        targetId={pendingId}
         title="Delete trip"
         description={confirmMessage}
-        confirmText="Delete"
-        isLoading={deletingId === pendingId}
+        isDeleting={deletingId === pendingId}
+        onCancel={cancelDeleteTrip}
         onConfirm={confirmDeleteTrip}
       />
     </div>

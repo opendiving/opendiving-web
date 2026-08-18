@@ -4,9 +4,18 @@ import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { getApiErrorMessage } from "@/lib/api/error";
 
-interface UseDeleteResourceOptions {
+interface UseDeleteResourceOptions<TResult> {
   confirmMessage: string;
-  successMessage: string;
+  // A function when the toast has something to say about what came back - the
+  // trip and dive-site deletes answer with how many dives they moved, and "12
+  // dives moved to Cebu 2026" is the half of that sentence the diver acts on.
+  // A plain string everywhere else, which is most places.
+  //
+  // It is handed the id as well as the result, so a caller holding per-delete
+  // state can look it up rather than reading whatever the last call left behind.
+  // Two deletes can be in flight at once - two rows of a list, each with its own
+  // dialog - and the responses need not come back in the order they were sent.
+  successMessage: string | ((result: TResult, id: string) => string);
   errorMessage: string;
   onDeleted: () => void | Promise<void>;
 }
@@ -22,14 +31,18 @@ interface UseDeleteResourceOptions {
  * used by 3 dives", the one message that tells the diver what to do about it - was
  * replaced by a generic "Please try again." on dives, sites and trips.
  */
-export function useDeleteResource(
-  deleteFn: (id: string) => Promise<unknown>,
+export function useDeleteResource<TResult = unknown>(
+  // The second argument is for the deletes that take one: `deleteTrip` and
+  // `deleteDiveSite` accept the uuid to move the resource's dives onto. A
+  // `deleteFn` that only takes an id satisfies this too, which is why the other
+  // five call sites are unchanged.
+  deleteFn: (id: string, option?: string) => Promise<TResult>,
   {
     confirmMessage,
     successMessage,
     errorMessage,
     onDeleted,
-  }: UseDeleteResourceOptions,
+  }: UseDeleteResourceOptions<TResult>,
 ) {
   const { toast } = useToast();
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -38,18 +51,21 @@ export function useDeleteResource(
   const requestDelete = (id: string) => setPendingId(id);
   const cancelDelete = () => setPendingId(null);
 
-  const confirmDelete = async () => {
+  const confirmDelete = async (option?: string) => {
     if (!pendingId) return;
     const id = pendingId;
     setPendingId(null);
 
     try {
       setDeletingId(id);
-      await deleteFn(id);
+      const result = await deleteFn(id, option);
 
       toast({
         title: "Success",
-        description: successMessage,
+        description:
+          typeof successMessage === "function"
+            ? successMessage(result, id)
+            : successMessage,
       });
 
       await onDeleted();

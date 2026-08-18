@@ -47,7 +47,11 @@ describe("useDeleteResource", () => {
     act(() => result.current.requestDelete("site-1"));
     await act(() => result.current.confirmDelete());
 
-    expect(deleteFn).toHaveBeenCalledWith("site-1");
+    // The second argument is the one only `deleteTrip`/`deleteDiveSite` take -
+    // the uuid to move the resource's dives onto. It is passed unconditionally
+    // and is `undefined` here, which the five deletes that take a single id
+    // ignore.
+    expect(deleteFn).toHaveBeenCalledWith("site-1", undefined);
     expect(onDeleted).toHaveBeenCalledOnce();
     expect(toast).toHaveBeenCalledWith(
       expect.objectContaining({ description: OPTIONS.successMessage }),
