@@ -1,8 +1,23 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { DiveDetailSidebar } from "./dive-detail-sidebar";
 import type { LocationsMapProps } from "@/components/map/locations-map";
 import type { Dive, DiveSiteSummary } from "@/lib/api/dives";
+import type { UnitSystem } from "@/lib/units";
+
+// These renders read the diver's units, so they need an auth context. Held in a
+// mutable box rather than a fixed literal so a test can switch systems - `vi.mock`'s
+// factory is hoisted above the file, and `vi.hoisted` is what lets it close over
+// something the tests can still reach.
+const auth = vi.hoisted(() => ({ units: "metric" as UnitSystem }));
+
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({ user: { uuid: "user-1", units: auth.units } }),
+}));
+
+afterEach(() => {
+  auth.units = "metric";
+});
 
 // The card these cover has to hold four positions that arrive in any
 // combination - a site's pin, an entry fix, an exit fix, none of them - and the
@@ -108,6 +123,13 @@ describe("DiveDetailSidebar locations", () => {
     // the same pixel. See `lib/geo-distance.ts`.
     expect(screen.getByText("Entry → exit")).toBeInTheDocument();
     expect(screen.getByText("228 m")).toBeInTheDocument();
+  });
+
+  it("measures the drift in feet for an imperial diver", () => {
+    auth.units = "imperial";
+    renderSidebar(dive({ ...ENTRY, ...EXIT }));
+
+    expect(screen.getByText("747 ft")).toBeInTheDocument();
   });
 
   it("shows an entry fix on its own without a distance to nowhere", () => {

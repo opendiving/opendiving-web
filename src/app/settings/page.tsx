@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { DataExportCard } from "@/components/settings/data-export-card";
 import { EmailChangeCard } from "@/components/settings/email-change-card";
 import { NotificationsCard } from "@/components/settings/notifications-card";
+import { UnitsCard } from "@/components/settings/units-card";
 import { User, Save } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -205,9 +206,11 @@ export default function SettingsPage() {
         <EmailChangeCard currentEmail={user.email} />
 
         <NotificationsCard />
+
+        <UnitsCard />
       </div>
 
-      {/* Full width rather than a fourth cell in the grid above: the three rows each
+      {/* Full width rather than another cell in the grid above: the three rows each
           carry a sentence of prose, and at half the page every one of them wraps to
           four lines. */}
       <div className="mt-8">

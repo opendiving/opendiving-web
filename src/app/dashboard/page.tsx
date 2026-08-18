@@ -23,6 +23,8 @@ import { formatDurationHoursMinutes, greetingForHour } from "@/lib/date-time";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PageSpinner } from "@/components/ui/page-spinner";
+import { useUnits } from "@/hooks/useUnits";
+import { formatDepth } from "@/lib/units";
 
 // One headline number. `value` is `null` only while the stats request is in flight,
 // and renders as a dash rather than a zero: "0 dives" is a statement about the
@@ -64,6 +66,7 @@ function StatCard({
 // used to be here and why it went.
 export default function DashboardPage() {
   const { user, isAuthenticated, isLoading } = useAuthGuard();
+  const units = useUnits();
   const [stats, setStats] = useState<UserDiveStats | null>(null);
   // A failed stats fetch used to only `console.error`, leaving all three tiles on
   // "—" forever - indistinguishable from a request that never finished. There is no
@@ -183,7 +186,7 @@ export default function DashboardPage() {
           <StatCard
             title="Max Depth"
             icon={<ArrowDownToLine className="h-4 w-4 text-muted-foreground" />}
-            value={stats && `${Math.round(stats.max_depth * 100) / 100}m`}
+            value={stats && formatDepth(stats.max_depth, units)}
             hint="Personal best"
           />
           <StatCard

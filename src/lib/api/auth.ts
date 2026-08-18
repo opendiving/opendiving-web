@@ -4,6 +4,7 @@ import {
   getAccessToken,
   setAccessToken,
 } from "./client";
+import type { UnitSystem } from "@/lib/units";
 
 export interface User {
   uuid: string;
@@ -15,6 +16,11 @@ export interface User {
   // defaults to true server-side; optional here so a response from an API that predates
   // the field still type-checks.
   gear_service_emails?: boolean;
+  // Which system every measurement in the app is rendered and entered in. Not
+  // optional, unlike `gear_service_emails` above: the column is `NOT NULL` with a
+  // server default, so a response either carries it or comes from an API this build
+  // cannot talk to anyway (`PATCH /user` would 422 on the settings card's own field).
+  units: UnitSystem;
 }
 
 // Mirrors the backend's `AuthOutcome` (see `schemas/auth.py`): either the caller is
@@ -34,6 +40,7 @@ export interface UpdateProfileData {
   name?: string;
   username?: string;
   gear_service_emails?: boolean;
+  units?: UnitSystem;
 }
 
 export interface EmailChangeResponse {

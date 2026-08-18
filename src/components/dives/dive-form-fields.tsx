@@ -12,6 +12,7 @@ import {
   Weight,
 } from "lucide-react";
 import { Input, inputClassName } from "@/components/ui/input";
+import { UnitNumberInput } from "@/components/unit-number-input";
 import { Textarea } from "@/components/ui/textarea";
 import { DiveStartTimeField } from "@/components/dives/dive-start-time-field";
 import {
@@ -38,6 +39,8 @@ import {
   type WaterType,
 } from "@/lib/api/dives";
 import { GearItemSummary } from "@/lib/api/gear";
+import { useUnits } from "@/hooks/useUnits";
+import { unitLabel } from "@/lib/units";
 
 // The field shape shared by both `DiveCreateInput` and `DiveUpdateInput`
 // (see `lib/validations/dive.ts`): the create schema's fields, all optional
@@ -122,6 +125,9 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
 }: DiveFormFieldsProps<TFieldValues>) {
   const required = mode === "create";
   const requiredMark = required ? " *" : "";
+  // Read once here and handed to the labels and the number boxes below. Form state
+  // itself stays metric whatever this says - see `UnitNumberInput`.
+  const units = useUnits();
 
   return (
     <>
@@ -248,22 +254,20 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
           name={"max_depth" as Path<TFieldValues>}
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Maximum depth (m)</FormLabel>
+              <FormLabel>Maximum depth ({unitLabel("depth", units)})</FormLabel>
               <div className="relative">
                 <ArrowDownToLine className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
                 <FormControl>
-                  <Input
-                    type="number"
+                  <UnitNumberInput
+                    dimension="depth"
+                    units={units}
                     step="0.01"
-                    min="0"
-                    placeholder="e.g. 30.52"
+                    min={0}
+                    placeholderValue={30.52}
                     className="pl-9"
                     {...field}
-                    value={field.value ?? ""}
-                    onChange={(e) => {
-                      const val = parseFloat(e.target.value);
-                      field.onChange(Number.isNaN(val) ? null : val);
-                    }}
+                    value={field.value}
+                    onChange={field.onChange}
                   />
                 </FormControl>
               </div>
@@ -277,22 +281,20 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
           name={"avg_depth" as Path<TFieldValues>}
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Average depth (m)</FormLabel>
+              <FormLabel>Average depth ({unitLabel("depth", units)})</FormLabel>
               <div className="relative">
                 <ChevronsDownUp className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
                 <FormControl>
-                  <Input
-                    type="number"
+                  <UnitNumberInput
+                    dimension="depth"
+                    units={units}
                     step="0.01"
-                    min="0"
-                    placeholder="e.g. 18.24"
+                    min={0}
+                    placeholderValue={18.24}
                     className="pl-9"
                     {...field}
-                    value={field.value ?? ""}
-                    onChange={(e) => {
-                      const val = parseFloat(e.target.value);
-                      field.onChange(Number.isNaN(val) ? null : val);
-                    }}
+                    value={field.value}
+                    onChange={field.onChange}
                   />
                 </FormControl>
               </div>
@@ -309,25 +311,26 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
           name={"bottom_temperature" as Path<TFieldValues>}
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Bottom temperature (°C)</FormLabel>
+              <FormLabel>
+                Bottom temperature ({unitLabel("temperature", units)})
+              </FormLabel>
               <div className="relative">
                 <Thermometer className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
                 <FormControl>
-                  <Input
-                    type="number"
+                  {/* The 2-decimal entry rounding this field has always done is
+                      now the component's, and every float sibling above and
+                      below gets it too. */}
+                  <UnitNumberInput
+                    dimension="temperature"
+                    units={units}
                     step="0.01"
-                    min="-50"
-                    max="50"
-                    placeholder="e.g. 22.50"
+                    min={-50}
+                    max={50}
+                    placeholderValue={22.5}
                     className="pl-9"
                     {...field}
-                    value={field.value ?? ""}
-                    onChange={(e) => {
-                      const val = parseFloat(e.target.value);
-                      field.onChange(
-                        Number.isNaN(val) ? null : Math.round(val * 100) / 100,
-                      );
-                    }}
+                    value={field.value}
+                    onChange={field.onChange}
                   />
                 </FormControl>
               </div>
@@ -341,22 +344,26 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
           name={"visibility" as Path<TFieldValues>}
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Visibility (m)</FormLabel>
+              <FormLabel>
+                Visibility ({unitLabel("visibility", units)})
+              </FormLabel>
               <div className="relative">
                 <Eye className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
                 <FormControl>
-                  <Input
-                    type="number"
+                  {/* An `Integer` column, so feet commit whole metres: 50 ft is
+                      stored as 15 m and reads back as 49 ft. Accepted - see
+                      DECISIONS.md - because visibility is an estimate and
+                      whole-metre resolution is finer than anyone judges it to. */}
+                  <UnitNumberInput
+                    dimension="visibility"
+                    units={units}
                     step="1"
-                    min="0"
-                    placeholder="e.g. 15"
+                    min={0}
+                    placeholderValue={15}
                     className="pl-9"
                     {...field}
-                    value={field.value ?? ""}
-                    onChange={(e) => {
-                      const val = parseInt(e.target.value);
-                      field.onChange(Number.isNaN(val) ? null : val);
-                    }}
+                    value={field.value}
+                    onChange={field.onChange}
                   />
                 </FormControl>
               </div>
@@ -414,26 +421,28 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
           name={"altitude" as Path<TFieldValues>}
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Altitude (m)</FormLabel>
+              <FormLabel>Altitude ({unitLabel("altitude", units)})</FormLabel>
               <div className="relative">
                 <Mountain className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
                 <FormControl>
-                  <Input
-                    type="number"
+                  {/* Bounds declared in metres, which is what the Zod schema and
+                      the DB `CHECK` behind it are written in; the component
+                      converts them inward for the spinner, so what the arrows
+                      offer is always something the schema will accept. */}
+                  <UnitNumberInput
+                    dimension="altitude"
+                    units={units}
                     step="1"
-                    // Not Visibility's `min="0"`, which this box otherwise
+                    // Not Visibility's `min={0}`, which this box otherwise
                     // copies: the Dead Sea is below sea level and admitting it
                     // is the whole reason the API's bound is -450 rather than 0.
-                    min="-450"
-                    max="6500"
-                    placeholder="e.g. 372"
+                    min={-450}
+                    max={6500}
+                    placeholderValue={372}
                     className="pl-9"
                     {...field}
-                    value={field.value ?? ""}
-                    onChange={(e) => {
-                      const val = parseInt(e.target.value);
-                      field.onChange(Number.isNaN(val) ? null : val);
-                    }}
+                    value={field.value}
+                    onChange={field.onChange}
                   />
                 </FormControl>
               </div>
@@ -486,22 +495,20 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormItem>
-                <FormLabel>Weight (kg)</FormLabel>
+                <FormLabel>Weight ({unitLabel("weight", units)})</FormLabel>
                 <div className="relative">
                   <Weight className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
                   <FormControl>
-                    <Input
-                      type="number"
+                    <UnitNumberInput
+                      dimension="weight"
+                      units={units}
                       step="0.5"
-                      min="0"
-                      placeholder="e.g. 6"
+                      min={0}
+                      placeholderValue={6}
                       className="pl-9"
                       {...weightField}
-                      value={weightField.value ?? ""}
-                      onChange={(e) => {
-                        const val = parseFloat(e.target.value);
-                        weightField.onChange(Number.isNaN(val) ? null : val);
-                      }}
+                      value={weightField.value}
+                      onChange={weightField.onChange}
                     />
                   </FormControl>
                 </div>

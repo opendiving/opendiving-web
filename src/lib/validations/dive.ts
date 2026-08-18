@@ -12,6 +12,7 @@ import {
   type DiveUpdate,
   type GasRole,
 } from "@/lib/api/dives";
+import { barToPsi, displayBound } from "@/lib/units";
 
 // Same offset-aware ISO 8601 shape as the API's `Dive.start_time`, e.g.
 // "2021-04-04T10:04:47+02:00" - produced/consumed by `DiveStartTimeField`
@@ -61,12 +62,30 @@ const waterTypeField = () =>
 // where people dive: the Dead Sea (~-430 m) is the lowest diveable surface there is,
 // and the highest attested dives are the Ojos del Salado pool at ~6390 m. Integer,
 // because metre resolution is already finer than anything reads it.
+const ALTITUDE_MIN_M = -450;
+const ALTITUDE_MAX_M = 6500;
+
+// Both bounds say the whole range, and say it in both systems: a diver typing feet
+// has their entry stored as metres, so a metre-worded ceiling names a number they
+// never typed. The figures are computed from the same `displayBound` the input's own
+// spinner uses, so the sentence and the box it appears under cannot disagree - and
+// they are computed once here rather than per-system, because a schema that varied
+// by preference would put the diver's units into validation, which is exactly what
+// keeping form state metric avoids.
+const ALTITUDE_RANGE_MESSAGE =
+  `Altitude must be between ${ALTITUDE_MIN_M} and ${ALTITUDE_MAX_M} m ` +
+  `(${displayBound(ALTITUDE_MIN_M, "altitude", "imperial", "min").toLocaleString("en-US")} and ` +
+  `${displayBound(ALTITUDE_MAX_M, "altitude", "imperial", "max").toLocaleString("en-US")} ft)`;
+
 const altitudeField = () =>
   z
     .number()
+    // Metric-worded on purpose, and reachable only in metric mode: imperial entry
+    // commits whole metres itself, so this message is only ever read by someone who
+    // typed the fraction it is complaining about.
     .int("Altitude must be a whole number of meters")
-    .min(-450, "Altitude must be at least -450 m")
-    .max(6500, "Altitude must be at most 6500 m")
+    .min(ALTITUDE_MIN_M, ALTITUDE_RANGE_MESSAGE)
+    .max(ALTITUDE_MAX_M, ALTITUDE_RANGE_MESSAGE)
     .nullable()
     .optional();
 
@@ -78,6 +97,19 @@ const altitudeField = () =>
 // Using "" as the empty state avoids that; callers are responsible for
 // converting "" to `undefined` right before sending data to the API (see
 // `normalizeMixtures` usage in the dive form pages).
+const MAX_PRESSURE_BAR = 350;
+
+// The ceiling in both systems, so an imperial diver who typed 5,500 psi is told
+// about the limit they crossed rather than about a bar figure they never entered.
+// Computed from `PSI_PER_BAR` rather than typed out, for the same reason the
+// altitude range is: a hand-written 5,076 is a second place for the number to be
+// wrong. One string, not one per system - the rare violation then reads correctly
+// whichever mode the form is in, and the schema stays unaware of the preference.
+const PRESSURE_CEILING_CLAUSE =
+  `must be at most ${MAX_PRESSURE_BAR} bar ` +
+  `(${Math.round(barToPsi(MAX_PRESSURE_BAR)).toLocaleString("en-US")} psi) — ` +
+  `check the units on that reading.`;
+
 export const diveMixtureSchema = z
   .object({
     id: z.number().optional(),
@@ -114,10 +146,7 @@ export const diveMixtureSchema = z
           .positive(
             "A cylinder can't start a dive empty — enter the fill pressure, or leave this blank if it wasn't recorded.",
           )
-          .max(
-            350,
-            "Start pressure must be at most 350 bar — check the units on that reading.",
-          ),
+          .max(MAX_PRESSURE_BAR, `Start pressure ${PRESSURE_CEILING_CLAUSE}`),
       ])
       .optional(),
     end_pressure: z
@@ -126,10 +155,7 @@ export const diveMixtureSchema = z
         z
           .number()
           .min(0, "End pressure must be zero or positive")
-          .max(
-            350,
-            "End pressure must be at most 350 bar — check the units on that reading.",
-          ),
+          .max(MAX_PRESSURE_BAR, `End pressure ${PRESSURE_CEILING_CLAUSE}`),
       ])
       .optional(),
     oxygen: z

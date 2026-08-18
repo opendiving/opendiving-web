@@ -1,7 +1,22 @@
-import { describe, it, expect } from "vitest";
+import { afterEach, describe, it, expect, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import { DiveGasConsumptionCard } from "./dive-gas-consumption-card";
 import type { Dive, DiveMixture, DiveTankGasUse } from "@/lib/api/dives";
+import type { UnitSystem } from "@/lib/units";
+
+// These renders read the diver's units, so they need an auth context. Held in a
+// mutable box rather than a fixed literal so a test can switch systems - `vi.mock`'s
+// factory is hoisted above the file, and `vi.hoisted` is what lets it close over
+// something the tests can still reach.
+const auth = vi.hoisted(() => ({ units: "metric" as UnitSystem }));
+
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({ user: { uuid: "user-1", units: auth.units } }),
+}));
+
+afterEach(() => {
+  auth.units = "metric";
+});
 
 // The join itself is specified in `dive-gas.test.ts`. What a render adds is the part
 // that only exists as markup: which of the card's three layouts appears, and whether an
@@ -156,6 +171,31 @@ describe("DiveGasConsumptionCard layouts", () => {
     expect(screen.getByText("14.29 L/min")).toBeInTheDocument();
     expect(screen.getByText("1.19 bar/min")).toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  });
+
+  it("writes the headline figures in imperial", () => {
+    // SAC gains a decimal in psi/min and RMV keeps both of its own in cuft/min -
+    // a cubic foot is 28 litres, so the second decimal there is real resolution
+    // rather than the noise it is in L/min.
+    auth.units = "imperial";
+    render(
+      <DiveGasConsumptionCard
+        dive={dive({
+          gas_use: {
+            gas_used: 3080,
+            rmv: 14.29,
+            sac_bar_per_min: 1.19,
+            tanks: [],
+            attributed_seconds: null,
+            duration_seconds: null,
+          },
+        })}
+      />,
+    );
+
+    expect(screen.getByText("0.50 cuft/min")).toBeInTheDocument();
+    expect(screen.getByText("17.3 psi/min")).toBeInTheDocument();
+    expect(screen.getByText("108.8 cuft")).toBeInTheDocument();
   });
 
   it("explains the absence instead of hiding when nothing could be derived", () => {

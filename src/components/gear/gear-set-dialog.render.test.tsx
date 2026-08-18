@@ -10,6 +10,12 @@ import {
   type GearSet,
 } from "@/lib/api/gear";
 
+// The weight box and its label read the diver's units, so this render needs an
+// auth context. Metric, which is every existing account's default.
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({ user: { uuid: "user-1", units: "metric" } }),
+}));
+
 // The dialog's own network. `importOriginal` keeps `gearItemLabel` and
 // `gearTypeLabel`, which the picker inside it renders rows with.
 vi.mock("@/lib/api/gear", async (importOriginal) => {

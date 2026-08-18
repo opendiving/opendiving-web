@@ -1,7 +1,22 @@
-import { describe, it, expect } from "vitest";
+import { afterEach, describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { DiveDetailMain } from "./dive-detail-main";
 import type { Dive } from "@/lib/api/dives";
+import type { UnitSystem } from "@/lib/units";
+
+// These renders read the diver's units, so they need an auth context. Held in a
+// mutable box rather than a fixed literal so a test can switch systems - `vi.mock`'s
+// factory is hoisted above the file, and `vi.hoisted` is what lets it close over
+// something the tests can still reach.
+const auth = vi.hoisted(() => ({ units: "metric" as UnitSystem }));
+
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({ user: { uuid: "user-1", units: auth.units } }),
+}));
+
+afterEach(() => {
+  auth.units = "metric";
+});
 
 // The card this covers holds three stored figures and formats one of them, so its
 // arithmetic is `formatDurationHoursMinutes`'s and is tested in `lib/date-time.test.ts`.
@@ -29,8 +44,20 @@ describe("DiveDetailMain duration and depth card", () => {
     );
 
     expect(screen.getByText("45min")).toBeInTheDocument();
-    expect(screen.getByText("30.52m")).toBeInTheDocument();
-    expect(screen.getByText("18.2m")).toBeInTheDocument();
+    expect(screen.getByText("30.52 m")).toBeInTheDocument();
+    expect(screen.getByText("18.2 m")).toBeInTheDocument();
+  });
+
+  it("shows the depths in feet for an imperial diver", () => {
+    // Whole feet, and the value behind them is still the 30.48 m the API sent -
+    // nothing about the dive changes, only how it is written.
+    auth.units = "imperial";
+    render(
+      <DiveDetailMain dive={dive({ max_depth: 30.48, avg_depth: 18.2 })} />,
+    );
+
+    expect(screen.getByText("100 ft")).toBeInTheDocument();
+    expect(screen.getByText("60 ft")).toBeInTheDocument();
   });
 
   it("heads the card with nothing at all", () => {
@@ -71,7 +98,7 @@ describe("DiveDetailMain duration and depth card", () => {
     // conditional for.
     render(<DiveDetailMain dive={dive({ max_depth: 30.52 })} />);
 
-    expect(screen.getByText("30.52m")).toBeInTheDocument();
+    expect(screen.getByText("30.52 m")).toBeInTheDocument();
     expect(screen.getByText(/maximum depth/i)).toBeInTheDocument();
     expect(screen.queryByText(/average depth/i)).not.toBeInTheDocument();
   });
@@ -83,6 +110,6 @@ describe("DiveDetailMain duration and depth card", () => {
     render(<DiveDetailMain dive={dive({ max_depth: 30.52, avg_depth: 0 })} />);
 
     expect(screen.getByText(/average depth/i)).toBeInTheDocument();
-    expect(screen.getByText("0m")).toBeInTheDocument();
+    expect(screen.getByText("0 m")).toBeInTheDocument();
   });
 });

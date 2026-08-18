@@ -4,6 +4,21 @@ import { DiveProfileChart } from "./dive-profile-chart";
 import { DIVE_PROFILE_SERIES_KEY } from "@/lib/chart-series-view";
 import { memoryStorage, useStorage } from "@/test/memory-storage";
 import type { DiveProfile, DiveProfileEvent } from "@/lib/api/dives";
+import type { UnitSystem } from "@/lib/units";
+
+// These renders read the diver's units, so they need an auth context. Held in a
+// mutable box rather than a fixed literal so a test can switch systems - `vi.mock`'s
+// factory is hoisted above the file, and `vi.hoisted` is what lets it close over
+// something the tests can still reach.
+const auth = vi.hoisted(() => ({ units: "metric" as UnitSystem }));
+
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({ user: { uuid: "user-1", units: auth.units } }),
+}));
+
+afterEach(() => {
+  auth.units = "metric";
+});
 
 // The chart's arithmetic is covered in `lib/dive-profile.test.ts`, where it belongs.
 // What a render adds is the handful of things that are only true once the component
@@ -142,6 +157,60 @@ function hoverAt(fractionOfDive: number) {
 function readoutText(): string {
   return screen.queryByRole("presentation")?.textContent ?? "";
 }
+
+describe("DiveProfileChart in imperial", () => {
+  // The conversion happens once, where the wire scale is divided out, so what the
+  // legend, the crosshair and the accessible summary all read is already in feet.
+  const imperialDive = profile({
+    // Sampled on depth's own clock, so the crosshair has a reading of each to
+    // quote at the moment it is over.
+    temperature: {
+      t: [0, 60, 120, 180, 240, 300],
+      v: [250, 245, 240, 238, 236, 235],
+    },
+    pressure: [
+      {
+        gas_number: 1,
+        t: [0, 60, 120, 180, 240, 300],
+        v: [2000, 1800, 1600, 1400, 1200, 1000],
+      },
+    ],
+  });
+
+  it("names each channel's imperial unit in the legend", () => {
+    auth.units = "imperial";
+    render(<DiveProfileChart profile={imperialDive} />);
+
+    expect(screen.getByRole("button", { name: "Depth (ft)" })).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Temperature (°F)" }),
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("button", { name: "Tank pressure (psi)" }),
+    ).toBeTruthy();
+  });
+
+  it("quotes whole imperial readings in the crosshair", () => {
+    auth.units = "imperial";
+    render(<DiveProfileChart profile={imperialDive} />);
+    hoverAt(120 / 300);
+
+    // 30 m is 98 ft, 24 °C is 75 °F - and the degree is attached, as it is
+    // everywhere else in the app.
+    expect(readoutText()).toMatch(/98 ft Depth/);
+    expect(readoutText()).toMatch(/75°F Temperature/);
+  });
+
+  it("spells the imperial units out in the accessible summary", () => {
+    auth.units = "imperial";
+    render(<DiveProfileChart profile={imperialDive} />);
+
+    const summary = screen.getByRole("img").getAttribute("aria-label") ?? "";
+    expect(summary).toMatch(/maximum depth 98 feet/);
+    expect(summary).toMatch(/degrees Fahrenheit/);
+    expect(summary).toMatch(/psi/);
+  });
+});
 
 describe("DiveProfileChart with an event type this build doesn't know", () => {
   // `ProfileEventType` is closed on the API side *today*, and the two repos deploy

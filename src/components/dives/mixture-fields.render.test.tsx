@@ -3,6 +3,21 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { FormProvider, useForm } from "react-hook-form";
 import { MixtureFields, useMixtureFieldArray } from "./mixture-fields";
 import type { DiveFormValues } from "./dive-form-fields";
+import type { UnitSystem } from "@/lib/units";
+
+// The pressure boxes and their labels read the diver's units, so these renders need
+// an auth context. Held in a mutable box rather than a fixed literal so a test can
+// switch systems - `vi.mock`'s factory is hoisted above the file, and `vi.hoisted`
+// is what lets it close over something the tests can still reach.
+const auth = vi.hoisted(() => ({ units: "metric" as UnitSystem }));
+
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({ user: { uuid: "user-1", units: auth.units } }),
+}));
+
+afterEach(() => {
+  auth.units = "metric";
+});
 
 // The warning sentence is unit-tested in `lib/dive-mixtures.test.ts`. What only a
 // render reaches is the announcement wiring: that the `role="status"` region exists

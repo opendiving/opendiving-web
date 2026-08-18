@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { Dive } from "@/lib/api/dives";
 import { gearTypeLabel } from "@/lib/api/gear";
@@ -17,6 +19,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Backpack, FileText, Weight } from "lucide-react";
+import { useUnits } from "@/hooks/useUnits";
+import { formatDepth, formatWeight } from "@/lib/units";
 
 interface DiveDetailMainProps {
   dive: Dive;
@@ -33,6 +37,7 @@ interface DiveDetailMainProps {
  */
 export function DiveDetailMain({ dive }: DiveDetailMainProps) {
   const hasGearInfo = (dive.gear_items?.length ?? 0) > 0 || dive.weight != null;
+  const units = useUnits();
 
   return (
     <div className="lg:col-span-2 space-y-6">
@@ -64,7 +69,9 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
                 <div className="text-sm font-medium text-muted-foreground mb-1">
                   Maximum Depth
                 </div>
-                <div className="text-2xl font-bold">{dive.max_depth}m</div>
+                <div className="text-2xl font-bold">
+                  {formatDepth(dive.max_depth, units)}
+                </div>
               </div>
             )}
             {dive.avg_depth != null && (
@@ -72,7 +79,9 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
                 <div className="text-sm font-medium text-muted-foreground mb-1">
                   Average Depth
                 </div>
-                <div className="text-2xl font-bold">{dive.avg_depth}m</div>
+                <div className="text-2xl font-bold">
+                  {formatDepth(dive.avg_depth, units)}
+                </div>
               </div>
             )}
           </div>
@@ -147,7 +156,7 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
                 </div>
                 <div className="flex items-center gap-2 text-sm font-medium">
                   <Weight className="h-4 w-4 text-muted-foreground" />
-                  {dive.weight} kg
+                  {formatWeight(dive.weight, units)}
                 </div>
               </div>
             )}

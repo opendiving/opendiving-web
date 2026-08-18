@@ -13,7 +13,9 @@ import {
   PROFILE_CHANNELS,
   PROFILE_CHANNEL_KEYS,
   PROFILE_VIEW_KEYS,
+  channelWord,
   depthDomain,
+  displayChannel,
   describeEvent,
   elapsedTicks,
   formatChannelValue,
@@ -39,6 +41,8 @@ import {
   formatDurationHoursMinutes,
 } from "@/lib/date-time";
 import { cn } from "@/lib/utils";
+import { useUnits } from "@/hooks/useUnits";
+import type { UnitSystem } from "@/lib/units";
 
 // Hand-rolled SVG rather than a charting library. The app ships a strict
 // nonce-based CSP (`src/proxy.ts`): inline style *attributes* are allowed, but a
@@ -151,6 +155,7 @@ function drawnValues(
 }
 
 export function DiveProfileChart({ profile }: DiveProfileChartProps) {
+  const units = useUnits();
   // One hovered *time*, not one hovered sample, and one piece of state for the
   // whole chart - the same call `GasUseChart` makes, for the same reason. It
   // can't be an index here: the channels are independently sampled and don't
@@ -191,10 +196,12 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
     if (chosen) writeSeriesVisibility(DIVE_PROFILE_SERIES_KEY, chosen);
   }, [chosen]);
 
-  const depth = toChannelSeries(profile, "depth");
-  const ceiling = toChannelSeries(profile, "ceiling");
-  const temperature = toChannelSeries(profile, "temperature");
-  const pressure = toPressureSeries(profile);
+  // Converted here and nowhere after: every domain, tick, readout and spoken
+  // extreme below reads `values`, which is already in the diver's own units.
+  const depth = toChannelSeries(profile, "depth", units);
+  const ceiling = toChannelSeries(profile, "ceiling", units);
+  const temperature = toChannelSeries(profile, "temperature", units);
+  const pressure = toPressureSeries(profile, units);
 
   const duration = profile.duration_seconds;
   const x = (seconds: number) =>
@@ -677,6 +684,7 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
                 // channels above go through `shownValues` for.
                 events: eventsShown ? events : [],
                 duration,
+                units,
               })}
             >
               {/* Horizontal gridlines, from the left-hand axis, so every rule
@@ -939,6 +947,7 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
         available={available}
         visible={visible}
         onToggle={toggle}
+        units={units}
       />
     </div>
   );
@@ -1193,10 +1202,12 @@ function LegendToggles({
   available,
   visible,
   onToggle,
+  units,
 }: {
   available: readonly ProfileViewKey[];
   visible: readonly ProfileViewKey[];
   onToggle: (key: ProfileViewKey) => void;
+  units: UnitSystem;
 }) {
   return (
     <div
@@ -1211,7 +1222,10 @@ function LegendToggles({
       }
     >
       {available.map((key) => {
-        const channel = key === "events" ? null : PROFILE_CHANNELS[key];
+        const channel =
+          key === "events"
+            ? null
+            : displayChannel(PROFILE_CHANNELS[key], units);
         const on = visible.includes(key);
 
         return (
@@ -1294,6 +1308,7 @@ function describeProfile({
   pressure,
   events,
   duration,
+  units,
 }: {
   // Readings that are on screen, in display units - not the channels' raw
   // series. Every one of these is fed through `drawnValues`, because this
@@ -1307,32 +1322,47 @@ function describeProfile({
   pressure: number[];
   events: readonly DiveProfileEvent[];
   duration: number;
+  // The system those readings are already in, so this can name it. Spelled out
+  // rather than abbreviated throughout - "ft" is read aloud as a word and "°C"
+  // not at all, which is the whole reason `unitWord` exists.
+  units: UnitSystem;
 }): string {
   // `formatDurationHoursMinutes` here rather than the axis's `MM:SS`: read aloud,
   // "84:36" is not a length of time, whereas "1h 25min" is. The axis keeps
   // `MM:SS`, which is what a dive profile's elapsed scale conventionally shows.
   const parts = [`Dive profile over ${formatDurationHoursMinutes(duration)}`];
 
+  // At the channel's own resolution, which is the same rule the crosshair follows
+  // and the same one the numbers were stored under.
+  const say = (key: ProfileChannelKey, value: number) =>
+    value.toFixed(displayChannel(PROFILE_CHANNELS[key], units).decimals);
+
   if (depth.length > 0) {
-    parts.push(`maximum depth ${Math.max(...depth).toFixed(1)} meters`);
+    parts.push(
+      `maximum depth ${say("depth", Math.max(...depth))} ${channelWord("depth", units)}`,
+    );
   }
   if (ceiling.length > 0) {
     // The deepest ceiling, which is the one number that says how much
     // decompression this dive owed at its worst.
-    parts.push(`deco ceiling to ${Math.max(...ceiling).toFixed(1)} meters`);
+    parts.push(
+      `deco ceiling to ${say("ceiling", Math.max(...ceiling))} ${channelWord("ceiling", units)}`,
+    );
   }
   if (temperature.length > 0) {
     parts.push(
-      `temperature ${Math.min(...temperature).toFixed(1)} to ${Math.max(
-        ...temperature,
-      ).toFixed(1)} degrees Celsius`,
+      `temperature ${say("temperature", Math.min(...temperature))} to ${say(
+        "temperature",
+        Math.max(...temperature),
+      )} ${channelWord("temperature", units)}`,
     );
   }
   if (pressure.length > 0) {
     parts.push(
-      `tank pressure ${Math.max(...pressure).toFixed(0)} down to ${Math.min(
-        ...pressure,
-      ).toFixed(0)} bar`,
+      `tank pressure ${say("pressure", Math.max(...pressure))} down to ${say(
+        "pressure",
+        Math.min(...pressure),
+      )} ${channelWord("pressure", units)}`,
     );
   }
 

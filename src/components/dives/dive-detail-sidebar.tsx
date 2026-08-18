@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import { Dive, WATER_TYPE_LABELS } from "@/lib/api/dives";
 import { Trip } from "@/lib/api/trips";
@@ -17,6 +19,12 @@ import {
   Thermometer,
   Waves,
 } from "lucide-react";
+import { useUnits } from "@/hooks/useUnits";
+import {
+  formatAltitude,
+  formatTemperature,
+  formatVisibility,
+} from "@/lib/units";
 
 interface DiveDetailSidebarProps {
   dive: Dive;
@@ -52,6 +60,7 @@ export function DiveDetailSidebar({
   trip,
   onSourceFileChanged,
 }: DiveDetailSidebarProps) {
+  const units = useUnits();
   const hasEnvironmentInfo =
     dive.bottom_temperature != null ||
     dive.visibility != null ||
@@ -72,7 +81,7 @@ export function DiveDetailSidebar({
   // The map is capped at zoom 10, where a surface swim is well under a pixel, so
   // the drift between the two fixes is a line of text or it is nothing.
   const drift =
-    entry && exit ? formatDistance(haversineMeters(entry, exit)) : null;
+    entry && exit ? formatDistance(haversineMeters(entry, exit), units) : null;
 
   const mapLocations: MappableLocation[] = [
     ...dive.dive_sites.map((site) => ({
@@ -180,7 +189,7 @@ export function DiveDetailSidebar({
                 </div>
                 <div className="flex items-center gap-2 text-xl font-semibold">
                   <Thermometer className="h-4 w-4 text-muted-foreground" />
-                  {dive.bottom_temperature}°C
+                  {formatTemperature(dive.bottom_temperature, units)}
                 </div>
               </div>
             )}
@@ -191,7 +200,7 @@ export function DiveDetailSidebar({
                 </div>
                 <div className="flex items-center gap-2 text-xl font-semibold">
                   <Eye className="h-4 w-4 text-muted-foreground" />
-                  {dive.visibility}m
+                  {formatVisibility(dive.visibility, units)}
                 </div>
               </div>
             )}
@@ -217,7 +226,7 @@ export function DiveDetailSidebar({
                 </div>
                 <div className="flex items-center gap-2 text-xl font-semibold">
                   <Mountain className="h-4 w-4 text-muted-foreground" />
-                  {dive.altitude} m
+                  {formatAltitude(dive.altitude, units)}
                 </div>
               </div>
             )}

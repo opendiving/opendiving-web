@@ -1,7 +1,22 @@
-import { describe, it, expect } from "vitest";
+import { afterEach, describe, it, expect, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { GasUseChart } from "./gas-use-chart";
 import type { DiveGasUsePoint } from "@/lib/api/dive-stats";
+import type { UnitSystem } from "@/lib/units";
+
+// These renders read the diver's units, so they need an auth context. Held in a
+// mutable box rather than a fixed literal so a test can switch systems - `vi.mock`'s
+// factory is hoisted above the file, and `vi.hoisted` is what lets it close over
+// something the tests can still reach.
+const auth = vi.hoisted(() => ({ units: "metric" as UnitSystem }));
+
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({ user: { uuid: "user-1", units: auth.units } }),
+}));
+
+afterEach(() => {
+  auth.units = "metric";
+});
 
 // Multi-cylinder dives reach this chart for the first time in Phase 4, and they arrive
 // with an RMV that was *not* divided by the dive's average depth. What a render pins is
@@ -64,6 +79,44 @@ function renderChart(points: DiveGasUsePoint[]) {
 }
 
 describe("GasUseChart point descriptions", () => {
+  it("writes the whole dot description in imperial", () => {
+    auth.units = "imperial";
+    render(
+      <GasUseChart
+        points={[point(), multiTankPoint()]}
+        scope="all"
+        anchor={Date.parse("2026-04-17T11:49:00+02:00")}
+      />,
+    );
+
+    // The rate in cuft/min spelled out, and the depth it was divided by in feet.
+    expect(
+      screen.getByLabelText(
+        /Dive #493,.* 0.36 cubic feet per minute at 68 ft average/,
+      ),
+    ).toBeTruthy();
+  });
+
+  // The chart's own accessible name, which is the one figure the whole plot is read
+  // against. It has to carry the same precision as the visible "Average" stat above
+  // it: a cubic foot is 28 litres, so one decimal would quantize every plausible RMV
+  // into about five buckets.
+  it("gives the summary the same precision as the visible average", () => {
+    auth.units = "imperial";
+    render(
+      <GasUseChart
+        points={[point(), multiTankPoint()]}
+        scope="all"
+        anchor={Date.parse("2026-04-17T11:49:00+02:00")}
+      />,
+    );
+
+    // 10.31 and 12.4 L/min average 11.355, which is 0.40 cuft/min - not "0.4".
+    expect(
+      screen.getByLabelText(/all-time average of 0.40 cubic feet per minute\./),
+    ).toBeTruthy();
+  });
+
   it("names the average depth behind a single-cylinder rate", () => {
     // Unchanged, and the reason the depth is worth naming at all: it is the
     // denominator, so quoting it makes the figure checkable.
@@ -71,7 +124,7 @@ describe("GasUseChart point descriptions", () => {
 
     expect(
       screen.getByLabelText(
-        /Dive #493,.* 10.31 liters per minute at 20.87m average/,
+        /Dive #493,.* 10.31 liters per minute at 20.87 m average/,
       ),
     ).toBeInTheDocument();
   });
@@ -102,7 +155,7 @@ describe("GasUseChart point descriptions", () => {
     fireEvent.focus(screen.getByLabelText(/12.4 liters per minute/));
 
     expect(screen.getByText(/Per tank across 1 cylinder/)).toBeInTheDocument();
-    expect(screen.queryByText(/20.87m average/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/20.87 m average/)).not.toBeInTheDocument();
   });
 
   it("keeps the average depth in the tooltip of a single-cylinder dot", () => {
@@ -113,7 +166,7 @@ describe("GasUseChart point descriptions", () => {
     );
 
     expect(
-      screen.getByText(/20.87m average · 1520.7 L used/),
+      screen.getByText(/20.87 m average · 1520.7 L used/),
     ).toBeInTheDocument();
   });
 });
