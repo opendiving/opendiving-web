@@ -82,16 +82,54 @@ export const diveMixtureSchema = z
   .object({
     id: z.number().optional(),
     volume: z.number().positive("Volume must be positive"),
+    // The two pressures are deliberately not symmetric, and one sentence of diving
+    // is the whole reason: you cannot start a dive on an empty cylinder, but you
+    // can finish one on an empty cylinder. An out-of-gas ascent, a drained stage
+    // and an SPG pegged at zero are real dives worth logging honestly, so 0 is a
+    // legal end pressure; no dive's first breath came from a cylinder reading 0,
+    // so it is not a legal start pressure. Don't "fix" the inconsistency between
+    // these two adjacent fields - it is the design, not an oversight.
+    //
+    // Mirrors `ck_dive_mixture_start_pressure_range` /
+    // `ck_dive_mixture_end_pressure_range` and `DiveMixtureCreate`'s `gt=0, le=350`
+    // / `ge=0, le=350`, so a value this form accepts is one the API will store. The
+    // 350 bar ceiling is a unit check rather than an opinion about how hard a
+    // cylinder is filled: it sits above any real 300 bar DIN fill, so what it can
+    // catch is a psi reading typed as bar, the millibar-for-bar error the DM5 XML
+    // parser once shipped, and a sidemount pair whose two pressures were summed as
+    // if they were one cylinder.
+    //
+    // Both fields carry the ceiling, and the `end <= start` rule below is not a
+    // substitute for the end one: it returns early when the start box is blank, so
+    // a lone end pressure would otherwise reach the API unbounded.
+    //
+    // A diver who doesn't know a pressure leaves the box blank - `""` here, `null`
+    // on the wire - so neither field needs 0 as a stand-in for "unrecorded", and
+    // the start message says so rather than leaving it to be guessed.
     start_pressure: z
       .union([
         z.literal(""),
-        z.number().positive("Start pressure must be positive"),
+        z
+          .number()
+          .positive(
+            "A cylinder can't start a dive empty — enter the fill pressure, or leave this blank if it wasn't recorded.",
+          )
+          .max(
+            350,
+            "Start pressure must be at most 350 bar — check the units on that reading.",
+          ),
       ])
       .optional(),
     end_pressure: z
       .union([
         z.literal(""),
-        z.number().min(0, "End pressure must be zero or positive"),
+        z
+          .number()
+          .min(0, "End pressure must be zero or positive")
+          .max(
+            350,
+            "End pressure must be at most 350 bar — check the units on that reading.",
+          ),
       ])
       .optional(),
     oxygen: z
