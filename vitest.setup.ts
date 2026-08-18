@@ -32,3 +32,11 @@ window.ResizeObserver = class {
 
 // Radix's popper measures with these; jsdom reports zeroes and warns without them.
 Element.prototype.scrollIntoView = vi.fn();
+
+// Radix's `Select` captures the pointer on the trigger before it will open its
+// listbox, and jsdom implements none of the three. Without them the trigger
+// throws on pointerdown instead of opening, which surfaces as "unable to find
+// role=listbox" rather than as anything about pointer capture.
+Element.prototype.hasPointerCapture = () => false;
+Element.prototype.setPointerCapture = () => {};
+Element.prototype.releasePointerCapture = () => {};
