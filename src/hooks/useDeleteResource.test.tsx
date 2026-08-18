@@ -59,6 +59,32 @@ describe("useDeleteResource", () => {
     await waitFor(() => expect(result.current.deletingId).toBeNull());
   });
 
+  it("lets the call site write the toast when only it knows the sentence", async () => {
+    // The trip and dive-site deletes can name where the dives went, and that name
+    // is in the dialog's picker rather than in anything the API answers with - so
+    // the message can only be assembled where the delete is confirmed.
+    const deleteFn = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() =>
+      useDeleteResource(deleteFn, { ...OPTIONS, onDeleted: vi.fn() }),
+    );
+
+    act(() => result.current.requestDelete("site-1"));
+    await act(() =>
+      result.current.confirmDelete(
+        "site-2",
+        "Dive site deleted successfully. Its dives moved to Blue Hole.",
+      ),
+    );
+
+    expect(deleteFn).toHaveBeenCalledWith("site-1", "site-2");
+    expect(toast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        description:
+          "Dive site deleted successfully. Its dives moved to Blue Hole.",
+      }),
+    );
+  });
+
   // The bug this hook's detail-page callers used to have: only `gear/[id]` ran the
   // failure through `getApiErrorMessage`, so a 409 explaining *why* the delete was
   // refused was replaced by "Please try again." on dives, sites and trips.

@@ -272,20 +272,6 @@ export interface PaginatedResponse<T> {
   items_per_page: number;
 }
 
-/**
- * What the trip and dive-site deletes answer, with or without `move_dives_to`.
- *
- * The only two deletes on the API whose response says more than "done", which is
- * why this is a declared shape rather than the bare `{ message }` the others
- * return. `moved_dives` is always present and `0` when nothing was asked to move
- * - the API publishes it as a required integer precisely so this doesn't have to
- * be `number | undefined` at the one place it is read.
- */
-export interface DeletedWithMovedDives {
-  message: string;
-  moved_dives: number;
-}
-
 export interface FetchAllPagesOptions<T> {
   // Ceiling on requests, not on items. 20 pages x 100 items is far past what any
   // of the "fetch everything" call sites are actually sized for.

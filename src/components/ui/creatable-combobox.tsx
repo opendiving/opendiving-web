@@ -248,6 +248,11 @@ export interface CreatableComboboxProps extends FormControlSlotProps {
   // rather than picked in this session.
   selectedItem?: ComboboxItem;
   onChange: (id: string | undefined) => void;
+  // The text in the field, reported whenever it changes. For a caller that has
+  // to tell "nothing chosen" apart from "half-typed": `value` alone cannot,
+  // because typing clears the selection (see `handleInputChange`), so a diver
+  // mid-word and a diver who chose nothing look identical from outside.
+  onTextChange?: (text: string) => void;
   // When provided, shows an "Add…" footer item in the dropdown that calls this
   // instead of the inline create-on-enter flow.
   onAddNew?: () => void;
@@ -309,6 +314,7 @@ export function CreatableCombobox({
   value,
   selectedItem,
   onChange,
+  onTextChange,
   onCreate,
   onAddNew,
   addNewLabel = "Add new...",
@@ -455,6 +461,13 @@ export function CreatableCombobox({
       (lastSelectedRef.current?.id === value ? lastSelectedRef.current : null);
     setInputValue(match ? match.name : "");
   }, [value, availableItems, selectedItem, isOpen]);
+
+  // One effect rather than a call beside each `setInputValue`: the field's text
+  // is written from six places (typing, a picked row, a blur commit, a create, the
+  // Clear button, the sync above) and a caller watching it must not miss one.
+  useEffect(() => {
+    onTextChange?.(inputValue);
+  }, [inputValue, onTextChange]);
 
   const findExactMatch = (text: string) =>
     availableItems.find(

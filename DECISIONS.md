@@ -6170,7 +6170,7 @@ pointed at it now reads back with the reference simply gone — so the diver who
 logged the same reef under two names, or split one trip into two, got a confirmation dialog that
 would strand every dive attached to the loser. Re-attaching them meant opening each dive's edit form
 in turn. The confirmation now offers to move them, and the whole feature lives in that offer: same
-button, same dialog, one checkbox that appears only when there is something to move.
+button, same dialog, one dropdown that is always on screen.
 
 **Moving and deleting are one request.** `DELETE /trip/{uuid}?move_dives_to={uuid}` re-points the
 dives and deletes the trip in a single transaction: either the log ends up on the replacement and
@@ -6186,52 +6186,75 @@ sequencing one: the client-side version was complete, reviewed and verified agai
 before it was deleted unmerged, because the API change it should have waited for was already
 written. Check what the other repo is holding before building the compensating half.
 
-**The count still comes from the browser**, because there is no counting endpoint and none was
-needed: `GET /dives?trip_uuid=X&items_per_page=1` answers `total_count` and the body is thrown away.
-It counts live dives only, which is exactly what `moved_dives` reports back — so the number in the
-dialog and the number in the toast afterwards cannot contradict each other.
+### The dialog says what deleting does, and stopped asking whether to count
 
-The offer waits for that answer rather than rendering optimistically: "move 0 dives" is noise, and a
-checkbox that appears after a beat is better than one that lies about how much it will do. A count
-that _fails_ says so inline instead of quietly dropping the offer, which would read as "this trip
-has no dives" to a diver who knows perfectly well that it does. Deleting outright stays available in
-that state — a failed count says nothing about whether the diver meant to delete.
+The first version of the offer was a checkbox — "Move 2 dives to another trip first" — that revealed
+the picker when ticked. Getting that "2" on screen cost a request
+(`GET /dives?trip_uuid=X&items_per_page=1`, read for `total_count`), a five-second timeout race
+against a hang that `apiClient` sets no axios timeout for, a "couldn't check" failure state, and a
+rule holding the Delete button shut until one of the three landed. Roughly 200 lines and one async
+subsystem, in a dialog whose only decision was whether to show a dropdown.
 
-### The toast's sentence comes from two places, and the count is the half that decides
+All of it existed because the consequence of deleting was ambiguous, and it no longer is. The API
+hides soft-deleted trips, dive sites and gear from every dive read — `get_trip_uuids_by_ids` and
+`get_dive_sites_for_dive(s)` both filter `is_deleted` — so "deleting removes this trip from every
+dive logged on it, and the dives themselves are not touched" is plainly true at any number of dives,
+**including zero**. Once the dialog says that, the count has no job left: it was only ever there to
+phrase the checkbox and to suppress a zero-dive offer, and both went with the checkbox.
 
-`moved_dives` is what the API moved on _this call_, not how many dives the resource had. Those
-differ on a retry: both deletes are idempotent, so repeating one after a lost response succeeds and
-answers `0`, because the first attempt already moved them. The message is therefore driven off the
-count rather than off "did the diver tick the box" — at `0` it degrades to the plain "Trip deleted
-successfully." instead of announcing "0 dives moved to Cebu 2026".
+So the picker is unconditional and its empty state is the "just delete it" option — no synthetic
+"None" row, the same shape `TripCombobox` already uses for a dive with no trip.
+`divesAPI.countDives` went with the rest; nothing else was calling it.
 
-The name is the other half, and the API has no reason to know it: it answers with a count and
-nothing to call the destination. So the dialog hands the name back alongside the uuid, and
-`useDeleteWithReassign` holds it across the round trip. That hook exists for that one reason —
-without it, all four pages would keep their own ref for the same sentence.
+The general form, worth keeping: **a confirmation that has to ask the API a question before it can
+word itself is a sign the wording is wrong.** A sentence that is true unconditionally needs no
+request, no loading state, no failure state, and no disabled button — and the diver reads it a beat
+sooner than the old dialog could even render.
 
-### Two things the confirm button has to know that are not about the diver
+### The toast names the destination, and the call site is where both halves are known
 
-**It stays shut while the count is in flight.** The dialog opens instantly and the count lands a
-beat later, so for that gap the offer is not on screen yet - and a diver who clicks Delete
-reflexively would get the pre-feature behaviour without ever being asked. That is the one outcome
-this whole feature exists to prevent, and it is not recoverable from the UI: a deleted trip stops
-appearing anywhere its dives could be re-pointed from. A count that _failed_ is the exception and
-stays clickable, because nothing more is coming and deleting outright is still a choice the diver is
-entitled to make.
+"Trip deleted successfully. Its dives moved to Cebu 2026." is assembled at the four `onConfirm` call
+sites, from the name the dialog hands back beside the uuid. `useDeleteResource.confirmDelete` takes
+an optional `successOverride` for exactly this — a message only the caller can write, for the one
+call it is written for.
 
-**On a list page it reports only its own delete.** `isDeleting` was briefly wired to
-`deletingId !== null`, which is true while _any_ row is being deleted - so deleting one trip and
-then opening the dialog for another showed the second one disabled, spinner and all, for a request
-that had nothing to do with it. `deletingId === pendingId` is the scoped version. The dialog is
-closed for the duration of its own delete anyway, since `confirmDelete` clears `pendingId` before it
-starts.
+It used to be harder, and the shape it used to have is instructive. The sentence was "12 dives moved
+to Cebu 2026", and its two halves came from opposite sides of a round trip: the count from the API's
+`moved_dives`, which only `useDeleteResource` saw, and the name from the picker, which only the
+diver's click saw. A whole hook — `useDeleteWithReassign`, 82 lines plus 166 of tests — existed to
+smuggle the name across in a map keyed by the id being deleted, keyed rather than held singly
+because two rows of a list can be deleted at once and their responses need not come back in order.
 
-Those two are related in a way worth writing down, because fixing one made the other reachable:
-while the unscoped `isDeleting` was disabling every other dialog, it was also the only thing
-serialising deletes - and `useDeleteWithReassign` was holding the replacement's _name_ in a single
-ref. Two deletes in flight, responses back in either order, and the slower one's toast would have
-named the faster one's destination. The name is filed under the id being deleted now.
+Dropping the number from the sentence dissolved all of that: the name is known synchronously at
+confirm time, so there is nothing to carry and nothing to key. The concurrency hazard the map
+existed to avoid cannot arise, because no state outlives the call.
+
+Three things went with it, in the same change rather than left as follow-ups. `moved_dives` and its
+`DeletedWithMovedDives` type are gone from `lib/api/client.ts`, and both deletes are typed
+`{ message: string }` like every other delete on the API. Nothing here reads a delete response any
+more, so whatever the API puts in one, this side is indifferent to it. Its test in
+`delete-with-move.test.ts` went too, and that one had to be removed deliberately: it asserted
+against a _mocked_ axios response, so it would have kept passing long after the field stopped
+existing, which is the failure mode of every test that mocks the thing it is checking. And
+`successMessage`'s function form — `(result, id) => string`, whose only caller was the deleted hook
+— is gone from `useDeleteResource`, along with the `TResult` generic that existed to type its first
+argument. A response nobody reads does not need a shape, and a hook that reads no response does not
+need to be generic over one.
+
+### The confirm button reports only its own delete
+
+`isDeleting` was briefly wired to `deletingId !== null`, which is true while _any_ row is being
+deleted - so deleting one trip and then opening the dialog for another showed the second one
+disabled, spinner and all, for a request that had nothing to do with it. `deletingId === pendingId`
+is the scoped version. The dialog is closed for the duration of its own delete anyway, since
+`confirmDelete` clears `pendingId` before it starts.
+
+`deletingId` in `useDeleteResource` is still a single value across all seven call sites: starting a
+second delete overwrites it, so the first row's spinner stops and its trash button comes back while
+its request is still out. Left alone deliberately. The cost is cosmetic and the worst case is
+bounded — firing the same delete twice gets two success toasts, because both routes are idempotent.
+The fix is a `Set<string>` and an `isDeleting(id)` helper across every caller, which is a wider
+change than the symptom justifies. Written down rather than left for the next person to rediscover.
 
 ### The picker, and what it deliberately does not do
 
@@ -6244,25 +6267,91 @@ name-lookup machinery for a uuid handed to them by a form, and this field only e
 the diver just picked out of its own menu. It offers no "Add new..." either — a brand-new empty trip
 is not what "move these somewhere" means, and the create dialogs are one page away.
 
-`ConfirmDialog` grew a `children` slot and a `confirmDisabled` for this. The slot keeps the delete
-confirmation a single dialog instead of a second one layered on top; `confirmDisabled` is separate
-from `isLoading` on purpose, because an unfinished choice must still be cancellable while an
-in-flight delete must not be.
+`ConfirmDialog`'s `children` slot is what keeps this a single dialog instead of a second one layered
+on top, and its `confirmDisabled` — separate from `isLoading` on purpose, because an unfinished
+choice must still be cancellable — is what blocks Delete while the field holds something that is not
+yet an answer. Which is the next section.
 
-### Concurrency is handled for the destination name and not for the spinner
+The title and description live in the component's own `COPY` table beside the placeholders and the
+search functions, rather than arriving as props. They are kind-specific wording, the four pages had
+no say in them, and passing them in meant `useDeleteResource`'s `confirmMessage` was being threaded
+through two files to reach a `DialogDescription`. `confirmMessage` is optional on the hook now, and
+these two callers omit it.
 
-Two deletes can be in flight at once - two rows of a list, each confirmed from its own dialog - and
-the destination name is keyed by the id being deleted so their toasts cannot swap places.
-`deletingId` in `useDeleteResource` is still a single value, and was before this change: starting
-the second delete overwrites it, so the first row's spinner stops and its trash button comes back
-while its request is still out.
+### An empty picker is an answer; a half-typed one is not
 
-Left alone deliberately. The cost is cosmetic and the worst case is bounded: firing the same delete
-twice gets two success toasts, because both routes are idempotent - the second answers 200 with
-`moved_dives: 0`, which the toast already degrades correctly for. The fix is a `Set<string>` and an
-`isDeleting(id)` helper across all seven call sites, which is a wider change than the symptom
-justifies. Written down rather than left as an inconsistency for the next person to rediscover: the
-name is concurrency-safe, the in-flight indicator is not.
+Dropping the checkbox took `confirmDisabled` with it, and that was one step too far. The offer is a
+`CreatableCombobox`, and it has three states, not two: nothing typed, something _chosen_, and text
+in the field that has not resolved to either. The third one is where the diver is while they type.
+
+`handleInputChange` clears the selection on every keystroke and re-fills it only on an **exact**
+match, so "Ceb" with "Cebu 2026" sitting in the open menu leaves the dialog's `replacement`
+`undefined`. Clicking Delete from there blurs the field first, and the blur commit (`commitAction`)
+resolves a prefix to `{ type: "clear" }` — it only ever selects on an exact match, and this caller
+passes no `onCreate` for it to fall through to. So the confirm fired the plain `onConfirm()`: the
+trip deleted, the move silently dropped, and the only tell was a toast missing its second sentence.
+Neither half is undoable from the UI.
+
+It is blocked rather than guessed at. A prefix can match several trips, and resolving it on the
+diver's behalf would move a log somewhere they did not choose — a worse failure than the one being
+fixed, and a silent one too. An _empty_ field stays a valid answer, because that is the plain delete
+this dialog replaced; a disabled Delete gets a line saying which of the two to do, since a disabled
+button with no explanation reads as broken rather than as waiting.
+
+Knowing about the third state costs the shared component one optional prop: `onTextChange`, reported
+from an effect on `inputValue` rather than beside each of the six places that write it. `value`
+cannot answer this from outside — typing clears it, so a diver mid-word and a diver who chose
+nothing are indistinguishable. Tracking the query through this dialog's own `onSearch` wrapper
+looked like the way to avoid the prop and is not: that call is debounced by 250 ms, so a fast click
+lands while the tracked text is still the previous one, and the guard is off exactly when the diver
+is quickest.
+
+**A disabled button is not a guard on its own, and this one nearly wasn't.** Disabling it is
+`disabled:pointer-events-none` in the shared `Button`, so a press over it never reaches the button —
+it lands on the `DialogFooter` behind, and the _default action_ of that press moves focus, blurring
+the picker. The blur clears the unresolved text, `onTextChange("")` flips `unresolved` to `false`,
+and the button is enabled again — while the same gesture is still in progress. `disabled` is re-read
+at each event's own dispatch rather than latched at `mousedown`, so the `click` that follows lands
+on a button that was blocked when the press began. One gesture, erasing the text and confirming on
+the way past: the exact bug the guard was added for, now reachable _through_ the guard.
+
+The fix is one `onMouseDown={(event) => event.preventDefault()}` on `DialogFooter` in
+`ConfirmDialog` — the same thing `CreatableCombobox` does on its own menu rows, and for the same
+reason. It suppresses only the focus change and text selection; clicks are untouched. A press can no
+longer quietly re-qualify itself.
+
+Verified with a real mouse in a real browser rather than in jsdom, because jsdom does not perform
+that default focus change at all — the bug is invisible there, and so is the fix.
+`confirm-dialog.render.test.tsx` pins the only part that _is_ observable in jsdom: that the footer
+calls `preventDefault` on a press.
+
+The general form, twice over: **removing a disabled-button rule is safe only when the states it
+covered are gone** — the count went, the checkbox went, and "asked for a move without finishing it"
+quietly stayed, wearing different clothes. And **a guard whose input the guarded gesture can change
+is not a guard.** Ask what the click itself does on its way in.
+
+### The confirmation focuses Cancel, because its `children` may open a menu
+
+Radix focuses the first tabbable descendant of `DialogContent` on open. That was harmless while a
+`ConfirmDialog` held only prose and two buttons — focus landed on Cancel, which is where it belongs
+for a destructive confirmation. Putting an always-rendered field in the `children` slot changed it:
+the field is now first, `CreatableCombobox` opens its menu `onFocus`, and the menu is
+`absolute z-50`, so it does not push the footer down — it paints over it.
+
+Every trip and dive-site delete confirmation therefore opened with a list of trips covering its own
+Cancel and Delete buttons. A click aimed at Delete hit an option, which filled in a destination the
+diver never chose and closed the menu — so the _next_ click deleted and moved every dive onto it. It
+also fired a `getTrips`/`getDiveSites` search on every confirmation, including the plain deletes
+that never wanted one.
+
+`onOpenAutoFocus` with a `preventDefault` and an explicit `cancelRef.current?.focus()` puts it back.
+Cancel is both where focus used to go and the right answer on its own terms: Enter should not be the
+destructive key.
+
+Worth generalising, because the trap is in the composition rather than in either piece. **A slot
+component inherits the focus behaviour of whatever it is given**, and a control that reacts to focus
+by opening an overlay turns "first tabbable" into "covers the buttons". `ConfirmDialog` now names
+its own focus target instead of letting the tallest thing in the room take it.
 
 ### `excludeIds` hides a row; it does not make the item unpickable
 
@@ -6290,10 +6379,11 @@ that is the moment to move the fix down into the component; the test here
 
 ### Per-target state resets during render, not in an effect
 
-Everything the dialog holds — the count, the checkbox, the chosen replacement — belongs to the trip
-it was opened on, and has to be gone when it opens on another. Doing that in an effect means the
-dialog paints one frame of the previous trip's answers first; doing it in a `useLayoutEffect` avoids
-the frame but trips `react-hooks/set-state-in-effect`, which is an error here and is right to be.
+The chosen replacement belongs to the trip it was picked for, and has to be gone when the dialog
+opens on another — otherwise confirming would send the old trip's destination for the new one's
+dives. Doing that in an effect means the dialog paints one frame of the previous answer first; doing
+it in a `useLayoutEffect` avoids the frame but trips `react-hooks/set-state-in-effect`, which is an
+error here and is right to be.
 
 The fix is React's own
 [adjusting state when a prop changes](https://react.dev/learn/you-might-not-need-an-effect): compare

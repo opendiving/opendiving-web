@@ -3,7 +3,7 @@
 import { useCallback, useState } from "react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { usePaginatedResource } from "@/hooks/usePaginatedResource";
-import { useDeleteWithReassign } from "@/hooks/useDeleteWithReassign";
+import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { tripsAPI, Trip } from "@/lib/api/trips";
 import { formatTripDateRange } from "@/lib/date-time";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,10 @@ import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
 import { Plus, Eye, Edit, Trash2, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { PageSpinner } from "@/components/ui/page-spinner";
+
+// The plain-delete toast, and the first half of the one a move gets - "moved to
+// Cebu 2026" is an addition to what happened, not a replacement for it.
+const DELETED_MESSAGE = "Trip deleted successfully.";
 
 export default function TripsPage() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
@@ -56,14 +60,11 @@ export default function TripsPage() {
   const {
     deletingId,
     pendingId,
-    confirmMessage,
     requestDelete: requestDeleteTrip,
     cancelDelete: cancelDeleteTrip,
     confirmDelete: confirmDeleteTrip,
-  } = useDeleteWithReassign(tripsAPI.deleteTrip, {
-    confirmMessage:
-      "Are you sure you want to delete this trip? This action cannot be undone.",
-    successMessage: "Trip deleted successfully.",
+  } = useDeleteResource(tripsAPI.deleteTrip, {
+    successMessage: DELETED_MESSAGE,
     errorMessage: "Failed to delete trip. Please try again.",
     onDeleted: refetch,
   });
@@ -206,11 +207,14 @@ export default function TripsPage() {
         kind="trip"
         userId={user?.uuid ?? ""}
         targetId={pendingId}
-        title="Delete trip"
-        description={confirmMessage}
         isDeleting={deletingId === pendingId}
         onCancel={cancelDeleteTrip}
-        onConfirm={confirmDeleteTrip}
+        onConfirm={(moveDivesTo, name) =>
+          confirmDeleteTrip(
+            moveDivesTo,
+            name ? `${DELETED_MESSAGE} Its dives moved to ${name}.` : undefined,
+          )
+        }
       />
     </div>
   );

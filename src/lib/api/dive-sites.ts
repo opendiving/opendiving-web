@@ -1,5 +1,5 @@
 import { apiClient } from "./client";
-import type { DeletedWithMovedDives, PaginatedResponse } from "./client";
+import type { PaginatedResponse } from "./client";
 
 // `latitude`/`longitude` are both-or-neither on the API, and the rule is about
 // the request body rather than the resulting row: naming one without the other
@@ -95,13 +95,10 @@ export const diveSitesAPI = {
    * here and deletes it **in one transaction**. The replacement takes this
    * site's place in each dive's ordered list - inheriting primary-site position
    * where this one held it - and a dive already logged at both ends up holding
-   * the replacement once. `moved_dives` counts the dives that changed, which
-   * includes one that only *lost* this site because it already had the
-   * replacement.
+   * the replacement once.
    *
    * Idempotent, with the same retry caveat as `deleteTrip`: a repeat call after
-   * a lost response succeeds and answers `moved_dives: 0`, because there is
-   * nothing left to move.
+   * a lost response succeeds, because there is nothing left to move.
    *
    * A `moveDivesTo` that isn't one of the diver's own live sites, or that is
    * this site, is a 422.
@@ -109,7 +106,7 @@ export const diveSitesAPI = {
   async deleteDiveSite(
     diveSiteUuid: string,
     moveDivesTo?: string,
-  ): Promise<DeletedWithMovedDives> {
+  ): Promise<{ message: string }> {
     const response = await apiClient.delete(`/dive-site/${diveSiteUuid}`, {
       params: moveDivesTo ? { move_dives_to: moveDivesTo } : undefined,
     });
