@@ -6882,3 +6882,102 @@ credit names its own provider. **The two credits stay separate** rather than bei
 OSM line: tiles are configured by `NEXT_PUBLIC_MAP_TILE_URL`/`_ATTRIBUTION` and place names by the
 API's `GEOCODER_URL`, so a self-hoster can be running two different providers, and one merged credit
 would then be a false statement about one of them.
+
+## Three roads to a position, so the geocoding moved above the map
+
+The dive site form used to place a position one way, on the map, and `DiveSiteMapField` owned both
+the map and the reverse geocode that named what it placed. There are three ways now — the pin, the
+place search above it, and a coordinate pair pasted into the latitude/longitude inputs — and the
+paste one never passes through the map at all. Only `DiveSiteDialog` can see all three, so the
+lookup and every guard around it moved into `hooks/useGeocodedLocation.ts` and the field went back
+to rendering: search, map, credit.
+
+Nothing about the guards changed, and they are the reason the hook is 200 lines for what looks like
+one `await`: newest-request-wins, the reply re-checked against the fields as they stand when it
+arrives rather than as they stood when it was sent, `unknown` never clearing a field while
+`nameless` does, and a nameless answer staying silent when there was nothing to clear. Their
+reasoning is in "The map writes into the coordinate fields" above and has not moved with the code.
+
+**Pasting a pair is placing the site**, which is the actual behaviour change and not merely a
+refactor. A diver who copies `27.8506, 34.3136` off another map has done exactly what a diver
+clicking the map has done, and until now was the only one of the two left to type the location out
+by hand. Typing the coordinates in by digit still asks nothing — `useWatch` fires per keystroke, and
+a lookup per keystroke is both useless and a fast way through an instance-wide rate limit of one
+request a second.
+
+**One thing the lift broke and had to be said out loud.** This state used to unmount with
+`DialogContent`, so it was clean on every open; the dialog component itself is always mounted, so a
+credit earned on the last site the dialog showed would sit waiting for the next site that happened
+to share its coordinates. The hook takes `open` and resets on it, in an effect with the same
+`react-hooks/set-state-in-effect` disable and for the same reason `useDialogApiError` carries one:
+synchronising state to an external prop flipping is the case the rule's escape hatch is for. It also
+bumps the request counter there, since a reply still in the air was asked about a form that no
+longer exists.
+
+## The dive site form searches for a place too, and the map shrank to make room
+
+`PlaceSearch` is the trip picker's field with everything a trip needs taken out: no list, no
+reordering, no free-text creation, and no value of its own. What is left is a search that hands back
+one `GeocodeResult` whole, because the caller has three fields to fill from it rather than one — the
+pair, and the name.
+
+**It is the second way in, not the only one**, which is the whole difference from the trip form. A
+trip location is a _name_ — a country, an island, a sea — so searching is all that form does. A dive
+site is its exact point, and the geocoder knows where Dahab is, not where the Blue Hole's north
+entry is. So the search drops the pin in the right bay and the map does the last hundred metres,
+which is also why the search sits above the map rather than beside the Location field.
+
+**It holds no value.** After a pick the box goes back to empty, because what was found is on the map
+and in the Location field a moment later, both on screen — and a search box still naming a place
+after the pin has been dragged off it would be the one thing on the form claiming something untrue.
+Nothing is creatable either: the trip picker's Enter-to-add-as-text hatch exists because a trip
+location that the geocoder cannot answer has nowhere else to go, whereas here the map is the hatch
+and the Location field beside it is ordinary text.
+
+**Holding no value is exactly why it needs `keepOpenOnSelect`, and that is not what the prop's name
+says.** A `CreatableCombobox` without it is a single-select, and a single-select does two things
+this field must not: `handleInputChange` picks on an exactly-typed name as you key it in, and
+`commit()` picks the same match again on blur. Both are right where the input _is_ the value —
+typing a trip's name into the trip picker is how you choose it without a mouse, and dropping the
+text on blur would lose the edit. Neither holds here, where a pick writes two coordinate fields and
+a Location and moves the map, and where the field is explicitly not the value.
+
+It was caught in review and settled in the browser, because the two readings — "an unconsidered gap"
+and "the documented single-select behaviour every other consumer inherits" — are indistinguishable
+from the code. On a fresh form, with "Ko Tao" typed into the search and no row ever clicked,
+blurring left the site at 10.0921822, 99.8395362 with a Location of "Ko Pha-ngan District,
+Thailand". Clicking Save is a blur. So the next click would have filed a dive site at a place nobody
+chose, and the general rule about single-selects is true and does not reach this field.
+
+The prop costs one thing: the menu stays up after a pick, over the top of the map, until the next
+click anywhere closes it. That is the cheaper end of the trade — a dropdown briefly covering the pin
+is visible and one click from gone, and an unchosen position is neither. A deliberate Enter still
+commits an exactly-typed name, so the keyboard route in survives; what goes is only the two ways it
+happened by itself. Both are pinned by tests that fail with the prop removed.
+
+**A searched place is not rounded, and the map's own picks are.** `MapPicker` rounds to five
+decimals in `emit`, and has to: the value that comes back through the form must be identical to the
+one that went out, or the echo arrives unrecognised. A searched place is an outside change either
+way, so rounding would buy nothing there — and the trip form stores what the geocoder said, so
+leaving it alone is what "like the trip form" means. It does mean the latitude field can read
+`28.4963633` after a search and `28.49636` after a click, which is the honest price of two different
+questions being answered.
+
+**The credit line is `PlaceSearch`'s own, and does not merge with the one under the map.** They say
+different things: this one credits the results that were _shown_, the other credits the name that
+was _written into the field_. Both are the same provider today and need not be tomorrow, which is
+the same argument the tile credit and the place credit already settle between them. Its line is held
+open with `min-h-4` for the reason the trip picker's is — a credit that materialises with the first
+search grows the field and shoves the map down the dialog mid-edit.
+
+**The map is `h-40 sm:h-48` now, the same as `LocationsMap`.** Two maps in two forms disagreeing
+about their height by 64px reads as an accident rather than a decision, and the search field plus
+its credit had to come from somewhere. The picker's skeleton in `dive-site-map-field.tsx` duplicates
+the new height and has to keep agreeing with it — a placeholder of a different size makes the dialog
+jump when the chunk lands, which is the same duplication `locations-map-lazy.tsx` documents.
+
+**`/privacy` said two things that stopped being true.** "Type or paste coordinates instead of using
+the map and nothing is sent" — the paste half of that is exactly what changed. And a search sends
+_what the diver types_, which is a different kind of data leaving than a coordinate pair and was
+undisclosed for the trip form too, so §4.5 now covers both forms rather than describing half of one.
+A privacy page that is stale is worse than one that is vague.

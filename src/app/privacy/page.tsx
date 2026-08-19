@@ -227,7 +227,8 @@ export default function PrivacyPage() {
               4.5 Place Names
             </h3>
             <p className="text-foreground mb-4">
-              After you place a dive site on the map, we ask a geocoding
+              After you place a dive site &mdash; on the map, or by pasting a
+              pair of coordinates into the form &mdash; we ask a geocoding
               provider what that spot is called, so we can offer you a location
               like &ldquo;Dahab, Egypt&rdquo; to save with the site. Only the
               coordinates are sent, and they are sent by our servers rather than
@@ -236,9 +237,15 @@ export default function PrivacyPage() {
               not looked up twice.
             </p>
             <p className="text-foreground mb-4">
-              This happens once per pin you place, never when you view a site
-              you have already saved. Type or paste coordinates instead of using
-              the map and nothing is sent.
+              The dive site and trip forms also let you search for a place by
+              name. There, what you type is what is sent &mdash; again by our
+              servers, not your browser &mdash; a short moment after you stop
+              typing. Nothing else about the form goes with it.
+            </p>
+            <p className="text-foreground mb-4">
+              All of this happens only as you fill a form in, never when you
+              view a site or a trip you have already saved. Type the coordinates
+              in by hand and nothing is sent at all.
             </p>
 
             <h3 className="text-xl font-semibold text-foreground mb-3">

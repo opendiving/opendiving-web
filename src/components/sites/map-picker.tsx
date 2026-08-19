@@ -553,7 +553,7 @@ export function MapPicker({ latitude, longitude, onPick }: MapPickerProps) {
           // The wheel is split the same way and for the same reason: a plain
           // one is left to scroll the dialog, and only ctrl/cmd+wheel zooms
           // (`useWheelZoom`), which is also what a trackpad pinch sends.
-          className="relative h-56 w-full cursor-grab touch-pan-y select-none bg-muted outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing sm:h-64"
+          className="relative h-40 w-full cursor-grab touch-pan-y select-none bg-muted outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing sm:h-48"
         >
           {/* The fractional part of the zoom, applied to the whole grid at
               once. `origin-top-left` is what makes the tiles' own offsets -
