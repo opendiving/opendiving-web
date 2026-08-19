@@ -16,7 +16,6 @@ import {
   MAX_ZOOM,
   MIN_ZOOM,
   nearestWrappedX,
-  parseAttribution,
   Point,
   project,
   TILE_SIZE,
@@ -24,6 +23,7 @@ import {
   tileUrl,
   unproject,
   visibleTiles,
+  WORLD_CENTER,
 } from "@/lib/map-tiles";
 import {
   GesturePoint,
@@ -32,15 +32,16 @@ import {
   useWheelZoom,
 } from "@/hooks/useMapGesture";
 import { Button } from "@/components/ui/button";
+import { Attribution } from "@/components/attribution";
 
 // Close enough to street level to see a jetty, far enough out to see which bay
 // it is in - where the map opens when the site already has a position. Deeper
 // than the site page's own map fits to, which is deliberate: this one can be
 // zoomed out by hand, and that one cannot. See DECISIONS.md.
 const PLACED_ZOOM = 12;
-// Where it opens when it does not. Centred a little north of the equator
-// because that is where the land - and most of the world's diving - is.
-const DEFAULT_VIEW = { latitude: 20, longitude: 0, zoom: MIN_ZOOM };
+// Where it opens when it does not: the whole world, on the shared centre every
+// other map with nothing to draw opens on.
+const DEFAULT_VIEW = { ...WORLD_CENTER, zoom: MIN_ZOOM };
 // How long the "use two fingers" hint stays up after a one-finger drag.
 const TOUCH_HINT_MS = 1600;
 // How far one arrow key press moves the view.
@@ -84,10 +85,6 @@ export interface MapPickerProps {
 export function MapPicker({ latitude, longitude, onPick }: MapPickerProps) {
   const { resolvedTheme } = useTheme();
   const source = useMemo(() => tileSource(), []);
-  const attribution = useMemo(
-    () => parseAttribution(source.attribution),
-    [source.attribution],
-  );
   const template = resolvedTheme === "dark" ? source.dark : source.light;
 
   const hasPosition = latitude !== null && longitude !== null;
@@ -645,21 +642,7 @@ export function MapPicker({ latitude, longitude, onPick }: MapPickerProps) {
               sits in a dialog holding a half-filled form, and navigating away
               in the same tab would throw it away. */}
           <div className="pointer-events-auto absolute bottom-0 right-0 bg-background/80 px-1 text-[10px] leading-4 text-muted-foreground">
-            {attribution.map((part, index) =>
-              part.href ? (
-                <a
-                  key={index}
-                  href={part.href}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="underline underline-offset-2 hover:text-foreground"
-                >
-                  {part.text}
-                </a>
-              ) : (
-                <span key={index}>{part.text}</span>
-              ),
-            )}
+            <Attribution value={source.attribution} />
           </div>
         </div>
 

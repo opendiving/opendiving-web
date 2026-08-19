@@ -78,9 +78,8 @@ export function TripDialog({
   // re-render the whole dialog - every keystroke in the notes field included.
   const locations = useWatch({ control: form.control, name: "locations" });
 
-  // Places typed in by hand have no position, so a trip with only those shows
-  // no map rather than an empty frame - and gating on this also keeps the map's
-  // chunk unfetched until there is something in it to see.
+  // Places typed in by hand have no position, so only the geocoded ones reach
+  // the map - the picker's own rows say "not on the map" about the rest.
   const mappedLocations = (locations ?? []).filter(
     (location) => location.latitude != null && location.longitude != null,
   );
@@ -197,35 +196,6 @@ export function TripDialog({
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="locations"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    {(field.value?.length ?? 0) > 1 ? "Locations" : "Location"}
-                  </FormLabel>
-                  <FormControl>
-                    <TripLocationMultiSelect
-                      value={field.value ?? []}
-                      onChange={field.onChange}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Confirmation only, and deliberately below the picker: the diver
-                searched for a name, and this answers "yes, that is the place I
-                meant" without asking them to do anything with it. */}
-            {mappedLocations.length > 0 && (
-              <LocationsMap
-                locations={mappedLocations}
-                subject="the trip's locations"
-              />
-            )}
-
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -261,6 +231,40 @@ export function TripDialog({
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="locations"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    {(field.value?.length ?? 0) > 1 ? "Locations" : "Location"}
+                  </FormLabel>
+                  <FormControl>
+                    <TripLocationMultiSelect
+                      value={field.value ?? []}
+                      onChange={field.onChange}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Confirmation only, and deliberately below the picker: the diver
+                searched for a name, and this answers "yes, that is the place I
+                meant" without asking them to do anything with it.
+
+                On screen from the moment the dialog opens, empty world and all,
+                like the dive site form's own map. A frame that appeared with
+                the first place would shove the Notes field down the dialog
+                mid-edit, and an empty one is what makes it obvious the picker
+                above it is asking for somewhere on a map. */}
+            <LocationsMap
+              locations={mappedLocations}
+              subject="the trip's locations"
+              showWhenEmpty
+            />
 
             <FormField
               control={form.control}

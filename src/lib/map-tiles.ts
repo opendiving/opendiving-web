@@ -27,6 +27,13 @@ export interface LatLon {
   longitude: number;
 }
 
+// Where a map opens with nothing on it yet, at `MIN_ZOOM`: the whole world,
+// centred a little north of the equator because that is where the land - and
+// most of the world's diving - is. Shared by the site picker and the trip
+// form's confirmation map so the two open on the same view by construction,
+// rather than on two literals that agree until somebody edits one.
+export const WORLD_CENTER: LatLon = { latitude: 20, longitude: 0 };
+
 // A position in world pixels: the whole planet is `TILE_SIZE * 2 ** zoom` on a
 // side, with (0, 0) at the north-west corner.
 export interface Point {
@@ -183,7 +190,8 @@ const unitY = (latitude: number) =>
  * way round the planet - a whole-world view with both pins at its edges.
  *
  * No boxes at all is not an error, it is a map with nothing to show yet: the
- * caller gets the widest view rather than having to special-case a null.
+ * caller gets `WORLD_CENTER` at the widest zoom rather than having to
+ * special-case a null.
  */
 export function fitBounds(
   boxes: LatLonBounds[],
@@ -192,7 +200,7 @@ export function fitBounds(
   padding = 0,
 ): FittedView {
   if (boxes.length === 0) {
-    return { center: { latitude: 0, longitude: 0 }, zoom: MIN_ZOOM };
+    return { center: { ...WORLD_CENTER }, zoom: MIN_ZOOM };
   }
 
   let south = MAX_LATITUDE;

@@ -7,7 +7,10 @@ import { useResource } from "@/hooks/useResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { tripsAPI, Trip } from "@/lib/api/trips";
 import { formatDateTime, formatTripDateRange } from "@/lib/date-time";
-import { formatTripLocationNames } from "@/lib/trip-locations";
+import {
+  formatLocationContext,
+  formatTripLocationNames,
+} from "@/lib/trip-locations";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -184,22 +187,28 @@ export default function TripDetailPage() {
                       show: this is the one surface with room for the context
                       that tells two places of the same name apart. */}
                   <ul className="space-y-1.5">
-                    {tripLocations.map((location, index) => (
-                      <li
-                        key={`${location.name}-${index}`}
-                        className="flex items-start gap-2 text-sm"
-                      >
-                        <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
-                        <span className="min-w-0">
-                          <span className="block">{location.name}</span>
-                          {location.display_name && (
-                            <span className="block text-xs text-muted-foreground">
-                              {location.display_name}
-                            </span>
-                          )}
-                        </span>
-                      </li>
-                    ))}
+                    {tripLocations.map((location, index) => {
+                      // The full label with the name above it trimmed off its
+                      // front, so the two lines don't read "Dahab" over "Dahab,
+                      // South Sinai, 45214, Egypt".
+                      const context = formatLocationContext(location);
+                      return (
+                        <li
+                          key={`${location.name}-${index}`}
+                          className="flex items-start gap-2 text-sm"
+                        >
+                          <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
+                          <span className="min-w-0">
+                            <span className="block">{location.name}</span>
+                            {context && (
+                              <span className="block text-xs text-muted-foreground">
+                                {context}
+                              </span>
+                            )}
+                          </span>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               )}

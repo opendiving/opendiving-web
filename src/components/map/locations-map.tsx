@@ -6,7 +6,6 @@ import {
   fitBounds,
   LatLonBounds,
   nearestWrappedX,
-  parseAttribution,
   project,
   TILE_SIZE,
   tileSource,
@@ -14,6 +13,7 @@ import {
   visibleTiles,
 } from "@/lib/map-tiles";
 import { formatTripLocationNames } from "@/lib/trip-locations";
+import { Attribution } from "@/components/attribution";
 import { cn } from "@/lib/utils";
 
 // Breathing room between the outermost place and the edge of the frame, so a
@@ -115,6 +115,17 @@ export interface LocationsMapProps {
    * wrong label that no screenshot and no test of theirs would catch.
    */
   subject: string;
+  /**
+   * Draw the frame even when nothing given has a position, showing the whole
+   * world - the same view `MapPicker` opens on for a site with no pin yet.
+   *
+   * For a form that shows this map beside the field that fills it, where a
+   * frame appearing only once the first place is picked shoves everything below
+   * it down the dialog mid-edit. Off by default, because everywhere else the
+   * map answers "where is this?", and an empty world is a worse answer than no
+   * map at all.
+   */
+  showWhenEmpty?: boolean;
 }
 
 /**
@@ -131,13 +142,13 @@ export interface LocationsMapProps {
  * pinch glides, and there is nothing to pinch. Tiles are drawn at their own
  * level and never scaled, which is also the sharpest they can be.
  */
-export function LocationsMap({ locations, subject }: LocationsMapProps) {
+export function LocationsMap({
+  locations,
+  subject,
+  showWhenEmpty,
+}: LocationsMapProps) {
   const { resolvedTheme } = useTheme();
   const source = useMemo(() => tileSource(), []);
-  const attribution = useMemo(
-    () => parseAttribution(source.attribution),
-    [source.attribution],
-  );
   const template = resolvedTheme === "dark" ? source.dark : source.light;
 
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -200,15 +211,23 @@ export function LocationsMap({ locations, subject }: LocationsMapProps) {
     : [];
 
   // Nothing with a position is nothing to draw, and an empty grey box is worse
-  // than no map at all. Callers may still gate on the same thing to avoid the
-  // dynamic import; this is so they do not have to.
-  if (placed.length === 0) return null;
+  // than no map at all - unless the caller asked for one anyway. Callers may
+  // still gate on the same thing to avoid the dynamic import; this is so they
+  // do not have to.
+  if (placed.length === 0 && !showWhenEmpty) return null;
 
   // Every location has a name, but nothing stops one being blank, and "Map of
   // " reads as a bug to anyone hearing it - hence the caller's `subject` as the
   // fallback. `formatTripLocationNames` is the same joining rule the trip's own
   // header uses, and it drops the blanks.
   const names = formatTripLocationNames(placed);
+  // The empty frame says what it is rather than borrowing the label of the
+  // places it doesn't have: "Map of the trip's locations" over a blank world is
+  // wrong in exactly the place nobody looking at the screen can see it.
+  const label =
+    placed.length > 0
+      ? `Map of ${names ?? subject}`
+      : `Map of the world, awaiting ${subject}`;
 
   return (
     <div className="relative h-40 w-full overflow-hidden rounded-md border bg-muted sm:h-48">
@@ -219,7 +238,7 @@ export function LocationsMap({ locations, subject }: LocationsMapProps) {
       <div
         ref={measureSurface}
         role="img"
-        aria-label={`Map of ${names ?? subject}`}
+        aria-label={label}
         className="absolute inset-0"
       >
         <div aria-hidden className="pointer-events-none absolute inset-0">
@@ -291,21 +310,7 @@ export function LocationsMap({ locations, subject }: LocationsMapProps) {
           holding a half-filled form, and navigating away in the same tab would
           throw it away. */}
       <div className="absolute bottom-0 right-0 bg-background/80 px-1 text-[10px] leading-4 text-muted-foreground">
-        {attribution.map((part, index) =>
-          part.href ? (
-            <a
-              key={index}
-              href={part.href}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="underline underline-offset-2 hover:text-foreground"
-            >
-              {part.text}
-            </a>
-          ) : (
-            <span key={index}>{part.text}</span>
-          ),
-        )}
+        <Attribution value={source.attribution} />
       </div>
     </div>
   );

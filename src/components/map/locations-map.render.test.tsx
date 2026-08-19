@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { LocationsMap } from "./locations-map";
-import { MAX_FIT_ZOOM } from "@/lib/map-tiles";
+import { MAX_FIT_ZOOM, MIN_ZOOM } from "@/lib/map-tiles";
 
 // The fit itself is unit-tested in `lib/map-tiles.test.ts`. What only a render
 // reaches is what this component does with it: which locations it draws at all,
@@ -134,6 +134,27 @@ describe("LocationsMap", () => {
       />,
     );
     expect(container).toBeEmptyDOMElement();
+  });
+
+  // A form that shows this map beside the field filling it wants the frame from
+  // the start, so nothing below it moves when the first place lands. The world
+  // is what there is to show until then - and the label has to say so, since
+  // "Map of the trip's locations" over a blank world is wrong in the one place
+  // nobody looking at the screen can see it.
+  it("draws the whole world when asked to show an empty map", () => {
+    render(
+      <LocationsMap
+        locations={[{ name: "Somewhere warm" }]}
+        subject="the trip's locations"
+        showWhenEmpty
+      />,
+    );
+
+    expect(tileZoom()).toBe(MIN_ZOOM);
+    expect(pins()).toBe(0);
+    expect(screen.getByRole("img").getAttribute("aria-label")).toBe(
+      "Map of the world, awaiting the trip's locations",
+    );
   });
 
   // The surface does not exist on the first render when there is nothing to

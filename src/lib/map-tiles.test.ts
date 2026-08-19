@@ -403,10 +403,11 @@ describe("fitBounds", () => {
     );
   });
 
-  // A map with nothing to show yet is not an error the caller has to answer.
+  // A map with nothing to show yet is not an error the caller has to answer -
+  // it is the whole world, on the same centre the site picker opens on.
   it("answers an empty list with the widest view", () => {
     expect(fitBounds([], VIEWPORT.width, VIEWPORT.height)).toEqual({
-      center: { latitude: 0, longitude: 0 },
+      center: { latitude: 20, longitude: 0 },
       zoom: MIN_ZOOM,
     });
   });
