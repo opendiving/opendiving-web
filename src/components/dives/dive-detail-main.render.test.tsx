@@ -113,3 +113,76 @@ describe("DiveDetailMain duration and depth card", () => {
     expect(screen.getByText("0 m")).toBeInTheDocument();
   });
 });
+
+describe("DiveDetailMain species card", () => {
+  const CLOWNFISH = {
+    uuid: "species-1",
+    scientific_name: "Amphiprion ocellaris",
+    common_name: "Ocellaris clownfish",
+    rank: "Species",
+  };
+
+  it("lists what was spotted, common name first", () => {
+    render(<DiveDetailMain dive={dive({ species: [CLOWNFISH] })} />);
+
+    expect(screen.getByText("Species Spotted")).toBeInTheDocument();
+    expect(screen.getByText("Ocellaris clownfish")).toBeInTheDocument();
+    expect(screen.getByText("Amphiprion ocellaris")).toBeInTheDocument();
+  });
+
+  it("italicises the scientific name, by the binomial convention", () => {
+    render(<DiveDetailMain dive={dive({ species: [CLOWNFISH] })} />);
+
+    expect(screen.getByText("Amphiprion ocellaris")).toHaveClass("italic");
+  });
+
+  it("names the rank when the sighting is broader than a species", () => {
+    // "a moray eel" is an honest log entry and resolves to a family;
+    // "Muraenidae" on its own would read as a species and isn't one.
+    render(
+      <DiveDetailMain
+        dive={dive({
+          species: [
+            {
+              uuid: "species-2",
+              scientific_name: "Muraenidae",
+              common_name: null,
+              rank: "Family",
+            },
+          ],
+        })}
+      />,
+    );
+
+    expect(screen.getByText("Muraenidae (Family)")).toBeInTheDocument();
+  });
+
+  it("dashes the common name a species doesn't have", () => {
+    render(
+      <DiveDetailMain
+        dive={dive({
+          species: [
+            {
+              uuid: "species-3",
+              scientific_name: "Chromodoris annae",
+              common_name: null,
+              rank: "Species",
+            },
+          ],
+        })}
+      />,
+    );
+
+    expect(screen.getByText("\u2014")).toBeInTheDocument();
+  });
+
+  it("renders no card at all for a dive with nothing spotted", () => {
+    // Absent and empty alike: the API only embeds species on the detail
+    // response, and a payload it cached before species existed has no key.
+    render(<DiveDetailMain dive={dive({ species: [] })} />);
+    expect(screen.queryByText("Species Spotted")).not.toBeInTheDocument();
+
+    render(<DiveDetailMain dive={dive()} />);
+    expect(screen.queryByText("Species Spotted")).not.toBeInTheDocument();
+  });
+});

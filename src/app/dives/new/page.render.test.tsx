@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import NewDivePage from "./page";
 import { divesAPI, type Dive } from "@/lib/api/dives";
+import type { Species } from "@/lib/api/species";
 
 // The seam this covers is the page's own seeding, which no unit test can reach: the
 // form's `defaultValues` and the last-dive prefill both decide what `mixtures` holds
@@ -62,6 +63,19 @@ vi.mock("@/lib/api/dive-sites", async (importOriginal) => {
   };
 });
 
+vi.mock("@/lib/api/species", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/api/species")>();
+  return {
+    ...actual,
+    speciesAPI: {
+      ...actual.speciesAPI,
+      searchSpecies: vi.fn(),
+      resolveSpecies: vi.fn(),
+      getSpecies: vi.fn(),
+    },
+  };
+});
+
 vi.mock("@/lib/api/gear", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api/gear")>();
   return {
@@ -74,6 +88,7 @@ vi.mock("@/lib/api/gear", async (importOriginal) => {
 const { tripsAPI } = await import("@/lib/api/trips");
 const { diveSitesAPI } = await import("@/lib/api/dive-sites");
 const gear = await import("@/lib/api/gear");
+const { speciesAPI } = await import("@/lib/api/species");
 
 const emptyPage = <T,>() => ({
   data: [] as T[],
@@ -113,6 +128,10 @@ beforeEach(() => {
   vi.mocked(diveSitesAPI.getDiveSites).mockResolvedValue(emptyPage());
   vi.mocked(gear.fetchAllGearSets).mockResolvedValue([]);
   vi.mocked(gear.gearAPI.getGearItems).mockResolvedValue(emptyPage());
+  vi.mocked(speciesAPI.searchSpecies).mockResolvedValue({
+    results: [],
+    has_more: false,
+  });
 });
 
 // Everything the create schema requires that the page doesn't already seed. Dive
@@ -338,5 +357,110 @@ describe("the water type on the way to the API", () => {
     expect(vi.mocked(divesAPI.createDive).mock.calls[0][0].water_type).toBe(
       "en13319",
     );
+  });
+});
+
+describe("what the create form carries over from the last dive", () => {
+  it("carries the gear but not the species", async () => {
+    // Gear is habitual, sightings are observations: copying yesterday's turtle
+    // into today's dive would fabricate a record of having seen it. The
+    // prefill's `form.reset` enumerates every field, so this also pins that the
+    // field is listed there - leaving it out would reset it to `undefined`.
+    vi.mocked(divesAPI.getDives).mockResolvedValue({
+      ...emptyPage<Dive>(),
+      data: [storedDive({ uuid: "dive-99" })],
+      total_count: 1,
+    });
+    vi.mocked(divesAPI.getDive).mockResolvedValue(
+      storedDive({
+        gear_items: [
+          {
+            uuid: "item-1",
+            name: "MK25",
+            is_archived: false,
+          } as Dive["gear_items"][number],
+        ],
+        species: [
+          {
+            uuid: "species-1",
+            scientific_name: "Chelonia mydas",
+            common_name: "Green sea turtle",
+            rank: "Species",
+          },
+        ],
+      }),
+    );
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+    await waitFor(() => expect(divesAPI.getDive).toHaveBeenCalled());
+    await fillRequiredFields();
+
+    await logDive();
+
+    await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
+    const body = vi.mocked(divesAPI.createDive).mock.calls[0][0];
+    expect(body.gear_item_uuids).toEqual(["item-1"]);
+    expect(body.species_uuids).toEqual([]);
+  });
+});
+
+describe("saving while a species pick is still resolving", () => {
+  it("holds the save until the resolve lands, rather than dropping the sighting", async () => {
+    // The window is a second or two - a resolve fans out to WoRMS and Wikidata -
+    // and the loss inside it would be silent: the pick lives in the picker's
+    // local state until its uuid comes back, so a save that beat it would write
+    // the dive without the sighting and say nothing.
+    vi.mocked(speciesAPI.searchSpecies).mockResolvedValue({
+      results: [
+        {
+          aphia_id: 278400,
+          uuid: null,
+          scientific_name: "Amphiprion ocellaris",
+          common_name: "Ocellaris clownfish",
+          rank: "Species",
+          status: "accepted",
+          matched_name: null,
+          source: "wikidata",
+          attribution: "Wikidata (CC0)",
+        },
+      ],
+      has_more: false,
+    });
+    let settle: (species: Species) => void = () => {};
+    vi.mocked(speciesAPI.resolveSpecies).mockReturnValue(
+      new Promise<Species>((resolve) => {
+        settle = resolve;
+      }),
+    );
+
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+    await fillRequiredFields();
+
+    await userEvent.click(screen.getByLabelText("Species spotted"));
+    await userEvent.click(
+      await screen.findByRole("option", { name: /Ocellaris clownfish/ }),
+    );
+
+    const submit = screen.getByRole("button", { name: /adding species/i });
+    expect(submit).toBeDisabled();
+
+    settle({
+      uuid: "species-1",
+      aphia_id: 278400,
+      scientific_name: "Amphiprion ocellaris",
+      common_name: "Ocellaris clownfish",
+      rank: "Species",
+    } as Species);
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /log dive/i })).toBeEnabled(),
+    );
+    await logDive();
+
+    await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
+    expect(
+      vi.mocked(divesAPI.createDive).mock.calls[0][0].species_uuids,
+    ).toEqual(["species-1"]);
   });
 });

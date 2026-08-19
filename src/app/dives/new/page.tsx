@@ -71,6 +71,7 @@ function NewDivePageContent() {
       dive_site_uuids:
         initialDiveSiteId !== undefined ? [initialDiveSiteId] : [],
       gear_item_uuids: [],
+      species_uuids: [],
       notes: "",
       // Empty, not a seeded cylinder. A form must not write gas the diver never
       // entered: `DEFAULT_MIXTURE`'s 11.1 L of air is a plausible enough cylinder
@@ -158,6 +159,12 @@ function NewDivePageContent() {
           gear_item_uuids: (lastDive.gear_items ?? [])
             .filter((item) => !item.is_archived)
             .map((item) => item.uuid),
+          // Deliberately *not* carried over, unlike the gear above: gear is
+          // habitual, sightings are observations. Copying yesterday's turtle
+          // into today's dive would fabricate a record of seeing it. Listed
+          // rather than omitted because this `reset` enumerates every field, and
+          // a field left out of it comes back `undefined`.
+          species_uuids: [],
           notes: "",
           // Whatever the last dive recorded, and nothing when it recorded nothing -
           // a diver who logs gas gets it carried over, a diver who doesn't keeps an

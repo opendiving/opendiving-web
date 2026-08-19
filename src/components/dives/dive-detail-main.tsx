@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Dive } from "@/lib/api/dives";
 import { gearTypeLabel } from "@/lib/api/gear";
 import { formatDurationHoursMinutes } from "@/lib/date-time";
+import { speciesNameWithRank } from "@/lib/species";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DiveProfileCard } from "@/components/dives/dive-profile-card";
@@ -18,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Backpack, FileText, Weight } from "lucide-react";
+import { Backpack, Fish, FileText, Weight } from "lucide-react";
 import { useUnits } from "@/hooks/useUnits";
 import { formatDepth, formatWeight } from "@/lib/units";
 
@@ -160,6 +161,51 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
                 </div>
               </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Between the kit and the notes, mirroring where the form puts the picker.
+          A `Table` for the same reason the Gear card above is one: a real dive
+          can carry a dozen sightings, and a list of glued-together strings gives
+          the eye nothing to scan down. Two columns, common name leading, because
+          that is the one a diver reads - the binomial is what makes it
+          unambiguous, not what makes it findable. No links: there is no species
+          page to point at yet. */}
+      {dive.species && dive.species.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Fish className="h-5 w-5" />
+              Species Spotted
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Common name</TableHead>
+                  <TableHead>Scientific name</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {dive.species.map((species) => (
+                  <TableRow key={species.uuid}>
+                    <TableCell className="font-medium">
+                      {species.common_name || (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    {/* Italic by the binomial convention, and the rank comes
+                        along when the row isn't one - "Muraenidae" on its own
+                        reads as a species and isn't. */}
+                    <TableCell className="italic text-muted-foreground">
+                      {speciesNameWithRank(species)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       )}

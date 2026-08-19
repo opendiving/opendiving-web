@@ -1,6 +1,7 @@
 import { apiClient } from "./client";
 import type { PaginatedResponse } from "./client";
 import { GearItemSummary } from "./gear";
+import { SpeciesSummary } from "./species";
 
 // A single gas mixture / scuba tank used during a dive.
 // The ppO₂ vocabulary and the cylinder-role vocabulary the API accepts. Mirrors
@@ -279,6 +280,14 @@ export interface Dive {
   // deliberately only sends it on the detail response. The curves themselves are
   // tens of KB and are fetched separately via `getDiveProfile`.
   profile?: DiveProfileInfo | null;
+  // What was spotted on the dive, in the order the diver listed them.
+  //
+  // Optional for the same reason as `source_file` and `gas_use` above: the API
+  // sends it on the detail response only, since embedding it on the list would
+  // cost the app's hottest query a lookup per row and nothing in the list draws
+  // it. It is also absent - rather than `[]` - on any detail payload the API
+  // cached before species existed, so read it through `?.` and default it.
+  species?: SpeciesSummary[];
 }
 
 // What the dive detail response says about a dive's profile without carrying it:
@@ -461,6 +470,10 @@ export interface DiveCreate {
   trip_uuid?: string;
   dive_site_uuids?: string[];
   gear_item_uuids?: string[];
+  // Catalog uuids, in spotting order. Every uuid must already exist - the
+  // picker resolves an upstream pick into a catalog row before it reaches form
+  // state, so saving a dive never waits on WoRMS.
+  species_uuids?: string[];
   notes?: string;
   mixtures?: DiveMixture[];
 }
@@ -488,6 +501,11 @@ export interface DiveUpdate {
   trip_uuid?: string | null;
   dive_site_uuids?: string[];
   gear_item_uuids?: string[];
+  // Same wholesale-replace contract as the two lists above: an omitted key
+  // leaves the dive's species alone, and any list provided - `[]` included -
+  // replaces them. See "Locations are always sent on edit" in DECISIONS.md for
+  // why the form always sends it.
+  species_uuids?: string[];
   notes?: string;
   mixtures?: DiveMixture[];
 }
@@ -644,8 +662,8 @@ export interface ParsedDive {
  * Dive CRUD, plus dive-computer file import, profile fetching and numbering.
  *
  * Two things differ from the other resources here. Updates replace the list-valued fields
- * (`mixtures`, `dive_site_uuids`, `gear_item_uuids`) wholesale rather than merging, so a
- * caller must send the full intended list. And importing a file is two steps - parse to
+ * (`mixtures`, `dive_site_uuids`, `gear_item_uuids`, `species_uuids`) wholesale rather than
+ * merging, so a caller must send the full intended list. And importing a file is two steps - parse to
  * pre-fill the form, then upload against the created dive - because the diver gets to
  * correct the parsed values before anything is stored.
  */

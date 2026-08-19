@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   ArrowDownToLine,
   Clock,
+  Fish,
   Plus,
   Waves,
 } from "lucide-react";
@@ -20,16 +21,19 @@ import { SetupChecklistCard } from "@/components/dashboard/setup-checklist-card"
 import { diveStatsAPI, UserDiveStats } from "@/lib/api/dive-stats";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { formatDurationHoursMinutes, greetingForHour } from "@/lib/date-time";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PageSpinner } from "@/components/ui/page-spinner";
 import { useUnits } from "@/hooks/useUnits";
 import { formatDepth } from "@/lib/units";
 
-// One headline number. `value` is `null` only while the stats request is in flight,
-// and renders as a dash rather than a zero: "0 dives" is a statement about the
-// logbook, and showing it before the answer is known reads as one.
-function StatCard({
+// One headline number, as a cell inside the stats card rather than a card of its
+// own - see the card's own comment for why the four were merged.
+//
+// `value` is `null` only while the stats request is in flight, and renders as a
+// dash rather than a zero: "0 dives" is a statement about the logbook, and
+// showing it before the answer is known reads as one.
+function Stat({
   title,
   icon,
   value,
@@ -41,16 +45,18 @@ function StatCard({
   hint: string;
 }) {
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+    <div>
+      {/* The icon leads the label rather than sitting opposite it, as it did
+          when each of these was a card wide enough to push the two apart. In a
+          quarter-width column there is nothing to push against, and a right-
+          aligned icon just floats away from the words it belongs to. */}
+      <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground mb-1">
         {icon}
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value ?? "—"}</div>
-        <p className="text-xs text-muted-foreground">{hint}</p>
-      </CardContent>
-    </Card>
+        {title}
+      </div>
+      <div className="text-2xl font-bold">{value ?? "—"}</div>
+      <p className="text-xs text-muted-foreground">{hint}</p>
+    </div>
   );
 }
 
@@ -176,26 +182,58 @@ export default function DashboardPage() {
       )}
 
       {hasDives && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <StatCard
-            title="Total Dives"
-            icon={<Waves className="h-4 w-4 text-muted-foreground" />}
-            value={stats && String(stats.total_dives)}
-            hint="Logged in your logbook"
-          />
-          <StatCard
-            title="Max Depth"
-            icon={<ArrowDownToLine className="h-4 w-4 text-muted-foreground" />}
-            value={stats && formatDepth(stats.max_depth, units)}
-            hint="Personal best"
-          />
-          <StatCard
-            title="Total Time"
-            icon={<Clock className="h-4 w-4 text-muted-foreground" />}
-            value={stats && formatDurationHoursMinutes(stats.total_time)}
-            hint="Underwater"
-          />
-        </div>
+        /* The four headline numbers in one card, the way the dive page holds its
+           duration and depths in one - they are read together as "what my
+           logbook amounts to", and four separate cards spent four headers and
+           four borders saying so four times. Four boxes in a row also read as
+           four unrelated things; one box reads as one summary, which is what it
+           is.
+
+           No header, for the dive card's reason: each figure is already
+           labelled, so a "Your diving" title above them would only restate the
+           four labels underneath. `pt-6` because `CardContent`'s own padding
+           assumes a header sits above it. */
+        <Card>
+          <CardContent className="pt-6">
+            {/* One row wherever there is room for four, and a 2×2 below that
+                rather than a single column: these are four short figures, and
+                stacking them would run the card down the page for no gain.
+
+                Measured, at `lg`: 248px columns at 1280 and 216px at 1024, both
+                one line per value. Below the breakpoint the 2×2 gives 393px at
+                900 and 139px at 375, still one line. Only at 320 - the narrowest
+                phone still worth supporting - does the longest value
+                ("450h 39min") wrap to two, which costs a taller row and nothing
+                else: no value overflows its column and the page never scrolls
+                sideways at any of those widths. */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-6">
+              <Stat
+                title="Total Dives"
+                icon={<Waves className="h-4 w-4" />}
+                value={stats && String(stats.total_dives)}
+                hint="Logged in your logbook"
+              />
+              <Stat
+                title="Max Depth"
+                icon={<ArrowDownToLine className="h-4 w-4" />}
+                value={stats && formatDepth(stats.max_depth, units)}
+                hint="Personal best"
+              />
+              <Stat
+                title="Total Time"
+                icon={<Clock className="h-4 w-4" />}
+                value={stats && formatDurationHoursMinutes(stats.total_time)}
+                hint="Underwater"
+              />
+              <Stat
+                title="Species Seen"
+                icon={<Fish className="h-4 w-4" />}
+                value={stats && String(stats.species_seen)}
+                hint="Distinct species spotted"
+              />
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* The two cards that say something about how the diving is *going*, rather than

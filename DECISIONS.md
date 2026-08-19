@@ -142,9 +142,18 @@ combobox. `TripCombobox` is a thin single-select wrapper that just supplies the 
 calls. `DiveSiteMultiSelect` wraps it too, but for picking _several_ dive sites (a dive can have
 more than one, e.g. a drift dive that crosses named sites) - it renders `CreatableCombobox` as the
 "add a site" input (always called with `value={undefined}` so it clears after each pick) plus its
-own reorderable list of already-added sites above it. If a third "pick or create" entity type is
-needed, wrap `CreatableCombobox` the same way rather than copy-pasting the interaction logic
-(filtering, commit-on-blur/Enter, mouse-down-prevents-blur for option clicks).
+own reorderable list of already-added sites above it. `GearItemMultiSelect` and `SpeciesMultiSelect`
+followed. Wrap `CreatableCombobox` the same way for any further "pick or create" entity type rather
+than copy-pasting the interaction logic (filtering, commit-on-blur/Enter, mouse-down-prevents-blur
+for option clicks).
+
+**Read the species picker's section before writing the next one**, though — "The species picker
+resolves a pick into a catalog row before form state sees it" below. It is the only wrapper whose
+pick can need a round trip before it has a value at all, and the three things that fall out of that
+(a pending row held outside form state, the submit guard that stops a save racing it, and reading
+the selection from a ref so two concurrent resolves don't drop each other) are not visible from this
+section or from the two synchronous wrappers. A pointer rather than a summary, so there is only one
+place for it to be wrong.
 
 ## Every dive form picker searches server-side
 
@@ -6981,3 +6990,126 @@ the map and nothing is sent" — the paste half of that is exactly what changed.
 _what the diver types_, which is a different kind of data leaving than a coordinate pair and was
 undisclosed for the trip form too, so §4.5 now covers both forms rather than describing half of one.
 A privacy page that is stale is worse than one that is vague.
+
+## The species picker resolves a pick into a catalog row before form state sees it
+
+The species catalog is global — a species is a fact about the ocean, not about a diver — and it is
+filled one pick at a time rather than bulk-imported (the licensing findings are in the API's
+`DECISIONS.md`). So a search returns two kinds of row: species the catalog already holds, which
+carry a `uuid`, and species that exist only upstream at WoRMS or Wikidata, which carry an `aphia_id`
+and nothing else. Only the first kind is addable to a dive.
+
+`SpeciesMultiSelect` closes that gap at **pick time**, not at save time. Picking an upstream row
+calls `POST /species/resolve`, and the uuid that comes back is what goes into form state. The
+alternative — putting a synthetic `aphia:278400` in `value` and resolving on submit — was rejected
+for two reasons. It puts a value in the form that is not a uuid, which the submit path would have to
+know about and every future reader of `species_uuids` would have to be told about; and it makes
+saving a dive depend on a third party being reachable, which is exactly the property the dive write
+path does not have anywhere else. Resolving at pick time means that by the time a dive is saved,
+every uuid on it already exists locally.
+
+What that costs is a moment where the diver has picked something the form does not yet hold, and the
+**pending rows** are that moment made visible: local state, not form state, rendered with a spinner
+and no drag handle, with their `aphia:` ids added to the combobox's `excludeIds` so the same species
+can't be picked twice while its resolve is in flight. On success the row is dropped and the real
+uuid appended; on failure it is dropped and a toast says so, leaving form state untouched. A diver
+who never looks at the field sees an ordinary picker.
+
+**A save has to wait for a pending resolve, and that is the one thing the pending rows could not
+express on their own.** They are local state by design, so a diver who picks a species and hits Save
+inside the second or two a cold resolve takes would have written the dive without the sighting — no
+error, no toast, the pending row vanishing with the navigation and the late `appendUuid` landing on
+a form that no longer exists. `SpeciesMultiSelect` therefore reports the state through
+`onPendingChange`, `DiveFormCard` holds it, and `DiveFormActions` disables submit and says "Adding
+species..." while it is set. Kept apart from `isSubmitting` because the save has not started, so the
+button names what it is waiting for rather than claiming to be saving; a disabled submit button is
+also what stops implicit submission (Enter in a text field), which is the other way a save could
+outrun a resolve.
+
+**Two resolves can be in flight at once**, and that is why `appendUuid` reads a ref rather than the
+`value` prop. The combobox has `keepOpenOnSelect`, so a diver picks the second species while the
+first is still resolving; `value` captured in the first pick's closure is the list as it stood
+_before_ either, so whichever resolve landed second would append to it and drop the first. The ref
+is claimed eagerly on append — not merely mirrored in an effect — because both can land before React
+has re-rendered either. There is a test that fails if it reads the prop.
+
+**No free-text hatch, unlike the trip location picker.** A global table has no owner to attribute a
+made-up row to, and a per-user overlay is a different feature with a different ownership model. The
+consequence is real and accepted: with both providers down and the species not yet in the catalog,
+the picker comes up dry, and the diver logs the dive and adds the species later. The dive's own
+`notes` field is where "weird translucent blob, 10 cm" goes meanwhile.
+
+**Species are deliberately excluded from prefill-from-last-dive.** `app/dives/new/page.tsx` carries
+the previous dive's gear, weight, water type and cylinders over, because those are properties of how
+the diver is configured and where they are. Sightings are not: they are observations, and copying
+yesterday's turtle into today's dive would fabricate a record of having seen it. The field is still
+listed in the prefill's `form.reset` — that call enumerates every field, so one left out of it comes
+back `undefined` rather than `[]`.
+
+**The attribution line is a wire-format consumer**, the same as the geocoder's (see "The geocoder's
+attribution is a wire format, not display copy"): the API sends the credit per result, the picker
+dedupes what it has seen this session and renders it through `Attribution`. Its line is held open
+with `min-h-4` for the reason the trip picker's is — a credit that materialises with the first
+search would grow the field and shove Notes down the form mid-edit.
+
+**Display names are English-only while the search index is multilingual.** `common_name` is a single
+English name and is often `null`; `speciesDisplayName` falls back to the scientific name, which is
+the normal case rather than an error path — WoRMS carries one vernacular for _Amphiprion ocellaris_
+and it is Japanese. The API's search index keeps every vernacular it gets in every language,
+so カクレクマノミ finds the clownfish; nothing in the UI ever shows it. That asymmetry is deliberate
+and lasts until the app has an i18n story.
+
+**A rank of `"unknown"` is not shown at all.** Most of the rank vocabulary is WoRMS's, passed
+straight through, but `"unknown"` is not a rank — it is the API's placeholder for "no rank to
+report", and it has **two** writers. `_wikidata_result` writes it for a Wikidata-only hit, which has
+no WoRMS record behind it to take a taxonomy from; `_worms_taxon` writes it for a WoRMS record that
+arrived without the field, because `rank` is `NOT NULL` and the API would rather store the sentinel
+than refuse an otherwise good record. Rendered as-is, the picker read "Manta americana, unknown",
+which sounds like a statement about the animal rather than about how much is known.
+`speciesRankLabel` drops it alongside the blank, and both the picker hint and the detail card's
+suffix go through it — a row with nothing else to add simply gets no hint.
+
+**The second writer is the load-bearing half.** It is tempting to reason that resolve refuses to
+invent a row without the authoritative record — which is true, it 503s — and conclude that anything
+reaching the catalog therefore has a real rank, making the detail card's guard unreachable. It does
+not follow: the authoritative record itself may omit `rank`, and the API stores `"unknown"` rather
+than refusing. A catalog row can carry the sentinel, the detail card's `speciesNameWithRank` is a
+live guard, and anyone who deletes it as dead code will be wrong. This paragraph exists because that
+inference was written down here first and had to be corrected against `species_service.py` — a
+Wikidata-only framing of the sentinel also misdirects anyone troubleshooting a rank-less row that
+really did come from WoRMS.
+
+**How much of a page carries it deliberately gets no number.** It is most of a typical page rather
+than a rare edge case, but the proportion is not a property of the data: search answers with
+whatever arrived inside its fan-out budget, so a slow minute at WoRMS leaves more of the page
+Wikidata-only and therefore rank-less, and two consecutive searches for the same word legitimately
+disagree. Two sessions measured 7-in-10 and 9-in-10 on the same query hours apart and both were
+right, which is how the cause surfaced.
+
+**Sightings are not restricted to species rank.** "A moray eel" is an honest log entry and resolves
+to the family _Muraenidae_, so `speciesNameWithRank` appends the rank whenever it isn't "Species" —
+a binomial is self-evidently a species, and "Muraenidae" alone would read as one.
+
+### The Species Seen tile is back, because the number is real now
+
+"The dashboard shows only what the app actually tracks" above records deleting this tile: the API
+had the column and the wire field but never derived either, so it read "0" for every diver forever.
+The API now derives `species_seen` as the distinct species over a diver's live dives, recomputed on
+every dive write, so the figure returns to the dashboard.
+
+**Adding the fourth is what collapsed the four cards into one.** Three cards in a row worked; a
+fourth either strands itself on its own row at `md:grid-cols-3` or forces a breakpoint shuffle, and
+either way four separate cards spend four headers and four borders on four numbers that are read
+together as one answer — "what my logbook amounts to". They are now one `Card` with no header
+holding a four-cell grid, exactly as the dive page holds duration and both depths (see "the three
+numbers that describe the shape of the dive"): each figure is already labelled, so a title above
+them would only restate the labels underneath.
+
+`grid-cols-2 lg:grid-cols-4` — one row wherever four fit, a 2×2 below that rather than a single
+column, since four short figures stacked would run the card down the page for no gain. The icons
+moved from opposite the label to in front of it: in a quarter-width column there is nothing for a
+right-aligned icon to push against, so it just floats away from the words it belongs to. The
+per-width measurements are in the component's own comment rather than repeated here.
+
+`StatCard` became `Stat` in the process, because it renders a cell and no longer a card — a name
+that still said "Card" would be the next reader's first wrong assumption.

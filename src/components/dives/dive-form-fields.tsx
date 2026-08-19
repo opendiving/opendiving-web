@@ -30,6 +30,7 @@ import {
 import { TripCombobox } from "@/components/dives/trip-combobox";
 import { DiveSiteMultiSelect } from "@/components/dives/dive-site-multi-select";
 import { DiveGearField } from "@/components/gear/dive-gear-field";
+import { SpeciesMultiSelect } from "@/components/dives/species-multi-select";
 import { cn } from "@/lib/utils";
 import { DiveMixtureInput } from "@/lib/validations/dive";
 import {
@@ -39,6 +40,7 @@ import {
   type WaterType,
 } from "@/lib/api/dives";
 import { GearItemSummary } from "@/lib/api/gear";
+import { SpeciesSummary } from "@/lib/api/species";
 import { useUnits } from "@/hooks/useUnits";
 import { unitLabel } from "@/lib/units";
 
@@ -74,6 +76,7 @@ export interface DiveFormValues extends FieldValues {
   trip_uuid?: string | null;
   dive_site_uuids?: string[];
   gear_item_uuids?: string[];
+  species_uuids?: string[];
   notes?: string;
   mixtures?: DiveMixtureInput[];
 }
@@ -100,6 +103,13 @@ export interface DiveFormFieldsProps<TFieldValues extends DiveFormValues> {
   // Same idea for gear: `Dive.gear_items` already carries what a picked row
   // renders, so the picker needn't fetch each item back by uuid.
   knownGearItems?: GearItemSummary[];
+  // And for species: `Dive.species` carries the names the picker's rows need,
+  // so an edit form starts out labelled without a lookup per row.
+  knownSpecies?: SpeciesSummary[];
+  // Raised by the species picker while a pick is still being resolved into a
+  // catalog row - see `SpeciesMultiSelect.onPendingChange`. Owned by
+  // `DiveFormCard`, which is where the submit button that must wait for it is.
+  onSpeciesPendingChange?: (isPending: boolean) => void;
   // A note shown under the dive number, but only while the field still holds
   // `forValue`. Carried as a value rather than a ready-made string so the
   // "still showing it?" check can happen inside the field's own render, where
@@ -121,6 +131,8 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
   mixtureFieldArray,
   knownDiveSites,
   knownGearItems,
+  knownSpecies,
+  onSpeciesPendingChange,
   diveNumberNotice,
 }: DiveFormFieldsProps<TFieldValues>) {
   const required = mode === "create";
@@ -516,6 +528,29 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
               </FormItem>
             </div>
           </div>
+        )}
+      />
+
+      {/* Species spotted - after the kit and before the notes, which is where
+          the dive page's own card sits: what was seen is an observation about
+          the dive, and the notes underneath are where anything this picker
+          can't name ends up. */}
+      <FormField
+        control={control}
+        name={"species_uuids" as Path<TFieldValues>}
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Species spotted</FormLabel>
+            <FormControl>
+              <SpeciesMultiSelect
+                value={field.value ?? []}
+                knownSpecies={knownSpecies}
+                onChange={field.onChange}
+                onPendingChange={onSpeciesPendingChange}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
         )}
       />
 
