@@ -60,8 +60,8 @@ Roadmap items, roughly in priority order — contributions welcome:
   stranded with is a migration path in. Longer term,
   [libdivecomputer](https://www.libdivecomputer.org/) for direct hardware support.
 - **One-command self-hosting** — a single compose file for the whole stack (web included, TLS
-  handled), prebuilt images, SMTP as an alternative to Resend, and versioned migrations so upgrades
-  never threaten your data.
+  handled), prebuilt images, and versioned migrations so upgrades never threaten your data. Mail is
+  already vendor-free: the API sends over plain SMTP, so any relay you point it at works.
 - **Statistics** — depth/time records, dives per year, sites map, species log.
 - **Sharing** — public link to a dive or trip.
 - **iOS companion app** — parked until the server story is done
