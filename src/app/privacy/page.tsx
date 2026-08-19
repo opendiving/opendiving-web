@@ -208,14 +208,14 @@ export default function PrivacyPage() {
             <p className="text-foreground mb-4">
               This happens whenever a map is on screen, whether or not you
               interact with it: the form to add or edit a dive site, a dive
-              site&rsquo;s own page, the form to add or edit a trip once
-              you&rsquo;ve picked a place for it, a trip with places on it, and
-              the page of a dive that has a position — either from the site it
-              was logged at or from the GPS reading in the file it was imported
-              from. Where the map shows a recorded position, that is where you
-              actually were rather than only which site you picked. Apart from
-              that form, which always loads a map so you have something to place
-              a pin on, a page with nothing to show loads no map and contacts
+              site&rsquo;s own page, the form to add or edit a trip, a trip with
+              places on it, and the page of a dive that has a position — either
+              from the site it was logged at or from the GPS reading in the file
+              it was imported from. Where the map shows a recorded position,
+              that is where you actually were rather than only which site you
+              picked. Apart from those two forms, which load a map as soon as
+              they open — one to place a pin on, one to show you the places you
+              pick — a page with nothing to show loads no map and contacts
               nobody.
             </p>
             <p className="text-foreground mb-4">

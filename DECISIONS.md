@@ -5785,9 +5785,12 @@ the whole dialog on every change to any field, which would mean re-fitting and r
 grid on each keystroke in the notes textarea. It is gated on there being at least one location with
 a position, which also keeps the map's chunk unfetched — it is a `next/dynamic` import with
 `ssr: false`, since it measures its own element and reads the resolved theme, neither of which
-exists on the server. The dynamic wrapper lives in its own file rather than at each of the two call
-sites, so the skeleton's height cannot drift from the map's and make the page jump when the chunk
-lands.
+exists on the server. (The gate is gone — the trip form's map is on screen from the moment the
+dialog opens, and so is its chunk. See "The trip form's map is always on screen, and its fields are
+asked in a different order" below. Everything else here still holds, `useWatch` most of all: an
+always-mounted tile grid is more expensive to re-render needlessly, not less.) The dynamic wrapper
+lives in its own file rather than at each of the two call sites, so the skeleton's height cannot
+drift from the map's and make the page jump when the chunk lands.
 
 ## A "+N" is a promise that hovering will say what N was
 
@@ -6747,3 +6750,135 @@ an ordinary `let`.
 
 **Metric is the default everywhere.** `useUnits` falls back to it when `user` has not loaded, which
 is also the column's server default and so the right answer for every existing row.
+
+## The trip form's map is always on screen, and its fields are asked in a different order
+
+`TripDialog` used to gate the confirmation map on `mappedLocations.length > 0`, which also kept the
+map's chunk unfetched until there was something in it to see. It now renders unconditionally, with
+`showWhenEmpty` - a new opt-in prop on `LocationsMap` - drawing the whole world until the first
+place is picked. Two reasons, and the second is the one that decided it: a frame that appears with
+the first place shoves everything below it down the dialog while the diver is mid-edit, and an empty
+map makes it obvious that the field above it is asking for somewhere on a map at all, rather than
+for free text. The dive site form has always worked this way (`DiveSiteMapField` renders `MapPicker`
+whether or not the site has a pin), so this is the two forms agreeing rather than a new idea.
+
+`showWhenEmpty` is **opt-in, not the new default**. Everywhere else the map answers "where is
+this?", and there an empty world is a worse answer than no map at all - the trips list, a trip's own
+page and a dive's sidebar all still gate on having something to draw, which is also what keeps them
+from fetching the chunk. What changes for the empty frame is the label:
+`Map of the trip's locations` over a blank world is wrong in exactly the place nobody looking at the
+screen can see it, so the aria-label becomes `Map of the world, awaiting ${subject}`. That is a
+third reading of `subject`, which until now was only the fallback for places with no usable names
+between them; the phrasing works for all three subjects in use because each is already a definite
+noun phrase ("the trip's locations", "the dive site", "the dive's location").
+
+The empty view itself is `WORLD_CENTER` at `MIN_ZOOM`, and `WORLD_CENTER` is new only in the sense
+that it was already there twice: `MapPicker`'s `DEFAULT_VIEW` and `fitBounds`'s answer to an empty
+box list. Those two disagreed - the picker opened at 20°N, "where the land and most of the world's
+diving is", while `fitBounds` returned the equator - and nothing noticed, because until now the only
+caller of `fitBounds` with no boxes rendered `null` and threw the view away. Hoisting the constant
+into `lib/map-tiles.ts` and having both read it is what makes "like the dive site form" true by
+construction rather than by two matching literals.
+
+**The field order changed with it**: name, then the dates, then the place and its map, then notes.
+The dates are what a diver knows without thinking; the place is picked from a search whose answer is
+the map, so the two belong together, and putting them last-but-one keeps the block that grows -
+twenty location rows and a map frame - away from the fields above it.
+
+One consequence outside the component: `/privacy` said that apart from the dive site form, "a page
+with nothing to show loads no map and contacts nobody". The trip form now loads one too, so that
+paragraph names both forms. A privacy page that is stale is worse than one that is vague.
+
+## A location's full label is trimmed of the name it sits beside, at render time
+
+Nominatim's `display_name` opens with the name it matched, and every surface that has room for the
+label shows the name first and the label after it. So the picker's rows, its menu hints and a trip
+page's location list all read "Dahab, Dahab, South Sinai, 45214, Egypt" and "Ko Tao, Ko Tao, Ko
+Pha-ngan District, Surat Thani Province, Thailand". `formatLocationContext` in
+`lib/trip-locations.ts` drops the leading parts of the label that the name itself repeats, and
+returns `undefined` when that leaves nothing - so a caller drops the element with `&&` rather than
+rendering an empty one.
+
+**Aligned part by part, never as a substring.** "Dahab" is a duplicate at the front of "Dahab, South
+Sinai" and a genuine piece of context in "Blue Hole, Dahab, South Sinai" - a `startsWith` on the
+whole string gets the first right and the second wrong, and a "does the label contain the name"
+check gets both wrong. Comparing whole comma-separated parts also stops "Ko Tao" from eating the
+front of "Ko Tao Island".
+
+**At render, not in `geocodeResultToLocation`.** Trimming on the way in would have been one line and
+is wrong twice over. `display_name` is stored on the trip's location rows, so every already-saved
+trip would keep its untrimmed label and only new picks would look right - the surfaces would
+disagree with each other by age of data. Worse, `locationKey` derives a row's identity from the
+position plus that label: a location saved before the change and the same place picked again after
+it would key differently, and the picker's "already in the list" check would let the duplicate
+through. Trimming at the point of display leaves identity, storage and the API contract untouched,
+and fixes old rows and new ones in the same breath.
+
+The trim is deliberately not applied to the `title` attribute's _shape_ - the row's `title` is still
+"name, context", because what an ellipsis hides is exactly the context that tells two places of the
+same name apart. It is the same trimmed context, just with the name back in front of it, which is
+what the row would read if it had the width.
+
+## The geocoder's attribution is a wire format, not display copy
+
+`GeocodeResult.attribution` used to arrive as prose with a bare URL on the end -
+`Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright` - and both places that show
+it printed it. The API now folds that trailing URL into the one markdown shape `parseAttribution`
+reads, `[label](href)`, which is the same shape `DEFAULT_TILE_ATTRIBUTION` has always used. So the
+string is part of the contract rather than free text, and the client parses it: printed raw, a diver
+reads `[Data © OpenStreetMap contributors, ODbL 1.0.](https://osm.org/copyright)` under the place
+picker and again under the dive site map.
+
+**The client change is safe in either merge order**, which is the only reason it could be made
+without coordinating two repos in one sitting. `parseAttribution` on a string with no markdown in it
+returns a single text run, so an unmigrated API renders exactly as it did before, and a migrated one
+renders a link. Nothing has to land first.
+
+Two measurements drove the fold, both taken in the browser at the 10px the credit is drawn at. The
+old string needed **341px** and a 375px phone leaves the dialog **325px**, so it wrapped to two
+lines, and the literal URL was **118px** of that; the linked label needs **223px** and fits with
+room to spare. The second reason is better than the first: a URL printed as characters cannot be
+followed, and the OSMF guidelines ask that there be a way to reach the origin and licence
+information, "for example by making the text a clickable link".
+
+`Attribution` (`components/attribution.tsx`) was extracted at the **fourth** copy of the same
+render-the-parts loop, not the second. Both maps had written it out by hand and neither was wrong
+to; what tipped it was the two geocoder credits needing the identical thing, plus the fact that the
+loop is the enforcement point for `react/no-danger` - the value comes from an environment variable
+or from whatever `GEOCODER_URL` answers, and a credit line is exactly the sort of "it's only markup"
+HTML that gets waved through. It renders inline elements and no styling: the four frames around it
+(a chip over a map corner, a line of fine print under a field) agree on nothing but what the string
+means.
+
+## The place-search credit holds its line open, and does not chase the dropdown
+
+The picker's credit is rendered from the first search that returns results, and the menu -
+`absolute z-50`, up to `max-h-60` - covers it. Measured with a one-row menu open: the credit at y
+335-367, the listbox at 331-369, and `document.elementFromPoint` at the credit's own midpoint
+returning the menu option. It therefore looks like it appears only after a place is added, which is
+when the menu finally closes.
+
+**That is not a licence problem, and a footer inside the dropdown was the wrong fix.** The OSMF
+attribution guidelines say, under _Geocoding (search)_: "Geocoders that use OpenStreetMap data must
+credit OpenStreetMap. Applications that incorporate such a geocoder must credit OpenStreetMap. A
+group of geocoding results need not maintain attribution attached to the results, as long as it does
+not form a Derivative Database." The obligation is on the application, once; the carve-out is about
+not having to glue a credit to each result as it flows through. So the menu rows never needed one,
+and putting a sticky footer in `CreatableCombobox` would have bought compliance we already had, at
+the price of: `scrollIntoView({ block: "nearest" })` parking the last option under an overlay it
+knows nothing about, an anchor inside `role="listbox"` - the mistake `locations-map.tsx` documents
+avoiding for `role="img"` - a link racing the blur that closes the menu, and a new prop on a
+component with six other consumers for a concern exactly one of them has.
+
+What _was_ wrong is that the credit materialised. It grew the field and shoved the map, and the
+Notes field under it, down the dialog mid-edit - reintroducing 16px lower the exact defect that
+making the map unconditional had just removed. Its line is held open with `min-h-4` instead, so the
+field never changes height. The cost is a blank 16px above the map when a saved trip is opened
+without searching, which is the honest price of a field that does not move under the diver.
+
+It is also sized to match the tile credit drawn over the map 8px below it, and lost its
+`Place search:` label. The label was most of what made it wrap, and it was never load-bearing - each
+credit names its own provider. **The two credits stay separate** rather than being merged into one
+OSM line: tiles are configured by `NEXT_PUBLIC_MAP_TILE_URL`/`_ATTRIBUTION` and place names by the
+API's `GEOCODER_URL`, so a self-hoster can be running two different providers, and one merged credit
+would then be a false statement about one of them.

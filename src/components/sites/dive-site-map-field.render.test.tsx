@@ -145,6 +145,39 @@ describe("DiveSiteMapField", () => {
     ).toBeInTheDocument();
   });
 
+  // The API folds the licence URL into the credit as a markdown link, so this
+  // line renders the string rather than printing it. Printed, a diver would
+  // read "Location from [Data © OpenStreetMap contributors, ODbL
+  // 1.0.](https://osm.org/copyright)".
+  it("renders the credit's licence link rather than its markdown", async () => {
+    reverseGeocode.mockResolvedValue(
+      named({
+        ...RESULT,
+        attribution:
+          "[Data © OpenStreetMap contributors, ODbL 1.0.](https://osm.org/copyright)",
+      }),
+    );
+    render(<Harness />);
+    (await placePin()).click();
+
+    const link = await screen.findByRole("link", {
+      name: "Data © OpenStreetMap contributors, ODbL 1.0.",
+    });
+    expect(link).toHaveAttribute("href", "https://osm.org/copyright");
+    expect(screen.queryByText(/\[Data ©/)).not.toBeInTheDocument();
+  });
+
+  // An older API - or a self-hoster's geocoder - sends the credit as plain
+  // prose, which has to keep working exactly as it did.
+  it("renders a credit that carries no link at all", async () => {
+    render(<Harness />);
+    (await placePin()).click();
+
+    expect(await screen.findByText(/Location from/)).toBeInTheDocument();
+    expect(credit()).toBeInTheDocument();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  });
+
   it("announces what it filled in, since nobody is looking at the field", async () => {
     render(<Harness />);
     (await placePin()).click();

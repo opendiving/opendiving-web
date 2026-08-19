@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { GripVertical, X } from "lucide-react";
 import {
   ComboboxItem,
@@ -20,6 +20,8 @@ import {
   MAX_TRIP_LOCATIONS,
   type TripLocationFormValue,
 } from "@/lib/validations/trip";
+import { formatLocationContext } from "@/lib/trip-locations";
+import { Attribution } from "@/components/attribution";
 import { cn } from "@/lib/utils";
 
 // Slower than the combobox's own 250 ms on purpose. Every keystroke that gets
@@ -103,8 +105,10 @@ export function mapSearchResults(results: GeocodeResult[]): MappedPlaces {
       items.push({
         id,
         name: location.name,
-        // What tells "Moalboal, Cebu" apart from "Moalboal, Negros Oriental".
-        hint: result.display_name,
+        // What tells "Moalboal, Cebu" apart from "Moalboal, Negros Oriental" -
+        // minus the row's own name, which the label repeats at the front and
+        // the row is already showing.
+        hint: formatLocationContext(location),
       });
     }
     if (result.attribution && !attributions.includes(result.attribution)) {
@@ -299,6 +303,11 @@ export function TripLocationMultiSelect({
         >
           {value.map((location, index) => {
             const isDragging = draggingIndex === index;
+            // The label without the leading repeat of the name beside it, so
+            // the row reads "Dahab, South Sinai, 45214, Egypt" rather than
+            // naming Dahab twice. `undefined` when the label said no more than
+            // the name does, and then the row is just the name.
+            const context = formatLocationContext(location);
             return (
               <li
                 // The position, for the same reason removal uses it: two
@@ -344,15 +353,13 @@ export function TripLocationMultiSelect({
                 <span
                   className="min-w-0 flex-1 truncate"
                   title={
-                    location.display_name
-                      ? `${location.name}, ${location.display_name}`
-                      : location.name
+                    context ? `${location.name}, ${context}` : location.name
                   }
                 >
                   {location.name}
                   <span className="text-muted-foreground">
                     {location.display_name
-                      ? `, ${location.display_name}`
+                      ? context && `, ${context}`
                       : // Not a warning - a typed-in place is a perfectly good
                         // answer - but the map below only draws what has a
                         // position, and its absence should be explained rather
@@ -436,14 +443,35 @@ export function TripLocationMultiSelect({
       </p>
 
       {/* A licence condition of the data, so it is rendered wherever the
-          results are. Plain text, not markup: the string comes from the
-          provider via the API, and `react/no-danger` is an error in this repo
-          for exactly this kind of "it's only a credit line" HTML. */}
-      {attributions.map((attribution) => (
-        <p key={attribution} className="text-xs text-muted-foreground">
-          Place search: {attribution}
-        </p>
-      ))}
+          results are - through `Attribution`, since the API sends the licence
+          URL as a markdown link and printing that raw would show a diver
+          `[Data © OpenStreetMap contributors, ODbL 1.0.](https://...)`.
+
+          Always mounted, with its one line of height reserved rather than
+          `empty:hidden` like the notice above it. A credit that materialises
+          with the first search grows the field and shoves the map - and the
+          Notes field under it - down the dialog while the diver is typing,
+          which is the very thing `TripDialog`'s always-on map exists to avoid.
+
+          Sized to match the tile credit drawn over that map, because the two
+          sit within 8px of each other and fine print that disagrees with itself
+          reads as a mistake. The size is load-bearing, not cosmetic: at 10px
+          the credit holds one line on a 375px phone, where the old shape with
+          its URL spelled out needed 341px against the 325px the dialog has.
+
+          One line, joined, rather than a paragraph each: what the credit must
+          do is name where the data came from, and a second provider is
+          hypothetical while a growing stack of fine print is not. No "Place
+          search:" label either - each credit names its own provider, and the
+          label was most of what made this wrap. */}
+      <p className="min-h-4 text-[10px] leading-4 text-muted-foreground">
+        {attributions.map((attribution, index) => (
+          <Fragment key={attribution}>
+            {index > 0 && " · "}
+            <Attribution value={attribution} />
+          </Fragment>
+        ))}
+      </p>
     </div>
   );
 }

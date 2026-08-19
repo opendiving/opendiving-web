@@ -8,6 +8,7 @@ import {
   formatCoordinateForForm,
   parseFormPosition,
 } from "@/lib/validations/dive-site";
+import { Attribution } from "@/components/attribution";
 
 // Still `next/dynamic` although the map is always shown: the tile grid, the
 // projection maths and the gesture handling then live in their own chunk,
@@ -172,9 +173,18 @@ export function DiveSiteMapField({
       {/* Attribution for the place name is a licence condition of the data, and
           is carried on the result itself so it survives a change of provider.
           Separate from the tile attribution drawn over the map: the same
-          provider serves both today, and need not tomorrow. */}
+          provider serves both today, and need not tomorrow.
+
+          Through `Attribution` rather than printed, because the API sends the
+          licence URL folded into a markdown link - raw, this line would read
+          "Location from [Data © OpenStreetMap contributors, ODbL
+          1.0.](https://osm.org/copyright)". */}
       <p role="status" className="text-xs text-muted-foreground">
-        {credit && <>Location from {credit}</>}
+        {credit && (
+          <>
+            Location from <Attribution value={credit} />
+          </>
+        )}
         <span className="sr-only">{announcement}</span>
       </p>
     </div>
