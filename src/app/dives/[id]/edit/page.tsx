@@ -216,6 +216,7 @@ function EditDivePageContent() {
         // to look them up again just to label the rows it starts out with.
         knownDiveSites={dive.dive_sites}
         knownGearItems={dive.gear_items}
+        knownSpecies={dive.species}
       />
     </div>
   );

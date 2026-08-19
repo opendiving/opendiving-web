@@ -358,6 +358,7 @@ export function diveToFormValues(dive: Dive): DiveUpdateInput {
     trip_uuid: dive.trip_uuid,
     dive_site_uuids: dive.dive_sites?.map((site) => site.uuid) ?? [],
     gear_item_uuids: dive.gear_items?.map((item) => item.uuid) ?? [],
+    species_uuids: dive.species?.map((s) => s.uuid) ?? [],
     notes: dive.notes || "",
     // Converted field by field rather than spread: every optional field arrives
     // as an explicit `null` when the mixture doesn't record it, and `null`
@@ -400,6 +401,7 @@ export const diveCreateSchema = z.object({
   trip_uuid: z.string().nullable().optional(),
   dive_site_uuids: z.array(z.string()).default([]),
   gear_item_uuids: z.array(z.string()).default([]),
+  species_uuids: z.array(z.string()).default([]),
   notes: z
     .string()
     .max(63206, "Notes cannot exceed 63206 characters")
@@ -440,6 +442,7 @@ export const diveUpdateSchema = z.object({
   trip_uuid: z.string().nullable().optional(),
   dive_site_uuids: z.array(z.string()).optional(),
   gear_item_uuids: z.array(z.string()).optional(),
+  species_uuids: z.array(z.string()).optional(),
   notes: z
     .string()
     .max(63206, "Notes cannot exceed 63206 characters")
@@ -503,6 +506,9 @@ export function buildDiveUpdate(data: DiveUpdateInput): DiveUpdate {
   }
   if (data.gear_item_uuids !== undefined) {
     update.gear_item_uuids = data.gear_item_uuids;
+  }
+  if (data.species_uuids !== undefined) {
+    update.species_uuids = data.species_uuids;
   }
   if (data.notes !== undefined) update.notes = data.notes;
   if (data.mixtures !== undefined) {

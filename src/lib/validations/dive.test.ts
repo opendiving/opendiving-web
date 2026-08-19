@@ -897,3 +897,63 @@ describe("diveToFormValues", () => {
     });
   });
 });
+
+// A dive as the detail endpoint sends one, for the seeding direction. Local to
+// this block because the fixture the edit-form tests share lives inside theirs.
+const DIVE_FOR_SPECIES: Dive = {
+  uuid: "dive-1",
+  dive_number: 42,
+  start_time: "2026-04-04T10:04:47+02:00",
+  duration: 2730,
+  dive_sites: [],
+  gear_items: [],
+  notes: "",
+  user_uuid: "user-1",
+  created_at: "2026-04-04T12:00:00+00:00",
+  mixtures: [],
+};
+
+describe("species_uuids", () => {
+  it("defaults to an empty list on create", () => {
+    const parsed = diveCreateSchema.safeParse(validDive);
+
+    expect(parsed.success).toBe(true);
+    expect(parsed.success && parsed.data.species_uuids).toEqual([]);
+  });
+
+  it("maps a dive's embedded species onto the form in order", () => {
+    const dive: Dive = {
+      ...DIVE_FOR_SPECIES,
+      species: [
+        { uuid: "species-2" } as NonNullable<Dive["species"]>[number],
+        { uuid: "species-1" } as NonNullable<Dive["species"]>[number],
+      ],
+    };
+
+    expect(diveToFormValues(dive).species_uuids).toEqual([
+      "species-2",
+      "species-1",
+    ]);
+  });
+
+  it("seeds an empty list for a dive payload that predates species", () => {
+    // The API caches a dive read for an hour, so a payload written before
+    // species existed has no key at all - and `undefined` here would make the
+    // field reset to its default after the form is seeded.
+    expect(diveToFormValues(DIVE_FOR_SPECIES).species_uuids).toEqual([]);
+  });
+
+  it("sends the list on update, including the empty one that clears it", () => {
+    // `[]` and "untouched" are different requests: an omitted key leaves the
+    // dive's species alone, so collapsing the two would make "remove them all"
+    // inexpressible. See "Locations are always sent on edit" in DECISIONS.md.
+    expect(
+      buildDiveUpdate({ species_uuids: ["a", "b"] }).species_uuids,
+    ).toEqual(["a", "b"]);
+    expect(buildDiveUpdate({ species_uuids: [] }).species_uuids).toEqual([]);
+  });
+
+  it("omits the key entirely when the form never had the field", () => {
+    expect("species_uuids" in buildDiveUpdate({})).toBe(false);
+  });
+});

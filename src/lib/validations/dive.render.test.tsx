@@ -196,6 +196,10 @@ describe("the edit form's round trip", () => {
         trip_uuid: "trip-7",
         dive_site_uuids: ["site-1"],
         gear_item_uuids: [],
+        // Sent even though the dive has none, like every other list field: an
+        // omitted key means "leave them alone", so a form that showed the whole
+        // set and omitted it could never express "remove them all".
+        species_uuids: [],
         notes: "Thermocline at 18m",
         mixtures: [],
         // An unrecorded water type goes out as the null it arrived as: the seed
