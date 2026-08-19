@@ -2007,7 +2007,7 @@ page and dropped the message), links to a `github.com/opendiving/opendiving` rep
 thing was rebuilt around things that are real.
 
 **Where the message goes.** There is no mail provider on this side and no server-side secret to hold
-one - the app is a client for the API, which already owns the Resend integration. So
+one - the app is a client for the API, which already owns the mail transport. So
 `contactAPI.sendMessage` posts to `POST /contact`, and the API forwards it to its
 `CONTACT_FORM_EMAIL` (see the API's `DECISIONS.md`). Nothing here decides, or can decide, the
 recipient.
