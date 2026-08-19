@@ -13,7 +13,9 @@ import {
   parseFormCoordinate,
 } from "@/lib/validations/dive-site";
 import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
+import { GeocodeResult } from "@/lib/api/geocoding";
 import { DiveSiteMapField } from "@/components/sites/dive-site-map-field";
+import { useGeocodedLocation } from "@/hooks/useGeocodedLocation";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { dialogFormSubmit } from "@/lib/dialog-form";
 import {
@@ -109,16 +111,68 @@ export function DiveSiteDialog({
     onOpenChange(next);
   };
 
+  // Owned here rather than by the map, because all three ways of placing a
+  // position have to reach the same lookup and only one of them comes through
+  // the map. The geocoded place name is written straight into the Location
+  // field; it stays an ordinary text input, so a diver who wants something else
+  // types over it.
+  const geocoded = useGeocodedLocation({
+    open,
+    latitude: watchedLatitude,
+    longitude: watchedLongitude,
+    location: watchedLocation,
+    onUseLocation: (value) =>
+      setValue("location", value, { shouldValidate: true, shouldDirty: true }),
+  });
+
+  // The map, the search and the paste handler all write into the same two
+  // fields rather than holding a position of their own, so there is one source
+  // of truth and the pair stays typeable, pasteable and clearable exactly as
+  // before. `shouldValidate` because a placed position completes the
+  // both-or-neither rule and should clear its message.
+  const setPosition = (position: { latitude: string; longitude: string }) => {
+    setValue("latitude", position.latitude, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+    setValue("longitude", position.longitude, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+  };
+
+  // A position that arrived without a name: dropped on the map, or pasted into
+  // the coordinates. The geocoder is asked what is there.
+  const placePosition = (position: { latitude: string; longitude: string }) => {
+    setPosition(position);
+    geocoded.lookup(position);
+  };
+
+  // A place picked from the search already knows its own name, so there is
+  // nothing to look up - but it fills exactly the same three fields.
+  const placeResult = (result: GeocodeResult) => {
+    const position = {
+      latitude: formatCoordinateForForm(result.latitude),
+      longitude: formatCoordinateForForm(result.longitude),
+    };
+    setPosition(position);
+    geocoded.adopt(position, result);
+  };
+
   // A pasted "27.8506, 34.3136" fills both fields rather than landing whole in
   // whichever one had focus. Anything that isn't a pair pastes as usual.
+  //
+  // It goes through `placePosition` rather than writing the fields directly:
+  // pasting a pair copied off another map is placing the site just as much as
+  // clicking is, and a diver who does it should not be the only one left to
+  // type the location out by hand.
   const handleCoordinatePaste = (
     event: React.ClipboardEvent<HTMLInputElement>,
   ) => {
     const pair = parseCoordinatePair(event.clipboardData.getData("text"));
     if (!pair) return;
     event.preventDefault();
-    setValue("latitude", pair.latitude, { shouldValidate: true });
-    setValue("longitude", pair.longitude, { shouldValidate: true });
+    placePosition(pair);
   };
 
   const onSubmit = async (data: DiveSiteFormInput) => {
@@ -271,34 +325,13 @@ export function DiveSiteDialog({
               {COORDINATE_HINT}
             </p>
 
-            {/* The map writes into the same two fields rather than holding a
-                position of its own, so there is one source of truth and the
-                pair stays typeable, pasteable and clearable exactly as before.
-                `shouldValidate` because a placed pin completes the
-                both-or-neither rule and should clear its message. */}
             <DiveSiteMapField
               latitude={watchedLatitude}
               longitude={watchedLongitude}
-              location={watchedLocation}
-              onPick={(picked) => {
-                setValue("latitude", picked.latitude, {
-                  shouldValidate: true,
-                  shouldDirty: true,
-                });
-                setValue("longitude", picked.longitude, {
-                  shouldValidate: true,
-                  shouldDirty: true,
-                });
-              }}
-              // The geocoded place name is written straight into the Location
-              // field. It stays an ordinary text input, so a diver who wants
-              // something else types over it.
-              onUseLocation={(value) =>
-                setValue("location", value, {
-                  shouldValidate: true,
-                  shouldDirty: true,
-                })
-              }
+              onPick={placePosition}
+              onPickPlace={placeResult}
+              credit={geocoded.credit}
+              announcement={geocoded.announcement}
             />
 
             <FormField

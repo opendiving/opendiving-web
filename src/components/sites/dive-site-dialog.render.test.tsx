@@ -1,10 +1,33 @@
-import { describe, it, expect, vi } from "vitest";
-import { createEvent, fireEvent, render, screen } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import {
+  createEvent,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { DiveSiteDialog } from "./dive-site-dialog";
 
 vi.mock("@/lib/api/dive-sites", () => ({
   diveSitesAPI: { createDiveSite: vi.fn(), updateDiveSite: vi.fn() },
 }));
+
+vi.mock("@/lib/api/geocoding", () => ({
+  geocodingAPI: {
+    reverseGeocode: vi.fn(),
+    searchPlaces: vi.fn().mockResolvedValue([]),
+  },
+  MIN_PLACE_QUERY_LENGTH: 2,
+  MAX_PLACE_QUERY_LENGTH: 200,
+}));
+
+const { geocodingAPI } = await import("@/lib/api/geocoding");
+const reverseGeocode = vi.mocked(geocodingAPI.reverseGeocode);
+
+beforeEach(() => {
+  reverseGeocode.mockReset();
+  reverseGeocode.mockResolvedValue({ status: "unknown" });
+});
 
 // `parseCoordinatePair` and the both-or-neither rule are unit-tested in
 // `lib/validations/dive-site.test.ts`. What only a render reaches is the wiring
@@ -80,6 +103,43 @@ describe("DiveSiteDialog coordinate paste", () => {
 
     expect(event.defaultPrevented).toBe(false);
     expect(longitude().value).toBe("");
+  });
+
+  // Pasting a pair copied off another map is placing the site just as much as
+  // clicking on the map is, so it names the position the same way. The lookup
+  // itself - and every guard around what it is allowed to overwrite - is
+  // covered in `hooks/useGeocodedLocation.render.test.tsx`; what only the
+  // dialog reaches is that the paste handler asks at all.
+  it("names the pasted position, as if it had been placed on the map", async () => {
+    reverseGeocode.mockResolvedValue({
+      status: "named",
+      result: {
+        latitude: 27.85,
+        longitude: 34.31,
+        location: "Sharm El-Sheikh, Egypt",
+        display_name: "Sharm El-Sheikh, South Sinai, Egypt",
+        name: "Sharm El-Sheikh",
+        attribution: "Data © OpenStreetMap contributors, ODbL 1.0.",
+      },
+    });
+    renderDialog();
+    pasteInto(latitude(), "27.8506, 34.3136");
+
+    await waitFor(() =>
+      expect(reverseGeocode).toHaveBeenCalledWith(27.8506, 34.3136),
+    );
+    await waitFor(() =>
+      expect(screen.getByLabelText("Location")).toHaveValue(
+        "Sharm El-Sheikh, Egypt",
+      ),
+    );
+  });
+
+  it("asks nothing about a paste that was not a pair", () => {
+    renderDialog();
+    pasteInto(latitude(), "27°51'02.2\"N");
+
+    expect(reverseGeocode).not.toHaveBeenCalled();
   });
 });
 
