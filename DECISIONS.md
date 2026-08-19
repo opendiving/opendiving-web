@@ -7113,3 +7113,49 @@ per-width measurements are in the component's own comment rather than repeated h
 
 `StatCard` became `Stat` in the process, because it renders a cell and no longer a card — a name
 that still said "Card" would be the next reader's first wrong assumption.
+
+## What actually keeps a species search from leaving is the cache, not the catalog
+
+`/privacy` §4.6 discloses the species picker's two upstream providers, and the obvious way to write
+its reassurance is wrong. The catalog is global — a species is a fact about the ocean, shared by
+every account on the instance — so the natural sentence is "once any diver has picked a species,
+later searches for it are answered locally and nothing leaves". `search_species` does not work that
+way: it runs `_local_search` and `_remote_search` _both_, every time, and merges them. A catalog hit
+changes what the diver is offered (a row with a `uuid`, attachable without a resolve) and never
+whether the providers are asked.
+
+Two separate mechanisms, and the policy names both rather than blurring them into one:
+
+- **The shared cache** is what stops a search leaving. `_cache_key("search", query)` is keyed on the
+  normalized query and nothing else, so it is instance-wide rather than per-diver, and a complete
+  answer is held for thirty days (`_HIT_TTL_SECONDS`). A partial fan-out gets an hour instead, which
+  is why the claim is "a month" and not "a month, always".
+- **The shared catalog** is what stops a _resolve_ leaving. `resolve_species` returns early on
+  `_species_by_aphia_id`, so the second diver to pick a clownfish sends nothing at all.
+
+Getting this backwards would have put a false statement in a privacy policy — the one document where
+a plausible-sounding simplification is worse than no sentence.
+
+**Resolving a species contacts both providers, not just WoRMS.** The paragraph reads like a single
+fetch of a taxonomic record, and `resolve_species` does begin with `AphiaRecordByAphiaID` — but its
+enrichment fan-out also runs `_wikidata_by_aphia_id`, which searches Wikidata for
+`haswbstatement:P850=<aphia_id>` and then fetches the entity, and that is where `wikidata_qid` and
+the common name come from. So Wikidata is contacted at pick time too, and the section says so;
+naming only "the marine register" there would have let a reader who had just read the search
+paragraph conclude Wikidata is asked only while typing. The AphiaID itself leaves _only_ at pick
+time — `_wikidata_search` sends the typed query plus the bare `haswbstatement:P850`, a "has some
+value" filter with no id in it, and the follow-up fetch is keyed on QIDs — which is exactly the
+split the two policy paragraphs draw.
+
+Two more traps the same section walks past. **Self-hosting does not buy the escape hatch it does for
+map tiles**: §4.4 can say "point it at your own tile server and none of this leaves your machine",
+but emptying `WORMS_API_URL`/`WIKIDATA_API_URL` degrades search to the local catalog and makes
+resolving a new species fail outright — a diver can type a place name by hand, and cannot invent an
+AphiaID. And **WoRMS is the taxonomy, Wikidata is the common names**, not the other way round;
+saying it backwards would misdescribe what each provider receives and why there are two.
+
+The section is a sibling of §4.5 by design — same three points in the same order (what is sent, that
+our servers send it so the provider never sees the diver, and that it only happens while a form is
+being filled in) — because a reader who has just read the geocoder paragraph should recognize the
+shape. Adding it renumbered Legal Requirements from 4.6 to 4.7; nothing links to these by number
+except this file.

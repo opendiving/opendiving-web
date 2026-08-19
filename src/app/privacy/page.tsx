@@ -249,7 +249,52 @@ export default function PrivacyPage() {
             </p>
 
             <h3 className="text-xl font-semibold text-foreground mb-3">
-              4.6 Legal Requirements
+              4.6 Species Names
+            </h3>
+            <p className="text-foreground mb-4">
+              The dive form lets you record what you saw, and the picker
+              searches for it as you type &mdash; a short moment after you stop,
+              once you have typed a couple of letters. It asks two public
+              registers: the World Register of Marine Species, which is the
+              authority on scientific names, and Wikidata, which supplies the
+              common ones, so that typing &ldquo;clownfish&rdquo; finds the
+              fish. What is sent is what you typed, and nothing else about the
+              dive you are logging. As with place names, it is sent by our
+              servers rather than by your browser, so neither register sees your
+              IP address, your account, or anything else about you.
+            </p>
+            <p className="text-foreground mb-4">
+              If you then pick a species this copy of OpenDiving has never seen
+              before, we fetch its record so it can be saved. Both registers are
+              asked again &mdash; the marine one for the taxonomy, Wikidata for
+              the common name &mdash; and all either of them receives is the
+              species&rsquo; number in the marine register: not what you typed,
+              and nothing about you or the dive.
+            </p>
+            <p className="text-foreground mb-4">
+              Most of the time neither request happens at all. Answers are kept
+              for a month, and they are shared by everyone using this copy of
+              OpenDiving rather than held per diver, so once anyone has searched
+              for a name, nobody&rsquo;s search for it leaves again that month.
+              The species themselves are shared in the same way: they are saved
+              here once and belong to no one diver, so picking one that somebody
+              has already picked sends nothing. The longer a copy of OpenDiving
+              runs, the less it has to ask.
+            </p>
+            <p className="text-foreground mb-4">
+              All of this happens only as you fill a dive in, never when you
+              view a dive you have already saved, and nothing is sent at all if
+              you never open the species picker.
+            </p>
+            <p className="text-foreground mb-4">
+              If you run your own copy of OpenDiving you can point it at your
+              own copies of either register. Leaving them unset does not switch
+              the search off &mdash; it narrows it to the species your own copy
+              already holds.
+            </p>
+
+            <h3 className="text-xl font-semibold text-foreground mb-3">
+              4.7 Legal Requirements
             </h3>
             <p className="text-foreground mb-4">
               We may disclose your information when required by law or to:
