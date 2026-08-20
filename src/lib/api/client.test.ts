@@ -254,6 +254,27 @@ describe("apiClient 401 handling", () => {
     expect(refresh).not.toHaveBeenCalled();
   });
 
+  // A rejected passkey is the same shape of failure: the credential in the body was
+  // refused, and a signed-out visitor has no refresh cookie to fall back on - so
+  // "Refresh token missing." would land where the API said the assertion was bad.
+  it("does the same for a refused passkey assertion", async () => {
+    const refresh = rejectWith(401, { detail: "Refresh token missing." });
+    axios.defaults.adapter = refresh;
+    apiClient.defaults.adapter = rejectWith(401, {
+      detail: "That passkey could not be verified.",
+    });
+
+    await expect(
+      apiClient.post("/auth/passkey/verify", {
+        flow_id: "f",
+        credential: {},
+      }),
+    ).rejects.toMatchObject({
+      response: { data: { detail: "That passkey could not be verified." } },
+    });
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
   // The other half: an ordinary request that 401s because the access token aged out
   // still gets one refresh-and-retry. Without this the set above could quietly grow
   // until nothing refreshes at all.

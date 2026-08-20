@@ -192,6 +192,7 @@ const SESSION_MINTING_PATHS = new Set([
   "/auth/email/verify",
   "/auth/email/verify-code",
   "/auth/google",
+  "/auth/passkey/verify",
   "/auth/complete",
 ]);
 

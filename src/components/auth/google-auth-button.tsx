@@ -81,11 +81,17 @@ function loadGsiScript(): Promise<void> {
   return gsiScriptPromise;
 }
 
-// Renders a fully custom "Continue with Google" button - the other half of the
-// single entry point into the app (see `AuthForm`). Google Identity Services
-// doesn't distinguish sign in from sign up (there's one button, one credential),
-// so `useAuth().signInWithGoogle` (backed by `POST /auth/google`) transparently
-// starts onboarding on first use instead of signing straight in.
+// Renders a fully custom "Continue with Google" button - one of the alternatives
+// to the email field on the single entry point into the app (see `AuthForm`).
+// Google Identity Services doesn't distinguish sign in from sign up (there's one
+// button, one credential), so `useAuth().signInWithGoogle` (backed by
+// `POST /auth/google`) transparently starts onboarding on first use instead of
+// signing straight in.
+//
+// The "Or" divider above this used to be drawn here. It moved up into `AuthForm`
+// when the passkey button joined it: with two optional methods, whichever of them
+// an instance has needs exactly one divider drawn above the pair, and neither can
+// own it.
 //
 // This talks to Google's `google.accounts.id` JS API directly, deliberately
 // bypassing `@react-oauth/google`'s own `GoogleLogin`/`GoogleOAuthProvider` - that
@@ -214,38 +220,27 @@ export function GoogleAuthButton({
   }
 
   return (
-    <div className="space-y-4">
-      <div className="relative">
-        <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-t" />
-        </div>
-        <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-card px-2 text-muted-foreground">Or</span>
-        </div>
+    <div className="group relative h-10 w-full">
+      {/* Fully custom, purely decorative button - matches `Button`'s own
+          outline styling exactly. Hidden from assistive technology: the real
+          button below carries the actual accessible name/role. The focus ring
+          uses `group-has-[:focus-visible]`, not `group-focus-within` - the
+          latter would also (undesirably) show it after an ordinary mouse
+          click, since clicking a button focuses it too; `:focus-visible`
+          matches only when the browser judges the focus as keyboard-driven,
+          the same distinction a native `<button>` gets for free - see
+          `DECISIONS.md`. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 flex items-center justify-center gap-2 rounded-md border border-input bg-background text-sm font-medium text-foreground transition-colors group-hover:bg-accent group-hover:text-accent-foreground group-has-[:focus-visible]:ring-2 group-has-[:focus-visible]:ring-ring group-has-[:focus-visible]:ring-offset-2"
+      >
+        <GoogleIcon className="h-4 w-4" />
+        <span>Continue with Google</span>
       </div>
 
-      <div className="group relative h-10 w-full">
-        {/* Fully custom, purely decorative button - matches `Button`'s own
-            outline styling exactly. Hidden from assistive technology: the real
-            button below carries the actual accessible name/role. The focus ring
-            uses `group-has-[:focus-visible]`, not `group-focus-within` - the
-            latter would also (undesirably) show it after an ordinary mouse
-            click, since clicking a button focuses it too; `:focus-visible`
-            matches only when the browser judges the focus as keyboard-driven,
-            the same distinction a native `<button>` gets for free - see
-            `DECISIONS.md`. */}
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 flex items-center justify-center gap-2 rounded-md border border-input bg-background text-sm font-medium text-foreground transition-colors group-hover:bg-accent group-hover:text-accent-foreground group-has-[:focus-visible]:ring-2 group-has-[:focus-visible]:ring-ring group-has-[:focus-visible]:ring-offset-2"
-        >
-          <GoogleIcon className="h-4 w-4" />
-          <span>Continue with Google</span>
-        </div>
-
-        {/* The real, functional Google button - invisible, but on top, so it
-            receives every click/hover/keyboard interaction. */}
-        <div ref={containerRef} className="absolute inset-0 z-10 opacity-0" />
-      </div>
+      {/* The real, functional Google button - invisible, but on top, so it
+          receives every click/hover/keyboard interaction. */}
+      <div ref={containerRef} className="absolute inset-0 z-10 opacity-0" />
     </div>
   );
 }

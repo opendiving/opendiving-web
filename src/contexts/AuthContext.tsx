@@ -9,12 +9,14 @@ import React, {
   useState,
   ReactNode,
 } from "react";
+import type { AuthenticationResponseJSON } from "@simplewebauthn/browser";
 import {
   authAPI,
   AuthOutcome,
   EmailLinkRequestResult,
   User,
 } from "@/lib/api/auth";
+import { passkeysAPI } from "@/lib/api/passkeys";
 import {
   AUTH_SESSION_EXPIRED_EVENT,
   clearAccessToken,
@@ -52,6 +54,13 @@ interface AuthContextType {
   // the same request row - whichever of the two arrives first wins.
   verifyEmailCode: (requestId: string, code: string) => Promise<boolean>;
   signInWithGoogle: (credential: string) => Promise<boolean>;
+  // The second half of a passkey ceremony: hand back the `flow_id` the options
+  // call returned along with the credential the authenticator produced. Returns
+  // `true` if the caller was signed in, on the same contract as the two above.
+  signInWithPasskey: (
+    flowId: string,
+    credential: AuthenticationResponseJSON,
+  ) => Promise<boolean>;
   completeProfile: (name: string, username: string) => Promise<void>;
   clearOnboarding: () => void;
   // Ends the session and leaves for the landing page with a page load. Rejects,
@@ -106,8 +115,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       );
   }, []);
 
-  // Applies an `AuthOutcome` returned by any of the four entry points
-  // (email link, email code, Google, profile completion): either fetches and stores the
+  // Applies an `AuthOutcome` returned by any of the five entry points (email link,
+  // email code, Google, passkey, profile completion): either fetches and stores the
   // now-signed-in user, or stashes the onboarding session for the profile
   // completion page to pick up. Returns whether the caller was signed in.
   const applyOutcome = useCallback(
@@ -160,6 +169,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const signInWithGoogle = useCallback(
     async (credential: string) => {
       const outcome = await authAPI.signInWithGoogle(credential);
+      return applyOutcome(outcome);
+    },
+    [applyOutcome],
+  );
+
+  // A passkey can only ever sign in: credentials are born inside an already
+  // authenticated session, so the account always exists by the time one is
+  // asserted and this path settles on `authenticated` every time in practice.
+  // It still goes through `applyOutcome` rather than assuming that - the funnel
+  // behind it is shared with the email and Google entry points, and an outcome
+  // handled there is one this doesn't have to learn about.
+  const signInWithPasskey = useCallback(
+    async (flowId: string, credential: AuthenticationResponseJSON) => {
+      const outcome = await passkeysAPI.verifySignIn(flowId, credential);
       return applyOutcome(outcome);
     },
     [applyOutcome],
@@ -243,7 +266,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, []);
 
-  // Memoized because this object is the context value: rebuilding it (and all eight
+  // Memoized because this object is the context value: rebuilding it (and all nine
   // methods) on every render of the provider makes every `useAuth()` consumer
   // re-render too, which is ~15 pages plus the header. `user` is what actually
   // changes; the methods are stable.
@@ -261,6 +284,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       verifyEmailLink,
       verifyEmailCode,
       signInWithGoogle,
+      signInWithPasskey,
       completeProfile,
       clearOnboarding,
       signOut,
@@ -274,6 +298,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       verifyEmailLink,
       verifyEmailCode,
       signInWithGoogle,
+      signInWithPasskey,
       completeProfile,
       clearOnboarding,
       signOut,

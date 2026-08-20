@@ -7,13 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
+import { useConfig } from "@/contexts/ConfigContext";
+import { usePasskeySignIn } from "@/hooks/usePasskeySignIn";
 import { emailAuthSchema, EmailAuthFormData } from "@/lib/validations/auth";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { rememberPostAuthRedirect } from "@/lib/auth-redirect";
 import { cn } from "@/lib/utils";
 import { CheckEmailCard } from "./check-email-card";
 import { GoogleAuthButton } from "./google-auth-button";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, KeyRound } from "lucide-react";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { StatusMessage } from "@/components/ui/status-message";
 
@@ -35,13 +37,29 @@ interface SentLink {
   requestId: string;
 }
 
-// The single entry point into the app: an email address, or "Continue with
-// Google" - no password field anywhere. Used both directly on the landing page
-// (see `app/page.tsx`) and wherever else a signed-out visitor needs to sign in.
+// The single entry point into the app: an email address, "Continue with Google",
+// or a passkey - no password field anywhere. Used both directly on the landing
+// page (see `app/page.tsx`) and wherever else a signed-out visitor needs to sign
+// in.
+//
+// Passkeys reach this form twice over. The explicit button below is the visible
+// half; the invisible one is a ceremony armed on mount, which puts the diver's
+// passkey in the browser's own autofill dropdown on the email field. That arms on
+// the landing page as well, deliberately: the hero *is* the sign-in surface for a
+// returning visitor, and one tap from there beats a round trip through an inbox.
 export function AuthForm({ className, redirectTo }: AuthFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState<SentLink | null>(null);
   const { requestEmailLink } = useAuth();
+  const { googleClientId } = useConfig();
+  // Armed only while the email input is on screen: the browser anchors its
+  // autofill dropdown to that field, and `CheckEmailCard` replaces this whole
+  // form once a link has been sent.
+  const passkey = usePasskeySignIn({
+    autofill: !sent,
+    redirectTo,
+    onError: setError,
+  });
 
   const {
     register,
@@ -115,6 +133,11 @@ export function AuthForm({ className, redirectTo }: AuthFormProps) {
             id="email"
             type="email"
             placeholder="you@example.com"
+            // `username` is the plain autofill hint this field always wanted;
+            // `webauthn` is what lets the browser offer a passkey in the same
+            // dropdown, and what `startAuthentication({useBrowserAutofill})`
+            // looks for before it will arm a conditional ceremony at all.
+            autoComplete="username webauthn"
             {...register("email")}
             className={errors.email ? "border-destructive" : ""}
           />
@@ -142,9 +165,49 @@ export function AuthForm({ className, redirectTo }: AuthFormProps) {
         </Button>
       </form>
 
-      <div className="mt-6">
-        <GoogleAuthButton onError={setError} redirectTo={redirectTo} />
-      </div>
+      {/* The divider lives here rather than inside `GoogleAuthButton`, because
+          there is more than one alternative method now and it has to be drawn
+          once above whichever of them this instance actually has. Google hides
+          itself when unconfigured and the passkey button when the browser has no
+          WebAuthn, so with neither present this whole block goes with them. */}
+      {(googleClientId || passkey.supported) && (
+        <div className="mt-6 space-y-4">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-muted-foreground">Or</span>
+            </div>
+          </div>
+
+          <GoogleAuthButton onError={setError} redirectTo={redirectTo} />
+
+          {passkey.supported && (
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={passkey.signIn}
+              disabled={passkey.isSigningIn}
+            >
+              {passkey.isSigningIn ? (
+                <div className="flex items-center space-x-2">
+                  <ButtonSpinner />
+                  <span>Signing in...</span>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2">
+                  <KeyRound size={16} />
+                  {/* "Sign in", not "Continue": a passkey can only ever sign in
+                      an account that already exists. */}
+                  <span>Sign in with a passkey</span>
+                </div>
+              )}
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
