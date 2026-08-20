@@ -74,7 +74,11 @@ export interface LinkCheckResult {
 // Every call that can hand back a session does the same thing with it: the access
 // token lives in memory only (see `client.ts`), so it has to be captured as the
 // response goes past rather than re-read from anywhere later.
-function captureSession(outcome: AuthOutcome): AuthOutcome {
+//
+// Exported for `lib/api/passkeys.ts`, which is a second module speaking the same
+// `AuthOutcome` - the passkey ceremony ends in the API's one shared funnel, so it
+// hands back exactly this shape and has exactly this to do with it.
+export function captureSession(outcome: AuthOutcome): AuthOutcome {
   if (outcome.status === "authenticated" && outcome.access_token) {
     setAccessToken(outcome.access_token);
   }

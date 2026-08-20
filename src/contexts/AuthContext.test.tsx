@@ -8,11 +8,13 @@ import { AUTH_SESSION_EXPIRED_EVENT } from "@/lib/api/client";
 // so a plain `const` declared here would not exist yet when the factory runs.
 const {
   authAPI,
+  passkeysAPI,
   refreshAccessToken,
   clearAccessToken,
   hardNavigate,
   rememberPostAuthRedirect,
 } = vi.hoisted(() => ({
+  passkeysAPI: { verifySignIn: vi.fn() },
   authAPI: {
     getCurrentUser: vi.fn(),
     requestEmailLink: vi.fn(),
@@ -30,6 +32,7 @@ const {
 }));
 
 vi.mock("@/lib/api/auth", () => ({ authAPI }));
+vi.mock("@/lib/api/passkeys", () => ({ passkeysAPI }));
 // Real storage would work through Node's shadowed `localStorage` and warn; what
 // matters here is only whether sign-out asks for the destination to be cleared.
 vi.mock("@/lib/auth-redirect", () => ({ rememberPostAuthRedirect }));
@@ -187,6 +190,31 @@ describe("AuthProvider outcomes", () => {
     });
   });
 
+  // A passkey resolves straight to an existing account, so this is the one entry
+  // point that has no realistic onboarding branch - it still goes through the
+  // same `applyOutcome` as the other two rather than assuming a session.
+  it("signs the user in from a verified passkey assertion", async () => {
+    refreshAccessToken.mockRejectedValue(new Error("401"));
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    passkeysAPI.verifySignIn.mockResolvedValue({ status: "authenticated" });
+    authAPI.getCurrentUser.mockResolvedValue(USER);
+
+    let signedIn: boolean | undefined;
+    await act(async () => {
+      signedIn = await result.current.signInWithPasskey("flow-1", {
+        id: "credential-id",
+      } as never);
+    });
+
+    expect(passkeysAPI.verifySignIn).toHaveBeenCalledWith("flow-1", {
+      id: "credential-id",
+    });
+    expect(signedIn).toBe(true);
+    expect(result.current.user).toEqual(USER);
+  });
+
   it("refuses to complete a profile with no onboarding session in progress", async () => {
     refreshAccessToken.mockRejectedValue(new Error("401"));
     const { result } = renderHook(() => useAuth(), { wrapper });
@@ -258,6 +286,7 @@ describe("AuthProvider identity", () => {
     expect(result.current).toBe(before);
     expect(result.current.signOut).toBe(before.signOut);
     expect(result.current.refreshUser).toBe(before.refreshUser);
+    expect(result.current.signInWithPasskey).toBe(before.signInWithPasskey);
   });
 
   it("throws when used outside the provider", () => {

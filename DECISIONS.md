@@ -8124,3 +8124,112 @@ way in is to swap `apiClient.defaults.adapter` — and `axios.defaults.adapter` 
 the regression's whole signature is `refreshAccessToken`'s own bare `axios.post` being reached. And
 the pair of tests has to include the _negative_ case (an ordinary request still refreshes once), or
 the set could quietly grow until nothing refreshes at all.
+
+## Passkeys sign in twice over, and the browser's own capability is the only switch
+
+`@simplewebauthn/browser` (v13) is a new dependency, and passkeys are now a third way into the app
+beside the magic link and Google. Two API calls back the whole thing — `POST /auth/passkey/options`
+mints a challenge and hands back the `flow_id` it was filed under, `POST /auth/passkey/verify` takes
+`{flow_id, credential}` and returns the same `AuthOutcome` the other two entry points return. Those
+key names are worth writing down rather than paraphrasing: the API's request model is
+`extra="forbid"`, and this client first shipped posting `assertion` — the word the ceremony's own
+prose uses for the signature _inside_ the credential — which the API rejects as an unknown field
+with `credential` reported missing beside it. Review caught it before it ran; the module's own test
+now pins the body shape rather than the implementation's choice of word. They live in
+`lib/api/passkeys.ts`; `AuthContext` grew `signInWithPasskey(flowId, credential)`, which is
+`signInWithGoogle` with a different payload and the same `applyOutcome` behind it. `verifySignIn`
+captures the session through `authAPI`'s own `captureSession`, now exported for it rather than
+copied — a second module speaking `AuthOutcome` has exactly the same thing to do with one.
+
+`/auth/passkey/verify` also joins `SESSION_MINTING_PATHS` in `lib/api/client.ts` (see "A 401 from a
+sign-in endpoint must not go down the refresh path" above). It is the same failure in a third
+costume: a 401 there means the _credential in the body_ was refused, a signed-out visitor has no
+refresh cookie to retry with, and without the entry the diver is told "Refresh token missing." while
+the API's own explanation is discarded and an `AUTH_SESSION_EXPIRED_EVENT` fires at someone who
+never had a session. That set is opt-in and silent about omissions, which is why the entry arrived
+with a test beside the existing pair. Registering a passkey is a separate, authenticated pair of
+endpoints and is not here yet — this is sign-in only.
+
+Nothing about it is configurable. `browserSupportsWebAuthn()` is `false` in exactly the deployments
+where the feature cannot work — a plain-HTTP LAN instance gets no `PublicKeyCredential` from the
+browser at all — so the UI hides itself on the capability rather than on a server flag, which
+extends `GoogleAuthButton`'s returns-`null`-when-unconfigured precedent from config-gating to
+capability-gating. A `PASSKEYS_ENABLED` knob would only be a second way for the answer to be wrong.
+
+That capability is read through `useSyncExternalStore` (`false` on the server, the real answer on
+the client) rather than an effect that calls `setState`. An effect is the obvious way to write it
+and `react-hooks/set-state-in-effect` rejects it outright — correctly, since this is a value that
+differs between the two renders rather than one that changes over time. The subscribe callback never
+fires: nothing turns WebAuthn on mid-session.
+
+### The form arms a ceremony nobody asked for, and that is the feature
+
+`hooks/usePasskeySignIn.ts` runs the same three steps twice in two very different registers.
+
+The **explicit** one is the "Sign in with a passkey" button: a click, the browser's own modal sheet,
+and a real error message if it fails. It exists even where conditional UI works, because the
+cross-device QR flow only ever appears behind a deliberate ceremony and a brand-new laptop has no
+autofill entry to tap.
+
+The **conditional** one arms on mount whenever `browserSupportsWebAuthnAutofill()` resolves true: it
+fetches options, calls `startAuthentication({useBrowserAutofill: true})`, and waits for the diver to
+pick a passkey out of the browser's ordinary autofill dropdown on the email field. Nobody asked for
+it, so nothing it does is ever reported — a failed options call (an instance whose API predates
+passkeys 404s on every page view), a declined ceremony, a dead challenge all pass in silence, and
+the form behaves exactly as it did before. The one concession is a single silent re-arm after a
+failed verify, which covers the ordinary case of a diver leaving the login page open past the
+challenge's ten-minute life; a second failure is left alone rather than looped on.
+
+It arms on the landing page too, because `AuthForm` mounts in the hero there. That is deliberate:
+the hero _is_ the sign-in surface for a returning visitor, and one tap from it beats a round trip
+through an inbox. The cost is one POST per supporting signed-out page view, which the API's per-IP
+limit on that route is sized for. If it ever needs cutting, the lever is arming on first focus of
+the email input rather than on mount — not a lower ceiling.
+
+The email input carries `autoComplete="username webauthn"`. The `webauthn` half is load-bearing: v13
+refuses to arm a conditional ceremony at all without an input that has it, and the `username` half
+is a plain-autofill fix this field had always wanted.
+
+### Three things about the ceremony that are easy to get wrong
+
+**Cancelling.** The ceremony is anchored to an input, so it has to be stood down when that input
+leaves — on unmount, and when the form swaps to the "check your email" card, which replaces the
+whole form. `WebAuthnAbortService.cancelCeremony()` in the effect's cleanup does it;
+`autofill: !sentTo` is what makes the effect re-run at the swap.
+
+**Recognising an abort.** v13 raises a `WebAuthnError` with `code === "ERROR_CEREMONY_ABORTED"`.
+Matching on `code` is the documented contract. v13 also copies the wrapped `DOMException`'s `name`
+onto the wrapper, so `err.name === "AbortError"` happens to work as well — but that is incidental,
+undocumented, and not what to write. The same copied `name` is the only thing distinguishing a
+dismissed sheet, since every spec error v13 declines to reinterpret shares one code
+(`ERROR_PASSTHROUGH_SEE_CAUSE_PROPERTY`); `cause` is unreachable from here anyway, because this
+project's `lib` is `es2020` and `Error.cause` is ES2022. A dismissed sheet says nothing to the
+visitor: `NotAllowedError` collapses "cancelled", "timed out" and "nothing matched" into one error
+on purpose — so that a page cannot ask whether an account has a passkey — and every reading of it is
+someone who chose to stop.
+
+**Not touching the magic link's storage.** `signInWithPasskey` routes by the `redirectTo` prop and
+never calls `rememberPostAuthRedirect`. That `localStorage` slot exists because the email flow
+leaves the tab and comes back on `/auth/verify` with no other way to know where it was headed (see
+"`/signin` is back, and carries where the visitor was headed" above); this ceremony never leaves the
+tab, exactly like Google's. Writing it here would leave a destination behind for a _later_
+magic-link sign-in to honour. There is a test that pins it, trivially true today and a regression
+guard the day someone adds the call.
+
+One consequence, named and accepted: starting the explicit ceremony cancels the armed conditional
+one, because v13's abort service allows only one ceremony at a time. So a diver who clicks the
+button and then backs out of the sheet no longer has a passkey in their autofill dropdown until the
+page is reloaded. Re-arming after the modal ceremony settles would fix it and is not built.
+
+### The divider moved up, and the header that has to keep quiet
+
+The "Or" divider used to be drawn inside `GoogleAuthButton`. With two optional methods below the
+email field, whichever of them an instance actually has needs exactly one divider above the pair,
+and neither button can own that decision — so `AuthForm` draws it, gated on
+`googleClientId || passkey.supported`, and the whole block disappears when an instance has neither.
+
+`next.config.js`'s `Permissions-Policy` restricts camera, microphone and geolocation and
+deliberately does not name `publickey-credentials-get`/`-create`, which stay at their default
+`self`. That is correct as it stands, and it is a trap for the next person to tighten that header:
+naming features there is opt-in, so an added directive that omits these two kills passkey sign-in
+with a browser-side error pointing nowhere near the header.

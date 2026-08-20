@@ -35,6 +35,11 @@ const nextConfig = {
           { key: "X-Frame-Options", value: "DENY" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           {
+            // Only the three features this app has no use for. Notably absent:
+            // `publickey-credentials-get`/`-create`, which stay at their default
+            // `self` so passkey ceremonies work (see `hooks/usePasskeySignIn.ts`).
+            // Tightening this header later has to name them explicitly, or it
+            // kills passkey sign-in with a browser-side error and no clue why.
             key: "Permissions-Policy",
             value: "camera=(), microphone=(), geolocation=()",
           },

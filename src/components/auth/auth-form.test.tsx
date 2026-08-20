@@ -9,20 +9,41 @@ import { AuthForm } from "./auth-form";
 //
 // `vi.hoisted` because `vi.mock` is lifted above every other statement in the
 // file, so a plain `const` here would not exist yet when the factory runs.
-const { rememberPostAuthRedirect, requestEmailLink, verifyEmailCode, router } =
-  vi.hoisted(() => ({
-    rememberPostAuthRedirect: vi.fn(),
-    requestEmailLink: vi.fn(),
-    verifyEmailCode: vi.fn(),
-    router: { push: vi.fn() },
-  }));
+const {
+  rememberPostAuthRedirect,
+  requestEmailLink,
+  verifyEmailCode,
+  signInWithPasskey,
+  browserSupportsWebAuthn,
+  browserSupportsWebAuthnAutofill,
+  startAuthentication,
+  cancelCeremony,
+  requestSignInOptions,
+  router,
+} = vi.hoisted(() => ({
+  rememberPostAuthRedirect: vi.fn(),
+  requestEmailLink: vi.fn(),
+  verifyEmailCode: vi.fn(),
+  signInWithPasskey: vi.fn(),
+  browserSupportsWebAuthn: vi.fn<() => boolean>(),
+  browserSupportsWebAuthnAutofill: vi.fn<() => Promise<boolean>>(),
+  startAuthentication: vi.fn(),
+  cancelCeremony: vi.fn(),
+  requestSignInOptions: vi.fn(),
+  // One stable object, per `DECISIONS.md` - a fresh router per call re-runs
+  // every effect that depends on it.
+  router: { push: vi.fn() },
+}));
 
+// The sanitizer and the default destination stay real - the passkey ceremony and
+// the "check your email" card both route through them. Only the storage write is
+// a spy.
 vi.mock("@/lib/auth-redirect", async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   rememberPostAuthRedirect,
 }));
 vi.mock("@/contexts/AuthContext", () => ({
-  useAuth: () => ({ requestEmailLink, verifyEmailCode }),
+  useAuth: () => ({ requestEmailLink, verifyEmailCode, signInWithPasskey }),
 }));
 // The "check your email" card routes with the router once a code verifies. Its own
 // behaviour is covered in `check-email-card.test.tsx`; what these tests need from
@@ -33,6 +54,21 @@ vi.mock("next/navigation", () => ({ useRouter: () => router }));
 // none of that is what these tests are about.
 vi.mock("./google-auth-button", () => ({ GoogleAuthButton: () => null }));
 
+// The real hook runs against these, so what these tests exercise is this form's
+// own wiring into it - which method is offered, and when the armed ceremony is
+// stood down. The ceremony's own behaviour is pinned in
+// `hooks/usePasskeySignIn.test.tsx`.
+vi.mock("@simplewebauthn/browser", () => ({
+  browserSupportsWebAuthn,
+  browserSupportsWebAuthnAutofill,
+  startAuthentication,
+  WebAuthnAbortService: { cancelCeremony },
+  WebAuthnError: class extends Error {},
+}));
+vi.mock("@/lib/api/passkeys", () => ({
+  passkeysAPI: { requestSignInOptions },
+}));
+
 // Captured before any test can fake the clock, so the one unavoidable real wait
 // below has something real to wait on.
 const realSetTimeout = globalThis.setTimeout;
@@ -41,6 +77,16 @@ beforeEach(() => {
   vi.clearAllMocks();
   requestEmailLink.mockResolvedValue({ message: "sent", request_id: "req-1" });
   verifyEmailCode.mockResolvedValue(true);
+  // The default is a browser with no WebAuthn at all, so every test that isn't
+  // about passkeys sees exactly the form it always did.
+  browserSupportsWebAuthn.mockReturnValue(false);
+  browserSupportsWebAuthnAutofill.mockResolvedValue(true);
+  requestSignInOptions.mockResolvedValue({
+    flow_id: "flow-1",
+    options: { challenge: "abc" },
+  });
+  startAuthentication.mockResolvedValue({ id: "credential-id" });
+  signInWithPasskey.mockResolvedValue(true);
 });
 
 afterEach(() => {
@@ -52,7 +98,8 @@ async function requestLink(redirectTo: string | null) {
   render(<AuthForm redirectTo={redirectTo} />);
 
   await user.type(screen.getByLabelText("Email"), "diver@example.com");
-  await user.click(screen.getByRole("button", { name: /sign in/i }));
+  // Anchored, so it can't also match "Sign in with a passkey" beside it.
+  await user.click(screen.getByRole("button", { name: /^sign in$/i }));
   await screen.findByText("Check your email");
 
   return user;
@@ -144,5 +191,63 @@ describe("AuthForm", () => {
     await waitFor(() =>
       expect(screen.getByLabelText(/enter the code/i)).toHaveValue(""),
     );
+  });
+});
+
+describe("AuthForm passkeys", () => {
+  // The plain-HTTP LAN instance, where the browser exposes no WebAuthn API. The
+  // method hides itself rather than offering a button that can never work - the
+  // same shape `GoogleAuthButton` uses for a missing client ID.
+  it("offers no passkey button on a browser without WebAuthn", async () => {
+    render(<AuthForm redirectTo={null} />);
+
+    await screen.findByLabelText("Email");
+    expect(
+      screen.queryByRole("button", { name: /passkey/i }),
+    ).not.toBeInTheDocument();
+    expect(requestSignInOptions).not.toHaveBeenCalled();
+  });
+
+  it("offers one where the browser has WebAuthn", async () => {
+    browserSupportsWebAuthn.mockReturnValue(true);
+
+    render(<AuthForm redirectTo={null} />);
+
+    expect(
+      await screen.findByRole("button", { name: /sign in with a passkey/i }),
+    ).toBeInTheDocument();
+  });
+
+  // The dropdown is anchored to this field, and the browser will not arm a
+  // conditional ceremony without the `webauthn` token on it.
+  it("marks the email field as a passkey autofill target", async () => {
+    render(<AuthForm redirectTo={null} />);
+
+    expect(await screen.findByLabelText("Email")).toHaveAttribute(
+      "autocomplete",
+      "username webauthn",
+    );
+  });
+
+  it("arms the autofill ceremony on mount", async () => {
+    browserSupportsWebAuthn.mockReturnValue(true);
+
+    render(<AuthForm redirectTo={null} />);
+
+    await waitFor(() =>
+      expect(startAuthentication).toHaveBeenCalledWith(
+        expect.objectContaining({ useBrowserAutofill: true }),
+      ),
+    );
+  });
+
+  // The "check your email" card replaces the whole form, taking the input the
+  // ceremony is anchored to with it.
+  it("stands the ceremony down when the sent card replaces the form", async () => {
+    browserSupportsWebAuthn.mockReturnValue(true);
+
+    await requestLink(null);
+
+    expect(cancelCeremony).toHaveBeenCalled();
   });
 });
