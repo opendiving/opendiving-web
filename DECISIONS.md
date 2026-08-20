@@ -7379,7 +7379,7 @@ correct for an instance that moved the port.
 ## The image builds once per architecture, and a `v*` tag is checked against `package.json`
 
 `.github/workflows/publish-image.yml` publishes `ghcr.io/opendiving/opendiving-web`. Its shape is
-decided by three things.
+decided by four things.
 
 - **Native runners, not QEMU.** `linux/amd64` and `linux/arm64` build on `ubuntu-latest` and
   `ubuntu-24.04-arm` respectively, each pushing an untagged image and reporting its digest; a
@@ -7405,10 +7405,32 @@ decided by three things.
   written as `^v[0-9]` quietly does, since the trigger glob is `v*` and not every `v*` starts with a
   digit. The tag-push path therefore enters the guard unconditionally; only a dispatch, where a
   human is naming an arbitrary ref, uses a heuristic to decide whether they meant a version at all.
+- **A version typed into the extra-tag input is refused, with or without the `v`.** That input
+  exists for names like `staging`, and a version put there never reaches the guard above at all:
+  `-f ref=main -f tag=0.4.0` publishes `:0.4.0` off whatever commit `ref` names, unchecked against
+  `package.json` and without any of the other aliases that version is supposed to carry. The two
+  spellings fail differently and the bare one is the worse of them — `0.4.0` and `0.4` are exactly
+  what a release publishes, so it _overwrites_ a real alias, where `v0.4.0` only invents a name
+  nothing else in the repository uses. Hence `^v?[0-9]`: the whole leading-digit namespace belongs
+  to the release path, and reserving it costs a `staging`-shaped input nothing. The error names the
+  fix rather than just the refusal — point `ref` at the tag, which is the path that computes the
+  whole alias set and checks it.
 
 Labels go on the per-architecture images and the same values go on the index as annotations — an
 index carries no labels, and `org.opencontainers.image.source` is what GHCR reads to decide which
-repository a package belongs to and inherits access from.
+repository a package belongs to and inherits access from. One of them is conditional:
+`org.opencontainers.image.version` is stamped only when there is a version to state, because on a
+branch or `sha-` build it would carry the empty string, and a label reading `version=` is a claim
+about the version rather than the absence of one.
+
+**The api repo's workflow of the same name is this same policy said twice.** The two repos release
+in lockstep on one version, so an alias rule or a guard added to one has to be added to the other,
+and both are written in one idiom — tags assembled by hand rather than by `docker/metadata-action` —
+so that making the change twice reads as a diff rather than an archaeology session. What differs
+between them is only what has to: the manifest is `package.json` read by `node` rather than
+`pyproject.toml` read by `tomllib`, the title and description name this image, and the cost of QEMU
+is `next build` rather than compiling wheels without an aarch64 build. Anything else that differs is
+a port owed in one direction or the other, and worth resolving as one.
 
 Alongside it, `.github/release.yml` and a labelling job in `pr-title.yml` are the release-notes
 plumbing. The job reads the same conventional title the check above it validated, applies one of
