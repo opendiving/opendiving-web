@@ -7692,3 +7692,47 @@ mirror this repo's. Every CI workflow across both repos now starts from `content
 checkout that persists nothing, so a new one has a shape to copy rather than a repository default to
 inherit. A workflow that genuinely needs to write asks on the job, which is what `pr-title.yml` does
 in both repos.
+
+## `SECURITY.md` has two channels, and both of them exist
+
+The repo had a `CODE_OF_CONDUCT.md` and a `CONTRIBUTING.md` and no way to report a vulnerability
+privately, so a finder's only option was a public issue — on a project that invites strangers to
+self-host it. `SECURITY.md` closes that. What is worth recording is which channel is primary, why
+the other one is safe to publish when a near-identical address was deleted from this repo once
+already, and which parts of the boilerplate a template would have supplied are missing on purpose.
+
+**The primary channel is GitHub's private vulnerability reporting** — `security/advisories/new` on
+this repository — because it is private by construction, keeps the thread and the eventual advisory
+in one place, and credits the reporter without anyone having to remember to. It is a repository
+setting rather than a file (Settings → Code security), and it gets switched on when these repos go
+public. That ordering is fine and not a gap: while the repo is private, nobody who would read
+`SECURITY.md` can reach it either.
+
+**`security@opendiving.app` is the second channel, and it is a real inbox.** It has to be, which is
+the whole point of writing this down. `security@` was literally one of the three invented addresses
+deleted in the contact-form rebuild (see "The contact form posts to the API, and the page it lives
+on claims only what exists"), and `lib/runtime-config.ts` leaves `CONTACT_EMAIL` unset by default
+for the same reason: an address nobody reads routes someone's report to a stranger, which is worse
+than no address at all. So the test an address has to pass here is not "does it look plausible" but
+"has a maintainer created it and agreed to read it" — this one has, which is exactly what separates
+it from the deleted one. Don't add a third by pattern-matching on this one; `conduct@opendiving.app`
+in `CODE_OF_CONDUCT.md` carries conduct reports and nothing else.
+
+Two near misses, for anyone tempted to revisit them. The app's own contact form has a `security`
+category in `CONTACT_CATEGORIES`, but it only exists on a _running instance_ and there is no hosted
+instance of this project — `SECURITY.md` mentions it only as the thing a self-hoster's own users
+would use to reach _that_ operator. And the file briefly had no mailbox at all, offering "open an
+issue saying only that you have a security report" as the fallback for a reporter without a GitHub
+account: that was incoherent, since filing an issue needs an account just as much. A second channel
+that shares the first one's precondition is not a second channel.
+
+**No supported-versions table and no SLA.** The boilerplate template wants a matrix of version
+ranges with ticks and crosses, and this project has one release line: `publish-image.yml` publishes
+`X.Y.Z`, `X.Y`, `X` and `latest` off one tag, nothing is backported, and the version moves in
+lockstep with the API. "The latest release" is the entire honest answer, so it is one sentence
+rather than a table that would be wrong the moment it was written. The same reasoning kills the
+48-hour acknowledgement and the 90-day disclosure clock: there is no rota to keep either, and a
+published promise nobody can meet is worse for a reporter than being told plainly what to expect.
+What the file does instead is tell them to nudge the thread after a couple of weeks — a suggestion
+to the reporter costs nothing to honour — and to name their own deadline in the first message if
+they have one.
