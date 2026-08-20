@@ -123,6 +123,25 @@ rest of the reasoning.
 - If the change depends on an API change, link the corresponding
   [opendiving-api](https://github.com/opendiving/opendiving-api) PR.
 
+## Cutting a release
+
+Releases are cut deliberately, not minted per merge, and the version moves in lockstep with
+[opendiving-api](https://github.com/opendiving/opendiving-api): one product version, tagged in both
+repos, so `opendiving-api:0.4.0` and `opendiving-web:0.4.0` are always a matched pair. A pin that
+resolves in one repo and not the other is a broken install, which is why neither repo picks its
+number alone.
+
+This repo's part is small: bump `version` in `package.json` in its own PR, titled
+`chore: release v0.4.0`, then tag that bump commit and push the tag. The tag push runs **Publish
+Image**, which compares the tag against the manifest and fails the build if they disagree — so
+nothing is published from a bump and a tag that say different things.
+
+Everything else — the cadence, how to pick the number, the scanner that finds breaking changes in
+the window, the release notes — lives in the api repo's CONTRIBUTING under
+[Cutting a release](https://github.com/opendiving/opendiving-api/blob/main/CONTRIBUTING.md#cutting-a-release).
+It is deliberately in one place: a decision table kept in two repos drifts apart, and that one is
+the copy self-hosters read.
+
 ## License
 
 By contributing you agree that your work is licensed under [AGPL-3.0](LICENSE), same as the rest of
