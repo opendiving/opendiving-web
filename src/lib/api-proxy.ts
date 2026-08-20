@@ -110,8 +110,12 @@ function upstreamHeaders(request: NextRequest): Headers {
   // as this one container, collapsing all ten buckets into one, which is exactly the
   // failure the API's `TRUSTED_PROXY_IPS` exists to prevent. That variable is still what
   // decides whether the API believes the chain, and it has to name *this* container (the
-  // API's peer), not the operator's own proxy, which the API never talks to directly. An
-  // install that omits it gets one shared bucket rather than a forgeable one.
+  // API's peer), not the operator's own proxy, which the API never talks to directly -
+  // but only where something that *appends* `X-Forwarded-For` really fronts this
+  // container. Nothing is appended here, so on a directly exposed one the caller supplies
+  // the whole chain and naming this container is what makes all ten buckets forgeable;
+  // omitting it costs one shared bucket, which is the safe direction there.
+  // `DECISIONS.md` and `.env.example` carry the long version.
   //
   // `x-forwarded-for` has no fallback here because there is nothing to fall back to: a
   // route handler cannot see the socket peer (`NextRequest.ip` was removed in Next 15),
