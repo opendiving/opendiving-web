@@ -184,7 +184,7 @@ library.
 Issues and PRs are welcome — from a typo fix to a new importer. Open an issue first for bigger
 features so we can agree on the shape. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, the checks
 CI runs, and the house rules, and [DECISIONS.md](DECISIONS.md) for the non-obvious choices already
-made.
+made. Security problems go through [SECURITY.md](SECURITY.md) rather than the issue tracker.
 
 ## Related repositories
 

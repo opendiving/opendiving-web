@@ -7,6 +7,9 @@ For anything bigger than a small fix, **open an issue first** so we can agree on
 you spend an evening on it. That goes double for changes that need new endpoints: those start in
 [opendiving-api](https://github.com/opendiving/opendiving-api).
 
+Found a security problem? An issue is the wrong place for it — [SECURITY.md](SECURITY.md) says where
+it goes.
+
 Participation is covered by our [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Getting set up
