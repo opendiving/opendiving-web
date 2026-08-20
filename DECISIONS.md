@@ -404,7 +404,20 @@ Things that are load-bearing in `lib/api-proxy.ts`, each of which was found by b
   handler runs. Copying it across is what keeps the API's ten per-IP rate limits in separate
   buckets. The API only believes that chain when its peer is listed in `TRUSTED_PROXY_IPS`, and its
   peer is _this container_, not the operator's own proxy - which the API never talks to directly. An
-  install that omits it gets one shared bucket rather than a forgeable one.
+  install that omits it gets one shared bucket rather than a forgeable one. That is the shipped
+  case, and it inverts when nothing appends: Next fills the header in only when it is _absent_
+  (`req.headers['x-forwarded-for'] ??= originalRequest?.socket?.remoteAddress`, `base-server.js`),
+  so a caller that sends its own arrives with it intact and its socket address never appended.
+  Behind a proxy that does append - Caddy, Traefik, nginx - that is harmless: the appended entry is
+  the real caller and the right-most one no listed proxy vouched for, so the API's right-to-left
+  walk stops there and the forged prefix is ignored. Expose this container directly, with nothing in
+  front of it, and cover it in `TRUSTED_PROXY_IPS` anyway, and the forged entry _is_ that right-most
+  untrusted one - all ten limits, magic-link and contact form included, bypassable by rotating one
+  header. There it is _setting_ the variable that makes the bucket forgeable, and omitting it is
+  still the safe direction. Not fixable at this layer either: with no socket peer to compare
+  against, an honest chain and a forged one are the same bytes, and stripping the header would merge
+  every caller into one bucket on the topology that actually ships. `.env.example` carries the
+  warning instead, beside where an operator meets the proxy setup.
 
 Local dev keeps the split-origin shape: `.env` sets `NEXT_PUBLIC_API_URL` to the API's own published
 port, so the route handler is never reached and `scripts/screenshots.mjs`, which reads the same
