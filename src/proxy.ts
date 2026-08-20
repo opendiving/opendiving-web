@@ -233,11 +233,42 @@ export const config = {
       // container healthcheck with two words of plain text, and a policy governing
       // scripts and styles has nothing to say about it. Skipping it also keeps the
       // per-request nonce off a path that is hit every few seconds forever.
+      //
+      // There is no `missing:` clause here, and its absence is deliberate. Next's own
+      // CSP guide (`node_modules/next/dist/docs/01-app/02-guides/content-security-policy.md`)
+      // puts one in at this exact spot, listing `next-router-prefetch` and
+      // `purpose: prefetch`, and says only that prefetches "don't need the CSP header".
+      // The concern it is usually explained by is a stale nonce: one baked into a
+      // prefetched RSC payload, parked in the client router cache, replayed on a later
+      // navigation under a document whose CSP carries a different nonce.
+      //
+      // That cannot happen here, because a real prefetch payload has no nonce to go
+      // stale. A `<Link>` prefetch of `/privacy` (`RSC: 1` plus `next-router-prefetch: 1`)
+      // comes back as a 267-byte router-tree stub - no `<script>`, no nonce anywhere in
+      // it; the same URL with `RSC: 1` alone returns 36 KB carrying the request's nonce.
+      // What the clause did buy was an opt-out: one request header - `purpose: prefetch`,
+      // or any value at all of `next-router-prefetch` - and this middleware never ran, so
+      // a full 66 KB HTML document with 22 `<script>` tags was served with no CSP, no
+      // HSTS and no `X-Robots-Tag`. Cache poisoning was never the risk - these responses
+      // are `private, no-cache, no-store, max-age=0, must-revalidate` with no `ETag`, so
+      // no shared cache may store the CSP-less document and no 304 path exists - the
+      // header-stripping primitive itself was. Without the clause, no request shape
+      // yields a CSP-less response.
+      //
+      // It never covered the prefetches browsers send on their own, either. `matchHas`
+      // (`node_modules/next/dist/shared/lib/router/utils/prepare-destination.js`) looks a
+      // header up by exact lowercased key, so the `Sec-Purpose: prefetch` that Chrome's
+      // speculation rules and Google's prefetch proxy actually send never matched the
+      // `purpose` key and kept the CSP regardless. Only a hand-written header stripped it.
+      //
+      // One switch would reopen this: `cacheComponents`/PPR, which `next.config.js` has
+      // no `experimental` block for today. App-shell prefetches (`next-router-prefetch: 3`,
+      // `FetchStrategy.RuntimeShell`) are written into the client cache as prerenders, and
+      // a per-request nonce baked into one is exactly the stale nonce above. The same
+      // guide already calls PPR incompatible with nonce-based CSP - "static shell scripts
+      // won't have access to the nonce" - so enabling it means rethinking this whole file,
+      // not handing these four lines back.
       source: "/((?!api/|_next/static/|_next/image/|favicon.ico$|healthz$).*)",
-      missing: [
-        { type: "header", key: "next-router-prefetch" },
-        { type: "header", key: "purpose", value: "prefetch" },
-      ],
     },
   ],
 };

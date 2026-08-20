@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { config } from "./proxy";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 /**
@@ -135,5 +136,29 @@ describe("Content-Security-Policy", () => {
     expect(nonceOf(first.headers.get("Content-Security-Policy"))).not.toBe(
       nonceOf(second.headers.get("Content-Security-Policy")),
     );
+  });
+});
+
+describe("matcher", () => {
+  // Next's own CSP guide pairs this matcher with a `missing:` clause skipping prefetch
+  // requests; this app deliberately carries none, so that nothing a client puts in a
+  // request can opt the response out of the policy. `src/proxy.ts` has the reasoning -
+  // in short, a real prefetch payload has no nonce to go stale, and the clause was a
+  // one-header way to be served a full HTML document with no CSP, no HSTS and no
+  // `X-Robots-Tag`.
+  //
+  // Vitest never runs Next's matcher, so this can only be a static assertion about the
+  // exported `config` - which is exactly why it is worth writing down. The guarantee is
+  // four lines away from being handed back, and every other test here calls `proxy()`
+  // directly, so not one of them would notice.
+  it("gives no request header a way to opt out of the policy", () => {
+    expect(config.matcher.length).toBeGreaterThan(0);
+
+    for (const entry of config.matcher) {
+      // The only two matcher keys that condition on the request itself. `source`
+      // conditions on the path, which is what the exclusions in it are for.
+      expect(entry).not.toHaveProperty("missing");
+      expect(entry).not.toHaveProperty("has");
+    }
   });
 });
