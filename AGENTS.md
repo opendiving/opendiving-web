@@ -29,7 +29,9 @@ instructions live in AGENTS.md" in `DECISIONS.md`.
 - **Everything else configurable is read at runtime**, not through `NEXT_PUBLIC_*`. `SITE_URL`,
   `CONTACT_EMAIL`, `GOOGLE_CLIENT_ID`, `GRAVATAR_ENABLED` and the three `MAP_TILE_*` variables are
   read on the server by `lib/runtime-config.ts` and reach client components through
-  `contexts/ConfigContext.tsx`'s `useConfig()`. Add a new setting there, never as a new
+  `contexts/ConfigContext.tsx`'s `useConfig()`. `WEB_HSTS` and `WEB_NOINDEX` come from the same
+  module but stay server-side — `src/proxy.ts` and `app/robots.ts` are their only consumers, so
+  they sit on `RuntimeConfig` and not on `PublicConfig`. Add a new setting there, never as a new
   `NEXT_PUBLIC_` variable: those are inlined by the compiler and would be frozen into the published
   image. The prefixed spellings survive as fallbacks, read through a computed key so they are not
   inlined either. `.env.example` documents each one.

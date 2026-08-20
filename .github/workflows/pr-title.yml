@@ -6,8 +6,8 @@ on:
     # corrected, so a failing PR goes green without an empty commit to push.
     types: [opened, edited, reopened]
 
-# Nothing is checked out and no API call is made - the title arrives in the
-# event payload - so the job needs no token at all.
+# The check itself needs no token: nothing is checked out and no API call is made, since
+# the title arrives in the event payload. The labelling job below asks for its own.
 permissions: {}
 
 jobs:
@@ -46,3 +46,87 @@ jobs:
           echo
           echo "Edit the title - this check re-runs on edit, no push needed."
           exit 1
+
+  # The same title, read a second time to decide which release-notes category the PR
+  # belongs in (`.github/release.yml`). Only reached when the check above passed, so this
+  # never has to reason about a title that isn't a conventional subject.
+  label:
+    needs: semantic-title
+    runs-on: ubuntu-latest
+
+    # `pull-requests: write` to change the labels on this PR; `issues: write` to create
+    # one that doesn't exist yet, which is what keeps a fresh clone of this repo - or a
+    # fork someone maintains - from failing here on its first PR.
+    permissions:
+      pull-requests: write
+      issues: write
+
+    # Gated to PRs opened from a branch in this repository. On a fork PR the token is
+    # read-only whatever the block above asks for, so an ungated step would turn a
+    # *required* check red on every external contribution - exactly when the repos go
+    # public. Fork PRs get labelled by hand; `pull_request_target` is the alternative if
+    # that ever grates, and is only safe here because this workflow checks out nothing.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+
+    steps:
+      - name: Label the PR by its type
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TITLE: ${{ github.event.pull_request.title }}
+          NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+
+          # Only three types get a category of their own; everything else falls into the
+          # catch-all and needs no label. A `!` outranks the type, so `feat!:` is breaking
+          # rather than a feature.
+          LABEL=""
+          if [[ "$TITLE" =~ ^([a-z]+)(\([a-z0-9._-]+\))?(!)?: ]]; then
+            if [ -n "${BASH_REMATCH[3]}" ]; then
+              LABEL=breaking
+            elif [ "${BASH_REMATCH[1]}" = feat ]; then
+              LABEL=feat
+            elif [ "${BASH_REMATCH[1]}" = fix ]; then
+              LABEL=fix
+            fi
+          fi
+
+          CURRENT="$(gh pr view "$NUMBER" --json labels --jq '.labels[].name')"
+
+          # Both directions matter. Adding is the obvious half; removing is what stops a
+          # PR retitled from `feat!:` to `fix:` staying in the Breaking section of the
+          # notes forever. Only labels this step owns are touched, and only where they
+          # actually differ - so a maintainer's own labels survive and an unchanged title
+          # makes no write at all.
+          ARGS=()
+          for KNOWN in breaking feat fix; do
+            HAS=false
+            if printf '%s\n' "$CURRENT" | grep -qx "$KNOWN"; then HAS=true; fi
+            if [ "$KNOWN" = "$LABEL" ] && [ "$HAS" = false ]; then
+              ARGS+=(--add-label "$KNOWN")
+            elif [ "$KNOWN" != "$LABEL" ] && [ "$HAS" = true ]; then
+              ARGS+=(--remove-label "$KNOWN")
+            fi
+          done
+
+          if [ "${#ARGS[@]}" -eq 0 ]; then
+            echo "Labels already match the title; nothing to do."
+            exit 0
+          fi
+
+          # `gh pr edit --add-label` fails on a label the repository has never defined, so
+          # the one being added is created first. An existing label is left exactly as it
+          # is, colour and description included - this is a backstop for a repo that was
+          # never set up, not a place to keep them in sync.
+          if [ -n "$LABEL" ]; then
+            case "$LABEL" in
+              breaking) COLOUR=d73a4a; DESC="Changes an existing contract - listed first in the release notes" ;;
+              feat)     COLOUR=0e8a16; DESC="New user-visible behaviour" ;;
+              fix)      COLOUR=1d76db; DESC="Corrects behaviour that was already shipped" ;;
+            esac
+            gh label create "$LABEL" --color "$COLOUR" --description "$DESC" 2>/dev/null ||
+              echo "Label '$LABEL' is already defined."
+          fi
+
+          gh pr edit "$NUMBER" "${ARGS[@]}"

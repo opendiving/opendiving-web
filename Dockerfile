@@ -62,5 +62,16 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
+# Node's own `fetch` rather than curl or wget: this image is `node:24-alpine`, which
+# carries neither, and installing one to ask a question the runtime can already ask is a
+# package and a CVE surface for nothing. Written in exec form, so no shell is involved and
+# the builder performs no substitution on it - `process.env.PORT` is read by node at run
+# time, which keeps the check right for an instance that moved the port.
+#
+# `--start-period` is what stops a slow first boot from counting as failures: within it a
+# failing check delays `healthy` rather than counting toward `--retries`.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD ["node", "-e", "fetch('http://127.0.0.1:' + (process.env.PORT || 3000) + '/healthz').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+
 # Start the application
 CMD ["node", "server.js"]

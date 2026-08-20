@@ -24,6 +24,8 @@ describe("readRuntimeConfig", () => {
       contactEmail: undefined,
       googleClientId: undefined,
       gravatarEnabled: false,
+      hstsEnabled: true,
+      noindex: false,
       tiles: {
         light: DEFAULT_TILE_URL,
         dark: DEFAULT_DARK_TILE_URL,
@@ -124,6 +126,32 @@ describe("readRuntimeConfig", () => {
       expect(warn).toHaveBeenCalledWith(
         expect.stringContaining("GRAVATAR_ENABLED=enabled"),
       );
+    });
+  });
+
+  describe("WEB_HSTS and WEB_NOINDEX", () => {
+    it.each(["0", "false", "no", "off"])("WEB_HSTS=%s turns HSTS off", (v) => {
+      expect(readRuntimeConfig({ WEB_HSTS: v }).hstsEnabled).toBe(false);
+    });
+
+    it.each(["1", "true", "yes", "on"])(
+      "WEB_NOINDEX=%s closes the site",
+      (v) => {
+        expect(readRuntimeConfig({ WEB_NOINDEX: v }).noindex).toBe(true);
+      },
+    );
+
+    // Both are new names, so there is no build-time spelling of them to honour - and
+    // offering one would invite an operator to set a variable that reaches the browser
+    // for a decision only the server makes.
+    it("ignores a NEXT_PUBLIC_ spelling of either", () => {
+      const config = readRuntimeConfig({
+        NEXT_PUBLIC_WEB_HSTS: "off",
+        NEXT_PUBLIC_WEB_NOINDEX: "true",
+      });
+
+      expect(config.hstsEnabled).toBe(true);
+      expect(config.noindex).toBe(false);
     });
   });
 

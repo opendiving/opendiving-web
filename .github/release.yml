@@ -1,0 +1,21 @@
+# How GitHub sorts merged PRs into the notes `gh release create --generate-notes` writes.
+#
+# Order is load-bearing: a PR lands in the *first* category whose labels match, so
+# breaking changes have to come first or a `feat!:` would be filed as an ordinary feature.
+# The labels themselves are applied by the title-matching step in `pr-title.yml`.
+changelog:
+  categories:
+    - title: ⚠️ Breaking changes
+      labels:
+        - breaking
+    - title: Features
+      labels:
+        - feat
+    - title: Fixes
+      labels:
+        - fix
+    # Everything else - docs, refactors, chores, and any PR that predates the labelling
+    # step - rather than being dropped from the notes silently.
+    - title: Other changes
+      labels:
+        - "*"

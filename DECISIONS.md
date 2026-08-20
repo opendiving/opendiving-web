@@ -7302,3 +7302,118 @@ data" among the service providers, "some anonymized data may be retained for ana
 (`connect-src` names the API and nothing else). They are gone. A privacy policy that overstates what
 is collected is not the safe direction to be wrong in: it is the document a reader uses to decide
 whether to trust the rest.
+
+## HSTS is decided per request, and no longer asks for `preload`
+
+`Strict-Transport-Security` used to be a static entry in `next.config.js`'s `headers()`, with the
+value `max-age=63072000; includeSubDomains; preload`. Both halves of that were wrong once the image
+became something other people run.
+
+`headers()` is evaluated during the build. In a repo that deploys its own build that is invisible;
+in a published image it means the build machine decides a security header for somebody else's
+domain, and no environment variable can move it. So the header moved into `src/proxy.ts`, which
+already runs per request for the CSP nonce and already reads `lib/runtime-config.ts`.
+
+What being per-request buys is the condition: it is sent only when the request arrived over HTTPS. A
+LAN instance on `http://192.168.1.4:3000` was previously handed a two-year pin it has no way to
+honour, and a browser that recorded one stops being able to reach the instance at all — the failure
+is total, delayed, and looks like the network. `x-forwarded-proto` is the evidence, read at its
+_first_ entry because a proxy chain appends and the client-facing hop is the one that matters; with
+no forwarded header at all the request's own scheme decides. `WEB_HSTS=off` is the escape hatch for
+an instance that wants the header owned by the proxy in front, or not at all.
+
+`preload` is gone regardless of any of that. Submitting a domain to the browsers' preload list
+commits every host under it to HTTPS for years and is deliberately slow to undo — a reasonable thing
+for an operator to choose for their own domain, and not a thing an application should quietly choose
+on their behalf by shipping the token. `includeSubDomains` stays: it is scoped to the host actually
+serving the app, and it is undone by letting the max-age lapse rather than by a form submission and
+a browser release cycle.
+
+Two consequences worth knowing. The header now only rides responses the middleware matcher covers —
+documents and their data requests, not `_next/static` — which is enough, because HSTS is recorded
+per host and the first navigation is a document. And `next.config.js` keeps the headers that
+genuinely are the same for every request of every deployment (`nosniff`, `X-Frame-Options`,
+`Referrer-Policy`, `Permissions-Policy`); the split is "static fact" versus "instance decision", not
+an accident of where each one was first written.
+
+## `WEB_NOINDEX` is two mechanisms, because `Disallow` is not `noindex`
+
+`app/robots.ts` answers `Disallow: /` when the flag is set, and `src/proxy.ts` adds
+`X-Robots-Tag: noindex, nofollow` to every page. Doing only the first is the common mistake:
+`robots.txt` asks a crawler not to _fetch_, which is not a promise not to _list_. A URL a crawler
+learned about somewhere else can be indexed without ever being fetched — and a page it never fetches
+is a page whose `noindex` it never sees, so the two directives are not redundant, they cover
+disjoint cases.
+
+`robots.ts` needs `export const dynamic = "force-dynamic"`. It is a route handler like any other,
+and Next prerenders one that reads nothing request-scoped — which would resolve `WEB_NOINDEX` on the
+build machine and freeze the answer into the published image. That is the same trap
+`lib/runtime-config.ts` exists to avoid, arriving through a file convention rather than through a
+variable, which is exactly why it is easy to miss.
+
+The default is "allow", which is what the app did before this existed: no `robots.txt` at all is
+read as no restriction.
+
+## `/healthz` is shallow on purpose
+
+The container healthcheck (`Dockerfile`) asks this route and nothing else, and the route reports
+only that this process is serving HTTP. It deliberately does not check Postgres or Redis: the web
+container does not talk to either, and a healthcheck that failed because a database it never uses
+was slow would have Docker restart a container that was perfectly able to render its sign-in page.
+The API owns that question and has its own readiness probe.
+
+Two smaller choices. `force-dynamic`, because a route handler with no request-time API is
+prerendered and served from disk — still evidence the process is up, but a health endpoint that
+answers without running any of the app's own code is a strange thing to trust, and the cost of
+running it is a string. And the matcher in `src/proxy.ts` excludes it, for the same reason it
+excludes `api/`: a policy about scripts and styles has nothing to say about two words of plain text,
+and the exclusion keeps a fresh nonce off a path that is hit every thirty seconds for the life of
+the container.
+
+The check itself is a `node -e` one-liner rather than `curl`, because `node:24-alpine` ships neither
+`curl` nor `wget` and adding one to ask a question the runtime can already ask is a package and a
+CVE surface for nothing. It is written in exec form, so no shell is involved and the builder
+performs no substitution — `process.env.PORT` is read by node at run time, which keeps the check
+correct for an instance that moved the port.
+
+## The image builds once per architecture, and a `v*` tag is checked against `package.json`
+
+`.github/workflows/publish-image.yml` publishes `ghcr.io/opendiving/opendiving-web`. Its shape is
+decided by three things.
+
+- **Native runners, not QEMU.** `linux/amd64` and `linux/arm64` build on `ubuntu-latest` and
+  `ubuntu-24.04-arm` respectively, each pushing an untagged image and reporting its digest; a
+  `merge` job turns the pair into one manifest list. Emulating arm64 is the one-job alternative and
+  it is not close here — `npm ci` plus `next build` under QEMU turns a three-minute build into a
+  twenty-minute one, on every release. arm64 is not optional: "low-powered device" is a top-two
+  hardware answer among self-hosters, and a missing arm64 image is a bounce rather than an
+  inconvenience.
+- **Every tag created in one call.** `docker buildx imagetools create` receives the whole tag list
+  at once, so `X.Y.Z`, `X.Y`, `X` and `latest` cannot end up on different digests. That is what
+  makes the CVE-rebuild story work: rebuilding a released version means recomputing its _full_ alias
+  set, and a hand-typed subset would leave everyone following `X.Y` on the vulnerable image. The
+  major alias starts at `1.0.0` — a bare `0` invites pinning to "any 0.x", which is precisely the
+  range whose minors are allowed to break.
+- **The tag is guarded against the manifest.** Every `v*` tag push fails the build, before anything
+  is pushed to the registry, unless the tag is a plain `vX.Y.Z` equal to `v` + `package.json`'s
+  version. A two-repo release ritual will eventually tag the wrong commit, and the failure is
+  otherwise silent — images published under a version whose manifest says something else. Recovery
+  is cheap precisely because the guard fires first: nothing was pushed, so delete the tag, fix,
+  re-tag. The two halves of that condition matter separately. `vX.Y.Z` is the only shape this
+  pipeline knows how to alias, so `vnext` or a pre-release has to be refused rather than sail past
+  the version check and publish as a bare `sha-` image — which is what an "is this a version?" test
+  written as `^v[0-9]` quietly does, since the trigger glob is `v*` and not every `v*` starts with a
+  digit. The tag-push path therefore enters the guard unconditionally; only a dispatch, where a
+  human is naming an arbitrary ref, uses a heuristic to decide whether they meant a version at all.
+
+Labels go on the per-architecture images and the same values go on the index as annotations — an
+index carries no labels, and `org.opencontainers.image.source` is what GHCR reads to decide which
+repository a package belongs to and inherits access from.
+
+Alongside it, `.github/release.yml` and a labelling job in `pr-title.yml` are the release-notes
+plumbing. The job reads the same conventional title the check above it validated, applies one of
+`breaking`/`feat`/`fix`, and — the half that is easy to forget — removes the other two, so a PR
+retitled from `feat!:` to `fix:` does not stay in the Breaking section forever. It is gated to
+same-repo PRs: on a fork PR the token is read-only whatever the workflow asks for, and an ungated
+step would turn a _required_ check red on every external contribution, which is exactly the wrong
+week for it when the repos go public.

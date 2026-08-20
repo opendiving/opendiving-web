@@ -55,6 +55,19 @@ export interface RuntimeConfig extends PublicConfig {
    * default rather than pointing a self-hoster's visitors at this project's inbox.
    */
   contactEmail?: string;
+  /**
+   * Whether `src/proxy.ts` may send `Strict-Transport-Security`. On by default, and only
+   * ever acted on for a request that already arrived over HTTPS; `WEB_HSTS=off` is the
+   * escape hatch for an instance served over plain HTTP on a LAN, where a browser that
+   * recorded the pin would refuse to reach it again.
+   */
+  hstsEnabled: boolean;
+  /**
+   * Whether to ask crawlers to stay out entirely - `app/robots.ts` plus an
+   * `X-Robots-Tag` on every page. Off by default, which is what a public instance wants;
+   * a private one sets `WEB_NOINDEX=true`.
+   */
+  noindex: boolean;
 }
 
 /**
@@ -159,6 +172,11 @@ export function readRuntimeConfig(
       dark: configured(env, "MAP_TILE_URL_DARK"),
       attribution: configured(env, "MAP_TILE_ATTRIBUTION"),
     }),
+    // Read directly rather than through `configured`: these two are new names with no
+    // `NEXT_PUBLIC_` past to fall back to, and offering one would invite an operator to
+    // set a variable that reaches the browser for a decision the server makes alone.
+    hstsEnabled: flag("WEB_HSTS", set(env.WEB_HSTS), true),
+    noindex: flag("WEB_NOINDEX", set(env.WEB_NOINDEX), false),
   };
 }
 

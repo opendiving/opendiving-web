@@ -23,8 +23,9 @@ npm run dev
 Open <http://localhost:3000> and sign in with your email. With no email provider configured on the
 API side, the magic link is printed to the API logs — that's the intended local flow, not a bug.
 
-Node 24 is what CI uses. Use `npm ci` rather than `npm install` when you just want a lockfile-exact
-install.
+Node 24 is what this builds and tests on — `.nvmrc` and `package.json`'s `engines` say so, and CI
+and the Dockerfile follow. Use `npm ci` rather than `npm install` when you just want a
+lockfile-exact install.
 
 ## Before you open a PR
 
