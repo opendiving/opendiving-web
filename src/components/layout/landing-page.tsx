@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Loader2 } from "lucide-react";
 
 import {
@@ -9,11 +10,22 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { useRedirectIfAuthenticated } from "@/hooks/useRedirectIfAuthenticated";
 import { AuthForm } from "@/components/auth/auth-form";
-import { Fish, Anchor, ArrowRight, Users } from "lucide-react";
-import { AppleLogo } from "@/components/icons/apple-logo";
-import { GooglePlayLogo } from "@/components/icons/google-play-logo";
+import { Fish, Anchor, ArrowRight, HardDriveDownload } from "lucide-react";
+
+// Every claim on this page has to be true of the software as it stands, because
+// the page is served by whoever is running the instance and they are the ones it
+// makes a liar of. That rules out visitor counts (there is no central service to
+// count), app-store badges (there are no apps), and a community feature set
+// (there is no sharing yet). What is left is what the log actually does, plus
+// what it deliberately doesn't - the "no mobile apps" and "still to come" lines
+// below are load-bearing, not modesty.
+const SOURCE_URL = "https://github.com/opendiving/opendiving-web";
+const ROADMAP_URL = "https://github.com/opendiving/opendiving-web#planned";
+const SELF_HOSTING_URL =
+  "https://github.com/opendiving/opendiving-api/tree/main/docs/self-hosting";
 
 export function LandingPage() {
   const { isAuthenticated, isLoading } = useRedirectIfAuthenticated();
@@ -37,15 +49,22 @@ export function LandingPage() {
                   held the `<h1>`, which left the landing page - the one page
                   search engines actually index - with no top-level heading at
                   all. Styling is unchanged. */}
+              {/* "The Ultimate Diving App" is the owner's call and the one
+                  superlative on a page otherwise held to checkable claims -
+                  kept for now, deliberately, not overlooked. See "The landing
+                  page can only claim what the instance can back up" in
+                  DECISIONS.md before rewording it in either direction. */}
               <h1 className="text-4xl md:text-6xl font-extrabold uppercase tracking-tight text-foreground mb-6 leading-tight">
                 The Ultimate
                 <br />
                 <span className="text-coral-text text-[0.8em]">Diving App</span>
               </h1>
               <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-                Join the global diving community. Track your dives, share
-                experiences, and explore the underwater world with fellow divers
-                around the world.
+                An open-source logbook for scuba divers, recreational and
+                technical. Nitrox and trimix mixes, dives imported straight from
+                your computer with the full profile, gear and c-cards alongside
+                them — and an export button that hands the lot back in open
+                formats.
               </p>
             </div>
 
@@ -54,75 +73,92 @@ export function LandingPage() {
             </div>
           </div>
 
-          <div className="mt-20 flex flex-col items-center justify-center gap-4 sm:flex-row">
+          {/* Prose, not the pair of buttons that first replaced the store
+              badges. Most divers arriving here are signing in to a log, not
+              shopping for something to deploy - two large self-hosting CTAs
+              directly under the form sold the hero to the smaller audience.
+              The badges still have to be answered for, so the missing apps are
+              stated outright; the links now sit inline at the weight they
+              deserve, and the prominent one lives in "Run your own" below. */}
+          <p className="mt-16 mx-auto max-w-xl text-center text-sm text-muted-foreground">
+            There are no mobile apps — the iOS companion is parked until the
+            server side is finished, and this web app is built to work on a
+            phone in the meantime. The{" "}
             <a
-              href="#"
-              className="inline-flex h-13 items-center gap-2.5 rounded-xl bg-foreground px-4 text-background transition-opacity hover:opacity-90"
+              href={SOURCE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-4"
             >
-              <AppleLogo className="h-8 w-8 shrink-0" />
-              <span className="flex flex-col leading-none">
-                <span className="text-[11px] leading-none">
-                  Download on the
-                </span>
-                <span className="mt-0.5 text-2xl font-semibold leading-none tracking-tight">
-                  App Store
-                </span>
-              </span>
-            </a>
+              source
+            </a>{" "}
+            is on GitHub, and you can{" "}
             <a
-              href="#"
-              className="inline-flex h-13 items-center gap-2.5 rounded-xl bg-foreground px-4 text-background transition-opacity hover:opacity-90"
+              href={SELF_HOSTING_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-4"
             >
-              <GooglePlayLogo className="h-8 w-8 shrink-0" />
-              <span className="flex flex-col leading-none">
-                <span className="text-[11px] leading-none tracking-wide">
-                  GET IT ON
-                </span>
-                <span className="mt-0.5 text-2xl font-semibold leading-none tracking-tight">
-                  Google Play
-                </span>
-              </span>
+              run your own instance
             </a>
-          </div>
+            .
+          </p>
         </div>
       </section>
 
       {/* Features Section */}
-      <section id="features" className="pb-20 bg-background">
+      {/* `scroll-mt-20` because this is the one anchored section with no top
+          padding of its own - `pb-20` only, since the hero's `py-20` already
+          spaces the cards on a normal scroll through. That is fine until you
+          jump straight here from the nav, where `--header-height` alone lands
+          the cards' top edge flush against the header. The 80px it adds is the
+          same 5rem the other sections give their content, so all three anchors
+          come to rest with matching clearance.
+
+          Safe here specifically because what sits above is the hero, on the
+          same `bg-background`: the exposed band is invisible. Do NOT copy this
+          onto `#self-hosting` - above that one is the full-bleed `bg-primary`
+          band, and offsetting it is what put a black strip under the header.
+          See the `scroll-padding-top` note in `globals.css`. */}
+      <section id="features" className="scroll-mt-20 pb-20 bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* `sr-only` rather than absent: the cards below are the page's second
+              section and need a heading to sit under, but the design has never
+              shown one and the cards' own titles carry it visually. */}
+          <h2 className="sr-only">What OpenDiving does</h2>
           <div className="grid md:grid-cols-3 gap-8">
             <Card>
               <CardHeader>
                 <Fish className="h-12 w-12 text-teal mb-4" />
                 <CardTitle>Dive Log</CardTitle>
                 <CardDescription>
-                  Track your underwater adventures with detailed dive logs
+                  Depths, times, gas, and what you saw down there
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li>• Import data from dive computers</li>
-                  <li>• Marine life observations</li>
-                  <li>• Equipment management</li>
-                  <li>• Diving statistics at a glance</li>
+                  <li>• Nitrox and trimix mixes, with MOD, END and EAD</li>
+                  <li>• Several dive sites on one dive, in order</li>
+                  <li>• Marine life, against a real species catalog</li>
+                  <li>• SAC and RMV derived per tank</li>
                 </ul>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <Users className="h-12 w-12 text-teal mb-4" />
-                <CardTitle>Community</CardTitle>
+                <HardDriveDownload className="h-12 w-12 text-teal mb-4" />
+                <CardTitle>Computer Import</CardTitle>
                 <CardDescription>
-                  Connect with divers worldwide and share experiences
+                  Upload the export, keep the original file
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li>• Share dive photos</li>
-                  <li>• Find dive buddies</li>
-                  <li>• Local dive sites</li>
-                  <li>• Safety tips & advice</li>
+                  <li>• FIT files from Garmin Descent and Suunto</li>
+                  <li>• Suunto XML and JSON exports</li>
+                  <li>• Full depth, temperature and pressure profile</li>
+                  <li>• The file you uploaded stays downloadable</li>
                 </ul>
               </CardContent>
             </Card>
@@ -130,67 +166,100 @@ export function LandingPage() {
             <Card>
               <CardHeader>
                 <Anchor className="h-12 w-12 text-teal mb-4" />
-                <CardTitle>Open Source</CardTitle>
+                <CardTitle>Yours To Keep</CardTitle>
                 <CardDescription>
-                  Built by divers, for divers, completely open source and free
-                  forever
+                  Open source, self-hosted, and exportable in one click
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li>• Transparent development</li>
-                  <li>• Community contributions</li>
-                  <li>• Data ownership</li>
-                  <li>• Privacy focused</li>
+                  <li>• AGPL-3.0, server side included</li>
+                  <li>• UDDF, CSV or a complete archive, on demand</li>
+                  <li>• No trackers and no analytics</li>
+                  <li>• Passwordless sign-in; no passwords stored</li>
                 </ul>
               </CardContent>
             </Card>
           </div>
+
+          <p className="mt-8 max-w-3xl mx-auto text-center text-muted-foreground">
+            Dives group into trips, gear carries its own service schedule with
+            due-soon reminders, and your c-cards sit alongside them so they are
+            on hand at the dive shop.
+          </p>
         </div>
       </section>
 
-      {/* Stats Section */}
+      {/* Why Section - this band held four invented headline figures
+          ("1,000+ Active Divers" and friends) for a product with no central
+          service to count anything. It now carries the argument those numbers
+          were standing in for. */}
       <section className="py-20 bg-primary text-primary-foreground">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-4 gap-8 text-center">
-            <div>
-              <div className="text-4xl font-bold mb-2">1,000+</div>
-              <div className="text-primary-foreground">Active Divers</div>
-            </div>
-            <div>
-              <div className="text-4xl font-bold mb-2">5,000+</div>
-              <div className="text-primary-foreground">Logged Dives</div>
-            </div>
-            <div>
-              <div className="text-4xl font-bold mb-2">50+</div>
-              <div className="text-primary-foreground">Countries</div>
-            </div>
-            <div>
-              <div className="text-4xl font-bold mb-2">100%</div>
-              <div className="text-primary-foreground">Open Source</div>
-            </div>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-3xl font-bold mb-6">
+            Built to outlive the vendor
+          </h2>
+          <p className="text-lg">
+            Movescount, Deepblu, Diveboard — cloud dive logs come and go, and
+            when they go, years of dive history go with them. OpenDiving keeps
+            the original dive-computer file behind every imported dive, hands
+            the whole log back in open formats on one click, and is AGPL
+            licensed so anyone can keep running it. There is no company here
+            whose shutdown takes your logbook with it — and if the instance you
+            are on ever goes away, your export still opens in something else.
+          </p>
+          <div className="mt-10 grid gap-4 text-sm font-medium sm:grid-cols-3">
+            <div>AGPL-3.0, server side included</div>
+            <div>No trackers, no analytics</div>
+            <div>UDDF, CSV or a full archive, one click</div>
           </div>
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section id="community" className="py-20">
+      {/* Self-hosting Section */}
+      <section id="self-hosting" className="py-20">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h3 className="text-3xl font-bold text-foreground mb-6">
-            Ready to Dive In?
-          </h3>
-          <p className="text-lg text-muted-foreground mb-8">
-            Join thousands of divers who are already using OpenDiving to track
-            their underwater adventures and connect with the global diving
-            community.
+          <h2 className="text-3xl font-bold text-foreground mb-6">
+            Run your own
+          </h2>
+          <p className="text-lg text-muted-foreground mb-6">
+            One compose file brings up the whole stack — this app, the API and
+            its worker, Postgres, Redis, and a Caddy that provisions TLS for
+            your domain. The images are prebuilt for amd64 and arm64, so a
+            Raspberry Pi runs the same bytes as a VPS.
           </p>
-          <a
-            href="#get-started"
-            className="inline-flex items-center justify-center rounded-md bg-teal-solid px-8 py-3 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-teal-solid/90"
-          >
-            Get Started - It's Free
-            <ArrowRight className="h-4 w-4 ml-2" />
-          </a>
+          <p className="text-muted-foreground mb-8">
+            Still to come: Subsurface and UDDF import, depth and time
+            statistics, and public links for a dive or a trip. The{" "}
+            <a
+              href={ROADMAP_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline underline-offset-4"
+            >
+              roadmap
+            </a>{" "}
+            says what is built and what is not, and contributions are welcome.
+          </p>
+          <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <Button asChild size="lg">
+              <a
+                href={SELF_HOSTING_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Self-hosting docs
+                <ArrowRight className="h-4 w-4 ml-2" />
+              </a>
+            </Button>
+            {/* `/signin`, not the `#get-started` anchor back up the page: it is
+                where the header's own Sign In button goes, and a dedicated page
+                is a better answer this far down than a scroll that lands the
+                visitor on a hero they have already read past. */}
+            <Button asChild size="lg" variant="outline">
+              <Link href="/signin">Sign in to this instance</Link>
+            </Button>
+          </div>
         </div>
       </section>
     </div>

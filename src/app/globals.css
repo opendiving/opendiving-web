@@ -219,6 +219,46 @@
   * {
     @apply border-border;
   }
+
+  /* The header is `sticky top-0`, so it is painted over the top of whatever an
+     anchor jump scrolls to: clicking Features in the nav put `#features` at
+     `top: 0` and hid its first header-height behind it. `scroll-padding-top`
+     moves the scroll container's snap line down instead of offsetting each
+     target, so it covers `#features`, `#self-hosting`, `#get-started` and any
+     anchor added later, plus the `scrollIntoView` of a focused element, which
+     had the same problem. On the scroll container, hence `html` not `body`.
+
+     The value has to be the header's height *exactly*, and the first attempt at
+     this got the safe direction backwards. It used 5rem against a 69px header,
+     reasoning that spare clearance is harmless - but the extra 11px is a strip
+     of whatever sits immediately *above* the target, and above `#self-hosting`
+     is the full-bleed `bg-primary` band, so jumping there showed an 11px black
+     bar (grey in dark mode) welded under the header. Overshooting is the bad
+     direction. Undershooting is the harmless one: every section on that page
+     carries its own `py-20`, so a pixel or two short only ever eats empty
+     padding.
+
+     So this is derived from the header rather than measured off a screenshot:
+     `py-4` twice, the `size="sm"` action button at `h-9`, and the 1px
+     `border-b`. It therefore tracks the root font size the same way the header
+     does, which a px literal would not.
+
+     Note `header.tsx`'s mobile menu caps itself at `calc(100dvh-4.5rem)`. That
+     is deliberately a different, slightly generous number - it is slack on a
+     max-height, where being a few px out is invisible - so it is not the same
+     quantity and is not worth unifying with this one.
+
+     The combobox listboxes are unaffected either way: they `scrollIntoView({
+     block: "nearest" })` inside their own overflow container, which has its own
+     (unset) scroll-padding that a rule on `html` cannot reach. */
+  :root {
+    --header-height: calc(4.25rem + 1px);
+  }
+
+  html {
+    scroll-padding-top: var(--header-height);
+  }
+
   body {
     @apply bg-background text-foreground;
   }
