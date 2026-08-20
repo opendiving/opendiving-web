@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { AuthenticationResponseJSON } from "@simplewebauthn/browser";
+import type {
+  AuthenticationResponseJSON,
+  RegistrationResponseJSON,
+} from "@simplewebauthn/browser";
 import { passkeysAPI } from "./passkeys";
 
 // `verifySignIn` captures the session through `lib/api/auth.ts`'s `captureSession`,
@@ -7,7 +10,7 @@ import { passkeysAPI } from "./passkeys";
 // stored, and that is `setAccessToken` either way. The other two exports are what
 // `auth.ts` itself imports from this module.
 vi.mock("./client", () => ({
-  apiClient: { post: vi.fn(), get: vi.fn(), patch: vi.fn() },
+  apiClient: { post: vi.fn(), get: vi.fn(), patch: vi.fn(), delete: vi.fn() },
   setAccessToken: vi.fn(),
   clearAccessToken: vi.fn(),
   getAccessToken: vi.fn(),
@@ -15,6 +18,9 @@ vi.mock("./client", () => ({
 
 const { apiClient, setAccessToken } = await import("./client");
 const post = vi.mocked(apiClient.post);
+const get = vi.mocked(apiClient.get);
+const patch = vi.mocked(apiClient.patch);
+const remove = vi.mocked(apiClient.delete);
 const storeToken = vi.mocked(setAccessToken);
 
 // Only the fields this module actually moves; the real thing is a good deal
@@ -31,8 +37,22 @@ const CREDENTIAL = {
   clientExtensionResults: {},
 } as unknown as AuthenticationResponseJSON;
 
+const REGISTRATION = {
+  id: "credential-id",
+  rawId: "credential-id",
+  response: {
+    clientDataJSON: "client-data",
+    attestationObject: "attestation-object",
+  },
+  type: "public-key",
+  clientExtensionResults: {},
+} as unknown as RegistrationResponseJSON;
+
 beforeEach(() => {
   post.mockReset();
+  get.mockReset();
+  patch.mockReset();
+  remove.mockReset();
   storeToken.mockReset();
 });
 
@@ -95,5 +115,68 @@ describe("verifySignIn", () => {
 
     expect(outcome.onboarding_token).toBe("onb");
     expect(storeToken).not.toHaveBeenCalled();
+  });
+});
+
+// The registration half. Same two steps as sign-in, one call shorter on state:
+// the challenge is filed under the account rather than under a flow id, so
+// nothing has to be carried between the two requests.
+describe("requestRegistrationOptions", () => {
+  it("unwraps the options the ceremony needs", async () => {
+    const options = { challenge: "abc", rp: { id: "localhost" } };
+    post.mockResolvedValue({ data: { options } });
+
+    await expect(passkeysAPI.requestRegistrationOptions()).resolves.toEqual(
+      options,
+    );
+    expect(post).toHaveBeenCalledWith("/user/passkey/options", {});
+  });
+});
+
+describe("verifyRegistration", () => {
+  // `extra="forbid"` on the API's request model, exactly as on the sign-in one:
+  // a key it doesn't know is a 422 rather than something quietly dropped.
+  it("posts the attestation together with the name to file it under", async () => {
+    const created = { uuid: "pk-1", name: "Chrome on macOS" };
+    post.mockResolvedValue({ data: created });
+
+    await expect(
+      passkeysAPI.verifyRegistration(REGISTRATION, "Chrome on macOS"),
+    ).resolves.toEqual(created);
+    expect(post).toHaveBeenCalledWith("/user/passkey/verify", {
+      credential: REGISTRATION,
+      name: "Chrome on macOS",
+    });
+  });
+});
+
+describe("management", () => {
+  it("lists the account's passkeys", async () => {
+    const passkeys = [{ uuid: "pk-1", name: "iPhone" }];
+    get.mockResolvedValue({ data: passkeys });
+
+    await expect(passkeysAPI.getPasskeys()).resolves.toEqual(passkeys);
+    expect(get).toHaveBeenCalledWith("/user/passkeys");
+  });
+
+  // Keyed by public uuid, and sending only the field a diver owns: everything
+  // else on a credential is the authenticator's to report or was fixed at
+  // registration, and this update schema forbids the rest.
+  it("renames one by uuid", async () => {
+    patch.mockResolvedValue({ data: { message: "Passkey updated" } });
+
+    await passkeysAPI.renamePasskey("pk-1", "Work laptop");
+
+    expect(patch).toHaveBeenCalledWith("/user/passkey/pk-1", {
+      name: "Work laptop",
+    });
+  });
+
+  it("revokes one by uuid", async () => {
+    remove.mockResolvedValue({ data: { message: "Passkey removed" } });
+
+    await passkeysAPI.deletePasskey("pk-1");
+
+    expect(remove).toHaveBeenCalledWith("/user/passkey/pk-1");
   });
 });

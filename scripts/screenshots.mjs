@@ -324,6 +324,16 @@ const pinnedNow = new Date();
 pinnedNow.setHours(GREETING_HOUR, 0, 0, 0);
 await context.clock.setFixedTime(pinnedNow);
 
+// The dashboard offers a passkey to any account that has none, in a card above the
+// charts - and this browser is a fresh profile on every run, so it would land in the
+// hero shot whenever the demo account happens to have no passkey. Same class of pin as
+// the clock and the chart year: what the README shows should not depend on which state
+// the account was left in. Written the way the app writes it (`lib/passkey-nudge.ts`),
+// before any page script runs.
+await context.addInitScript(() => {
+  window.localStorage.setItem("opendiving:passkey-nudge-dismissed", "1");
+});
+
 const page = await context.newPage();
 
 let bearer = null;

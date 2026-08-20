@@ -13,6 +13,7 @@ const {
   clearAccessToken,
   hardNavigate,
   rememberPostAuthRedirect,
+  rememberAuthMethod,
 } = vi.hoisted(() => ({
   passkeysAPI: { verifySignIn: vi.fn() },
   authAPI: {
@@ -29,6 +30,7 @@ const {
   clearAccessToken: vi.fn(),
   hardNavigate: vi.fn(),
   rememberPostAuthRedirect: vi.fn(),
+  rememberAuthMethod: vi.fn(),
 }));
 
 vi.mock("@/lib/api/auth", () => ({ authAPI }));
@@ -36,6 +38,10 @@ vi.mock("@/lib/api/passkeys", () => ({ passkeysAPI }));
 // Real storage would work through Node's shadowed `localStorage` and warn; what
 // matters here is only whether sign-out asks for the destination to be cleared.
 vi.mock("@/lib/auth-redirect", () => ({ rememberPostAuthRedirect }));
+// Same reasoning for the hint the sign-in form shows a returning visitor: the
+// storage itself is unit-tested in `lib/last-auth-method.test.ts`, so what the
+// provider owes is only that each entry point names itself.
+vi.mock("@/lib/last-auth-method", () => ({ rememberAuthMethod }));
 // Signing out leaves for the landing page with a real page load, which jsdom
 // can't perform and won't let a test intercept on `window.location` - hence the
 // wrapper module (see `lib/navigation.ts`), mocked here.
@@ -266,6 +272,93 @@ describe("AuthProvider outcomes", () => {
     // A destination left over from an unclicked magic link would otherwise sit
     // in `localStorage` for a day, readable after the diver has gone.
     expect(rememberPostAuthRedirect).toHaveBeenCalledWith(undefined);
+  });
+});
+
+describe("AuthProvider last-used method", () => {
+  async function signedOutProvider() {
+    refreshAccessToken.mockRejectedValue(new Error("401"));
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    authAPI.getCurrentUser.mockResolvedValue(USER);
+    return result;
+  }
+
+  it("records which of the three ways in was used", async () => {
+    const result = await signedOutProvider();
+    authAPI.verifyEmailLink.mockResolvedValue({ status: "authenticated" });
+    authAPI.signInWithGoogle.mockResolvedValue({ status: "authenticated" });
+    passkeysAPI.verifySignIn.mockResolvedValue({ status: "authenticated" });
+
+    await act(async () => {
+      await result.current.verifyEmailLink("tok");
+    });
+    await act(async () => {
+      await result.current.signInWithGoogle("credential");
+    });
+    await act(async () => {
+      await result.current.signInWithPasskey("flow-1", { id: "c" } as never);
+    });
+
+    expect(rememberAuthMethod.mock.calls.flat()).toEqual([
+      "email",
+      "google",
+      "passkey",
+    ]);
+  });
+
+  // The link and the code arrive in the same message and claim the same request
+  // row, so "you signed in with your email" is true of both - a fourth method
+  // here would be a distinction the diver never made.
+  it("calls the code in the email the same method as the link", async () => {
+    const result = await signedOutProvider();
+    authAPI.verifyEmailCode.mockResolvedValue({ status: "authenticated" });
+
+    await act(async () => {
+      await result.current.verifyEmailCode("req-1", "481052");
+    });
+
+    expect(rememberAuthMethod).toHaveBeenCalledWith("email");
+  });
+
+  // Onboarding is a sign-in a moment later by the same means, so the method is
+  // recorded where the identity was proved - and `completeProfile`, which
+  // finishes whichever method got that far, is not a method of its own.
+  it("records the method that proved the identity, not the step after it", async () => {
+    const result = await signedOutProvider();
+    authAPI.signInWithGoogle.mockResolvedValue({
+      status: "onboarding",
+      onboarding_token: "onb",
+      email: "new@example.com",
+    });
+    authAPI.completeProfile.mockResolvedValue({ status: "authenticated" });
+
+    await act(async () => {
+      await result.current.signInWithGoogle("credential");
+    });
+    expect(rememberAuthMethod).toHaveBeenCalledWith("google");
+
+    rememberAuthMethod.mockClear();
+    await act(async () => {
+      await result.current.completeProfile("New Diver", "newdiver");
+    });
+
+    expect(rememberAuthMethod).not.toHaveBeenCalled();
+  });
+
+  // Unlike the remembered destination, which is cleared on the way out: this
+  // names a button rather than a person or a page, and surviving the sign-out is
+  // the whole point of it.
+  it("keeps the hint through a sign-out", async () => {
+    refreshAccessToken.mockResolvedValue("token");
+    authAPI.getCurrentUser.mockResolvedValue(USER);
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isAuthenticated).toBe(true));
+
+    authAPI.signOut.mockResolvedValue(undefined);
+    await act(() => result.current.signOut());
+
+    expect(rememberAuthMethod).not.toHaveBeenCalled();
   });
 });
 
