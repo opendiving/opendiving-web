@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
+import { useConfig } from "@/contexts/ConfigContext";
 import { getApiErrorMessage } from "@/lib/api/error";
 import {
   DEFAULT_POST_AUTH_REDIRECT,
@@ -114,7 +115,10 @@ export function GoogleAuthButton({
   const containerRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState<number>();
   const [ready, setReady] = useState(false);
-  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+  // Runtime configuration, not a build-time constant: a published image has to be
+  // able to learn its client ID from the container it runs in - see
+  // `lib/runtime-config.ts`. Unset, the whole button renders nothing.
+  const { googleClientId: clientId } = useConfig();
 
   // `callback` is only ever registered once (see the `initialize` effect below),
   // so it needs a stable identity that still calls the *latest* version of this -

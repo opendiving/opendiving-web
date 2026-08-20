@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   clampCenter,
   clampLatitude,
@@ -460,21 +460,6 @@ describe("parseAttribution", () => {
 });
 
 describe("tileSource", () => {
-  const setEnv = (key: string, value?: string) => {
-    if (value === undefined) delete process.env[key];
-    else process.env[key] = value;
-  };
-
-  afterEach(() => {
-    for (const key of [
-      "NEXT_PUBLIC_MAP_TILE_URL",
-      "NEXT_PUBLIC_MAP_TILE_URL_DARK",
-      "NEXT_PUBLIC_MAP_TILE_ATTRIBUTION",
-    ]) {
-      setEnv(key, undefined);
-    }
-  });
-
   it("defaults to Carto's matched light/dark pair", () => {
     const source = tileSource();
     expect(source.light).toBe(DEFAULT_TILE_URL);
@@ -487,19 +472,34 @@ describe("tileSource", () => {
   // tiles at night would send a self-hoster's divers to a third party they
   // deliberately configured away from.
   it("uses a configured light template for dark too", () => {
-    setEnv("NEXT_PUBLIC_MAP_TILE_URL", "https://tiles.example/{z}/{x}/{y}.png");
-    const source = tileSource();
+    const source = tileSource({
+      light: "https://tiles.example/{z}/{x}/{y}.png",
+    });
     expect(source.dark).toBe("https://tiles.example/{z}/{x}/{y}.png");
   });
 
   it("keeps a configured dark template", () => {
-    setEnv("NEXT_PUBLIC_MAP_TILE_URL", "https://tiles.example/{z}/{x}/{y}.png");
-    setEnv(
-      "NEXT_PUBLIC_MAP_TILE_URL_DARK",
-      "https://tiles.example/dark/{z}/{x}/{y}.png",
-    );
-    expect(tileSource().dark).toBe(
-      "https://tiles.example/dark/{z}/{x}/{y}.png",
+    expect(
+      tileSource({
+        light: "https://tiles.example/{z}/{x}/{y}.png",
+        dark: "https://tiles.example/dark/{z}/{x}/{y}.png",
+      }).dark,
+    ).toBe("https://tiles.example/dark/{z}/{x}/{y}.png");
+  });
+
+  // A dark template on its own is the one combination that keeps Carto's light
+  // tiles: the pair is only "mine" once the light one has been pointed away.
+  it("keeps Carto's light default when only the dark one is configured", () => {
+    const source = tileSource({
+      dark: "https://tiles.example/dark/{z}/{x}/{y}.png",
+    });
+    expect(source.light).toBe(DEFAULT_TILE_URL);
+    expect(source.dark).toBe("https://tiles.example/dark/{z}/{x}/{y}.png");
+  });
+
+  it("takes a configured attribution", () => {
+    expect(tileSource({ attribution: "© Someone" }).attribution).toBe(
+      "© Someone",
     );
   });
 });

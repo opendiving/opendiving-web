@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useTheme } from "next-themes";
 import {
   fitBounds,
@@ -8,10 +8,10 @@ import {
   nearestWrappedX,
   project,
   TILE_SIZE,
-  tileSource,
   tileUrl,
   visibleTiles,
 } from "@/lib/map-tiles";
+import { useConfig } from "@/contexts/ConfigContext";
 import { formatTripLocationNames } from "@/lib/trip-locations";
 import { Attribution } from "@/components/attribution";
 import { cn } from "@/lib/utils";
@@ -148,7 +148,9 @@ export function LocationsMap({
   showWhenEmpty,
 }: LocationsMapProps) {
   const { resolvedTheme } = useTheme();
-  const source = useMemo(() => tileSource(), []);
+  // From the instance's runtime configuration, so a published image can be pointed
+  // at another tile server without a rebuild (`lib/runtime-config.ts`).
+  const { tiles: source } = useConfig();
   const template = resolvedTheme === "dark" ? source.dark : source.light;
 
   const [size, setSize] = useState({ width: 0, height: 0 });

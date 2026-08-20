@@ -7228,3 +7228,77 @@ our servers send it so the provider never sees the diver, and that it only happe
 being filled in) — because a reader who has just read the geocoder paragraph should recognize the
 shape. Adding it renumbered Legal Requirements from 4.6 to 4.7; nothing links to these by number
 except this file.
+
+## Web config is read at runtime, and the browser is handed it
+
+`NEXT_PUBLIC_*` values are inlined by the compiler wherever they appear as a literal, so every one
+of them is frozen at build time. That is the same trap the API address was in before the proxy route
+(previous sections), one layer down: `SITE_URL`, `CONTACT_EMAIL`, `GOOGLE_CLIENT_ID` and the three
+map-tile variables were all build-time, so a published image could only ever carry whatever the
+build machine happened to have. `lib/runtime-config.ts` reads them on the server instead, and
+`contexts/ConfigContext.tsx` carries the browser's share down as an ordinary prop from the root
+layout. Build once, configure per instance.
+
+Things that are load-bearing:
+
+- **The `NEXT_PUBLIC_` fallback is read through a computed key**, `env["NEXT_PUBLIC_" + name]`,
+  never as a literal. Written as `process.env.NEXT_PUBLIC_SITE_URL` the compiler substitutes the
+  build machine's value, and the published image is built with none of these set — so the fallback
+  would be frozen to `undefined` while still reading like a fallback. It exists so a deployment that
+  already sets the old names keeps working; the unprefixed name wins where both are present, and a
+  blank value counts as unset at both levels (`GOOGLE_CLIENT_ID=` in a compose file has configured
+  nothing, and reading that as "explicitly empty" would suppress the fallback instead of falling
+  through to it).
+- **The root layout's metadata is a `generateMetadata()` function, not an exported `metadata`
+  object.** A module-level constant is evaluated while the page is being built, which is exactly the
+  thing being avoided; the function runs per request. Every route already renders dynamically
+  (`headers()` in the layout, see the CSP section), so this costs nothing that was not already
+  spent.
+- **`metadataBase` is a `new URL(...)` in the request path**, so a malformed `SITE_URL` would throw
+  on every page. It is validated where it is read and falls back to `http://localhost:3000` with a
+  named warning — the same fail-closed trade `lib/api-base.ts` and `lib/map-tiles.ts` make for the
+  CSP, and for the same reason: an optional feature must not be able to take the site down.
+- **`runtimeConfig()` memoizes, and reads lazily rather than at module load.** Lazily because a
+  module-scope read is a read at whatever time the module is first evaluated, and the point is that
+  it happens in the container; memoized because the environment cannot change while the process
+  lives and the diagnostics above should be said once rather than on every request. `src/proxy.ts`
+  memoizes its derived CSP sources on top of that for the same reason — `tileOrigins` warns on a
+  malformed template, and that warning is worth one line, not one per request.
+- **`tileSource()` no longer reads the environment**; it takes what was configured and applies the
+  defaults. It is called from client components, where a non-`NEXT_PUBLIC_` variable does not exist
+  at all, so the values have to arrive as data. Its light-set-means-both rule is unchanged.
+- **`useConfig()` has a real default rather than throwing on a missing provider**, unlike
+  `useAuth()`. The provider is mounted in the root layout so every render in the app has one; the
+  default matters for component tests, which render one component with no layout around it — and
+  what they should see is exactly what an instance that configures nothing shows, which is what the
+  default is. There is no meaningful default session for `useAuth()` to return, which is why the two
+  differ.
+- **The CSP follows the configuration.** `www.gravatar.com` is in `img-src` only where Gravatar is
+  enabled, and the three `accounts.google.com` entries (`style-src`, `connect-src`, `frame-src`)
+  only where a Google client ID is set. An instance that uses neither now advertises neither.
+
+## Gravatar is off unless an instance turns it on, and the privacy page stops inventing analytics
+
+`UserAvatar` fired a `new Image()` at `https://www.gravatar.com/avatar/<md5(email)>?d=404` on every
+mount for every signed-in user — the account menu is in the header, so that is every page — which
+made it the app's only unconditional third-party call from the browser, disclosing a hash of the
+user's email address along with their IP to Automattic. `GRAVATAR_ENABLED` now gates it and defaults
+to **off**: nothing leaves the browser until somebody asks for it to. The weaker reading of the bar
+— disclosed, default-on, switchable — would also have passed; this is the owner's call, and the cost
+of it is one environment variable on the instances that want avatars.
+
+The gate is not just the request. The URLs are `null` when it is off, so nothing downstream can
+reach for one and the MD5 is never computed; the settings copy switches from "your avatar comes from
+Gravatar" to what actually happens; and the privacy page's Gravatar section renders only where there
+is something to disclose. That section sits **last in §4**, after Legal Requirements, rather than
+next to Map Tiles where it belongs topically: it is the one heading that appears on some instances
+and not others, and anywhere earlier it would leave a gap in the numbering of the headings that are
+always there.
+
+Separately, and not a taste call: the page described analytics that have never existed. "Usage Data:
+pages visited, features used, time spent", "Improvement: analyze usage patterns", "Analyze usage
+data" among the service providers, "some anonymized data may be retained for analytics", and an
+"Analytics Cookies" bullet — five claims, no implementation, and a CSP that structurally forbids one
+(`connect-src` names the API and nothing else). They are gone. A privacy policy that overstates what
+is collected is not the safe direction to be wrong in: it is the document a reader uses to decide
+whether to trust the rest.

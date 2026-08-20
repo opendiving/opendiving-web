@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Metadata } from "next";
+import { runtimeConfig } from "@/lib/runtime-config";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
@@ -8,6 +9,11 @@ export const metadata: Metadata = {
 };
 
 export default function PrivacyPage() {
+  // A policy is only worth reading if it describes this instance, so the section on
+  // Gravatar is rendered only where there is something to disclose - see
+  // `lib/runtime-config.ts`, where it defaults to off.
+  const { gravatarEnabled } = runtimeConfig();
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="bg-card rounded-lg shadow-sm p-8">
@@ -79,10 +85,6 @@ export default function PrivacyPage() {
             </p>
             <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
               <li>
-                <strong>Usage Data:</strong> Pages visited, features used, time
-                spent on the Service
-              </li>
-              <li>
                 <strong>Device Information:</strong> Browser type, operating
                 system, device identifiers
               </li>
@@ -140,10 +142,6 @@ export default function PrivacyPage() {
                 or inappropriate content
               </li>
               <li>
-                <strong>Improvement:</strong> Analyze usage patterns to improve
-                our Service
-              </li>
-              <li>
                 <strong>Legal Compliance:</strong> Comply with applicable laws
                 and regulations
               </li>
@@ -190,7 +188,6 @@ export default function PrivacyPage() {
             <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
               <li>Host and maintain our servers</li>
               <li>Provide email communication services</li>
-              <li>Analyze usage data</li>
               <li>Provide customer support</li>
             </ul>
 
@@ -305,6 +302,38 @@ export default function PrivacyPage() {
               <li>Protect users from harm or illegal activities</li>
               <li>Prevent fraud or security threats</li>
             </ul>
+
+            {/* Last in the section rather than beside Map Tiles, which is where it
+                belongs topically: this is the one heading that appears only on some
+                instances, and anywhere earlier it would leave a gap in the numbering
+                of the headings that are always here. */}
+            {gravatarEnabled && (
+              <>
+                <h3 className="text-xl font-semibold text-foreground mb-3">
+                  4.8 Avatars
+                </h3>
+                <p className="text-foreground mb-4">
+                  This copy of OpenDiving takes your avatar from Gravatar, and
+                  your browser loads it from them directly. What they receive is
+                  a hash of your account email address &mdash; not the address
+                  itself, though it is the same hash every time, and anyone who
+                  already knows an address can check whether it matches &mdash;
+                  together with your IP address. They do not receive your name,
+                  your username, or anything about your dives.
+                </p>
+                <p className="text-foreground mb-4">
+                  It happens wherever an avatar is on screen, which is the
+                  account menu in the header, so in practice it is every page
+                  you visit while signed in. Signed out, no avatar is drawn and
+                  nothing is requested.
+                </p>
+                <p className="text-foreground mb-4">
+                  A copy of OpenDiving does none of this unless whoever runs it
+                  turns it on: left alone, the app draws your initials and
+                  contacts nobody. This one has it turned on.
+                </p>
+              </>
+            )}
           </section>
 
           <section className="mb-8">
@@ -425,7 +454,6 @@ export default function PrivacyPage() {
               <li>
                 Personal information is permanently deleted within 30 days
               </li>
-              <li>Some anonymized data may be retained for analytics</li>
               <li>Legal or safety-related data may be retained as required</li>
             </ul>
           </section>
@@ -473,10 +501,6 @@ export default function PrivacyPage() {
               <li>
                 <strong>Preference Cookies:</strong> Remember your settings and
                 preferences
-              </li>
-              <li>
-                <strong>Analytics Cookies:</strong> Help us understand usage
-                patterns
               </li>
             </ul>
             <p className="text-foreground mb-4">
