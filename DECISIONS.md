@@ -332,15 +332,84 @@ part worth remembering before changing any of them:
 
 - `src/proxy.ts` needs an _origin_ for the CSP's `connect-src` (a source expression with a path
   matches that exact path only), so it runs the value through `new URL(...).origin` and the prefix
-  is discarded.
+  is discarded. That reduction now lives in `lib/api-base.ts`'s `apiCspSource`, because the value
+  may also be relative, which `new URL` throws on - see the next section.
 - `scripts/screenshots.mjs` reads the same variable for its own `fetch` calls and used to append
   `/api/v1` itself. Left that way, anyone with the variable exported in their shell got
-  `.../api/v1/api/v1/...`; it now appends only the route, like the app does.
+  `.../api/v1/api/v1/...`; it now appends only the route, like the app does. It runs in Node with no
+  page origin to resolve against, so an absolute value is the only kind it can use - which is one
+  reason `.env.example` keeps the absolute URL for dev even though the deployed default is relative.
 
 The alternative - keep the variable an origin and have `client.ts` append the prefix - was not
 taken. The prefix is fixed on the API side, but the path is not: an instance behind a reverse proxy
 that mounts the API under a subpath has nowhere else to say so, and `proxy.ts` was already written
 around the variable carrying a path.
+
+The variable is no longer _required_, though. It is a build-time override for a split-origin
+deployment; unset, the base is the relative `/api/v1` and this app proxies it - see the next
+section.
+
+## The web app proxies `/api/v1` to the API, and that is the shipped topology
+
+`NEXT_PUBLIC_API_URL` unset, axios' `baseURL` is the relative `/api/v1` (`DEFAULT_API_BASE_URL` in
+`lib/api-base.ts`) and a catch-all route handler, `app/api/v1/[...path]/route.ts`, streams whatever
+reaches it through to `API_INTERNAL_URL` (default `http://api:8000`, the compose service name;
+`http://localhost:8000` under `next dev`). Everything the browser touches is one origin.
+
+The reason is the `NEXT_PUBLIC_*` build-time trap. Those values are inlined into the client bundle
+by the compiler, so a bundle built with an API address baked in only works for whoever built it -
+which is why the `Dockerfile` used to hard-fail without the build-arg, and why a prebuilt image was
+impossible. Nothing about the API's address is in the bundle any more; one published image runs on
+any domain. Consequences, all simplifying: no CORS to configure, no cross-site request for the
+`SameSite=Lax` refresh cookie to fall foul of, and `Content-Disposition` finally visible to JS
+(`lib/download.ts` explains why it usually isn't).
+
+Why a route handler rather than `rewrites()` in `next.config.js`: rewrites are evaluated when the
+config is loaded and serialized into the build output under `output: "standalone"`, so a prebuilt
+image would carry whatever the _builder_ had set - the same trap one layer down. Route handlers run
+per request and read `process.env` then. This is the pattern Next's own self-hosting guide points at
+for "one image promoted through multiple environments".
+
+Things that are load-bearing in `lib/api-proxy.ts`, each of which was found by breaking it:
+
+- **`Expect` must be dropped.** `undici` (the `fetch` behind route handlers) rejects the header
+  outright with `UND_ERR_NOT_SUPPORTED`, so forwarding it fails the entire request. Node has already
+  answered the `100-continue` by the time a handler runs, so there is nothing to forward. Browsers
+  never send it - only `curl` and similar do, on large bodies - so this surfaces as "every upload
+  from a script 502s" and nothing else.
+- **`Accept-Encoding` must not be forwarded, and `Content-Encoding` must not be passed back.**
+  `fetch` negotiates its own encoding for the hop it opens (`gzip, deflate`) and decodes the reply
+  transparently, but leaves `content-encoding` on the response object. Copy the response headers
+  verbatim and the browser is told to gunzip bytes that are already plain. `content-length` goes
+  with it, being the compressed length of a body that no longer is. Forwarding the browser's own
+  list is worse than useless: it can advertise a codec `fetch` will not decode, and then the header
+  is telling the truth and stripping it is what corrupts the body.
+- **`Set-Cookie` has to be re-added with `getSetCookie()`.** Iterating `Headers` joins repeats with
+  a comma, and cookie `Expires` values contain one. The refresh cookie is the whole session.
+- **No body for `HEAD`/204/205/304**, or the `Response` constructor throws.
+- **Nothing is buffered.** `request.body` goes straight into `fetch` (which needs `duplex: "half"`
+  before it will accept a stream), so a 20 MB upload arrives at the API as it is being sent. This
+  holds only because `src/proxy.ts`'s matcher excludes `api/`: a request that reaches middleware has
+  its body cloned into memory first, capped at Next's 10 MB default and **silently truncated** past
+  it (`experimental.proxyClientMaxBodySize`). Widening that matcher would quietly break every upload
+  over 10 MB.
+- **The unreachable-API log names the path, never the query string.** Two precheck routes carry a
+  live, single-use sign-in token as `?token=...`, and that error branch fires precisely when the
+  check never reached the API - so the token is still valid at the moment it would be written. The
+  API refuses to log those for the same reason.
+- **`X-Forwarded-For` is passed through, not appended to.** A route handler cannot see the socket
+  peer - `NextRequest.ip` was removed in Next 15 - but it does not need to: Next's own server fills
+  `x-forwarded-for`, `-proto`, `-host` and `-port` from the connection when they are absent and
+  leaves a front proxy's values when they are not, so the chain is already assembled by the time the
+  handler runs. Copying it across is what keeps the API's ten per-IP rate limits in separate
+  buckets. The API only believes that chain when its peer is listed in `TRUSTED_PROXY_IPS`, and its
+  peer is _this container_, not the operator's own proxy - which the API never talks to directly. An
+  install that omits it gets one shared bucket rather than a forgeable one.
+
+Local dev keeps the split-origin shape: `.env` sets `NEXT_PUBLIC_API_URL` to the API's own published
+port, so the route handler is never reached and `scripts/screenshots.mjs`, which reads the same
+variable from Node, still has an absolute URL to fetch. Both paths are exercised - the relative
+default is what CI builds, the absolute override is what dev runs.
 
 ## Strict, nonce-based CSP via `src/proxy.ts` - Node server only
 

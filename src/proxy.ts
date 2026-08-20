@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { apiCspSource } from "@/lib/api-base";
 import { tileOrigins } from "@/lib/map-tiles";
 
 // Nonce-based, strict Content-Security-Policy. This is computed fresh per
@@ -19,19 +20,28 @@ import { tileOrigins } from "@/lib/map-tiles";
 // malformed template would otherwise repeat on every request, burying the one
 // diagnostic it exists to give.
 const TILE_ORIGIN_SOURCES = tileOrigins().join(" ");
+// Empty by default, and that is the shipped topology: the API is same-origin behind
+// `app/api/v1/[...path]/route.ts`, which `'self'` already covers. It becomes a real
+// origin only for a split-origin build, where `NEXT_PUBLIC_API_URL` is absolute. Derived
+// once for the same reasons as the tile origins above - including that `apiCspSource`
+// warns in dev on a malformed value.
+const API_ORIGIN_SOURCE = apiCspSource(process.env.NEXT_PUBLIC_API_URL) ?? "";
+
+// A directive and its sources, with the empty ones dropped. Both `apiOrigin` (empty
+// whenever the API is same-origin) and `tileOriginSources` (empty when every configured
+// tile template is malformed) can vanish, and a stray double space in a CSP is the kind
+// of thing that reads as a typo forever after.
+function cspList(directive: string, ...sources: string[]): string {
+  return [directive, ...sources.filter(Boolean)].join(" ");
+}
 
 export function proxy(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
   const isDev = process.env.NODE_ENV !== "production";
-  // CSP source expressions match by *origin*, not by prefix - a source with
-  // a path (e.g. `http://localhost:8000/api/v1`) only matches requests to
-  // that exact path, not `/api/v1/login` or anything else under it. Since
-  // `NEXT_PUBLIC_API_URL` may include a path prefix (it's also used
-  // directly as axios' `baseURL` in `lib/api/client.ts`), strip it down to
-  // just the origin here.
-  const apiOrigin = new URL(
-    process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1",
-  ).origin;
+  // Empty string for the default, same-origin API - see `API_ORIGIN_SOURCE` above.
+  // `lib/api-base.ts` is what reduces an absolute value to an origin and what knows a
+  // relative one can't go through `new URL` at all.
+  const apiOrigin = API_ORIGIN_SOURCE;
   // The map picker's raster tiles, and the *only* thing the map needs from CSP
   // - which is the whole reason it is hand-rolled rather than MapLibre, whose
   // web worker would have forced `worker-src blob:` into a strict nonce policy.
@@ -84,7 +94,15 @@ export function proxy(request: NextRequest) {
     // by `'self'`, so without this the `<img>` is blocked. It widens nothing an
     // attacker could reach: a `blob:` URL can only name data this document
     // already created.
-    `img-src 'self' data: blob: ${apiOrigin} https://www.gravatar.com ${tileOriginSources}`,
+    cspList(
+      "img-src",
+      "'self'",
+      "data:",
+      "blob:",
+      apiOrigin,
+      "https://www.gravatar.com",
+      tileOriginSources,
+    ),
     "font-src 'self' data:",
     // `accounts.google.com` - the "Continue with Google" button
     // (`components/auth/google-auth-button.tsx`) renders Google's own iframe
@@ -93,7 +111,7 @@ export function proxy(request: NextRequest) {
     // doesn't need a dedicated `script-src` entry - it's injected by our own
     // already-trusted bundle, which `'strict-dynamic'` (above) automatically
     // extends trust to.
-    `connect-src 'self' ${apiOrigin} https://accounts.google.com`,
+    cspList("connect-src", "'self'", apiOrigin, "https://accounts.google.com"),
     "frame-src 'self' https://accounts.google.com",
     "object-src 'none'",
     "base-uri 'self'",

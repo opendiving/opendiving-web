@@ -15,13 +15,17 @@ instructions live in AGENTS.md" in `DECISIONS.md`.
 
 - Dev server: http://localhost:3000
 - Environment: `.env` (create from `.env.example`)
-- **API access**: the browser calls the API directly — axios `baseURL` in `lib/api/client.ts` — with
-  no server-side proxy in between. Set `NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1` in `.env`
-  — it is the full base, `/api/v1` prefix included, not just the origin, and without the prefix
-  every request 404s. Despite the name, `src/proxy.ts` is Next middleware that builds a nonce-based
-  CSP, not a proxy; it reads that same variable to derive `connect-src`, so repointing the app at
-  another API host is a one-variable change — and an API host hardcoded anywhere else will be
-  blocked by CSP rather than merely misconfigured.
+- **API access**: two topologies, and the default is same-origin. Unset, axios' `baseURL`
+  (`lib/api/client.ts`) is the relative `/api/v1`, and the catch-all route handler at
+  `app/api/v1/[...path]/route.ts` streams each request through to `API_INTERNAL_URL` — a variable
+  read per request, which is what lets one prebuilt image run on any domain. Setting
+  `NEXT_PUBLIC_API_URL` overrides that base at _build_ time and the browser talks to the API
+  directly instead; it is the full base, `/api/v1` prefix included, not just the origin, and
+  without the prefix every request 404s. `.env` sets it to `http://localhost:8000/api/v1`, so local
+  dev is the split-origin path. Despite the name, `src/proxy.ts` is Next middleware that builds a
+  nonce-based CSP, not a proxy; it derives `connect-src` from the same variable, so a split-origin
+  API is a one-variable change — and an API host hardcoded anywhere else will be blocked by CSP
+  rather than merely misconfigured.
 
 Test, lint, format and type-check commands are in `CONTRIBUTING.md`.
 
