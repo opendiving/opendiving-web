@@ -8233,3 +8233,57 @@ deliberately does not name `publickey-credentials-get`/`-create`, which stay at 
 `self`. That is correct as it stands, and it is a trap for the next person to tighten that header:
 naming features there is opt-in, so an added directive that omits these two kills passkey sign-in
 with a browser-side error pointing nowhere near the header.
+
+## Signing is enforced locally, because GitHub cannot do it yet
+
+Every commit here is meant to be signed, and for a while about half of them were not — this repo was
+the worse of the two. The commits that came out _Unverified_ were not the victims of an expired key
+or a stale agent cache: they were made with signing switched off inline, the shape an agent reaches
+for when it expects a commit to hang on a passphrase prompt that this machine does not have.
+
+No git setting can prevent that. A `-c key=value` on the command line outranks every config file by
+design, and `commit.gpgsign` is a _default_, not a constraint — there is no "refuse to make an
+unsigned commit" switch for the config to hold. So enforcement lives outside config resolution
+entirely, in two hooks:
+
+- `.claude/hooks/no-unsigned-commits.py`, a `PreToolUse` hook on Bash, rejects the command before it
+  runs. It strips heredoc bodies first, so a doc or a commit message that _writes about_ the flag —
+  as `AGENTS.md`, `CONTRIBUTING.md` and this section all must — is not mistaken for using it.
+- `.githooks/pre-push` rejects the push. It keys on "no signature at all" (`%G?` of `N`) rather than
+  "not verified": commits GitHub signed on our behalf report `E`, unverifiable without GitHub's key,
+  and one of those sits at the head of every branch that contains `main`. It needs one
+  `git config core.hooksPath .githooks` per clone; linked worktrees read the same config.
+
+Both are committed even though `.claude/` is ignored, because agents work in fresh checkouts under
+`.claude/worktrees/` and only ever see committed files. Re-including them meant rewriting the ignore
+pattern to `.claude/*` — git will not re-include a path whose parent directory is excluded, so a
+`!.claude/settings.json` under a plain `.claude/` matches nothing, silently.
+
+The hook script catches a single `ValueError` rather than naming `json.JSONDecodeError` and
+`UnicodeDecodeError` separately, and that is not tidiness — both are `ValueError` subclasses, and
+the pair would have to be written as a tuple or as PEP 758's parenthesis-free form, which only
+parses on Python 3.14. Nothing here pins a Python: the file runs under whatever `python3` a
+contributor's shell resolves, which on macOS is often the system 3.9. A hook that cannot parse exits
+1, and Claude Code treats any exit that is not 2 as a non-blocking error, so the command would run
+and the guard would vanish silently — failing open, in the one file whose whole job is to fail
+closed. The sibling api repo, where `except A, B:` _is_ house style because its code runs on a
+pinned 3.14, carries the longer version of this note.
+
+The push hook resolves the sha the remote advertised before differencing against it, and falls back
+to "everything not already on a remote-tracking ref" when it cannot. That sha arrives in the ref
+advertisement rather than from local state, so it can name a commit this clone has never fetched —
+someone advancing the branch in the GitHub UI is enough, and a `--force` push gets past the
+non-fast-forward refusal that would otherwise stop it first. `git rev-list <unknown>..<local>` then
+prints nothing and exits 128, and a bare `revs=$(...)` keeps only the empty stdout, which the next
+line reads as an empty range and skips the check. Reproduced end to end before it was fixed: an
+unsigned commit landed on a remote with the hook installed and `git push` exiting 0. In a guard, a
+command substitution whose exit status nobody reads is a pass waiting to happen.
+
+The enforcement that would actually hold is a GitHub ruleset requiring signatures, and it is
+unavailable while these repos are private under a free organisation — the rulesets and
+branch-protection endpoints both answer `403 Upgrade to GitHub Pro or make this repository public`.
+When the repos go public, turn it on and target _every_ branch: pull requests are squash-merged and
+GitHub signs that commit itself, so a `main`-only rule would pass on a branch of entirely unsigned
+work, which is the exact state this section exists to describe. The sibling
+[opendiving-api](https://github.com/opendiving/opendiving-api) repo carries the long-form version of
+this reasoning in its own `DECISIONS.md`.
