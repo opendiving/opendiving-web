@@ -7474,3 +7474,169 @@ of a thing that works, not a thing you can do.
 The "One-command self-hosting" roadmap bullet was removed rather than reworded, on the same
 forward-dated basis: it and the new section describe one feature, and keeping both would leave the
 file promising in one place what it documents in another.
+
+## The landing page can only claim what the instance can back up
+
+The page shipped with four headline figures — "1,000+ Active Divers", "5,000+ Logged Dives", "50+
+Countries", "100% Open Source" — App Store and Google Play badges wired to `href="#"`, a Community
+feature card promising dive-photo sharing and buddy-finding, and a closing "Join thousands of divers
+who are already using OpenDiving". Exactly one of those eight things was true.
+
+What makes them worse than ordinary placeholder copy is who ends up saying them. This is not a
+marketing site for a hosted product; it is the unauthenticated view of _somebody's server_, rendered
+by whatever image they pulled. A visitor count is not merely unverified, it is uncountable — there
+is no central service to count, and the number would have to be a per-instance figure that says
+"1,000+" on a household Raspberry Pi with one diver on it. The store badges were worse still: two
+prominent, correctly-branded buttons that did nothing, on a project whose iOS repo is explicitly
+parked. Every one of them makes a liar of the self-hoster, not of the project.
+
+So the constraint the rewrite works under is narrower than "don't exaggerate": **each claim has to
+be checkable against this repository or the running instance.** That is what decided the
+replacements, and the shape of the page follows from it:
+
+- **The band that held the fake stats now carries the argument they were standing in for.** It is
+  the same coloured section, and the vendor-shutdown case (Movescount, Deepblu, Diveboard; AGPL; the
+  original dive-computer file kept behind every import) is what the numbers were there to imply. The
+  three facts under it — the licence, no trackers, the three export formats — are the only figures
+  left, and each one is a `grep` away. Note the contrast constraint documented under `--coral-solid`
+  still applies to this band: full `text-primary-foreground`, never `/70`, which is 4.90:1 on
+  `bg-primary` in dark mode against 3.4:1 for the faded version.
+- **The store badges became a line of prose that answers for them** — there are no mobile apps, the
+  iOS companion is parked, and this web app is built for a phone in the meantime — with the source
+  and the self-hosting docs as inline links. The absence needed stating outright rather than being
+  left as a silence, because the badges had already advertised it. `icons/apple-logo.tsx` and
+  `icons/google-play-logo.tsx` went with them; they had no other caller.
+- **The Community card became Computer Import**, which is a thing the app does. Sharing is on the
+  roadmap and the "Run your own" section says so by name, alongside Subsurface/UDDF import and
+  statistics. A landing page that lists what is _not_ built is a strange artifact until you remember
+  the reader may be about to run this on their own hardware.
+- **The hero sells the log, not the deployment.** The subheading carries the mixes, the imported
+  profile, the gear and c-cards, and the export button. The `<h1>` above it is the one exception to
+  everything in this section, and the next two paragraphs are about that.
+
+That last one is a correction, and the mistake behind it is worth keeping. The first rewrite led
+with "A Dive Log You Own" and "Every instance runs on hardware its owner controls — this page is
+served by one of them", and put two large buttons — _Browse the source_, _Run your own instance_ —
+directly under the sign-in form. Every word of that was true, which is exactly why it slipped
+through: the honesty constraint above says nothing about **which** true thing goes at the top.
+Self-hosters are a small part of the audience, and most people reaching this page are divers signing
+in to a log someone else already runs. Leading with the deployment story pitched the hero at the
+minority, and a visitor who does not intend to run anything reads "hardware its owner controls" as a
+caveat about someone else's server rather than a promise about their data.
+
+**"The Ultimate Diving App" stays, and stays on purpose.** The replacement headline was "Log Every
+Dive / In Full"; the owner's call was to keep the original for now, and it is recorded here rather
+than left to look like something the rewrite missed. It is a superlative on a page whose whole
+argument is that every other claim on it can be checked, so it is the one line that a future reader
+should assume is deliberate before "fixing" it — hence the comment on the `<h1>` pointing back here.
+`app/page.tsx`'s `title` was moved to match it, on the narrower point that a search result promising
+one headline and delivering another is a mismatch nothing downstream can paper over; the two now
+change together or not at all. Nothing else was reverted with it — the subheading, the band, and the
+cards stay as above.
+
+The data-ownership argument did not get weaker, it got moved to where it lands: the `#features` card
+("Yours To Keep"), the coloured band, and the "Run your own" section, which is where the one
+prominent self-hosting button now lives. The band's own phrasing moved with it — it used to say the
+data sits "in a Postgres database you back up yourself", which is only true for the person running
+the instance. The diver-facing form of the same guarantee is the export: if the instance goes away,
+the export still opens in something else.
+
+The header's unauthenticated nav had to move with it. `/#community` pointed at the section that is
+now `#self-hosting`, and `/#about` had been pointing at an `#about` that never existed on any
+version of this page — a dead anchor that scrolled nowhere. They are now Features, Self-hosting and
+a `Source` link out to the repository, which is three destinations that exist.
+
+The footer's "Open source diving platform for the global diving community" stays, and it is worth
+saying why it is _not_ another instance of the above — an earlier draft of this section filed it as
+"the same species of claim", which was pattern-matching on the word "community" rather than reading
+what the sentence asserts. It is a statement of **audience**, not of traction. The global diving
+community does exist; the software is for it; being AGPL and self-hostable by anyone, that is true
+in the only sense the sentence means. What this section removed were claims of a different kind:
+"1,000+ Active Divers" is countable and about _this instance_, "Join thousands of divers who are
+already using OpenDiving" is about existing users, and "Find dive buddies" is about features. Each
+of those asserts something checkable and false. An audience does not.
+
+The reason it ever looked guilty is that it used to sit beside a Community nav item and a Community
+feature card that really did promise sharing and buddy-finding, and in that company it read as part
+of the same promise. Deleting those is what changed it. So this is a note against finishing a job
+that does not need finishing: the line is fine, and the mislabel is the thing that was wrong.
+(Nearest real target in it is "platform" for what is a web app plus an API — a question of register,
+not of honesty.)
+
+## `scroll-padding-top` on `html`, because the sticky header eats anchor targets
+
+The header is `sticky top-0 z-50`, so it paints over the top of whatever an in-page anchor scrolls
+to. Clicking **Features** in the nav put `#features` at `top: 0` and hid its first 69px — exactly
+the header's height — behind it, which on that section is the top edge of all three cards. The fix
+is one declaration in `globals.css`:
+
+```css
+:root {
+  --header-height: calc(4.25rem + 1px);
+}
+html {
+  scroll-padding-top: var(--header-height);
+}
+```
+
+Three things about it are deliberate.
+
+**`scroll-padding-top` on the container, not `scroll-mt-*` on each target.** The property belongs to
+the scroll container and moves the line the browser aligns to, so it applies to every anchor at once
+— `#features`, `#self-hosting`, `#get-started`, and anything added later — instead of being a
+utility that has to be remembered on each new `id`. It also covers the scroll that happens when
+focus moves to an element near the top of the page, which had the same defect and no anchor to hang
+a utility on. It goes on `html` rather than `body` because `html` is the element that scrolls.
+
+**Exactly the header's height — and the first attempt got the safe direction backwards.** It shipped
+as a flat `5rem` against a 69px header, on the reasoning that spare clearance is harmless and reads
+as deliberate spacing above the heading. It is not harmless. The extra 11px is not blank page, it is
+a strip of whatever sits immediately _above_ the target, and above `#self-hosting` is the full-bleed
+`bg-primary` band — so jumping there rendered an 11px black bar (grey in dark mode) welded under the
+header, which looks exactly like a rendering fault. Overshooting is the bad direction.
+
+Undershooting is the harmless one, which is the useful half of this to remember: a value a pixel or
+two short only ever hides empty padding. If this number is ever wrong, wrong-low is the way to be
+wrong.
+
+**But header-height alone is only enough where the section has top padding, and one does not.**
+`#features` is `pb-20` with no `pt-` — the hero's `py-20` above it already spaces the cards on a
+normal scroll through, so none was ever needed. Landing on it from the nav is the case that was
+never considered: the cards' top edge came to rest flush against the header with nothing between
+them. It carries `scroll-mt-20` for that, which stacks on top of the container's
+`scroll-padding-top` and buys the same 5rem the other two sections give their own content — all
+three anchors now settle with 80px between the header and the first thing the eye lands on.
+
+That is safe **here specifically** because what sits above `#features` is the hero, on the same
+`bg-background`, so the band the offset exposes is invisible — verified by pixel-comparing a slice
+of the band against a slice of the section interior in both themes; the two are byte-identical. The
+same utility on `#self-hosting` would re-create the black strip, because what sits above that one is
+the `bg-primary` band. The rule is not "add scroll-mt where it looks tight" but "an anchored section
+needs top padding of its own, and where it has none, only borrow the offset if the section above
+shares its background".
+
+That makes exactness worth having, so the value is derived from the header's own construction rather
+than measured off a screenshot: `py-4` twice, the `size="sm"` action button at `h-9`, and the 1px
+`border-b` — `calc(4.25rem + 1px)`. Being rem-based, it tracks the root font size the way the header
+itself does; a `69px` literal would not. Verified: at a 20px root the header measures 86px and
+`scroll-padding-top` computes to 86px with it. This is the same lesson as `CUT_BELOW` in
+`scripts/screenshots.mjs`, where written-down heights went stale twice in an afternoon — except the
+fix there was to measure at runtime and the fix here is to derive from the same inputs, because CSS
+can do that and a screenshot script cannot.
+
+**The comboboxes are not affected, and the reason is worth knowing before "simplifying" this.**
+`volume-combobox.tsx` and `creatable-combobox.tsx` call `scrollIntoView({ block: "nearest" })` on
+their active option. That scrolls the listbox's own `overflow-y-auto` element, which is a different
+scroll container with its own unset `scroll-padding` — so a rule on `html` cannot reach it and
+cannot push a highlighted option out of view. Moving this to `*` or to a shared utility would.
+
+The header height is 69px at every breakpoint; the mobile menu expands the header downward when
+open, but it is closed at the moment a nav link is followed, so the collapsed height is the one that
+matters. `header.tsx` caps that menu at `calc(100dvh-4.5rem)`, which is a _different_ number on
+purpose and was left alone: it is slack on a max-height, where a few px either way is invisible, so
+unifying it with `--header-height` would tie together two quantities that only look alike.
+
+Worth being clear that this was a pre-existing bug and not a regression from the landing-page
+rewrite: `#features` was already there and already clipped. What changed is that the nav now points
+at two sections that exist instead of one that existed and two dead anchors, so it is exercised
+enough to notice.

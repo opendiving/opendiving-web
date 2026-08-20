@@ -217,17 +217,19 @@ export function Header() {
                     Features
                   </Link>
                   <Link
-                    href="/#community"
+                    href="/#self-hosting"
                     className="whitespace-nowrap text-sm font-medium text-foreground hover:text-primary"
                   >
-                    Community
+                    Self-hosting
                   </Link>
-                  <Link
-                    href="/#about"
+                  <a
+                    href="https://github.com/opendiving/opendiving-web"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="whitespace-nowrap text-sm font-medium text-foreground hover:text-primary"
                   >
-                    About
-                  </Link>
+                    Source
+                  </a>
                 </>
               )}
             </nav>
@@ -411,19 +413,21 @@ export function Header() {
                     Features
                   </Link>
                   <Link
-                    href="/#community"
+                    href="/#self-hosting"
                     className="text-sm font-medium text-foreground hover:text-primary py-2"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
-                    Community
+                    Self-hosting
                   </Link>
-                  <Link
-                    href="/#about"
+                  <a
+                    href="https://github.com/opendiving/opendiving-web"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="text-sm font-medium text-foreground hover:text-primary py-2"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
-                    About
-                  </Link>
+                    Source
+                  </a>
                 </>
               )}
             </nav>
