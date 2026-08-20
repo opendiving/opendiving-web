@@ -494,6 +494,42 @@ This only works because the app runs as a persistent Node server (`output: "stan
   ordering is reliable even though the scroll lock itself only activates later (e.g. when a dialog
   opens). Without this, opening the first `Dialog`/`Popover`/etc. throws a `style-src-elem` CSP
   violation for react-remove-scroll's un-nonced style tag.
+- The matcher deliberately carries **no `missing:` clause**, which is a departure from Next's own
+  CSP guide (`node_modules/next/dist/docs/01-app/02-guides/content-security-policy.md`). The guide
+  puts one at that exact spot, listing `next-router-prefetch` and `purpose: prefetch`, and justifies
+  it only with "prefetches ... don't need the CSP header". The concern it is usually explained by -
+  a nonce baked into a prefetched RSC payload going stale in the client router cache, then being
+  replayed under a document whose CSP carries a different nonce - does not arise here, because a
+  real prefetch payload has no nonce in it at all. Measured against the production stack
+  (`http://localhost:8080`, behind the shipped Caddy; the dev server on `:3000` is a weaker
+  instrument for this and reports different `Cache-Control`):
+  `curl -H "RSC: 1" -H "next-router-prefetch: 1" .../privacy` returns a 267-byte router-tree stub
+  with no `<script>` and no nonce, while the same URL with `RSC: 1` alone returns ~36 KB carrying
+  the request's nonce. What the clause did buy was a one-header opt-out from the policy: with
+  `purpose: prefetch`, or any value at all of `next-router-prefetch`, the middleware never ran and a
+  full 66 KB HTML document with 22 `<script>` tags came back with no CSP, no HSTS and no
+  `X-Robots-Tag`. Two facts bound that, and neither rescues the clause. `matchHas`
+  (`node_modules/next/dist/shared/lib/router/utils/prepare-destination.js`) looks a header up by
+  exact lowercased key and compiles its value as an anchored regex, so the `Sec-Purpose: prefetch`
+  that Chrome's speculation rules and Google's prefetch proxy actually send never matched the
+  `purpose` key - those requests always kept the CSP, and only a hand-written header stripped it.
+  And the responses are `private, no-cache, no-store, max-age=0, must-revalidate` with no `ETag`, so
+  no shared cache could store the CSP-less document and there was no 304 path to poison. Cache
+  poisoning was therefore never the motivation for removing it; the header-stripping primitive
+  itself was. `src/proxy.test.ts` asserts the exported `config` carries no `has`/`missing` entry -
+  Vitest does not run Next's matcher, so a static assertion is the only form that guarantee can
+  take, and every other test in that file calls `proxy()` directly and would not notice the clause
+  coming back.
+- The one change that would reopen the question above is enabling `cacheComponents`/PPR, which
+  `next.config.js` has no `experimental` block for today. App-shell prefetches
+  (`next-router-prefetch: 3`, `FetchStrategy.RuntimeShell` in
+  `node_modules/next/dist/client/components/segment-cache/cache.js`, which writes the response into
+  the client cache as a prerender) would then be cacheable, and a per-request nonce baked into one
+  is exactly the stale nonce the upstream clause guards against. That is not a reason to restore
+  four lines to the matcher, though: the same guide already calls Partial Prerendering
+  "incompatible" with nonce-based CSP outright, "since static shell scripts won't have access to the
+  nonce", so turning it on means rethinking this whole mechanism - see the static-export bullet
+  above for the shape that rethink would take.
 
 ## Unified auth flow: `/signin`/`/signup` are gone, replaced by `AuthForm` on the landing page
 
