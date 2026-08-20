@@ -23,6 +23,7 @@ import {
   refreshAccessToken,
 } from "@/lib/api/client";
 import { rememberPostAuthRedirect } from "@/lib/auth-redirect";
+import { rememberAuthMethod } from "@/lib/last-auth-method";
 import { hardNavigate } from "@/lib/navigation";
 
 // Carried from `/auth/verify` or the Google button to the profile-completion page
@@ -150,9 +151,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
     [],
   );
 
+  // Each of the four entry points below records which one it was, for the hint
+  // `AuthForm` shows a returning visitor (see `lib/last-auth-method.ts`). Written
+  // where the identity was proved rather than inside `applyOutcome`, which is the
+  // one place that cannot tell the methods apart - and written for an
+  // onboarding outcome too, since that is a sign-in a moment later by the same
+  // means. `completeProfile` deliberately records nothing: it finishes whichever
+  // method got that far and is not a method of its own.
   const verifyEmailLink = useCallback(
     async (token: string) => {
       const outcome = await authAPI.verifyEmailLink(token);
+      rememberAuthMethod("email");
       return applyOutcome(outcome);
     },
     [applyOutcome],
@@ -161,6 +170,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const verifyEmailCode = useCallback(
     async (requestId: string, code: string) => {
       const outcome = await authAPI.verifyEmailCode(requestId, code);
+      rememberAuthMethod("email");
       return applyOutcome(outcome);
     },
     [applyOutcome],
@@ -169,6 +179,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const signInWithGoogle = useCallback(
     async (credential: string) => {
       const outcome = await authAPI.signInWithGoogle(credential);
+      rememberAuthMethod("google");
       return applyOutcome(outcome);
     },
     [applyOutcome],
@@ -183,6 +194,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const signInWithPasskey = useCallback(
     async (flowId: string, credential: AuthenticationResponseJSON) => {
       const outcome = await passkeysAPI.verifySignIn(flowId, credential);
+      rememberAuthMethod("passkey");
       return applyOutcome(outcome);
     },
     [applyOutcome],
@@ -251,6 +263,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // `localStorage` it would otherwise outlive both the sign-out and the
     // browser - leaving a `/dives/<uuid>` legible on a shared machine for a day.
     rememberPostAuthRedirect(undefined);
+    // The last-used method is deliberately *not* cleared here. It names a button,
+    // not a person or a destination, and surviving the sign-out is the whole
+    // point: the next visitor to this browser is nearly always the same diver.
     hardNavigate("/");
   }, []);
 

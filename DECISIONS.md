@@ -8287,3 +8287,83 @@ GitHub signs that commit itself, so a `main`-only rule would pass on a branch of
 work, which is the exact state this section exists to describe. The sibling
 [opendiving-api](https://github.com/opendiving/opendiving-api) repo carries the long-form version of
 this reasoning in its own `DECISIONS.md`.
+
+## Passkeys come from two places, and the enrollment nudge is the one that matters
+
+A passkey is worth nothing to a diver who never finds it, and the settings card only reaches people
+already looking for one. So enrollment lives in two places with different jobs: a "Passkeys" card in
+settings (`components/settings/passkeys-card.tsx`) for someone who went looking, and a dismissible
+card on the dashboard (`components/dashboard/passkey-nudge-card.tsx`) for everyone who did not. Both
+run the same ceremony through `hooks/usePasskeyRegistration.ts`, which is `usePasskeySignIn`'s
+explicit half with two differences that follow from happening inside a session: no `flow_id`,
+because the bearer token already names whose challenge it is, and a name the client picks.
+
+**Both put a button in front of `credentials.create()`.** The click is the user gesture Safari
+requires, which is why nothing anywhere fires a ceremony on its own — an unprompted biometric sheet
+on a dashboard would be alarming rather than convenient.
+
+**The nudge's three conditions are ordered by what they cost**: the browser supports WebAuthn, this
+browser has not said "not now", and only then does the account get asked whether it has any
+passkeys. So the steady state — a diver who dismissed it, or who has one — is no request at all, on
+a card that would otherwise fire one on every dashboard view. Dismissal is per-browser
+(`lib/passkey-nudge.ts`), and that is the point rather than a compromise: a new browser is exactly
+where the offer is relevant again, where a server-side flag would suppress it precisely where it
+earns its place, for a column, an endpoint and a migration.
+
+**The nudge is pinned out of the README screenshots.** `scripts/screenshots.mjs` runs a fresh
+browser profile every time, so the card would land in the dashboard hero whenever the demo account
+happened to have no passkey. It is the same class of nondeterminism as the greeting's clock and the
+charts' year, and it is pinned the same way — an `addInitScript` writing the dismissal key before
+any page script runs.
+
+### The list is not gated on the browser's capability, only the Add button is
+
+Everything else passkey-shaped hides itself behind `browserSupportsWebAuthn()` (see "Passkeys sign
+in twice over" above), and the settings card deliberately breaks that symmetry: a diver whose
+passkeys live on their phone must still be able to revoke one from a laptop that cannot create any.
+A passkey nobody can see is a passkey nobody can revoke — the same reasoning the API uses for
+reading up to `_LIST_LIMIT` rows rather than stopping at the configured cap. The card removes itself
+only when there is genuinely nothing to do: no passkeys _and_ no way to add one.
+
+It also removes itself when `GET /user/passkeys` 404s. That is an instance whose API predates
+passkeys, and on a settings page it is not an error worth reporting — it is a feature this copy of
+OpenDiving does not have. Any other failure gets the API's own wording and a Try again, because it
+is a real one.
+
+### `onRegistered` runs outside the ceremony's own error handling
+
+`usePasskeyRegistration` awaits its caller's callback _after_ the try/catch around the three
+requests, not inside it. The passkey is stored by then, and a list refresh that throws must not come
+back as "couldn't add that passkey" — the diver would run the ceremony again and meet the
+duplicate-credential 409, having been told the first one failed when it did not. A failure from the
+callback is logged instead.
+
+### The client names the passkey, and the server only caps it
+
+`lib/passkey-name.ts` reads the User-Agent for a coarse "Chrome on macOS", because only the browser
+knows what it is running on and asking the diver to type a name before the biometric prompt puts a
+form in front of a one-tap gesture. Two orderings in it are load-bearing and are what its tests pin:
+every Chromium browser also says "Chrome" (so Edge, Opera and Samsung Internet have to be looked for
+first), and every browser on iOS is the same WebKit — "Chrome on iPhone" and "Safari on iPhone"
+describe one authenticator, so the device alone is the name. A UA it cannot read falls back to
+"Passkey" rather than to nothing: the API's `name` is `min_length=1`, so an empty suggestion would
+fail a ceremony the diver has already completed.
+
+### The sign-in form says which method this browser used last
+
+`lib/last-auth-method.ts` is written by each of `AuthContext`'s entry points and read by `AuthForm`,
+which renders one muted line above the methods. It answers the one question a screen with three ways
+in creates, and does nothing else — no method is hidden, reordered or preselected, and an unknown
+stored value reads as absent rather than being rendered.
+
+Three details. It is written where the identity was _proved_ rather than inside `applyOutcome`,
+which is the one place that cannot tell the methods apart; the link and the code in the same email
+are one method, because they claim the same request row and arrive in the same message; and it
+survives `signOut`, unlike the remembered post-auth destination that is cleared there. That
+asymmetry is deliberate: a destination is a `/dives/<uuid>` legible on a shared machine, where this
+names a button.
+
+Read through `useSyncExternalStore` with a `null` server snapshot, for the same reason the WebAuthn
+capability is (see "Passkeys sign in twice over"): a value that differs between the server render
+and the client, rather than one that changes over time — and `react-hooks/set-state-in-effect`
+rejects the effect-and-`setState` spelling of it outright.

@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { DataExportCard } from "@/components/settings/data-export-card";
 import { EmailChangeCard } from "@/components/settings/email-change-card";
 import { NotificationsCard } from "@/components/settings/notifications-card";
+import { PasskeysCard } from "@/components/settings/passkeys-card";
 import { UnitsCard } from "@/components/settings/units-card";
 import { User, Save } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -220,6 +221,8 @@ export default function SettingsPage() {
         <NotificationsCard />
 
         <UnitsCard />
+
+        <PasskeysCard />
       </div>
 
       {/* Full width rather than another cell in the grid above: the three rows each

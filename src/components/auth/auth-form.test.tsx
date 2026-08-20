@@ -2,6 +2,7 @@ import { afterEach, describe, it, expect, vi, beforeEach } from "vitest";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AuthForm } from "./auth-form";
+import { memoryStorage, useStorage } from "@/test/memory-storage";
 
 // What only a render can reach: which of the two "a link is on its way" paths
 // remember the destination. The storage itself is unit-tested in
@@ -75,6 +76,10 @@ const realSetTimeout = globalThis.setTimeout;
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // The last-used-method hint reads `window.localStorage`, which doesn't work
+  // under this runner as jsdom provides it - see `test/memory-storage.ts`. A
+  // fresh store per test also means no test inherits another's hint.
+  useStorage(memoryStorage());
   requestEmailLink.mockResolvedValue({ message: "sent", request_id: "req-1" });
   verifyEmailCode.mockResolvedValue(true);
   // The default is a browser with no WebAuthn at all, so every test that isn't
@@ -249,5 +254,40 @@ describe("AuthForm passkeys", () => {
     await requestLink(null);
 
     expect(cancelCeremony).toHaveBeenCalled();
+  });
+});
+
+// A hint and nothing more: it answers "which of these did I use?", the one
+// question a screen with three methods creates, without hiding or preselecting
+// any of them.
+describe("AuthForm last-used method", () => {
+  it("says nothing to a browser that has never signed in", async () => {
+    render(<AuthForm redirectTo={null} />);
+
+    await screen.findByLabelText("Email");
+    expect(screen.queryByText(/last time you signed in/i)).toBeNull();
+  });
+
+  it("names the method this browser used last", async () => {
+    window.localStorage.setItem("opendiving:last-auth-method", "google");
+
+    render(<AuthForm redirectTo={null} />);
+
+    expect(
+      await screen.findByText("Last time you signed in with Google."),
+    ).toBeInTheDocument();
+    // Still every method, in the order they were always in.
+    expect(screen.getByLabelText("Email")).toBeInTheDocument();
+  });
+
+  // The value is only ever rendered, so a build that no longer has the stored
+  // method has to say nothing rather than name one it doesn't offer.
+  it("ignores a method this build doesn't know", async () => {
+    window.localStorage.setItem("opendiving:last-auth-method", "sms");
+
+    render(<AuthForm redirectTo={null} />);
+
+    await screen.findByLabelText("Email");
+    expect(screen.queryByText(/last time you signed in/i)).toBeNull();
   });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useState, useSyncExternalStore } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { usePasskeySignIn } from "@/hooks/usePasskeySignIn";
 import { emailAuthSchema, EmailAuthFormData } from "@/lib/validations/auth";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { rememberPostAuthRedirect } from "@/lib/auth-redirect";
+import { readLastAuthMethod, type AuthMethod } from "@/lib/last-auth-method";
 import { cn } from "@/lib/utils";
 import { CheckEmailCard } from "./check-email-card";
 import { GoogleAuthButton } from "./google-auth-button";
@@ -25,6 +26,24 @@ interface AuthFormProps {
   // somewhere specific before being bounced to `/signin` (see `useAuthGuard`).
   // Defaults to `/dashboard` at each of the entry points that consume it.
   redirectTo?: string | null;
+}
+
+// How the hint below names each method. The email one says "your email" rather
+// than "a link", because the same message now carries a code as well.
+const LAST_METHOD_LABELS: Record<AuthMethod, string> = {
+  email: "your email",
+  google: "Google",
+  passkey: "a passkey",
+};
+
+// Nothing rewrites this mid-session, so the subscription never fires - the store
+// is read for the split it genuinely has, `null` on the server and the stored
+// answer on the client, which keeps the hint out of the server's markup and out
+// of hydration's way. Same shape as the WebAuthn capability check.
+const neverChanges = () => () => {};
+
+function useLastAuthMethod(): AuthMethod | null {
+  return useSyncExternalStore(neverChanges, readLastAuthMethod, () => null);
 }
 
 // What the "check your email" card needs, and the reason it is one value rather
@@ -52,6 +71,10 @@ export function AuthForm({ className, redirectTo }: AuthFormProps) {
   const [sent, setSent] = useState<SentLink | null>(null);
   const { requestEmailLink } = useAuth();
   const { googleClientId } = useConfig();
+  // Which way in this browser used last time. A hint, not a preselection: every
+  // method stays exactly where it was, and this only answers "which of these did
+  // I use?" - the one question a screen with three of them creates.
+  const lastMethod = useLastAuthMethod();
   // Armed only while the email input is on screen: the browser anchors its
   // autofill dropdown to that field, and `CheckEmailCard` replaces this whole
   // form once a link has been sent.
@@ -124,6 +147,12 @@ export function AuthForm({ className, redirectTo }: AuthFormProps) {
         className,
       )}
     >
+      {lastMethod && (
+        <p className="mb-4 text-sm text-muted-foreground">
+          Last time you signed in with {LAST_METHOD_LABELS[lastMethod]}.
+        </p>
+      )}
+
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {error && <StatusMessage variant="error">{error}</StatusMessage>}
 

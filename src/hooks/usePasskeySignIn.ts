@@ -1,29 +1,23 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  browserSupportsWebAuthn,
   browserSupportsWebAuthnAutofill,
   startAuthentication,
   WebAuthnAbortService,
-  WebAuthnError,
   type AuthenticationResponseJSON,
 } from "@simplewebauthn/browser";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { useBrowserSupportsWebAuthn } from "@/hooks/useBrowserSupportsWebAuthn";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { passkeysAPI } from "@/lib/api/passkeys";
 import {
   DEFAULT_POST_AUTH_REDIRECT,
   sanitizeRedirectPath,
 } from "@/lib/auth-redirect";
+import { isCeremonyDismissed } from "@/lib/passkey-ceremony";
 
 interface UsePasskeySignInOptions {
   /**
@@ -63,47 +57,6 @@ interface PasskeySignIn {
 }
 
 const SIGN_IN_FAILED = "Couldn't sign in with that passkey. Please try again.";
-
-// Whether this browser has WebAuthn at all, read through `useSyncExternalStore`
-// rather than an effect. It is a value that genuinely differs between the server
-// render (where there is no `window`) and the client, which is exactly the split
-// this hook exists to describe: `false` on the server, so hydration matches, and
-// the real answer from the first client render onwards. A subscription that never
-// fires, because nothing turns WebAuthn on mid-session.
-const neverChanges = () => () => {};
-
-function useBrowserSupportsWebAuthn(): boolean {
-  return useSyncExternalStore(
-    neverChanges,
-    browserSupportsWebAuthn,
-    () => false,
-  );
-}
-
-/**
- * Whether an error means the diver backed out rather than anything failing.
- *
- * Two shapes, one meaning. `ERROR_CEREMONY_ABORTED` is what v13 raises when a
- * ceremony is cancelled by an abort signal - which is how this hook stands the
- * conditional ceremony down, and how v13 itself stands it down when a second
- * ceremony starts. Matched on `code`, which is the documented contract; v13 also
- * copies the wrapped `DOMException`'s `name` onto the wrapper, so `"AbortError"`
- * happens to work too, but that is incidental and unwritten-down.
- *
- * `NotAllowedError` is the sheet being dismissed, and reaches us through v13's
- * deliberate passthrough - one code (`ERROR_PASSTHROUGH_SEE_CAUSE_PROPERTY`) for
- * every spec error it declines to reinterpret, so the copied `name` is what
- * distinguishes it. The spec overloads that error on purpose - dismissed, timed
- * out, and "no credential matched" are one error, so that a page cannot ask
- * whether an account has a passkey - and every reading of it is a visitor who
- * chose to stop. Reporting it would scold someone for closing a dialog.
- */
-function isCeremonyDismissed(error: unknown): boolean {
-  if (!(error instanceof WebAuthnError)) return false;
-  return (
-    error.code === "ERROR_CEREMONY_ABORTED" || error.name === "NotAllowedError"
-  );
-}
 
 /**
  * Passkey sign-in, in both of the shapes a login form needs: armed quietly behind

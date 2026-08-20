@@ -1,6 +1,8 @@
 import type {
   AuthenticationResponseJSON,
+  PublicKeyCredentialCreationOptionsJSON,
   PublicKeyCredentialRequestOptionsJSON,
+  RegistrationResponseJSON,
 } from "@simplewebauthn/browser";
 
 import { captureSession, type AuthOutcome } from "./auth";
@@ -26,15 +28,38 @@ export interface PasskeySignInFlow {
 }
 
 /**
- * Passkey sign-in: the anonymous half of WebAuthn.
+ * One passkey on the account, as `GET /user/passkeys` lists it.
  *
- * Two calls, mirroring the magic link's request/verify shape. Registering a passkey
- * is a different, authenticated pair of endpoints under `/user` and is not here yet.
+ * Deliberately not the whole row: the credential id and public key stay on the
+ * server, where they are the credential's identity to the authenticator and would
+ * name this account to anyone holding them. What is left is what a diver needs to
+ * tell one passkey from another and decide whether to revoke it.
  *
- * Both calls are anonymous by design, and both are cheap to fail: an instance whose
- * API predates passkeys 404s on the first one, and the caller
- * (`hooks/usePasskeySignIn.ts`) treats that as "this instance has no passkeys"
- * rather than as an error worth showing anyone.
+ * `backed_up` is the authenticator's own backup-state flag, refreshed on every
+ * assertion - true for a passkey synced through iCloud Keychain or a password
+ * manager, false for one bound to a single device or a security key.
+ */
+export interface Passkey {
+  uuid: string;
+  name: string;
+  backed_up: boolean;
+  created_at: string;
+  last_used_at: string | null;
+}
+
+/**
+ * Passkeys, both halves: the anonymous sign-in ceremony and the authenticated
+ * registration and management calls.
+ *
+ * The two sign-in calls mirror the magic link's request/verify shape. The
+ * registration pair is the same two steps inside a session, which is what makes
+ * a credential's owner a settled question - it is born attached to the account
+ * that made it.
+ *
+ * The two anonymous calls are cheap to fail: an instance whose API predates
+ * passkeys 404s on the first one, and the caller (`hooks/usePasskeySignIn.ts`)
+ * treats that as "this instance has no passkeys" rather than as an error worth
+ * showing anyone.
  */
 export const passkeysAPI = {
   /**
@@ -76,5 +101,69 @@ export const passkeysAPI = {
       credential,
     });
     return captureSession(response.data);
+  },
+
+  /**
+   * Step 1 of adding a passkey: the creation options for
+   * `navigator.credentials.create()`, with the account's existing credentials
+   * already excluded so an authenticator that holds one offers to replace it
+   * rather than silently making a second.
+   *
+   * No flow id, unlike sign-in: a registration challenge is keyed by the account
+   * that asked for it, which the bearer token already names. One pending
+   * registration per account, so two tabs racing both fail - the second tab's
+   * options overwrite the challenge the first tab's verify then presents. It
+   * self-heals on a retry.
+   */
+  async requestRegistrationOptions(): Promise<PublicKeyCredentialCreationOptionsJSON> {
+    const response = await apiClient.post<{
+      options: PublicKeyCredentialCreationOptionsJSON;
+    }>("/user/passkey/options", {});
+    return response.data.options;
+  },
+
+  /**
+   * Step 2: hand back what the authenticator attested, plus the label to file it
+   * under, and get the stored passkey. The account's inbox is told on the way.
+   *
+   * `name` is the client's job (see `lib/passkey-name.ts`): only the browser
+   * knows what it is running on, and the server just caps the label's length. A
+   * 409 means the account is already at its passkey limit, or that this exact
+   * credential is registered here already - both carry a `detail` worth showing,
+   * so callers run failures through `getApiErrorMessage`.
+   */
+  async verifyRegistration(
+    credential: RegistrationResponseJSON,
+    name: string,
+  ): Promise<Passkey> {
+    const response = await apiClient.post<Passkey>("/user/passkey/verify", {
+      credential,
+      name,
+    });
+    return response.data;
+  },
+
+  /** Every passkey on the account, oldest first. Unpaginated - there are at most a handful. */
+  async getPasskeys(): Promise<Passkey[]> {
+    const response = await apiClient.get<Passkey[]>("/user/passkeys");
+    return response.data;
+  },
+
+  /**
+   * Renames a passkey. The label is the only thing about a credential a diver
+   * owns - everything else on it is the authenticator's to report or was fixed at
+   * registration - so this is the only update there is.
+   */
+  async renamePasskey(uuid: string, name: string): Promise<void> {
+    await apiClient.patch(`/user/passkey/${uuid}`, { name });
+  },
+
+  /**
+   * Revokes a passkey, for good: the row is what an assertion looks up, so there
+   * is nothing to un-delete and no archived state to fall back to. Removing the
+   * last one is allowed - the magic link is always there.
+   */
+  async deletePasskey(uuid: string): Promise<void> {
+    await apiClient.delete(`/user/passkey/${uuid}`);
   },
 };

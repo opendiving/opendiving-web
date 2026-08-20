@@ -17,6 +17,7 @@ import { DiveActivityCard } from "@/components/dives/dive-activity-card";
 import { GasUseCard } from "@/components/dives/gas-use-card";
 import { ServiceDueCard } from "@/components/gear/service-due-card";
 import { CertificationExpiryCard } from "@/components/certifications/certification-expiry-card";
+import { PasskeyNudgeCard } from "@/components/dashboard/passkey-nudge-card";
 import { SetupChecklistCard } from "@/components/dashboard/setup-checklist-card";
 import { diveStatsAPI, UserDiveStats } from "@/lib/api/dive-stats";
 import { getApiErrorMessage } from "@/lib/api/error";
@@ -161,6 +162,10 @@ export default function DashboardPage() {
         userId={user.uuid}
         totalDives={stats?.total_dives ?? null}
       />
+      {/* Below the checklist rather than above it: a diver with an empty logbook
+          has something better to do first, and this one keeps until they come
+          back. It renders nothing at all once taken or dismissed. */}
+      <PasskeyNudgeCard />
 
       {statsError && (
         <Card>
