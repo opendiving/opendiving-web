@@ -26,6 +26,15 @@ npm run dev
 Open <http://localhost:3000> and sign in with your email. With no email provider configured on the
 API side, the magic link is printed to the API logs — that's the intended local flow, not a bug.
 
+Commits in this repo are signed, and a hook keeps them that way. Once per clone:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+`.githooks/pre-push` then refuses to push a commit carrying no signature at all. Linked worktrees
+share the setting, so that single command covers them too.
+
 Node 24 is what this builds and tests on — `.nvmrc` and `package.json`'s `engines` say so, and CI
 and the Dockerfile follow. Use `npm ci` rather than `npm install` when you just want a
 lockfile-exact install.
@@ -114,6 +123,9 @@ rest of the reasoning.
 
 ## Pull requests
 
+- **Every commit in the PR must be signed.** GitHub shows the ones that aren't as _Unverified_, and
+  a project asking people to self-host it should be able to say who wrote what. Set `core.hooksPath`
+  as above and the push hook keeps you honest.
 - Branch off `main`, keep the PR focused on one thing.
 - Title the PR as a conventional commit — `<type>[(scope)][!]: <description>`, e.g.
   `feat: chart the dive profile on the dive detail page`. Types: `feat`, `fix`, `refactor`, `docs`,
