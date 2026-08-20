@@ -13,24 +13,17 @@ const nextConfig = {
     ignoreBuildErrors: false,
   },
   async headers() {
-    // Content-Security-Policy is set per-request by src/proxy.ts instead of
-    // here, since it needs a fresh, unpredictable nonce on every response.
-    // Everything below is static and safe to apply route-wide.
+    // Content-Security-Policy and Strict-Transport-Security are set per-request
+    // by src/proxy.ts instead of here - the first needs a fresh, unpredictable
+    // nonce on every response, and the second depends on whether the request
+    // arrived over HTTPS and on a variable read at runtime. What is left below
+    // is static: the same value for every request of every deployment, which is
+    // what this build-time hook can honestly express.
     return [
       {
         source: "/:path*",
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
-          // `upgrade-insecure-requests` in the CSP rewrites subresource URLs,
-          // but it can't protect the *first* navigation to http://... - the
-          // browser has no memory of the origin yet, which is exactly the
-          // window an on-path attacker needs. HSTS closes it. Harmless if the
-          // TLS-terminating proxy in front already sets one; the proxy's value
-          // wins where both are present.
-          {
-            key: "Strict-Transport-Security",
-            value: "max-age=63072000; includeSubDomains; preload",
-          },
           // Legacy fallback for browsers that don't support the CSP
           // `frame-ancestors` directive set in proxy.ts.
           { key: "X-Frame-Options", value: "DENY" },

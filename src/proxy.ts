@@ -57,6 +57,36 @@ function cspSources(): ConfiguredCspSources {
   return configuredSources;
 }
 
+// `Strict-Transport-Security` is set here rather than in `next.config.js`'s `headers()`
+// for two reasons that only middleware can serve: the value depends on the request, and
+// the switch behind it is read at runtime. `headers()` is evaluated once, during the
+// build, and applied to every response of every deployment identically - which for a
+// published image means the build machine decides it for someone else's domain.
+//
+// What it now respects. It is only sent for a request that already arrived over HTTPS: a
+// LAN instance on plain HTTP would otherwise hand out a pin it cannot honour, and a
+// browser that recorded one stops being able to reach it at all. And it no longer carries
+// `preload` - entering a domain into the browsers' preload list commits every host under
+// it to HTTPS for years and is deliberately hard to undo, which is a decision for whoever
+// owns the domain rather than for the app running on it. `WEB_HSTS=off` drops the header
+// entirely.
+//
+// Only responses the matcher below covers get it, which is documents and their data
+// requests rather than static assets. HSTS is recorded per *host*, not per path, so one
+// covered response is all a browser needs.
+const HSTS_VALUE = "max-age=63072000; includeSubDomains";
+
+// Whether this request reached us over HTTPS. Behind the shipped Caddy - or any other
+// proxy - TLS is terminated a hop earlier and the only evidence is the forwarded header;
+// a chain appends to it, so the client-facing hop is the first entry, not the last.
+function isHttps(request: NextRequest): boolean {
+  const forwarded = request.headers.get("x-forwarded-proto");
+  if (forwarded) {
+    return forwarded.split(",")[0]!.trim().toLowerCase() === "https";
+  }
+  return request.nextUrl.protocol === "https:";
+}
+
 // A directive and its sources, with the empty ones dropped. Every source below the
 // literal ones can vanish - the API origin whenever the API is same-origin, the tile
 // origins when every configured template is malformed, Gravatar and Google when the
@@ -172,6 +202,22 @@ export function proxy(request: NextRequest) {
     contentSecurityPolicyHeaderValue,
   );
 
+  // `runtimeConfig()` memoizes, so these two are one environment read for the life of
+  // the process rather than one per request.
+  const { hstsEnabled, noindex } = runtimeConfig();
+  if (hstsEnabled && isHttps(request)) {
+    // A TLS-terminating proxy in front may set its own; where both are present the
+    // proxy's wins, which is the right way round - it is the one that knows the domain.
+    response.headers.set("Strict-Transport-Security", HSTS_VALUE);
+  }
+  if (noindex) {
+    // `app/robots.ts` asks crawlers not to fetch; this is what keeps a URL they heard
+    // about elsewhere out of an index anyway. A disallowed path can still be listed - a
+    // crawler that obeys robots.txt never fetches it and so never sees a `noindex` in the
+    // page, which is exactly why the header exists as well.
+    response.headers.set("X-Robots-Tag", "noindex, nofollow");
+  }
+
   return response;
 }
 
@@ -182,7 +228,12 @@ export const config = {
       // an unanchored `api` also excludes any future route that merely *starts*
       // with those letters - `/api-docs`, `/apidemo` - which would then be
       // served with no CSP at all, silently.
-      source: "/((?!api/|_next/static/|_next/image/|favicon.ico$).*)",
+      //
+      // `healthz` is excluded for the same reason the API routes are: it answers a
+      // container healthcheck with two words of plain text, and a policy governing
+      // scripts and styles has nothing to say about it. Skipping it also keeps the
+      // per-request nonce off a path that is hit every few seconds forever.
+      source: "/((?!api/|_next/static/|_next/image/|favicon.ico$|healthz$).*)",
       missing: [
         { type: "header", key: "next-router-prefetch" },
         { type: "header", key: "purpose", value: "prefetch" },
