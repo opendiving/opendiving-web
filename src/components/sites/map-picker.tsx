@@ -4,7 +4,6 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
@@ -19,12 +18,12 @@ import {
   Point,
   project,
   TILE_SIZE,
-  tileSource,
   tileUrl,
   unproject,
   visibleTiles,
   WORLD_CENTER,
 } from "@/lib/map-tiles";
+import { useConfig } from "@/contexts/ConfigContext";
 import {
   GesturePoint,
   useMapGesture,
@@ -84,7 +83,9 @@ export interface MapPickerProps {
  */
 export function MapPicker({ latitude, longitude, onPick }: MapPickerProps) {
   const { resolvedTheme } = useTheme();
-  const source = useMemo(() => tileSource(), []);
+  // From the instance's runtime configuration, so a published image can be pointed
+  // at another tile server without a rebuild (`lib/runtime-config.ts`).
+  const { tiles: source } = useConfig();
   const template = resolvedTheme === "dark" ? source.dark : source.light;
 
   const hasPosition = latitude !== null && longitude !== null;

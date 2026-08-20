@@ -409,26 +409,33 @@ export interface TileSource {
   attribution: string;
 }
 
+/** What an operator configured, before the defaults are applied. */
+export interface TileConfig {
+  light?: string;
+  dark?: string;
+  attribution?: string;
+}
+
 /**
  * The configured tile source, or the keyless Carto default.
  *
- * What an unset `NEXT_PUBLIC_MAP_TILE_URL_DARK` falls back to depends on
- * whether the light one was configured, and the two cases mean different
- * things. Configure neither and you get Carto's own matched pair. Configure
- * only the light one - a self-hoster pointing at their own tile server - and
- * that is "use my tiles", not "use mine in the daytime and a stranger's at
- * night", so it is used for both.
+ * What an unset dark template falls back to depends on whether the light one
+ * was configured, and the two cases mean different things. Configure neither
+ * and you get Carto's own matched pair. Configure only the light one - a
+ * self-hoster pointing at their own tile server - and that is "use my tiles",
+ * not "use mine in the daytime and a stranger's at night", so it is used for
+ * both.
+ *
+ * The values are passed in rather than read here: they reach the browser from
+ * `lib/runtime-config.ts` through `contexts/ConfigContext.tsx`, so that a
+ * published image can be pointed at another tile server without a rebuild.
  */
-export function tileSource(): TileSource {
-  const configuredLight = process.env.NEXT_PUBLIC_MAP_TILE_URL;
-  const light = configuredLight || DEFAULT_TILE_URL;
+export function tileSource(config: TileConfig = {}): TileSource {
+  const light = config.light || DEFAULT_TILE_URL;
   return {
     light,
-    dark:
-      process.env.NEXT_PUBLIC_MAP_TILE_URL_DARK ||
-      (configuredLight ? light : DEFAULT_DARK_TILE_URL),
-    attribution:
-      process.env.NEXT_PUBLIC_MAP_TILE_ATTRIBUTION || DEFAULT_TILE_ATTRIBUTION,
+    dark: config.dark || (config.light ? light : DEFAULT_DARK_TILE_URL),
+    attribution: config.attribution || DEFAULT_TILE_ATTRIBUTION,
   };
 }
 
@@ -441,10 +448,10 @@ export function tileSource(): TileSource {
  * URL, which is a far worse thing to debug.
  *
  * A malformed template yields no origin at all instead of throwing. This runs
- * in middleware, on every request, so a typo'd env var would otherwise take the
- * whole site down over an optional map.
+ * in middleware, in the request path, so a typo'd env var would otherwise take
+ * the whole site down over an optional map.
  */
-export function tileOrigins(source: TileSource = tileSource()): string[] {
+export function tileOrigins(source: TileSource): string[] {
   const origins = [source.light, source.dark].flatMap((template) => {
     try {
       const { origin, protocol } = new URL(template);
@@ -461,13 +468,16 @@ export function tileOrigins(source: TileSource = tileSource()): string[] {
       // then blocked by a CSP that simply never named the host - and the
       // console says only that, not which variable caused it. Naming it here is
       // the difference between a two-minute fix and an afternoon.
-      if (process.env.NODE_ENV !== "production") {
-        console.warn(
-          `[map-tiles] Ignoring malformed tile URL template: ${template}. ` +
-            "Set NEXT_PUBLIC_MAP_TILE_URL to an absolute URL, or the map's " +
-            "tiles will be blocked by the Content-Security-Policy.",
-        );
-      }
+      //
+      // Said in production too, unlike the dev-only warnings elsewhere: the
+      // variable is read at runtime now, so a running instance is exactly where
+      // a mistyped one shows up, and `proxy.ts` derives this once per process
+      // rather than per request - so it is one line in the log, not a flood.
+      console.warn(
+        `[map-tiles] Ignoring malformed tile URL template: ${template}. ` +
+          "Set MAP_TILE_URL to an absolute URL, or the map's tiles will be " +
+          "blocked by the Content-Security-Policy.",
+      );
       return [];
     }
   });

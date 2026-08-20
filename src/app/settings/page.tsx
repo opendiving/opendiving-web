@@ -3,6 +3,7 @@
 import { Loader2 } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { useConfig } from "@/contexts/ConfigContext";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import {
   Card,
@@ -34,6 +35,9 @@ import { ButtonSpinner } from "@/components/ui/button-spinner";
 export default function SettingsPage() {
   const { isAuthenticated, isLoading } = useAuthGuard();
   const { user, refreshUser } = useAuth();
+  // Whether the copy below can honestly promise a Gravatar - the instance decides,
+  // and it is off by default (`lib/runtime-config.ts`).
+  const { gravatarEnabled } = useConfig();
   const { toast } = useToast();
 
   const {
@@ -166,19 +170,27 @@ export default function SettingsPage() {
                   <p className="text-sm font-medium leading-none">
                     Profile Picture
                   </p>
-                  <p className="text-xs text-muted-foreground">
-                    Your avatar comes from{" "}
-                    <a
-                      href="https://gravatar.com"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline hover:text-foreground"
-                    >
-                      Gravatar
-                    </a>
-                    , matched on your account email. Change it there and it
-                    changes here.
-                  </p>
+                  {gravatarEnabled ? (
+                    <p className="text-xs text-muted-foreground">
+                      Your avatar comes from{" "}
+                      <a
+                        href="https://gravatar.com"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline hover:text-foreground"
+                      >
+                        Gravatar
+                      </a>
+                      , matched on your account email. Change it there and it
+                      changes here.
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Your avatar is your initials. This copy of OpenDiving does
+                      not load avatars from Gravatar, so your email address is
+                      never sent anywhere to draw one.
+                    </p>
+                  )}
                 </div>
               </div>
 

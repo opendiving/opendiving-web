@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiCspSource } from "@/lib/api-base";
 import { tileOrigins } from "@/lib/map-tiles";
+import { runtimeConfig } from "@/lib/runtime-config";
 
 // Nonce-based, strict Content-Security-Policy. This is computed fresh per
 // request (the nonce must never be reused/predictable) and threaded through
@@ -15,22 +16,52 @@ import { tileOrigins } from "@/lib/map-tiles";
 // (`output: "standalone"`, see the Dockerfile) - it would silently do
 // nothing under a static export, which has no per-request server code to
 // generate a fresh nonce.
-// Derived once, not per request: `NEXT_PUBLIC_*` is fixed at build time, so the
-// answer cannot change while the process lives - and the dev-mode warning for a
-// malformed template would otherwise repeat on every request, burying the one
-// diagnostic it exists to give.
-const TILE_ORIGIN_SOURCES = tileOrigins().join(" ");
 // Empty by default, and that is the shipped topology: the API is same-origin behind
 // `app/api/v1/[...path]/route.ts`, which `'self'` already covers. It becomes a real
-// origin only for a split-origin build, where `NEXT_PUBLIC_API_URL` is absolute. Derived
-// once for the same reasons as the tile origins above - including that `apiCspSource`
-// warns in dev on a malformed value.
+// origin only for a split-origin build, where `NEXT_PUBLIC_API_URL` is absolute - and
+// that one genuinely is fixed at build time, which is why it is read here at module
+// scope while everything below is not.
 const API_ORIGIN_SOURCE = apiCspSource(process.env.NEXT_PUBLIC_API_URL) ?? "";
 
-// A directive and its sources, with the empty ones dropped. Both `apiOrigin` (empty
-// whenever the API is same-origin) and `tileOriginSources` (empty when every configured
-// tile template is malformed) can vanish, and a stray double space in a CSP is the kind
-// of thing that reads as a typo forever after.
+// The host sources the configuration decides on, each empty when the feature behind it
+// is off. Derived on first request rather than at module load - reading the environment
+// while the module is being evaluated risks doing it at build time, and the whole point
+// of `lib/runtime-config.ts` is that a published image reads it in the container it runs
+// in. Derived *once* rather than per request for the reason it always was: the
+// environment cannot change while the process lives, and `tileOrigins`' warning for a
+// malformed template would otherwise repeat on every request, burying the one diagnostic
+// it exists to give.
+interface ConfiguredCspSources {
+  tiles: string;
+  gravatar: string;
+  google: string;
+}
+
+let configuredSources: ConfiguredCspSources | undefined;
+
+function cspSources(): ConfiguredCspSources {
+  if (!configuredSources) {
+    const { gravatarEnabled, googleClientId, tiles } = runtimeConfig();
+    configuredSources = {
+      tiles: tileOrigins(tiles).join(" "),
+      // `UserAvatar` only reaches for Gravatar when the instance turned it on, so
+      // naming the host unconditionally would advertise a third party this deployment
+      // never contacts - and leave the allowance in place for anything else that tried.
+      gravatar: gravatarEnabled ? "https://www.gravatar.com" : "",
+      // Same reasoning for Google: with no client ID the button never renders, GSI's
+      // script is never loaded, and none of the three directives below has anything to
+      // allow.
+      google: googleClientId ? "https://accounts.google.com" : "",
+    };
+  }
+  return configuredSources;
+}
+
+// A directive and its sources, with the empty ones dropped. Every source below the
+// literal ones can vanish - the API origin whenever the API is same-origin, the tile
+// origins when every configured template is malformed, Gravatar and Google when the
+// instance has not turned them on - and a stray double space in a CSP is the kind of
+// thing that reads as a typo forever after.
 function cspList(directive: string, ...sources: string[]): string {
   return [directive, ...sources.filter(Boolean)].join(" ");
 }
@@ -42,14 +73,19 @@ export function proxy(request: NextRequest) {
   // `lib/api-base.ts` is what reduces an absolute value to an origin and what knows a
   // relative one can't go through `new URL` at all.
   const apiOrigin = API_ORIGIN_SOURCE;
-  // The map picker's raster tiles, and the *only* thing the map needs from CSP
-  // - which is the whole reason it is hand-rolled rather than MapLibre, whose
-  // web worker would have forced `worker-src blob:` into a strict nonce policy.
-  // Derived by the same module that builds the tile URLs (`lib/map-tiles.ts`)
-  // for the same origin-not-path reason as above: a host named in one place and
-  // not the other fails as a silently blocked image, which is a much worse
-  // thing to debug than a wrong URL.
-  const tileOriginSources = TILE_ORIGIN_SOURCES;
+  // `tiles` is the map picker's raster tiles, and the *only* thing the map needs
+  // from CSP - which is the whole reason it is hand-rolled rather than MapLibre,
+  // whose web worker would have forced `worker-src blob:` into a strict nonce
+  // policy. Derived by the same module that builds the tile URLs
+  // (`lib/map-tiles.ts`) for the same origin-not-path reason as above: a host
+  // named in one place and not the other fails as a silently blocked image,
+  // which is a much worse thing to debug than a wrong URL. `gravatar` and
+  // `google` are empty unless this instance turned those features on.
+  const {
+    tiles: tileOriginSources,
+    gravatar: gravatarSource,
+    google: googleSource,
+  } = cspSources();
 
   const cspDirectives = [
     "default-src 'self'",
@@ -83,11 +119,11 @@ export function proxy(request: NextRequest) {
     // only covers inline `<style>`, never an external stylesheet. Without it
     // the real (invisible but click-receiving) Google button renders unstyled.
     isDev
-      ? "style-src 'self' 'unsafe-inline' https://accounts.google.com"
-      : `style-src 'self' 'nonce-${nonce}' https://accounts.google.com`,
+      ? cspList("style-src", "'self'", "'unsafe-inline'", googleSource)
+      : cspList("style-src", "'self'", `'nonce-${nonce}'`, googleSource),
     "style-src-attr 'unsafe-inline'",
-    // `www.gravatar.com` - `UserAvatar` (`lib/utils.ts`'s `getGravatarUrl`)
-    // loads user avatars from there.
+    // `gravatarSource` - `UserAvatar` (`lib/utils.ts`'s `getGravatarUrl`) loads
+    // user avatars from there, on the instances that enabled it.
     // `blob:` - certification card images are private, so they're fetched with an
     // `Authorization` header and rendered from an object URL rather than pointed
     // at directly (see `hooks/useAuthedBlobUrl.ts`). Blob URLs are *not* covered
@@ -100,7 +136,7 @@ export function proxy(request: NextRequest) {
       "data:",
       "blob:",
       apiOrigin,
-      "https://www.gravatar.com",
+      gravatarSource,
       tileOriginSources,
     ),
     "font-src 'self' data:",
@@ -111,8 +147,8 @@ export function proxy(request: NextRequest) {
     // doesn't need a dedicated `script-src` entry - it's injected by our own
     // already-trusted bundle, which `'strict-dynamic'` (above) automatically
     // extends trust to.
-    cspList("connect-src", "'self'", apiOrigin, "https://accounts.google.com"),
-    "frame-src 'self' https://accounts.google.com",
+    cspList("connect-src", "'self'", apiOrigin, googleSource),
+    cspList("frame-src", "'self'", googleSource),
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

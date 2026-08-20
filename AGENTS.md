@@ -26,6 +26,13 @@ instructions live in AGENTS.md" in `DECISIONS.md`.
   nonce-based CSP, not a proxy; it derives `connect-src` from the same variable, so a split-origin
   API is a one-variable change — and an API host hardcoded anywhere else will be blocked by CSP
   rather than merely misconfigured.
+- **Everything else configurable is read at runtime**, not through `NEXT_PUBLIC_*`. `SITE_URL`,
+  `CONTACT_EMAIL`, `GOOGLE_CLIENT_ID`, `GRAVATAR_ENABLED` and the three `MAP_TILE_*` variables are
+  read on the server by `lib/runtime-config.ts` and reach client components through
+  `contexts/ConfigContext.tsx`'s `useConfig()`. Add a new setting there, never as a new
+  `NEXT_PUBLIC_` variable: those are inlined by the compiler and would be frozen into the published
+  image. The prefixed spellings survive as fallbacks, read through a computed key so they are not
+  inlined either. `.env.example` documents each one.
 
 Test, lint, format and type-check commands are in `CONTRIBUTING.md`.
 
