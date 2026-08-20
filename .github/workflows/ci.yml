@@ -6,6 +6,16 @@ on:
       - main
   pull_request:
 
+# Both jobs only read: they check out, install, and run npm scripts. `contents: read` is
+# what checkout needs and the whole of what they need, and saying so keeps the token off
+# whatever the repository default happens to grant. That matters more than it looks -
+# linting, testing and building all execute whatever the dependency tree ships, so
+# anything the token can do, a compromised transitive dependency can do too.
+# `persist-credentials: false` on each checkout is the other half: without it the token is
+# left behind in `.git/config`, in the same workspace all of that runs in.
+permissions:
+  contents: read
+
 jobs:
   lint-and-build:
     runs-on: ubuntu-latest
@@ -17,6 +27,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v7
@@ -63,6 +75,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Use Node.js 24.x
         uses: actions/setup-node@v7
