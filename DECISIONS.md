@@ -7640,3 +7640,42 @@ Worth being clear that this was a pre-existing bug and not a regression from the
 rewrite: `#features` was already there and already clipped. What changed is that the nav now points
 at two sections that exist instead of one that existed and two dead anchors, so it is exercised
 enough to notice.
+
+## `ci.yml` and `code-quality.yml` run on a read-only token, with nothing left in `.git/config`
+
+Neither workflow had a `permissions:` block, and the absence of one is not "no permissions" — the
+run inherits whatever the repository default grants, which is read _and_ write across every scope
+unless somebody has narrowed it in the Actions settings. Neither workflow has ever needed any of it:
+between the four jobs they check out, `npm ci`, lint, type-check, test, build, run `npm audit`, and
+upload reports as artifacts. Nothing writes to the repository, comments on a PR, or touches a
+package. Both now declare `contents: read` at workflow level, which is what `publish-image.yml` and
+`pr-title.yml` were already doing.
+
+Narrowing the scope is only half of it. `actions/checkout` writes the `GITHUB_TOKEN` into
+`.git/config` in the workspace unless told not to, and every job here then spends its time executing
+third-party code in that same workspace: linting, testing and building all run whatever the
+dependency tree ships. A compromised transitive dependency therefore finds a credential on disk
+without having to go looking for one, and the scope above is all that decides what it is worth.
+`code-quality.yml` has the sharpest version of this — four of its steps are `npx --yes` fetching a
+tool at run time (`depcheck`, `@next/bundle-analyzer`, `madge`, `@axe-core/cli`), so the code
+running next to that credential is resolved fresh on each run rather than pinned by the lockfile.
+`persist-credentials: false` on every checkout is the other half, and it costs nothing here: none of
+these jobs push, fetch a second ref, or use git at all after the checkout step.
+
+`fetch-depth: 0` on the `code-quality` checkout stays. The two inputs are independent — the full
+history is still fetched, just without the credential kept afterwards.
+
+One step here would want more than read, and it is commented out: "Comment PR with quality report"
+calls `issues.createComment` and needs `pull-requests: write`. Reviving it means a block on that job
+rather than a wider workflow-level one — and the job would have to re-state `contents: read`
+alongside, because a job-level `permissions:` block _replaces_ the workflow's rather than adding to
+it. `pr-title.yml` is the worked example: `permissions: {}` at the top, and the labelling job asking
+for exactly the two scopes it uses. The commented-out `dependency-review` job needs nothing extra;
+`contents: read` is what that action reads the PR's dependency diff with.
+
+The api repo's `linting.yml`, `tests.yml` and `type-checking.yml` had the same gap, and have since
+been given the same two lines — the same way its `publish-image.yml` and `pr-title.yml` already
+mirror this repo's. Every CI workflow across both repos now starts from `contents: read` and a
+checkout that persists nothing, so a new one has a shape to copy rather than a repository default to
+inherit. A workflow that genuinely needs to write asks on the job, which is what `pr-title.yml` does
+in both repos.
