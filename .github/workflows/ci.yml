@@ -6,13 +6,21 @@ on:
       - main
   pull_request:
 
-# Both jobs only read: they check out, install, and run npm scripts. `contents: read` is
-# what checkout needs and the whole of what they need, and saying so keeps the token off
+# This job only reads: it checks out, installs, and runs npm scripts. `contents: read` is
+# what checkout needs and the whole of what it needs, and saying so keeps the token off
 # whatever the repository default happens to grant. That matters more than it looks -
 # linting, testing and building all execute whatever the dependency tree ships, so
 # anything the token can do, a compromised transitive dependency can do too.
-# `persist-credentials: false` on each checkout is the other half: without it the token is
+# `persist-credentials: false` on the checkout is the other half: without it the token is
 # left behind in `.git/config`, in the same workspace all of that runs in.
+#
+# There was a second job here, `security-audit`, running `npm audit --audit-level=moderate`
+# and `npm outdated || true`. Both have somewhere better to be now: the audit is
+# `vulnerability-scan.yml`'s `dependencies` job, which asks the same question with the
+# scanner that also reads the published image, and `npm outdated` was a report nobody
+# diffed that `.github/renovate.json5` now answers with a pull request. That file and
+# CONTRIBUTING.md's "Staying on top of CVEs" carry the reasoning, including what the swap
+# stopped covering.
 permissions:
   contents: read
 
@@ -68,27 +76,3 @@ jobs:
             .next/
             !.next/cache/
           retention-days: 5
-
-  security-audit:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-
-      - name: Use Node.js 24.x
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24.x
-          cache: "npm"
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run security audit
-        run: npm audit --audit-level=moderate
-
-      - name: Check for outdated packages
-        run: npm outdated || true

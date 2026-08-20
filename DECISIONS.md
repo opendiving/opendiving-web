@@ -7695,10 +7695,14 @@ enough to notice.
 Neither workflow had a `permissions:` block, and the absence of one is not "no permissions" — the
 run inherits whatever the repository default grants, which is read _and_ write across every scope
 unless somebody has narrowed it in the Actions settings. Neither workflow has ever needed any of it:
-between the four jobs they check out, `npm ci`, lint, type-check, test, build, run `npm audit`, and
-upload reports as artifacts. Nothing writes to the repository, comments on a PR, or touches a
-package. Both now declare `contents: read` at workflow level, which is what `publish-image.yml` and
-`pr-title.yml` were already doing.
+between their jobs they check out, `npm ci`, lint, type-check, test, build, and upload reports as
+artifacts. Nothing writes to the repository, comments on a PR, or touches a package. Both now
+declare `contents: read` at workflow level, which is what `publish-image.yml` and `pr-title.yml`
+were already doing.
+
+(This said "the four jobs" and listed `npm audit` among them until `security-audit` was removed from
+`ci.yml` — see "A pin is a promise to renew" below for where that job's two steps went. Nothing
+about the argument changes: three jobs across the two files, still all reads.)
 
 Narrowing the scope is only half of it. `actions/checkout` writes the `GITHUB_TOKEN` into
 `.git/config` in the workspace unless told not to, and every job here then spends its time executing
@@ -7837,3 +7841,200 @@ where the old 36-byte input never produced any.
 
 `src/proxy.test.ts` reads the nonce back out with `/'nonce-([^']+)'/` and asserts two requests
 differ; base64's alphabet contains no `'`, so that regex is unaffected by the shorter value.
+
+## A pin is a promise to renew, and nothing here was renewing anything
+
+This repository had no `.github/renovate.json5`, no `.github/dependabot.yml`, and no image scan of
+any kind. What stood in for all of it was two steps in `ci.yml`'s `security-audit` job:
+`npm audit --audit-level=moderate`, and `npm outdated || true`.
+
+**The second of those is the one worth dwelling on, because it looked like coverage and was not.**
+`npm outdated` printed a table of every package behind its latest release into a job log, and the
+`|| true` meant it could not fail, could not be seen without opening the run, and could not produce
+anything a person would act on. Nobody reads a green step. So the repository had a workflow named
+"security audit" containing a dependency-freshness report that was structurally incapable of telling
+anyone anything — the same shape of problem as a digest pin that nothing renews, arrived at from the
+other direction. Rot that reads as rigour is the failure mode in both cases, and the fix in both
+cases is the same: something has to open a pull request.
+
+The pin-rot argument that drives the api repo's version of this section does not transfer whole, and
+it is worth saying where it stops. That repository has `deploy/docker-compose.yml` pinning three
+third-party images to digests that nothing was renewing, which is strictly worse than not pinning at
+all — an unpinned `postgres:18` drifts _towards_ the patched build while a stale digest drifts away
+from it, both invisibly. There is no deploy bundle here (see "The self-hosting docs live in the API
+repository"), so this repository has exactly two kinds of pin: the `Dockerfile`'s floating
+`node:24-alpine`, which is not a pin and must not become one, and the SHA-pinned third-party actions
+in the workflows. Both are fine. What is _not_ fine, and is this repository's own version of the
+frozen digest, is the four `npx --yes <tool>@<version>` invocations in `code-quality.yml`:
+`depcheck@1.4.7`, `@next/bundle-analyzer@16.3.0`, `madge@8.0.0`, `@axe-core/cli@4.12.1`. They are
+not in `package.json`, so no npm manager sees them; they are in `run:` rather than `uses:`, so no
+actions manager sees them. They are versions somebody typed once, in steps that end in `|| true`,
+and left alone they would still be those versions in five years. The regex `customManagers` entry in
+`renovate.json5` exists for them and nothing else, and it is the one piece of that file with no
+counterpart in the api's.
+
+**Renovate over Dependabot — and the api's reason for it does not apply here.** There the decider is
+that Dependabot has no `uv` ecosystem, so `uv.lock` would go entirely unwatched. Dependabot reads
+`package-lock.json`, this `Dockerfile` and these workflows perfectly well, so that argument is spent
+and three smaller ones carry it:
+
+- It cannot read `.nvmrc` — there is no ecosystem for it — and its groups are scoped to a single
+  ecosystem, which together make the Node-runtime rule below inexpressible under it.
+- It has no equivalent of `customManagers`, so the four `npx` pins above would stay frozen under it
+  too. That is not a tie-breaker; it is most of the problem this file was added to solve.
+- The api repo already runs Renovate. Two bots across two repositories that release as a matched
+  pair means two dashboards, two PR-title conventions and two settings pages for one product.
+
+Verified rather than assumed, by running `renovate --platform=local --dry-run=extract` against this
+repository before committing to the config — via `ghcr.io/renovatebot/renovate`, because Renovate 44
+declares `node ^24.11.0` and refuses to start on a newer local Node. It extracts 96 dependencies
+across 9 files: `npm` 46 (the 45 in `package.json` plus `engines.node`, with `package-lock.json`
+correctly picked up as its lock file), `github-actions` 43, `dockerfile` 2, `nvm` 1, and the regex
+manager's 4. `renovate-config-validator` is the cheaper half of the same check and catches a
+misspelled option without a container; both commands are written down in CONTRIBUTING.md so the next
+person changing that file does not have to rediscover them.
+
+**`pinDigests` is `false`, and that is load-bearing rather than a default.** The `Dockerfile` floats
+on `node:24-alpine` twice, and the float is the only reason the CVE rebuild works: re-running
+Publish Image at an old `v` tag collects patched Alpine packages precisely because the base resolves
+at build time. Digest-pin it and that rebuild reproduces the vulnerable base byte for byte, moves
+every alias, and reports success while fixing nothing. The workflows meanwhile pin first-party
+actions on a major tag and third-party ones by SHA with a trailing version comment, which Renovate
+renews together. `pinDigests: true`, or the `helpers:pinGitHubActionDigests` preset, would flatten
+both styles into one and break the first outright.
+
+**A Node version is held back rather than automated**, on the same reasoning as the api's Python
+group. `.nvmrc`, `engines.node` and the two `Dockerfile` tags are reachable to Renovate; the six
+occurrences of `24.x` in `ci.yml` and `code-quality.yml` are not, because the `github-actions`
+manager reads `uses:` and not arbitrary `with:` strings. An auto-opened PR would therefore move the
+runtime the image is built and shipped on while leaving CI testing the old one — the single
+configuration in which a green check means least. `dependencyDashboardApproval` on a group of the
+three reachable managers is the honest handling. There is a second reason not to automate it that
+has no api counterpart: Node's even majors are the LTS lines and the odd ones are not, which is what
+`engines.node` says by being `>=24 <25` rather than `>=24`, and stepping onto an odd major is a
+decision rather than a version bump.
+
+**One rule in that file exists because the extractor was actually run**, and it is the best argument
+for running it. `aquasecurity/setup-trivy` takes a `version:` input, and Renovate's `github-actions`
+manager extracts that input as a dependency in its own right — `aquasecurity/trivy`, datasource
+`github-releases`, `currentValue: latest`. The one plausible PR it could open is the single thing
+`vulnerability-scan.yml` says must never happen: replacing `latest` with a number freezes the
+scanner's advisory knowledge while it goes on reporting zero findings, which is a security check
+that has become indistinguishable from good news. Renovate almost certainly skips a `currentValue`
+of `latest` on its own, and "almost certainly" is the wrong standard for a failure that is silent
+and arrives as an ordinary green dependency PR — so the rule disables that one dep by name. The
+action's own SHA pin is a different dep (`aquasecurity/setup-trivy`) and stays renewed. This is a
+port owed to the api repository, which has the same action and the same input and no such rule.
+
+## The scan that matters runs on a schedule, and it replaced the audit that ran on every PR
+
+`.github/workflows/vulnerability-scan.yml` has two jobs and they are not two configurations of one
+idea. The PR job answers "is the change I am proposing vulnerable"; the scheduled job answers "is
+what people are already running vulnerable". Only the second closes the loop with the rebuild
+CONTRIBUTING.md documents, because the event that triggers a rebuild is a release that passed every
+check the day it shipped and grew a CVE three weeks later — no PR in flight, no diff, nothing in the
+repository changed. A PR-blocking scan cannot see that however strict it is, and a repository that
+has one is easy to mistake for a repository that is covered. This one had exactly that.
+
+**Trivy replaced `npm audit`, and the swap costs something real.** It is written down here and in
+CONTRIBUTING.md rather than left for someone to notice from a diff.
+`npm audit --audit-level=moderate` covered the whole tree at moderate and above; `trivy fs` at
+`HIGH,CRITICAL --ignore-unfixed` covers production dependencies at high and above, with a fix
+available. Both narrowings are the api repo's thresholds adopted deliberately:
+
+- **Dev dependencies out of scope** is Trivy's default for `package-lock.json` — it reads the `dev`
+  flag npm writes there — and it matches what ships: the runner stage copies `.next/standalone`,
+  whose pruned `node_modules` is the production set. The dev tree does execute in CI, on a token,
+  and the answer to that is the one "`ci.yml` and `code-quality.yml` run on a read-only token" above
+  already chose: `contents: read` and `persist-credentials: false`, not a scanner.
+- **`--ignore-unfixed`** is what makes failing the check reasonable at all. A finding with no
+  published fix cannot be actioned by a version bump, so failing a PR over one is a red X with no
+  move attached — and a check like that gets ignored rather than acted on, which costs more than the
+  coverage was worth.
+
+What decides it in favour of one tool rather than keeping both is not tidiness. Half of what ships
+in this image is the Alpine package set of `node:24-alpine`, which `npm audit` cannot see at all, so
+it could never be the thing that tells you a rebuild is due. And running one scanner across both
+jobs means the PR gate and the image scan share a vulnerability database: a green PR check becomes a
+real prediction about the npm half of the image that change will become, rather than a second
+opinion from a different corpus. Two gates asking almost the same question with different answers is
+the worse outcome — a contributor seeing one red and one green has no way to know which to believe.
+
+**The report is written in node where the api's copy uses `python3`, and that is the only deliberate
+divergence between the two files.** Everything else about them is kept as close to identical as the
+ecosystems allow, on the same reasoning as the two `publish-image.yml` files: a fix to one should
+port as a readable diff rather than an archaeology session. The report is the exception because it
+is the part most likely to be edited — wording, the row cap, the remedy text — and it should be
+editable by whoever contributes to _this_ repository. `node` reads a script from stdin exactly as
+`python3 -` does, so the heredoc shape is unchanged; both interpreters are preinstalled on
+`ubuntu-latest`.
+
+The rest of the design is the api's, and is repeated here only where this repository changes the
+answer:
+
+- **The alert is an issue, not a code-scanning alert**, because SARIF upload needs GitHub Advanced
+  Security on a private repository and this one is private until it isn't. A detection mechanism
+  that only starts working after a settings change nobody has made is not detection. When the
+  repository goes public, `upload-sarif` is what to replace that step with.
+- **One issue, edited in place, keyed on a fingerprint** of the sorted set of fixable CVE ids and
+  deliberately not the digests: a rebuild that fails to clear a CVE changes every digest without
+  changing the problem. The clean-scan close rewrites the body _before_ closing, which is what keeps
+  the "same CVE set, leave it closed" suppression honest — closing without it would leave the issue
+  carrying the last vulnerable fingerprint, making this workflow's own close indistinguishable from
+  a human dismissal, so a recurrence would match and never alert again. The empty set hashes to
+  `e3b0c442…`, which no real finding collides with.
+- **Findings fail the PR job and never the scheduled one.** The scheduled job's output is an issue,
+  so a red X would add nothing and would train someone to ignore a red X on a security workflow. It
+  does fail loudly in the one case that would otherwise look like good news: release tags exist but
+  no image alias resolves, which is a broken login or a missing package rather than an absence of
+  releases.
+- **It skips cleanly when nothing has been published**, which is not hypothetical here — `v0.2.0` is
+  still ahead of both repositories, so on the day this merges the scheduled job logs a skip and goes
+  green. A check that is red from the day it lands is a check somebody turns off.
+- **Only the newest release is scanned.** `SECURITY.md` is what settles this rather than a judgement
+  call in a workflow: nothing is backported and the supported version is the latest release, so the
+  scan set _is_ the supported surface, and the four aliases it covers (`X.Y.Z`, `X.Y`, the bare
+  major from 1.0.0, `latest` — one image under four names) are every form in which someone can be
+  pinned to it. Widening it is one line shorter and strictly worse: a dispatch only ever repoints
+  the aliases of the version it names, so a finding on an older minor would survive every rebuild,
+  return on the next morning's scan, and — because a never-rebuilt image keeps accruing _new_
+  advisories — open a fresh issue each time the previous was closed. Widening the scan means first
+  widening the support policy, and that is a decision in `SECURITY.md`.
+
+**The tracking issue is public, and `SECURITY.md` says not to open public issues for
+vulnerabilities. Both are right**, and `SECURITY.md` now says where the line is so that the next
+person to notice does not either delete the workflow or quietly loosen the policy. That rule
+protects an _undisclosed defect in code this project ships_: opening an issue for one starts the
+exposure clock before a fix exists. A base-image finding is the other thing entirely — it carries a
+CVE id because Alpine and NVD published it first, since matching an installed version against a
+public advisory database is the whole of what Trivy does, so the issue discloses nothing a reader
+could not get by running `trivy image` against the same public tag. What it adds is _notification_,
+not disclosure. Routing that through private vulnerability reporting instead would put a daily cron
+job into the one inbox that must not be noisy. The distinction to preserve: already-public advisory
+about shipped bytes → issue; undisclosed defect in our own code → the private channel. A scan that
+ever starts reporting the second kind — a `--scanners secret` pass finding a committed credential —
+has crossed the line and needs a different destination, which is why `--scanners vuln` is explicit
+on both jobs rather than left to the default.
+
+**One bug was found by running the steps rather than reading them, and it is the kind that hides.**
+`declare -A TAGS_FOR` followed by `if [ "${#TAGS_FOR[@]}" -eq 0 ]` looks correct and is not: a bare
+`declare -A` leaves the variable _unset_ rather than empty, so under the step's `set -euo pipefail`
+that test aborts with `TAGS_FOR: unbound variable`. Verified on bash 5.2 and 5.3. The step still
+exits non-zero, which is exactly why this survives a reading — the branch it breaks is the one that
+fires when release tags exist but not one image alias resolves, so the maintainer gets a bash
+diagnostic where the `::error::` naming the GHCR login, `docker buildx` and the package should be. A
+failure whose message is about the script rather than the cause is barely better than the silent
+success this branch was written to prevent. `declare -A TAGS_FOR=()` is the whole fix. The api
+repository's copy of this workflow has the same line and the same bug; it is a port owed in that
+direction.
+
+**The permissions are the narrowest that work, which required knowing why one of them is there at
+all.** Both jobs declare their own block, because a job-level block replaces the workflow-level one
+rather than adding to it — so the PR job's token cannot write anything even though the scheduled job
+in the same file needs `issues: write`. The non-obvious scope is `packages: read` on the PR job,
+which scans no image: Trivy's vulnerability database is itself an OCI artifact pulled from ghcr.io,
+and anonymous pulls of it are rate-limited per IP across every runner GitHub owns. The
+`docker login` step is what makes that pull authenticated, and without it the check fails
+intermittently for reasons that look nothing like their cause. Neither job asks for
+`packages: write`: the rebuild that answers a finding is a human dispatching Publish Image, which
+already has it.
