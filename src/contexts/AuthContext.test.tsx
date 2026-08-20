@@ -17,6 +17,7 @@ const {
     getCurrentUser: vi.fn(),
     requestEmailLink: vi.fn(),
     verifyEmailLink: vi.fn(),
+    verifyEmailCode: vi.fn(),
     signInWithGoogle: vi.fn(),
     completeProfile: vi.fn(),
     signOut: vi.fn(),
@@ -138,6 +139,27 @@ describe("AuthProvider outcomes", () => {
     expect(signedIn).toBe(true);
     expect(result.current.user).toEqual(USER);
     expect(result.current.onboarding).toBeNull();
+  });
+
+  // The code rides the same request row as the link and lands in the same funnel,
+  // so it has to produce a session the same way - not a second, parallel notion of
+  // being signed in.
+  it("signs the user in when a code from the email is accepted", async () => {
+    refreshAccessToken.mockRejectedValue(new Error("401"));
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    authAPI.verifyEmailCode.mockResolvedValue({ status: "authenticated" });
+    authAPI.getCurrentUser.mockResolvedValue(USER);
+
+    let signedIn: boolean | undefined;
+    await act(async () => {
+      signedIn = await result.current.verifyEmailCode("req-1", "481052");
+    });
+
+    expect(authAPI.verifyEmailCode).toHaveBeenCalledWith("req-1", "481052");
+    expect(signedIn).toBe(true);
+    expect(result.current.user).toEqual(USER);
   });
 
   it("stashes an onboarding session instead of signing in", async () => {

@@ -1,5 +1,7 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import axios from "axios";
 import {
+  apiClient,
   fetchAllPages,
   isAbortError,
   unwrapBlobErrorBody,
@@ -213,5 +215,56 @@ describe("isAbortError", () => {
     expect(isAbortError(new Error("Network Error"))).toBe(false);
     expect(isAbortError(null)).toBe(false);
     expect(isAbortError(undefined)).toBe(false);
+  });
+});
+
+// The interceptor is attached to a module singleton, so it is reached by swapping
+// the *adapter* out from under it rather than by calling it directly. Two adapters
+// matter: `apiClient`'s answers the call under test, and the bare `axios` one
+// answers `refreshAccessToken`'s own request - which is the thing these tests are
+// really about, since a regression sends the caller down that path instead.
+const originalAdapters = [apiClient.defaults.adapter, axios.defaults.adapter];
+
+function rejectWith(status: number, data: unknown) {
+  return vi.fn(async (config: unknown) => {
+    throw { config, response: { status, data } };
+  });
+}
+
+afterEach(() => {
+  [apiClient.defaults.adapter, axios.defaults.adapter] = originalAdapters;
+});
+
+describe("apiClient 401 handling", () => {
+  // The visible symptom this pins: a signed-out visitor who mistypes the code from
+  // their sign-in email was told "Refresh token missing." - the failure of a token
+  // refresh nobody asked for - instead of the API's own "that code is invalid".
+  it("hands a refused sign-in credential back with the API's own message", async () => {
+    const refresh = rejectWith(401, { detail: "Refresh token missing." });
+    axios.defaults.adapter = refresh;
+    apiClient.defaults.adapter = rejectWith(401, {
+      detail: "This code is invalid or has expired.",
+    });
+
+    await expect(
+      apiClient.post("/auth/email/verify-code", { request_id: "r", code: "0" }),
+    ).rejects.toMatchObject({
+      response: { data: { detail: "This code is invalid or has expired." } },
+    });
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  // The other half: an ordinary request that 401s because the access token aged out
+  // still gets one refresh-and-retry. Without this the set above could quietly grow
+  // until nothing refreshes at all.
+  it("still refreshes when an ordinary request 401s", async () => {
+    const refresh = rejectWith(401, { detail: "Refresh token missing." });
+    axios.defaults.adapter = refresh;
+    apiClient.defaults.adapter = rejectWith(401, {
+      detail: "Not authenticated",
+    });
+
+    await expect(apiClient.post("/dives", {})).rejects.toBeDefined();
+    expect(refresh).toHaveBeenCalled();
   });
 });

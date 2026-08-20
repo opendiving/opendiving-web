@@ -36,6 +36,17 @@ export interface AuthOutcome {
   avatar?: string;
 }
 
+// Mirrors the backend's response to `POST /auth/email/request`: the same generic
+// message for every address (see `requestEmailLink`), plus the id of the request
+// row it just minted. That id is handed only to the browser that asked, and is what
+// names the row to `verifyEmailCode` - so the code in the email is reachable only
+// from the tab that requested it, and nobody can burn someone else's five attempts
+// by knowing their address.
+export interface EmailLinkRequestResult {
+  message: string;
+  request_id: string;
+}
+
 export interface UpdateProfileData {
   name?: string;
   username?: string;
@@ -60,19 +71,34 @@ export interface LinkCheckResult {
   email?: string;
 }
 
+// Every call that can hand back a session does the same thing with it: the access
+// token lives in memory only (see `client.ts`), so it has to be captured as the
+// response goes past rather than re-read from anywhere later.
+function captureSession(outcome: AuthOutcome): AuthOutcome {
+  if (outcome.status === "authenticated" && outcome.access_token) {
+    setAccessToken(outcome.access_token);
+  }
+  return outcome;
+}
+
 /**
  * Sign-in, sign-out and onboarding calls.
  *
- * Both entry points (magic link, Google) can land on either of two outcomes - an existing
- * user is signed in, or a verified identity with no account yet gets an onboarding token
- * to hand to `completeOnboarding`. Callers have to branch on `status` rather than assuming
- * a session came back.
+ * Every entry point (the magic link, the code printed beside it, Google) can land on
+ * either of two outcomes - an existing user is signed in, or a verified identity with
+ * no account yet gets an onboarding token to hand to `completeOnboarding`. Callers have
+ * to branch on `status` rather than assuming a session came back.
  */
 export const authAPI = {
   // Step 1 of the email flow: always resolves with the same generic message,
-  // whether or not `email` belongs to an existing account.
-  async requestEmailLink(email: string): Promise<{ message: string }> {
-    const response = await apiClient.post("/auth/email/request", { email });
+  // whether or not `email` belongs to an existing account. The `request_id` beside
+  // it names the request row the email is about, and is what `verifyEmailCode`
+  // needs - keep it for as long as the "check your email" card is on screen.
+  async requestEmailLink(email: string): Promise<EmailLinkRequestResult> {
+    const response = await apiClient.post<EmailLinkRequestResult>(
+      "/auth/email/request",
+      { email },
+    );
     return response.data;
   },
 
@@ -94,13 +120,20 @@ export const authAPI = {
     const response = await apiClient.post<AuthOutcome>("/auth/email/verify", {
       token,
     });
-    if (
-      response.data.status === "authenticated" &&
-      response.data.access_token
-    ) {
-      setAccessToken(response.data.access_token);
-    }
-    return response.data;
+    return captureSession(response.data);
+  },
+
+  // The other half of the same email: the six-digit code printed beside the link,
+  // typed into the tab that asked for it. `requestId` is what `requestEmailLink`
+  // returned - the row cannot be named without it, which is what keeps a stranger
+  // who merely knows the address from guessing at someone else's code. Same two
+  // outcomes as the link, since it claims the same row.
+  async verifyEmailCode(requestId: string, code: string): Promise<AuthOutcome> {
+    const response = await apiClient.post<AuthOutcome>(
+      "/auth/email/verify-code",
+      { request_id: requestId, code },
+    );
+    return captureSession(response.data);
   },
 
   // Sign in (or start onboarding for a new account) with Google. `credential` is
@@ -110,13 +143,7 @@ export const authAPI = {
     const response = await apiClient.post<AuthOutcome>("/auth/google", {
       credential,
     });
-    if (
-      response.data.status === "authenticated" &&
-      response.data.access_token
-    ) {
-      setAccessToken(response.data.access_token);
-    }
-    return response.data;
+    return captureSession(response.data);
   },
 
   // Creates the account for a verified identity that had no user record yet, then
@@ -131,13 +158,7 @@ export const authAPI = {
       name,
       username,
     });
-    if (
-      response.data.status === "authenticated" &&
-      response.data.access_token
-    ) {
-      setAccessToken(response.data.access_token);
-    }
-    return response.data;
+    return captureSession(response.data);
   },
 
   // Sign out
