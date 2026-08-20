@@ -1,6 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
+  // Off, or Next sends `X-Powered-By: Next.js` on every response by default.
+  // It names the framework and nothing else, which is free reconnaissance for
+  // anyone scanning a self-hosted instance for a version worth an exploit, and
+  // it is bought with nothing: no code here, in the API, or in the browser ever
+  // reads it.
+  poweredByHeader: false,
   // No `images.remotePatterns` on purpose. Nothing in the app uses
   // `next/image` - private card images go through `useAuthedBlobUrl` and a
   // plain `<img>` (see `certification-card-image.tsx`), because they need an
