@@ -2619,6 +2619,15 @@ synchronous instead of forcing an async variant onto the handful that fetch bina
 isn't JSON is left as the Blob and the caller's fallback is used - throwing from inside the
 interceptor would replace the real error with a parse error.
 
+**The fixture for that "isn't JSON" case must not contain a NUL.** It was a raw `\x00\x01` written
+straight into the string literal in `client.test.ts`, which is enough for git to classify the whole
+file as binary: `git diff` printed `Binary files differ` and GitHub rendered no diff for it at all,
+so the entire test file was unreviewable in every PR that touched it. The fixture only needs bytes
+that fail `JSON.parse`, never a NUL specifically - it is now the escape sequence
+`"\x89PNG-ish bytes"`, a real PNG magic byte spelled out in ASCII source. Worth knowing if this ever
+recurs: git marks a diff binary when _either_ side contains a NUL, so the commit that removes one
+still shows as binary, and only the diffs after it come back as text.
+
 `useAuthedBlobUrl` returns the raw `error` alongside `hasError` so callers can run it through
 `getApiErrorMessage` themselves; the hook has no opinion about what the fallback message should be.
 
