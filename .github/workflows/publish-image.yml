@@ -168,6 +168,20 @@ jobs:
             fi
           fi
 
+          # The extra tag is for names like `staging`. A version typed into it would be
+          # published without any of the aliases that version is supposed to carry, and
+          # off whatever commit `ref` happens to name - the guard above never sees it.
+          #
+          # The `v` is optional on purpose, and that is the half that matters: the aliases
+          # this workflow publishes are bare (`0.4.0`, `0.4`), so `tag=0.4.0` would point a
+          # real release alias at an unchecked commit, where `tag=v0.4.0` merely invents a
+          # name nothing else uses. Reserving every leading digit is the cheap way to say
+          # it - a `staging`-shaped input never starts with one.
+          if [[ "$EXTRA_TAG" =~ ^v?[0-9] ]]; then
+            echo "::error::${EXTRA_TAG} looks like a version. Point 'ref' at the tag instead, which publishes the whole alias set and checks it against the manifest."
+            exit 1
+          fi
+
           if [ -n "$EXTRA_TAG" ]; then
             TAGS="${TAGS}"$'\n'"${IMAGE}:${EXTRA_TAG}"
           fi
@@ -199,6 +213,12 @@ jobs:
             echo "org.opencontainers.image.title=opendiving-web"
             echo "org.opencontainers.image.description=OpenDiving web app"
             echo "org.opencontainers.image.licenses=AGPL-3.0-or-later"
+            # Only a release build has a version to state. `VERSION` is empty everywhere
+            # else, and an empty label reads as a claim about the version rather than as
+            # its absence.
+            if [ -n "$VERSION" ]; then
+              echo "org.opencontainers.image.version=$VERSION"
+            fi
             echo "$DELIM"
           } >> "$GITHUB_OUTPUT"
 
