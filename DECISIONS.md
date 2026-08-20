@@ -8047,3 +8047,80 @@ and anonymous pulls of it are rate-limited per IP across every runner GitHub own
 intermittently for reasons that look nothing like their cause. Neither job asks for
 `packages: write`: the rebuild that answers a finding is a human dispatching Publish Image, which
 already has it.
+
+## The sign-in email carries a code as well as a link, and the code is keyed on the request, not the address
+
+`POST /auth/email/request` now answers with a `request_id` beside its (unchanged, deliberately
+generic) message, and the "check your email" card can verify the six-digit code printed in the same
+email against that id. Both are backed by one `authentication_request` row on the API side, so
+whichever arrives first consumes it.
+
+**Why a code at all, when the explicit-click precheck already fixed the link-scanner problem.** A
+link fundamentally signs in _the device that opens it_. Someone who types their address on a desktop
+and reads mail on their phone ends up signed in inside the phone's mail-app browser, on the wrong
+device, and this app's audience — dive computers plugged into a laptop, bulk imports — hits that
+constantly. A code crosses the gap by hand.
+
+**The `request_id` is the security-relevant part, not the code.** Six digits are brute-forceable
+offline in milliseconds; what contains them is a five-attempt cap on the row. Had verification been
+keyed on the _email address_, anyone who knew a diver's address could burn those five attempts on
+demand — sign-in denial aimed squarely at the accounts (email-only self-hosters) for which email
+_is_ the recovery path. Keying on an id handed only to the browser that asked makes the row
+unreachable to anyone else, and it also removes an ambiguity: two tabs can each request a link, and
+each then verifies precisely the row it minted rather than whichever one an unordered lookup
+happened to return.
+
+That is why `AuthForm` holds the address and the id as **one** `SentLink` value rather than two
+pieces of state. They must never disagree: a resend supersedes the previous row, so a code typed
+against the old id would fail for a reason the diver cannot see. Everything follows from keeping
+them together — the resend replaces both, and `CheckEmailCard` clears whatever was half-typed at the
+same moment.
+
+**Two small traps in the input itself:**
+
+- **No `maxLength`.** The email prints the code as `481 052`, so the obvious gesture is to select
+  and paste it — and `maxLength={6}` truncates that paste to `481 05` _before_ any `onChange`
+  normalizer sees it, silently losing the last digit. The normalizer alone (strip non-digits, slice
+  to six) does the whole job.
+- **_Verify_ stays disabled until all six digits are in.** Not tidiness: the API allows five wrong
+  attempts before it nulls the code, and a half-typed submission would spend one of them on nothing.
+
+**Routing is by the `redirectTo` prop, like Google's — not through `localStorage`.** The two
+mechanisms in "The destination round-trips through `lib/auth-redirect.ts`" above split on whether
+the flow leaves the tab. The link does and reads the stored path on `/auth/verify`; the code does
+not, so the prop is authoritative and `sanitizeRedirectPath` still guards it. One consequence
+already described for Google applies unchanged here: signing in with the code leaves the stored
+destination behind for the day it lives, cleared by the next request or by signing out.
+
+`authAPI`'s three hand-rolled "capture the access token if this outcome carries one" blocks became
+one `captureSession` helper on the way past, since the code path would have been a fourth identical
+copy.
+
+### A 401 from a sign-in endpoint must not go down the refresh path
+
+Found by typing a wrong code at the local stack rather than by reading the diff: the card showed
+**"Refresh token missing."** — a message about a token refresh nobody asked for — where the API had
+answered `401 {"detail": "This code is invalid or has expired."}`.
+
+The response interceptor in `lib/api/client.ts` treats every 401 as "the access token aged out",
+refreshes, and retries. For a signed-out visitor there is no refresh cookie, so the refresh throws
+and _its_ error is what reaches the caller; the API's own explanation is gone, `clearAccessToken()`
+has run, and an `AUTH_SESSION_EXPIRED_EVENT` has been dispatched at a visitor who never had a
+session. `/auth/refresh` was already excluded, for the narrower reason that retrying it recurses.
+
+The exclusion is now a set, `SESSION_MINTING_PATHS`: `/auth/refresh`, `/auth/email/verify`,
+`/auth/email/verify-code`, `/auth/google`, `/auth/complete`. What they have in common is that a 401
+from them means _the credential in the request body was refused_ — an expired link, a wrong code, a
+rejected Google assertion, a stale onboarding token — which no amount of fresh access token fixes.
+`/auth/logout` is deliberately not in the set: it needs a live access token to blacklist the pair,
+so refreshing and retrying it is exactly right.
+
+The bug predates the code and applied equally to `/auth/email/verify` and the other two, but only
+the code makes it routine: mistyping six digits is an ordinary thing to do, while the magic-link
+page pre-checks its token with `GET .../verify/check` and so rarely reaches a 401 at all.
+
+Two things about testing it are worth keeping. The interceptor hangs off a module singleton, so the
+way in is to swap `apiClient.defaults.adapter` — and `axios.defaults.adapter` alongside it, because
+the regression's whole signature is `refreshAccessToken`'s own bare `axios.post` being reached. And
+the pair of tests has to include the _negative_ case (an ordinary request still refreshes once), or
+the set could quietly grow until nothing refreshes at all.

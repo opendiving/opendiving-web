@@ -9,7 +9,12 @@ import React, {
   useState,
   ReactNode,
 } from "react";
-import { authAPI, AuthOutcome, User } from "@/lib/api/auth";
+import {
+  authAPI,
+  AuthOutcome,
+  EmailLinkRequestResult,
+  User,
+} from "@/lib/api/auth";
 import {
   AUTH_SESSION_EXPIRED_EVENT,
   clearAccessToken,
@@ -36,11 +41,16 @@ interface AuthContextType {
   isAuthenticated: boolean;
   onboarding: OnboardingSession | null;
   // Step 1 of the email flow - always resolves with the same generic message,
-  // regardless of whether `email` belongs to an existing account.
-  requestEmailLink: (email: string) => Promise<{ message: string }>;
+  // regardless of whether `email` belongs to an existing account. The `request_id`
+  // it resolves with is what `verifyEmailCode` below needs.
+  requestEmailLink: (email: string) => Promise<EmailLinkRequestResult>;
   // Step 2 of the email flow - returns `true` if the caller was signed in, `false`
   // if onboarding started instead (see `onboarding` above).
   verifyEmailLink: (token: string) => Promise<boolean>;
+  // Step 2 the other way round: the code printed in the same email, verified in the
+  // tab that requested it. Same two outcomes as `verifyEmailLink`, because it claims
+  // the same request row - whichever of the two arrives first wins.
+  verifyEmailCode: (requestId: string, code: string) => Promise<boolean>;
   signInWithGoogle: (credential: string) => Promise<boolean>;
   completeProfile: (name: string, username: string) => Promise<void>;
   clearOnboarding: () => void;
@@ -96,8 +106,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       );
   }, []);
 
-  // Applies an `AuthOutcome` returned by any of the three entry points
-  // (email verify, Google, profile completion): either fetches and stores the
+  // Applies an `AuthOutcome` returned by any of the four entry points
+  // (email link, email code, Google, profile completion): either fetches and stores the
   // now-signed-in user, or stashes the onboarding session for the profile
   // completion page to pick up. Returns whether the caller was signed in.
   const applyOutcome = useCallback(
@@ -134,6 +144,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const verifyEmailLink = useCallback(
     async (token: string) => {
       const outcome = await authAPI.verifyEmailLink(token);
+      return applyOutcome(outcome);
+    },
+    [applyOutcome],
+  );
+
+  const verifyEmailCode = useCallback(
+    async (requestId: string, code: string) => {
+      const outcome = await authAPI.verifyEmailCode(requestId, code);
       return applyOutcome(outcome);
     },
     [applyOutcome],
@@ -225,7 +243,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, []);
 
-  // Memoized because this object is the context value: rebuilding it (and all seven
+  // Memoized because this object is the context value: rebuilding it (and all eight
   // methods) on every render of the provider makes every `useAuth()` consumer
   // re-render too, which is ~15 pages plus the header. `user` is what actually
   // changes; the methods are stable.
@@ -241,6 +259,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       onboarding,
       requestEmailLink,
       verifyEmailLink,
+      verifyEmailCode,
       signInWithGoogle,
       completeProfile,
       clearOnboarding,
@@ -253,6 +272,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       onboarding,
       requestEmailLink,
       verifyEmailLink,
+      verifyEmailCode,
       signInWithGoogle,
       completeProfile,
       clearOnboarding,

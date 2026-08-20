@@ -184,6 +184,17 @@ export async function unwrapBlobErrorBody(error: unknown): Promise<void> {
   }
 }
 
+// The endpoints whose job is to *establish* a session rather than to use one.
+// `/auth/logout` is deliberately absent: it needs a live access token to blacklist
+// the pair, so refreshing and retrying it is exactly right.
+const SESSION_MINTING_PATHS = new Set([
+  "/auth/refresh",
+  "/auth/email/verify",
+  "/auth/email/verify-code",
+  "/auth/google",
+  "/auth/complete",
+]);
+
 // Response interceptor to handle token refresh
 apiClient.interceptors.response.use(
   (response) => response,
@@ -195,10 +206,16 @@ apiClient.interceptors.response.use(
     // drive the refresh path) pay nothing for it.
     await unwrapBlobErrorBody(error);
 
-    // A 401 from this endpoint reflects a missing/invalid refresh token itself,
-    // not an expired access token - retrying it via a token refresh would just
-    // recurse into the same failure.
-    const isAuthEndpoint = originalRequest?.url === "/auth/refresh";
+    // A 401 from any of these is the endpoint refusing the credential in the
+    // *body* - an expired magic link, a wrong sign-in code, a rejected Google
+    // assertion, a stale onboarding token, a missing refresh cookie. None of them
+    // can be fixed by minting a fresh access token, and sending them down the
+    // refresh path below actively makes things worse: the caller ends up holding
+    // whatever the *refresh* failed with instead of the API's own explanation, so
+    // a signed-out visitor who mistypes their sign-in code is told "Refresh token
+    // missing." `/auth/refresh` itself is here for the older reason - retrying it
+    // through a refresh recurses into the same failure.
+    const isAuthEndpoint = SESSION_MINTING_PATHS.has(originalRequest?.url);
 
     if (
       error.response?.status === 401 &&
