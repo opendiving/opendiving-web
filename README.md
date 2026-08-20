@@ -59,9 +59,6 @@ Roadmap items, roughly in priority order — contributions welcome:
   UDDF export), then Shearwater Cloud exports; a pluggable importer layer so every format someone is
   stranded with is a migration path in. Longer term,
   [libdivecomputer](https://www.libdivecomputer.org/) for direct hardware support.
-- **One-command self-hosting** — a single compose file for the whole stack (web included, TLS
-  handled), prebuilt images, and versioned migrations so upgrades never threaten your data. Mail is
-  already vendor-free: the API sends over plain SMTP, so any relay you point it at works.
 - **Statistics** — depth/time records, dives per year, sites map, species log.
 - **Sharing** — public link to a dive or trip.
 - **iOS companion app** — parked until the server story is done
@@ -83,7 +80,75 @@ Honest answers to "why not X":
   should live. OpenDiving imports their exports and keeps the original file forever, so switching
   computers never splits your history.
 
-## Getting started
+## Self-hosting
+
+One compose file brings up the whole stack — this app, the API and its worker, Postgres, Redis, and
+a Caddy that provisions TLS for your domain. It ships from the API repository, which is where an
+install is driven from:
+
+```bash
+mkdir opendiving && cd opendiving
+curl -LO https://github.com/opendiving/opendiving-api/releases/latest/download/docker-compose.yml
+curl -LO https://github.com/opendiving/opendiving-api/releases/latest/download/Caddyfile
+curl -Lo .env https://github.com/opendiving/opendiving-api/releases/latest/download/example.env
+$EDITOR .env
+docker compose up -d
+```
+
+That `.env` is the entire configuration surface, and six values in it are the ones that matter: a
+domain, a `SECRET_KEY` you generate, a database password, and the mail relay that carries sign-in
+links. Everything else has a working default.
+
+The images are prebuilt for amd64 and arm64, so a Raspberry Pi runs the same bytes as a VPS and
+there is no build step and no Node on the host — `ghcr.io/opendiving/opendiving-web` is pulled
+alongside the API's. Upgrading is `docker compose pull && docker compose up -d`; the API applies its
+own migrations on startup.
+
+**[Full self-hosting docs](https://github.com/opendiving/opendiving-api/tree/main/docs/self-hosting)**
+— install, every configuration variable, running behind your own reverse proxy instead of the
+bundled Caddy, backup and restore, upgrades, and troubleshooting. They live in one place rather than
+half here and half there.
+
+### Building the image yourself
+
+The published image is what a `docker build` in this repository produces, so a fork or a local
+change is one build away:
+
+```bash
+docker build -t opendiving-web .
+docker run -p 3000:3000 -e API_INTERNAL_URL=http://your-api-host:8000 opendiving-web
+```
+
+Nothing about your instance is baked into that image. The browser calls `/api/v1` on whatever origin
+served the page, and this app's own route handler forwards each request to `API_INTERNAL_URL` — an
+origin with no `/api/v1` on the end, read fresh on every request. Its default is `http://api:8000`,
+the API's service name on a compose network, so a container swapped into the shipped bundle needs
+the variable no more than the published image does. The rest of the settings are read on the server
+at request time too, so they are plain environment variables on the container:
+[`.env.example`](.env.example) documents each one.
+
+The image carries its own `HEALTHCHECK` against `/healthz`, which reports that this process is
+serving HTTP and deliberately nothing more — the web container talks to neither Postgres nor Redis,
+and the API owns readiness. Two settings are worth knowing when you are the one deciding how this is
+served rather than taking the bundle's answer: `WEB_HSTS=off` hands `Strict-Transport-Security` to a
+proxy in front, or drops it for a plain-HTTP LAN address, and `WEB_NOINDEX=true` keeps an instance
+that is reachable but private out of search engines.
+
+The single exception to runtime configuration is `NEXT_PUBLIC_API_URL`, for a split-origin
+deployment where the API answers on a host of its own and the browser should reach it directly
+instead of through this app:
+
+```bash
+docker build --build-arg NEXT_PUBLIC_API_URL=https://api.example.com/api/v1 -t opendiving-web .
+```
+
+It is the full base with the `/api/v1` prefix included, and `NEXT_PUBLIC_*` values are inlined into
+the client bundle by the compiler — so that address is fixed at build time and changing it means
+rebuilding, which is exactly why it is no longer the default path. It is also what the CSP's
+`connect-src` is derived from, so an API host reached any other way is blocked rather than merely
+misconfigured. Left unset, none of this applies.
+
+## Development setup
 
 The web app is the frontend for [opendiving-api](https://github.com/opendiving/opendiving-api) —
 start that first (one `docker compose up`), then:

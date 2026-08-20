@@ -7439,3 +7439,38 @@ retitled from `feat!:` to `fix:` does not stay in the Breaking section forever. 
 same-repo PRs: on a fork PR the token is read-only whatever the workflow asks for, and an ungated
 step would turn a _required_ check red on every external contribution, which is exactly the wrong
 week for it when the repos go public.
+
+## The self-hosting docs live in the API repository, and this README points at them
+
+An install is one compose file, and that file belongs to `opendiving-api` — it names the `web`
+service, so it could never have lived here without the API repository holding a second copy of the
+same thing. Everything downstream of it follows: the configuration reference, the
+bring-your-own-proxy instructions, backup, restore, upgrade and troubleshooting are written once, in
+`opendiving-api/docs/self-hosting/`, and this README links there rather than paraphrasing. Two
+copies of install instructions do not stay in agreement, and the one that is wrong is always the one
+the reader found first.
+
+What stays here is what the API repository has no reason to know: building this image yourself, and
+`NEXT_PUBLIC_API_URL` as a build arg for a split-origin deployment. Both are properties of _this_
+Dockerfile, and neither appears in the bundle at all — the bundle pulls a published image, and the
+browser talks to the origin that served it.
+
+**The README was written ahead of what it describes, and has since been checked back.** When this
+section first landed none of it could be run: no deploy bundle, no `docs/self-hosting/`, no
+published images, and the API's own README still filing the whole thing under "Planned". That was
+the owner's call, taken with the state named — `plans/self-hosting-one-command.md` sequences this
+web docs pass (W4) ahead of the API-side bundle (A5), and nothing is public yet. The API side has
+since shipped, and the re-check is the point: the quickstart was corrected against the bundle that
+actually exists rather than the plan that predicted it, which is how its asset names came right. The
+environment template ships as `example.env`, not `.env.example`; `Caddyfile` is a third download the
+first draft omitted entirely; and a verbatim copy of that draft would have produced a broken install
+the day the first release was cut.
+
+One gap is still open, and it is the same one for both repositories: no `v*` tag has been cut, so
+`releases/latest/download/...` resolves to nothing and neither image is on GHCR. Every command in
+that section runs the moment the first release exists — until then the quickstart is documentation
+of a thing that works, not a thing you can do.
+
+The "One-command self-hosting" roadmap bullet was removed rather than reworded, on the same
+forward-dated basis: it and the new section describe one feature, and keeping both would leave the
+file promising in one place what it documents in another.
