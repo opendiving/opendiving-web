@@ -145,6 +145,106 @@ the window, the release notes — lives in the api repo's CONTRIBUTING under
 It is deliberately in one place: a decision table kept in two repos drifts apart, and that one is
 the copy self-hosters read.
 
+## Staying on top of CVEs
+
+Two things are wired up to raise the alarm, and they watch different objects — neither substitutes
+for the other. What they raise it _for_ is one of two responses, so start with those.
+
+**Rebuilding a published version.** A published version is never repointed — a bad release gets a
+successor, not a rewrite — and a CVE in the base image is the one sanctioned exception. It works
+because the `Dockerfile` floats on `node:24-alpine` rather than a digest, so the build resolves a
+patched base. Run **Publish Image** by hand with `ref` set to the `v` tag, and tick **Also push
+:latest** if that version is still the newest. One run recomputes the version's whole alias set,
+which is the point: a hand-picked subset would leave everyone following `latest` or `0.4` on the
+vulnerable digest. That is this repository's workflow rebuilding this repository's image — the api
+repo rebuilds its own the same way, and a base-image CVE will often want both.
+
+**Cutting a new patch release** is the other response, and the two are not interchangeable. Which
+one applies is the split below.
+
+**The published image.** `.github/workflows/vulnerability-scan.yml` scans the newest release every
+morning with Trivy — its `X.Y.Z`, `X.Y`, bare major and `latest`, which are one image under four
+names, resolved to a digest so it is scanned once. It reports HIGH and CRITICAL findings in both
+halves of that image: the Alpine packages that come from `node:24-alpine`, and the npm packages
+`npm ci` installed into `.next/standalone`. This is the job that closes the loop with the rebuild
+above, because the case it catches is a release that was clean the day it shipped and grew a CVE
+three weeks later, with no PR in flight and nobody looking.
+
+**The alert is a GitHub issue** labelled `image-cve`, and you are the one who acts on it. The body
+names the exact `v` tag to dispatch at and splits the findings by what actually fixes them, because
+the two are not the same remedy:
+
+- **OS package** — the rebuild above. One dispatch recomputes every alias the scan covers, which is
+  why the scan covers exactly those and no more.
+- **npm package** — _not_ fixable by a rebuild at any tag. That version comes from the
+  `package-lock.json` committed at the tag, and the rebuild checks that tag out and runs `npm ci`
+  against it, so it reinstalls the identical version no matter how many bumps have since landed on
+  `main`. Merge the bump and **cut a new patch release** — the ordinary flow above, not the in-place
+  rebuild.
+
+One issue, edited in place for as long as the finding persists, so a CVE that takes upstream a
+fortnight to patch does not generate a fortnight of notifications. The workflow closes it once a
+scan comes back clean, and will not reopen it for a set of CVEs you already read and closed; a
+_different_ CVE opens a fresh one.
+
+**Proposed changes.** The same workflow runs a second, much cheaper job on every PR and every push
+to `main` — Trivy over `package-lock.json`, no `npm ci` and no image built — which _fails the check_
+on a HIGH or CRITICAL that has a fix available. That is about a change you are proposing rather than
+about what is deployed, so it stays out of the issue. It ignores findings with no fix published,
+because there is no move to make on those. It replaced `ci.yml`'s
+`npm audit --audit-level=moderate`, and that swap was not a wash — see _What none of this watches_.
+
+**Version bumps.** `.github/renovate.json5` is the other half: it watches `package.json` and
+`package-lock.json`, both `Dockerfile` base tags, `.nvmrc`, every pinned GitHub Action, and the four
+`npx --yes <tool>@<version>` pins in `code-quality.yml` that belong to no ecosystem and would
+otherwise never move at all. Routine updates arrive in one batch on Monday morning; a
+vulnerability-driven one ignores the schedule and is titled `fix(deps):`, so it lands in the Fixes
+section of the release notes rather than among the chores.
+
+> **Renovate has to be enabled once, by hand, and until it is that file does nothing.** Install the
+> [Renovate GitHub App](https://github.com/apps/renovate) on the `opendiving` org — it reads
+> `.github/renovate.json5` on its next run and needs no further setup — or run it self-hosted on a
+> schedule with a PAT. One install covers both repositories. Nothing in either repository can do it,
+> and nothing warns you it hasn't been done, which is why it is written here.
+
+One thing Renovate will not do on its own is move Node. `.nvmrc`, `engines.node` in `package.json`
+and the two `Dockerfile` base tags are all reachable to it; `node-version:` in `ci.yml` and
+`code-quality.yml` is not, so an auto-opened PR would build the image on a new runtime while CI kept
+testing the old one. That update is grouped and held behind a checkbox on the **Dependency
+Dashboard** issue: it tells you a new Node is out and waits for a person, who edits the two
+workflows by hand.
+
+To check what Renovate would actually do before trusting a change to that file:
+
+```bash
+npx --yes --package renovate -- renovate-config-validator .github/renovate.json5
+docker run --rm -v "$PWD:/repo" -w /repo ghcr.io/renovatebot/renovate --platform=local --dry-run=extract
+```
+
+The first catches a misspelled option; the second prints every dependency each manager found, which
+is the only way to see that a custom manager's regex still matches. Run them in a checkout, not a
+worktree — the container needs the files, and `--dry-run=extract` writes nothing and needs no token.
+
+**What none of this watches**, stated so it is not mistaken for coverage:
+
+- **Dev dependencies, and anything below HIGH.** That is what the `npm audit --audit-level=moderate`
+  job covered, and giving it up is deliberate rather than an oversight: it is the api repo's
+  threshold, and a moderate finding with no published fix in a package that never reaches the image
+  is a red X with no move attached — the kind of check that gets ignored rather than acted on. The
+  dev tree does execute in CI, and the answer to that is the one `ci.yml` and `code-quality.yml`
+  already chose — a `contents: read` token with `persist-credentials: false` — not a scanner.
+  `npm audit` is still one command away when you want the wider net.
+- **Any release but the newest.** This is the scan agreeing with [SECURITY.md](SECURITY.md): nothing
+  is backported, so the supported version is the latest release. A dispatch only ever repoints the
+  aliases of the version it names, so scanning `0.2` would produce an alert with no supported move
+  attached, recurring forever. The four aliases that _are_ scanned are every form in which someone
+  can be pinned to the supported release.
+- **The `linux/arm64` image**, on the assumption that it installs the same Alpine packages as
+  `linux/amd64` and resolves the same lockfile. If that ever stops holding, the scan step is where a
+  `--platform` pass goes.
+- **Vulnerabilities with no fix published upstream.** They are counted in the issue but drive
+  nothing, since no rebuild collects a package that does not exist.
+
 ## License
 
 By contributing you agree that your work is licensed under [AGPL-3.0](LICENSE), same as the rest of

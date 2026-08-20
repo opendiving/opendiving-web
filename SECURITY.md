@@ -28,6 +28,12 @@ or the _Report a vulnerability_ button on the repository's **Security** tab.
 That opens an advisory only the maintainers can see. Please don't open a public issue or a pull
 request for something exploitable; the fix and the disclosure should arrive together.
 
+You may come across an open issue labelled `image-cve`, naming CVEs in the published image. That is
+not an exception to the line above: those are advisories Alpine and NVD published first, filed by
+our own scanner so that the base-image rebuild gets done, and `trivy image` against the same public
+tag tells you the same thing. This rule is about a defect in _our_ code that nobody has disclosed
+yet — that still goes to the private channel above.
+
 No GitHub account, or the form isn't working for you? Email **security@opendiving.app** instead. It
 reaches the maintainers and nobody else, and a report that arrives there is handled exactly like one
 filed through the form.
