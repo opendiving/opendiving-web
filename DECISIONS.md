@@ -7337,12 +7337,12 @@ to **off**: nothing leaves the browser until somebody asks for it to. The weaker
 of it is one environment variable on the instances that want avatars.
 
 The gate is not just the request. The URLs are `null` when it is off, so nothing downstream can
-reach for one and the MD5 is never computed; the settings copy switches from "your avatar comes from
-Gravatar" to what actually happens; and the privacy page's Gravatar section renders only where there
-is something to disclose. That section sits **last in §4**, after Legal Requirements, rather than
-next to Map Tiles where it belongs topically: it is the one heading that appears on some instances
-and not others, and anywhere earlier it would leave a gap in the numbering of the headings that are
-always there.
+reach for one and the hash is never computed; the settings copy switches from "your avatar comes
+from Gravatar" to what actually happens; and the privacy page's Gravatar section renders only where
+there is something to disclose. That section sits **last in §4**, after Legal Requirements, rather
+than next to Map Tiles where it belongs topically: it is the one heading that appears on some
+instances and not others, and anywhere earlier it would leave a gap in the numbering of the headings
+that are always there.
 
 Separately, and not a taste call: the page described analytics that have never existed. "Usage Data:
 pages visited, features used, time spent", "Improvement: analyze usage patterns", "Analyze usage
@@ -7772,3 +7772,68 @@ published promise nobody can meet is worse for a reporter than being told plainl
 What the file does instead is tell them to nudge the thread after a couple of weeks — a suggestion
 to the reporter costs nothing to honour — and to name their own deadline in the first message if
 they have one.
+
+## Gravatar hashes with SHA-256, and the `d=404` probe still works
+
+`lib/utils.ts` hashed the address with `crypto-js/md5`. It now uses `crypto-js/sha256`. Gravatar has
+accepted both at the same `/avatar/{hash}` endpoint since 2022 and documents SHA-256 as the
+preferred one, so this is a one-import change with no call-site consequences — `getGravatarUrl` and
+`getGravatarUrlStrict` stay synchronous, and `UserAvatar` builds both URLs during render exactly as
+before.
+
+**This closes nothing, and the write-up should not pretend otherwise.** An email address has far too
+little entropy for any digest of it to be more than an identifier — that is precisely why
+`GRAVATAR_ENABLED` defaults to off and `.env.example` spells out the disclosure, and none of that
+reasoning changes with the algorithm. The change is about not shipping MD5 in 2026.
+
+The one thing that genuinely needed checking first was the `d=404` probe. `UserAvatar` decides
+between the avatar and the initials by firing a `new Image()` at `?d=404` and reading load vs.
+error, so an endpoint that quietly failed to resolve SHA-256 lookups would not error — it would
+silently show initials to every user who has an avatar. Measured against gravatar.com rather than
+assumed, using no real person's address:
+
+- `?s=80&d=404` on the SHA-256 of a synthetic address 404s, exactly as the MD5 of the same address
+  does, and `?s=80&d=mp&r=g` returns the same 1262-byte fallback for both forms.
+- The endpoint is permissive about the hash it is given — a 40-hex, 65-hex or plainly non-hex string
+  all 404 under `d=404` and all render an identicon under `d=identicon` — so "a SHA-256 hash does
+  not 400" proves nothing on its own, and the miss case above is therefore not evidence either.
+- What settles it is a **hit**. `https://api.gravatar.com/v3/profiles/{username}` publishes an
+  account's canonical `hash` as 64 hex characters and its `avatar_url` as `/avatar/<that hash>`;
+  `?d=404` against the hashes it returns for the public `gravatar` and `automattic` profiles answers
+  `200` with an image. SHA-256 lookups resolve, and SHA-256 is the form Gravatar itself hands out.
+
+**The `crypto-js` dependency was deliberately kept.** `lib/utils.ts:3` is the only import of it in
+the repo, so a Web Crypto `crypto.subtle.digest` implementation would drop both `crypto-js` and
+`@types/crypto-js` from `package.json`. `subtle.digest` is async, though, and both helpers are
+called during `UserAvatar`'s render — so that version means moving URL construction into state, in a
+component whose existing effect already carries a `react-hooks/set-state-in-effect` disable. Trading
+a one-line change for a state refactor of the avatar component is not a trade this change had any
+business making; the dependency removal is a separate decision, on its own merits.
+
+`lib/utils.test.ts` pins the digest in two URL assertions. The length is the algorithm — 64 hex
+characters is SHA-256, 32 was the MD5 — which is what the comment above them says, so the constant
+does not read as arbitrary.
+
+## The CSP nonce is 16 random bytes, not a stringified UUID
+
+`src/proxy.ts` built the nonce as `Buffer.from(crypto.randomUUID()).toString("base64")` — the UTF-8
+bytes of a 36-character UUID string, base64'd. It is now
+`Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString("base64")`.
+
+**Not a fix for a weakness.** A v4 UUID carries 122 bits of entropy and nothing was ever going to
+guess one. CSP Level 3 asks for at least 128, so the old form sat 6 bits under a spec floor that is
+already orders of magnitude past practical — the reason to change it is that "why 122?" is a
+question sitting in the middle of this app's most security-critical file, and the spec-exact form is
+no longer code. It is also shorter on the wire: 24 base64 characters against 48, on a header that
+names the nonce twice per response.
+
+Two things that make the form safe to pick without hedging. `crypto.getRandomValues` and `Buffer`
+are both available in either runtime, so nothing here depends on where Proxy runs — and it runs on
+Node: Next 16 defaults Proxy to the Node.js runtime and _forbids_ the `runtime` export in a proxy
+file outright (`node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/proxy.md`),
+so there is no switch that could move it. And base64 padding is legal in a nonce — the grammar's
+`base64-value` ends in up to two `=` — which matters because 16 bytes always produces one `==`,
+where the old 36-byte input never produced any.
+
+`src/proxy.test.ts` reads the nonce back out with `/'nonce-([^']+)'/` and asserts two requests
+differ; base64's alphabet contains no `'`, so that regex is unaffected by the shorter value.

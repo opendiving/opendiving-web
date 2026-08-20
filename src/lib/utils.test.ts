@@ -21,11 +21,15 @@ describe("cn", () => {
   });
 });
 
+// The digest in the two URL assertions below is SHA-256 of "test@example.com" -
+// the normalized (trimmed, lowercased) form of every fixture address here. Its
+// length is the algorithm: 64 hex characters is SHA-256, 32 would be the MD5
+// this used to send.
 describe("getGravatarUrl", () => {
   it("builds a gravatar URL with default size/default-image/rating", () => {
     const url = getGravatarUrl("Test@Example.com");
     expect(url).toBe(
-      "https://www.gravatar.com/avatar/55502f40dc8b7c769880b10874abc9d0?s=80&d=mp&r=g",
+      "https://www.gravatar.com/avatar/973dfe463ec85785f5f95af5ba3906eedb2d931c24e69824a89ea65dba4e813b?s=80&d=mp&r=g",
     );
   });
 
@@ -47,7 +51,7 @@ describe("getGravatarUrlStrict", () => {
   it("builds a gravatar URL that 404s when no custom avatar exists", () => {
     const url = getGravatarUrlStrict("test@example.com", 100);
     expect(url).toBe(
-      "https://www.gravatar.com/avatar/55502f40dc8b7c769880b10874abc9d0?s=100&d=404",
+      "https://www.gravatar.com/avatar/973dfe463ec85785f5f95af5ba3906eedb2d931c24e69824a89ea65dba4e813b?s=100&d=404",
     );
   });
 });

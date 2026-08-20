@@ -97,7 +97,15 @@ function cspList(directive: string, ...sources: string[]): string {
 }
 
 export function proxy(request: NextRequest) {
-  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
+  // 16 random bytes, because CSP Level 3 asks a nonce for "at least 128 bits of
+  // entropy". A v4 UUID carries 122 - not a weakness at that size, and nothing was
+  // ever guessing it, but the spec-exact form is no longer code and is shorter on
+  // the wire besides. `crypto.getRandomValues` and `Buffer` are both available in
+  // either runtime, so this does not depend on which one Proxy runs in (Node, as of
+  // Next 16, which forbids the `runtime` export here outright).
+  const nonce = Buffer.from(
+    crypto.getRandomValues(new Uint8Array(16)),
+  ).toString("base64");
   const isDev = process.env.NODE_ENV !== "production";
   // Empty string for the default, same-origin API - see `API_ORIGIN_SOURCE` above.
   // `lib/api-base.ts` is what reduces an absolute value to an origin and what knows a
