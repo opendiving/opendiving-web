@@ -21,22 +21,21 @@ COPY . .
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# `NEXT_PUBLIC_*` values are inlined into the client bundle at build time, not
-# read at runtime - so this has to be supplied here, with
-# `--build-arg NEXT_PUBLIC_API_URL=https://api.example.com/api/v1` - the full
-# base, `/api/v1` prefix included - and a rebuild is the only way to change it.
-# Without it the shipped bundle would call
-# http://localhost:8000/api/v1 (the fallback in `lib/api/client.ts`) while
-# `src/proxy.ts` reads the real value at runtime and writes a CSP naming a
-# different origin - so the app would be blocked by its own CSP, in production
-# only. The build fails below rather than shipping that.
+# An override, not a requirement. Left unset - which is how the published image is
+# built - the bundle calls the relative `/api/v1` and this app's own route handler
+# forwards it to `API_INTERNAL_URL`, a variable read at *runtime*. That is what makes one
+# image work on any domain.
+#
+# Supply it (`--build-arg NEXT_PUBLIC_API_URL=https://api.example.com/api/v1` - the full
+# base, `/api/v1` prefix included) only for a split-origin deployment where the browser
+# should reach the API directly. `NEXT_PUBLIC_*` values are inlined into the client bundle
+# at build time, so a rebuild is the only way to change it afterwards - the whole reason
+# it is no longer the default path.
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
 # Build the Next.js application
-RUN test -n "$NEXT_PUBLIC_API_URL" || \
-      (echo "ERROR: build-arg NEXT_PUBLIC_API_URL is required." >&2 && exit 1) && \
-    npm run build
+RUN npm run build
 
 # Production image
 FROM node:24-alpine AS runner

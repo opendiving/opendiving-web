@@ -1,5 +1,7 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
 
+import { DEFAULT_API_BASE_URL } from "@/lib/api-base";
+
 /**
  * Dispatched when a token refresh fails so `AuthContext` can clear the stale
  * user; existing per-page "redirect to the landing page when unauthenticated"
@@ -9,8 +11,12 @@ export const AUTH_SESSION_EXPIRED_EVENT = "auth:session-expired";
 
 // The full base every request is appended to, `/api/v1` prefix included - the API
 // mounts nothing at the bare origin, so a value without it 404s on every call.
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+//
+// Unset, this is the *relative* `/api/v1`, served by this app's own proxy route and
+// resolved by the browser against whatever origin loaded the page. `NEXT_PUBLIC_API_URL`
+// overrides it at build time for a split-origin deployment, and local dev sets it in
+// `.env` so the browser keeps talking to `localhost:8000` directly.
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_BASE_URL;
 
 // The access token is intentionally kept in memory only, never in
 // localStorage/sessionStorage: those are readable by any JS running on the
