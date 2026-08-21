@@ -15,5 +15,7 @@ having a file for it to write to that isn't this one is the other half of the sp
 
 # Claude Code
 
-Project-wide conventions live in the parent `opendiving/CLAUDE.md`, which loads alongside this file
-when Claude starts here.
+This file and the `AGENTS.md` it imports are everything a clone of this repo needs. In the
+maintainer's own checkout the repo sits inside an `opendiving/` umbrella whose `CLAUDE.md` carries
+the conventions spanning the sibling repos, and that file loads alongside this one; nothing here
+depends on it.
