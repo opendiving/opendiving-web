@@ -127,8 +127,32 @@ rest of the reasoning.
   working. (Older history mixes prefixed and plain subjects; new PRs need the prefix.)
 - Say in the description what you changed and why. Screenshots for anything visual — the README is
   screenshot-heavy for a reason.
-- If the change depends on an API change, link the corresponding
-  [opendiving-api](https://github.com/opendiving/opendiving-api) PR.
+- **A change that spans both repos starts on the API side.** Open the
+  [opendiving-api](https://github.com/opendiving/opendiving-api) PR first, link it from this one and
+  this one from it, and expect the api PR to merge first — the endpoint has to exist before the page
+  that calls it. Nothing in CI runs the two together, so those two links are all that holds the pair
+  together for whoever reviews them.
+
+## AI-assisted contributions
+
+Welcome, and the repo is set up for them on purpose: `AGENTS.md` carries the conventions and
+`DECISIONS.md` the traps already hit, both written for your tools as much as for you. Pointing a
+coding agent at this codebase is a supported way to work, not something to leave out of the PR
+description.
+
+What it doesn't change is who owns the result. The human opening the PR owns what is in it: you ran
+it — the app and `npm run ci` — you read the diff, you understood it, and you can answer review
+questions about it without going back to the model. Bulk submissions nobody looked at first get
+closed without ceremony. That is not a position on the tooling; it is the same bar the rest of this
+file sets, and unreviewed output is just the quickest way to miss it.
+
+## What to expect
+
+One maintainer, working on this in spare time. That is the honest shape of it, and worth saying out
+loud so that quiet is not read as a verdict: a first reply usually arrives within a few days, a typo
+fix may merge the same evening, and something that needs thinking about can sit longer. If a week
+goes by with nothing, ping the thread — that is useful, not rude. It almost always means the
+notification got buried, not that anyone read your PR and decided against it.
 
 ## For maintainers
 
