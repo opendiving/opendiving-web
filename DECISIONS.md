@@ -8250,6 +8250,20 @@ with a browser-side error pointing nowhere near the header.
 
 ## Signing is enforced locally, because GitHub cannot do it yet
 
+**Superseded in three particulars** by _"Signing stopped being a demand on contributors, and the
+hook learned to check"_ at the end of this file. (i) The opening claim below, that every commit here
+is meant to be signed — the commits in an outside contributor's pull request are exempt, and
+`CONTRIBUTING.md` no longer asks for them. (ii) The instruction below to target _every_ branch with
+the `required_signatures` ruleset the day these repos go public — it is every branch _except_
+`main`, because with required signatures on `main` GitHub refuses to squash-merge a pull request you
+did not author, and squash is the only merge method enabled here, so every outside PR would be
+unmergeable on day one. (iii) The description below of the Claude hook as rejecting the command
+before it runs — it now asks git first and rejects only where the key that command would disable is
+reported on. Everything else here stands, which is why the section is kept whole: that no git
+setting can prevent an inline override, the push hook's mechanics and its `%G?`-of-`N` reasoning,
+the committed-past-`.claude/*` forensics, the Python-version fail-open note, and the
+bare-command-substitution post-mortem.
+
 Every commit here is meant to be signed, and for a while about half of them were not — this repo was
 the worse of the two. The commits that came out _Unverified_ were not the victims of an expired key
 or a stale agent cache: they were made with signing switched off inline, the shape an agent reaches
@@ -8670,3 +8684,122 @@ explain why an unrecognized value warns instead of guessing, and `runtime-config
 that behaviour through the same variable. Both moved to `WEB_NOINDEX`, tests included — the warning
 path is the only interesting thing `flag()` does, and deleting the variable it was demonstrated on
 would have deleted the coverage with it.
+
+## Signing stopped being a demand on contributors, and the hook learned to check
+
+The demand was aimed at the wrong population, and **none of the enforcement could reach that
+population anyway.** The Claude hook fires only on commands that _disable_ signing, so a stranger
+with nothing configured commits unsigned and is never stopped; `.githooks/pre-push` is opt-in per
+clone, so it is not running in their checkout either. Prose was the only thing that ever crossed the
+machine boundary — and the prose was hostile: somebody who followed `CONTRIBUTING.md`'s setup
+verbatim enabled the push hook, was refused their own first push ("Sign them, then push again"), and
+was sent off to configure GPG for a typo fix. So the demand went. The _Pull requests_ bullet says PR
+commits do not need to be signed, the `git config core.hooksPath .githooks` line moved out of
+_Getting set up_ into a new _For maintainers_ section, and `AGENTS.md` went conditional on what git
+actually reports. Signing itself is unchanged: these machines still sign, both hooks are still
+committed, and the ruleset above still lands the day these repos are public.
+
+**Squash-only is load-bearing now, and it is a repo setting nobody should tidy later.** `main`'s
+provenance never came from the branch — pull requests are squash-merged, GitHub creates that commit
+and signs it with its own web-flow key, and every squash on `main` reports `E` whatever the branch
+carried. Rebase-merge would copy branch commits up "without commit signature verification", in
+GitHub's own words, so flipping the merge-method toggles is what would quietly end this.
+
+**The hook's message is the sharper half of the change.** It asserted to whoever tripped it that
+`commit.gpgsign` is on globally and that signing works here without a passphrase prompt — true on
+these machines, an invention on anyone else's, and a guard that tells its reader a false thing about
+their own environment is worse than one that says nothing. So the hook asks git first —
+`git config --type=bool --get <key>`, which canonicalises `1`/`yes`/`on` — and blocks only when that
+prints `true`. The subprocess inherits the hook's working directory rather than being pointed at
+`$CLAUDE_PROJECT_DIR`, which stays at the session root while a session working in a worktree does
+not; it has to read the config the blocked command would itself have read. The message then names
+the one key git answered about and claims nothing else. It does not say signing is configured _in
+this clone_: both `true`s live at **global** scope and repo scope is unset in both repos, so the
+gate learns nothing about the clone, and saying so would be the same defect one size smaller.
+
+**The gate is key-aware, and that was a reversal worth recording.** Enforce-if-either-key-is-true
+was chosen first, on the argument that it buys the message its truth back. It does the opposite in
+the one population where the two keys differ: a clone with `tag.gpgsign` on and `commit.gpgsign`
+unset, running `git -c commit.gpgsign=false commit`, gets its commit blocked on the strength of a
+_tag_ setting and is told commit signing is on when it is not — the exact defect the gate exists to
+remove. So the commit pattern asks about `commit.gpgsign`, the tag pattern asks about `tag.gpgsign`,
+and a command matching both asks both. `--no-gpg-sign` belongs to the commit side: it is
+`git commit`/`rebase`/`cherry-pick` spelling, and `git tag`'s equivalent is `--no-sign`. The cost is
+one more pattern to keep in step; what it buys is that the key named in the message is by
+construction the key the command was about.
+
+**Gating opened a hazard that did not exist before it, and this is the transferable half: a guard
+that consults configuration can be silenced by whatever silences that configuration.** Before the
+gate, a command that _removed_ `commit.gpgsign` was merely unmatched. After it, an unmatched removal
+is a single command that stops signing **and** leaves the hook permanently inert, because from then
+on the hook consults a config that command deleted. git 2.55 spells that removal five ways, all of
+them run against a scratch config file:
+
+| Shape                                 | Example                                              | Names           |
+| ------------------------------------- | ---------------------------------------------------- | --------------- |
+| `--unset`                             | `git config --global --unset commit.gpgsign`         | the key         |
+| `--unset-all`                         | `git config --unset-all tag.gpgsign`                 | the key         |
+| `unset` subcommand                    | `git config unset --all --value=true commit.gpgsign` | the key         |
+| `--remove-section` / `remove-section` | `git config --global --remove-section commit`        | the **section** |
+| `--rename-section` / `rename-section` | `git config --global --rename-section tag oldtag`    | the **section** |
+
+The last two are the ones a regex anchored on `commit.gpgsign` cannot see, so each key carries a
+key-named removal alternative and a section-named one, with any run of non-newline characters
+allowed between the verb and the name to absorb scope flags, `--file <path>` and the subcommand's
+`--value=` filter. Over-blocking a command the reader can split in two is the safe direction here;
+under-blocking is the one that disarms the hook.
+
+**Quoting is where the pattern kept losing, and the rule that covers every case is that the shell
+strips quotes before git sees the argument.** This hook matches command _text_, so one value reaches
+git through several spellings that are one command to it and several strings here — `=false`,
+`="false"` and `"commit.gpgsign=false"` for the word, and `=`, `=""` and `"commit.gpgsign="` for the
+empty one, which git reads as `false` for a bool just as the spelled-out word is. The
+space-separated write needs its own alternative with an explicit quote pair, because
+`git config --global commit.gpgsign ""` _persists_ an empty value and disarms the guard from then on
+— the disarm hazard arriving through a set rather than an unset — and it cannot be written as "the
+key, whitespace, then nothing", since a `(?!\S)` lookahead is satisfied by more whitespace and would
+fire on any command that merely mentions the key and then breaks a line. Nor is "the word ends here"
+`(?!\S)` at all: a shell word can end on a metacharacter written flush against it, so
+`git config --global commit.gpgsign ""; git commit -m x` — ordinary chaining, not evasion — read the
+`;` as more value and walked straight through, while the same command with a space before the `;`
+blocked. The lookahead is written against the complement, `(?![^\s;&|()<>])`. Fitting the pattern to
+one example at a time is what produced three rounds of this.
+
+**Where the line is, deliberately.** The patterns match _git command_ shapes. They do not match
+`sed` on `~/.gitconfig`, and they do not match `GIT_CONFIG_GLOBAL=/dev/null git commit`, which hides
+the config rather than removing it and sails past the pattern and the gate alike.
+`git tag --no-sign` is unmatched too, and was before this change. The section above already says
+none of this survives someone determined and that these are speed bumps against a habit; that
+framing still governs, and the table is not exhaustive protection.
+
+**Every way the gate can fail allows the command, and each one is safe** (exit codes re-run on git
+2.55). The key unset exits 1 with no output. git missing entirely raises `FileNotFoundError`, caught
+as `OSError`. A bad boolean value — `commit.gpgsign = yess` — is `fatal: bad boolean config value`
+and exit **128**; that fail-open is safe rather than a silent disarm, because `git commit` fatals on
+the same value, so there is no unsigned commit to miss. "Not a repository" is not a failure case at
+all: global config is still read and the exit is 0. This list has to be exhaustive because of the
+fail-open trap the section above records — any exception escaping `main()` exits 1, and the hook
+system treats any exit but 2 as non-blocking, so a raise inside the gate would delete the guard
+without a word.
+
+**The gate, not the gitignore, is what scopes enforcement.** The temptation, once the hook is
+conditional, is to make it "local" by moving its registration to `.claude/settings.local.json`. That
+would break the committed-hook property the section above establishes: agent sessions run in fresh
+checkouts under `.claude/worktrees/`, and only committed files reach them.
+
+**And the verification, because this file has none.** ESLint ignores `.claude/**` and no CI job
+reads it, so the only check the hook gets is running it by hand against a set of JSON payloads — one
+per shape the patterns claim to cover — in three environments: this machine's config, then
+`GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null` for a stranger's clone, then a scratch
+config carrying `tag.gpgsign` alone, which is the only thing that exercises the key-aware dispatch.
+Write the payloads through heredocs — their bodies carry the very flags the live hook rejects, and
+heredoc bodies are what `strip_heredoc_bodies` ignores, so piping the same JSON inline gets the
+verifying command blocked by the hook it is testing. Capture the status on its own statement:
+`echo "... exit $?"` reports the status of the command substitution in that same line, not the
+hook's, so the loop prints a clean pass no matter what the hook did. And run a set of commands that
+must _not_ block — a plain `git commit`, a `git config --get` of either key, `=true` — because every
+fix here widens a pattern, and nothing else would notice it widening too far.
+
+Both hook files are byte-identical with the sibling
+[opendiving-api](https://github.com/opendiving/opendiving-api) repo's copies and are meant to stay
+that way; that repo's `DECISIONS.md` carries the long-form version of this reasoning.

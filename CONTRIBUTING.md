@@ -26,15 +26,6 @@ npm run dev
 Open <http://localhost:3000> and sign in with your email. With no email provider configured on the
 API side, the magic link is printed to the API logs — that's the intended local flow, not a bug.
 
-Commits in this repo are signed, and a hook keeps them that way. Once per clone:
-
-```bash
-git config core.hooksPath .githooks
-```
-
-`.githooks/pre-push` then refuses to push a commit carrying no signature at all. Linked worktrees
-share the setting, so that single command covers them too.
-
 Node 24 is what this builds and tests on — `.nvmrc` and `package.json`'s `engines` say so, and CI
 and the Dockerfile follow. Use `npm ci` rather than `npm install` when you just want a
 lockfile-exact install.
@@ -123,9 +114,10 @@ rest of the reasoning.
 
 ## Pull requests
 
-- **Every commit in the PR must be signed.** GitHub shows the ones that aren't as _Unverified_, and
-  a project asking people to self-host it should be able to say who wrote what. Set `core.hooksPath`
-  as above and the push hook keeps you honest.
+- **Your commits do not need to be signed.** PRs here are squash-merged, and GitHub creates and
+  signs that one commit with its own key, so what a self-hoster audits on `main` later is signed
+  whatever your branch carried. Sign if you already sign — nobody will ask you to set GPG up for a
+  pull request.
 - Branch off `main`, keep the PR focused on one thing.
 - Title the PR as a conventional commit — `<type>[(scope)][!]: <description>`, e.g.
   `feat: chart the dive profile on the dive detail page`. Types: `feat`, `fix`, `refactor`, `docs`,
@@ -137,6 +129,22 @@ rest of the reasoning.
   screenshot-heavy for a reason.
 - If the change depends on an API change, link the corresponding
   [opendiving-api](https://github.com/opendiving/opendiving-api) PR.
+
+## For maintainers
+
+Commits pushed to this repository's own branches are signed, and a hook keeps them that way. Once
+per clone:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+`.githooks/pre-push` then refuses to push a commit carrying no signature at all. Linked worktrees
+share the setting, so that single command covers them too.
+
+That instruction lives here rather than in _Getting set up_ because it is not a contributor's
+problem: the commits in a pull request do not need to be signed, and enabling this hook in a clone
+that does not sign only walls you out of your own push.
 
 ## Cutting a release
 
