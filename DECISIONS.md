@@ -2464,6 +2464,10 @@ be a lie about the pages either side.
 
 ### The Gravatar line moved to `/settings`, reworded
 
+**Superseded.** There is no Gravatar line any more - see _"Avatars are this instance's own, and
+Gravatar left rather than becoming a fallback"_ below. What `/settings` shows there now is the
+picture itself, with the controls that change it.
+
 It was attribution under a picture on the profile page. `/settings` shows no avatar, so it would
 have been attribution for nothing there; it is now a "Profile Picture" note in the profile form
 saying where the avatar comes from and that changing it on Gravatar changes it here. That is the
@@ -7330,11 +7334,17 @@ Things that are load-bearing:
   what they should see is exactly what an instance that configures nothing shows, which is what the
   default is. There is no meaningful default session for `useAuth()` to return, which is why the two
   differ.
-- **The CSP follows the configuration.** `www.gravatar.com` is in `img-src` only where Gravatar is
-  enabled, and the three `accounts.google.com` entries (`style-src`, `connect-src`, `frame-src`)
-  only where a Google client ID is set. An instance that uses neither now advertises neither.
+- **The CSP follows the configuration.** The three `accounts.google.com` entries (`style-src`,
+  `connect-src`, `frame-src`) are named only where a Google client ID is set, so an instance that
+  does not use it does not advertise it. `www.gravatar.com` was in `img-src` on the same terms until
+  avatars stopped coming from anywhere but this instance, so the only third-party origins left in
+  `img-src` are the map tile hosts.
 
 ## Gravatar is off unless an instance turns it on, and the privacy page stops inventing analytics
+
+**Superseded in its first half.** The gate is gone because the thing it gated is gone - see
+_"Avatars are this instance's own, and Gravatar left rather than becoming a fallback"_ below. The
+second half, about the analytics the privacy page described and never had, stands.
 
 `UserAvatar` fired a `new Image()` at `https://www.gravatar.com/avatar/<md5(email)>?d=404` on every
 mount for every signed-in user — the account menu is in the header, so that is every page — which
@@ -7786,6 +7796,11 @@ to the reporter costs nothing to honour — and to name their own deadline in th
 they have one.
 
 ## Gravatar hashes with SHA-256, and the `d=404` probe still works
+
+**Superseded.** No address is hashed for anything now, and `crypto-js` left with the last line that
+imported it - see _"Avatars are this instance's own, and Gravatar left rather than becoming a
+fallback"_ below. The measurement recorded here is kept because it is the sort of thing that is
+expensive to redo and cheap to keep, not because anything still depends on it.
 
 `lib/utils.ts` hashed the address with `crypto-js/md5`. It now uses `crypto-js/sha256`. Gravatar has
 accepted both at the same `/avatar/{hash}` endpoint since 2022 and documents SHA-256 as the
@@ -8534,3 +8549,124 @@ window. Both are read for that one fact, and both can be handed something unusab
 string, or the `null` the API sends for a row flagged with no clock to count from. A screen that
 renders "Invalid Date" to somebody reading it for a date is the failure both are avoiding, so the
 parse guard and the day format live together rather than being written twice.
+
+## Avatars are this instance's own, and Gravatar left rather than becoming a fallback
+
+Three sections above record the Gravatar era and all three are now history: the `/settings`
+attribution line, the `GRAVATAR_ENABLED` gate, and the SHA-256 hashing change. The feature they
+describe is gone outright — not kept as a fallback behind a flag, which is the shape a "replace
+Gravatar" change usually takes and would have been the wrong one here. A fallback would have kept
+every cost the gate was written to bound: the third-party host in the CSP, the disclosure on the
+privacy page, the `crypto-js` dependency, the `d=404` probe on every mount, and an environment
+variable that a released artifact would then have to keep documenting. Nothing is deployed anywhere
+yet, so there is no window in which somebody depends on it.
+
+What went with it, in one list, because the pieces were spread further than anyone expects: two
+helpers and the hashing import in `lib/utils.ts`; `checkImageExists` beside them, whose only
+consumer had become its own test; `crypto-js` and `@types/crypto-js` from `package.json`;
+`gravatarEnabled` from `PublicConfig`, `runtimeConfig()` and `publicConfig()`; the CSP source and
+its `img-src` slot in `src/proxy.ts`; the copy block on `/settings`; and §4.8 of the privacy page,
+which existed only to disclose the request nobody makes now. `getUserInitials` stays — the initials
+were always the fallback and still are.
+
+### The digest is the whole client contract
+
+`UserRead` carries `avatar_sha256`, and that one nullable string answers three questions: whether
+there is a picture, which version it is, and what to append as `?v=`. There is deliberately no URL
+on it. The bytes are owner-only and need an `Authorization` header, and the access token lives in
+memory (`lib/api/client.ts`), so an `<img src>` pointed at the API could never have loaded them —
+`UserAvatar` fetches through the API client and renders from an object URL, the path
+`hooks/useAuthedBlobUrl.ts` already existed for. That hook was written for certification card
+images; avatars are its second caller and needed nothing added to it.
+
+`UserAvatar`'s props are now `{ name, avatarSha, size, className }` — **the `email` prop is gone**,
+which is the satisfying end of this: the component that used to hash the signed-in user's address
+for a third party no longer receives the address at all.
+
+Three pieces of local state went with it. The old component tracked `imageLoaded`, `imageError` and
+`hasCustomGravatar`, fired a `d=404` probe in an effect to decide between the picture and the
+initials, and carried a `react-hooks/set-state-in-effect` disable for the reset that started it.
+Radix already does that job: `AvatarFallback` renders until an `AvatarImage` has actually loaded, so
+"in flight", "failed" and "no picture at all" are one state, drawn as initials, with no layout shift
+between them and no broken-image glyph reachable at any point.
+
+Staleness is handled by the URL rather than by refetching. `?v={sha}` changes when the picture does,
+so a replacement lands on a URL the browser has never cached and the old entry ages out of the
+five-minute `max-age` on its own. After an upload or a remove the card calls `refreshUser()`, which
+re-reads `avatar_sha256` — and every mounted `UserAvatar` follows, including the header's, in the
+same paint.
+
+### The crop dialog's two traps
+
+**Export PNG, never JPEG.** `canvas.toBlob("image/jpeg")` has no alpha channel to put transparency
+in and the spec says it composites onto **black**, so a picture with a transparent corner comes back
+with a black wedge in it. The server re-encodes everything to WebP regardless, so the client has no
+reason to be in the compression business at all: it hands over lossless pixels and lets the API
+decide the bytes.
+
+**`react-easy-crop` injects its own `<style>` element by default, and this app's CSP is
+nonce-based.** Left on, that element carries no nonce, is dropped by the browser, and the cropper
+renders unstyled — in production only, because the dev CSP allows `'unsafe-inline'` for styles.
+`disableAutomaticStylesInjection` plus a plain `import "react-easy-crop/react-easy-crop.css"` puts
+the same rules in the app's own stylesheet, which `style-src 'self'` already allows. The library
+does take a `nonce` prop, and that would have worked too; the import needs nothing threaded through
+a client component and cannot go stale if the nonce plumbing ever changes. Related to
+`NonceProvider`, but not solved by it — that sets `get-nonce`'s value for `react-remove-scroll`, and
+`react-easy-crop` reads a prop instead.
+
+The dependency was worth taking. It is MIT, has one runtime dependency (`normalize-wheel`), gives
+pinch and touch for free, and its peer range has been an open `react >= 16.4.0` since 2019, so React
+19 was never a question. Zoom is a native `<input type="range">` rather than a Radix slider — one
+value, no empty state, keyboard- and touch-reachable without another package. It is nothing like the
+MapLibre call recorded under _"The map picker is hand-rolled, and `img-src` is the whole bill"_: no
+worker, no remote assets, nothing the CSP notices beyond the stylesheet above.
+
+### The `accept` list is load-bearing, not decoration
+
+`accept="image/jpeg,image/png,image/webp,image/gif"` looks like the mirror-the-API convention the
+card picker follows, and it is also the thing that makes iPhone photos work. Since WebKit's 2024-03
+change (bug 267277), iOS Safari transcodes a HEIC pick to JPEG **only when** the `accept` list
+restricts image types and excludes HEIC. `accept="image/*"` hands over raw HEIC, which no browser
+decodes into a canvas. Adding `image/heic` is worse than either: Safari 17+ then delivers the
+original, and has a documented bug converting picked PNGs _to_ HEIC. So nobody may "simplify" this
+attribute, which is why the constant lives in `lib/api/auth.ts` with the reasoning attached rather
+than inline in the card. A Files-app pick bypasses `accept` entirely, which is what the next
+paragraph is about; the API sniffs the bytes regardless, so none of this is a security surface.
+
+### The card decodes the file before the cropper ever sees it
+
+`react-easy-crop` has **no failure callback**. Its `CropperProps` carry `onMediaLoaded` and
+`onCropComplete` and nothing for the other outcome, and internally `onCropComplete` is reached only
+from the image's `load` handler — so a source that never decodes produces no event of any kind. The
+dialog would sit there with an empty frame, `croppedAreaPixels` never arriving, the Save button
+disabled forever, and nothing on screen saying why: a dead end whose only exit is Cancel. The
+`accept` list above is exactly why this is reachable rather than theoretical — a Files-app pick
+walks straight past it with a HEIC.
+
+So `AvatarCard.handlePick` decodes the object URL itself and only mounts the dialog on success,
+toasting the failure otherwise. Passing `mediaProps={{ onError }}` into the cropper would also have
+caught it, but one frame later and with a half-open dialog to unwind; refusing the file up front is
+both simpler and the better thing to show. It costs nothing at runtime — the second decode inside
+`cropToPngBlob` hits the browser's cache for the same object URL.
+
+The messages come back through a named error type, and that is not decoration. `getApiErrorMessage`
+reads an axios response's `detail` and returns its `fallback` for everything else — it never looks
+at a plain `Error`'s own `message` (its own test pins that). So the first version of this threw
+plain `Error`s with careful wording that could not reach anyone: every canvas failure read "Failed
+to save your picture". `AvatarImageError` in `lib/avatar-crop.ts` marks the ones raised in this
+browser, and the card shows `message` for those and `getApiErrorMessage` for the rest.
+
+### Onboarding gained nothing
+
+The profile-completion form is still two fields. A Google sign-up arrives with their Google picture
+already imported by the API, an email sign-up arrives with initials and finds the editor in
+Settings, and an upload-and-crop step at the door would be friction exactly where the funnel is most
+fragile. The form's `UserAvatar` passes no digest — there is no account yet to fetch one from.
+
+### `flag()` outlived its example
+
+The helper stays (`WEB_HSTS`, `WEB_NOINDEX`), but its doc comment used `GRAVATAR_ENABLED=enabled` to
+explain why an unrecognized value warns instead of guessing, and `runtime-config.test.ts` proved
+that behaviour through the same variable. Both moved to `WEB_NOINDEX`, tests included — the warning
+path is the only interesting thing `flag()` does, and deleting the variable it was demonstrated on
+would have deleted the coverage with it.

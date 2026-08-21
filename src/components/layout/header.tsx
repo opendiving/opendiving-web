@@ -289,8 +289,8 @@ export function Header() {
                       aria-label="Account menu"
                     >
                       <UserAvatar
-                        email={user.email}
                         name={user.name}
+                        avatarSha={user.avatar_sha256}
                         size={36}
                         className="h-9 w-9"
                       />

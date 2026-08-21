@@ -32,12 +32,6 @@ export interface PublicConfig {
    * `GOOGLE_CLIENT_ID`.
    */
   googleClientId?: string;
-  /**
-   * Whether avatars may be fetched from Gravatar. Off unless an operator turns it on:
-   * it is the app's only unconditional third-party call from the browser, and it
-   * discloses a hash of every signed-in user's email address along with their IP.
-   */
-  gravatarEnabled: boolean;
   /** The map's tile templates and their attribution, already resolved. */
   tiles: TileSource;
 }
@@ -98,7 +92,7 @@ const FALSE_VALUES = new Set(["0", "false", "no", "off"]);
 
 /**
  * A boolean variable, with anything unrecognized falling back rather than counting as
- * one of the two answers. `GRAVATAR_ENABLED=enabled` is somebody asking for it on, and
+ * one of the two answers. `WEB_NOINDEX=enabled` is somebody asking for it on, and
  * silently reading as off - or as on, which is worse - is not the way to tell them it
  * did nothing.
  */
@@ -162,11 +156,6 @@ export function readRuntimeConfig(
     siteUrl: resolveSiteUrl(configured(env, "SITE_URL")),
     contactEmail: configured(env, "CONTACT_EMAIL"),
     googleClientId: configured(env, "GOOGLE_CLIENT_ID"),
-    gravatarEnabled: flag(
-      "GRAVATAR_ENABLED",
-      configured(env, "GRAVATAR_ENABLED"),
-      false,
-    ),
     tiles: tileSource({
       light: configured(env, "MAP_TILE_URL"),
       dark: configured(env, "MAP_TILE_URL_DARK"),
@@ -206,7 +195,6 @@ export function publicConfig(
 ): PublicConfig {
   return {
     googleClientId: config.googleClientId,
-    gravatarEnabled: config.gravatarEnabled,
     tiles: config.tiles,
   };
 }

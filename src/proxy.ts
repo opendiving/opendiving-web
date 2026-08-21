@@ -33,7 +33,6 @@ const API_ORIGIN_SOURCE = apiCspSource(process.env.NEXT_PUBLIC_API_URL) ?? "";
 // it exists to give.
 interface ConfiguredCspSources {
   tiles: string;
-  gravatar: string;
   google: string;
 }
 
@@ -41,14 +40,10 @@ let configuredSources: ConfiguredCspSources | undefined;
 
 function cspSources(): ConfiguredCspSources {
   if (!configuredSources) {
-    const { gravatarEnabled, googleClientId, tiles } = runtimeConfig();
+    const { googleClientId, tiles } = runtimeConfig();
     configuredSources = {
       tiles: tileOrigins(tiles).join(" "),
-      // `UserAvatar` only reaches for Gravatar when the instance turned it on, so
-      // naming the host unconditionally would advertise a third party this deployment
-      // never contacts - and leave the allowance in place for anything else that tried.
-      gravatar: gravatarEnabled ? "https://www.gravatar.com" : "",
-      // Same reasoning for Google: with no client ID the button never renders, GSI's
+      // With no client ID the Google button never renders, GSI's
       // script is never loaded, and none of the three directives below has anything to
       // allow.
       google: googleClientId ? "https://accounts.google.com" : "",
@@ -89,9 +84,9 @@ function isHttps(request: NextRequest): boolean {
 
 // A directive and its sources, with the empty ones dropped. Every source below the
 // literal ones can vanish - the API origin whenever the API is same-origin, the tile
-// origins when every configured template is malformed, Gravatar and Google when the
-// instance has not turned them on - and a stray double space in a CSP is the kind of
-// thing that reads as a typo forever after.
+// origins when every configured template is malformed, Google when the instance has not
+// turned it on - and a stray double space in a CSP is the kind of thing that reads as a
+// typo forever after.
 function cspList(directive: string, ...sources: string[]): string {
   return [directive, ...sources.filter(Boolean)].join(" ");
 }
@@ -117,13 +112,9 @@ export function proxy(request: NextRequest) {
   // policy. Derived by the same module that builds the tile URLs
   // (`lib/map-tiles.ts`) for the same origin-not-path reason as above: a host
   // named in one place and not the other fails as a silently blocked image,
-  // which is a much worse thing to debug than a wrong URL. `gravatar` and
-  // `google` are empty unless this instance turned those features on.
-  const {
-    tiles: tileOriginSources,
-    gravatar: gravatarSource,
-    google: googleSource,
-  } = cspSources();
+  // which is a much worse thing to debug than a wrong URL. `google` is empty
+  // unless this instance turned that feature on.
+  const { tiles: tileOriginSources, google: googleSource } = cspSources();
 
   const cspDirectives = [
     "default-src 'self'",
@@ -160,21 +151,19 @@ export function proxy(request: NextRequest) {
       ? cspList("style-src", "'self'", "'unsafe-inline'", googleSource)
       : cspList("style-src", "'self'", `'nonce-${nonce}'`, googleSource),
     "style-src-attr 'unsafe-inline'",
-    // `gravatarSource` - `UserAvatar` (`lib/utils.ts`'s `getGravatarUrl`) loads
-    // user avatars from there, on the instances that enabled it.
-    // `blob:` - certification card images are private, so they're fetched with an
-    // `Authorization` header and rendered from an object URL rather than pointed
-    // at directly (see `hooks/useAuthedBlobUrl.ts`). Blob URLs are *not* covered
-    // by `'self'`, so without this the `<img>` is blocked. It widens nothing an
-    // attacker could reach: a `blob:` URL can only name data this document
-    // already created.
+    // `blob:` - certification card images and avatars are private, so they're
+    // fetched with an `Authorization` header and rendered from an object URL
+    // rather than pointed at directly (see `hooks/useAuthedBlobUrl.ts`). Blob URLs
+    // are *not* covered by `'self'`, so without this the `<img>` is blocked. It
+    // widens nothing an attacker could reach: a `blob:` URL can only name data
+    // this document already created. Avatars take that same path, which is why
+    // no avatar host is named here: they are served by this app's own API.
     cspList(
       "img-src",
       "'self'",
       "data:",
       "blob:",
       apiOrigin,
-      gravatarSource,
       tileOriginSources,
     ),
     "font-src 'self' data:",

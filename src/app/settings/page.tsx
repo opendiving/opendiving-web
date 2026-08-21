@@ -3,7 +3,6 @@
 import { Loader2 } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
-import { useConfig } from "@/contexts/ConfigContext";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import {
   Card,
@@ -15,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AvatarCard } from "@/components/settings/avatar-card";
 import { DataExportCard } from "@/components/settings/data-export-card";
 import { DeleteAccountCard } from "@/components/settings/delete-account-card";
 import { EmailChangeCard } from "@/components/settings/email-change-card";
@@ -37,9 +37,6 @@ import { ButtonSpinner } from "@/components/ui/button-spinner";
 export default function SettingsPage() {
   const { isAuthenticated, isLoading } = useAuthGuard();
   const { user, refreshUser } = useAuth();
-  // Whether the copy below can honestly promise a Gravatar - the instance decides,
-  // and it is off by default (`lib/runtime-config.ts`).
-  const { gravatarEnabled } = useConfig();
   const { toast } = useToast();
 
   const {
@@ -162,38 +159,6 @@ export default function SettingsPage() {
                     Lowercase letters and numbers, unique across OpenDiving.
                   </p>
                 </div>
-
-                {/* The avatar itself is not on this page - it is drawn from the
-                    account email wherever it appears - so this is worded as where to
-                    change it rather than as attribution under a picture. The heading
-                    is a `<p>` styled like the `Label`s above it rather than a `Label`:
-                    there is no field here for it to point at. */}
-                <div className="space-y-2">
-                  <p className="text-sm font-medium leading-none">
-                    Profile Picture
-                  </p>
-                  {gravatarEnabled ? (
-                    <p className="text-xs text-muted-foreground">
-                      Your avatar comes from{" "}
-                      <a
-                        href="https://gravatar.com"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="underline hover:text-foreground"
-                      >
-                        Gravatar
-                      </a>
-                      , matched on your account email. Change it there and it
-                      changes here.
-                    </p>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">
-                      Your avatar is your initials. This copy of OpenDiving does
-                      not load avatars from Gravatar, so your email address is
-                      never sent anywhere to draw one.
-                    </p>
-                  )}
-                </div>
               </div>
 
               <Button
@@ -216,6 +181,8 @@ export default function SettingsPage() {
             </form>
           </CardContent>
         </Card>
+
+        <AvatarCard />
 
         <EmailChangeCard currentEmail={user.email} />
 

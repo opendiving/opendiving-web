@@ -61,8 +61,8 @@ built in `src/proxy.ts`, the same-origin forwarder in `src/lib/api-proxy.ts` tha
 request and its cookies to the API, session handling in `src/lib/api/client.ts` and
 `src/contexts/AuthContext.tsx`, and the `Dockerfile` and published image built from them. Out of
 scope: one operator's configuration, the API's own behaviour, and the third-party services an
-instance can be pointed at (map tiles, Gravatar, Google sign-in) — though how this app integrates
-with them is very much in scope.
+instance can be pointed at (map tiles, Google sign-in) — though how this app integrates with them is
+very much in scope.
 
 ## What happens next
 
