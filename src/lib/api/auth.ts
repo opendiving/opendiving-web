@@ -23,14 +23,28 @@ export interface User {
   units: UnitSystem;
 }
 
-// Mirrors the backend's `AuthOutcome` (see `schemas/auth.py`): either the caller is
-// signed straight in, or no account exists yet for the verified identity and
-// `onboarding_token` must be carried forward to `completeProfile`.
+// Mirrors the backend's `AuthOutcome` (see `schemas/auth.py`), and it has three
+// shapes rather than two: the caller is signed straight in, no account exists yet for
+// the verified identity (`onboarding_token` goes to `completeProfile`), or an account
+// does exist and is inside its deletion grace period (`restore_token` goes to
+// `restoreAccount`).
+//
+// The third is not a session and not a failure: nothing was written and no token was
+// issued, so a caller that treats it as either is wrong in a way the type system
+// cannot catch. Branch on `status`, never on "did an access token come back".
+export type AuthStatus =
+  "authenticated" | "onboarding_required" | "deletion_pending";
+
 export interface AuthOutcome {
-  status: "authenticated" | "onboarding_required";
+  status: AuthStatus;
   access_token?: string;
   token_type?: string;
   onboarding_token?: string;
+  // Set only when status is "deletion_pending". `purge_after` is the date the account
+  // stops being recoverable at all, and the API leaves it out for a row flagged with
+  // no clock to count from - so the screen showing it has to cope with its absence.
+  restore_token?: string;
+  purge_after?: string;
   email?: string;
   name?: string;
   avatar?: string;
@@ -69,6 +83,12 @@ export interface EmailChangeVerifyResult {
 export interface LinkCheckResult {
   valid: boolean;
   email?: string;
+  // Set only by the sign-in precheck, and only for a link into an account inside its
+  // deletion grace period. Deliberately `valid: true` plus a flag rather than a fourth
+  // way to be invalid: the link works, and redeeming it reaches the restore offer. See
+  // `LinkCheckResponse` in the API's `schemas/auth.py`.
+  deletion_pending?: boolean;
+  purge_after?: string;
 }
 
 // Every call that can hand back a session does the same thing with it: the access
@@ -89,9 +109,10 @@ export function captureSession(outcome: AuthOutcome): AuthOutcome {
  * Sign-in, sign-out and onboarding calls.
  *
  * Every entry point (the magic link, the code printed beside it, Google) can land on
- * either of two outcomes - an existing user is signed in, or a verified identity with
- * no account yet gets an onboarding token to hand to `completeOnboarding`. Callers have
- * to branch on `status` rather than assuming a session came back.
+ * any of three outcomes - an existing user is signed in, a verified identity with no
+ * account yet gets an onboarding token to hand to `completeOnboarding`, or an account
+ * inside its deletion grace period gets a restore token to hand to `restoreAccount`.
+ * Callers have to branch on `status` rather than assuming a session came back.
  */
 export const authAPI = {
   // Step 1 of the email flow: always resolves with the same generic message,
@@ -161,6 +182,21 @@ export const authAPI = {
       onboarding_token: onboardingToken,
       name,
       username,
+    });
+    return captureSession(response.data);
+  },
+
+  // The second half of a `deletion_pending` outcome, and the only thing that undoes a
+  // deletion: the four entry points verify an identity and hand back a `restore_token`,
+  // and the account stays deleted until this runs. Signs the restored account back in
+  // on success, so it resolves with an `authenticated` outcome like the others.
+  //
+  // The token is single-use and short-lived (it expires with an onboarding token), and
+  // a 401 here is worth showing verbatim: it distinguishes a spent or expired token
+  // from an account whose grace period ran out while the offer was on screen.
+  async restoreAccount(restoreToken: string): Promise<AuthOutcome> {
+    const response = await apiClient.post<AuthOutcome>("/auth/restore", {
+      restore_token: restoreToken,
     });
     return captureSession(response.data);
   },

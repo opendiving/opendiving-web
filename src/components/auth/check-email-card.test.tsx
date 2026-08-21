@@ -40,7 +40,7 @@ const verifyButton = () => screen.getByRole("button", { name: /^verify$/i });
 
 describe("CheckEmailCard", () => {
   it("verifies the typed code against the request that produced it", async () => {
-    verifyEmailCode.mockResolvedValue(true);
+    verifyEmailCode.mockResolvedValue({ status: "authenticated" });
     const user = renderCard("/dives/abc");
 
     await user.type(codeInput(), "481052");
@@ -55,7 +55,9 @@ describe("CheckEmailCard", () => {
   // The funnel treats a code exactly like the link, so a brand-new account starts
   // onboarding rather than getting a session.
   it("sends a diver with no account yet to onboarding", async () => {
-    verifyEmailCode.mockResolvedValue(false);
+    verifyEmailCode.mockResolvedValue({
+      status: "onboarding_required",
+    });
     const user = renderCard("/dives/abc");
 
     await user.type(codeInput(), "481052");
@@ -64,11 +66,29 @@ describe("CheckEmailCard", () => {
     expect(router.push).toHaveBeenCalledWith("/onboarding");
   });
 
+  // The third outcome, and the one the code path cannot warn about in advance: it
+  // claims its request row before the account is even resolved, so this screen has
+  // already spent the code by the time it learns the account is pending deletion.
+  it("sends an account pending deletion to the restore offer", async () => {
+    verifyEmailCode.mockResolvedValue({
+      status: "deletion_pending",
+      restore_token: "res",
+      email: "diver@example.com",
+      purge_after: "2026-09-04T12:00:00Z",
+    });
+    const user = renderCard("/dives/abc");
+
+    await user.type(codeInput(), "481052");
+    await user.click(verifyButton());
+
+    expect(router.push).toHaveBeenCalledWith("/restore");
+  });
+
   // Same guard the Google button applies to the same prop: `?next=` reaches this
   // as a URL parameter, so a crafted sign-in link must not turn into a redirect
   // off-origin.
   it("refuses a destination that isn't ours", async () => {
-    verifyEmailCode.mockResolvedValue(true);
+    verifyEmailCode.mockResolvedValue({ status: "authenticated" });
     const user = renderCard("//evil.example");
 
     await user.type(codeInput(), "481052");
@@ -81,7 +101,7 @@ describe("CheckEmailCard", () => {
   // select it and paste - must not send a space to the API and spend one of the
   // five attempts on a formatting difference.
   it("drops the space out of a pasted code", async () => {
-    verifyEmailCode.mockResolvedValue(true);
+    verifyEmailCode.mockResolvedValue({ status: "authenticated" });
     const user = renderCard();
 
     await user.click(codeInput());

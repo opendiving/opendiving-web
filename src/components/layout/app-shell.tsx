@@ -9,6 +9,10 @@ import { QuickCreateProvider } from "@/components/layout/quick-create";
 const NO_CHROME_ROUTES = [
   "/signin",
   "/onboarding",
+  // The offer to undo a deletion, and `/onboarding`'s counterpart in every way that
+  // matters here: a verified identity with no session yet, so there is no user menu
+  // to draw and nowhere in the app to go until the account is back.
+  "/restore",
   "/auth/verify",
   "/settings/confirm-email",
   // The screen after an account deletion. The header's user menu belongs to a

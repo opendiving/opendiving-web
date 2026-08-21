@@ -7,10 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { getApiErrorMessage } from "@/lib/api/error";
-import {
-  DEFAULT_POST_AUTH_REDIRECT,
-  sanitizeRedirectPath,
-} from "@/lib/auth-redirect";
+import { destinationForOutcome } from "@/lib/auth-redirect";
 import { cn } from "@/lib/utils";
 import { MailCheck } from "lucide-react";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
@@ -122,15 +119,11 @@ export function CheckEmailCard({
     setIsVerifying(true);
     setCodeError(null);
     try {
-      const signedIn = await verifyEmailCode(requestId, code);
+      const outcome = await verifyEmailCode(requestId, code);
       // Same routing as the Google button, and for the same reason: this never
       // left the tab, so the destination is the prop rather than the stored value
       // `/auth/verify` consumes.
-      router.push(
-        signedIn
-          ? (sanitizeRedirectPath(redirectTo) ?? DEFAULT_POST_AUTH_REDIRECT)
-          : "/onboarding",
-      );
+      router.push(destinationForOutcome(outcome.status, redirectTo));
       // Deliberately still `isVerifying` here: the navigation is under way, and
       // re-enabling the button would only invite a second submission of a code
       // that has already been consumed.

@@ -5,10 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useConfig } from "@/contexts/ConfigContext";
 import { getApiErrorMessage } from "@/lib/api/error";
-import {
-  DEFAULT_POST_AUTH_REDIRECT,
-  sanitizeRedirectPath,
-} from "@/lib/auth-redirect";
+import { destinationForOutcome } from "@/lib/auth-redirect";
 import { GoogleIcon } from "@/components/icons/google-icon";
 
 interface GoogleAuthButtonProps {
@@ -135,12 +132,8 @@ export function GoogleAuthButton({
   useEffect(() => {
     handleCredentialRef.current = async (credential: string) => {
       try {
-        const signedIn = await signInWithGoogle(credential);
-        router.push(
-          signedIn
-            ? (sanitizeRedirectPath(redirectTo) ?? DEFAULT_POST_AUTH_REDIRECT)
-            : "/onboarding",
-        );
+        const outcome = await signInWithGoogle(credential);
+        router.push(destinationForOutcome(outcome.status, redirectTo));
       } catch (err) {
         onError(
           getApiErrorMessage(err, "An error occurred during Google sign in"),
