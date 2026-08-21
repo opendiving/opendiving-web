@@ -2,85 +2,56 @@
 
 import * as React from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "./avatar";
-import {
-  getGravatarUrl,
-  getGravatarUrlStrict,
-  getUserInitials,
-} from "@/lib/utils";
+import { getUserInitials } from "@/lib/utils";
 import { User } from "lucide-react";
-import { useConfig } from "@/contexts/ConfigContext";
+import { authAPI } from "@/lib/api/auth";
+import { useAuthedBlobUrl } from "@/hooks/useAuthedBlobUrl";
 
 interface UserAvatarProps {
-  email: string;
   name: string;
+  // The stored picture's digest (`User.avatar_sha256`), or null/undefined when there
+  // is none. It is both "there is one" and which version it is - a replacement gives
+  // the fetch a new URL, so the browser cannot serve the previous picture from its
+  // own cache.
+  avatarSha?: string | null;
   size?: number;
   className?: string;
 }
 
+/**
+ * A diver's picture, falling back to their initials.
+ *
+ * The bytes are owner-only, so this cannot be an `<img src>` pointed at the API: the
+ * access token lives in memory and an `<img>` cannot carry an `Authorization`
+ * header. It fetches through the API client and renders from an object URL, the same
+ * path certification card images take (`hooks/useAuthedBlobUrl.ts`).
+ *
+ * There is deliberately no loading state and no `onLoad`/`onError` bookkeeping: Radix
+ * shows `AvatarFallback` until an `AvatarImage` has actually loaded, so an avatar in
+ * flight, an avatar that failed and an account with no avatar all render the same
+ * initials, with no layout shift between them and no broken-image glyph ever.
+ */
 export function UserAvatar({
-  email,
   name,
+  avatarSha,
   size = 80,
   className,
 }: UserAvatarProps) {
-  const [imageLoaded, setImageLoaded] = React.useState(false);
-  const [imageError, setImageError] = React.useState(false);
-  const [hasCustomGravatar, setHasCustomGravatar] = React.useState(false);
-
-  // Off unless the instance turned it on: this is the app's only third-party call
-  // from the browser, and it hands Automattic a hash of the signed-in user's email
-  // address along with their IP on every mount. `null` rather than an unused URL so
-  // nothing downstream can reach for one - including the hash of the address.
-  const { gravatarEnabled } = useConfig();
-  const gravatarUrl = gravatarEnabled ? getGravatarUrl(email, size * 2) : null;
-  const strictGravatarUrl = gravatarEnabled
-    ? getGravatarUrlStrict(email, size)
-    : null;
   const initials = getUserInitials(name);
 
-  // Check if user has a custom Gravatar. Resets local state for the new email, then
-  // subscribes to the browser's Image load/error events - the latter is an explicitly
-  // sanctioned use of an effect ("subscribe to an external system"); the reset just
-  // ensures stale state from a previous `email` isn't shown while that check runs.
-  React.useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setImageLoaded(false);
-    setImageError(false);
-    setHasCustomGravatar(false);
+  // Stable per version so the hook refetches on a replacement and not on every
+  // render. Null when there is no picture, which is what keeps an account without one
+  // from making a request at all.
+  const fetchBlob = React.useCallback(
+    () => authAPI.getAvatarBlob(avatarSha ?? undefined),
+    [avatarSha],
+  );
 
-    if (!strictGravatarUrl) return;
-
-    // Test if the user has a custom Gravatar by trying the 404 version
-    const img = new Image();
-    img.onload = () => {
-      setHasCustomGravatar(true);
-    };
-    img.onerror = () => {
-      setHasCustomGravatar(false);
-    };
-    img.src = strictGravatarUrl;
-  }, [email, strictGravatarUrl]);
-
-  const handleImageLoad = () => {
-    setImageLoaded(true);
-    setImageError(false);
-  };
-
-  const handleImageError = () => {
-    setImageLoaded(false);
-    setImageError(true);
-  };
+  const { url } = useAuthedBlobUrl(avatarSha ? fetchBlob : null);
 
   return (
     <Avatar className={className} style={{ width: size, height: size }}>
-      {hasCustomGravatar && gravatarUrl && (
-        <AvatarImage
-          src={gravatarUrl}
-          alt={`${name}'s avatar`}
-          onLoad={handleImageLoad}
-          onError={handleImageError}
-        />
-      )}
+      {url && <AvatarImage src={url} alt={`${name}'s avatar`} />}
       <AvatarFallback className="bg-primary/10 text-primary font-medium text-sm">
         {initials.length >= 2 ? initials : <User className="h-1/2 w-1/2" />}
       </AvatarFallback>

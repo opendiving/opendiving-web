@@ -14,7 +14,6 @@ import type { PublicConfig } from "@/lib/runtime-config";
  * shows, which is this.
  */
 const UNCONFIGURED: PublicConfig = {
-  gravatarEnabled: false,
   tiles: tileSource(),
 };
 

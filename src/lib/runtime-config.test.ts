@@ -23,7 +23,6 @@ describe("readRuntimeConfig", () => {
       siteUrl: DEFAULT_SITE_URL,
       contactEmail: undefined,
       googleClientId: undefined,
-      gravatarEnabled: false,
       hstsEnabled: true,
       noindex: false,
       tiles: {
@@ -39,7 +38,6 @@ describe("readRuntimeConfig", () => {
       SITE_URL: "https://dives.example.com",
       CONTACT_EMAIL: "hello@example.com",
       GOOGLE_CLIENT_ID: "client-id.apps.googleusercontent.com",
-      GRAVATAR_ENABLED: "true",
       MAP_TILE_URL: "https://tiles.example/{z}/{x}/{y}.png",
       MAP_TILE_ATTRIBUTION: "© Someone",
     });
@@ -47,7 +45,6 @@ describe("readRuntimeConfig", () => {
     expect(config.siteUrl).toBe("https://dives.example.com");
     expect(config.contactEmail).toBe("hello@example.com");
     expect(config.googleClientId).toBe("client-id.apps.googleusercontent.com");
-    expect(config.gravatarEnabled).toBe(true);
     expect(config.tiles.light).toBe("https://tiles.example/{z}/{x}/{y}.png");
     expect(config.tiles.attribution).toBe("© Someone");
   });
@@ -98,37 +95,6 @@ describe("readRuntimeConfig", () => {
     ).toBe("hi@example.com");
   });
 
-  describe("GRAVATAR_ENABLED", () => {
-    it("is off when unset - no third-party call until somebody asks for one", () => {
-      expect(readRuntimeConfig({}).gravatarEnabled).toBe(false);
-    });
-
-    it.each(["1", "true", "TRUE", "yes", "on"])("is on for %s", (value) => {
-      expect(
-        readRuntimeConfig({ GRAVATAR_ENABLED: value }).gravatarEnabled,
-      ).toBe(true);
-    });
-
-    it.each(["0", "false", "no", "off"])("is off for %s", (value) => {
-      expect(
-        readRuntimeConfig({ GRAVATAR_ENABLED: value }).gravatarEnabled,
-      ).toBe(false);
-    });
-
-    // Reading an unrecognized value as either answer would be a guess at what
-    // somebody meant, and one of the two guesses starts calling a third party.
-    it("keeps the default and says so for anything else", () => {
-      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-
-      expect(
-        readRuntimeConfig({ GRAVATAR_ENABLED: "enabled" }).gravatarEnabled,
-      ).toBe(false);
-      expect(warn).toHaveBeenCalledWith(
-        expect.stringContaining("GRAVATAR_ENABLED=enabled"),
-      );
-    });
-  });
-
   describe("WEB_HSTS and WEB_NOINDEX", () => {
     it.each(["0", "false", "no", "off"])("WEB_HSTS=%s turns HSTS off", (v) => {
       expect(readRuntimeConfig({ WEB_HSTS: v }).hstsEnabled).toBe(false);
@@ -140,6 +106,18 @@ describe("readRuntimeConfig", () => {
         expect(readRuntimeConfig({ WEB_NOINDEX: v }).noindex).toBe(true);
       },
     );
+
+    // Reading an unrecognized value as either answer would be a guess at what
+    // somebody meant, and the guess is invisible either way - a site quietly left
+    // open to crawlers looks exactly like one deliberately left open.
+    it("keeps the default and says so for anything else", () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+      expect(readRuntimeConfig({ WEB_NOINDEX: "enabled" }).noindex).toBe(false);
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining("WEB_NOINDEX=enabled"),
+      );
+    });
 
     // Both are new names, so there is no build-time spelling of them to honour - and
     // offering one would invite an operator to set a variable that reaches the browser
@@ -196,13 +174,11 @@ describe("publicConfig", () => {
         SITE_URL: "https://dives.example.com",
         CONTACT_EMAIL: "hello@example.com",
         GOOGLE_CLIENT_ID: "client-id",
-        GRAVATAR_ENABLED: "yes",
       }),
     );
 
     expect(config).toEqual({
       googleClientId: "client-id",
-      gravatarEnabled: true,
       tiles: {
         light: DEFAULT_TILE_URL,
         dark: DEFAULT_DARK_TILE_URL,

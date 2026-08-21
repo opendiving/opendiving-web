@@ -11,7 +11,14 @@ export interface User {
   name: string;
   username: string;
   email: string;
-  profile_image_url: string;
+  // The stored avatar's digest, or null when this diver has no picture and the app
+  // draws initials. There is no URL here on purpose: the bytes are owner-only and an
+  // `<img src>` cannot carry a bearer token, so they are fetched through the API
+  // client (`getAvatarBlob`). The digest is also the version - it is the `ETag` on
+  // the download and the `?v=` token that gives each replacement its own cache
+  // entry, so a new picture is visible immediately and an unchanged one is never
+  // re-fetched. Optional for the same reason as `gear_service_emails` below.
+  avatar_sha256?: string | null;
   // Whether to email this user when their gear is due for servicing. Opt-out, so it
   // defaults to true server-side; optional here so a response from an API that predates
   // the field still type-checks.
@@ -47,7 +54,6 @@ export interface AuthOutcome {
   purge_after?: string;
   email?: string;
   name?: string;
-  avatar?: string;
 }
 
 // Mirrors the backend's response to `POST /auth/email/request`: the same generic
@@ -66,6 +72,29 @@ export interface UpdateProfileData {
   username?: string;
   gear_service_emails?: boolean;
   units?: UnitSystem;
+}
+
+/**
+ * What the file picker offers for an avatar, mirroring the four formats the API can
+ * decode.
+ *
+ * **Spelled out rather than `image/*`, and that is load-bearing.** Since WebKit's
+ * 2024 change, iOS Safari transcodes a HEIC pick to JPEG only when the `accept` list
+ * restricts image types and excludes HEIC; `image/*` hands over raw HEIC, which no
+ * browser can decode into a canvas and the API rejects. Never add `image/heic` here
+ * either - Safari then delivers the original HEIC and has a documented bug converting
+ * picked PNGs *to* HEIC. A pick made through the Files app bypasses `accept`
+ * entirely, so this is convenience, not validation: the API decodes the bytes and is
+ * the only authority on what they are.
+ */
+export const AVATAR_ACCEPT = "image/jpeg,image/png,image/webp,image/gif";
+
+/** The API's own upload ceiling, mirrored so an oversize file fails before the round trip. */
+export const MAX_AVATAR_UPLOAD_SIZE = 10 * 1024 * 1024; // 10 MB
+
+/** `PUT /user/avatar`'s body: the stored image's digest, which is also its version. */
+export interface AvatarUploadResult {
+  sha256: string;
 }
 
 export interface EmailChangeResponse {
@@ -222,6 +251,58 @@ export const authAPI = {
   // `email`). Always operates on the caller's own account - no uuid parameter.
   async updateProfile(profileData: UpdateProfileData): Promise<void> {
     await apiClient.patch("/user", profileData);
+  },
+
+  // Set or replace the caller's avatar. `PUT`, because there is one avatar per
+  // account and uploading again overwrites it.
+  //
+  // What comes back out is not what goes in: the API decodes, orients from EXIF,
+  // crops square, bounds to 512 px and re-encodes as WebP - which is what strips the
+  // metadata a phone photo carries, GPS included. So the digest it returns describes
+  // the *stored* image, and nothing about the upload (size, type, filename) survives
+  // to be echoed back.
+  //
+  // `Content-Type: undefined` lets the browser set the multipart boundary; axios
+  // cannot know it. Same shape as the certification card upload.
+  async uploadAvatar(
+    file: Blob,
+    filename: string,
+  ): Promise<AvatarUploadResult> {
+    const formData = new FormData();
+    formData.append("file", file, filename);
+
+    const response = await apiClient.put<AvatarUploadResult>(
+      "/user/avatar",
+      formData,
+      { headers: { "Content-Type": undefined } },
+    );
+    return response.data;
+  },
+
+  // Remove the caller's avatar, leaving the account alone. 404 when there was none.
+  async removeAvatar(): Promise<void> {
+    await apiClient.delete("/user/avatar");
+  },
+
+  // Fetch the caller's own avatar bytes as a Blob.
+  //
+  // Through the API client rather than an `<img src>` for the same reason as card
+  // images: the endpoint is owner-only and needs an `Authorization` header, which an
+  // `<img>` cannot send (the access token lives in memory, not in a cookie). Callers
+  // turn the Blob into an object URL - see `hooks/useAuthedBlobUrl.ts`.
+  //
+  // `version` is `User.avatar_sha256`, sent as a `v` query param the API ignores. Its
+  // job is to give each version of the picture its own URL: the response is cached
+  // with `max-age=300`, so without it the browser would keep serving the old bytes
+  // from its own cache for five minutes after a replace, however correctly the app
+  // refetches. Stable while the avatar is unchanged, so repeat mounts still hit the
+  // cache (and revalidate against the `ETag` after that).
+  async getAvatarBlob(version?: string): Promise<Blob> {
+    const response = await apiClient.get("/user/avatar", {
+      responseType: "blob",
+      params: version ? { v: version } : undefined,
+    });
+    return response.data;
   },
 
   // Step 1 of changing an account's email: always resolves with the same generic

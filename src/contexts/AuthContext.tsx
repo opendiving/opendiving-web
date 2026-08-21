@@ -35,7 +35,6 @@ export interface OnboardingSession {
   onboardingToken: string;
   email: string;
   name?: string;
-  avatar?: string;
 }
 
 // The same hop, for the account that already exists and is waiting to be purged -
@@ -178,7 +177,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
         onboardingToken: outcome.onboarding_token!,
         email: outcome.email!,
         name: outcome.name,
-        avatar: outcome.avatar,
       });
       setRestore(null);
       return outcome;

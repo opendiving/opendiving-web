@@ -5,12 +5,11 @@ import { ConfigProvider, useConfig } from "./ConfigContext";
 import { DEFAULT_DARK_TILE_URL, DEFAULT_TILE_URL } from "@/lib/map-tiles";
 
 function Readout() {
-  const { googleClientId, gravatarEnabled, tiles } = useConfig();
+  const { googleClientId, tiles } = useConfig();
 
   return (
     <dl>
       <dd data-testid="google">{googleClientId ?? "none"}</dd>
-      <dd data-testid="gravatar">{String(gravatarEnabled)}</dd>
       <dd data-testid="light">{tiles.light}</dd>
       <dd data-testid="dark">{tiles.dark}</dd>
     </dl>
@@ -23,7 +22,6 @@ describe("useConfig", () => {
       <ConfigProvider
         config={{
           googleClientId: "client-id",
-          gravatarEnabled: true,
           tiles: {
             light: "https://tiles.example/{z}/{x}/{y}.png",
             dark: "https://tiles.example/dark/{z}/{x}/{y}.png",
@@ -36,7 +34,6 @@ describe("useConfig", () => {
     );
 
     expect(screen.getByTestId("google")).toHaveTextContent("client-id");
-    expect(screen.getByTestId("gravatar")).toHaveTextContent("true");
     expect(screen.getByTestId("light")).toHaveTextContent(
       "https://tiles.example/{z}/{x}/{y}.png",
     );
@@ -49,7 +46,6 @@ describe("useConfig", () => {
     render(<Readout />);
 
     expect(screen.getByTestId("google")).toHaveTextContent("none");
-    expect(screen.getByTestId("gravatar")).toHaveTextContent("false");
     expect(screen.getByTestId("light")).toHaveTextContent(DEFAULT_TILE_URL);
     expect(screen.getByTestId("dark")).toHaveTextContent(DEFAULT_DARK_TILE_URL);
   });
