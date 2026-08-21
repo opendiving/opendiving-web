@@ -8367,3 +8367,89 @@ Read through `useSyncExternalStore` with a `null` server snapshot, for the same 
 capability is (see "Passkeys sign in twice over"): a value that differs between the server render
 and the client, rather than one that changes over time — and `react-hooks/set-state-in-effect`
 rejects the effect-and-`setState` spelling of it outright.
+
+## Deleting an account is a request with a date on it, and the date only exists once
+
+`settings/page.tsx`'s Danger Zone rendered a `<Button variant="destructive">` with no `onClick` — a
+picture of a danger zone. It is now `components/settings/delete-account-card.tsx`, calling
+`DELETE /user` through the new `lib/api/users.ts`, and the shape of the whole thing follows from one
+property of that endpoint: **the purge date is composed server-side and handed back exactly once.**
+
+The grace window is `ACCOUNT_DELETION_GRACE_DAYS`, an operator knob the API exposes on no config
+route, so the browser cannot work the date out in advance — the dialog can say a grace period exists
+but not name a day. And the account is dark the moment the call returns (`get_current_user` filters
+`is_deleted`, and `/auth/refresh` re-resolves the row), so there is no signed-in screen left to read
+the date off afterwards and nothing to poll. It arrives on one response body and has to be carried
+from there to the screen that shows it.
+
+### `/goodbye` takes the date on the URL, because nothing else survives the trip
+
+Deleting ends in `hardNavigate`, for the reasons `signOut` uses one: the session is over, so the
+fetched dives and the `blob:` URLs for private card scans should go with the document rather than
+linger in a tab that is no longer signed in, and a full page load settles where the diver lands
+instead of racing `useAuthGuard`'s bounce to `/signin`. That rules out React state, and the access
+token and refresh cookie are both gone by then, so `sessionStorage` would be the only alternative to
+a query parameter — a value to clean up, invisible on a reload, and no less readable. The parameter
+is a date, not an identity; the page it is on is the disclosure, not the value.
+
+`/goodbye` therefore treats its own input as untrusted: an absent, unparseable or already-past
+`purge_after` each get their own copy. Rendering `new Date("whenever")` would put "Invalid Date" on
+the one screen somebody is reading for one fact.
+
+"Already past" is not a corner case, and it is reached two ways — an instance running
+`ACCOUNT_DELETION_GRACE_DAYS=0`, whose deadline is behind us the moment the response is composed,
+and anyone reloading, bookmarking or going Back to this URL after their own window ran out. An
+elapsed timestamp cannot tell those apart, so that branch says the date has passed and stops there.
+Copy naming the instance's configuration — the first draft's "this instance keeps no grace period" —
+states a fact about somebody else's install to a reader for whom it is false.
+
+### The copy does not offer a way back that does not exist yet
+
+Signing in during the window to restore the account is `plans/account-deletion.md` §5, and it has
+not landed on either side. Until it does, the way back is through whoever runs the instance — which
+is what the API's own confirmation email says, and what the card and `/goodbye` say too, comment
+included on all three so the next change rewords them together. A screen telling a diver to sign in
+again would send them into `/auth/complete`'s "An account with this email already exists".
+
+The old copy promised to "remove all associations with projects and teams", which OpenDiving has
+none of. What replaced it is what actually happens, in order: locked out now, everything erased
+later, the date by email.
+
+### "Download my data first" is the archive, and it leaves the dialog open
+
+`ConfirmDialog`'s `secondaryAction` slot — grown for the gear dialog's "Archive instead" — carries
+the GDPR Art. 20 nudge here, and it calls `exportAPI.download("archive", …)` rather than reinventing
+a download or bouncing the diver up to the Your Data card. The archive specifically: it is the only
+export carrying the dive-computer files and the certification scans, so it is the one to offer
+somebody who is leaving. The dialog stays open behind it, unlike the gear dialog's diversion —
+someone who asked for their data mid-decision has not changed their mind, and closing the thing they
+were reading to hand them a file loses them. The busy state is in the button's own label, since
+`secondaryAction.label` is a string and this is not worth a spinner.
+
+**The confirm is blocked while that export is being saved**, which is the part that is not obvious.
+A successful delete ends in a document navigation, and that takes two things with it: every request
+the old document had open, and every object URL it created. So confirming mid-export destroys the
+export, on an account that is dark by then and cannot be asked for it again — the one gesture
+offering the diver their logbook would be the gesture that took it away.
+
+The window is longer than the fetch, which is the half that is easy to miss. `downloadBlob` returns
+as soon as it has dispatched a synthetic click at an object URL; Firefox and Safari read that blob
+asynchronously afterwards and cancel the save if the URL disappears underneath them, which is the
+whole reason `lib/download.ts` holds one for a minute. The card therefore stays busy for a short
+settle after handing the file over — two seconds rather than that minute, because only the _start_
+of the read has to survive it, and this timer is in front of a diver where `download.ts`'s is behind
+one.
+
+The type-your-username gate is `confirmDisabled`, and it compares case- and
+whitespace-insensitively. It is friction, not a password: someone who has read the dialog and typed
+their own name back has made the decision it exists to ask for, and a keyboard's capital letter is
+not evidence that they have not.
+
+### The token is dropped on success only
+
+`usersAPI.deleteAccount` calls `clearAccessToken()` after the request resolves, never in a
+`finally`. The server has blacklisted both tokens and cleared the refresh cookie by then, so keeping
+the in-memory one would be a client pretending to hold a session the API has already ended — but a
+rejected call (rate limited, offline) changed nothing server-side, and clearing it there would sign
+a diver out of an account they still have. Same asymmetry as `signOut`'s refusal to clear anything
+after a failed `POST /auth/logout`, and for the same reason.

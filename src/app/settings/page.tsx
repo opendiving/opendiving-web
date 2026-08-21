@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DataExportCard } from "@/components/settings/data-export-card";
+import { DeleteAccountCard } from "@/components/settings/delete-account-card";
 import { EmailChangeCard } from "@/components/settings/email-change-card";
 import { NotificationsCard } from "@/components/settings/notifications-card";
 import { PasskeysCard } from "@/components/settings/passkeys-card";
@@ -232,33 +233,8 @@ export default function SettingsPage() {
         <DataExportCard username={user.username} />
       </div>
 
-      {/* Account Actions */}
       <div className="mt-8">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-destructive">Danger Zone</CardTitle>
-            <CardDescription>
-              Irreversible and destructive actions for your account.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="rounded-md border border-destructive/40 bg-destructive/10 p-4">
-                <h4 className="font-medium text-foreground mb-2">
-                  Delete Account
-                </h4>
-                <p className="text-sm text-muted-foreground mb-3">
-                  Once you delete your account, there is no going back. This
-                  will permanently delete your profile, dive logs, and remove
-                  all associations with projects and teams.
-                </p>
-                <Button variant="destructive" size="sm">
-                  Delete My Account
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <DeleteAccountCard username={user.username} />
       </div>
     </div>
   );

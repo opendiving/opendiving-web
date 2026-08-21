@@ -11,6 +11,10 @@ const NO_CHROME_ROUTES = [
   "/onboarding",
   "/auth/verify",
   "/settings/confirm-email",
+  // The screen after an account deletion. The header's user menu belongs to a
+  // session that has just been blacklisted, and offering a signed-out visitor
+  // "Dashboard" and "Log a dive" on the way out is an invitation to a 401.
+  "/goodbye",
 ];
 
 function isChromeFree(pathname: string | null): boolean {
