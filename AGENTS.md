@@ -36,15 +36,16 @@ instructions live in AGENTS.md" in `DECISIONS.md`.
   image. The prefixed spellings survive as fallbacks, read through a computed key so they are not
   inlined either. `.env.example` documents each one.
 
-- **Commits are signed, and turning that off is not a shortcut.** `commit.gpgsign` is on and
-  signing needs no passphrase prompt on this machine, so disabling it on the git command line —
-  the move an agent reaches for when it fears a hanging commit — buys nothing and leaves a PR
-  whose every commit reads _Unverified_ on GitHub. Two guards say so: a `PreToolUse` hook
-  (`.claude/hooks/no-unsigned-commits.py`) rejects the command before it runs, and
-  `.githooks/pre-push` rejects the push. Enable the second once per clone with
-  `git config core.hooksPath .githooks`. If signing genuinely fails, report the error instead of
-  routing around it. See "Signing is enforced locally, because GitHub cannot do it yet" in
-  `DECISIONS.md`.
+- **Never switch commit signing off on the git command line.** Where signing is on in the git
+  configuration you are running under, overriding it inline buys nothing — it is the move an agent
+  reaches for when it fears a hanging commit, and what it leaves behind is a PR whose every commit
+  reads _Unverified_ on GitHub. Two guards say so there: a `PreToolUse` hook
+  (`.claude/hooks/no-unsigned-commits.py`), which asks git first and only blocks when signing is
+  actually on, and `.githooks/pre-push` wherever a maintainer has enabled it. Where signing is _not_
+  configured, commit normally and do not set it up — your commits do not need to be signed, because
+  PRs are squash-merged and GitHub signs the commit that lands on `main`. If signing is on and
+  genuinely fails, report the error instead of routing around it. See "Signing stopped being a
+  demand on contributors, and the hook learned to check" in `DECISIONS.md`.
 
 Test, lint, format and type-check commands are in `CONTRIBUTING.md`.
 
