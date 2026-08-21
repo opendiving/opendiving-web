@@ -216,7 +216,7 @@ describe("entry round-trips", () => {
     });
   }
 
-  // The exact values the plan's verification steps assert against the API.
+  // The exact values the API is verified against for imperial round-tripping.
   it("commits the documented metric values", () => {
     expect(toCommittedMetric(100, "depth", "imperial")).toBe(30.48);
     expect(toCommittedMetric(75, "temperature", "imperial")).toBe(23.89);

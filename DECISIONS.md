@@ -3885,14 +3885,14 @@ kept correct, and grown by one on every future bump, in code whose whole job is 
 leak is bounded and inert; the cleanup is unbounded and load-bearing. Written down because "why is
 there a stale key here" is a fair question with a real answer, not an oversight.
 
-## `--ceiling` is one value for both themes, and the plan asked for two
+## `--ceiling` is one value for both themes, and the original design asked for two
 
-The rev-3 plan said to define light and dark values. The three chart accents already there —
+The rev-3 design said to define light and dark values. The three chart accents already there —
 `--teal`, `--coral`, `--pressure` — are each declared once and deliberately never redeclared under
 `.dark`, and the recorded reason is that a per-theme pair has to be tuned twice and drifts.
-Following the plan would have made the fourth accent the odd one out, so it is a single `0 80% 55%`,
-and the contrast was computed rather than assumed: **4.3:1 against the light card and 3.8:1 against
-the dark theme's 13% one**, clearing the 3:1 WCAG asks of a graphical object in both. The web
+Following that would have made the fourth accent the odd one out, so it is a single `0 80% 55%`, and
+the contrast was computed rather than assumed: **4.3:1 against the light card and 3.8:1 against the
+dark theme's 13% one**, clearing the 3:1 WCAG asks of a graphical object in both. The web
 `accessibility-check` job would not have caught a failure here in any case — it runs axe against the
 landing page only, and with `|| true`.
 
@@ -4763,7 +4763,7 @@ Volume 556 px full width, then O₂ | He, Start | End, ppO₂ | Role at 270 px e
 
 ## The export filename is the server's, with a local mirror behind it
 
-The plan for the settings export card said, in as many words: "Filename comes from the server's
+The settings export card was specified in as many words: "Filename comes from the server's
 `Content-Disposition` — parse it rather than re-deriving." That is what runs: `lib/api/export.ts`
 calls `filenameFromContentDisposition` on the response and saves what the API named the file.
 
@@ -6311,8 +6311,8 @@ reintroduces the phantom cylinder by hand.
 The create form starts empty because a form must not write gas the diver never entered, and because
 `diveModWarning` would raise a depth-safety warning derived from it. The edit form starts empty
 because it represents a stored record, and a row invented here is written back to the dive on the
-first save. Neither argument implies the other - this plan expected the create form to go on
-proposing a cylinder, and it would have been coherent for it to.
+first save. Neither argument implies the other - the original design expected the create form to go
+on proposing a cylinder, and it would have been coherent for it to.
 
 ### If `dirtyFields` ever comes back, it has to be read during render
 
@@ -6653,12 +6653,12 @@ The state they made unreachable is one the API supports outright - `DiveCreate.m
 for a dive logged by hand", describing something the web app could not produce.
 
 **Why a proposal is not the same as a default elsewhere on this form.** A create form proposing
-sensible starting values is ordinary, and `plans/hard-delete-instead-of-hiding.md` drew the line at
-the edit form for exactly that reason. Gas is the exception, on one ground: `diveModWarning`
-computes a MOD from whatever cylinders the form holds, so a hand-logged dive past ~56.7 m raised an
-oxygen-exposure warning about air the diver never entered. A safety warning derived from invented
-data is the worst kind of wrong - it is either believed, or it trains the diver to ignore the real
-ones. Nothing else this form pre-fills carries a consequence like that.
+sensible starting values is ordinary, and the line was drawn at the edit form for exactly that
+reason. Gas is the exception, on one ground: `diveModWarning` computes a MOD from whatever cylinders
+the form holds, so a hand-logged dive past ~56.7 m raised an oxygen-exposure warning about air the
+diver never entered. A safety warning derived from invented data is the worst kind of wrong - it is
+either believed, or it trains the diver to ignore the real ones. Nothing else this form pre-fills
+carries a consequence like that.
 
 `DEFAULT_MIXTURE` itself stays. It is the right proposal for the "Add Mixture" button and for the
 pressure/role placeholders; the only question was whether one is present before the diver asks for
@@ -6669,11 +6669,10 @@ back. What it no longer does is invent one when the previous dive had none.
 **The remove button lost its `index > 0` gate**, which is required rather than cosmetic: without it
 a diver who clicks "Add Mixture" on an empty form can never get back to zero and reintroduces the
 fabrication by hand. It also fixes the same thing on the edit form, where no dive's cylinders could
-be cleared at all even though `DiveUpdate.mixtures` accepts an empty list.
-`plans/hard-delete-instead-of-hiding.md` PR 2 carries the same change - whichever lands first, the
-other should not redo it. The button gained an `aria-label` naming its tank while it was being
-touched: the icon is the whole button, and one per tank with no accessible name reads as a row of
-identical "button"s.
+be cleared at all even though `DiveUpdate.mixtures` accepts an empty list. The hard-delete work
+carries the same change - whichever lands first, the other should not redo it. The button gained an
+`aria-label` naming its tank while it was being touched: the icon is the whole button, and one per
+tank with no accessible name reads as a row of identical "button"s.
 
 **`[]` on the wire, not an omitted key.** The submit path already sent whatever the field held, so
 `mixtures: []` reaches the body as a real value rather than an absent one. On create the two amount
@@ -6681,7 +6680,7 @@ to the same thing - `DiveCreate.mixtures` is `default_factory=list`, so an omitt
 empty list - but the explicit one is what the form sends and what was checked against a live
 `POST /dive`: 201, and the dive reads back with `mixtures: []` at 60 m, the depth that used to raise
 the phantom warning. The distinction only bites on the edit form's `PATCH`, where present-and-empty
-replaces and absent leaves alone; that is `plans/hard-delete-instead-of-hiding.md`'s territory.
+replaces and absent leaves alone; that is the hard-delete work's territory.
 
 **Tested at the page, not just at the component.** The seeding lives in `defaultValues` and in the
 prefill's `form.reset`, and neither is reachable from a unit test - so
@@ -7516,13 +7515,13 @@ browser talks to the origin that served it.
 **The README was written ahead of what it describes, and has since been checked back.** When this
 section first landed none of it could be run: no deploy bundle, no `docs/self-hosting/`, no
 published images, and the API's own README still filing the whole thing under "Planned". That was
-the owner's call, taken with the state named — `plans/self-hosting-one-command.md` sequences this
-web docs pass (W4) ahead of the API-side bundle (A5), and nothing is public yet. The API side has
-since shipped, and the re-check is the point: the quickstart was corrected against the bundle that
-actually exists rather than the plan that predicted it, which is how its asset names came right. The
-environment template ships as `example.env`, not `.env.example`; `Caddyfile` is a third download the
-first draft omitted entirely; and a verbatim copy of that draft would have produced a broken install
-the day the first release was cut.
+the owner's call, taken with the state named — this web docs pass was deliberately sequenced ahead
+of the API-side bundle, and nothing is public yet. The API side has since shipped, and the re-check
+is the point: the quickstart was corrected against the bundle that actually exists rather than the
+draft that predicted it, which is how its asset names came right. The environment template ships as
+`example.env`, not `.env.example`; `Caddyfile` is a third download the first draft omitted entirely;
+and a verbatim copy of that draft would have produced a broken install the day the first release was
+cut.
 
 One gap is still open, and it is the same one for both repositories: no `v*` tag has been cut, so
 `releases/latest/download/...` resolves to nothing and neither image is on GHCR. Every command in
@@ -8458,8 +8457,8 @@ after a failed `POST /auth/logout`, and for the same reason.
 
 `AuthOutcome.status` grew a third value, `deletion_pending`: the identity was verified, an account
 exists, it is inside its deletion grace period, and **nothing was written and no session was
-issued** (see the API's `plans/account-deletion.md` §5). The web app's problem was not rendering
-that — it was that every entry point branched on a boolean.
+issued**. The web app's problem was not rendering that — it was that every entry point branched on a
+boolean.
 
 `AuthContext.applyOutcome` had two branches, `authenticated` and _otherwise assume onboarding_, and
 the second one non-null-asserted `outcome.onboarding_token`. A `deletion_pending` outcome carries no
