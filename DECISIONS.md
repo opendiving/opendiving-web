@@ -8874,3 +8874,51 @@ maintainer does not need, and the things it would wall out — a typo, a questio
 be a bug, a maintainer filing a note to self — are all things this project wants. The forms are the
 paved path, not a gate. Nothing here affects the `image-cve` issues `vulnerability-scan.yml` opens
 either: those are created through the API, which does not apply templates.
+
+## Two checks could not have been _required_, and a passing run said nothing about it
+
+Requiring a status check is the moment CI stops being advice, and `ci.yml` and `pr-title.yml` each
+carried a defect that is invisible until that moment: both were green on every PR and both would
+have left a PR pending forever the day a branch ruleset named them. The transferable half is that a
+ruleset binds to two properties of a check — its **name** and the **events it runs on** — and a
+passing run displays neither. Neither was found by reading the workflows; they turned up by taking
+the list of check names a ruleset would require and checking it against what the workflows actually
+produce.
+
+**A one-value matrix renames the check run, and the name is the whole of what a ruleset matches.**
+`lint-and-build` carried `strategy.matrix.node-version: [24.x]` with a single entry, and an
+`if: matrix.node-version == '24.x'` guard on the artifact upload that could never be false. GitHub
+appends the matrix values to a matrix job's check-run name, so this reported as
+`lint-and-build (24.x)` and never as `lint-and-build` — a ruleset requiring the bare name would have
+matched no check at all, and a required check that matches nothing does not fail loudly, it sits at
+"Expected — waiting for status" indefinitely, which on the PR page is indistinguishable from a queue
+that has not drained. The matrix is gone and the version goes straight to `setup-node`. Nothing is
+wrong with matrices; what was wrong was a matrix expressing a variation this repo does not have —
+one Node major, as `.nvmrc`, `engines.node` and the `Dockerfile` all say.
+
+**`synchronize` on a title check reads as redundant, and is precisely what makes the check
+requireable.** A push cannot change a PR's title, so re-running a title check on one looks like
+waste — but a required check must have passed **on the PR's head SHA**, and the run from `opened`
+belongs to the commit that opened it. Push a second commit and the check is stale rather than
+failing, so requiring it would hang the PR with no red mark to explain why. The title is re-read
+from the event payload on every run, so the extra run cannot disagree with the previous one; it
+costs a few seconds and buys the check its enforceability. `edited` stays the one that matters for
+humans — it is what lets a corrected title go green without an empty commit.
+
+**The `label` job re-running on every push is harmless, and deliberately so.** It recomputes the
+label set from the title and builds its `gh pr edit` arguments only where they differ, so an
+unchanged title makes no API write at all. Its fork gate is unchanged and load-bearing: `label` is
+skipped on PRs from forks, because the token is read-only there whatever its `permissions:` block
+asks for. That is also why only `semantic-title` belongs in a required-checks list and `label` does
+not — a skipped job counts as passing, so requiring it would work, but listing a job that
+deliberately does nothing on exactly the PRs that matter most is noise.
+
+**One count moved and one did not, which is the sort of thing that goes stale unwatched.**
+`.github/renovate.json5` and the Renovate section above both state that `ci.yml` and
+`code-quality.yml` hold six occurrences of `24.x` between them, none of them reachable by the
+`github-actions` manager. It is still six: the matrix entry and the comparison went, and `ci.yml`'s
+step name and `node-version:` input became literal `24.x` in their place. Only the enumeration
+inside the config comment needed correcting — from "a matrix entry, a comparison, two step names and
+two `node-version:` inputs" to "three step names and three `node-version:` inputs". The bare number
+in this file needed no edit, which is the argument for having written the breakdown down next to the
+rule that depends on it.
