@@ -8803,3 +8803,26 @@ fix here widens a pattern, and nothing else would notice it widening too far.
 Both hook files are byte-identical with the sibling
 [opendiving-api](https://github.com/opendiving/opendiving-api) repo's copies and are meant to stay
 that way; that repo's `DECISIONS.md` carries the long-form version of this reasoning.
+
+## The PR template restates CONTRIBUTING, at the moment those asks are answerable
+
+`.github/PULL_REQUEST_TEMPLATE.md` adds no new demand. What changed and why, the pair of links that
+ties a cross-repo change to its [opendiving-api](https://github.com/opendiving/opendiving-api) PR, a
+`DECISIONS.md` section when something bit you, screenshots when anything visual moved — all of it is
+already in CONTRIBUTING's _Pull requests_ and _Two things that will bite you_ sections. The
+template's only job is to put those questions in the textarea, where they are being answered, rather
+than in a file the author read once before their first PR. Its wording tracks CONTRIBUTING's
+deliberately: two phrasings of one ask read as two asks. That is a standing obligation rather than a
+one-off — the cross-repo ask grew from "link the corresponding api PR" into an ordering and a link
+from each side while this template was being written, and the template was rewritten to match. When
+one of them moves, move the other in the same PR.
+
+**Prompts, not checkboxes.** A checklist trains contributors to tick rather than write, and a solo
+maintainer gains nothing from a ticked box nobody verifies. Bold questions that are simply deleted
+when they do not apply cost an honest PR nothing, and still catch the omission that actually recurs
+here — a web change that quietly needs an API change, landing with the sibling PR unlinked.
+
+**It is Prettier-managed like the rest of the markdown.** `npm run format`'s `**/*.md` glob reaches
+into `.github/`, so the template is wrapped at 100 columns along with the docs; hand-wrapping it to
+sit prettily in the textarea is undone by the next format run, and `format:check` in
+`code-quality.yml` is where that shows up.
