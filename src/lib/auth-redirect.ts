@@ -22,6 +22,8 @@
 // `lib/gas-use-view.ts` and the two other remembered-view modules store their
 // preferences the same way, for a related reason.
 
+import type { AuthStatus } from "@/lib/api/auth";
+
 const POST_AUTH_REDIRECT_KEY = "opendiving:post-auth-redirect";
 
 // A backstop, not a mirror of the link's own life. The obvious value would be
@@ -47,6 +49,41 @@ interface StoredRedirect {
 // Where every auth entry point sends a freshly signed-in user when there's no
 // remembered destination.
 export const DEFAULT_POST_AUTH_REDIRECT = "/dashboard";
+
+// The two destinations that are not a sign-in: a verified identity with no account
+// yet, and an account inside its deletion grace period. Both are screens that ask for
+// one more explicit decision before there is a session.
+export const ONBOARDING_PATH = "/onboarding";
+export const RESTORE_PATH = "/restore";
+
+// Where an applied `AuthOutcome` sends the visitor, in the one place that decides it.
+//
+// Four entry points reach this - the magic link, the six-digit code, Google and a
+// passkey - and every one of them used to branch on a boolean that had only ever had
+// two possible values. A third status arriving at four separate ternaries is four
+// chances to route somebody holding no onboarding token into the onboarding form, so
+// the mapping lives here and the call sites pass a status.
+//
+// `next` is only honoured for a sign-in, and is sanitized here rather than at each
+// call site: one of them reads it from `localStorage` and the rest take it from a
+// prop, and neither should have to remember. The other two statuses drop it, exactly
+// as they always have - a brand-new account has nothing to return to, and neither has
+// an account that isn't back yet. Both screens end at the default.
+export function destinationForOutcome(
+  status: AuthStatus,
+  next?: string | null,
+): string {
+  switch (status) {
+    case "onboarding_required":
+      return ONBOARDING_PATH;
+    case "deletion_pending":
+      return RESTORE_PATH;
+    // Exhaustive on purpose: a fourth status added to `AuthStatus` is a type error
+    // here, in the one file, rather than a silent mis-route in four.
+    case "authenticated":
+      return sanitizeRedirectPath(next) ?? DEFAULT_POST_AUTH_REDIRECT;
+  }
+}
 
 // Anything a browser could read as *another* origin - `//evil.example`, an
 // absolute URL, or the backslash variants some parsers normalise to `//`.

@@ -194,6 +194,7 @@ const SESSION_MINTING_PATHS = new Set([
   "/auth/google",
   "/auth/passkey/verify",
   "/auth/complete",
+  "/auth/restore",
 ]);
 
 // Response interceptor to handle token refresh

@@ -93,7 +93,7 @@ beforeEach(() => {
   mocks.browserSupportsWebAuthnAutofill.mockResolvedValue(true);
   mocks.requestSignInOptions.mockResolvedValue(FLOW);
   mocks.startAuthentication.mockResolvedValue(CREDENTIAL);
-  mocks.signInWithPasskey.mockResolvedValue(true);
+  mocks.signInWithPasskey.mockResolvedValue({ status: "authenticated" });
 });
 
 describe("usePasskeySignIn capability", () => {
@@ -176,7 +176,7 @@ describe("usePasskeySignIn conditional UI", () => {
   it("re-arms once on a fresh challenge when the verify fails", async () => {
     mocks.signInWithPasskey
       .mockRejectedValueOnce(new Error("401"))
-      .mockResolvedValueOnce(true);
+      .mockResolvedValueOnce({ status: "authenticated" });
 
     const { onError } = setup();
 
@@ -256,17 +256,38 @@ describe("usePasskeySignIn explicit ceremony", () => {
     expect(mocks.router.push).toHaveBeenCalledWith("/dashboard");
   });
 
-  // A passkey always belongs to an existing account today, but the outcome comes
-  // from the funnel shared with the other entry points - so the onboarding branch
-  // is handled rather than assumed away.
+  // A passkey always belongs to an existing account, so the onboarding branch is
+  // unreachable here in practice - but the outcome comes from the funnel shared
+  // with the other entry points, so it is handled rather than assumed away.
   it("routes to onboarding when the outcome isn't a session", async () => {
-    mocks.signInWithPasskey.mockResolvedValue(false);
+    mocks.signInWithPasskey.mockResolvedValue({
+      status: "onboarding_required",
+    });
 
     const { result } = setup({ autofill: false });
 
     await act(() => result.current.signIn());
 
     expect(mocks.router.push).toHaveBeenCalledWith("/onboarding");
+  });
+
+  // The outcome this path really can produce: the assertion proves the diver owns
+  // an account that is waiting to be purged. It answers after the signature is
+  // verified, so reaching the offer is not a 401 and must not be treated as one.
+  it("takes a verified assertion for a deleted account to the restore offer", async () => {
+    mocks.signInWithPasskey.mockResolvedValue({
+      status: "deletion_pending",
+      restore_token: "res",
+      email: "diver@example.com",
+      purge_after: "2026-09-04T12:00:00Z",
+    });
+
+    const { result, onError } = setup({ autofill: false, redirectTo: "/gear" });
+
+    await act(() => result.current.signIn());
+
+    expect(mocks.router.push).toHaveBeenCalledWith("/restore");
+    expect(onError).not.toHaveBeenCalled();
   });
 
   // That `localStorage` slot belongs to the magic link, which leaves the tab and

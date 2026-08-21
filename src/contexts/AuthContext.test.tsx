@@ -23,6 +23,7 @@ const {
     verifyEmailCode: vi.fn(),
     signInWithGoogle: vi.fn(),
     completeProfile: vi.fn(),
+    restoreAccount: vi.fn(),
     signOut: vi.fn(),
     isAuthenticated: vi.fn(),
   },
@@ -140,12 +141,12 @@ describe("AuthProvider outcomes", () => {
     authAPI.verifyEmailLink.mockResolvedValue({ status: "authenticated" });
     authAPI.getCurrentUser.mockResolvedValue(USER);
 
-    let signedIn: boolean | undefined;
+    let status: string | undefined;
     await act(async () => {
-      signedIn = await result.current.verifyEmailLink("tok");
+      status = (await result.current.verifyEmailLink("tok")).status;
     });
 
-    expect(signedIn).toBe(true);
+    expect(status).toBe("authenticated");
     expect(result.current.user).toEqual(USER);
     expect(result.current.onboarding).toBeNull();
   });
@@ -161,13 +162,13 @@ describe("AuthProvider outcomes", () => {
     authAPI.verifyEmailCode.mockResolvedValue({ status: "authenticated" });
     authAPI.getCurrentUser.mockResolvedValue(USER);
 
-    let signedIn: boolean | undefined;
+    let status: string | undefined;
     await act(async () => {
-      signedIn = await result.current.verifyEmailCode("req-1", "481052");
+      status = (await result.current.verifyEmailCode("req-1", "481052")).status;
     });
 
     expect(authAPI.verifyEmailCode).toHaveBeenCalledWith("req-1", "481052");
-    expect(signedIn).toBe(true);
+    expect(status).toBe("authenticated");
     expect(result.current.user).toEqual(USER);
   });
 
@@ -177,23 +178,134 @@ describe("AuthProvider outcomes", () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     authAPI.signInWithGoogle.mockResolvedValue({
-      status: "onboarding",
+      status: "onboarding_required",
       onboarding_token: "onb",
       email: "new@example.com",
       name: "New Diver",
     });
 
-    let signedIn: boolean | undefined;
+    let status: string | undefined;
     await act(async () => {
-      signedIn = await result.current.signInWithGoogle("credential");
+      status = (await result.current.signInWithGoogle("credential")).status;
     });
 
-    expect(signedIn).toBe(false);
+    expect(status).toBe("onboarding_required");
     expect(result.current.user).toBeNull();
     expect(result.current.onboarding).toMatchObject({
       onboardingToken: "onb",
       email: "new@example.com",
     });
+    expect(result.current.restore).toBeNull();
+  });
+
+  // The third outcome, and the one that used to be mistaken for the second: it
+  // carries no `onboarding_token`, so the old two-branch `applyOutcome` stashed an
+  // onboarding session with an undefined token and carried it to `/auth/complete`.
+  // Asserting `onboarding` stays null is what pins that.
+  it("stashes a restore session for an account pending deletion", async () => {
+    refreshAccessToken.mockRejectedValue(new Error("401"));
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    authAPI.signInWithGoogle.mockResolvedValue({
+      status: "deletion_pending",
+      restore_token: "res",
+      email: "gone@example.com",
+      purge_after: "2026-09-04T12:00:00Z",
+    });
+
+    let status: string | undefined;
+    await act(async () => {
+      status = (await result.current.signInWithGoogle("credential")).status;
+    });
+
+    expect(status).toBe("deletion_pending");
+    expect(result.current.user).toBeNull();
+    expect(result.current.onboarding).toBeNull();
+    expect(result.current.restore).toEqual({
+      restoreToken: "res",
+      email: "gone@example.com",
+      purgeAfter: "2026-09-04T12:00:00Z",
+    });
+    expect(authAPI.getCurrentUser).not.toHaveBeenCalled();
+  });
+
+  // A row the API flagged with no clock to count from - the offer stands, it just
+  // cannot name a day, and the screen has to be handed a null rather than an
+  // "undefined" that renders as one.
+  it("carries a null purge date rather than dropping the offer", async () => {
+    refreshAccessToken.mockRejectedValue(new Error("401"));
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    passkeysAPI.verifySignIn.mockResolvedValue({
+      status: "deletion_pending",
+      restore_token: "res",
+      email: "gone@example.com",
+    });
+
+    await act(async () => {
+      await result.current.signInWithPasskey("flow-1", { id: "c" } as never);
+    });
+
+    expect(result.current.restore).toEqual({
+      restoreToken: "res",
+      email: "gone@example.com",
+      purgeAfter: null,
+    });
+  });
+
+  // Restoring is a sign-in: it clears the offer it was reached from, so nothing
+  // left over can send a signed-in diver back to `/restore`.
+  it("signs the restored account in and clears the offer", async () => {
+    refreshAccessToken.mockRejectedValue(new Error("401"));
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    authAPI.verifyEmailCode.mockResolvedValue({
+      status: "deletion_pending",
+      restore_token: "res",
+      email: "gone@example.com",
+      purge_after: "2026-09-04T12:00:00Z",
+    });
+    await act(async () => {
+      await result.current.verifyEmailCode("req-1", "481052");
+    });
+
+    authAPI.restoreAccount.mockResolvedValue({ status: "authenticated" });
+    authAPI.getCurrentUser.mockResolvedValue(USER);
+    await act(async () => {
+      await result.current.restoreAccount("res");
+    });
+
+    expect(authAPI.restoreAccount).toHaveBeenCalledWith("res");
+    expect(result.current.user).toEqual(USER);
+    expect(result.current.restore).toBeNull();
+  });
+
+  // The account is still deleted when a restore fails, and the offer has to survive
+  // it: the token may simply have raced a second tab, and the screen is where the
+  // API's own explanation gets shown.
+  it("keeps the offer when the restore is refused", async () => {
+    refreshAccessToken.mockRejectedValue(new Error("401"));
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    authAPI.verifyEmailCode.mockResolvedValue({
+      status: "deletion_pending",
+      restore_token: "res",
+      email: "gone@example.com",
+      purge_after: "2026-09-04T12:00:00Z",
+    });
+    await act(async () => {
+      await result.current.verifyEmailCode("req-1", "481052");
+    });
+
+    authAPI.restoreAccount.mockRejectedValue(new Error("401"));
+    await expect(result.current.restoreAccount("res")).rejects.toThrow();
+
+    expect(result.current.user).toBeNull();
+    expect(result.current.restore).toMatchObject({ restoreToken: "res" });
   });
 
   // A passkey resolves straight to an existing account, so this is the one entry
@@ -207,17 +319,19 @@ describe("AuthProvider outcomes", () => {
     passkeysAPI.verifySignIn.mockResolvedValue({ status: "authenticated" });
     authAPI.getCurrentUser.mockResolvedValue(USER);
 
-    let signedIn: boolean | undefined;
+    let status: string | undefined;
     await act(async () => {
-      signedIn = await result.current.signInWithPasskey("flow-1", {
-        id: "credential-id",
-      } as never);
+      status = (
+        await result.current.signInWithPasskey("flow-1", {
+          id: "credential-id",
+        } as never)
+      ).status;
     });
 
     expect(passkeysAPI.verifySignIn).toHaveBeenCalledWith("flow-1", {
       id: "credential-id",
     });
-    expect(signedIn).toBe(true);
+    expect(status).toBe("authenticated");
     expect(result.current.user).toEqual(USER);
   });
 

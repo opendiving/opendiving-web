@@ -13,10 +13,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useBrowserSupportsWebAuthn } from "@/hooks/useBrowserSupportsWebAuthn";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { passkeysAPI } from "@/lib/api/passkeys";
-import {
-  DEFAULT_POST_AUTH_REDIRECT,
-  sanitizeRedirectPath,
-} from "@/lib/auth-redirect";
+import { destinationForOutcome } from "@/lib/auth-redirect";
 import { isCeremonyDismissed } from "@/lib/passkey-ceremony";
 
 interface UsePasskeySignInOptions {
@@ -101,12 +98,8 @@ export function usePasskeySignIn({
   const completeCeremony = useCallback(
     async (flowId: string, credential: AuthenticationResponseJSON) => {
       const { redirectTo, signInWithPasskey, router } = latest.current;
-      const signedIn = await signInWithPasskey(flowId, credential);
-      router.push(
-        signedIn
-          ? (sanitizeRedirectPath(redirectTo) ?? DEFAULT_POST_AUTH_REDIRECT)
-          : "/onboarding",
-      );
+      const outcome = await signInWithPasskey(flowId, credential);
+      router.push(destinationForOutcome(outcome.status, redirectTo));
     },
     [],
   );

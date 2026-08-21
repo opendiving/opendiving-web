@@ -43,10 +43,10 @@ interface DeleteAccountCardProps {
  * thing this card does is carry it to `/goodbye`; there is no signed-in screen left
  * to show it on.
  *
- * The copy deliberately does not tell anyone to sign in again to undo it. Signing in
- * during the window is `plans/account-deletion.md` §5, which has not landed - until
- * it does, the way back is through whoever runs the instance, which is also what the
- * confirmation email says. Reword both in the same change that adds the restore path.
+ * The way back is the diver's own, and the copy says so: signing in again before that
+ * date - by any of the four routes - reaches an offer to restore the account rather
+ * than a dead end. The API's confirmation email says the same thing in the same words,
+ * so reword the two together.
  */
 export function DeleteAccountCard({ username }: DeleteAccountCardProps) {
   const { toast } = useToast();
@@ -165,7 +165,7 @@ export function DeleteAccountCard({ username }: DeleteAccountCardProps) {
             one. Your dives, dive sites, trips, certifications, gear and profile
             are then erased for good once this instance&apos;s grace period runs
             out. We&apos;ll email you the exact date; nothing is erased before
-            it.
+            it, and signing in again before then brings the account back.
           </p>
           <Button variant="destructive" size="sm" onClick={openConfirm}>
             Delete My Account

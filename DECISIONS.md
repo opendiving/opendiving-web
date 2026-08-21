@@ -8403,13 +8403,13 @@ elapsed timestamp cannot tell those apart, so that branch says the date has pass
 Copy naming the instance's configuration — the first draft's "this instance keeps no grace period" —
 states a fact about somebody else's install to a reader for whom it is false.
 
-### The copy does not offer a way back that does not exist yet
+### The copy offers the way back, in the same words in three places
 
-Signing in during the window to restore the account is `plans/account-deletion.md` §5, and it has
-not landed on either side. Until it does, the way back is through whoever runs the instance — which
-is what the API's own confirmation email says, and what the card and `/goodbye` say too, comment
-included on all three so the next change rewords them together. A screen telling a diver to sign in
-again would send them into `/auth/complete`'s "An account with this email already exists".
+The card, `/goodbye` and the API's own confirmation email all say that signing in again before the
+date brings the account back, because they all describe one behaviour — and they carry a comment
+each saying so, since the failure mode is rewording one of the three. This copy was the other way
+round until the restore path landed (it pointed at whoever runs the instance), which is what those
+comments were for.
 
 The old copy promised to "remove all associations with projects and teams", which OpenDiving has
 none of. What replaced it is what actually happens, in order: locked out now, everything erased
@@ -8453,3 +8453,85 @@ the in-memory one would be a client pretending to hold a session the API has alr
 rejected call (rate limited, offline) changed nothing server-side, and clearing it there would sign
 a diver out of an account they still have. Same asymmetry as `signOut`'s refusal to clear anything
 after a failed `POST /auth/logout`, and for the same reason.
+
+## Signing in offers a deleted account back, and four entry points had to learn a third answer
+
+`AuthOutcome.status` grew a third value, `deletion_pending`: the identity was verified, an account
+exists, it is inside its deletion grace period, and **nothing was written and no session was
+issued** (see the API's `plans/account-deletion.md` §5). The web app's problem was not rendering
+that — it was that every entry point branched on a boolean.
+
+`AuthContext.applyOutcome` had two branches, `authenticated` and _otherwise assume onboarding_, and
+the second one non-null-asserted `outcome.onboarding_token`. A `deletion_pending` outcome carries no
+onboarding token, so it fell there and stashed an onboarding session with an `undefined` token,
+which `/auth/complete` would then be handed. And each of the four callers — the magic-link page, the
+six-digit code card, the Google button and `usePasskeySignIn` — turned that boolean back into a
+destination with its own `signedIn ? next : "/onboarding"` ternary. One shared bug in five places.
+
+### One function decides where an outcome lands
+
+`destinationForOutcome` in `lib/auth-redirect.ts` maps a status to a path, and the four call sites
+pass the status they were given. The `switch` is exhaustive on `AuthStatus`, so a fourth status is a
+type error in one file rather than a silent mis-route in four — which is the actual property worth
+buying here, given that the last new status arrived as exactly that mis-route.
+
+It sanitizes `next` itself rather than trusting the caller to. Three of the four take that value
+from a prop fed by `?next=`, and the fourth reads it from `localStorage`; making each remember
+`sanitizeRedirectPath` is how one of them eventually forgets. `next` is honoured only for
+`authenticated` — onboarding dropped it already (a brand-new account has nothing to return to), and
+a restore drops it for the same reason, since the account is not back yet at the point the
+destination is chosen.
+
+### The entry points resolve with the whole outcome, not a status
+
+`verifyEmailLink`, `verifyEmailCode`, `signInWithGoogle` and `signInWithPasskey` used to resolve
+with a boolean and now resolve with the applied `AuthOutcome`. A status alone would be enough for
+three of them; the magic-link page is why it is not. It chains verify-then-restore inside one
+handler, so it needs the `restore_token` from that very call — a render before the stashed
+`RestoreSession` exists. `restoreAccount(restoreToken)` therefore takes the token rather than
+reading the stash, and `/restore` passes the one it was handed.
+
+### `/auth/verify` chains both halves; the other three cannot
+
+Only the magic link has a side-effect-free precheck, and `GET /auth/email/verify/check` now answers
+`deletion_pending` (as `valid: true` plus a flag — the link _works_, it just leads somewhere else,
+so the page's existing "not valid" branch stays in front). That is what lets the button read
+_Restore my account_ before anything is spent, and a click on a button that says that _is_ the
+decision — so the page posts the verify and then the restore, and lands on the dashboard.
+
+The chain is gated on the precheck's answer **and** the outcome's status, not on either alone. A
+deletion requested between the precheck and the click arrives at a button that said _Sign in_, and
+that click must never quietly cancel a deletion; it falls through to `/restore`, where the offer is
+made properly. The reverse gate matters less but is free: the status check is what makes the whole
+branch inert on an ordinary sign-in.
+
+The other three paths get no such warning. A typed code, a Google dialog and a biometric gesture are
+all commitments already made, so the offer can only be shown after the POST — which is what
+`/restore` is.
+
+### `/restore` is `/onboarding`'s counterpart, down to what it cannot survive
+
+Same shape: a verified identity that is not yet a session, an in-memory `RestoreSession` that is
+never persisted, a redirect to `/` when the page is opened without one, chrome-free because there is
+no user menu to draw, and `isAuthenticated` sending an already-restored diver to the dashboard.
+
+The one thing it says that `/onboarding` does not is that a reload loses the offer, and that is not
+generic caution. `POST /auth/email/verify-code` claims its request row _before_ resolving the
+identity, so a code spent on reaching this screen is spent — someone who closes the tab needs a
+fresh email, and nothing else on the screen would tell them that. (The magic link is the opposite:
+its token stays unconsumed until the POST, which is what makes the precheck free.)
+
+`/auth/restore` joins `SESSION_MINTING_PATHS` in `lib/api/client.ts`. A 401 there is the endpoint
+refusing the token in the body, not an expired access token, and sending it down the refresh path
+would replace the API's own explanation with "Refresh token missing." That explanation is the point:
+"already permanently deleted" and "this restore link has already been used" are different failures,
+and only the first is a dead end. It is shown verbatim on both screens.
+
+### The purge date is parsed in one place, because it arrives from two directions
+
+`lib/purge-date.ts` — `DELETE /user` hands the date to `/goodbye` on the URL, and a
+`deletion_pending` outcome hands the same date to the restore screens from the other end of the
+window. Both are read for that one fact, and both can be handed something unusable: an edited query
+string, or the `null` the API sends for a row flagged with no clock to count from. A screen that
+renders "Invalid Date" to somebody reading it for a date is the failure both are avoiding, so the
+parse guard and the day format live together rather than being written twice.

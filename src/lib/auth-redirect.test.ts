@@ -1,11 +1,43 @@
 import { afterEach, describe, expect, it, beforeEach, vi } from "vitest";
 import {
   consumePostAuthRedirect,
+  destinationForOutcome,
   rememberPostAuthRedirect,
   sanitizeRedirectPath,
   signInHref,
 } from "./auth-redirect";
 import { memoryStorage, useStorage } from "@/test/memory-storage";
+
+// Four entry points route through this and no longer branch on a boolean of their
+// own, so a status mapped wrong here is mapped wrong at every one of them at once -
+// which is exactly why it is one function and exactly why it is tested directly.
+describe("destinationForOutcome", () => {
+  it("honours where the visitor was headed, but only for a session", () => {
+    expect(destinationForOutcome("authenticated", "/dives/abc")).toBe(
+      "/dives/abc",
+    );
+    expect(destinationForOutcome("authenticated", null)).toBe("/dashboard");
+  });
+
+  it("sanitizes the destination on the way through", () => {
+    // The same guard every call site used to apply itself: a crafted `?next=`
+    // reaches three of the four as a prop.
+    expect(destinationForOutcome("authenticated", "//evil.example")).toBe(
+      "/dashboard",
+    );
+  });
+
+  it("sends the two outcomes that are not a session to their own screens", () => {
+    expect(destinationForOutcome("onboarding_required", "/dives/abc")).toBe(
+      "/onboarding",
+    );
+    // Dropping `next` here is deliberate: an account that is not back yet has
+    // nothing to return to, and the restore screen ends at the default.
+    expect(destinationForOutcome("deletion_pending", "/dives/abc")).toBe(
+      "/restore",
+    );
+  });
+});
 
 describe("sanitizeRedirectPath", () => {
   it("keeps a same-origin path", () => {
