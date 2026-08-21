@@ -4,7 +4,14 @@ on:
   pull_request:
     # `edited` is the one that matters: it re-runs the check when a title is
     # corrected, so a failing PR goes green without an empty commit to push.
-    types: [opened, edited, reopened]
+    #
+    # `synchronize` is here for a different reason, and it looks redundant until
+    # you know it: a push cannot change the title, but a *required* check has to
+    # have passed on the PR's latest commit, so without this the check would go
+    # stale the moment a PR gained a second commit and requiring it would hang
+    # the PR indefinitely. The title is re-read from the event payload on every
+    # run, so the extra run is a few seconds and cannot disagree with the last.
+    types: [opened, edited, reopened, synchronize]
 
 # The check itself needs no token: nothing is checked out and no API call is made, since
 # the title arrives in the event payload. The labelling job below asks for its own.

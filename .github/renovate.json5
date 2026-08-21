@@ -135,7 +135,7 @@
       // them: `.nvmrc` (nvm manager), `package.json`'s `engines.node` (npm), and the one
       // `Dockerfile`, whose two base tags it updates together (dockerfile manager). The other
       // two are `ci.yml` and `code-quality.yml`, which hold six occurrences of `24.x` between
-      // them - a matrix entry, a comparison, two step names and two `node-version:` inputs -
+      // them - three step names and three `node-version:` inputs -
       // none of which the `github-actions` manager treats as a dependency, and none of which
       // a custom manager should be pointed at either, because the point is that a human
       // decides.

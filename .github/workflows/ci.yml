@@ -25,12 +25,15 @@ permissions:
   contents: read
 
 jobs:
+  # Deliberately no `strategy.matrix`, though this job carried a one-value one for a
+  # while. A matrix job's check run has the matrix value appended to its name, so this
+  # job reported as `lint-and-build (<version>)` and never as `lint-and-build` - and a
+  # branch ruleset requiring the bare name would match nothing, leaving every PR waiting
+  # on a status that is never going to arrive. One Node version is all this repo
+  # supports anyway (`.nvmrc`, `engines.node` and the `Dockerfile` agree on the major),
+  # so the matrix was expressing a variation that does not exist.
   lint-and-build:
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        node-version: [24.x]
 
     steps:
       - name: Checkout code
@@ -38,10 +41,10 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Use Node.js ${{ matrix.node-version }}
+      - name: Use Node.js 24.x
         uses: actions/setup-node@v7
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 24.x
           cache: "npm"
 
       - name: Install dependencies
@@ -69,7 +72,6 @@ jobs:
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
-        if: matrix.node-version == '24.x'
         with:
           name: build-files
           path: |
