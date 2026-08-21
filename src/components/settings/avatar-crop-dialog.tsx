@@ -67,7 +67,16 @@ export function AvatarCropDialog({
 
   return (
     <Dialog open onOpenChange={(next) => !next && !isSaving && onCancel()}>
-      <DialogContent>
+      {/* No entrance zoom on this one dialog. `react-easy-crop` sizes itself from
+          `getBoundingClientRect()`, which reports the *transformed* box - so the
+          shared dialog's `zoom-in-95` has it measure a container 95% of its real
+          size, and nothing ever re-measures: the recompute hangs off a
+          `ResizeObserver`, which watches the layout box and so never fires when
+          only an ancestor transform changes. The mask is then drawn 5% small while
+          the exported crop is computed as 100% of the media, which is the mask and
+          the saved picture disagreeing. Fade and slide are kept - a translation
+          does not change the reported width or height. */}
+      <DialogContent className="data-[state=open]:zoom-in-100 data-[state=closed]:zoom-out-100">
         <DialogHeader>
           <DialogTitle>Adjust your photo</DialogTitle>
           <DialogDescription>
