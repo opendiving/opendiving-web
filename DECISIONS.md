@@ -8610,7 +8610,7 @@ five-minute `max-age` on its own. After an upload or a remove the card calls `re
 re-reads `avatar_sha256` — and every mounted `UserAvatar` follows, including the header's, in the
 same paint.
 
-### The crop dialog's two traps
+### The crop dialog's three traps
 
 **Export PNG, never JPEG.** `canvas.toBlob("image/jpeg")` has no alpha channel to put transparency
 in and the spec says it composites onto **black**, so a picture with a transparent corner comes back
@@ -8627,6 +8627,28 @@ does take a `nonce` prop, and that would have worked too; the import needs nothi
 a client component and cannot go stale if the nonce plumbing ever changes. Related to
 `NonceProvider`, but not solved by it — that sets `get-nonce`'s value for `react-remove-scroll`, and
 `react-easy-crop` reads a prop instead.
+
+**The dialog must not scale on the way in, or the mask and the saved picture disagree.**
+`react-easy-crop` sizes itself from `getBoundingClientRect()`, which reports the box **after**
+ancestor transforms — and the shared `DialogContent` opens with `zoom-in-95`, so the cropper
+measured a container 95% of its real size and wrote that into both `cropSize` and its idea of how
+large the media is rendered. Two things then follow. The circle is drawn at 243 px inside a 256 px
+image, which is the few-pixel margin all round that gave this away; and the exported crop is
+computed as `cropSize / mediaSize`, in which the 0.95 cancels — so at rest the mask promised 95% of
+the photo while `croppedAreaPixels` came back as 100% of it, edge to edge. A crop-and-save with the
+slider untouched returned the whole picture with the mask's margin nowhere in it.
+
+Nothing re-measures afterwards. The library's recompute hangs off a `ResizeObserver` on its own
+container, and that watches the layout box: an ancestor's transform finishing its 200 ms animation
+never fires it, and no window `resize` listener exists to poke either (it registers one only where
+`ResizeObserver` is undefined). So the wrong numbers are the ones the dialog keeps.
+
+The fix is `data-[state=open]:zoom-in-100 data-[state=closed]:zoom-out-100` on this one
+`DialogContent`. Fade and slide stay — a translation moves the box without changing the width and
+height that are read from it. Passing an explicit `cropSize` looks like the more surgical fix and is
+not one: `computeSizes` still derives the media's rendered size from the same scaled rect, so the
+percentages stay wrong and merely clamp at 100 instead. Deferring the mount until the animation ends
+would also work, at the price of an event that has to fire or the cropper never appears.
 
 The dependency was worth taking. It is MIT, has one runtime dependency (`normalize-wheel`), gives
 pinch and touch for free, and its peer range has been an open `react >= 16.4.0` since 2019, so React
