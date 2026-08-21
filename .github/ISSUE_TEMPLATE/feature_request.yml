@@ -1,0 +1,19 @@
+name: Feature request
+description: Something the web app should do and does not
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is the problem?
+      description: What are you trying to do, and what makes it awkward today? Describe it as a diver rather than as a patch — the problem outlives whichever solution we land on.
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: What would solve it?
+      description: Your idea, if you have one. "No idea, but here is what I would want to be true afterwards" is a perfectly good answer.
+    validations:
+      required: false

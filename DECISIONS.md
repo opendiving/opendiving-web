@@ -8826,3 +8826,51 @@ here — a web change that quietly needs an API change, landing with the sibling
 into `.github/`, so the template is wrapped at 100 columns along with the docs; hand-wrapping it to
 sit prettily in the textarea is undone by the next format run, and `format:check` in
 `code-quality.yml` is where that shows up.
+
+## The issue forms are structured, short, and point at the other repository twice
+
+`.github/ISSUE_TEMPLATE/` holds a bug form, a feature form and a `config.yml`. They are YAML issue
+forms rather than markdown templates for one reason: the two questions a self-hosted bug report is
+useless without — which version, and how it is being run — are the ones a prose template gets
+deleted along with. As form fields they are required and the answers arrive in the same shape every
+time, which is worth the schema.
+
+Everything else was cut. Four required fields on the bug form (version, install method, what
+happened, what you expected) and one required field on the feature form; no acceptance-criteria
+section, no "have you searched existing issues" checkbox, no reproduction-rate dropdown. A form long
+enough to be abandoned collects nothing at all, and this is a project whose CONTRIBUTING invites
+typo fixes. That is the section above's _prompts, not checkboxes_ reaching the one place it inverts:
+a box nobody verifies only teaches ticking, whereas the version and the install method are facts
+nobody but the reporter has and the report cannot be acted on without them.
+
+The install-method options mirror README's three ways in — the published image via the compose
+bundle, an image built from this repository, and `npm run dev` — because those three run genuinely
+different code. The published image is same-origin through `app/api/v1/[...path]/route.ts`, a
+self-built one may carry a `NEXT_PUBLIC_API_URL` baked in at build time, and the dev server is
+neither. **Browser and device** is optional but present, and it is the field this form has where the
+API's has a container question: a rendering, layout or input bug here is frequently one engine's
+behaviour and nothing else's.
+
+**There is no dive-computer or format-support form in this repository.** Parsing lives in
+opendiving-api and so does that funnel, sample files and privacy warning included.
+
+`config.yml` sends questions to **opendiving-api's Discussions**, not to a Discussions space of this
+repository's own. One space covers the product; a diver with a question has no reason to know which
+half of it their question is about, and the self-hosting and troubleshooting docs they will have
+been reading already live over there. The third contact link is the mirror of that reasoning for
+bugs: authentication, stored data, imports and the worker are all the API's, so a reporter who
+already knows that skips a round-trip, and one who does not is told to file here anyway rather than
+being made to choose correctly.
+
+Two of those URLs 404 today, deliberately. Private vulnerability reporting and Discussions are both
+switches that only exist on a public repository, and they get flipped in the same sitting as the
+flip to public. Writing the links now means the forms are correct on the day it happens rather than
+a to-do that surfaces from a stranger's confusion; the alternative — links added later — is the one
+that gets forgotten. The security link's wording tracks [SECURITY.md](SECURITY.md), which names that
+same URL as the primary channel.
+
+`blank_issues_enabled` stays `true`. Forcing every report through a form buys triage a solo
+maintainer does not need, and the things it would wall out — a typo, a question that turned out to
+be a bug, a maintainer filing a note to self — are all things this project wants. The forms are the
+paved path, not a gate. Nothing here affects the `image-cve` issues `vulnerability-scan.yml` opens
+either: those are created through the API, which does not apply templates.
