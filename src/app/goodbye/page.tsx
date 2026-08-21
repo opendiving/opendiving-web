@@ -110,8 +110,7 @@ function GoodbyeContent({ purgeAfter }: { purgeAfter: string | null }) {
             )}
             {/* The way back, in the same words as the confirmation email and the
                 Danger Zone card - all three describe one behaviour, so reword them
-                together. Signing in reaches an offer to restore, not a session:
-                `plans/account-deletion.md` §5. */}
+                together. Signing in reaches an offer to restore, not a session. */}
             <p className="text-muted-foreground mt-4">
               Deleted by mistake? Sign in again before{" "}
               {purgeOn ? "that date" : "the date in that email"} and you&apos;ll
