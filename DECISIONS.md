@@ -7186,18 +7186,32 @@ search would grow the field and shove Notes down the form mid-edit.
 English name and is often `null`; `speciesDisplayName` falls back to the scientific name, which is
 the normal case rather than an error path — WoRMS carries one vernacular for _Amphiprion ocellaris_
 and it is Japanese. The API's search index keeps every vernacular it gets in every language,
-so カクレクマノミ finds the clownfish; nothing in the UI ever shows it. That asymmetry is deliberate
-and lasts until the app has an i18n story.
+so カクレクマノミ finds the clownfish. That asymmetry is deliberate and lasts until the app has an
+i18n story.
+
+**The English-only rule governs the display name, not the explanation.** This paragraph used to end
+"nothing in the UI ever shows it", and that stopped being true when the API's match hint dropped its
+English filter: `matched_name` now carries whatever name the match actually happened on, in whatever
+language it happened in, and `hintFor` renders it verbatim — `matched "kaneeltaling"` is a Dutch
+vernacular explaining a row a Dutch word found. Deliberate rather than a leak, and the two slots are
+not the same slot: a foreign word in the _name_ would be a Dutch label on an English dive card,
+while the same word in the _hint_ is the only thing on screen accounting for a row the diver cannot
+otherwise place. Nothing here should filter it back out — a suppressed hint leaves the row with no
+account of itself at all. Worth knowing that a busy query still cuts such rows before they are seen,
+since the feed is capped at 25; the payoff is a diver who types a name in their own language and is
+told that is what matched.
 
 **A rank of `"unknown"` is not shown at all.** Most of the rank vocabulary is WoRMS's, passed
 straight through, but `"unknown"` is not a rank — it is the API's placeholder for "no rank to
-report", and it has **two** writers. `_wikidata_result` writes it for a Wikidata-only hit, which has
-no WoRMS record behind it to take a taxonomy from; `_worms_taxon` writes it for a WoRMS record that
-arrived without the field, because `rank` is `NOT NULL` and the API would rather store the sentinel
-than refuse an otherwise good record. Rendered as-is, the picker read "Manta americana, unknown",
-which sounds like a statement about the animal rather than about how much is known.
-`speciesRankLabel` drops it alongside the blank, and both the picker hint and the detail card's
-suffix go through it — a row with nothing else to add simply gets no hint.
+report", and it has **two** writers. `_wikidata_result` writes it for a Wikidata-only hit whose
+entity carries no taxon-rank statement, or one naming a rank the API's map does not cover (it used
+to write it for _every_ such hit — see the proportion paragraph below, which is where that change is
+recorded); `_worms_taxon` writes it for a WoRMS record that arrived without the field, because
+`rank` is `NOT NULL` and the API would rather store the sentinel than refuse an otherwise good
+record. Rendered as-is, the picker read "Manta americana, unknown", which sounds like a statement
+about the animal rather than about how much is known. `speciesRankLabel` drops it alongside the
+blank, and both the picker hint and the detail card's suffix go through it — a row with nothing else
+to add simply gets no hint.
 
 **The second writer is the load-bearing half.** It is tempting to reason that resolve refuses to
 invent a row without the authoritative record — which is true, it 503s — and conclude that anything
@@ -7207,14 +7221,49 @@ than refusing. A catalog row can carry the sentinel, the detail card's `speciesN
 live guard, and anyone who deletes it as dead code will be wrong. This paragraph exists because that
 inference was written down here first and had to be corrected against `species_service.py` — a
 Wikidata-only framing of the sentinel also misdirects anyone troubleshooting a rank-less row that
-really did come from WoRMS.
+really did come from WoRMS. The first writer shrinking, below, makes this half _more_ load-bearing
+rather than less: a sentinel met today is likelier than ever to be a WoRMS row.
 
-**How much of a page carries it deliberately gets no number.** It is most of a typical page rather
-than a rare edge case, but the proportion is not a property of the data: search answers with
-whatever arrived inside its fan-out budget, so a slow minute at WoRMS leaves more of the page
-Wikidata-only and therefore rank-less, and two consecutive searches for the same word legitimately
-disagree. Two sessions measured 7-in-10 and 9-in-10 on the same query hours apart and both were
-right, which is how the cause surfaced.
+**How much of a page carries it deliberately gets no number, and the honest answer moved.** This
+paragraph used to say the sentinel was most of a typical page rather than a rare edge case, and
+quoted two sessions measuring 7-in-10 and 9-in-10 on the same query hours apart. That claim is
+**struck rather than annotated around**, because it described a Wikidata side that reported no rank
+at all. The API now reads the taxon rank off the entity it was already fetching and translates it
+into WoRMS's spelling, so a Wikidata-only row arrives with a real rank — "Genus" for _Amphiprion_,
+"Subfamily" for _Amphiprioninae_, "Parvorder" for _Mysticeti_ — and the sentinel is a tail case: an
+entity with no rank statement, one naming a rank the map does not carry, or the WoRMS-side omission
+the paragraph above describes. It is not gone, and code written as though it were is wrong.
+
+**Still no number, for the reason there never was one — plus a second reason.** The proportion is
+not a property of the data: search answers with whatever arrived inside its fan-out budget, so a
+slow minute at WoRMS leaves more of the page Wikidata-only, and two consecutive searches for the
+same word legitimately disagree. What is new is that the rank _string_ moves too, which catches
+anyone who reads a displayed rank as a fact about the taxon. The two registers can hold **different
+real ranks for the same taxon**, and the merge is first-writer-wins: _Mysticeti_ is "Superfamily" to
+WoRMS and "Parvorder" to Wikidata, so the same query can return either depending on which side
+answered inside the budget. Nothing on this side should assert a rank string against live data or
+key behaviour on one. Both of those particular strings sit above genus, which is the level the API's
+ordering sorts on, so what such a disagreement moves is the caption rather than the row's place on
+the page.
+
+**Bare upstream rows started captioning themselves, and no web change was involved.** `hintFor`
+builds a menu row's hint from whichever fact the name does not carry: a row shown by its common name
+gets its binomial, and a row shown by its binomial gets `speciesRankLabel(result.rank)` instead.
+While every Wikidata-only row carried the sentinel, that second branch produced nothing on precisely
+the rows it was written for, and a bare genus reached the page with no caption at all. It now
+renders "Genus", "Subfamily", "Parvorder" — the labelling the branch always intended, arriving
+entirely from the other side of the wire.
+
+**Two more consequences of the same API work landed here untouched**, recorded because each looks
+like somewhere a client-side fix belongs. The picker renders the API's order verbatim:
+`visibleItems` is one order-preserving `filter` whose predicate short-circuits on `alreadyFiltered`,
+which is set in remote mode, and there is no `sort`, `localeCompare` or `toSorted` anywhere in the
+species render path — so the API ranking species above genus reaches the screen with nothing here
+helping, and anything added here to re-order would fight it. And the API now nulls a hint wherever a
+visible name already accounts for the _query_, which covers most of what `hintFor`'s own redundancy
+check was catching; the check stays because the two tests are not the same test — the API's is
+relative to the query and this one to the row — and they coincide only while every `matched_name` is
+a name that matched.
 
 **Sightings are not restricted to species rank.** "A moray eel" is an honest log entry and resolves
 to the family _Muraenidae_, so `speciesNameWithRank` appends the rank whenever it isn't "Species" —
