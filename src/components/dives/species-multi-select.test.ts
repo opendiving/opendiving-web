@@ -95,10 +95,11 @@ describe("mapSpeciesResults", () => {
   });
 
   it("leaves the hint off entirely when there is no usable rank", () => {
-    // "unknown" is the API's placeholder for "no rank to report" - a
-    // Wikidata-only hit, or a WoRMS record that arrived without the field.
-    // "Manta americana, unknown" reads as a claim about the animal rather than
-    // about how much is known.
+    // "unknown" is the API's placeholder for "no rank to report" - a Wikidata
+    // entity with no taxon-rank statement, or a WoRMS record that arrived
+    // without the field. A tail case now that the API reads the rank off the
+    // entity, and still a real one. "Manta americana, unknown" reads as a claim
+    // about the animal rather than about how much is known.
     const [item] = mapSpeciesResults(
       response([
         result({

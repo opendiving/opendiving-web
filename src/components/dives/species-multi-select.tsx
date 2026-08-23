@@ -134,8 +134,10 @@ function hintFor(result: SpeciesSearchResult): string | undefined {
     : speciesRankLabel(result.rank);
   if (context) parts.push(context);
   const matched = result.matched_name?.trim();
-  // Only when it says something the row doesn't already: the API sets
-  // `matched_name` for the name that matched, which is often the one on display.
+  // Only when it says something the row doesn't already. The API nulls a hint
+  // wherever a visible name already accounts for the *query*, which covers this
+  // for as long as every `matched_name` is a name that matched - true today, and
+  // a string comparison is cheaper than depending on it.
   const isRedundant =
     !matched ||
     equalsIgnoringCase(matched, result.scientific_name) ||

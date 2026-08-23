@@ -45,13 +45,13 @@ export function speciesSecondaryName(
  * `rank` is mostly WoRMS's open vocabulary passed through unmodified, but a
  * literal `"unknown"` is not a rank - it is the API's placeholder for "no rank
  * to report", and it has **two** writers (`species_service.py`'s
- * `_wikidata_result` and `_worms_taxon`). A Wikidata-only search hit has no
- * WoRMS record behind it to take a taxonomy from; and a WoRMS record that simply
- * arrived without the field gets the same value, because `rank` is a NOT NULL
- * column and the API would rather store the sentinel than refuse an otherwise
- * good record. Printed as-is it renders "Manta americana, unknown", which reads
- * as a statement about the animal rather than about how much is known, so it is
- * dropped alongside the blank.
+ * `_wikidata_result` and `_worms_taxon`). A Wikidata-only search hit gets it when
+ * its entity carries no taxon-rank statement, or names a rank the API's map does
+ * not cover; and a WoRMS record that simply arrived without the field gets the
+ * same value, because `rank` is a NOT NULL column and the API would rather store
+ * the sentinel than refuse an otherwise good record. Printed as-is it renders
+ * "Manta americana, unknown", which reads as a statement about the animal rather
+ * than about how much is known, so it is dropped alongside the blank.
  *
  * That second writer is the one worth remembering, because it is the reason this
  * is not a picker-only concern: resolve won't invent a row without the
@@ -67,9 +67,20 @@ export function speciesSecondaryName(
  *
  * How much of a search page carries it is not a property of the data and gets no
  * number here: search answers with whatever arrived inside its fan-out budget,
- * so a slow minute at WoRMS leaves more of the page Wikidata-only and therefore
- * rank-less, and two consecutive searches for the same word legitimately
- * disagree. Most of a typical page, not a rare edge case.
+ * so a slow minute at WoRMS leaves more of the page Wikidata-only, and two
+ * consecutive searches for the same word legitimately disagree. This used to say
+ * "most of a typical page, not a rare edge case"; it is a tail case now that the
+ * API reads a rank off the Wikidata entity too, which is what finally gave the
+ * picker's rank caption something to print on a bare upstream row.
+ *
+ * The string is not stable either, and for a reason that has nothing to do with
+ * the sentinel: the two registers can hold different real ranks for the same
+ * taxon and the merge is first-writer-wins, so *Mysticeti* comes back
+ * "Superfamily" or "Parvorder" depending on which side answered. Nothing here
+ * should assert a rank string against live data. `speciesNameWithRank`'s test
+ * for "Species" below survives it in the case that has been measured, where both
+ * spellings sit well above genus and only the caption moves - which is an
+ * observation about that case rather than a guarantee about every taxon.
  *
  * Case-insensitive because the vocabulary around it is WoRMS's to recapitalise,
  * not ours to depend on.

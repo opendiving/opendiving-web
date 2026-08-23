@@ -54,10 +54,11 @@ describe("speciesRankLabel", () => {
   });
 
   it("drops the API's 'unknown' placeholder", () => {
-    // Not a rank: it is what the API writes when there is no rank to report,
-    // either for a Wikidata-only hit or for a WoRMS record that arrived without
-    // the field. Printed as-is the picker reads "Manta americana, unknown" - a
-    // claim about the animal rather than about how much is known.
+    // Not a rank: it is what the API writes when there is no rank to report -
+    // a Wikidata entity with no taxon-rank statement, or a WoRMS record that
+    // arrived without the field. Printed as-is the picker reads "Manta
+    // americana, unknown" - a claim about the animal rather than about how much
+    // is known.
     expect(speciesRankLabel("unknown")).toBeUndefined();
     expect(speciesRankLabel("Unknown")).toBeUndefined();
   });

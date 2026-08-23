@@ -70,7 +70,10 @@ export interface Species extends SpeciesSummary {
  *
  * `matched_name` says *why* this row came back when that isn't obvious from the
  * names shown - the synonym or vernacular that matched. Null when the query hit
- * the displayed name.
+ * the displayed name, or anything else visible on the row. Unlike `common_name`
+ * it is not English-only: it reports the name the match happened on, in whatever
+ * language that was, since a foreign word is what explains a row a foreign word
+ * found.
  *
  * `attribution` rides on each result rather than in an envelope because it is a
  * licence condition of the data itself, and it must be rendered wherever the
