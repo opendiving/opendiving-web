@@ -40,7 +40,8 @@ npm run ci
 
 Individually: `npm run lint` (`lint:fix` to autofix), `npm run type-check`, `npm test`
 (`test:watch`, `test:coverage`), `npm run build`. Formatting is Prettier — run `npm run format`
-before pushing, or `npm run format:check` to see what it would touch.
+before pushing, or `npm run format:check` to see what it would touch. The code-quality workflow runs
+`format:check` too and fails on it, so an unformatted file is a red check, not a note.
 
 `npm run format` covers the markdown at the repo root as well as the code, so `DECISIONS.md` — the
 one you will be appending to — is formatted like everything else. Write the section however it comes
@@ -48,8 +49,8 @@ out and let Prettier wrap it to 100 columns; there is no need to match the surro
 hand.
 
 A separate code-quality workflow also runs `tsc --strict`, a dependency and circular-import check,
-and an axe accessibility scan of the running app. Most of those are advisory, but the strict type
-check is not — keep it clean.
+and an axe accessibility scan of the running app. Most of those are advisory; the strict type check
+and the Prettier check above are not — keep both clean.
 
 ## How the code is laid out
 
