@@ -45,9 +45,16 @@ jobs:
       # Runs the npm script rather than repeating its globs. This step and
       # `format:check` in package.json are the same check; with the file list copied
       # into both, extending one silently leaves the other behind.
+      #
+      # It fails the job, joining ESLint, `tsc --strict` and the `npm run build` inside
+      # the bundle-size step. Of the advisory checks this job had, depcheck and madge
+      # remain - both `|| true`, where this one was `continue-on-error`. Formatting was
+      # the one worth promoting: the tool that reports the problem also fixes it, so
+      # `npm run format` and a push is the whole remedy and no finding is ever arguable.
+      # The cost is that this runs first, so the steps below it do not report until it
+      # is green.
       - name: Run Prettier check
         run: npm run format:check
-        continue-on-error: true
 
       - name: Run ESLint with detailed output
         run: |

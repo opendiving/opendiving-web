@@ -3517,9 +3517,9 @@ sweep costs about a second. Nothing in `.prettierrc.json` changed: the `*.md` ov
 existed. opendiving-api wraps its markdown at 100 too, via mdformat, so the two `DECISIONS.md` files
 stay visually alike.
 
-`code-quality.yml` runs `npm run format:check` instead of repeating the globs inline. It is still
-`continue-on-error: true`, like most of that workflow - the check tells you what drifted,
-`npm run format` before pushing is what keeps it from drifting.
+`code-quality.yml` runs `npm run format:check` instead of repeating the globs inline. It was
+`continue-on-error: true` when that landed, like most of that workflow; it is not any more - see
+"The Prettier check fails the build now, and it is the only advisory step that should" below.
 
 Two things Prettier does to markdown beyond wrapping, both cosmetic and both applied across the docs
 in one commit: `*emphasis*` becomes `_emphasis_`, and a `*` list bullet becomes `-`. That commit
@@ -8944,3 +8944,46 @@ inside the config comment needed correcting — from "a matrix entry, a comparis
 two `node-version:` inputs" to "three step names and three `node-version:` inputs". The bare number
 in this file needed no edit, which is the argument for having written the breakdown down next to the
 rule that depends on it.
+
+## The Prettier check fails the build now, and it is the only advisory step that should
+
+`code-quality.yml`'s Prettier step dropped `continue-on-error: true`, which puts it with ESLint,
+`tsc --strict` and the `npm run build` inside the bundle-size step - the ones that already gated -
+and leaves depcheck and madge as the whole of what stays advisory. It was permissive on the
+reasoning recorded in "`npm run format` covers the docs at the repo root" above - the check tells
+you what drifted, `npm run format` before pushing is what keeps it from drifting - and that held
+right up until the second half stopped being a thing anyone had to remember. Every file the globs
+reach is formatted today, and has been for long enough that the advisory step had nothing left to
+advise. An enforced check that is already green costs nothing and never goes green again by
+accident; an advisory one that is already green is a step nobody reads.
+
+**The other permissive steps stayed permissive, on their own merits.** `depcheck` is red today and
+wrongly so: it reports `postcss` and `@tailwindcss/postcss` unused, because they are named in
+`postcss.config.mjs` rather than imported, so enforcing it would mean maintaining an ignore list of
+false positives. The bundle-analyzer invocation is a library with no CLI and does nothing on its
+own; the `npm run build` above it in that same step is what actually gates. The axe scan hits one
+URL of a signed-out app and would fail on findings nobody has triaged. `madge --circular` is the one
+genuine candidate - it passes cleanly on 349 files right now - and it was left alone anyway, because
+a cycle is a design problem to think about rather than a keystroke to undo, and discovering one
+should not also block the build. Formatting has none of those properties: the tool that reports the
+problem also fixes it, `npm run format` is the entire remedy, and no finding is ever arguable.
+
+**The ordering cost is real and accepted.** The Prettier step runs before ESLint, `tsc --strict` and
+the build, so a stray blank line now stops the job there and the checks below it do not report at
+all until a formatting push lands. Reordering it to last, or putting `if: always()` on everything
+after it, would buy back that feedback - both were rejected as more workflow than the problem
+deserves, given the fix is one command and CI re-runs in a couple of minutes.
+
+**What made this safe is the `AGENTS.md` override, not the current state of the tree.** Before
+`.prettierrc.json` gave that file `proseWrap: "preserve"`, `next dev` and Prettier each undid the
+other's wrapping of the managed agent-rules block, so `format:check` failed on a file the
+contributor never touched - see "The Prettier override is load-bearing" above. Enforcing the check
+on top of that would have turned an intermittent local annoyance into an intermittent red build with
+no obvious cause. The override is what makes formatting deterministic enough to gate on; if it is
+ever removed, this step has to go back to advisory in the same change.
+
+**`npm run ci` deliberately still does not run it.** That script mirrors `ci.yml` - lint,
+type-check, test, build - and `format:check` lives in `code-quality.yml`, a different workflow.
+Adding it locally would make the script pass or fail on something `ci.yml` never checks, which is a
+worse kind of confusion than the one it would fix. `CONTRIBUTING.md` names the Prettier check
+separately, in the paragraph that describes that second workflow, and now says it is blocking.
