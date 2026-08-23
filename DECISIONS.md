@@ -9036,3 +9036,211 @@ type-check, test, build - and `format:check` lives in `code-quality.yml`, a diff
 Adding it locally would make the script pass or fail on something `ci.yml` never checks, which is a
 worse kind of confusion than the one it would fix. `CONTRIBUTING.md` names the Prettier check
 separately, in the paragraph that describes that second workflow, and now says it is blocking.
+
+## Entry units are a per-device override; the account preference stays the display authority
+
+The dive form's number boxes gained a per-dimension unit switch. A diver who thinks in metres but
+rents an SPG reading psi flips pressure to psi and leaves depth alone. Nothing else moves: the
+account's `units` preference still decides how every saved dive, chart, stat and detail page
+renders, form state is still metric, and the wire, the export and every Zod rule are untouched by
+construction — the override only changes what a box displays and parses, which is the one thing
+"Units convert at the edges" already isolated to two files.
+
+**The model is `override ?? account`, and setting a dimension to the account's own system removes
+its key.** No-override is the natural state, so an account-level flip in settings carries every
+unoverridden dimension with it. What an override records is the absolute system ("my SPG reads
+psi"), not "flipped" — that fact does not change when the diver re-themes their account, and an
+override left equal to the account is merely redundant rather than inverted. Parsing is
+filter-don't-reject on the `parseSeriesVisibility` model: keys checked against `ENTRY_DIMENSIONS`,
+values against `UNIT_SYSTEMS`, a non-object entry read as no overrides at all.
+
+**`ENTRY_DIMENSIONS` is the one addition to `lib/units.ts`.** `EntryDimension` was a type-only
+`Extract<>` and the `DIMENSIONS` table is module-private, so nothing could enumerate the six at
+runtime — and both the storage parser and the form need to. It is
+`as const satisfies readonly Dimension[]` with the type read back off it, so a dimension in one and
+not the other is a type error rather than a silently unreachable toggle.
+
+**`localStorage`, not the user row.** Server-side per-dimension columns would be five or six new
+`NOT NULL` columns on the hottest record, an API PR and export coverage, all for an entry
+convenience. The api tree already sanctions that shape as additive if multi-device demand ever
+appears (`schemas/user.py`), which is the revisit point. Transient-per-form was rejected the other
+way: a rented psi SPG lasts a whole trip, and re-flipping every dive is the annoyance the feature
+exists to remove.
+
+**This key subscribes for real, unlike the chart keys next to it.** `chart-series-view.ts` and its
+siblings read `subscribeToNothing` because each is read by exactly one component, so nothing can
+disagree with anything. This one has concurrent readers that share a dimension: the gear-set dialog
+opens from _inside_ the dive form and both render a weight box. Two unsubscribed hook instances
+would show different units for the same dimension and last-writer-wins each other's flips.
+`entry-units.ts` therefore keeps a module-level listener set, and
+`writeEntryUnits`/`clearEntryUnits` notify.
+
+**The raw snapshot is cached in module state, keyed on the identity of the `Storage` it was primed
+from.** `getSnapshot` runs on every render of every consumer and two of those sit on the form's
+hottest path — `MixtureSetWarning` re-renders per keystroke — so a `getItem` per call is a real
+cost. In production the `Storage` object never changes; under Vitest, swapping it is exactly what
+`useStorage(memoryStorage())` does in each `beforeEach`, so a fresh store re-primes and one test's
+write cannot serve as the next one's stale read. That is what makes per-file module state safe
+without a test-only reset export.
+
+**Writes happen only in the toggle handler, and derive from a fresh store read.** Two bugs this
+forecloses. A `useState`-plus-write-through-effect copy would fire an unguarded write of the empty
+initial record on mount and **erase the diver's stored overrides on every page load** — the chart
+precedent it would imitate guards exactly this with `dive-profile-chart.tsx`'s `if (chosen)`. And
+computing the next record from the render's own memoized parse would have two toggles pressed inside
+one React batch both start from the same pre-click record, with the second silently undoing the
+first — the bug "Remembered selections use `useSyncExternalStore`" records as having been real once,
+solved there with an updater, which needs the local state this deliberately does not keep.
+Read-then-write is safe here because the write refreshes the cache synchronously. Both are pinned.
+
+**There is no hydration snap here, and none to record as an accepted trade.** The `() => null`
+server snapshot is never reached: all three pages that can mount a toggle return `<PageSpinner />`
+while auth loads, so no consumer renders during prerender or hydration and every first render
+already reads `getSnapshot`. It stays as the defensive third argument. **This matches the chart keys
+rather than contrasting with them** — `DiveProfileChart` and `GasUseCard` sit behind the same kind
+of spinner gate on their own pages, so that section's `() => null` is the same defensive posture,
+not an accepted snap this key escapes. Do not write a distinction between them into this file.
+
+**The key is cleared on sign-out, and the two next to it are not.** `signOut` already clears
+`opendiving:post-auth-redirect` because it "names a person or a destination" and deliberately keeps
+`opendiving:last-auth-method` because it "names a button, not a person". Entry units name neither,
+so what decides it is a consequence neither sibling has: an inherited override changes what a box
+_parses_. A second diver at a shared browser who never touched a toggle would meet a psi-labelled
+pressure field, type 200 meaning bar, and commit 13.79 bar — inside
+`ck_dive_mixture_start_pressure_range` and indistinguishable from real data afterwards. A chart
+key's worst inherited outcome is a hidden series.
+
+Two alternatives were rejected. **Stamping the record with the signed-in user's id** closes the same
+hazard and would survive a sign-out cycle, but it turns a view-state key into an account-linked one,
+which the privacy page then has to describe as an identifier rather than as a preference.
+**Documenting the asymmetry and keeping the key** is free, and has the honest defence that the wrong
+state is visible — but it trades a silent wrong-by-14× pressure against nothing. The cost of the
+chosen option is narrow and lands on the right person: an explicit sign-out forgets the psi choice,
+and sign-out is rare. A page reload is not one of them, since the access token is re-derived from
+the cookie.
+
+The call goes **after** the `authAPI.signOut()` try/catch, with the rest of the local teardown,
+because that file's standing invariant is that a _failed_ sign-out clears nothing locally — a server
+that did not end the session must not leave the diver with their entry units wiped. Both halves are
+pinned. The `hardNavigate("/")` that follows resets the module cache for free.
+
+**No `-vN` in the key, for a different reason than the chart keys'.** That bump exists because a
+filtered key set makes a newly-added chart channel read as deliberately switched off. Here absence
+already carries a correct meaning on its own — a dimension missing from the record has no override
+and follows the account — so a dimension added later starts in exactly the right state under the old
+key. It must not be restated as the chart section's reason.
+
+**One toggle per dimension, not per input, and the label keeps its unit text.** Flipping any depth
+toggle flips both depth fields; start pressure in psi with end pressure in bar is a state nobody
+wants. So `max_depth` carries depth's only toggle and `avg_depth` follows it two fields down, and
+pressure's single toggle sits in the Gas Mixtures section header rather than on the boxes — the
+pressure fields repeat per tank card, and a toggle per field would put eight identical controls with
+eight identical accessible names on a four-cylinder dive. That is screen-reader noise, and any
+`getByLabelText` on the control would throw on multiple matches. Moving pressure's toggle onto the
+Tank 1 card so it has a field to sit beside was rejected by the same rule: on a four-cylinder dive
+it is four identical controls again. The `FormLabel` keeps its `(bar)`/`(psi)` parenthetical, per
+USWDS's rule that the accessible label carries the unit — which is also what keeps the existing
+`getByLabelText("Start pressure (bar)")`-style queries meaningful.
+
+**That header toggle renders only while `fields.length > 0`.** The create form seeds `mixtures: []`
+and the header row renders above the "No cylinders recorded for this dive." empty state, so an
+ungated toggle would open every fresh create form with a "bar | psi" control governing no visible
+field — and would vanish and reappear as the diver added and removed the last cylinder either way.
+The stored override is untouched by the gate, so it comes back exactly as the diver left it: a
+metric-account diver who has flipped pressure to psi sees psi on the first tank card they add,
+without touching anything. Pinned in both directions.
+
+**Weight is the carved-out exception, and Radix is why it is safe.** The gear-set dialog opens from
+inside the dive form and both render a weight input, so two identically-named toggles can be in the
+DOM at once. The dialog keeps its own, because standalone on `/gear` it is the only place a gear
+weight is ever entered — and the duplicate name never reaches assistive tech, since `ui/dialog.tsx`
+is `@radix-ui/react-dialog` and neither it nor `GearSetDialog` passes `modal`, so Radix's default
+applies `aria-hidden` to everything outside the open dialog. The store subscription keeps the two in
+step, so the form behind the dialog is already consistent when it closes. **One test consequence:**
+Testing Library's `getByLabelText` does _not_ filter `aria-hidden` elements, so the dialog-plus-form
+test scopes its queries with `within()` rather than relying on document-wide uniqueness.
+
+**The toggle is one `<button>` styled as two segments, and its accessible name contains its visible
+text.** Two systems means pressing it can only mean "the other one", so a radiogroup or a pair of
+buttons would add tab stops for nothing. The `aria-label` is "m | ft — switch depth entry to feet":
+visible text first, then the action, per WCAG 2.5.3 (Label in Name, for speech-input users) and this
+repo's own convention for an `aria-label` that overrides visible text. **The button is laid out
+inline with the separator carrying its own spaces**, rather than as a flex row with a `gap`, so its
+text content really is the `m | ft` the label quotes — a gap drawn in CSS would leave the two
+disagreeing about what is visible, and a render test caught exactly that. It is `type="button"` (it
+renders inside the dive `<form>`, where the default submits), a _sibling_ of `FormLabel` and never
+inside it (interactive content in a `<label>` misroutes clicks), and outside `FormControl`, so the
+labelable-element rule is untouched and it reads as the secondary control of a composite field. No
+pre-load gate is needed: every page that mounts a toggle returns a spinner while auth loads and
+`null` when unauthenticated, so no toggle can render — let alone be clicked — with `user === null`.
+
+**In-form hint strings follow the entry units of the dimension they render.** `MixtureGasHint` and
+`MixtureSetWarning` display MOD/END/EAD _depths_, so they take the depth entry units: a diver
+entering depths in feet must not be warned about a MOD in metres mid-entry. Everything outside the
+form stays on account units. **`/gear` is where that line is visible side by side:** the dialog's
+weight toggle governs entry only, while the list right below it renders
+`formatWeight(set.weight, units)` off a plain `useUnits()` (`gear-sets-card.tsx`) — so a
+metric-account diver who flips the dialog to lb and saves 12 sees "5.4 kg" in the table underneath.
+That is the scope decision working as specified, not a defect.
+
+**A units flip discards the input's draft, inside `UnitNumberInput`.** The tempting free lunch —
+"clicking the toggle blurs the input, and blur already resets the draft" — is false on macOS Safari
+and Firefox, where clicking a `<button>` moves no focus: the draft would survive the flip and show a
+psi number under a bar label, with the next keystroke committing through the new units. And jsdom's
+`userEvent.click` _does_ focus, so a test that clicked a toggle would have passed while the bug
+shipped — hence a test that moves the `units` prop directly and never blurs. It is implemented as an
+**adjust-state-during-render previous-prop comparison, not an effect**: that is the shape React
+documents for this case, it re-renders before anything is painted, and the effect form is a lint
+error here (`react-hooks/set-state-in-effect` under `eslint-config-next/core-web-vitals`). It is
+also the only reset that does not watch `value`, which is what keeps the box's original rationale —
+no effect may reformat under the cursor — intact.
+
+**The known integer-dimension loss extends, unchanged.** 50 ft → 15 m → 49 ft becomes reachable for
+metric-account divers who flip visibility or altitude to feet. Same accepted loss, same reasoning,
+no new decision.
+
+**One existing test needed anchoring, and it is worth knowing why.** The toggle's accessible name
+contains the dimension word, so `getByLabelText(/altitude/i)` on the create page began matching both
+the field and its toggle. The fix is `/^altitude/i` — the label is the one that _starts_ with the
+word. Loose single-word label regexes over a form field are now ambiguous by construction; anchor
+them or query the full `"Altitude (m)"` string.
+
+**Every test that touches this key installs `useStorage(memoryStorage())` in a `beforeEach.`** Under
+Vitest `window.localStorage` reads back as `undefined`, and the module's try/catch turns that into
+"no override" — so a test written without the helper passes vacuously with the whole feature
+deleted.
+
+### The toggle sits in the label row without being laid out in it, and both halves of that were bugs
+
+The first attempt wrapped `FormLabel` and the toggle in `flex items-center justify-between`, which
+is the obvious markup and was wrong twice over. Toggle-bearing fields ended up with their input 2px
+lower and their label text 2px higher than the field beside them in the same grid row — visible on
+`Water type` / `Altitude`, which are side by side, and identical on all five toggles in the dive
+form. `EntryUnitLabelRow` exists to hold the fix in one place.
+
+**`<label>` is `display: inline`, and any flex or grid parent blockifies its children.** That
+changed the label's box from the 17px inline content area its font metrics give it to the 14px line
+box its `leading-none` declares, and handed the row's height to the 18px toggle instead. So the row
+grew, the label shrank, and `items-center` re-centred the smaller label inside the bigger row. The
+fix is to leave the label inline in an ordinary block and take the toggle out of flow — absolutely
+positioned, centred on whatever the row turns out to be. Nothing then needs to know the toggle's
+height, which is what stops this drifting the next time its padding moves.
+
+**And `space-y-2` never applied between a `FormLabel` and its input in the first place.** This is
+the half that only measuring finds. `FormItem`'s `space-y-2` is a _margin-bottom_ on every child but
+the last, and **vertical margins have no effect on an inline box** — so a bare `FormLabel` silently
+drops it, and every form in this app has a 3px gap under its label rather than the 11px the utility
+reads as. Wrapping the label in anything block-level collects the 8px it was never given. That is
+why the wrapper carries `mb-0`, and why that class is load-bearing rather than a no-op: without it
+the fix for the first bug re-creates the misalignment at 8px instead of 2px, in the opposite
+direction. Both were measured in a real browser, before and after.
+
+**The Gas Mixtures header toggle is deliberately not this component.** It sits beside "Add Mixture"
+in a row whose height comes from that 36px button, and flex alignment is exactly right there — the
+toggle is centred against the button and the heading. Measured; it never had the problem.
+
+**None of this is testable in jsdom, and the test file says so.** jsdom does no layout, so every
+rect is zeroes and a geometry assertion would pass against any markup at all — the same vacuous pass
+`memory-storage.ts` exists to prevent. What the render tests pin is the three structural properties
+the alignment rests on: the label is not a flex or grid item, the toggle is out of flow, and the row
+cancels the margin an inline label would never have received.

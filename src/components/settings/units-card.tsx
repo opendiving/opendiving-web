@@ -80,6 +80,12 @@ export function UnitsCard() {
             is metric too — so switching changes what you read, never what is
             recorded.
           </p>
+          <p className="text-sm text-muted-foreground">
+            While logging a dive you can switch individual fields — depth,
+            pressure, weight and the rest — without changing this. Those choices
+            are remembered on this device only, and affect what you type in, not
+            what you read back.
+          </p>
         </div>
 
         {error && <p className="text-sm text-destructive mt-3">{error}</p>}

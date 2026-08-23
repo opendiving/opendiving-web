@@ -9,6 +9,10 @@ import {
   type GearItemSummary,
   type GearSet,
 } from "@/lib/api/gear";
+import { EntryUnitToggle } from "@/components/entry-unit-toggle";
+import { useEntryUnits } from "@/hooks/useEntryUnits";
+import { unitLabel } from "@/lib/units";
+import { memoryStorage, useStorage } from "@/test/memory-storage";
 
 // The weight box and its label read the diver's units, so this render needs an
 // auth context. Metric, which is every existing account's default.
@@ -228,5 +232,99 @@ describe("the gear set dialog's other save paths", () => {
     const body = await patchedBody();
     expect(updateGearSet.mock.calls[0][0]).toBe("set-1");
     expect(body.gear_item_uuids).toEqual(["item-9", "item-8"]);
+  });
+});
+
+// The weight field's entry-unit switch, and the one place two of them can be on
+// screen at once: this dialog opens from *inside* the dive form, and both render
+// a weight box over the same dimension.
+// The dive form's weight row, in miniature: the same label shape and the same
+// toggle over the same dimension. Standing in for `DiveFormFields`, which would
+// drag four pickers and their network in to assert one thing about weight.
+function FormWeightField() {
+  const { entryUnits, toggleEntryUnits } = useEntryUnits();
+
+  return (
+    <div data-testid="dive-form-weight">
+      <span>Weight ({unitLabel("weight", entryUnits("weight"))})</span>
+      <EntryUnitToggle
+        dimension="weight"
+        entryUnits={entryUnits("weight")}
+        onToggle={() => toggleEntryUnits("weight")}
+      />
+    </div>
+  );
+}
+
+describe("the gear set dialog's weight entry units", () => {
+  beforeEach(() => {
+    useStorage(memoryStorage());
+  });
+
+  it("enters in the account's units until the toggle is pressed", () => {
+    editSidemount();
+
+    expect(screen.getByLabelText("Weight (kg)")).toBeInTheDocument();
+  });
+
+  it("relabels and reformats the weight when flipped to pounds", async () => {
+    editSidemount();
+    await waitFor(() =>
+      expect(screen.getByLabelText("Weight (kg)")).toHaveValue(6),
+    );
+
+    await userEvent.click(
+      screen.getByLabelText("kg | lb — switch weight entry to pounds"),
+    );
+
+    expect(screen.getByLabelText("Weight (lb)")).toHaveValue(13);
+  });
+
+  it("commits the kilograms behind a weight typed in pounds", async () => {
+    editSidemount();
+    await waitFor(() =>
+      expect(screen.getByLabelText("Weight (kg)")).toHaveValue(6),
+    );
+
+    await userEvent.click(
+      screen.getByLabelText("kg | lb — switch weight entry to pounds"),
+    );
+    await userEvent.clear(screen.getByLabelText("Weight (lb)"));
+    await userEvent.type(screen.getByLabelText("Weight (lb)"), "12");
+    await save();
+
+    expect((await patchedBody()).weight).toBe(5.44);
+  });
+
+  it("shares the dimension with a weight field outside it", async () => {
+    // The regression two unsubscribed `useEntryUnits()` instances would produce:
+    // the dialog and the form behind it showing different units for the same
+    // dimension, and each flip clobbering the other's. `within()` rather than a
+    // document-wide query because both toggles carry the same accessible name -
+    // Radix's modal `aria-hidden` is what keeps only one exposed to assistive
+    // tech, and Testing Library does not filter on it.
+    render(
+      <>
+        <FormWeightField />
+        <GearSetDialog
+          userId="user-1"
+          open
+          onOpenChange={vi.fn()}
+          gearSet={SIDEMOUNT}
+          onSaved={vi.fn()}
+        />
+      </>,
+    );
+
+    const form = within(screen.getByTestId("dive-form-weight"));
+    const dialog = within(await screen.findByRole("dialog"));
+    expect(form.getByText("Weight (kg)")).toBeInTheDocument();
+
+    await userEvent.click(
+      dialog.getByLabelText("kg | lb — switch weight entry to pounds"),
+    );
+
+    expect(dialog.getByLabelText("Weight (lb)")).toBeInTheDocument();
+    expect(form.getByText("Weight (lb)")).toBeInTheDocument();
   });
 });

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  ENTRY_DIMENSIONS,
   FEET_PER_MILE,
   KG_PER_POUND,
   LITERS_PER_CUBIC_FOOT,
@@ -184,6 +185,43 @@ describe("conversion in and out", () => {
     expect(isIntegerDimension("altitude")).toBe(true);
     expect(isIntegerDimension("depth")).toBe(false);
     expect(isIntegerDimension("temperature")).toBe(false);
+  });
+});
+
+describe("the entry dimensions", () => {
+  // The list is a runtime array now, because `lib/entry-units.ts` filters stored
+  // override keys against it and the dive form hangs a toggle off each entry.
+  // `EntryDimension` is read back off it, so a dimension added to one and not the
+  // other is a type error rather than a silently unreachable toggle - what this
+  // pins is the six themselves, and that every one is a dimension the app can
+  // actually convert and label.
+  it("is the six a diver types into", () => {
+    expect([...ENTRY_DIMENSIONS]).toEqual([
+      "depth",
+      "temperature",
+      "weight",
+      "pressure",
+      "visibility",
+      "altitude",
+    ]);
+  });
+
+  it("labels and converts every one of them", () => {
+    for (const dimension of ENTRY_DIMENSIONS) {
+      expect(unitLabel(dimension, "metric")).toBeTruthy();
+      expect(unitLabel(dimension, "imperial")).toBeTruthy();
+      expect(unitWord(dimension, "imperial")).toBeTruthy();
+      expect(toCommittedMetric(1, dimension, "metric")).toBe(1);
+    }
+  });
+
+  // The derived figures the API computes stay out: there is no box to type an
+  // RMV into, so a toggle for one would govern nothing.
+  it("leaves out the figures the app only renders", () => {
+    const entries: readonly string[] = ENTRY_DIMENSIONS;
+    expect(entries).not.toContain("sac");
+    expect(entries).not.toContain("rmv");
+    expect(entries).not.toContain("gasVolume");
   });
 });
 
