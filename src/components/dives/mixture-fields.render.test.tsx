@@ -1,9 +1,16 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { beforeEach, describe, it, expect, vi, afterEach } from "vitest";
 import { act, fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { FormProvider, useForm } from "react-hook-form";
 import { MixtureFields, useMixtureFieldArray } from "./mixture-fields";
 import type { DiveFormValues } from "./dive-form-fields";
 import type { UnitSystem } from "@/lib/units";
+import {
+  parseEntryUnits,
+  readStoredEntryUnits,
+  writeEntryUnits,
+} from "@/lib/entry-units";
+import { memoryStorage, useStorage } from "@/test/memory-storage";
 
 // The pressure boxes and their labels read the diver's units, so these renders need
 // an auth context. Held in a mutable box rather than a fixed literal so a test can
@@ -279,5 +286,136 @@ describe("MixtureFields role input", () => {
     // And the hint falls back to naming the working default, rather than keeping the
     // limit the box no longer holds.
     expect(screen.getByText(/@ ppO₂ 1\.4/)).toBeInTheDocument();
+  });
+});
+
+// The per-dimension entry switch. Every test here installs its own storage - under
+// this runner `window.localStorage` reads back as `undefined` and the override
+// module's try/catch turns that into "no override", so a suite written without it
+// passes with the whole feature deleted.
+describe("MixtureFields entry units", () => {
+  beforeEach(() => {
+    useStorage(memoryStorage());
+  });
+
+  const pressureToggle = () =>
+    screen.getByLabelText("bar | psi — switch pressure entry to psi");
+
+  it("enters in the account's units until the toggle is pressed", () => {
+    render(<Harness mixtures={[EAN54]} maxDepth={30} />);
+
+    expect(screen.getByLabelText("Start pressure (bar)")).toBeInTheDocument();
+  });
+
+  it("relabels and reformats both pressures when flipped to psi", async () => {
+    render(
+      <Harness
+        mixtures={[{ ...EAN54, start_pressure: 206.84, end_pressure: 51.71 }]}
+        maxDepth={30}
+      />,
+    );
+
+    await userEvent.click(pressureToggle());
+
+    expect(screen.getByLabelText("Start pressure (psi)")).toHaveValue(3000);
+    expect(screen.getByLabelText("End pressure (psi)")).toHaveValue(750);
+  });
+
+  it("commits the bar behind a pressure typed in psi", async () => {
+    render(<Harness mixtures={[EAN54]} maxDepth={30} />);
+
+    await userEvent.click(pressureToggle());
+    await userEvent.type(screen.getByLabelText("Start pressure (psi)"), "3000");
+
+    // Flipping back is what shows what form state is actually holding: metric,
+    // whatever the box was labelled while the number went in. That invariant is
+    // what keeps the wire shape and every Zod rule untouched by this feature -
+    // had 3000 landed in state, this box would read 3000.
+    await userEvent.click(
+      screen.getByLabelText("bar | psi — switch pressure entry to bar"),
+    );
+
+    expect(screen.getByLabelText("Start pressure (bar)")).toHaveValue(206.84);
+  });
+
+  // One control for the section, not one per box: the pressure fields repeat per
+  // tank, so a per-field toggle would put eight identically-named controls on a
+  // four-cylinder dive - and `getByLabelText` would throw on all of them.
+  it("governs every tank from one uniquely-named control", async () => {
+    render(
+      <Harness
+        mixtures={[
+          { ...EAN54, start_pressure: 206.84 },
+          { ...EAN54, start_pressure: 206.84 },
+        ]}
+        maxDepth={30}
+      />,
+    );
+
+    await userEvent.click(pressureToggle());
+
+    expect(screen.getAllByLabelText("Start pressure (psi)")).toHaveLength(2);
+    expect(screen.getAllByLabelText("End pressure (psi)")).toHaveLength(2);
+  });
+
+  // The create form seeds `mixtures: []`, and the header renders above the empty
+  // state - so an ungated toggle would open every fresh form with a control
+  // governing no visible field.
+  it("shows no pressure toggle over an empty cylinder list", () => {
+    render(<Harness mixtures={[]} maxDepth={30} />);
+
+    expect(screen.getByText("Gas Mixtures")).toBeInTheDocument();
+    expect(
+      screen.queryByLabelText(/switch pressure entry/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("brings the toggle back with the first cylinder, already flipped", async () => {
+    // A diver who flipped pressure on a previous dive: the gate hides the control,
+    // never the stored choice.
+    writeEntryUnits({ pressure: "imperial" });
+    render(<Harness mixtures={[]} maxDepth={30} />);
+
+    await userEvent.click(screen.getByRole("button", { name: /add mixture/i }));
+
+    expect(
+      screen.getByLabelText("bar | psi — switch pressure entry to bar"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Start pressure (psi)")).toBeInTheDocument();
+  });
+
+  it("hides the toggle again without forgetting the choice", async () => {
+    writeEntryUnits({ pressure: "imperial" });
+    render(<Harness mixtures={[EAN54]} maxDepth={30} />);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /remove tank 1/i }),
+    );
+
+    expect(
+      screen.queryByLabelText(/switch pressure entry/),
+    ).not.toBeInTheDocument();
+    expect(parseEntryUnits(readStoredEntryUnits())).toEqual({
+      pressure: "imperial",
+    });
+  });
+
+  // The hint's MOD/END/EAD are depths, so they follow the depth entry units - a
+  // diver typing depths in feet must not be warned about a MOD in metres.
+  it("works the MOD hint out in the depth entry units", () => {
+    writeEntryUnits({ depth: "imperial" });
+    render(<Harness mixtures={[EAN54]} maxDepth={30} />);
+
+    expect(screen.getByText(/MOD \d+ ft @/)).toBeInTheDocument();
+    expect(screen.queryByText(/MOD [\d.]+ m @/)).not.toBeInTheDocument();
+  });
+
+  // The two dimensions are independent: flipping depth leaves the pressure boxes
+  // exactly where they were.
+  it("leaves the pressure boxes alone when depth is the one flipped", () => {
+    writeEntryUnits({ depth: "imperial" });
+    render(<Harness mixtures={[EAN54]} maxDepth={30} />);
+
+    expect(screen.getByLabelText("Start pressure (bar)")).toBeInTheDocument();
   });
 });

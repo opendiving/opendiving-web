@@ -38,7 +38,8 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { GearItemMultiSelect } from "@/components/gear/gear-item-multi-select";
 import { UnitNumberInput } from "@/components/unit-number-input";
-import { useUnits } from "@/hooks/useUnits";
+import { EntryUnitLabelRow } from "@/components/entry-unit-toggle";
+import { useEntryUnits } from "@/hooks/useEntryUnits";
 import { unitLabel } from "@/lib/units";
 
 // Sentinel for the "Create a new set" option in the target picker. Radix's
@@ -80,7 +81,11 @@ export function GearSetDialog({
 }: GearSetDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useDialogApiError(open);
-  const units = useUnits();
+  // Entry units, shared with the dive form this dialog can open from: the two
+  // weight boxes are the same dimension and the store keeps them in step. What
+  // the gear list underneath renders stays on the account preference.
+  const { entryUnits, toggleEntryUnits } = useEntryUnits();
+  const weightUnits = entryUnits("weight");
   const [existingSets, setExistingSets] = useState<GearSet[]>([]);
   // uuid of the set being overwritten, or `undefined` while creating a new one.
   const [targetUuid, setTargetUuid] = useState<string | undefined>(undefined);
@@ -286,13 +291,26 @@ export function GearSetDialog({
               name="weight"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Weight ({unitLabel("weight", units)})</FormLabel>
+                  {/* This dialog keeps a weight toggle of its own even though
+                      the dive form has one: standalone on `/gear` it is the only
+                      place a gear weight is ever entered. Mounted together the
+                      two names collide, and Radix's modal `aria-hidden` is what
+                      keeps only one of them exposed to assistive tech. */}
+                  <EntryUnitLabelRow
+                    dimension="weight"
+                    entryUnits={weightUnits}
+                    onToggle={() => toggleEntryUnits("weight")}
+                  >
+                    <FormLabel>
+                      Weight ({unitLabel("weight", weightUnits)})
+                    </FormLabel>
+                  </EntryUnitLabelRow>
                   <div className="relative">
                     <Weight className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
                     <FormControl>
                       <UnitNumberInput
                         dimension="weight"
-                        units={units}
+                        units={weightUnits}
                         step="0.5"
                         min={0}
                         placeholderValue={6}

@@ -123,11 +123,24 @@ export type Dimension =
  * The dimensions a diver types into, which is what `UnitNumberInput` accepts.
  *
  * The rest are derived figures the API computes and this app only renders.
+ *
+ * An array rather than a type alone, because two things need the list at
+ * runtime: `lib/entry-units.ts` filters a stored override record's keys against
+ * it, and the dive form hangs one unit toggle off each entry. `DIMENSIONS` below
+ * is module-private and holds the derived figures too, so neither could read the
+ * list off that. `satisfies` keeps every entry a real `Dimension` while leaving
+ * the literal tuple intact for `EntryDimension` to be read back off it.
  */
-export type EntryDimension = Extract<
-  Dimension,
-  "depth" | "temperature" | "weight" | "pressure" | "visibility" | "altitude"
->;
+export const ENTRY_DIMENSIONS = [
+  "depth",
+  "temperature",
+  "weight",
+  "pressure",
+  "visibility",
+  "altitude",
+] as const satisfies readonly Dimension[];
+
+export type EntryDimension = (typeof ENTRY_DIMENSIONS)[number];
 
 interface DimensionSpec {
   /** Short label, as it follows a value and as it sits in a form label's parens. */

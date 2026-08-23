@@ -322,7 +322,10 @@ describe("the last-dive prefill", () => {
     await waitFor(() =>
       expect(screen.getByLabelText(/water type/i)).toHaveValue("brackish"),
     );
-    expect(screen.getByLabelText(/altitude/i)).toHaveValue(372);
+    // Anchored, because the field's entry-unit toggle beside it is named
+    // "m | ft — switch altitude entry to feet" and an unanchored /altitude/
+    // now matches both. The label is the one that *starts* with the word.
+    expect(screen.getByLabelText(/^altitude/i)).toHaveValue(372);
     expect(screen.getByLabelText(/bottom temperature/i)).toHaveValue(null);
   });
 });

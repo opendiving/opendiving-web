@@ -3,6 +3,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactNode } from "react";
 import { AuthProvider, useAuth } from "./AuthContext";
 import { AUTH_SESSION_EXPIRED_EVENT } from "@/lib/api/client";
+import {
+  ENTRY_UNITS_KEY,
+  readStoredEntryUnits,
+  writeEntryUnits,
+} from "@/lib/entry-units";
+import { memoryStorage, useStorage } from "@/test/memory-storage";
 
 // `vi.hoisted` because `vi.mock` is lifted above every other statement in the file,
 // so a plain `const` declared here would not exist yet when the factory runs.
@@ -386,6 +392,52 @@ describe("AuthProvider outcomes", () => {
     // A destination left over from an unclicked magic link would otherwise sit
     // in `localStorage` for a day, readable after the diver has gone.
     expect(rememberPostAuthRedirect).toHaveBeenCalledWith(undefined);
+  });
+});
+
+// The third key sign-out has to decide about, and it goes with the destination
+// rather than with the sign-in hint. Deliberately *not* mocked away like those
+// two: what the module does is the thing being pinned here, so this asserts on
+// the real storage rather than on a call having been made.
+describe("AuthProvider sign-out and the entry units", () => {
+  beforeEach(() => {
+    useStorage(memoryStorage());
+    writeEntryUnits({ pressure: "imperial" });
+  });
+
+  async function signedIn() {
+    refreshAccessToken.mockResolvedValue("token");
+    authAPI.getCurrentUser.mockResolvedValue(USER);
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isAuthenticated).toBe(true));
+    return result;
+  }
+
+  // Unlike the two keys either side of it, this one is cleared for what it does
+  // rather than for what it names: an inherited override changes what a dive-form
+  // box *parses*, so the next diver at a shared browser could type 200 into a
+  // psi-labelled field and commit 13.79 bar - inside the API's range CHECK and
+  // indistinguishable from real data afterwards.
+  it("forgets them on the way out", async () => {
+    const result = await signedIn();
+
+    authAPI.signOut.mockResolvedValue(undefined);
+    await act(() => result.current.signOut());
+
+    expect(window.localStorage.getItem(ENTRY_UNITS_KEY)).toBeNull();
+    expect(readStoredEntryUnits()).toBeNull();
+  });
+
+  // The standing invariant in this file: a sign-out the server did not confirm
+  // clears nothing locally. The refresh cookie is still live, so the diver is
+  // still signed in - and must not find their entry units wiped for it.
+  it("keeps them when the server didn't confirm", async () => {
+    const result = await signedIn();
+
+    authAPI.signOut.mockRejectedValue(new Error("500"));
+    await expect(act(() => result.current.signOut())).rejects.toThrow("500");
+
+    expect(window.localStorage.getItem(ENTRY_UNITS_KEY)).not.toBeNull();
   });
 });
 

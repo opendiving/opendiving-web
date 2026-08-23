@@ -30,7 +30,8 @@ import {
 import { GAS_ROLES } from "@/lib/api/dives";
 import { VolumeCombobox } from "@/components/dives/volume-combobox";
 import { UnitNumberInput } from "@/components/unit-number-input";
-import { useUnits } from "@/hooks/useUnits";
+import { EntryUnitToggle } from "@/components/entry-unit-toggle";
+import { useEntryUnits } from "@/hooks/useEntryUnits";
 import { unitLabel } from "@/lib/units";
 
 export { DEFAULT_MIXTURE };
@@ -112,7 +113,11 @@ function MixtureGasHint({
   const helium = useWatch({ control, name: `mixtures.${index}.helium` });
   const po2Limit = useWatch({ control, name: `mixtures.${index}.po2_limit` });
   const maxDepth = useWatch({ control, name: "max_depth" });
-  const units = useUnits();
+  // The hint's MOD/END/EAD are *depths*, so they follow the depth entry units
+  // rather than the account's: a diver typing depths in feet must not be warned
+  // about a MOD in metres mid-entry. Everything outside this form still renders
+  // in account units.
+  const units = useEntryUnits().entryUnits("depth");
 
   // `depth` is null unless this is the only cylinder, which is what keeps END/EAD
   // off a staged deco bottle - `gasHintParts` documents the rule.
@@ -199,7 +204,8 @@ function MixtureSetWarning({
 }) {
   const mixtures = useWatch({ control, name: "mixtures" });
   const maxDepth = useWatch({ control, name: "max_depth" });
-  const units = useUnits();
+  // A depth again, for the same reason as `MixtureGasHint` above.
+  const units = useEntryUnits().entryUnits("depth");
 
   const warning = diveModWarning(mixtures ?? [], maxDepth, units);
 
@@ -252,21 +258,38 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
   fieldArray,
 }: MixtureFieldsProps<TFieldValues>) {
   const { fields, append, remove } = fieldArray;
-  const units = useUnits();
+  const { entryUnits, toggleEntryUnits } = useEntryUnits();
+  const pressureUnits = entryUnits("pressure");
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-medium">Gas Mixtures</h3>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => append({ ...DEFAULT_MIXTURE })}
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add Mixture
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* One toggle for the section rather than one per box: the two pressure
+              fields repeat per tank card, so a four-cylinder dive would carry
+              eight identical controls with eight identical accessible names.
+              Gated on there being a cylinder, because the create form seeds no
+              mixtures and an ungated control would govern no visible field. The
+              stored override is untouched by the gate, so it comes back exactly
+              as the diver left it with the first "Add Mixture". */}
+          {fields.length > 0 && (
+            <EntryUnitToggle
+              dimension="pressure"
+              entryUnits={pressureUnits}
+              onToggle={() => toggleEntryUnits("pressure")}
+            />
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => append({ ...DEFAULT_MIXTURE })}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Mixture
+          </Button>
+        </div>
       </div>
 
       {fields.map((field, index) => (
@@ -393,7 +416,7 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    Start pressure ({unitLabel("pressure", units)})
+                    Start pressure ({unitLabel("pressure", pressureUnits)})
                   </FormLabel>
                   <FormControl>
                     {/* `emptyValue=""`, unlike every other number box in the
@@ -402,7 +425,7 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                         submit path converts the sentinel at the edge. */}
                     <UnitNumberInput
                       dimension="pressure"
-                      units={units}
+                      units={pressureUnits}
                       step="0.01"
                       min={0}
                       emptyValue=""
@@ -422,12 +445,12 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>
-                    End pressure ({unitLabel("pressure", units)})
+                    End pressure ({unitLabel("pressure", pressureUnits)})
                   </FormLabel>
                   <FormControl>
                     <UnitNumberInput
                       dimension="pressure"
-                      units={units}
+                      units={pressureUnits}
                       step="0.01"
                       min={0}
                       emptyValue=""

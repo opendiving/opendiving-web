@@ -41,7 +41,8 @@ import {
 } from "@/lib/api/dives";
 import { GearItemSummary } from "@/lib/api/gear";
 import { SpeciesSummary } from "@/lib/api/species";
-import { useUnits } from "@/hooks/useUnits";
+import { useEntryUnits } from "@/hooks/useEntryUnits";
+import { EntryUnitLabelRow } from "@/components/entry-unit-toggle";
 import { unitLabel } from "@/lib/units";
 
 // The field shape shared by both `DiveCreateInput` and `DiveUpdateInput`
@@ -137,9 +138,11 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
 }: DiveFormFieldsProps<TFieldValues>) {
   const required = mode === "create";
   const requiredMark = required ? " *" : "";
-  // Read once here and handed to the labels and the number boxes below. Form state
-  // itself stays metric whatever this says - see `UnitNumberInput`.
-  const units = useUnits();
+  // Read once here and handed to the labels and the number boxes below, per
+  // dimension: the account preference unless the diver has flipped that dimension
+  // with the toggle in its label row. Form state itself stays metric whatever
+  // this says - see `UnitNumberInput`.
+  const { entryUnits, toggleEntryUnits } = useEntryUnits();
 
   return (
     <>
@@ -266,13 +269,24 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
           name={"max_depth" as Path<TFieldValues>}
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Maximum depth ({unitLabel("depth", units)})</FormLabel>
+              {/* Depth's one toggle. `avg_depth` two fields down follows the same
+                  state without a control of its own - a second one would be a
+                  duplicate accessible name governing the same dimension. */}
+              <EntryUnitLabelRow
+                dimension="depth"
+                entryUnits={entryUnits("depth")}
+                onToggle={() => toggleEntryUnits("depth")}
+              >
+                <FormLabel>
+                  Maximum depth ({unitLabel("depth", entryUnits("depth"))})
+                </FormLabel>
+              </EntryUnitLabelRow>
               <div className="relative">
                 <ArrowDownToLine className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
                 <FormControl>
                   <UnitNumberInput
                     dimension="depth"
-                    units={units}
+                    units={entryUnits("depth")}
                     step="0.01"
                     min={0}
                     placeholderValue={30.52}
@@ -293,13 +307,15 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
           name={"avg_depth" as Path<TFieldValues>}
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Average depth ({unitLabel("depth", units)})</FormLabel>
+              <FormLabel>
+                Average depth ({unitLabel("depth", entryUnits("depth"))})
+              </FormLabel>
               <div className="relative">
                 <ChevronsDownUp className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
                 <FormControl>
                   <UnitNumberInput
                     dimension="depth"
-                    units={units}
+                    units={entryUnits("depth")}
                     step="0.01"
                     min={0}
                     placeholderValue={18.24}
@@ -323,9 +339,16 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
           name={"bottom_temperature" as Path<TFieldValues>}
           render={({ field }) => (
             <FormItem>
-              <FormLabel>
-                Bottom temperature ({unitLabel("temperature", units)})
-              </FormLabel>
+              <EntryUnitLabelRow
+                dimension="temperature"
+                entryUnits={entryUnits("temperature")}
+                onToggle={() => toggleEntryUnits("temperature")}
+              >
+                <FormLabel>
+                  Bottom temperature (
+                  {unitLabel("temperature", entryUnits("temperature"))})
+                </FormLabel>
+              </EntryUnitLabelRow>
               <div className="relative">
                 <Thermometer className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
                 <FormControl>
@@ -334,7 +357,7 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                       below gets it too. */}
                   <UnitNumberInput
                     dimension="temperature"
-                    units={units}
+                    units={entryUnits("temperature")}
                     step="0.01"
                     min={-50}
                     max={50}
@@ -356,9 +379,16 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
           name={"visibility" as Path<TFieldValues>}
           render={({ field }) => (
             <FormItem>
-              <FormLabel>
-                Visibility ({unitLabel("visibility", units)})
-              </FormLabel>
+              <EntryUnitLabelRow
+                dimension="visibility"
+                entryUnits={entryUnits("visibility")}
+                onToggle={() => toggleEntryUnits("visibility")}
+              >
+                <FormLabel>
+                  Visibility (
+                  {unitLabel("visibility", entryUnits("visibility"))})
+                </FormLabel>
+              </EntryUnitLabelRow>
               <div className="relative">
                 <Eye className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
                 <FormControl>
@@ -368,7 +398,7 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                       whole-metre resolution is finer than anyone judges it to. */}
                   <UnitNumberInput
                     dimension="visibility"
-                    units={units}
+                    units={entryUnits("visibility")}
                     step="1"
                     min={0}
                     placeholderValue={15}
@@ -433,7 +463,15 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
           name={"altitude" as Path<TFieldValues>}
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Altitude ({unitLabel("altitude", units)})</FormLabel>
+              <EntryUnitLabelRow
+                dimension="altitude"
+                entryUnits={entryUnits("altitude")}
+                onToggle={() => toggleEntryUnits("altitude")}
+              >
+                <FormLabel>
+                  Altitude ({unitLabel("altitude", entryUnits("altitude"))})
+                </FormLabel>
+              </EntryUnitLabelRow>
               <div className="relative">
                 <Mountain className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
                 <FormControl>
@@ -443,7 +481,7 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                       offer is always something the schema will accept. */}
                   <UnitNumberInput
                     dimension="altitude"
-                    units={units}
+                    units={entryUnits("altitude")}
                     step="1"
                     // Not Visibility's `min={0}`, which this box otherwise
                     // copies: the Dead Sea is below sea level and admitting it
@@ -507,13 +545,26 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormItem>
-                <FormLabel>Weight ({unitLabel("weight", units)})</FormLabel>
+                {/* Weight is the one dimension with a second toggle elsewhere:
+                    the gear-set dialog opens from inside this form and enters a
+                    weight of its own. Both read the same store, so the two never
+                    disagree, and Radix's modal `aria-hidden` keeps only one of
+                    them exposed at a time. */}
+                <EntryUnitLabelRow
+                  dimension="weight"
+                  entryUnits={entryUnits("weight")}
+                  onToggle={() => toggleEntryUnits("weight")}
+                >
+                  <FormLabel>
+                    Weight ({unitLabel("weight", entryUnits("weight"))})
+                  </FormLabel>
+                </EntryUnitLabelRow>
                 <div className="relative">
                   <Weight className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
                   <FormControl>
                     <UnitNumberInput
                       dimension="weight"
-                      units={units}
+                      units={entryUnits("weight")}
                       step="0.5"
                       min={0}
                       placeholderValue={6}

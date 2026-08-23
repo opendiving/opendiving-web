@@ -23,6 +23,7 @@ import {
   refreshAccessToken,
 } from "@/lib/api/client";
 import { rememberPostAuthRedirect } from "@/lib/auth-redirect";
+import { clearEntryUnits } from "@/lib/entry-units";
 import { rememberAuthMethod } from "@/lib/last-auth-method";
 import { hardNavigate } from "@/lib/navigation";
 
@@ -319,6 +320,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // `localStorage` it would otherwise outlive both the sign-out and the
     // browser - leaving a `/dives/<uuid>` legible on a shared machine for a day.
     rememberPostAuthRedirect(undefined);
+    // Cleared for a third reason, which is neither of the two above: the entry
+    // unit override names nobody and reveals nothing, but what it changes is what
+    // a dive-form box *parses*. A second diver at this browser who never touched
+    // a toggle would meet a psi-labelled pressure field, type 200 meaning bar,
+    // and commit 13.79 bar - inside the API's range CHECK and indistinguishable
+    // from real data afterwards. The cost lands on the diver who asked to leave:
+    // an explicit sign-out forgets the psi choice. A reload is not one of these,
+    // since the access token is re-derived from the cookie.
+    clearEntryUnits();
     // The last-used method is deliberately *not* cleared here. It names a button,
     // not a person or a destination, and surviving the sign-out is the whole
     // point: the next visitor to this browser is nearly always the same diver.

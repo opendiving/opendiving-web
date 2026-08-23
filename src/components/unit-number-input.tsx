@@ -85,15 +85,39 @@ export const UnitNumberInput = React.forwardRef<
   // bites - "30.526" would become "30.53" mid-word. `null` means "nothing in
   // progress, show the value", and blur is where the correction belongs.
   //
-  // Blur is the *only* reset, deliberately. An effect resetting this whenever
-  // `value` changes would fire on every keystroke - this box commits on each one,
-  // so it causes most of the `value` changes it would be watching - and that is
-  // precisely the reformat-under-the-cursor it exists to stop. Telling a self-made
-  // change from an external one needs the last committed value tracked as well, and
-  // nothing needs it yet: every path that writes one of these fields programmatically
-  // (loading a gear set, applying a parsed file, seeding the edit form) runs from a
-  // click or a mount, both of which blur the box first.
+  // Nothing watching `value` may reset this, deliberately - blur is where that
+  // correction belongs. An effect resetting the draft whenever `value` changed
+  // would fire on every keystroke - this box commits on each one, so it causes
+  // most of the `value` changes it would be watching - and that is precisely the
+  // reformat-under-the-cursor it exists to stop. Telling a self-made change from
+  // an external one needs the last committed value tracked as well, and nothing
+  // needs it yet: every path that writes one of these fields programmatically
+  // (loading a gear set, applying a parsed file, seeding the edit form) runs from
+  // a click or a mount, both of which blur the box first.
+  //
+  // The `units` prop is the one other reset, and it is a different question - see
+  // just below.
   const [draft, setDraft] = React.useState<string | null>(null);
+
+  // The one exception, and it is not `value` changing but `units` changing.
+  //
+  // A units flip has to discard the draft: what is under the cursor was typed in
+  // the old system, and leaving it there shows a psi number under a bar label,
+  // with the next keystroke committing it through the new units. Blur cannot be
+  // relied on to do this - on macOS Safari and Firefox, clicking a `<button>`
+  // does not move focus, so the box holding the draft is never blurred. jsdom's
+  // `userEvent.click` *does* focus, which is why this needs its own test rather
+  // than a click-the-toggle one: that would pass with this guard deleted.
+  //
+  // Adjusting state during render, comparing against the previous prop, rather
+  // than in an effect: React documents this shape for exactly this case, it
+  // re-renders before anything is painted, and the effect form is a lint error
+  // here (`react-hooks/set-state-in-effect`).
+  const [previousUnits, setPreviousUnits] = React.useState(units);
+  if (previousUnits !== units) {
+    setPreviousUnits(units);
+    setDraft(null);
+  }
 
   const isEmpty = value == null || value === "";
   const displayed =
