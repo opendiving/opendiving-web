@@ -192,6 +192,23 @@ export function AuthForm({ className, redirectTo }: AuthFormProps) {
             </div>
           )}
         </Button>
+
+        {/* The rolling-window phrasing is load-bearing, not padding: the refresh
+            cookie is re-issued on every use, so "for a week" would be false for
+            anyone who keeps using the app. This is where a diver is told that
+            signing in persists past the tab; `/privacy` §10.1 has the long
+            version.
+
+            "About a week" is hardcoded prose for a number the API configures
+            (`REFRESH_TOKEN_EXPIRE_DAYS`, default 7), so an instance that changes
+            it makes this line and §10.1 drift. That coupling is accepted rather
+            than guarded - the same trade as the privacy page's "within 30 days"
+            against the deletion grace period, which the API docs do warn about.
+            Nothing warns about this one yet. */}
+        <p className="text-xs text-muted-foreground">
+          Signing in keeps you signed in on this browser until about a week goes
+          by without you using OpenDiving.
+        </p>
       </form>
 
       {/* The divider lives here rather than inside `GoogleAuthButton`, because
