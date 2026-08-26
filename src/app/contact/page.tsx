@@ -49,7 +49,7 @@ export default function ContactPage() {
                   used to be on the other three, and is a mid-grey in dark mode
                   (see DECISIONS.md) - dimmer there than the description under
                   it, and indistinguishable from the title in light mode. */}
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle as="h2" className="flex items-center gap-2">
                 <Bug className="h-5 w-5" />
                 Bugs & feature requests
               </CardTitle>
@@ -76,7 +76,7 @@ export default function ContactPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle as="h2" className="flex items-center gap-2">
                 <Shield className="h-5 w-5 text-success" />
                 Security
               </CardTitle>
@@ -93,7 +93,7 @@ export default function ContactPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle as="h2" className="flex items-center gap-2">
                 <Heart className="h-5 w-5 text-destructive" />
                 Contributing
               </CardTitle>
@@ -119,7 +119,7 @@ export default function ContactPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle as="h2" className="flex items-center gap-2">
                 <Anchor className="h-5 w-5" />
                 Self-hosted instances
               </CardTitle>
@@ -147,7 +147,7 @@ export default function ContactPage() {
         <div className="lg:col-span-2">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle as="h2" className="flex items-center gap-2">
                 <Mail className="h-5 w-5" />
                 Send us a message
               </CardTitle>

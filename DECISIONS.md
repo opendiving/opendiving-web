@@ -2801,9 +2801,14 @@ fine behind white button text and not fine as text. Those links now use the app'
 idiom - a plain underline inheriting the surrounding colour, which is why `contact/page.tsx` passed
 axe when `terms` and `privacy` did not.
 
-`npx @axe-core/cli` over `/`, `/signin`, `/contact`, `/privacy` and `/terms` reports 0 violations.
-The `code-quality` workflow only scans `/`; the others were checked by hand here, and are worth
-re-checking the same way after any change to `globals.css`.
+`npx @axe-core/cli` over `/`, `/signin`, `/contact`, `/privacy` and `/terms` reports 0 violations
+_under WCAG tags_ - `--tags="wcag2a,wcag2aa,wcag21aa"`, the set the `code-quality` workflow runs,
+and the set that covers contrast. That is what was actually verified here, and it still holds. It is
+not the whole of what the CLI reports by default: unrestricted, axe also runs its best-practice
+rules, and all five of these pages were failing those - see "The footer's column labels were
+headings, and the footer is shared chrome" below, which fixed four of them and did not fix
+`/signin`. The `code-quality` workflow only scans `/`, and only inside `main`, so it sees neither
+set on the other four pages. They are worth re-checking by hand after any change to `globals.css`.
 
 ## Metadata, and why the landing page is a Server Component
 
@@ -9836,3 +9841,62 @@ and the reason to keep it is its own: it is the one part of the page that was un
 before this change, and a dive log disclaiming safety advice should not look like a footnote. It
 survives this sweep on its merits, with only "a platform for logging and sharing diving experiences"
 corrected to "software for logging dives".
+
+## The footer's column labels were headings, and the footer is shared chrome
+
+`layout/footer.tsx` rendered "Platform", "Resources" and "Support" as `<h4>`. It renders below every
+page in the app, and on every page whose last heading was an `<h2>` - `/`, `/privacy`, `/terms`, and
+every authenticated page - that is an h2 -> h4 jump, which axe reports as `heading-order`
+(moderate). One shared component, one violation on each of thirteen pages.
+
+**No fixed level is correct for chrome.** The level a footer heading would need depends on the tree
+of whatever page it lands under, and that tree changes when a page does. `<h2>` happens to be legal
+everywhere today - a _decrease_ never trips the rule - but it puts three chrome labels in the
+document outline as siblings of the page's own sections, and it is one page edit away from being
+wrong again. The columns are group labels over link lists rather than sections of the document, so
+they are not headings at all now: each column is a `<nav aria-labelledby>` whose label is a `<p>`.
+They stay reachable by landmark navigation - reliably named, unlike `aria-labelledby` on a bare
+`<ul>` - and they are out of the heading outline, where nothing the footer picks could stay correct.
+`footer.render.test.tsx` pins exactly that: the component contributes zero headings. Tailwind's
+preflight strips heading font sizing, so `font-semibold mb-4` was already carrying the whole look
+and nothing moved on screen.
+
+**`CardTitle` is an `<h3>`, which is its own copy of the same bug.** On `/contact` the cards _are_
+the page's top-level sections, so the tree ran h1 -> h3 and axe flagged the first card rather than
+the footer. `ui/card.tsx` now takes `as` (`"h2" | "h3" | "h4"`, default `h3`) - the tag only, since
+the size lives in the classes - and `contact/page.tsx` passes `as="h2"`. **The same jump is still on
+every authenticated page** (`/dashboard`, `/dives`, `/trips`, `/sites`, `/gear`, `/certifications`,
+`/settings`), which reach an h1 and then go straight to card titles; they were not swept here, and
+each also carries unrelated `button-name`, `link-name` and `color-contrast` failures on its table
+rows.
+
+**What the unrestricted sweep says now.** `/`, `/contact`, `/privacy` and `/terms` are clean in both
+themes. `/signin` is not, and this change did not touch it: it is chrome-free (see
+`NO_CHROME_ROUTES` in `app-shell.tsx`), so it has no `<main>`, and axe reports `landmark-one-main`
+and `region` there - a different defect from the heading one, shared with the five other chrome-free
+routes, and left for its own change.
+
+**Neither CI nor the recorded hand-check could have caught this.** `code-quality.yml` passes
+`--include="main"`, and the footer is a sibling of `<main>`, not inside it - the workflow has never
+looked at the footer at all. And `heading-order` carries the `best-practice` tag, not a `wcag*` one,
+so it is outside the `--tags` the workflow (and the hand-check recorded above) restricts axe to. A
+sweep scoped to WCAG tags is clean on all five public pages and always was; the default,
+unrestricted sweep is what surfaces this.
+
+**`@axe-core/cli` is unusable on a machine whose Chrome has moved on** - its bundled ChromeDriver
+pins a major version and fails with "session not created". Driving the vendored `axe-core`
+(`node_modules`, the same 4.12.1 the workflow pins) through `playwright-core` against the machine's
+own Chrome is the same engine and the same rules: launch as `scripts/screenshots.mjs` does
+(`CHROME_PATH`, then the usual install paths), inject `require.resolve("axe-core/axe.min.js")` with
+`addScriptTag`, and call `window.axe.run(document, {})` - an empty options object, because `runOnly`
+is what drops the best-practice rules. `page.emulateMedia({ colorScheme })` covers both themes
+without a second context, which matters when the sign-in it took is a single-use magic link.
+
+**Scanning a worktree costs one `.env` line.** `.env` is gitignored, so a worktree has none, and the
+copy taken from the main checkout sets `NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1` - the
+split-origin topology. A worktree dev server on any port but 3000 is then an origin the API's CORS
+allowlist does not know, and every call fails, including the magic link's own verify. Dropping that
+one variable puts the app back on the same-origin proxy route, which has no allowlist to be outside
+of. The magic link still arrives pointing at `:3000` (the API builds it from its own
+`FRONTEND_URL`); rewriting the port in the URL is enough, since the token is in the query string and
+nothing is consumed until the click.
