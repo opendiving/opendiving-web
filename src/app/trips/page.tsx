@@ -94,7 +94,7 @@ export default function TripsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
+          <CardTitle as="h2" className="flex items-center justify-between">
             <span>Trip List</span>
             <CountBadge
               count={totalCount}
@@ -149,8 +149,16 @@ export default function TripsPage() {
                       />
                     </TableCell>
                     <TableCell className="text-right">
+                      {/* Named per row, not per action: ten identical "Edit"s tell a
+                          screen reader's controls list nothing about which trip.
+                          See DECISIONS.md on the export card's three Downloads. */}
                       <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="sm" asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label={`View ${trip.name}`}
+                          asChild
+                        >
                           <Link href={`/trips/${trip.uuid}`}>
                             <Eye className="h-4 w-4" />
                           </Link>
@@ -158,7 +166,7 @@ export default function TripsPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          aria-label="Edit"
+                          aria-label={`Edit ${trip.name}`}
                           onClick={() => setEditingTrip(trip)}
                         >
                           <Edit className="h-4 w-4" />
@@ -166,6 +174,7 @@ export default function TripsPage() {
                         <Button
                           variant="ghost"
                           size="sm"
+                          aria-label={`Delete ${trip.name}`}
                           onClick={() => requestDeleteTrip(trip.uuid)}
                           disabled={deletingId === trip.uuid}
                         >

@@ -152,14 +152,18 @@ export function DeleteAccountCard({ username }: DeleteAccountCardProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-destructive">Danger Zone</CardTitle>
+        <CardTitle as="h2" className="text-destructive">
+          Danger Zone
+        </CardTitle>
         <CardDescription>
           Irreversible and destructive actions for your account.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="rounded-md border border-destructive/40 bg-destructive/10 p-4">
-          <h4 className="font-medium text-foreground mb-2">Delete Account</h4>
+          {/* `h3`, one below the card's own `h2` - it was an `h4` back when the
+              title above it was an `h3`. */}
+          <h3 className="font-medium text-foreground mb-2">Delete Account</h3>
           <p className="text-sm text-muted-foreground mb-3">
             Deleting locks you out straight away, on this device and every other
             one. Your dives, dive sites, trips, certifications, gear and profile

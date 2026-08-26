@@ -109,7 +109,7 @@ export default function SettingsPage() {
         {/* Profile Information */}
         <Card className="flex flex-col h-full">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle as="h2" className="flex items-center gap-2">
               <User className="h-5 w-5" />
               Profile Information
             </CardTitle>

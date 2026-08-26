@@ -60,11 +60,19 @@ export function EntryUnitToggle({
           {index > 0 && (
             <span className="text-muted-foreground/40">{" | "}</span>
           )}
+          {/* The off system is `text-muted-foreground` at full strength, not the
+              `/60` it was: `--muted-foreground` is picked to clear AA on both
+              surfaces it lands on (see globals.css), and 60% of it is 12px text
+              at roughly half that - axe flagged one per toggle, six per dive
+              form. What separates the two halves is the weight and the
+              foreground/muted split, which is the same pair the rest of the app
+              uses for primary against secondary text; the opacity was only ever
+              adding to a distinction that already carried on its own. */}
           <span
             className={cn(
               system === entryUnits
                 ? "font-medium text-foreground"
-                : "text-muted-foreground/60",
+                : "text-muted-foreground",
             )}
           >
             {unitLabel(dimension, system)}

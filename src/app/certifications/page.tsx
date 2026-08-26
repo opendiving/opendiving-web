@@ -128,7 +128,10 @@ export default function CertificationsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex flex-wrap items-center justify-between gap-3">
+          <CardTitle
+            as="h2"
+            className="flex flex-wrap items-center justify-between gap-3"
+          >
             <span>Your Certifications</span>
             <CountBadge
               count={totalCount}

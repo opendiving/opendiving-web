@@ -56,7 +56,10 @@ export function GearSetsCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex flex-wrap items-center justify-between gap-3">
+        <CardTitle
+          as="h2"
+          className="flex flex-wrap items-center justify-between gap-3"
+        >
           <span>Gear Sets</span>
           <div className="flex items-center gap-3">
             <CountBadge count={totalCount} isLoading={isLoading} label="set" />

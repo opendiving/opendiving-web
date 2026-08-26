@@ -112,7 +112,10 @@ export function SetupChecklistCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center justify-between gap-3 text-base">
+        <CardTitle
+          as="h2"
+          className="flex items-center justify-between gap-3 text-base"
+        >
           <span>Getting started</span>
           <Badge variant="secondary">
             {doneCount}/{steps.length}

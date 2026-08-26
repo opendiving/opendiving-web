@@ -3418,14 +3418,23 @@ nothing else, and four arrows all reading "Previous period with dives" in it are
 So each `aria-label` leads with its card: `Dive activity: previous period with dives`,
 `Gas consumption: time range`. Leading rather than trailing, so the list groups by chart when it is
 scanned or sorted. This is the same ambiguity `screenshots.mjs` hit from the automation side, where
-the fix was to scope by the card's `<h3>` - and a heading is exactly the context a controls list
-drops, which is why the two needed separate fixes.
+the fix was to scope by the card's own heading, and a heading is exactly the context a controls list
+drops, which is why the two needed separate fixes. (Both scope by role rather than by level. These
+titles were `<h3>`s when this was written and are `<h2>`s since the sweep recorded at the end of
+this file; nothing about the scoping depended on which.)
 
 **The period dropdown is described, not labelled**, and the distinction is load-bearing.
 `aria-label="Dive activity period"` on the `SelectTrigger` would _replace_ its accessible name, and
 that name is its own value - "September 2025" - which is the one thing a diver needs read back from
 it. An `aria-describedby` pointing at a visually-hidden span is announced after the name instead, so
 the control keeps saying which period it is on and gains which chart it drives.
+
+(The `aria-describedby` half of that no longer holds - a description never reaches the accessible
+name at all, so on a period matching no registered item the trigger had no name whatever. The span
+is the same one; it is wired as an `aria-labelledby` naming the hint and then the trigger's own
+text. See "`aria-describedby` never reaches the accessible name" below. What does still hold is why
+`aria-label` was rejected: it would replace the value rather than prefix it, which is exactly what
+the two-id ordering avoids.)
 
 That hidden span is why `screenshots.mjs` waits on `getByRole("heading")` rather than
 `getByText("Gas Consumption")`: `getByText` matches case-insensitive substrings, so a bare card
@@ -9967,3 +9976,103 @@ default is the compose service name, which does not resolve on the host, and a p
 no `next dev` fallback to save it. And on a production build the `NEXT_PUBLIC_API_URL` trap
 described above is not a trap at all: the variable is baked in at build time, so a worktree that
 never had a `.env` is already on the same-origin proxy route.
+
+## Finishing the `CardTitle` sweep the footer change scoped out
+
+"The footer's column labels were headings" above ends by naming what it did not do: `as="h2"`
+reached `/contact` only, and "the same jump is still on every authenticated page". This is that
+sweep - 43 card titles across the pages, the settings cards, the dive detail cards, the gear cards
+and the dashboard.
+
+**The rule for which titles move is "is this card a section of the page", not "is this card on a
+page that failed".** The landing page's three feature cards keep the `h3` default and are the
+clearest case for why: they sit under `<h2 class="sr-only">What OpenDiving does</h2>`, so they are
+genuinely nested and were always correct. `/onboarding` and `/restore` keep it too, for the opposite
+reason - neither page has an `<h1>`, so their card title is the page's own heading and `h2` would be
+no better than `h3`. Main's chrome-free-routes section records the real defect there
+(`page-has-heading-one`), which is a different change.
+
+**One title moving down, not up.** `delete-account-card.tsx`'s inner "Delete Account" was an `<h4>`
+under an `<h3>` card title. Promoting the title to `h2` would have made that an h2 -> h4 jump, so it
+is an `<h3>` now. Worth knowing before the next sweep: a card that promotes its title has to be read
+all the way down, because any heading nested inside it was levelled against the old one.
+
+### Two things to add to the harness, both about reading the report rather than running it
+
+- **axe reports only the first offending heading on a page.** A count of one per page is the top of
+  a stack, not one problem per page - eleven pages here went quiet after the first fix and the
+  twelfth kept failing, which was the only sign that `service-due-card.tsx` had been missed. Dumping
+  the whole outline (`document.querySelectorAll("h1,h2,h3,h4,h5,h6")`) beside the violations is what
+  turns "clean" into evidence, and it is what caught it.
+- **Scan the public pages signed _out_.** Signed in, `/` and `/signin` both redirect to
+  `/dashboard`, so a single-pass authenticated run reports the dashboard three times under three
+  route names and never renders the landing page or the sign-in form at all. The first pass of this
+  work "found" a dashboard-only failure on three separate routes that way.
+
+## Ten rows of "Edit" name nothing
+
+The dive, trip and dive-site tables each carry three icon-only controls per row. Two of the three
+had no accessible name at all - axe reported `button-name` (critical) on the delete buttons and
+`link-name` (serious) on the view links, ten of each per page - and the third had
+`aria-label="Edit"` ten times over, which passes every rule and still tells a screen reader's
+controls list nothing about which trip it would edit.
+
+All three now name their row: `View dive #412`, `Edit Palau 2025`, `Delete Pescador Island`. Same
+reasoning as the export card's three Downloads recorded above - a name that is unique among the
+page's controls is the point, not merely a name that exists. The dive rows key off
+`dive.dive_number` rather than the date, because the number is what the row leads with and what a
+diver would say out loud.
+
+## `role="combobox"` is not allowed on a number input, and fixing that needs a draft string
+
+`VolumeCombobox` was an `<input type="number">` carrying `role="combobox"`. A number input's
+implicit role is `spinbutton`, and ARIA permits `combobox` only on text, search, tel, url and email,
+so axe reported `aria-allowed-role` twice per dive form. `CreatableCombobox` next to it was already
+conforming, on `type="text"`.
+
+**The swap to `type="text"` + `inputMode="decimal"` is not free, and the cost is not obvious.** The
+committed value is a `number`, so every keystroke round-trips through `parseFloat` and back through
+`String`. On a text input that eats the keystroke that is mid-decimal: typing the "." of "11.1"
+parses to `11`, renders as `"11"`, and deletes the "." that was just pressed - a decimal volume
+becomes unenterable, which is most of the preset list. `type="number"` was hiding this, because a
+browser reports `value === ""` for a half-typed `"11."` while still _displaying_ it, and that was
+the one behaviour of the type this field was relying on.
+
+So a `draft` string now sits between the keystrokes and the value: the input renders `draft` while
+typing and the committed number otherwise, and the draft is dropped on blur, on Escape, on Enter and
+on picking a preset - so `"11."` settles back to `"11"` and a picked preset is not left hidden
+behind whatever query opened the menu. `step`/`min` went with the type and are not missed: the arrow
+keys were already taken over for the menu, and the real constraint is `z.number().positive()` in the
+dive schema.
+
+**jsdom does not prove this one.** It does not sanitize input values the way a browser does, so the
+render tests pin the component's logic and not that a decimal can actually be typed - that has to be
+checked in Chrome. When you do, clear the field first: the first mixture arrives with a volume
+already in it, and typing "11.1" into it reads back as "22.211.1", which looks exactly like the bug
+this paragraph is about and is not.
+
+## `aria-describedby` never reaches the accessible name
+
+Both dashboard chart cards named their period picker with an `sr-only` span wired as
+`aria-describedby`. A description does not contribute to the accessible name, so the trigger's only
+name was whatever `SelectValue` had rendered - and on the period with no registered item (the case
+the note beside it already warned about) that is nothing, which axe reports as `button-name`,
+critical. The dashboard was the only page still failing it after the row-action sweep.
+
+Now `aria-labelledby`, listing the hint's id and the trigger's own id **in that order**, so the name
+is "Gas consumption period" _followed by_ the period showing. Naming it any other way - an
+`aria-label`, or `aria-labelledby` pointing at the hint alone - replaces the trigger's text rather
+than prefixing it, and takes the current period out of the announcement to fix the missing name.
+
+## The unit toggle's off half was `text-muted-foreground/60`
+
+`EntryUnitToggle` dimmed the system that is _not_ selected to 60% of `--muted-foreground`. That
+token is chosen to clear AA on both surfaces it lands on (see `globals.css`), and 60% of it is 12px
+text at roughly half that - axe reported `color-contrast` once per toggle, six per dive form, in
+both themes.
+
+It is full-strength `text-muted-foreground` now: 6.1:1 in light and 5.5:1 in dark, measured in the
+browser rather than computed. Nothing was lost, because the opacity was adding to a distinction that
+already carried on its own - the on half is `font-medium text-foreground`, so the two are separated
+by weight _and_ by the foreground/muted split, which is the same pair the rest of the app uses for
+primary against secondary text.

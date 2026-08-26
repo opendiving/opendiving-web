@@ -59,7 +59,7 @@ export function EmailChangeCard({ currentEmail }: EmailChangeCardProps) {
   return (
     <Card className="flex flex-col h-full">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle as="h2" className="flex items-center gap-2">
           <Mail className="h-5 w-5" />
           Email Address
         </CardTitle>

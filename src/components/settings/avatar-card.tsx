@@ -152,7 +152,7 @@ export function AvatarCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle as="h2" className="flex items-center gap-2">
           <Camera className="h-5 w-5" />
           Profile Picture
         </CardTitle>

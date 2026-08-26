@@ -111,7 +111,7 @@ export default function DivesPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
+          <CardTitle as="h2" className="flex items-center justify-between">
             <span>Dive Log</span>
             <CountBadge
               count={totalCount}
@@ -180,8 +180,18 @@ export default function DivesPage() {
                         : "-"}
                     </TableCell>
                     <TableCell className="text-right">
+                      {/* Every row's three controls are icon-only, so each needs a
+                          name - and the name has to say *which* dive, or a screen
+                          reader's controls list is thirty entries reading
+                          "View, Edit, Delete" ten times over. Same reasoning as the
+                          export card's three Download buttons; see DECISIONS.md. */}
                       <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="sm" asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label={`View dive #${dive.dive_number}`}
+                          asChild
+                        >
                           <Link href={`/dives/${dive.uuid}`}>
                             <Eye className="h-4 w-4" />
                           </Link>
@@ -189,7 +199,7 @@ export default function DivesPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          aria-label="Edit"
+                          aria-label={`Edit dive #${dive.dive_number}`}
                           asChild
                         >
                           <Link href={`/dives/${dive.uuid}/edit?from=/dives`}>
@@ -199,6 +209,7 @@ export default function DivesPage() {
                         <Button
                           variant="ghost"
                           size="sm"
+                          aria-label={`Delete dive #${dive.dive_number}`}
                           onClick={() => requestDeleteDive(dive.uuid)}
                           disabled={deletingId === dive.uuid}
                         >
