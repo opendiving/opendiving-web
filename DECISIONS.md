@@ -9690,3 +9690,149 @@ directions. §13 therefore links the contact page as "how to reach whoever runs 
 asserting that a form works, and it renders neither a project-owned address nor the public issue
 tracker — `/contact`'s own fallback does point at the tracker, and a diver filing an erasure request
 in public, to people who are not the controller, is exactly the outcome §13 must not inherit.
+
+## The terms page has two speakers, and the headings are the mechanism
+
+`/terms` shipped the same stock boilerplate `/privacy` did, and most of it described a product that
+does not exist: a community to connect with, experiences and photos to share, a password to keep
+secure, a platform "for logging and sharing", information shared by other users, a conduct list
+about posting things where other people can read them, forums to ask questions in, and
+`legal@opendiving.app` — a project address every self-hoster served to their own divers. The worst
+single sentence was §5's: "you grant OpenDiving a non-exclusive, worldwide, royalty-free license to
+use, modify, and display your content", which told a diver that their private dive log was licensed
+to a third party that in fact never receives it. All of that is gone.
+
+The sweep found more than the nine falsehoods it set out with, which is the usual result here:
+
+- **"Discover dive sites"** was in §2's feature list. Every dive site row is scoped to one account
+  (`lib/api/dive-sites.ts`'s `user_uuid`), so there is no directory to discover — you keep your own
+  list. §2 says that instead.
+- **§8's "Update these Terms of Service with reasonable notice"** promised a notification mechanism
+  that does not exist, exactly as `/privacy` §11's "notify users via email" did. The page is part of
+  the software and changes when the software changes; §8 now says so and points at the public
+  history rather than at a mailing that never happens.
+- **§3's password bullet became the real sign-in methods, and the list has to be complete.** The
+  sentence that replaces it draws a security consequence from its own enumeration — whoever can
+  reach any of these can sign in as you — so a method left out of the list is a false reassurance
+  rather than a mere omission. Google is the one that is easy to drop, because it is gated on
+  `GOOGLE_CLIENT_ID` and absent from most instances; the page states it unconditionally and hedges
+  in prose — "where this copy offers it" — the way `/privacy` §5's passwordless bullet hedges the
+  same fact in its own voice ("where an instance offers it"), rather than branching on config the
+  way `/privacy` §4.8's full disclosure has to.
+- **§13's "GitHub Issues in our repository"** was offered as a channel for questions about the
+  Terms. The project cannot answer for an operator's service, so §13 splits: the operator for
+  anything about this copy, the project for a defect in the software.
+- **§7 described the project's licence and stopped there.** For a diver on a _modified_ instance the
+  interesting right is AGPLv3 §13's: the operator who modified the software owes them the source of
+  their version. That offer is the operator's to make, and §7 now says so — the project's published
+  source is not necessarily what is running.
+
+### Why this page speaks with two voices when no comparable project ships one that does
+
+`/privacy` could take a single voice, because everything on it is the operator's: they are the
+controller, they hold the data, they answer for it. `/terms` cannot, and applying the same rule
+mechanically would have done real damage — it would have converted the project's own liability
+disclaimer and indemnity into promises made by and about an operator who never agreed to them, and
+deleted the project's warranty disclaimer from the only page carrying it.
+
+The comparators were checked, and none of them has this problem, for one reason: in all three the
+**operator writes the page** and the project appears only to be excluded.
+
+- **Mastodon** ships `config/templates/terms-of-service.md`, which speaks as the "Server Operator's
+  ('Administrator', 'we', or 'us')" and names Mastodon GmbH only to disclaim affiliation.
+- **Discourse**'s `tos_topic` in `config/locales/server.en.yml` speaks as `%{company_name}`, and the
+  word _Discourse_ never appears in it at all.
+- **Gitea**'s `contrib/sample-page/tos.html.sample` is a sample with the placeholder "Your Gitea
+  Instance" in it.
+
+OpenDiving _ships_ the page rather than templating one for an operator to fill in, so the project
+has a speaking part the comparators do not. The alternative — one operator voice, with the project
+named only to be excluded — was rejected because of the AGPL finding below.
+
+**The mechanism is the section heading.** §1 defines two terms, "the OpenDiving project" and "the
+operator of this copy", states that every section is the operator's unless its heading says
+otherwise, and names the three that do: 7, 9 and 10. Bare "OpenDiving" never acts again anywhere on
+the page — every occurrence is one of the two defined parties or the name of the software. That is
+also what hands a self-hoster an unambiguous search target for the sentences that are theirs, which
+is the job Mastodon's `%{domain}` and Discourse's `%{company_name}` do by templating. §12's
+governing-law sentence keeps its substance untouched — it already deferred to wherever the Service
+is operated, which is the one clause that was right before this change — and only names its speaker,
+so that the search target reaches it too. §1 claims no more for that search than it can keep: the
+phrase marks the sentences that turn on something only the operator can answer for, and the rule in
+§1 is what settles a section it does not appear in.
+
+**The operator's as-is paragraph sits at the end of §8, not in §9.** It is the operator's
+counterpart to §9 and reads as though it belongs there, but §9's heading claims the project as its
+speaker, and an operator paragraph underneath it would undo the one mechanism this page has. §8 is
+already the operator's, already about what running the Service does and does not promise, and §9
+ends by pointing at it. The paragraph carries **no monetary cap, no arbitration clause and no
+jurisdiction** — those are precisely the parts an operator would object to having invented for them,
+and it says outright that the operator may replace it with their own terms.
+
+### AGPLv3 §§15–16 do not reach the diver, which is what makes §9 load-bearing
+
+This is the finding that decided the shape, and it is worth stating in full because "the AGPL
+already disclaims warranty, so terms §9 is spare boilerplate" is the obvious and wrong conclusion.
+
+The AGPL's disclaimers run to _licensees_. §0 says "Each licensee is addressed as 'you'", and that
+"Mere interaction with a user … is not conveying". §16 limits liability only "TO YOU", for "USE OR
+INABILITY TO USE THE PROGRAM". A diver using someone else's instance received an HTTP response, not
+a copy: not a recipient, not a licensee. §13's source offer binds operators who modify, and an offer
+is not a transfer — the diver becomes a licensee only if they actually take the source. §17's
+"absolute waiver of all civil liability" is an interpretive rescue for §§15–16 where they already
+apply, not an extension to strangers. (<https://www.gnu.org/licenses/agpl-3.0.en.html>)
+
+So the AGPL covers the project against the _self-hoster_ and leaves the downstream _diver_ uncovered
+— and terms §9, if the diver assents, is the only instrument closing that gap. Converting it to
+operator voice would have deleted the project's sole protection against the people most likely to
+sue over a dive. §9 therefore carries its speaker in the heading, a third-party-beneficiary
+sentence, and an explicit "adds to, and does not narrow, sections 15 to 17 of the AGPLv3".
+
+### Four things here are judgement, not settled law
+
+This project has no lawyer, and the entry says which parts are reasoning rather than authority:
+
+1. **The AGPL reach conclusion above is a textual reading.** No court has squarely decided whether
+   §§15–16 protect an upstream project against a stranger on a third party's instance. Treat it as
+   "probably does not reach", not as established.
+2. **§9's "diving accidents or injuries" bullet is the least likely to be enforceable anywhere.**
+   Many jurisdictions void exclusions for death or personal injury outright — UK UCTA 1977 s.2(1) is
+   the clearest. It is kept because it costs nothing and evidences no assumed duty, but nothing
+   should be built on it.
+3. **Third-party-beneficiary enforcement varies by jurisdiction**, and works at all only if the
+   diver assented and the operator shipped the page unedited — neither of which the project
+   controls. §9 is an improvement over nothing rather than a shield.
+4. **§5's narrow grant was a real fork.** The alternative was "no licence is granted to anyone",
+   which is strictly more honest about today. It was rejected because it makes a future social
+   feature introduce licensing from scratch instead of widening a clause that already exists, and
+   the wording was chosen on that argument rather than on a legal one.
+
+### The standing rule: a feature that shows one diver's content to anyone else brings its own grant
+
+The same shape as the browser-storage rule recorded above, and written down here for the same
+reason. **Any feature that makes one diver's content visible to anyone else ships its own §5 grant
+and its own privacy-page section in the same PR.** The grant on the page today is deliberately no
+wider than running the Service takes — store your entries, show them back to you, include them in an
+export you ask for — and widening it now, for features that do not exist, is the identical mistake
+this change is deleting — the same direction the Gravatar entry above calls out, that overstating
+what a legal page covers "is not the safe direction to be wrong in".
+
+Worth knowing before reaching for that rule: the three plausible futures need three different
+things, and only one of them is a copyright question at all.
+
+- **Shared dives** need an operator display grant, probably per act of sharing rather than blanket.
+- **A dive-centre view of someone's certifications** is a lawful-basis question under GDPR Art. 6,
+  and possibly Art. 9 if anything health-adjacent rides along — not a licence question.
+- **Genuinely aggregate statistics** need no content licence at all.
+
+### Correction: `--warning` is no longer the safety notice's private token
+
+The token entry above says `--warning` has "one use, the terms page's safety notice". That was true
+when it was written and is not any more: `dive-exposure-card.tsx` colours an alert exposure figure
+with `text-warning`, `dive-mixtures-card.tsx` and `mixture-fields.tsx` both use it on mixture
+warnings, `ui/badge.tsx` has a `warning` variant built on `bg-warning`, and `lib/gear-service.ts`
+borrows it for overdue service. The safety notice is therefore **not** load-bearing for the token,
+and the reason to keep it is its own: it is the one part of the page that was unambiguously true
+before this change, and a dive log disclaiming safety advice should not look like a footnote. It
+survives this sweep on its merits, with only "a platform for logging and sharing diving experiences"
+corrected to "software for logging dives".
