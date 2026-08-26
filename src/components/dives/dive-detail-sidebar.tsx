@@ -112,7 +112,7 @@ export function DiveDetailSidebar({
                 while those were the only two things in it: a dive with GPS but
                 no trip and no site is now one of the cases it renders for, and
                 the blocks inside are each labelled anyway. */}
-            <CardTitle>Location</CardTitle>
+            <CardTitle as="h2">Location</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {trip && (
@@ -179,7 +179,7 @@ export function DiveDetailSidebar({
       {hasEnvironmentInfo && (
         <Card>
           <CardHeader>
-            <CardTitle>Environment</CardTitle>
+            <CardTitle as="h2">Environment</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {dive.bottom_temperature != null && (
@@ -239,7 +239,7 @@ export function DiveDetailSidebar({
 
       <Card>
         <CardHeader>
-          <CardTitle>Dive Information</CardTitle>
+          <CardTitle as="h2">Dive Information</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           <div>

@@ -81,12 +81,17 @@ export function DiveActivityCard() {
   const [chosenScope, setChosenScope] = useState<ChartScope | null>(null);
   const [anchor, setAnchor] = useState<number | null>(null);
 
-  // Names the period dropdown without renaming it. `aria-label` here would
-  // *replace* the trigger's accessible name, and that name is the value -
-  // "September 2025" - which is the one thing a diver needs read back. A
-  // description is announced after it instead, so the control keeps saying which
-  // period it is on and gains which chart it drives.
+  // Names the period dropdown without talking over what it says. `aria-label`
+  // here would *replace* the trigger's accessible name, and part of that name is
+  // its own value - "September 2025" - which is the one thing a diver needs read
+  // back. This id leads an `aria-labelledby` that ends with the trigger's own, so
+  // the chart's name is prefixed onto the value rather than swapped for it. It
+  // was an `aria-describedby` until a description turned out never to reach the
+  // name at all; the reasoning is beside the attribute, below.
   const periodHintId = useId();
+  // The trigger names itself as well as being named - see the `aria-labelledby`
+  // below.
+  const periodTriggerId = useId();
 
   // The view remembered from last time, through `useSyncExternalStore` rather
   // than a `useState` + effect pair for the reason `GasUseCard` documents at
@@ -189,7 +194,7 @@ export function DiveActivityCard() {
               and the controls to the right put a wrapper between it and the
               title - so the pair has to carry the gap itself. */}
           <div className="space-y-1.5">
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle as="h2" className="flex items-center gap-2">
               <BarChart3 className="h-5 w-5" />
               Dive Activity
             </CardTitle>
@@ -245,8 +250,12 @@ export function DiveActivityCard() {
                     if (picked) setAnchor(picked.anchor);
                   }}
                 >
+                  {/* Named the same way as the gas card's twin, and for the same
+                      reason - `aria-describedby` never reached the accessible
+                      name, so an empty trigger had none. See that file. */}
                   <SelectTrigger
-                    aria-describedby={periodHintId}
+                    id={periodTriggerId}
+                    aria-labelledby={`${periodHintId} ${periodTriggerId}`}
                     className="h-8 w-40 px-2 text-sm font-medium"
                   >
                     <SelectValue />
@@ -283,8 +292,10 @@ export function DiveActivityCard() {
                 with dives" in it are four coin flips. The card name leads rather
                 than trails so the list groups by chart when it is scanned or
                 sorted. Same ambiguity `screenshots.mjs` hit from the automation
-                side, where the fix was to scope by the card's `<h3>` - the
-                heading is exactly the context a controls list drops. */}
+                side, where the fix was to scope by the card's own heading, which
+                is exactly the context a controls list drops. (Named by role
+                rather than by level, there and here: this title has been an
+                `<h3>` and is now an `<h2>`, and the scoping never cared.) */}
             {/* A segmented control built from plain buttons - the app has no
                 tabs/toggle-group primitive, and the gas card above already draws
                 this exact row. */}

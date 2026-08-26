@@ -76,12 +76,17 @@ export function GasUseCard() {
   const [chosenScope, setChosenScope] = useState<ChartScope | null>(null);
   const [anchor, setAnchor] = useState<number | null>(null);
 
-  // Names the period dropdown without renaming it. `aria-label` here would
-  // *replace* the trigger's accessible name, and that name is the value -
-  // "September 2025" - which is the one thing a diver needs read back. A
-  // description is announced after it instead, so the control keeps saying which
-  // period it is on and gains which chart it drives.
+  // Names the period dropdown without talking over what it says. `aria-label`
+  // here would *replace* the trigger's accessible name, and part of that name is
+  // its own value - "September 2025" - which is the one thing a diver needs read
+  // back. This id leads an `aria-labelledby` that ends with the trigger's own, so
+  // the chart's name is prefixed onto the value rather than swapped for it. It
+  // was an `aria-describedby` until a description turned out never to reach the
+  // name at all; the reasoning is beside the attribute, below.
   const periodHintId = useId();
+  // The trigger names itself as well as being named - see the `aria-labelledby`
+  // below.
+  const periodTriggerId = useId();
 
   // The view remembered from last time.
   //
@@ -190,7 +195,7 @@ export function GasUseCard() {
               and the controls to the right put a wrapper between it and the
               title - so the pair has to carry the gap itself. */}
           <div className="space-y-1.5">
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle as="h2" className="flex items-center gap-2">
               <Activity className="h-5 w-5" />
               Gas Consumption
             </CardTitle>
@@ -248,8 +253,20 @@ export function GasUseCard() {
                     if (picked) setAnchor(picked.anchor);
                   }}
                 >
+                  {/* `aria-labelledby`, not the `aria-describedby` this was: a
+                      description does not contribute to the accessible name, so
+                      the trigger's only name was whatever `SelectValue` had
+                      rendered - and on the period with no registered item (the
+                      case the note above is about) that is nothing at all, which
+                      axe reports as `button-name`, critical.
+
+                      Both ids, in this order, so the name is "Gas consumption
+                      period" *followed by* the period showing - the second is the
+                      trigger's own text, which naming it by anything else would
+                      have replaced rather than prefixed. */}
                   <SelectTrigger
-                    aria-describedby={periodHintId}
+                    id={periodTriggerId}
+                    aria-labelledby={`${periodHintId} ${periodTriggerId}`}
                     className="h-8 w-40 px-2 text-sm font-medium"
                   >
                     <SelectValue />
@@ -286,8 +303,10 @@ export function GasUseCard() {
                 with dives" in it are four coin flips. The card name leads rather
                 than trails so the list groups by chart when it is scanned or
                 sorted. Same ambiguity `screenshots.mjs` hit from the automation
-                side, where the fix was to scope by the card's `<h3>` - the
-                heading is exactly the context a controls list drops. */}
+                side, where the fix was to scope by the card's own heading, which
+                is exactly the context a controls list drops. (Named by role
+                rather than by level, there and here: this title has been an
+                `<h3>` and is now an `<h2>`, and the scoping never cared.) */}
             {/* A segmented control built from plain buttons - the app has no
                 tabs/toggle-group primitive, and three buttons in a bordered row
                 is the whole of it. */}

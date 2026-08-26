@@ -171,7 +171,7 @@ export default function TripDetailPage() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle as="h2" className="flex items-center gap-2">
                 <Calendar className="h-5 w-5" />
                 Trip Information
               </CardTitle>

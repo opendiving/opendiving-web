@@ -107,7 +107,7 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
       {hasGearInfo && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle as="h2" className="flex items-center gap-2">
               <Backpack className="h-5 w-5" />
               Gear
             </CardTitle>
@@ -175,7 +175,7 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
       {dive.species && dive.species.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle as="h2" className="flex items-center gap-2">
               <Fish className="h-5 w-5" />
               Species Spotted
             </CardTitle>
@@ -213,7 +213,7 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
       {dive.notes && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle as="h2" className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
               Notes
             </CardTitle>

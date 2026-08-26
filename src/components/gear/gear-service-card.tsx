@@ -158,7 +158,10 @@ export function GearServiceCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex flex-wrap items-center justify-between gap-3">
+        <CardTitle
+          as="h2"
+          className="flex flex-wrap items-center justify-between gap-3"
+        >
           <span className="flex items-center gap-2">
             <Wrench className="h-5 w-5" />
             Service

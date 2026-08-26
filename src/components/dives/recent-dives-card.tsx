@@ -105,7 +105,7 @@ export function RecentDivesCard({
             description to twice every other card's 6px. */}
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-1.5">
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle as="h2" className="flex items-center gap-2">
               <Waves className="h-5 w-5" />
               {title}
             </CardTitle>

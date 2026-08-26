@@ -74,7 +74,10 @@ export function GearItemsCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex flex-wrap items-center justify-between gap-3">
+        <CardTitle
+          as="h2"
+          className="flex flex-wrap items-center justify-between gap-3"
+        >
           <span>Your Gear</span>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">

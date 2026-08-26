@@ -42,7 +42,7 @@ export function DiveExposureCard({ dive }: DiveExposureCardProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle as="h2" className="flex items-center gap-2">
           <Gauge className="h-5 w-5" />
           {/* Not "Oxygen Exposure", which is what two of the three readings are:
               42 of the 384 XML exports in the corpus record a surface pressure and

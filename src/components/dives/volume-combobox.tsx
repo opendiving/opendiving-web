@@ -97,6 +97,18 @@ export function VolumeCombobox({
   // `nextActiveIndex` with `CreatableCombobox` so both dropdowns in the dive
   // form move the same way.
   const [activeIndex, setActiveIndex] = useState(-1);
+  // What is being typed, while it is being typed; `null` whenever the field is
+  // showing `value` itself.
+  //
+  // This exists because the input is `type="text"` (see the `role` below for
+  // why) and the committed value is a `number`, so without it the round trip
+  // through `parseFloat` eats the keystroke that is mid-decimal: typing the "."
+  // of "11.1" parses to `11`, which renders as "11", which deletes the "." the
+  // diver just pressed and makes a decimal volume unenterable. `type="number"`
+  // hid that - a browser reports `value === ""` for a half-typed "11." while
+  // still *displaying* it - and it is the one behaviour of that type this field
+  // was relying on.
+  const [draft, setDraft] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const optionRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const listId = useId();
@@ -114,6 +126,10 @@ export function VolumeCombobox({
 
   const handleSelect = (option: VolumeOption) => {
     onChange(option.value);
+    // Dropping the draft is what lets the picked preset reach the input at all:
+    // it would otherwise keep rendering whatever half-typed query opened the
+    // menu. Same on blur below, which is where "11." settles back to "11".
+    setDraft(null);
     closeMenu();
   };
 
@@ -122,14 +138,27 @@ export function VolumeCombobox({
       <Input
         {...slotProps}
         ref={inputRef}
-        type="number"
-        step="0.01"
-        min="0"
+        // `text` + `inputMode`, not `type="number"`. A number input's implicit
+        // role is `spinbutton`, and ARIA does not allow `role="combobox"` on it -
+        // axe reports `aria-allowed-role`, twice per dive form. Only text,
+        // search, tel, url and email may carry the role, which is why
+        // `CreatableCombobox` beside this one was already conforming.
+        //
+        // `inputMode="decimal"` keeps the numeric keypad on a phone, which is the
+        // half of `type="number"` that was worth having here. The other half -
+        // `step` and `min` - is gone with it and not missed: the arrow keys were
+        // already taken over for the menu (see `onKeyDown`), and the real
+        // constraint is `z.number().positive()` in the dive schema, not the
+        // browser's.
+        type="text"
+        inputMode="decimal"
         placeholder={placeholder}
-        value={value ?? ""}
+        value={draft ?? (value === undefined ? "" : String(value))}
         disabled={disabled}
         onChange={(e) => {
-          const parsed = parseFloat(e.target.value);
+          const raw = e.target.value;
+          setDraft(raw);
+          const parsed = parseFloat(raw);
           onChange(Number.isNaN(parsed) ? undefined : parsed);
         }}
         role="combobox"
@@ -140,14 +169,19 @@ export function VolumeCombobox({
         }
         onFocus={() => setIsOpen(true)}
         onClick={() => setIsOpen(true)}
-        onBlur={closeMenu}
+        onBlur={() => {
+          setDraft(null);
+          closeMenu();
+        }}
         onKeyDown={(e) => {
           if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-            // On a `type="number"` input these keys natively step the value by
-            // `step` (0.01 here). Navigating the preset list is the far more
-            // useful binding, and nudging a volume by a hundredth of a litre
-            // isn't something anyone reaches for - but it is a behaviour change,
-            // so it's called out rather than silently swapped.
+            // These navigate the preset list, so the caret doesn't get them:
+            // `preventDefault` stops the jump to the start or end of the text.
+            // Back when this was `type="number"` they natively stepped the value
+            // by `step` (0.01), and taking them for the list was the deliberate
+            // behaviour change recorded here - browsing the presets beats nudging
+            // a volume by a hundredth of a litre. The keys still do the same
+            // thing; only what they are being taken *from* has changed.
             e.preventDefault();
             if (!isOpen) {
               setIsOpen(true);

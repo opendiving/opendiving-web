@@ -94,7 +94,7 @@ export default function SitesPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
+          <CardTitle as="h2" className="flex items-center justify-between">
             <span>Dive Site List</span>
             <CountBadge
               count={totalCount}
@@ -140,8 +140,16 @@ export default function SitesPage() {
                     </TableCell>
                     <TableCell>{diveSite.location || "-"}</TableCell>
                     <TableCell className="text-right">
+                      {/* Named per row, not per action: ten identical "Edit"s tell a
+                          screen reader's controls list nothing about which site.
+                          See DECISIONS.md on the export card's three Downloads. */}
                       <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="sm" asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label={`View ${diveSite.name}`}
+                          asChild
+                        >
                           <Link href={`/sites/${diveSite.uuid}`}>
                             <Eye className="h-4 w-4" />
                           </Link>
@@ -149,7 +157,7 @@ export default function SitesPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          aria-label="Edit"
+                          aria-label={`Edit ${diveSite.name}`}
                           onClick={() => setEditingSite(diveSite)}
                         >
                           <Edit className="h-4 w-4" />
@@ -157,6 +165,7 @@ export default function SitesPage() {
                         <Button
                           variant="ghost"
                           size="sm"
+                          aria-label={`Delete ${diveSite.name}`}
                           onClick={() => requestDeleteDiveSite(diveSite.uuid)}
                           disabled={deletingId === diveSite.uuid}
                         >

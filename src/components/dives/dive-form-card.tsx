@@ -69,7 +69,7 @@ export function DiveFormCard<TFieldValues extends DiveFormValues>({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Dive Details</CardTitle>
+        <CardTitle as="h2">Dive Details</CardTitle>
       </CardHeader>
       <CardContent>
         <Form {...form}>
