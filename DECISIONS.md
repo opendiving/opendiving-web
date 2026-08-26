@@ -269,6 +269,9 @@ through every page.
 If a new route needs to opt out of the shared chrome (e.g. another standalone/full-bleed page like
 `/signin`), add its path to `NO_CHROME_ROUTES` in `app-shell.tsx` rather than trying to suppress
 `Header`/`Footer` from within the page itself - there's no longer a per-page mechanism for that.
+Then render `layout/standalone-shell.tsx` rather than hand-rolling the centered card: `AppShell` is
+where the app's `<main>` lives, and that component is where the chrome-free half of the app keeps
+its own. See "The chrome-free routes had no `<main>`" at the end of this file.
 
 ## Shared list-page pattern: `useAuthGuard` + `usePaginatedResource` + `useDeleteResource`
 
@@ -9871,10 +9874,11 @@ each also carries unrelated `button-name`, `link-name` and `color-contrast` fail
 rows.
 
 **What the unrestricted sweep says now.** `/`, `/contact`, `/privacy` and `/terms` are clean in both
-themes. `/signin` is not, and this change did not touch it: it is chrome-free (see
-`NO_CHROME_ROUTES` in `app-shell.tsx`), so it has no `<main>`, and axe reports `landmark-one-main`
+themes. `/signin` was not, and this change did not touch it: it is chrome-free (see
+`NO_CHROME_ROUTES` in `app-shell.tsx`), so it had no `<main>`, and axe reported `landmark-one-main`
 and `region` there - a different defect from the heading one, shared with the five other chrome-free
-routes, and left for its own change.
+routes, and left for its own change. That change has since landed and `/signin` is clean in both
+themes too; see "The chrome-free routes had no `<main>`" below.
 
 **Neither CI nor the recorded hand-check could have caught this.** `code-quality.yml` passes
 `--include="main"`, and the footer is a sibling of `<main>`, not inside it - the workflow has never
@@ -9900,3 +9904,66 @@ one variable puts the app back on the same-origin proxy route, which has no allo
 of. The magic link still arrives pointing at `:3000` (the API builds it from its own
 `FRONTEND_URL`); rewriting the port in the URL is enough, since the token is in the query string and
 nothing is consumed until the click.
+
+## The chrome-free routes had no `<main>`, and now share the layout that carries one
+
+`AppShell` is the only place in the app that renders a `<main>`, and six routes deliberately never
+reach it - `/signin`, `/onboarding`, `/restore`, `/auth/verify`, `/settings/confirm-email` and
+`/goodbye`, the `NO_CHROME_ROUTES` list. Every one of them was therefore a document with no main
+landmark and no landmark around any of its content: two axe violations each, `landmark-one-main`
+("Document does not have a main landmark", target `html`) and `region` ("All page content should be
+contained by landmarks"), both moderate. On `/signin` `region` named six nodes - the wordmark link's
+span, the heading block, the form's field group, the "keeps you signed in" hint, the Or divider and
+the terms line - which is to say the entire page.
+
+**One component, not six elements.** All six had hand-rolled the same wrapper: a full-height
+centered flex container, a `w-full max-w-md` column (`text-center` on the three status screens), and
+a copy of the wordmark linking home. `components/layout/standalone-shell.tsx` is that wrapper with
+the `<main>` inside it, and `className` is merged onto the element - in practice always
+`text-center`. Adding six `<main>` tags would have fixed the same violations; what it would not have
+fixed is the reason they were missing, which is that the sixth copy of the wrapper went in without
+anyone noticing the element was absent from the first five. The seventh would go in the same way.
+
+**The `<main>` wraps the wordmark too.** `region` wants every scrap of content inside a landmark,
+and on these screens the wordmark is the only thing outside the card. A single link back to the
+landing page is not worth a `<nav>` of its own, so it sits inside `main` with everything else.
+`standalone-shell.test.tsx` pins exactly that - the document's text and the landmark's text are the
+same string - because that is the assertion a future hand-rolled wrapper would fail.
+
+**Loading frames still have no landmark, deliberately.** `/signin` and `/goodbye` render a bare
+`PageSpinner` behind their Suspense boundaries, and `/onboarding`/`/restore` render `null` until
+their in-memory session resolves. Those frames carry no text, and the obvious fix - a `<main>` in
+`PageSpinner` - is wrong: the same component renders _inside_ `AppShell` as `variant="inset"`, where
+its own `<main>` would be a second one.
+
+**What the unrestricted sweep says now.** `/signin` is clean in both themes. `/goodbye`,
+`/auth/verify`, `/settings/confirm-email` and `/onboarding` report one `<main>` each and no landmark
+violation. Two things were found and left, neither of them landmark-related and neither introduced
+here: `/auth/verify`, `/settings/confirm-email` and `/onboarding` have no `<h1>` at all
+(`page-has-heading-one`, moderate - their titles are `<p class="font-medium">`), and `/goodbye`'s
+"Back to the home page" link is `text-primary hover:underline` inside a paragraph, which is
+`link-in-text-block` in both themes (1.67:1 against the surrounding text, and no non-colour
+distinction until hover) plus `color-contrast` in dark, where `text-primary` resolves to `#707075`
+on `#161618` for 3.66:1. That is a regression of the same class the earlier colour sweep fixed
+across ten links; `/goodbye` was written afterwards.
+
+**Only four of the six can be scanned by URL.** `/onboarding` and `/restore` bounce to `/` without
+the in-memory session that is their only entry point. `/onboarding` is reachable for real by
+requesting a magic link for an email with **no account** and clicking through `/auth/verify` - the
+verify call answers `onboarding_required` and lands there, and no `User` row is created until the
+profile form is submitted, so this costs nothing but a link. `/restore` needs an account inside its
+deletion grace period reached by one of the three paths with no precheck, so it was not swept in a
+browser; it renders the same component, and the component's own test covers the element.
+
+**Let the page settle before believing a `color-contrast` result.** Scanning `/onboarding`
+immediately after the `router.replace` that lands on it reported five serious `color-contrast`
+failures, including on text that is clean everywhere else. A second later they were all gone. This
+is the same phantom-failure trap already recorded for a scan run against a recompiling dev server,
+reached from the other direction - a route transition rather than a stylesheet reload.
+
+**Two things to add to the harness above.** Scanning a worktree needs its own `npm install` and a
+port other than 3000, and `API_INTERNAL_URL=http://localhost:8000` on `npm start` - the shipped
+default is the compose service name, which does not resolve on the host, and a production build has
+no `next dev` fallback to save it. And on a production build the `NEXT_PUBLIC_API_URL` trap
+described above is not a trap at all: the variable is baked in at build time, so a worktree that
+never had a `.env` is already on the same-origin proxy route.

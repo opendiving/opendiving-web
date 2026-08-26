@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { AuthForm } from "@/components/auth/auth-form";
-import { Logo } from "@/components/logo";
+import { StandaloneShell } from "@/components/layout/standalone-shell";
 import { PageSpinner } from "@/components/ui/page-spinner";
 import { useRedirectIfAuthenticated } from "@/hooks/useRedirectIfAuthenticated";
 import {
@@ -45,41 +45,30 @@ function SignInContent() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="flex justify-center mb-8">
-          <Link href="/" className="flex items-center space-x-2">
-            <Logo className="h-8 w-8 text-coral" />
-            <span className="text-2xl font-bold text-foreground">
-              OpenDiving
-            </span>
-          </Link>
-        </div>
-
-        <div className="mb-6 text-center">
-          <h1 className="text-2xl font-bold text-foreground">Sign in</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {next
-              ? "You need to be signed in to view that page."
-              : "Enter your email and we'll send you a sign-in link. No password needed."}
-          </p>
-        </div>
-
-        <AuthForm redirectTo={next} />
-
-        <div className="mt-8 text-center text-sm text-muted-foreground">
-          <p>
-            By signing in, you agree to our{" "}
-            <Link href="/terms" className="underline hover:text-foreground">
-              Terms of Service
-            </Link>{" "}
-            and{" "}
-            <Link href="/privacy" className="underline hover:text-foreground">
-              Privacy Policy
-            </Link>
-          </p>
-        </div>
+    <StandaloneShell>
+      <div className="mb-6 text-center">
+        <h1 className="text-2xl font-bold text-foreground">Sign in</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {next
+            ? "You need to be signed in to view that page."
+            : "Enter your email and we'll send you a sign-in link. No password needed."}
+        </p>
       </div>
-    </div>
+
+      <AuthForm redirectTo={next} />
+
+      <div className="mt-8 text-center text-sm text-muted-foreground">
+        <p>
+          By signing in, you agree to our{" "}
+          <Link href="/terms" className="underline hover:text-foreground">
+            Terms of Service
+          </Link>{" "}
+          and{" "}
+          <Link href="/privacy" className="underline hover:text-foreground">
+            Privacy Policy
+          </Link>
+        </p>
+      </div>
+    </StandaloneShell>
   );
 }

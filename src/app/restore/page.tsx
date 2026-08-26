@@ -2,10 +2,9 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { useAuth } from "@/contexts/AuthContext";
 import { RestoreAccountCard } from "@/components/auth/restore-account-card";
-import { Logo } from "@/components/logo";
+import { StandaloneShell } from "@/components/layout/standalone-shell";
 
 // The account-restore screen, and the exact counterpart of `/onboarding`: both are
 // what a verified identity that is not yet a session gets shown, and both are only
@@ -38,19 +37,8 @@ export default function RestorePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="flex justify-center mb-8">
-          <Link href="/" className="flex items-center space-x-2">
-            <Logo className="h-8 w-8 text-coral" />
-            <span className="text-2xl font-bold text-foreground">
-              OpenDiving
-            </span>
-          </Link>
-        </div>
-
-        <RestoreAccountCard />
-      </div>
-    </div>
+    <StandaloneShell>
+      <RestoreAccountCard />
+    </StandaloneShell>
   );
 }

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { CalendarClock, Trash2 } from "lucide-react";
 
-import { Logo } from "@/components/logo";
+import { StandaloneShell } from "@/components/layout/standalone-shell";
 import { PageSpinner } from "@/components/ui/page-spinner";
 import { formatPurgeDay, parsePurgeDate } from "@/lib/purge-date";
 
@@ -57,75 +57,64 @@ function GoodbyeContent({ purgeAfter }: { purgeAfter: string | null }) {
   const deadlinePassed = purgeOn !== null && purgeOn.getTime() <= loadedAt;
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-md text-center">
-        <div className="flex justify-center mb-8">
-          <Link href="/" className="flex items-center space-x-2">
-            <Logo className="h-8 w-8 text-coral" />
-            <span className="text-2xl font-bold text-foreground">
-              OpenDiving
-            </span>
-          </Link>
-        </div>
-
-        {deadlinePassed ? (
-          <>
-            <Trash2
-              className="mx-auto mb-4 h-10 w-10 text-muted-foreground"
-              aria-hidden="true"
-            />
-            <h1 className="text-2xl font-bold text-foreground mb-2">
-              Your account has been deleted
-            </h1>
+    <StandaloneShell className="text-center">
+      {deadlinePassed ? (
+        <>
+          <Trash2
+            className="mx-auto mb-4 h-10 w-10 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <h1 className="text-2xl font-bold text-foreground mb-2">
+            Your account has been deleted
+          </h1>
+          <p className="text-muted-foreground">
+            The date it was due to be erased on has passed, so your dives, dive
+            sites, certifications and gear are no longer recoverable.
+          </p>
+        </>
+      ) : (
+        <>
+          <CalendarClock
+            className="mx-auto mb-4 h-10 w-10 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <h1 className="text-2xl font-bold text-foreground mb-2">
+            Your account has been deleted
+          </h1>
+          {purgeOn ? (
             <p className="text-muted-foreground">
-              The date it was due to be erased on has passed, so your dives,
-              dive sites, certifications and gear are no longer recoverable.
+              You&apos;re signed out everywhere, and nothing has been erased
+              yet. Your dives, dive sites, certifications and gear will be
+              permanently erased on{" "}
+              <span className="font-medium text-foreground">
+                {formatPurgeDay(purgeOn)}
+              </span>
+              .
             </p>
-          </>
-        ) : (
-          <>
-            <CalendarClock
-              className="mx-auto mb-4 h-10 w-10 text-muted-foreground"
-              aria-hidden="true"
-            />
-            <h1 className="text-2xl font-bold text-foreground mb-2">
-              Your account has been deleted
-            </h1>
-            {purgeOn ? (
-              <p className="text-muted-foreground">
-                You&apos;re signed out everywhere, and nothing has been erased
-                yet. Your dives, dive sites, certifications and gear will be
-                permanently erased on{" "}
-                <span className="font-medium text-foreground">
-                  {formatPurgeDay(purgeOn)}
-                </span>
-                .
-              </p>
-            ) : (
-              <p className="text-muted-foreground">
-                You&apos;re signed out everywhere, and nothing has been erased
-                yet. The confirmation email we&apos;ve just sent you names the
-                date everything is permanently erased on.
-              </p>
-            )}
-            {/* The way back, in the same words as the confirmation email and the
+          ) : (
+            <p className="text-muted-foreground">
+              You&apos;re signed out everywhere, and nothing has been erased
+              yet. The confirmation email we&apos;ve just sent you names the
+              date everything is permanently erased on.
+            </p>
+          )}
+          {/* The way back, in the same words as the confirmation email and the
                 Danger Zone card - all three describe one behaviour, so reword them
                 together. Signing in reaches an offer to restore, not a session. */}
-            <p className="text-muted-foreground mt-4">
-              Deleted by mistake? Sign in again before{" "}
-              {purgeOn ? "that date" : "the date in that email"} and you&apos;ll
-              be offered your account back. Afterwards, nothing can be restored.
-            </p>
-          </>
-        )}
+          <p className="text-muted-foreground mt-4">
+            Deleted by mistake? Sign in again before{" "}
+            {purgeOn ? "that date" : "the date in that email"} and you&apos;ll
+            be offered your account back. Afterwards, nothing can be restored.
+          </p>
+        </>
+      )}
 
-        <p className="text-sm text-muted-foreground mt-8">
-          Thanks for diving with us.{" "}
-          <Link href="/" className="text-primary hover:underline">
-            Back to the home page
-          </Link>
-        </p>
-      </div>
-    </div>
+      <p className="text-sm text-muted-foreground mt-8">
+        Thanks for diving with us.{" "}
+        <Link href="/" className="text-primary hover:underline">
+          Back to the home page
+        </Link>
+      </p>
+    </StandaloneShell>
   );
 }
