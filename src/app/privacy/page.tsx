@@ -1,13 +1,32 @@
 import Link from "next/link";
 import { Metadata } from "next";
+import { runtimeConfig } from "@/lib/runtime-config";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
   description:
-    "Learn how OpenDiving protects your privacy and handles your personal data on our open-source diving platform.",
+    "What this copy of OpenDiving collects, what it stores in your browser, and who is responsible for it.",
 };
 
+// The storage keys in §10 are written out as literal strings on purpose:
+// `src/lib/storage-keys.test.ts` asserts that every `opendiving:`-prefixed key
+// defined anywhere in production code appears verbatim in this file, so a new key
+// that nobody disclosed fails the build rather than shipping quietly.
+function StorageKey({ name }: { name: string }) {
+  return (
+    <code className="rounded bg-muted px-1 py-0.5 font-mono text-sm">
+      {name}
+    </code>
+  );
+}
+
 export default function PrivacyPage() {
+  // Read here rather than in a client component for the reason `/contact` reads it
+  // here: this is a Server Component, so the instance's configuration is legible
+  // without shipping it to the browser. The Google section below exists only where
+  // an instance has Google sign-in turned on.
+  const { googleClientId } = runtimeConfig();
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="bg-card rounded-lg shadow-sm p-8">
@@ -24,15 +43,23 @@ export default function PrivacyPage() {
               1. Introduction
             </h2>
             <p className="text-foreground mb-4">
-              OpenDiving ("we," "our," or "us") is committed to protecting your
-              privacy. This Privacy Policy explains how we collect, use,
-              disclose, and safeguard your information when you use our diving
-              platform and services ("Service").
+              OpenDiving is open-source software for logging dives. Anyone can
+              download it and run their own copy, and this page describes{" "}
+              <strong>this</strong> copy &mdash; the one you are reading it on.
             </p>
             <p className="text-foreground mb-4">
-              As an open-source project, we believe in transparency and user
-              control over personal data. This policy outlines our practices and
-              your rights regarding your personal information.
+              So &ldquo;we&rdquo; and &ldquo;our servers&rdquo; on this page
+              mean whoever runs this copy of OpenDiving. They are not the
+              OpenDiving project. The project writes the software and operates
+              nothing: it runs no servers for this copy, receives no data from
+              it, and never sees what you log here. Under data-protection law
+              the operator of this copy is the controller of your data, and they
+              are who is answerable for it.
+            </p>
+            <p className="text-foreground mb-4">
+              Because the software is public, so is every claim on this page.
+              What it says is collected is what the source code collects, and
+              you are free to go and check.
             </p>
           </section>
 
@@ -45,64 +72,122 @@ export default function PrivacyPage() {
               2.1 Information You Provide Directly
             </h3>
             <p className="text-foreground mb-4">
-              When you create an account or use our Service, you may provide:
+              When you create an account or use the Service, you may provide:
             </p>
             <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
               <li>
                 <strong>Account Information:</strong> Name, username, email
-                address, password
+                address. There is no password &mdash; see section 5
               </li>
               <li>
                 <strong>Profile Information:</strong> Diving certifications,
-                experience level, bio, profile picture
+                including any images or PDFs of the cards themselves, and a
+                profile picture
               </li>
               <li>
                 <strong>Dive Logs:</strong> Dive location, depth, duration,
-                conditions, notes, photos
+                conditions, gas mixes, species seen, and your notes
+              </li>
+              <li>
+                <strong>Dive-Computer Files:</strong> When you import a dive
+                from a dive computer, the exported file itself is kept alongside
+                the dive &mdash; one per dive, under the filename it arrived
+                with
               </li>
               <li>
                 <strong>Equipment Data:</strong> Diving equipment details and
-                maintenance records
+                service records
               </li>
               <li>
-                <strong>Communication:</strong> Messages, comments, and posts in
-                community features
+                <strong>Contact Messages:</strong> Whatever you write on the
+                contact page, if this copy has one configured, and the address
+                you give to reply to
               </li>
             </ul>
+            <p className="text-foreground mb-4">
+              One thing arrives without you typing it. If you create your
+              account by signing in with Google, your Google profile picture is
+              fetched by this server and stored here as your avatar &mdash;
+              once, when the account is made, and never again afterwards. That
+              only happens on instances with Google sign-in turned on; section
+              4.8 describes it if this one does.
+            </p>
+            <p className="text-foreground mb-4">
+              There are no photos of dives, no bio, no experience level, and no
+              messages, comments or posts, because there are no community
+              features to put them in.
+            </p>
 
             <h3 className="text-xl font-semibold text-foreground mb-3">
               2.2 Automatically Collected Information
             </h3>
             <p className="text-foreground mb-4">
-              We may automatically collect certain information when you use our
-              Service:
+              Three things are recorded without you asking for them, and all
+              three are ordinary machinery rather than measurement:
             </p>
             <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
               <li>
-                <strong>Device Information:</strong> Browser type, operating
-                system, device identifiers
+                <strong>Server logs:</strong> Your IP address and browser user
+                agent, written by the web server the way every web server writes
+                them. How long they are kept, and whether they are kept at all,
+                is a question about the operator&rsquo;s deployment rather than
+                about this software
               </li>
               <li>
-                <strong>IP Address:</strong> Your internet protocol address and
-                general location
+                <strong>Rate-limit counters:</strong> To stop sign-in and the
+                contact form being hammered, this server counts recent requests
+                in a short-lived store. The counters are keyed three ways
+                &mdash; by IP address, by the email address a sign-in link or a
+                contact message was requested for, and by account id for things
+                you can only do signed in, such as exporting your data, changing
+                your username or email, registering a passkey, and looking up
+                place and species names. Each counter is a number and expires by
+                itself: after 15 minutes on the sign-in and account paths, after
+                an hour on the contact form, exports, and the place- and
+                species-name lookups. Other counters exist that hold no
+                identifier at all &mdash; they cap how often this server as a
+                whole may call an outside provider, and are keyed on the
+                provider, not on anyone
               </li>
               <li>
-                <strong>Cookies:</strong> Authentication tokens and user
-                preferences
+                <strong>Passkey labels:</strong> If you register a passkey, a
+                coarse label worked out from your browser &mdash; something like
+                &ldquo;Chrome on macOS&rdquo; &mdash; is saved with it, so a
+                list of passkeys tells you which is which
               </li>
             </ul>
+            <p className="text-foreground mb-4">
+              What is kept in your browser is a separate matter, and section 10
+              lists all of it. No usage data is collected: nothing here measures
+              which pages you visit, which features you use or how long you
+              spend.
+            </p>
 
             <h3 className="text-xl font-semibold text-foreground mb-3">
               2.3 Location Information
             </h3>
             <p className="text-foreground mb-4">
-              We may collect location information when you:
+              Location reaches this server two ways, and both start with you:
             </p>
             <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
-              <li>Add dive sites to your logs</li>
-              <li>Share your location in posts or comments</li>
-              <li>Use location-based features (with your permission)</li>
+              <li>
+                Coordinates you place yourself &mdash; a pin on the map, or a
+                pair of coordinates typed into a dive site or trip form
+              </li>
+              <li>
+                GPS positions recorded inside a dive-computer file you import,
+                which are where you actually were rather than which site you
+                picked
+              </li>
             </ul>
+            <p className="text-foreground mb-4">
+              The app never asks your browser where you are. That is not a
+              promise about restraint: the page is served with a header that
+              switches the browser&rsquo;s geolocation feature off outright, so
+              the question cannot be asked even by mistake. What the map tile
+              provider sees when a map is on screen is a different question, and
+              section 4.4 answers it.
+            </p>
           </section>
 
           <section className="mb-8">
@@ -112,34 +197,33 @@ export default function PrivacyPage() {
             <p className="text-foreground mb-4">We use your information to:</p>
             <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
               <li>
-                <strong>Provide Services:</strong> Enable dive logging,
-                community features, and platform functionality
+                <strong>Provide the Service:</strong> Store your dives, sites,
+                trips, gear and certifications, and show them back to you
               </li>
               <li>
-                <strong>Account Management:</strong> Create and maintain your
-                account, authenticate access
+                <strong>Account Management:</strong> Sign you in, keep you
+                signed in, and let you change or delete your account
               </li>
               <li>
-                <strong>Personalization:</strong> Customize your experience and
-                provide relevant content
+                <strong>Email:</strong> Send you a sign-in link and code,
+                confirm an address change, confirm a deletion, tell you when a
+                passkey is added to or removed from your account, tell your old
+                address when your email address is changed, and &mdash; if you
+                have set a service schedule on a piece of gear &mdash; remind
+                you when it comes due. If you use the contact form, deliver what
+                you wrote to whoever runs this copy. Section 6.3 lists all of
+                these and says which arrive without you asking
               </li>
               <li>
-                <strong>Community Features:</strong> Enable connections with
-                other divers and content sharing
-              </li>
-              <li>
-                <strong>Communication:</strong> Send important updates, respond
-                to inquiries
-              </li>
-              <li>
-                <strong>Safety:</strong> Monitor for dangerous diving practices
-                or inappropriate content
-              </li>
-              <li>
-                <strong>Legal Compliance:</strong> Comply with applicable laws
-                and regulations
+                <strong>Keep the instance standing:</strong> Apply the rate
+                limits described in section 2.2
               </li>
             </ul>
+            <p className="text-foreground mb-4">
+              And nothing else. Your data is not profiled, not used to
+              personalise anything, not used to pick content for you, not sold,
+              and not fed to advertising. There is no advertising here to feed.
+            </p>
           </section>
 
           <section className="mb-8">
@@ -148,42 +232,51 @@ export default function PrivacyPage() {
             </h2>
 
             <h3 className="text-xl font-semibold text-foreground mb-3">
-              4.1 Public Information
+              4.1 Nothing Here Is Public
             </h3>
             <p className="text-foreground mb-4">
-              Certain information is public by default:
+              Nothing you enter is published. There are no public profiles, no
+              public dive logs, no feeds, no forums, and no ratings or reviews.
+              Every dive, dive site, trip, gear item and certification belongs
+              to one account and is visible to that account alone. There is no
+              setting that makes any of it public, because there is nothing for
+              such a setting to do.
             </p>
-            <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
-              <li>Your username and public profile information</li>
-              <li>Dive logs you choose to share publicly</li>
-              <li>Comments and posts in public forums</li>
-              <li>Ratings and reviews of dive sites</li>
-            </ul>
 
             <h3 className="text-xl font-semibold text-foreground mb-3">
-              4.2 With Other Users
+              4.2 Nothing Is Shared with Other Divers
             </h3>
             <p className="text-foreground mb-4">
-              We may share your information with other users when:
+              This software has no way to share anything between accounts. There
+              are no dive buddies, no groups, no comments, and no shared logs.
+              Another diver with an account on this same copy cannot see
+              anything of yours.
             </p>
-            <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
-              <li>You choose to share dive logs or experiences</li>
-              <li>You participate in community discussions</li>
-              <li>You connect with dive buddies or groups</li>
-            </ul>
+            <p className="text-foreground mb-4">
+              The one thing every account on this copy does draw on is the
+              catalogue of species &mdash; the fish themselves, saved here once
+              and belonging to no one diver. It records what a species is, never
+              who saw it; section 4.6 explains how it fills up.
+            </p>
 
             <h3 className="text-xl font-semibold text-foreground mb-3">
-              4.3 Service Providers
+              4.3 Hosting and Email
             </h3>
             <p className="text-foreground mb-4">
-              We may share information with third-party service providers who
-              help us:
+              This copy of OpenDiving runs wherever its operator put it &mdash;
+              their own hardware, or a hosting provider of their choosing. That
+              provider necessarily holds the machine your data sits on, and
+              which provider it is, if any, is the operator&rsquo;s decision
+              rather than the software&rsquo;s.
             </p>
-            <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
-              <li>Host and maintain our servers</li>
-              <li>Provide email communication services</li>
-              <li>Provide customer support</li>
-            </ul>
+            <p className="text-foreground mb-4">
+              Email reaches you through whatever mail server the operator
+              configured, so that server handles the address a sign-in link or a
+              reminder is sent to. There is no customer support desk and no
+              third party doing support on anyone&rsquo;s behalf. The rest of
+              section 4 covers every outside service this software genuinely
+              contacts, and it is a short list.
+            </p>
 
             <h3 className="text-xl font-semibold text-foreground mb-3">
               4.4 Map Tiles
@@ -288,14 +381,59 @@ export default function PrivacyPage() {
               4.7 Legal Requirements
             </h3>
             <p className="text-foreground mb-4">
-              We may disclose your information when required by law or to:
+              Whoever runs this copy of OpenDiving may be compelled by law to
+              hand over data they hold &mdash; a court order, or a valid demand
+              from an authority with jurisdiction over them. That is a duty that
+              falls on the operator, not a permission this page grants itself,
+              and what they must do about such a demand is a question for them
+              and their jurisdiction. The OpenDiving project holds none of your
+              data and so has nothing it could be asked for.
             </p>
-            <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
-              <li>Respond to legal requests or court orders</li>
-              <li>Protect our rights, property, or safety</li>
-              <li>Protect users from harm or illegal activities</li>
-              <li>Prevent fraud or security threats</li>
-            </ul>
+
+            {googleClientId && (
+              <>
+                <h3 className="text-xl font-semibold text-foreground mb-3">
+                  4.8 Signing In with Google
+                </h3>
+                <p className="text-foreground mb-4">
+                  This copy of OpenDiving offers &ldquo;Continue with
+                  Google&rdquo;, and that has a cost before you choose anything.
+                  Opening the front page or the sign-in page loads
+                  Google&rsquo;s sign-in code into your browser as the page
+                  appears, so Google sees your IP address and your browser at
+                  that moment, and may set cookies of its own under{" "}
+                  <a
+                    href="https://policies.google.com/privacy"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="underline hover:text-muted-foreground"
+                  >
+                    its own privacy policy
+                  </a>
+                  , which this copy of OpenDiving neither controls nor can see.
+                </p>
+                <p className="text-foreground mb-4">
+                  If you do sign in with Google, Google learns that you use this
+                  copy of OpenDiving. And if that is the moment your account is
+                  created, your Google profile picture is copied onto this
+                  instance and becomes your avatar &mdash; once, at account
+                  creation, and never again. Signing in with Google later does
+                  not fetch it a second time, because by then the picture is
+                  yours to change.
+                </p>
+                <p className="text-foreground mb-4">
+                  If you never use Google sign-in, signing in another way sends
+                  Google nothing beyond that page load. That page load is the
+                  honest state of things today rather than the state we want:
+                  narrowing it so that nothing reaches Google until you actually
+                  click the button is a separate change already in hand, and
+                  this section will say so differently when it lands. An
+                  operator who would rather not wait can leave Google sign-in
+                  unconfigured, and then none of this &mdash; including this
+                  section &mdash; exists on their copy at all.
+                </p>
+              </>
+            )}
           </section>
 
           <section className="mb-8">
@@ -303,39 +441,44 @@ export default function PrivacyPage() {
               5. Data Security
             </h2>
             <p className="text-foreground mb-4">
-              We implement appropriate security measures to protect your
-              information:
+              What the software itself does:
             </p>
             <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
               <li>
-                <strong>Encryption:</strong> Data is encrypted in transit and at
-                rest
+                <strong>Passwordless by design:</strong> There is no password
+                field anywhere, and no password is stored, because none is ever
+                set. You sign in with a link or a code sent to your email, with
+                a passkey, or &mdash; where an instance offers it &mdash; with
+                Google
               </li>
               <li>
-                <strong>Access Control:</strong> Limited access to personal data
-                on a need-to-know basis
+                <strong>Single-use sessions:</strong> The cookie that keeps you
+                signed in is spent and replaced on every use, and re-using a
+                spent one is treated as a stolen session rather than a mistake
               </li>
               <li>
-                <strong>Authentication:</strong> Secure login with password
-                requirements
+                <strong>Nothing sensitive in browser storage:</strong> The
+                short-lived token that authorises each request is held in memory
+                and never written to storage at all, so a script running on the
+                page has nothing to read. Section 10 is the full list of what is
+                written
               </li>
               <li>
-                <strong>Monitoring:</strong> Regular security audits and
-                vulnerability assessments
-              </li>
-              <li>
-                <strong>Incident Response:</strong> Procedures for handling
-                security breaches
+                <strong>Open to review:</strong> The source is public, so these
+                claims can be checked rather than taken on trust, and security
+                reports are welcome
               </li>
             </ul>
-            <div className="rounded-md border bg-muted p-4 mb-4">
-              <p className="text-muted-foreground">
-                <strong>Note:</strong> As an open-source project, our security
-                measures are transparent and can be reviewed in our public
-                repository. We welcome security reports and contributions from
-                the community.
-              </p>
-            </div>
+            <p className="text-foreground mb-4">
+              What the software cannot promise on an operator&rsquo;s behalf:
+              whether traffic to this copy is encrypted in transit, whether the
+              disks it sits on are encrypted at rest, who has administrative
+              access to the machine, and whether backups exist and where they
+              go. Those are properties of a deployment, not of a program, and
+              they belong to whoever runs this one. The self-hosting
+              documentation tells operators how to get the first of them right;
+              it cannot make them.
+            </p>
           </section>
 
           <section className="mb-8">
@@ -346,13 +489,20 @@ export default function PrivacyPage() {
             <h3 className="text-xl font-semibold text-foreground mb-3">
               6.1 Account Control
             </h3>
-            <p className="text-foreground mb-4">You can:</p>
+            <p className="text-foreground mb-4">
+              From Settings, without asking anyone, you can:
+            </p>
             <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
               <li>Update your profile and account information</li>
-              <li>Control privacy settings for your dive logs</li>
-              <li>Choose what information to share publicly</li>
-              <li>Delete your account and associated data</li>
+              <li>Change the email address you sign in with</li>
+              <li>Export everything you have entered</li>
+              <li>Delete your account and everything attached to it</li>
             </ul>
+            <p className="text-foreground mb-4">
+              There are no privacy settings for your dive logs, and their
+              absence is the point: nothing is public or shared, so there is
+              nothing to switch off.
+            </p>
 
             <h3 className="text-xl font-semibold text-foreground mb-3">
               6.2 Data Rights
@@ -385,16 +535,85 @@ export default function PrivacyPage() {
                 processing
               </li>
             </ul>
+            <p className="text-foreground mb-4">
+              The first four need no request: access, correction, deletion and
+              portability are all buttons in Settings, and they act immediately
+              rather than being forwarded to somebody. The last two, and
+              anything else, go to whoever runs this copy &mdash; section 13
+              says how to reach them.
+            </p>
 
             <h3 className="text-xl font-semibold text-foreground mb-3">
               6.3 Communication Preferences
             </h3>
-            <p className="text-foreground mb-4">You can control:</p>
-            <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
-              <li>Email notifications and updates</li>
-              <li>Community interaction notifications</li>
-              <li>Safety and security alerts</li>
-            </ul>
+            <p className="text-foreground mb-4">
+              This copy of OpenDiving sends you three kinds of email, and the
+              whole list is here. (It also delivers a contact-form message to
+              whoever runs this copy, which is mail about you rather than to
+              you.)
+            </p>
+            <p className="text-foreground mb-4">
+              <strong>Emails that follow an action on this site:</strong> the
+              sign-in message, which carries both a link and a code; the message
+              confirming a new email address, sent to that new address; and the
+              message confirming that you asked to delete your account. None of
+              these can be switched off without breaking the thing they are part
+              of.
+            </p>
+            <p className="text-foreground mb-4">
+              Only the last of those three is sent to your account&rsquo;s own
+              address; the first two go to whatever address was typed, and it is
+              worth being straight about what that means. Signing in needs no
+              account, so anyone who types your address into this copy causes a
+              sign-in message to be sent to you &mdash; which is why that
+              message tells you to ignore it if it was not you, and why the link
+              and code expire quickly and work only once. The
+              address-confirmation message is the same shape: it goes to
+              whatever new address a signed-in diver typed, for the express
+              purpose of proving they can read it. Neither is something the
+              recipient can prevent, because the alternative is a sign-in flow
+              that cannot start.
+            </p>
+            <p className="text-foreground mb-4">
+              Being sent to your own address is not the same as being sent
+              because <em>you</em> acted, and this page will not blur the two.
+              Deleting your account, and adding or removing a passkey, each
+              email your account&rsquo;s address on the strength of a live
+              session and nothing more &mdash; no re-checking that it is really
+              you. So if somebody else had hold of your session, the message
+              still arrives at you, about something you did not do. That is
+              precisely why the notices in the next group exist and cannot be
+              switched off.
+            </p>
+            <p className="text-foreground mb-4">
+              <strong>
+                Security notices, which arrive because your account changed
+                &mdash; whether or not it was you who changed it:
+              </strong>{" "}
+              when a passkey is added to your account, and when one is removed.
+              And when your email address is changed, a note goes to the{" "}
+              <em>old</em> address naming the new one. That last one exists
+              precisely so that the owner of an address finds out even if they
+              were not the person who changed it, which is why it cannot be
+              switched off: an alert you can silence is not an alert.
+            </p>
+            <p className="text-foreground mb-4">
+              <strong>One scheduled email</strong>, under one condition. If you
+              set a service schedule on a piece of gear you have not archived,
+              this copy will email you when that service comes due. It is not a
+              drumbeat: one email when something enters &ldquo;due soon&rdquo;,
+              one when it goes overdue, and then &mdash; because a schedule left
+              overdue would otherwise go quiet forever &mdash; a reminder every
+              three months for as long as it stays overdue. Logging the service,
+              or changing the interval, starts the cycle over. Gear with no
+              schedule on it, or gear you have archived, is never mentioned.
+            </p>
+            <p className="text-foreground mb-4">
+              Those reminders are on by default, on the reasoning that a
+              reminder nobody switched on is a reminder that never arrives. The
+              switch is in Settings, under Notifications, and turning it off
+              stops all of them.
+            </p>
           </section>
 
           <section className="mb-8">
@@ -402,33 +621,56 @@ export default function PrivacyPage() {
               7. Data Retention
             </h2>
             <p className="text-foreground mb-4">
-              We retain your information for as long as:
+              While your account exists, what you have entered is kept. That is
+              what a dive log is for &mdash; a logbook that quietly discarded
+              your older dives would be the wrong product.
             </p>
-            <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
-              <li>Your account is active</li>
-              <li>Needed to provide our services</li>
-              <li>Required by law or for legitimate business purposes</li>
-            </ul>
             <p className="text-foreground mb-4">
               When you delete your account:
             </p>
             <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
               <li>
+                It first goes into a short grace period, during which signing in
+                again brings it back intact. The email confirming the deletion
+                says when that period ends
+              </li>
+              <li>
                 Personal information is permanently deleted within 30 days
               </li>
-              <li>Legal or safety-related data may be retained as required</li>
+              <li>
+                The deletion is not a flag or an archive: the account row and
+                everything hanging off it &mdash; dives, sites, trips, gear,
+                certifications &mdash; are destroyed, and the files you uploaded
+                are unlinked from disk with them
+              </li>
             </ul>
+            <p className="text-foreground mb-4">
+              Nothing is held back for &ldquo;legitimate business
+              purposes&rdquo;; there is no business here to have them. Two
+              honest caveats remain, and both belong to the deployment rather
+              than to the software: whatever backups the operator keeps are
+              theirs to expire, and a deletion cannot reach into a backup
+              already written; and an operator under a legal obligation to
+              preserve something is subject to it whatever this page says.
+            </p>
           </section>
 
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-foreground mb-4">
-              8. International Data Transfers
+              8. Where Your Data Lives
             </h2>
             <p className="text-foreground mb-4">
-              OpenDiving may store and process your information in various
-              countries where our servers and service providers are located. We
-              ensure appropriate safeguards are in place for international data
-              transfers in compliance with applicable laws.
+              Your data lives on this instance, and where that is, is a fact
+              about its operator&rsquo;s deployment. There is no network of
+              servers behind it and no transfer between countries built into the
+              software: one copy of OpenDiving is one database and one files
+              volume, wherever the person running it chose to put them.
+            </p>
+            <p className="text-foreground mb-4">
+              If that matters to you &mdash; and under some data-protection laws
+              it does &mdash; the operator is who can tell you, and section 13
+              says how to ask. If you run the copy yourself, the answer is your
+              own machine.
             </p>
           </section>
 
@@ -437,37 +679,194 @@ export default function PrivacyPage() {
               9. Children's Privacy
             </h2>
             <p className="text-foreground mb-4">
-              OpenDiving is not intended for children under 13. We do not
-              knowingly collect personal information from children under 13. If
-              we become aware that we have collected such information, we will
-              delete it promptly.
+              OpenDiving is not intended for children under 13, and this copy
+              does not knowingly collect personal information from anyone under
+              13. If its operator becomes aware that it has, deleting the
+              account removes it.
             </p>
             <p className="text-foreground mb-4">
-              Users between 13-18 should have parental consent before using our
-              Service, especially given the nature of diving activities.
+              Divers between 13 and 18 should have a parent&rsquo;s agreement
+              before using the Service, particularly given what it is a log of.
             </p>
           </section>
 
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-foreground mb-4">
-              10. Cookies and Tracking Technologies
+              10. What Is Stored in Your Browser
             </h2>
             <p className="text-foreground mb-4">
-              We use cookies and similar technologies to:
+              Two kinds of thing: one cookie that keeps you signed in, and a
+              short list of preferences remembered on this device. None of it is
+              advertising or analytics, which is why this page has no cookie
+              banner for you to click through &mdash; there is nothing here to
+              ask you to accept.
+            </p>
+
+            <h3 className="text-xl font-semibold text-foreground mb-3">
+              10.1 The sign-in cookie
+            </h3>
+            <p className="text-foreground mb-4">
+              One cookie, named <StorageKey name="refresh_token" />, and in
+              normal operation it is the only one this software sets. It is what
+              keeps you signed in. Your browser will not let scripts on the page
+              read it, it is sent only back to this site, and by default it is
+              marked so that it travels only over an encrypted connection.
+            </p>
+            <p className="text-foreground mb-4">
+              It is single-use: each time it is spent a fresh one replaces it,
+              with the clock started again. So the window rolls rather than
+              running out on a fixed date &mdash; signing in keeps you signed in
+              on this browser until about a week goes by without you using the
+              app, not for a week from when you signed in. A browser you keep
+              using stays signed in indefinitely. &ldquo;About a week&rdquo; is
+              the standard setting, and the operator of this copy can change it.
+            </p>
+            <p className="text-foreground mb-4">
+              It is cleared when you sign out and when your account is deleted.
+              A spent one turning up again is treated as a stolen session rather
+              than as a retry.
+            </p>
+            <p className="text-foreground mb-4">
+              The token that actually authorises each request is deliberately
+              not stored anywhere. It is held in the tab&rsquo;s memory, dies
+              when you close the tab, and is worked out again from the cookie
+              above the next time you open the app. That is the reason the rest
+              of this list is so short.
+            </p>
+
+            <h3 className="text-xl font-semibold text-foreground mb-3">
+              10.2 Preferences remembered on this device
+            </h3>
+            <p className="text-foreground mb-4">
+              Nine entries in your browser&rsquo;s local storage. Every one of
+              them is read only by the page you are on: none is sent to this
+              server, and none is sent anywhere else.
             </p>
             <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
               <li>
-                <strong>Essential Cookies:</strong> Enable basic functionality
-                and security
+                <StorageKey name="theme" /> &mdash; whether you picked light,
+                dark, or whatever your system is set to. Kept until you change
+                it
               </li>
               <li>
-                <strong>Preference Cookies:</strong> Remember your settings and
-                preferences
+                <StorageKey name="opendiving:post-auth-redirect" /> &mdash;
+                where to send you after you click a sign-in link, since the link
+                is opened from your mail app and lands on a page that has no
+                other way to know. It expires after 24 hours, is cleared when
+                you sign out, and is read once and removed. It can hold an
+                in-app address such as a particular dive&rsquo;s page, which
+                anyone else at this browser could read &mdash; which is exactly
+                why it does not linger
+              </li>
+              <li>
+                <StorageKey name="opendiving:last-auth-method" /> &mdash; which
+                way you signed in last time, so the sign-in form can say so.
+                Written automatically every time you sign in, and deliberately
+                kept when you sign out, on the reasoning that the next visitor
+                to a browser is nearly always the same diver. Kept until cleared
+              </li>
+              <li>
+                <StorageKey name="opendiving:passkey-nudge-dismissed" /> &mdash;
+                that you dismissed the offer to add a passkey on this browser.
+                Kept until cleared
+              </li>
+              <li>
+                <StorageKey name="opendiving:dive-profile-series-v3" /> &mdash;
+                which lines you last had showing on a dive profile chart. Kept
+                until you change them
+              </li>
+              <li>
+                <StorageKey name="opendiving:gas-use-series" /> &mdash; the same
+                for the gas-use chart. Kept until you change them
+              </li>
+              <li>
+                <StorageKey name="opendiving:dive-activity-view" /> &mdash;
+                which period the dashboard&rsquo;s activity chart is showing.
+                Along with the period it holds a date to anchor it, worked out
+                from the dates of your own dives, so this one is derived from
+                your data rather than being only a setting. Kept until you
+                change it
+              </li>
+              <li>
+                <StorageKey name="opendiving:gas-use-view" /> &mdash; the same
+                for the gas-consumption card, with the same anchor date. Kept
+                until you change it
+              </li>
+              <li>
+                <StorageKey name="opendiving:entry-units" /> &mdash; which units
+                you would rather type in, per field, so that a rented cylinder
+                gauge in psi does not make you convert in your head. Cleared
+                when you sign out, so that the next person at this browser is
+                not handed your choice
               </li>
             </ul>
+
+            <h3 className="text-xl font-semibold text-foreground mb-3">
+              10.3 Which of these you can switch off, and which you cannot
+            </h3>
             <p className="text-foreground mb-4">
-              You can control cookie settings through your browser, though
-              disabling essential cookies may affect Service functionality.
+              Honestly: seven of those nine, you cannot. You can change most of
+              them &mdash; pick a different theme, a different set of chart
+              lines, a different period, and the stored value changes &mdash;
+              but changing a preference is not the same as declining to have one
+              stored, and this software offers no control that does the second.{" "}
+              <StorageKey name="opendiving:passkey-nudge-dismissed" /> cannot
+              even be changed: there is no way to un-dismiss the offer.
+            </p>
+            <p className="text-foreground mb-4">
+              Two are different. <StorageKey name="opendiving:entry-units" /> is
+              the one you can genuinely remove: set every field back to the
+              default unit and the entry is deleted rather than rewritten. And{" "}
+              <StorageKey name="opendiving:post-auth-redirect" /> removes itself
+              &mdash; it is read once and gone, and expires on its own if you
+              never come back.
+            </p>
+            <p className="text-foreground mb-4">
+              Clearing your browser&rsquo;s data for this site does remove all
+              of them, and we would rather not dress that up as a control we
+              give you. It is your browser&rsquo;s, not ours; it cannot single
+              one of these out; and it also destroys the sign-in cookie above
+              and signs you out. Under some rules &mdash; UK law is the clearest
+              case &mdash; storage of this kind owes you a simple way to object
+              to the storage itself, and this software does not yet give you
+              one. That is a real gap rather than an oversight we would rather
+              you did not notice, and closing it properly is a separate piece of
+              work already planned.
+            </p>
+
+            <h3 className="text-xl font-semibold text-foreground mb-3">
+              10.4 What is never stored
+            </h3>
+            <p className="text-foreground mb-4">
+              There is no session storage, no IndexedDB database and no service
+              worker. There is no analytics or telemetry of any kind &mdash; not
+              disabled, not configurable, simply absent, and no such dependency
+              is in the build. No fonts are fetched from anywhere at run time.
+            </p>
+            <p className="text-foreground mb-4">
+              This software sets no third-party cookies of its own. Two outside
+              parties act on their own account rather than ours, and both are
+              disclosed above rather than denied: the map tile provider your
+              operator chose, whose servers answer the image requests described
+              in section 4.4 and may set cookies of their own; and, on instances
+              with Google sign-in turned on, Google.
+            </p>
+            <p className="text-foreground mb-4">
+              One exception belongs to operators rather than to divers. If this
+              copy has the optional admin panel turned on, that panel sets its
+              own session cookies under its own address. They are the tool of
+              whoever administers this copy, they appear only for someone
+              signing in to it, and they are documented for operators in the
+              self-hosting documentation rather than here.
+            </p>
+            <p className="text-foreground mb-4">
+              The rule this project holds itself to, stricter than the law
+              requires: the day any analytics, A/B testing or advertising
+              storage is added to OpenDiving, a real consent flow ships with it
+              and this section changes in the same breath. And any new key added
+              to browser storage owes this section a line in the same change
+              &mdash; a rule with a test behind it rather than only good
+              intentions.
             </p>
           </section>
 
@@ -476,18 +875,18 @@ export default function PrivacyPage() {
               11. Changes to This Privacy Policy
             </h2>
             <p className="text-foreground mb-4">
-              We may update this Privacy Policy from time to time. When we make
-              significant changes, we will:
+              This page is part of the software, so it changes when the software
+              changes and ships in the same release. There is no separate
+              mechanism that emails everyone about a policy change, and this
+              page is not going to promise one it does not have.
             </p>
-            <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
-              <li>Post the updated policy on our website</li>
-              <li>Update the "Last updated" date</li>
-              <li>Notify users via email or Service notifications</li>
-              <li>Provide a summary of key changes</li>
-            </ul>
             <p className="text-foreground mb-4">
-              Your continued use of the Service after changes take effect
-              constitutes acceptance of the updated policy.
+              What exists instead is better in one respect: the page is in the
+              public source repository, so its full history &mdash; every edit,
+              when it was made, and what it replaced &mdash; is readable by
+              anyone, and no version of it can be quietly withdrawn. Which
+              version you are reading depends on which release of OpenDiving
+              this copy is running.
             </p>
           </section>
 
@@ -496,42 +895,66 @@ export default function PrivacyPage() {
               12. Open Source Transparency
             </h2>
             <p className="text-foreground mb-4">
-              As an open-source project, OpenDiving is committed to
-              transparency:
+              A privacy policy is usually a promise you have to take on trust.
+              This one does not have to be:
             </p>
             <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
-              <li>Our code is publicly available for review</li>
-              <li>Privacy practices can be verified through source code</li>
-              <li>Community members can contribute to privacy improvements</li>
-              <li>Data handling practices are documented in our repository</li>
+              <li>
+                The code is public, so every claim on this page can be checked
+                against what actually runs
+              </li>
+              <li>
+                The reasoning behind the awkward parts is written down in the
+                repository too, including the parts this page admits are
+                imperfect
+              </li>
+              <li>
+                Anyone who finds this page saying something the code does not do
+                can report it, and that is treated as a defect rather than as
+                wording
+              </li>
+              <li>
+                If you would rather trust nobody at all, you can run your own
+                copy, and then every question on this page has the same answer:
+                you
+              </li>
             </ul>
           </section>
 
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-foreground mb-4">
-              13. Contact Us
+              13. Contact
             </h2>
             <p className="text-foreground mb-4">
-              If you have questions or concerns about this Privacy Policy or our
-              data practices, please contact us:
+              Most of what people write to a privacy address to ask for, you can
+              simply do. Exporting everything you have entered and deleting your
+              account are both buttons in Settings; they work immediately, they
+              need nobody&rsquo;s approval, and no request has to be sent to
+              anyone.
             </p>
-            <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
-              <li>
-                <strong>Email:</strong> privacy@opendiving.app
-              </li>
-              <li>
-                <strong>GitHub Issues:</strong> Privacy-related issues in our
-                repository
-              </li>
-              <li>
-                <strong>Community Forum:</strong> Privacy discussions section
-              </li>
-              <li>
-                <strong>Data Protection Officer:</strong> dpo@opendiving.app
-              </li>
-            </ul>
             <p className="text-foreground mb-4">
-              We will respond to privacy inquiries within 30 days of receipt.
+              For anything else &mdash; a question about this page, about how
+              this copy is run, or about a right in section 6.2 that Settings
+              does not cover &mdash; the person to ask is whoever runs this copy
+              of OpenDiving. They are the controller of your data; the
+              OpenDiving project is not, holds none of it, and could not answer
+              for them. The{" "}
+              <Link
+                href="/contact"
+                className="underline hover:text-muted-foreground"
+              >
+                contact page
+              </Link>{" "}
+              is how this copy offers to reach them.
+            </p>
+            <p className="text-foreground mb-4">
+              Two things this page will not do, both deliberately. It will not
+              print an address belonging to the OpenDiving project, because a
+              privacy request sent there reaches people who cannot act on it.
+              And it will not point you at a public issue tracker, because a
+              question about your own data is not something you should have to
+              ask in public. How quickly you get an answer is the
+              operator&rsquo;s to say, not this page&rsquo;s.
             </p>
           </section>
         </div>
@@ -539,8 +962,8 @@ export default function PrivacyPage() {
         <div className="mt-8 pt-8 border-t border-border">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted-foreground">
-              This Privacy Policy is effective as of September 2025 and applies
-              to all users of OpenDiving.
+              This policy describes this copy of OpenDiving, and is part of the
+              release it ships in.
             </p>
             <Link
               href="/"

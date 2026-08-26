@@ -8632,6 +8632,12 @@ its `img-src` slot in `src/proxy.ts`; the copy block on `/settings`; and §4.8 o
 which existed only to disclose the request nobody makes now. `getUserInitials` stays — the initials
 were always the fallback and still are.
 
+**§4.8 has since been re-used, so read that number as historical.** The privacy-page rewrite gave it
+to the Google sign-in disclosure, on this section's own
+renders-only-where-there-is-something-to-disclose precedent — see _"The privacy page describes this
+app, and there is still no cookie banner"_. "§4.8" above means the **removed Gravatar** section; a
+reader who follows it to today's page lands on a different disclosure entirely.
+
 ### The digest is the whole client contract
 
 `UserRead` carries `avatar_sha256`, and that one nullable string answers three questions: whether
@@ -9244,3 +9250,443 @@ rect is zeroes and a geometry assertion would pass against any markup at all —
 `memory-storage.ts` exists to prevent. What the render tests pin is the three structural properties
 the alignment rests on: the label is not a flex or grid item, the toggle is out of flow, and the row
 cancels the margin an inline label would never have received.
+
+## The privacy page describes this app, and there is still no cookie banner
+
+The question that started this was whether OpenDiving needs a GDPR cookie banner. It does not. What
+it needed instead was a privacy page that was true, and the page that had been shipping was stock
+boilerplate describing a different product: password login, public profiles, community forums, dive
+photos, ratings, "our servers … various countries", regular security audits, a Data Protection
+Officer, and a `privacy@opendiving.app` address that every self-hoster served to their own divers.
+None of those exist. The standing rule recorded above — _"A privacy policy that overstates what is
+collected is not the safe direction to be wrong in"_ — is what condemned all of it rather than only
+the storage section: it is the document a reader uses to decide whether to trust the rest, and every
+false sentence on it spends that credit.
+
+This entry records the legal reading behind the "no banner" half, and the honesty rules behind the
+rest.
+
+### "We" is the operator, and §1 now says so before anything else
+
+The page's "we" used to mean OpenDiving-the-project, which made every commitment on it one the
+project cannot keep and the operator never made. §4.4–4.6 had already found the truthful voice —
+"we"/"our servers" is _this copy_ of OpenDiving — and §1 now states it outright: the software is
+something anyone can run, this page describes this copy, and under GDPR Art. 4(7) the operator of
+this copy determines purposes and means and is therefore the controller. The project runs no
+servers, receives nothing, and has nothing it could be asked to hand over.
+
+The consequence that is easy to miss: **a section nobody rewrote still changed meaning.** Under the
+new §1, §4.7's "protect our rights, property, or safety" became a commitment made on the operator's
+behalf, which is why §4.7 and §9 were re-read as claims rather than skipped as untouched. Nextcloud
+reasons about itself the same way (<https://nextcloud.com/gdpr/>) and Mastodon ships a per-instance
+policy the operator owns (<https://docs.joinmastodon.org/entities/PrivacyPolicy/>).
+
+### Two jurisdictions, and they have stopped construing one law
+
+Earlier thinking here cited the ICO and CNIL side by side as though they read the same rule. Since 5
+February 2026 they do not, and the difference decides two findings below.
+
+**EU**: ePrivacy Art. 5(3) has exactly two exemption limbs, stated at WP194 §1 — Criterion A,
+storage for the sole purpose of carrying out a transmission; Criterion B, storage strictly necessary
+for a service the user explicitly requested.
+
+**UK**: PECR **Schedule A1** now has five, at ¶¶3–7, inserted by the Data (Use and Access) Act 2025
+(<https://www.legislation.gov.uk/uksi/2003/2426/schedule/A1>). Only ¶3 and ¶4 map onto Criteria A
+and B. **¶5 (statistical purposes), ¶6 (appearance/functionality) and ¶7 (emergency assistance) have
+no EU counterpart at all**, and ¶6 carries a condition the EU limbs do not: ¶6(1)(d), "a simple
+means of objecting, free of charge, to the storage or access and does not object".
+
+A self-hoster can be in either jurisdiction, so the page is written to the union of both duties.
+
+### `localStorage` is in scope, and the write is the part that counts
+
+EDPB Guidelines 2/2023 on the technical scope of Art. 5(3) (v2.0, adopted 2024-10-07,
+<https://www.edpb.europa.eu/system/files/2024-10/edpb_guidelines_202302_technical_scope_art_53_eprivacydirective_v2_en_0.pdf>)
+establish at ¶¶35–39 that storage is storage whatever the medium, so none of this is outside 5(3)
+for being local storage rather than a cookie. Two precision points from the same document, both
+worth keeping because they bound what it can be cited for: **¶40 says the guidelines do not analyse
+the exemptions** — the reading below comes from WP29 and the DPAs, not the EDPB — and **¶44
+addresses only the _access_ limb**, holding that reading local data which "does not leave the
+device" is not a "gaining of access". That is true of every key here, and it does not help: the
+_write_ is still storage under 5(3).
+
+### The exemptions, key by key
+
+From WP29 Opinion 04/2012
+(<https://ec.europa.eu/justice/article-29/documentation/opinion-recommendation/files/2012/wp194_en.pdf>).
+Criterion B is a **conjunctive two-part test** (§2.2) — a positive action requesting a service with
+a clearly defined perimeter, **and** the functionality being unavailable without the storage — and
+it does most of the work.
+
+- **`refresh_token`.** First-party session authentication is the canonical strictly-necessary case
+  (WP194 §3.2), echoed by the ICO and by CNIL, whose exempt list covers "les traceurs destinés à
+  l'authentification auprès d'un service"
+  (<https://www.cnil.fr/fr/cookies-et-autres-traceurs/regles/cookies/que-dit-la-loi>). But §3.2 is
+  explicit that **persistent** login storage is not exempt as such: "Persistent login cookies which
+  store an authentication token across browser sessions are not exempted under CRITERION B". WP194's
+  answer is consent gained at the sign-in form through a visible "remember me (uses cookies)"
+  affordance — the tick _is_ the consent in that pattern. **This app is passwordless and offers no
+  tick.** The owner's call is to ship the prominent note instead (the muted line on `AuthForm`) and
+  to treat disclosure-first as the accepted posture. Recorded as the owner's adaptation, not as
+  something WP29 endorses.
+
+- **`opendiving:post-auth-redirect` is the best-exempted key here**, and the page says so rather
+  than apologising for it. It fails Criterion A decisively — WP194 §2.1 requires that the
+  transmission be impossible without it, and a redirect destination is not routing — but it fits
+  Criterion B squarely: the diver clicked "send me a sign-in link", a positive action with a clearly
+  defined perimeter, and landing back on the deep link is part of the service requested. WP194
+  §3.1's "user-input cookies" names the pattern, and UK Sch. A1 ¶4(2)(e)(ii) names it again,
+  "maintaining a record of selections made on a website". The 24-hour lifetime is defensible under
+  §2.3's reasonable-expectations rule precisely because the flow crosses a mail client. Note that
+  ¶4(2)(e) is gated on "where necessary for the provision of the service requested" — which this
+  meets and the other keys do not, since sign-in and the charts all work without them.
+
+- **`opendiving:last-auth-method` gets its own sentence, and a narrower claim than it first
+  invited.** It is written automatically on every sign-in (`contexts/AuthContext.tsx`) and
+  deliberately survives sign-out. Nobody asked for it, so it fails WP194 §3.6's "the user has
+  explicitly requested the service to remember" premise outright — that much is exactly right. What
+  would be overstated is "no named exemption fits it": true of EU law, but **post-DUAA UK law has
+  one that is arguable**, Sch. A1 ¶6(1)(b)(ii), "otherwise enable an enhancement of the appearance
+  or functionality". The counter-argument belongs here too — the ICO says the appearance exception
+  "is not about adapting the content … based on known or inferred interests or behaviours", and this
+  key is derived from behaviour rather than stated. It ships with plain disclosure rather than
+  dressed in an exemption it does not have, and it is deliberately **not** lumped in with the
+  user-chosen preferences.
+
+- **The user-chosen preferences** (`theme`, the two chart-series keys, the two chart-period keys,
+  `opendiving:entry-units`, and the passkey nudge) sit on WP194 §3.6, which exempts UI customization
+  outright only for session or short-term storage and only where the user explicitly asked for the
+  choice to be remembered; remembering longer takes "additional information in a prominent
+  location". **Say what that note actually is**: WP194 frames it as a route to valid _consent_ — it
+  "would constitute sufficient information for valid consent … negating the requirement to apply an
+  exemption" — not as a wider exemption. §10 is that note. CNIL exempts UI personalisation with no
+  lifetime condition but attaches a different one: only "lorsqu'une telle personnalisation constitue
+  un élément intrinsèque et attendu du service" (Lignes directrices, del. 2020-091, Art. 5 ¶49,
+  <https://www.cnil.fr/sites/cnil/files/atoms/files/lignes_directrices_de_la_cnil_sur_les_cookies_et_autres_traceurs.pdf>).
+  CNIL LD ¶48 adds that a tracker serving several purposes, any one non-exempt, needs consent for
+  the whole.
+
+- **`opendiving:entry-units` is described as a preference, not as an identifier, and that is a
+  constraint rather than a stylistic choice.** The rejected alternative of stamping the record with
+  the signed-in user's id was rejected partly because it "turns a view-state key into an
+  account-linked one, which the privacy page then has to describe as an identifier rather than as a
+  preference" (see _"Entry units are a per-device override; the account preference stays the display
+  authority"_). The shipped design earned the softer description; §10 must not give it away by
+  drifting into identifier language.
+
+- **The two `-view` keys hold an anchor timestamp derived from the diver's own dive dates.** Their
+  source comments' "no dive data" claim is _almost_ true and §10 does not repeat it as absolute —
+  this is the one row where the stored value is personal data in its own right. CNIL Reco ¶49 draws
+  exactly that line, contrasting a pure language cookie which "ne constitue pas un traitement de
+  données à caractère personnel soumis au RGPD".
+
+### No banner is required, and "not required" is the phrasing that is citable
+
+The DPAs say outright that exempt storage needs no consent — the ICO: "No. You can store or access
+information in five circumstances without the subscriber's or user's consent"; CNIL lists trackers
+"non soumis au consentement". What survives is the **transparency** duty under GDPR Arts. 12–13,
+since a session token is personal data, and the ICO is explicit that those duties "apply whenever
+you are processing personal data, even if you are making use of a PECR exception".
+
+Phrase the conclusion as **"not required"**, never as "prohibited". The second is not citable and
+would be the same kind of overclaim this whole change is deleting.
+
+And a regulator recommends precisely what shipped: CNIL Recommandation del. 2020-092 Art. 5 ¶49 says
+French law "n'impose pas d'informer les utilisateurs" about exempt operations, but that CNIL
+nonetheless "recommande que les utilisateurs soient également informés de l'existence de ces
+traceurs et de leur finalités", "en intégrant … une mention les concernant dans la politique de
+confidentialité"
+(<https://www.cnil.fr/sites/cnil/files/atoms/files/recommandation-cookies-et-autres-traceurs.pdf>).
+That upgrades disclosure-first from a preference to a cited recommendation.
+
+### The objection-condition gap: seven keys, UK-only, disclosed rather than closed
+
+UK Sch. A1 ¶6(1)(d) requires "a simple means of objecting, free of charge, to the storage or
+access". The right is to object **to the storage**, not to the value, and the ICO draws the
+consequence: "if someone does object, you must stop storing or accessing information on their
+device". Seven of the nine keys have `setItem` and no `removeItem` anywhere, so **rewriting a
+preference is not objecting to it** and none of them offers a way to stop. Only
+`opendiving:entry-units` genuinely removes itself (clearing every override deletes the key) and
+`opendiving:post-auth-redirect` is read-once and expiring.
+
+**"Clear your site data" is not the means**, and §10 refuses to call it one: the ICO says an
+operator "must not solely rely on browser settings as an indication" that a person does not object;
+¶6(1)(d) requires a means the _service_ gives; site-data clearing cannot single one key out; and
+here it also destroys the `refresh_token` cookie and signs the diver out. The condition is UK-only —
+¶4 (strictly necessary) carries no objection limb, and the EU has no counterpart at all.
+
+The gap is **accepted knowingly and named on the page** rather than papered over, with the control
+itself spun out into a separate change already in hand. Building it inside a copy sweep would have
+meant a real feature through six modules, and `theme` belongs to next-themes rather than to this
+app. Relief worth banking when it lands: ¶6(2) means the means need only be offered "in respect of
+the initial use".
+
+Two alternatives were rejected. **Prose alone** is what already failed. And **reducing the surface
+instead** — dropping `last-auth-method` and adding an un-dismiss path for the passkey nudge — was
+genuinely attractive, since it would delete the hardest paragraph in the legal reading, but it
+deletes a shipped affordance on a legal argument, which is a product call and not a copy edit.
+
+### Why §10 names keys rather than categories
+
+The old §10 had two bullets, "Essential Cookies" and "Preference Cookies", and they were both
+category labels doing no work: a reader could not tell from them what was stored, for how long, or
+whether they could stop it, and neither could a maintainer checking whether the page was still true.
+Named keys make the page **checkable** — against the browser's own storage inspector, against the
+source, and by a test. That is the same reason §4.4–4.6 enumerate flows rather than saying "third
+party services". A category cannot go stale visibly; a list of nine keys can, and does, which is the
+point.
+
+### The landing page's "No trackers and no analytics" is still true, and here is the reading
+
+`components/layout/landing-page.tsx` claims it, and the claim stands: the software ships no tracking
+or analytics technology at all — not disabled, not configurable, absent, with no such dependency in
+the build. Sign-in and map functionality that contacts a third party is **function, not tracking**,
+and each one is disclosed on the page rather than denied. The one genuinely uncomfortable case is
+Google's sign-in script loading at mount on a Google-enabled instance before anyone clicks anything;
+that is disclosed in §4.8 as today's behaviour and is being narrowed to a click by a separate change
+already in hand.
+
+Note also what §10 does **not** claim: not "no third-party cookies", full stop. The app itself sets
+none, but the operator picks the tile provider through `MAP_TILE_URL` and that provider's servers
+answer the image requests §4.4 discloses and may set cookies of their own. So §10 cross-references
+§4.4 instead of making an absolute claim the software cannot keep on every instance.
+
+### The rule this project holds itself to, stricter than the law's floor
+
+The legal floor is **not uniform**, and the honest thing is to name the exceptions this project is
+declining to use rather than to imply they do not exist: CNIL exempts certain audience-measurement
+trackers under conditions, UK Sch. A1 ¶5 now carries a statistical-purposes exception, and WP194
+itself called first-party analytics low-risk and asked the legislator for an exemption it never got
+EU-wide. This project does not navigate that patchwork. Its rule is simpler, is its own, and has two
+clauses:
+
+1. **The day any analytics, A/B testing, or advertising storage is added, a real prior-consent flow
+   ships with it, and §10 changes in the same PR.**
+2. **Any new browser-storage key owes §10 a row in the same PR** — enforced by
+   `src/lib/storage-keys.test.ts`, not by prose.
+
+Clause 2 is enforced because the prose version is exactly what failed: `opendiving:entry-units` was
+added as a ninth key while §10 still described a world of eight, and nobody read the standing rule
+on the way past. Had the test existed it would have failed on that change.
+
+The test enforces the rule in **three checks**, and the second exists only because the first has an
+obvious escape. (1) Every `opendiving:`-prefixed string literal in production code under `src/`
+appears verbatim in `app/privacy/page.tsx`. (2) The set of production modules that write browser
+storage equals a literal list of seven paths — because a key named without the prefix would never
+enter sweep (1) at all, and the disclosure check would pass while the key shipped undisclosed.
+Nothing else in this repo requires the prefix: no lint rule, nothing in `AGENTS.md`. All eight
+current keys follow it by habit, which is exactly the kind of convention that holds until it
+doesn't. (3) The two mechanisms §10.4 names that check (2) cannot see — IndexedDB and service
+workers — are in fact unused; §10.4's third, session storage, is covered by check (2) instead, for
+the reason below.
+
+Note what check (2) is and is not: it is a tripwire on _where_ storage is written, and it says
+nothing about what any key inside those seven modules is called.
+
+**That it is a list of filenames at all was the most useful thing this change learned.** It went
+through two richer designs first and both were wrong, in a way worth recording because the pull
+toward them is strong.
+
+Version one matched `setItem("literal")`. That misses the house style: **every key in this tree is a
+module-level constant passed by name**, so the one shape a new key actually arrives in —
+`const DIVE_UNITS_KEY = "dive-units"` plus `setItem(DIVE_UNITS_KEY, …)` — walked straight past it. A
+guard blind to the house style is decoration.
+
+Version two therefore collected every `const NAME = "string"` tree-wide and resolved each `setItem`
+argument through that map. It caught all three planted shapes — and review then found **four**
+separate defects in it: a flat, unscoped, last-write-wins map **masks a real undisclosed key** when
+any other module declares the same const name with a prefixed value (and duplicate const names
+already exist in this tree); the same map **falsely accuses** a correct file when a tree-wide name
+collides with a local one, so an unrelated `const storageKey = …` anywhere makes
+`chart-series-view.ts` report a key it never writes; a template literal with a substitution is read
+as an offender rather than skipped, the opposite of what its comment promised; and if either regex
+ever stopped matching, every argument resolved to `undefined`, every one was skipped, and the check
+**went green while enforcing nothing**.
+
+The lesson is not "write a better regex". Resolving an identifier to its value is type-graph work,
+and three rounds of review found a new hole each time because regexes cannot do it. So check (2) was
+**cut back to a tripwire**: the set of production modules that write browser storage must equal a
+literal list of seven filenames. It is none of the four things above wrong — it never masks a key
+behind a name collision, never accuses a file over one, and cannot pass vacuously, since the
+expected list is non-empty so a broken walk fails rather than skips (verified by pointing the walk
+at an empty directory). What it protects is that a module which did not write browser storage before
+cannot start without somebody being sent to §10.
+
+It targets three write forms — `setItem`, the index form (`localStorage[key] = …`) and
+`document.cookie =`. Neither of the latter two appears in production code today; they are matched
+anyway so that reaching for one is not a way around the list. Both insist on a real assignment,
+which took a second pass to get right: a bare `localStorage[` also matches a _read_, and a bare `=`
+after `document.cookie` also matches `===`, so the first version would have reported a module that
+only reads as a writer. It claims no completeness past those three, and the phrasing here matters —
+two successive review rounds read an earlier "every way this app could plausibly write" as an
+exhaustiveness claim, which is a fair reading of a sentence that should not have invited it.
+
+**Check (3) exists because §10.4 makes an affirmative negative claim**, which is a stronger thing to
+say than "undisclosed" and therefore worth holding to: the page states this app has "no IndexedDB
+database and no service worker". Neither spells a `setItem`, so check (2) would not notice one
+arriving. Check (3) asserts that no production module mentions `indexedDB`, `serviceWorker` or
+`cookieStore` at all — the last of those is not named on the page, but it is a storage write that
+evades every other pattern here and now is the cheapest moment to catch it.
+
+`sessionStorage` is deliberately **not** in check (3), even though §10.4 names it too. Three
+production modules mention it in comments — `lib/auth-redirect.ts` and `lib/gas-use-view.ts`
+explaining why they chose `localStorage` over it, `lib/api/client.ts` explaining why the access
+token is in neither — so a raw text match would fail on all three for saying nothing at all. Its
+writes are caught by check (2), which is the half that matters. That asymmetry is the whole lesson
+of this file in miniature — what a text match can assert depends on what the codebase happens to
+talk about, and pretending otherwise is how the earlier versions went wrong.
+
+Storage set by the **server** is a different mechanism and deliberately outside this. The
+`refresh_token` cookie arrives as a `Set-Cookie` header forwarded by `lib/api-proxy.ts` and is
+`HttpOnly`, so client code could not write it even in principle; it is disclosed by hand in §10.1. A
+reviewer read the earlier "every way this app could plausibly write" as a claim about that too,
+which is fair — the sentence is now scoped to client code explicitly.
+
+**What it gives up, all of it written into the test's header rather than left to be discovered.** A
+_second_, unprefixed key added inside one of the seven files; check (1) covers that whenever the
+prefix is used, which is the style in all seven. `theme`, and a key assembled at run time. And one
+genuine false positive: it reads raw source, so a production file that merely _mentions_ one of
+those write forms in a comment counts as a writer and fails the equality. Stripping comments
+correctly is parsing, which is precisely the work this check was cut back to avoid, so the trade is
+deliberate — the answer when it fires is to add the file to the list or reword the comment. An
+earlier draft of this entry and of the test header both claimed "no false positives" flatly, which
+was the same overclaiming reflex the page itself exists to correct, caught in review twice. A guard
+trusted past its reach is worse than one nobody trusts, which is exactly how the prose version of
+this rule failed in the first place.
+
+Three scope decisions inside that. It covers **all of `src/`**, not `src/lib/`: every key lives
+there today, but nothing requires it to, and a key added under `hooks/`, `contexts/` or a component
+would slip a narrower guard silently. It **excludes the privacy page from the definition sweep**, so
+a key cannot satisfy the invariant by appearing only on the page — and so the failure message names
+the module that really defines it. And the literal pattern requires **at least one character after
+the colon**: allowing zero also matches a bare `` `opendiving:` `` written in a comment, and since
+every real key starts with that string, the resulting assertion passes against any page at all. A
+test case that cannot fail is worse than no test case, because it reads as coverage while diluting
+the cases that can.
+
+**What it still cannot see, written down rather than left implicit.** `theme` is next-themes' own
+default key, configured without a `storageKey` override, so there is no literal in this tree to find
+— §10 lists that one by hand. And a key assembled at run time (`PREFIX + name`) is spelled by no
+single literal, so neither half can prove it. Check (2) closes the cheapest dodge; it does not close
+a determined one. The privacy page's own sentence about this was corrected during review for the
+same reason: it said storage keys were "enforced by a test, not by good intentions", which claims
+more than the test delivers, and now says "a rule with a test behind it". Overclaiming a guard on
+the page whose purpose is not overclaiming was the wrong direction to be wrong in twice over.
+
+### §6.3 enumerates every email, and the enumeration is exhaustive on purpose
+
+The first draft of this rewrite got §6.3 wrong in the same shape as the boilerplate it was
+replacing, which is worth recording because the mistake is so easy to repeat. It said "almost every
+email … is one you asked for" and then "one email arrives on its own, and only under one condition"
+— naming the gear-service digest as the sole automatic one. The api sends **eight** kinds of mail,
+and three of them fit neither half of that: `send_passkey_added_email` and
+`send_passkey_removed_email` (`api/v1/passkeys.py`), and `send_email_changed_notification`
+(`api/v1/users.py`), which goes to the **old** address naming the new one.
+
+That third one is the one a closed list must never lose, and it is the reason §6.3 now has a
+three-part structure rather than a two-part one. Its whole purpose is to reach someone who did
+**not** act — the api's own docstring says it exists "so its owner finds out even if they weren't
+the one who changed it" — so it directly falsifies any sentence of the form "these arrive because
+you acted". It also cannot be switched off, and §6.3 says why in the page's own voice: an alert you
+can silence is not an alert.
+
+**"Because you acted" was still wrong after that restructure, and for a second, separate reason.**
+The first group was headed "emails you asked for a moment earlier" and closed "those arrive because
+you acted" — and two of its three members can land on someone who did nothing.
+`POST /auth/email/request` is **unauthenticated by necessity**, since it is the entry point of
+sign-in, so anyone who types your address causes a sign-in message to reach you; the mail's own body
+already concedes this with "If you didn't request this, you can safely ignore this email". And
+`send_email_change_confirmation_email` goes to whatever new address a signed-in diver typed,
+_precisely_ to prove they can read it — which means by construction the recipient may not be the
+actor. Only the deletion confirmation is bound to the account's own existing address.
+
+So the group is now headed by the neutral "emails that follow an action on this site", and the page
+spends a paragraph on why only one of the three goes to the account's own address. Note the exact
+claim, because a first attempt at this correction overshot into a second falsehood: the deletion
+confirmation is **bound to the account's address**, which is not the same as being _certain to reach
+the person who acted_. `DELETE /user` acts on a bearer token alone, with no step-up, so a stolen
+session deletes the account and the owner gets the mail without having done anything — the identical
+case the security-notice group concedes for passkeys. §6.3 therefore separates the two ideas
+explicitly rather than letting "your address" quietly stand in for "you". The general lesson, since
+this is the second time the same sentence shape was wrong here: **on this page, "you" in a claim
+about who receives mail is an assumption about identity, and every such assumption has to be checked
+against whether the endpoint authenticates the actor _and_ verifies they control the target
+address.** Authenticating the actor is not enough; neither of these two endpoints does the second
+thing, and neither can.
+
+So §6.3 is written as a complete list of what a **diver** receives, in three groups — action-driven,
+security notices, and the one scheduled digest — and the contact-form mail is parenthesised as mail
+_about_ you rather than _to_ you, since it goes to `CONTACT_FORM_EMAIL` rather than to the account.
+Anyone adding a `send_*` function to the api owes this section a line, on the same reasoning as the
+storage-key rule above; unlike that one it has no test behind it, because the truth it would have to
+check lives in the other repo.
+
+### What the CSP actually buys, and the sentence above that oversold it
+
+**Correction to this file, appended rather than rewritten.** The section _"Gravatar is off unless an
+instance turns it on, and the privacy page stops inventing analytics"_ says the analytics claims
+were deleted against "a CSP that structurally forbids one (`connect-src` names the API and nothing
+else)". That overstates it, and the same overstatement went into the API's self-hosting docs.
+Precisely:
+
+- `connect-src` lists `'self'`, the API origin and (when enabled) Google (`src/proxy.ts`), so a
+  **cross-origin** beacon is blocked and a **same-origin** one is not;
+- `script-src` carries `'strict-dynamic'`, so a carelessly **bundled** analytics script loads with
+  no violation at all;
+- `img-src` admits `data:`, `blob:` and the tile origins, so a tracking pixel passes.
+
+The rule above is the guard. The CSP only narrows the quiet ways to break it, and a sentence that
+says otherwise invites the next person to rely on the wrong thing.
+
+### The numbering in §4 is load-bearing, and §4.8 has changed hands
+
+Nothing outside this file links privacy-page sections by number — the §4.7 pin below says so
+explicitly — but **this file links a lot of them**, and the list is not derivable from a single
+grep: `grep -n '§' DECISIONS.md` returns seven lines and misses the §4.7 pin entirely, because that
+one spells the number out in prose. The full set:
+
+| Pins                 | Section                                                                                                   |
+| -------------------- | --------------------------------------------------------------------------------------------------------- |
+| Map-tile host entry  | §4.4 by number                                                                                            |
+| Geocoder entry       | §4.5 by number                                                                                            |
+| Species-cache entry  | §4.6 by number                                                                                            |
+| Species-picker entry | §4.4 and §4.5 by number, and **§4.7's number in prose** — "renumbered Legal Requirements from 4.6 to 4.7" |
+| Gravatar entry       | §4 as a whole — the Gravatar section "sits last in §4"                                                    |
+| Gravatar removal     | §4.8, meaning the **removed Gravatar** section                                                            |
+
+So **§4.4–4.6 were not touched and nothing before §4.8 was renumbered.** Two of those entries pin
+_content_ rather than a number and would be silently falsified by a reword at the right number: one
+quotes §4.4's "a page with nothing to show loads no map and contacts nobody" verbatim, and one
+quotes §4.5's coordinate sentence. Both survived this change unaltered. Both entries end on the same
+maxim, which is worth restating here because this change is the third time it has been the operative
+one: **a privacy page that is stale is worse than one that is vague.**
+
+**§4.8 is now the Google sign-in disclosure.** It inherits Gravatar's old number and Gravatar's
+precedent for _why_ — it is the one heading that appears on some instances and not others, so it
+sits last in §4 and its absence leaves no gap in the numbering of the headings that are always
+there. An unset `GOOGLE_CLIENT_ID` means no section and no hole. The Gravatar-removal entry has been
+annotated in place so its "§4.8" does not send a reader to the wrong disclosure.
+
+### The ICO's `localStorage` suggestion, read and answered rather than passed over
+
+The ICO's compliance guidance addresses `localStorage` by name — "if you are storing objects in
+localStorage, there may be no expiry date" — and asks operators to consider "automatically removing
+objects in localStorage where appropriate"
+(<https://ico.org.uk/for-organisations/direct-marketing-and-privacy-and-electronic-communications/guidance-on-the-use-of-storage-and-access-technologies/how-do-we-comply-with-the-pecr-rules/>).
+That is a _should_, and the binding duty on the same page is only to "justify their duration in
+relation to the purpose(s) you use them for". §10 does that per key: a preference lasts until you
+change it, which is what a preference is for. **No TTL code was added to chart-view state**, and
+this is recorded so the next reader knows the suggestion was read and answered rather than missed.
+
+### What was deliberately left alone
+
+Two things on the page's edges stayed as they were, and both are worth naming so a later sweep does
+not "fix" them. §7's "Personal information is permanently deleted within 30 days" is
+**byte-identical** to what shipped, because three documents in the API repo are written against that
+number, including a config default chosen specifically to keep the sentence true. And §13 promises
+nothing about _delivery_: `CONTACT_EMAIL` in this repo is display-only while the API's
+`CONTACT_FORM_EMAIL` decides where a submission actually goes, and the two can disagree in both
+directions. §13 therefore links the contact page as "how to reach whoever runs this copy" without
+asserting that a form works, and it renders neither a project-owned address nor the public issue
+tracker — `/contact`'s own fallback does point at the tracker, and a diver filing an erasure request
+in public, to people who are not the controller, is exactly the outcome §13 must not inherit.
