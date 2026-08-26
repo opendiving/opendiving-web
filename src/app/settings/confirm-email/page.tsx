@@ -6,7 +6,7 @@ import Link from "next/link";
 import { authAPI } from "@/lib/api/auth";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Logo } from "@/components/logo";
+import { StandaloneShell } from "@/components/layout/standalone-shell";
 import { getApiErrorMessage } from "@/lib/api/error";
 import {
   AlertCircle,
@@ -140,92 +140,78 @@ function ConfirmStatus({
   onConfirm?: () => void;
 }) {
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-md text-center">
-        <div className="flex justify-center mb-8">
-          <Link href="/" className="flex items-center space-x-2">
-            <Logo className="h-8 w-8 text-coral" />
-            <span className="text-2xl font-bold text-foreground">
-              OpenDiving
-            </span>
+    <StandaloneShell className="text-center">
+      {state === "checking" && (
+        <>
+          <Loader2 className="mx-auto mb-4 h-10 w-10 animate-spin text-primary" />
+          <p className="text-muted-foreground">
+            Checking your confirmation link...
+          </p>
+        </>
+      )}
+
+      {state === "ready" && (
+        <>
+          <MailCheck className="mx-auto mb-4 h-10 w-10 text-primary" />
+          <p className="text-foreground font-medium mb-1">
+            Confirm your new email address
+          </p>
+          <p className="text-muted-foreground mb-6">
+            {email ? (
+              <>
+                Click below to change your account&apos;s email to{" "}
+                <span className="font-medium text-foreground">{email}</span>.
+              </>
+            ) : (
+              "Click below to finish changing your account's email."
+            )}
+          </p>
+          <Button onClick={onConfirm}>
+            <Check className="h-4 w-4 mr-2" />
+            Confirm email change
+          </Button>
+        </>
+      )}
+
+      {state === "verifying" && (
+        <>
+          <Loader2 className="mx-auto mb-4 h-10 w-10 animate-spin text-primary" />
+          <p className="text-muted-foreground">Confirming your new email...</p>
+        </>
+      )}
+
+      {state === "success" && (
+        <>
+          <CheckCircle2 className="mx-auto mb-4 h-10 w-10 text-success" />
+          <p className="text-foreground font-medium mb-1">All set!</p>
+          <p className="text-muted-foreground mb-6">
+            Your email address has been updated
+            {email && (
+              <>
+                {" "}
+                to <span className="font-medium text-foreground">{email}</span>
+              </>
+            )}
+            .
+          </p>
+          <Link href="/settings" className="underline hover:text-foreground">
+            Back to settings
           </Link>
-        </div>
+        </>
+      )}
 
-        {state === "checking" && (
-          <>
-            <Loader2 className="mx-auto mb-4 h-10 w-10 animate-spin text-primary" />
-            <p className="text-muted-foreground">
-              Checking your confirmation link...
-            </p>
-          </>
-        )}
-
-        {state === "ready" && (
-          <>
-            <MailCheck className="mx-auto mb-4 h-10 w-10 text-primary" />
-            <p className="text-foreground font-medium mb-1">
-              Confirm your new email address
-            </p>
-            <p className="text-muted-foreground mb-6">
-              {email ? (
-                <>
-                  Click below to change your account&apos;s email to{" "}
-                  <span className="font-medium text-foreground">{email}</span>.
-                </>
-              ) : (
-                "Click below to finish changing your account's email."
-              )}
-            </p>
-            <Button onClick={onConfirm}>
-              <Check className="h-4 w-4 mr-2" />
-              Confirm email change
-            </Button>
-          </>
-        )}
-
-        {state === "verifying" && (
-          <>
-            <Loader2 className="mx-auto mb-4 h-10 w-10 animate-spin text-primary" />
-            <p className="text-muted-foreground">
-              Confirming your new email...
-            </p>
-          </>
-        )}
-
-        {state === "success" && (
-          <>
-            <CheckCircle2 className="mx-auto mb-4 h-10 w-10 text-success" />
-            <p className="text-foreground font-medium mb-1">All set!</p>
-            <p className="text-muted-foreground mb-6">
-              Your email address has been updated
-              {email && (
-                <>
-                  {" "}
-                  to{" "}
-                  <span className="font-medium text-foreground">{email}</span>
-                </>
-              )}
-              .
-            </p>
-            <Link href="/settings" className="underline hover:text-foreground">
-              Back to settings
-            </Link>
-          </>
-        )}
-
-        {state === "error" && (
-          <>
-            <AlertCircle className="mx-auto mb-4 h-10 w-10 text-destructive" />
-            <p className="text-foreground font-medium mb-1">
-              We couldn&apos;t confirm your email
-            </p>
-            <p className="text-muted-foreground mb-6">{message}</p>
-            <Link href="/settings" className="underline hover:text-foreground">
-              Back to settings
-            </Link>
-          </>
-        )}
-      </div>
-    </div>
+      {state === "error" && (
+        <>
+          <AlertCircle className="mx-auto mb-4 h-10 w-10 text-destructive" />
+          <p className="text-foreground font-medium mb-1">
+            We couldn&apos;t confirm your email
+          </p>
+          <p className="text-muted-foreground mb-6">{message}</p>
+          <Link href="/settings" className="underline hover:text-foreground">
+            Back to settings
+          </Link>
+        </>
+      )}
+    </StandaloneShell>
   );
 }

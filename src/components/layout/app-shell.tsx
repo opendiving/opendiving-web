@@ -5,7 +5,9 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { QuickCreateProvider } from "@/components/layout/quick-create";
 
-// Routes that render their own standalone, chrome-free layout.
+// Routes that render their own standalone, chrome-free layout. They share
+// `StandaloneShell`, which carries the `<main>` element this component would
+// otherwise be the app's only source of.
 const NO_CHROME_ROUTES = [
   "/signin",
   "/onboarding",
