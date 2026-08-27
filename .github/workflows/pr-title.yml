@@ -5,21 +5,28 @@ on:
     # `edited` is the one that matters: it re-runs the check when a title is
     # corrected, so a failing PR goes green without an empty commit to push.
     #
-    # `synchronize` is here for a different reason, and it looks redundant until
-    # you know it: a push cannot change the title, but a *required* check has to
-    # have passed on the PR's latest commit, so without this the check would go
-    # stale the moment a PR gained a second commit and requiring it would hang
-    # the PR indefinitely. The title is re-read from the event payload on every
-    # run, so the extra run is a few seconds and cannot disagree with the last.
+    # `synchronize` is not about the title at all - it is what lets this be a
+    # required check. A required check has to have passed on the PR's *latest*
+    # head SHA, so without a run per push, a PR that gains a second commit
+    # would sit at "Expected - waiting for status" for good. The title is read
+    # from the event payload rather than from the tree, so the extra runs
+    # reach the same verdict.
     types: [opened, edited, reopened, synchronize]
 
-# The check itself needs no token: nothing is checked out and no API call is made, since
-# the title arrives in the event payload. The labelling job below asks for its own.
-permissions: {}
+# The one list of types, read by both jobs below: the check that enforces them
+# and the labels that carry them into the release notes. CONTRIBUTING.md spells
+# the same list out in prose - keep the two in step.
+env:
+  TYPES: feat|fix|refactor|docs|test|chore|perf|ci|build|revert
 
 jobs:
   semantic-title:
     runs-on: ubuntu-latest
+
+    # Nothing is checked out and no API call is made - the title arrives in the
+    # event payload - so this job needs no token at all. Labelling does need one,
+    # which is why it is a separate job rather than a step here.
+    permissions: {}
 
     steps:
       # PRs here are squash-merged, so this title becomes the commit subject on
@@ -34,7 +41,7 @@ jobs:
         env:
           TITLE: ${{ github.event.pull_request.title }}
         run: |
-          PATTERN='^(feat|fix|refactor|docs|test|chore|perf|ci|build|revert)(\([a-z0-9._-]+\))?!?: .+'
+          PATTERN="^($TYPES)(\([a-z0-9._-]+\))?!?: .+"
 
           if printf '%s' "$TITLE" | grep -Eq "$PATTERN"; then
             echo "OK: $TITLE"
@@ -45,7 +52,7 @@ jobs:
           echo "    $TITLE"
           echo
           echo "Expected: <type>[(scope)][!]: <description>"
-          echo "Types:    feat, fix, refactor, docs, test, chore, perf, ci, build, revert"
+          echo "Types:    ${TYPES//|/, }"
           echo
           echo "Examples: feat: lazy-load dive sites in the dive form"
           echo "          fix(gear): keep service status in sync after a delete"
@@ -54,86 +61,97 @@ jobs:
           echo "Edit the title - this check re-runs on edit, no push needed."
           exit 1
 
-  # The same title, read a second time to decide which release-notes category the PR
-  # belongs in (`.github/release.yml`). Only reached when the check above passed, so this
-  # never has to reason about a title that isn't a conventional subject.
+  # The label is what `.github/release.yml` files the PR under when the release
+  # notes are generated. Deriving it from the title rather than asking for it by
+  # hand means the two can never disagree.
   label:
     needs: semantic-title
+
+    # A fork's `GITHUB_TOKEN` is read-only whatever a workflow asks for, so this
+    # would fail on every external contribution. Skipping it there is why it is
+    # its own job: the title check above is the *required* one, and a red X on
+    # every outside PR is the last thing this repository needs the week it goes
+    # public. Fork PRs get labelled by hand, or by a maintainer retitling them.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+
     runs-on: ubuntu-latest
 
-    # `pull-requests: write` to change the labels on this PR; `issues: write` to create
-    # one that doesn't exist yet, which is what keeps a fresh clone of this repo - or a
-    # fork someone maintains - from failing here on its first PR.
     permissions:
+      # `pull-requests: write` applies the label. `issues: write` is what creates
+      # one that doesn't exist yet - labels are an issues-API resource, and
+      # `gh pr edit --add-label` fails outright on a name the repository has
+      # never seen, which is every name until the first PR of that type.
       pull-requests: write
       issues: write
 
-    # Gated to PRs opened from a branch in this repository. On a fork PR the token is
-    # read-only whatever the block above asks for, so an ungated step would turn a
-    # *required* check red on every external contribution - exactly when the repos go
-    # public. Fork PRs get labelled by hand; `pull_request_target` is the alternative if
-    # that ever grates, and is only safe here because this workflow checks out nothing.
-    if: github.event.pull_request.head.repo.full_name == github.repository
-
     steps:
-      - name: Label the PR by its type
+      - name: Label the PR with its type
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
           TITLE: ${{ github.event.pull_request.title }}
-          NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
 
-          # Only three types get a category of their own; everything else falls into the
-          # catch-all and needs no label. A `!` outranks the type, so `feat!:` is breaking
-          # rather than a feature.
-          LABEL=""
-          if [[ "$TITLE" =~ ^([a-z]+)(\([a-z0-9._-]+\))?(!)?: ]]; then
-            if [ -n "${BASH_REMATCH[3]}" ]; then
-              LABEL=breaking
-            elif [ "${BASH_REMATCH[1]}" = feat ]; then
-              LABEL=feat
-            elif [ "${BASH_REMATCH[1]}" = fix ]; then
-              LABEL=fix
-            fi
+          # The title matched the pattern above, so this extracts from a known
+          # shape - and the result can only ever be one of `$TYPES`, which is
+          # what keeps a title from naming an arbitrary label.
+          TYPE="$(printf '%s' "$TITLE" | sed -nE "s/^($TYPES)(\([a-z0-9._-]+\))?!?:.*/\1/p")"
+          if [ -z "$TYPE" ]; then
+            echo "::error::Could not read a type out of the title, which should not be possible after the check above."
+            exit 1
           fi
 
-          CURRENT="$(gh pr view "$NUMBER" --json labels --jq '.labels[].name')"
+          want=("$TYPE")
+          if printf '%s' "$TITLE" | grep -Eq "^($TYPES)(\([a-z0-9._-]+\))?!:"; then
+            want+=(breaking)
+          fi
 
-          # Both directions matter. Adding is the obvious half; removing is what stops a
-          # PR retitled from `feat!:` to `fix:` staying in the Breaking section of the
-          # notes forever. Only labels this step owns are touched, and only where they
-          # actually differ - so a maintainer's own labels survive and an unchanged title
-          # makes no write at all.
-          ARGS=()
-          for KNOWN in breaking feat fix; do
-            HAS=false
-            if printf '%s\n' "$CURRENT" | grep -qx "$KNOWN"; then HAS=true; fi
-            if [ "$KNOWN" = "$LABEL" ] && [ "$HAS" = false ]; then
-              ARGS+=(--add-label "$KNOWN")
-            elif [ "$KNOWN" != "$LABEL" ] && [ "$HAS" = true ]; then
-              ARGS+=(--remove-label "$KNOWN")
+          # Everything this job owns. A `feat!:` retitled to `fix:` has to lose
+          # both of its old labels, or the PR stays in the Breaking section of
+          # notes generated weeks later - and nobody re-reads a merged PR's
+          # labels to catch that.
+          IFS='|' read -r -a managed <<< "$TYPES"
+          managed+=(breaking)
+
+          mapfile -t existing < <(gh label list --limit 200 --json name --jq '.[].name')
+          mapfile -t current < <(gh pr view "$PR" --json labels --jq '.labels[].name')
+
+          contains() {
+            local needle="$1"
+            shift
+            local item
+            for item in "$@"; do
+              if [ "$item" = "$needle" ]; then
+                return 0
+              fi
+            done
+            return 1
+          }
+
+          args=()
+          for label in "${want[@]}"; do
+            # Created on demand rather than seeded once by hand, so a fresh clone
+            # of this workflow into another repository needs no setup step. Only
+            # ever created, never updated: a colour someone tuned in the UI is
+            # theirs to keep.
+            if ! contains "$label" "${existing[@]}"; then
+              case "$label" in
+                breaking) colour=b60205 ;;
+                feat) colour=0e8a16 ;;
+                fix) colour=1d76db ;;
+                *) colour=ededed ;;
+              esac
+              gh label create "$label" --color "$colour" --description "Set from the PR title by pr-title.yml" >/dev/null
+            fi
+            args+=(--add-label "$label")
+          done
+
+          for label in "${current[@]}"; do
+            if contains "$label" "${managed[@]}" && ! contains "$label" "${want[@]}"; then
+              args+=(--remove-label "$label")
             fi
           done
 
-          if [ "${#ARGS[@]}" -eq 0 ]; then
-            echo "Labels already match the title; nothing to do."
-            exit 0
-          fi
-
-          # `gh pr edit --add-label` fails on a label the repository has never defined, so
-          # the one being added is created first. An existing label is left exactly as it
-          # is, colour and description included - this is a backstop for a repo that was
-          # never set up, not a place to keep them in sync.
-          if [ -n "$LABEL" ]; then
-            case "$LABEL" in
-              breaking) COLOUR=d73a4a; DESC="Changes an existing contract - listed first in the release notes" ;;
-              feat)     COLOUR=0e8a16; DESC="New user-visible behaviour" ;;
-              fix)      COLOUR=1d76db; DESC="Corrects behaviour that was already shipped" ;;
-            esac
-            gh label create "$LABEL" --color "$COLOUR" --description "$DESC" 2>/dev/null ||
-              echo "Label '$LABEL' is already defined."
-          fi
-
-          gh pr edit "$NUMBER" "${ARGS[@]}"
+          gh pr edit "$PR" "${args[@]}"
