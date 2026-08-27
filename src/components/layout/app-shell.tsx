@@ -16,6 +16,10 @@ const NO_CHROME_ROUTES = [
   // to draw and nowhere in the app to go until the account is back.
   "/restore",
   "/auth/verify",
+  // Where Google returns a visitor mid-sign-in. Same state as `/auth/verify`: a
+  // round trip that has left and come back, with no session yet to draw a user
+  // menu from.
+  "/auth/google/callback",
   "/settings/confirm-email",
   // The screen after an account deletion. The header's user menu belongs to a
   // session that has just been blacklisted, and offering a signed-out visitor

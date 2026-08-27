@@ -50,7 +50,7 @@ import { describe, expect, it } from "vitest";
 //     already had to think about.
 //   - a *second* key added inside a module already on the list below, if it is named
 //     without the `opendiving:` prefix. Check (1) catches it whenever the prefix is
-//     used, which is the house style in all seven of these files.
+//     used, which is the house style in all eight of these files.
 //   - a storage write spelled in some way `STORAGE_WRITE` does not list. It targets the
 //     three forms this app actually uses or could slip into - `setItem`, the index form,
 //     `document.cookie` - and it is a text match over source, not a semantic one, so it
@@ -75,6 +75,7 @@ const STORAGE_WRITERS = [
   "lib/dive-activity-view.ts",
   "lib/entry-units.ts",
   "lib/gas-use-view.ts",
+  "lib/google-oauth.ts",
   "lib/last-auth-method.ts",
   "lib/passkey-nudge.ts",
 ];
@@ -89,7 +90,7 @@ const PRIVACY_PAGE = path.join(SRC, "app", "privacy", "page.tsx");
 // that cannot fail, quietly diluting the ones that can.
 const KEY_LITERAL = /(['"`])(opendiving:[^'"`]+)\1/g;
 
-// A write to browser storage from client code. `setItem` is how all seven writers do
+// A write to browser storage from client code. `setItem` is how all eight writers do
 // it; the index and cookie forms are here because they are real writes that spell no
 // `setItem` at all, and neither appears in production code today - they are matched so
 // that reaching for one is not a way around the list.

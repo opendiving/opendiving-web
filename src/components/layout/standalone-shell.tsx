@@ -14,12 +14,12 @@ interface StandaloneShellProps {
  * centered column on a full-height background, with the wordmark linking home as
  * the only way back out.
  *
- * It exists for the `<main>` element as much as for the six copies of the wordmark
- * it replaces. `AppShell` was the only place in the app that rendered one, so every
- * chrome-free page was a document with no main landmark and no landmark around any
- * of its content - two axe violations each (`landmark-one-main` and `region`).
- * Keeping the element here is what stops the seventh such page from reintroducing
- * them.
+ * It exists for the `<main>` element as much as for the copies of the wordmark it
+ * replaces - six of them when it was extracted, and one more with every chrome-free
+ * page added since. `AppShell` was the only place in the app that rendered one, so
+ * every chrome-free page was a document with no main landmark and no landmark around
+ * any of its content - two axe violations each (`landmark-one-main` and `region`).
+ * Keeping the element here is what stops each new such page from reintroducing them.
  */
 export function StandaloneShell({ children, className }: StandaloneShellProps) {
   return (

@@ -69,6 +69,16 @@ const USER = {
   email: "a@example.com",
 };
 
+// What the Google callback hands the provider: an authorization code and the two
+// values needed to redeem it, not an identity. `authAPI` is mocked in this file,
+// so the shape is all these tests care about - `lib/google-oauth.test.ts` is where
+// the verifier's own RFC 7636 shape is pinned.
+const GOOGLE_GRANT = {
+  code: "auth-code",
+  codeVerifier: "v".repeat(43),
+  redirectUri: "http://localhost:3000/auth/google/callback",
+};
+
 const wrapper = ({ children }: { children: ReactNode }) => (
   <AuthProvider>{children}</AuthProvider>
 );
@@ -192,7 +202,7 @@ describe("AuthProvider outcomes", () => {
 
     let status: string | undefined;
     await act(async () => {
-      status = (await result.current.signInWithGoogle("credential")).status;
+      status = (await result.current.signInWithGoogle(GOOGLE_GRANT)).status;
     });
 
     expect(status).toBe("onboarding_required");
@@ -222,7 +232,7 @@ describe("AuthProvider outcomes", () => {
 
     let status: string | undefined;
     await act(async () => {
-      status = (await result.current.signInWithGoogle("credential")).status;
+      status = (await result.current.signInWithGoogle(GOOGLE_GRANT)).status;
     });
 
     expect(status).toBe("deletion_pending");
@@ -460,7 +470,7 @@ describe("AuthProvider last-used method", () => {
       await result.current.verifyEmailLink("tok");
     });
     await act(async () => {
-      await result.current.signInWithGoogle("credential");
+      await result.current.signInWithGoogle(GOOGLE_GRANT);
     });
     await act(async () => {
       await result.current.signInWithPasskey("flow-1", { id: "c" } as never);
@@ -500,7 +510,7 @@ describe("AuthProvider last-used method", () => {
     authAPI.completeProfile.mockResolvedValue({ status: "authenticated" });
 
     await act(async () => {
-      await result.current.signInWithGoogle("credential");
+      await result.current.signInWithGoogle(GOOGLE_GRANT);
     });
     expect(rememberAuthMethod).toHaveBeenCalledWith("google");
 

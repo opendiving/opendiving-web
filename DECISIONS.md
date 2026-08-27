@@ -475,16 +475,19 @@ This only works because the app runs as a persistent Node server (`output: "stan
   just breaks dev styling for reasons outside this app's control. Production never inline-injects
   CSS - it ships static, hashed `<link rel="stylesheet">` files covered by `'self'`, so the nonce
   requirement costs nothing there.
-- `style-src` also lists `https://accounts.google.com` in _both_ modes. GSI's client script injects
-  its own `<link rel="stylesheet" href="https://accounts.google.com/gsi/style">` into `<head>`, and
-  a host source is the only thing that allows it: `'unsafe-inline'` covers inline `<style>` blocks
-  only, never an external stylesheet, so the dev branch needs the entry just as much as production
-  does. Without it the browser reports a `style-src-elem` violation for that URL and the real
-  (invisible, click-receiving) Google button in `components/auth/google-auth-button.tsx` renders
-  unstyled - it still sits under the custom visual, so nothing looks broken, which is exactly why
-  this went unnoticed. The same origin already appears in `connect-src`/`frame-src`; note that
-  adding a host source alongside a nonce is fine - a nonce only disables the `'unsafe-inline'`
-  fallback for its directive, not host allowlisting.
+- **Superseded:** `style-src` no longer lists `https://accounts.google.com`, and neither does any
+  other directive, in either configuration - see _""Continue with Google" is a redirect, and
+  Google's code never reaches the browser"_ below. The bullet as written: `style-src` also lists
+  `https://accounts.google.com` in _both_ modes. GSI's client script injects its own
+  `<link rel="stylesheet" href="https://accounts.google.com/gsi/style">` into `<head>`, and a host
+  source is the only thing that allows it: `'unsafe-inline'` covers inline `<style>` blocks only,
+  never an external stylesheet, so the dev branch needs the entry just as much as production does.
+  Without it the browser reports a `style-src-elem` violation for that URL and the real (invisible,
+  click-receiving) Google button in `components/auth/google-auth-button.tsx` renders unstyled - it
+  still sits under the custom visual, so nothing looks broken, which is exactly why this went
+  unnoticed. The same origin already appears in `connect-src`/`frame-src`; note that adding a host
+  source alongside a nonce is fine - a nonce only disables the `'unsafe-inline'` fallback for its
+  directive, not host allowlisting.
 - Radix components that lock body scroll (`Dialog`, `Popover`, `DropdownMenu`, ...) pull in
   `react-remove-scroll` -> `react-style-singleton`, which injects a `<style>` tag straight into
   `document.head` via raw DOM APIs - completely outside React/Next's own nonce propagation. It looks
@@ -580,6 +583,12 @@ editing (name/username/email) is unaffected; it was never part of the auth flow 
 
 ### `GoogleAuthButton` talks to `google.accounts.id` directly - `@react-oauth/google` was removed
 
+**Superseded, along with the four entries below it.** No Google script is loaded at all any more, so
+there is no library choice left to make and no `?hl=en` problem to solve - see _""Continue with
+Google" is a redirect, and Google's code never reaches the browser"_ below. Kept because it records
+why `@react-oauth/google` is not in `package.json`, which is still worth knowing before anyone adds
+it back.
+
 This app used to render Google's button through the `@react-oauth/google` package
 (`GoogleOAuthProvider` in `app/layout.tsx`, `GoogleLogin` in `GoogleAuthButton`). It's no longer a
 dependency at all - removed (`npm uninstall @react-oauth/google`) after it turned out to make one
@@ -649,6 +658,11 @@ methods actually used (`initialize`, `renderButton`) - no need to pull in `@reac
 
 ### The button's border radius and dark-mode outline aren't config options - GSI's own pixels can't be reached, so a wrapper draws the missing edge instead
 
+**Superseded.** Google renders no pixels here any more, so none of this is reachable or needed - see
+_""Continue with Google" is a redirect, and Google's code never reaches the browser"_ below. The
+button is an ordinary `Button` with the app's own corner radius and theme, which is what the three
+entries here were trying to approximate from the outside.
+
 A follow-on request: match the button's corner radius to `Button`'s own `rounded-md`, and fix how
 the button visually disappears in dark mode (the `filled_black` theme has no border of its own, and
 blends into the near-black `--card` background it sits on).
@@ -683,6 +697,9 @@ accessibility trade-off above to fully eliminate.
 
 ### `colorScheme` on the render target, kept in sync with `resolvedTheme` (not hardcoded to `"light"`)
 
+**Superseded.** There is no render target: nothing of Google's is rendered into this page - see
+_""Continue with Google" is a redirect, and Google's code never reaches the browser"_ below.
+
 A reasonable follow-up question, prompted by
 [a Medium post](https://medium.com/@ludvig.flyckt/fixing-the-react-google-auth-button-background-in-dark-mode-150e12220256)
 describing a real `@react-oauth/google` dark-mode fix: wrapping the button in a
@@ -711,6 +728,10 @@ actually resolved this.
 
 ### Resolution: `theme` is always `"outline"`, regardless of the app's own light/dark mode
 
+**Superseded.** No `theme` is passed to anything, because nothing of Google's is configured or
+rendered - see _""Continue with Google" is a redirect, and Google's code never reaches the browser"_
+below.
+
 With the logo-backing chip confirmed as genuinely unreachable (not a CSS/config issue - see both
 entries above), the two remaining options were: (1) accept a fully custom button via the
 invisible-`renderButton()`-overlay trick from above, accessibility trade-off included, or (2) stop
@@ -732,6 +753,19 @@ If a truly dark-native button (no light patches anywhere) becomes worth the acce
 later, the fully custom overlay approach from above is still the one documented path to get there.
 
 ### Resolution, take two: the fully custom overlay button, with the focus-ring trade-off actually mitigated
+
+**Superseded, and the trade-off it describes is gone rather than mitigated.** The overlay - a
+decorative `aria-hidden` visual with GSI's real button stacked on it at `opacity: 0` - rested on an
+assumption about GSI's internals rather than a documented contract with Google, which this entry was
+honest about. There is no injected button to hide behind now, so the control is one real `<button>`
+carrying its own name, and the `group-has-[:focus-visible]` machinery went with the rest. See
+_""Continue with Google" is a redirect, and Google's code never reaches the browser"_ below.
+
+Two details here are additionally stale about the code as it stood _before_ that change, and should
+not be cited as current by anyone reading back: the `renderButton` effect was keyed on
+`[ready, width]`, not `[ready, width, resolvedTheme]`, and `theme` was hardcoded to `"outline"`
+rather than tracking light/dark. The icon is at `components/icons/google-icon.tsx`, not
+`components/google-icon.tsx`.
 
 The all-`"outline"` button above shipped first as the cheap, zero-risk fix, but was revisited in
 favor of the fully custom button after all: `GoogleAuthButton` now renders its own `Button`-styled
@@ -2199,16 +2233,20 @@ this code:
   `window` is real, so there's nothing to gain from the hook version. (`/signin` itself _does_ use
   `useSearchParams`, and therefore _does_ have a `Suspense` boundary - same shape as
   `/auth/verify`.)
-- **The email flow needs storage; Google doesn't.** Google sign-in never leaves the tab, so the
-  destination is just a prop (`AuthForm` -> `GoogleAuthButton`). The magic link leaves the app
-  entirely and comes back on `/auth/verify`, which has no idea what the visitor originally wanted -
-  so `AuthForm` stashes it when requesting the link and `/auth/verify` consumes it.
-  `rememberPostAuthRedirect` is called on _every_ link request, including with no destination,
-  precisely so it clears a stale one; `consumePostAuthRedirect` removes the key as it reads it,
-  including on the onboarding branch. Without both of those, a destination abandoned earlier could
-  silently hijack an unrelated later sign-in. If the link is opened in another browser the value
-  simply isn't there and the visitor lands on `/dashboard`, which is the intended fallback, not a
-  failure.
+- **The email flow needs storage; Google doesn't.** **Superseded for Google, which now does** - it
+  leaves the tab for Google's authorization endpoint and comes back on `/auth/google/callback`, and
+  it carries its destination inside its own per-attempt record rather than in the key described
+  here. See _""Continue with Google" is a redirect, and Google's code never reaches the browser"_
+  below for why it is not this key. The rest of this bullet, about the magic link, stands. As
+  written: Google sign-in never leaves the tab, so the destination is just a prop (`AuthForm` ->
+  `GoogleAuthButton`). The magic link leaves the app entirely and comes back on `/auth/verify`,
+  which has no idea what the visitor originally wanted - so `AuthForm` stashes it when requesting
+  the link and `/auth/verify` consumes it. `rememberPostAuthRedirect` is called on _every_ link
+  request, including with no destination, precisely so it clears a stale one;
+  `consumePostAuthRedirect` removes the key as it reads it, including on the onboarding branch.
+  Without both of those, a destination abandoned earlier could silently hijack an unrelated later
+  sign-in. If the link is opened in another browser the value simply isn't there and the visitor
+  lands on `/dashboard`, which is the intended fallback, not a failure.
 
 #### That storage has to be `localStorage`, and it carries an expiry
 
@@ -7400,11 +7438,15 @@ Things that are load-bearing:
   what they should see is exactly what an instance that configures nothing shows, which is what the
   default is. There is no meaningful default session for `useAuth()` to return, which is why the two
   differ.
-- **The CSP follows the configuration.** The three `accounts.google.com` entries (`style-src`,
-  `connect-src`, `frame-src`) are named only where a Google client ID is set, so an instance that
-  does not use it does not advertise it. `www.gravatar.com` was in `img-src` on the same terms until
-  avatars stopped coming from anywhere but this instance, so the only third-party origins left in
-  `img-src` are the map tile hosts.
+- **The CSP follows the configuration.** **Superseded for Google:** those three entries are gone
+  from every directive in both configurations, because no Google code runs in the browser any more -
+  see _""Continue with Google" is a redirect, and Google's code never reaches the browser"_ below.
+  The policy therefore no longer discloses whether an instance has Google sign-in turned on, which
+  is a stronger version of what this bullet wanted. As written: the three `accounts.google.com`
+  entries (`style-src`, `connect-src`, `frame-src`) are named only where a Google client ID is set,
+  so an instance that does not use it does not advertise it. `www.gravatar.com` was in `img-src` on
+  the same terms until avatars stopped coming from anywhere but this instance, so the only
+  third-party origins left in `img-src` are the map tile hosts.
 
 ## Gravatar is off unless an instance turns it on, and the privacy page stops inventing analytics
 
@@ -8165,12 +8207,16 @@ same moment.
 - **_Verify_ stays disabled until all six digits are in.** Not tidiness: the API allows five wrong
   attempts before it nulls the code, and a half-typed submission would spend one of them on nothing.
 
-**Routing is by the `redirectTo` prop, like Google's — not through `localStorage`.** The two
-mechanisms in "The destination round-trips through `lib/auth-redirect.ts`" above split on whether
-the flow leaves the tab. The link does and reads the stored path on `/auth/verify`; the code does
-not, so the prop is authoritative and `sanitizeRedirectPath` still guards it. One consequence
-already described for Google applies unchanged here: signing in with the code leaves the stored
-destination behind for the day it lives, cleared by the next request or by signing out.
+**Routing is by the `redirectTo` prop — not through `localStorage`.** The mechanisms in "The
+destination round-trips through `lib/auth-redirect.ts`" above split on whether the flow leaves the
+tab. The link does and reads the stored path on `/auth/verify`; the code does not, so the prop is
+authoritative and `sanitizeRedirectPath` still guards it. One consequence applies here as it does to
+every in-tab method: signing in with the code leaves the stored destination behind for the day it
+lives, cleared by the next request or by signing out.
+
+**This entry originally said "like Google's", and that comparison has inverted.** Google now leaves
+the tab and stores its destination — in its own per-attempt record, not the key this paragraph is
+about. The passkey ceremony is the in-tab sibling to point at instead.
 
 `authAPI`'s three hand-rolled "capture the access token if this outcome carries one" blocks became
 one `captureSession` helper on the way past, since the code path would have been a fourth identical
@@ -8292,9 +8338,12 @@ someone who chose to stop.
 never calls `rememberPostAuthRedirect`. That `localStorage` slot exists because the email flow
 leaves the tab and comes back on `/auth/verify` with no other way to know where it was headed (see
 "`/signin` is back, and carries where the visitor was headed" above); this ceremony never leaves the
-tab, exactly like Google's. Writing it here would leave a destination behind for a _later_
-magic-link sign-in to honour. There is a test that pins it, trivially true today and a regression
-guard the day someone adds the call.
+tab. Writing it here would leave a destination behind for a _later_ magic-link sign-in to honour.
+
+**"Exactly like Google's" is how that sentence originally ended, and it no longer holds.** Google
+leaves the tab now. It still does not write _this_ key — it carries its destination in its own
+per-attempt record — so the conclusion here is unchanged; only the comparison is. There is a test
+that pins it, trivially true today and a regression guard the day someone adds the call.
 
 One consequence, named and accepted: starting the explicit ceremony cancels the armed conditional
 one, because v13's abort service allows only one ceremony at a time. So a diver who clicks the
@@ -10076,3 +10125,167 @@ browser rather than computed. Nothing was lost, because the opacity was adding t
 already carried on its own - the on half is `font-medium text-foreground`, so the two are separated
 by weight _and_ by the foreground/muted split, which is the same pair the rest of the app uses for
 primary against secondary text.
+
+## "Continue with Google" is a redirect, and Google's code never reaches the browser
+
+`GoogleAuthButton` used to inject `https://accounts.google.com/gsi/client?hl=en` at component mount.
+The sign-in form renders on `/` and `/signin`, so **every signed-out visitor's browser contacted
+Google before any choice was made** - five requests to two Google-controlled origins on a single
+page load, measured against the live GIS client:
+
+```
+script      accounts.google.com/gsi/client?hl=en
+stylesheet  accounts.google.com/gsi/style
+document    accounts.google.com/gsi/button?...      (a 0x0 iframe)
+stylesheet  ssl.gstatic.com/_/gsi/_/ss/k=gsi.gsi...
+script      ssl.gstatic.com/_/gsi/_/js/k=gsi.gsi...
+```
+
+No Google cookie was set on load in a fresh profile, but the IP and user-agent disclosure was
+unconditional, and a cookie-free load is a fact about one GIS build rather than a promise anyone
+made. WP29 Opinion 04/2012 §3.7, on the analogous social plug-in shape, is the standard this fell
+short of: consent from logged-out visitors is needed before a third party can use cookies, and every
+visitor to `/` and `/signin` is by definition signed out. Disclosure does not cure it. It is the
+same instinct as this project's Gravatar removal - the unconditional third-party browser call goes
+away rather than being disclosed.
+
+**The fix is that clicking the button _is_ the consent.** Nothing reaches Google until the visitor
+asks for Google, and then what happens is that they go there.
+
+### Why a hand-built URL rather than any of Google's own mechanisms
+
+Four options were considered and three rejected, all for the same reason: they still load
+`gsi/client`.
+
+- **A two-click facade, or a one-click facade forwarding into GSI's own button.** Both defer the
+  script rather than removing it, so both leave a "Google's code runs in your browser" paragraph on
+  `/privacy`. The one-click variant additionally depends on GSI rendering its clickable button as
+  light DOM, which is measurably true today - `div[role="button"]`, class `nsm7Bb-HzV7m-LgbsSe`,
+  with the `gsi/button` iframe at 0x0 - and documented nowhere. Google's display-button guide
+  describes neither shape and the release notes do not record the change, so it is not a contract.
+- **One Tap** (`google.accounts.id.prompt()`) is not a mechanism at all: it is suppressed for two
+  hours after a first dismissal and escalating thereafter, shows nothing without a live Google
+  session, and under FedCM the display-moment methods that would let a caller detect the no-show are
+  gone. A button that undetectably does nothing is worse than what it replaced.
+- **GIS's own code flow** (`google.accounts.oauth2.initCodeClient()`) ships inside the same
+  `gsi/client` bundle, so it buys no privacy either. It is not the "code flow" this app adopted.
+
+What this app does instead is build the authorization URL itself and perform a **top-level
+navigation** to it (`lib/google-oauth.ts`). Not a popup - subject to blockers and the
+transient-activation budget - and not a form submission, which `form-action 'self'` governs.
+
+### PKCE, which the chosen direction is what made possible
+
+The authorization request carries `code_challenge` and `code_challenge_method=S256`; the verifier
+travels to this app's API in the request body and on to Google in the exchange. `initCodeClient`
+**cannot do PKCE at all** - its `CodeClientConfig` has no `code_challenge` field - so every rejected
+option above would have shipped without it. Building the URL by hand is what unlocked it, which is
+worth recording as a benefit rather than leaving it looking like incidental complexity.
+
+Support for it is real but undocumented in Google's guides. What establishes it is the OpenID
+discovery document at <https://accounts.google.com/.well-known/openid-configuration>, which
+advertises `"code_challenge_methods_supported": ["plain", "S256"]`; cite that rather than a guide.
+`crypto.subtle`, which hashes the verifier, needs a secure context - not a constraint here, since
+every redirect URI Google will accept is HTTPS or localhost, and both are secure contexts. An
+earlier draft rejected PKCE on the grounds that it would break plain-HTTP LAN deployments; that was
+wrong, because such a deployment cannot register a redirect URI and so cannot use Google sign-in
+under any design.
+
+### No `nonce`, and that was measured rather than assumed
+
+A nonce binds an ID token to the request that asked for it, and its threat model is replay of a
+token that travelled through the browser. Here the ID token never touches the browser: it goes from
+Google's token endpoint to this app's API over TLS, in exchange for a single-use code that cannot be
+redeemed without both the client secret and the PKCE verifier. Adding one would mean a third value
+marshalled through browser storage and the request body for no threat that is open.
+
+The doubt was worth having, because Google's OpenID Connect page marks `nonce` "(Required)" in its
+parameter table while the prose beside it says it "enables replay protection when present". Four
+authorization requests settled it: `response_type=code` was accepted without a nonce, with and
+without a challenge, and `response_type=id_token` without one came back
+`invalid_request: "Nonce required for response_type id_token."` That is OIDC Core exactly - optional
+for the authorization code flow (§3.1.2.1), required for the implicit flow (§3.2.2.1). **The
+contradiction on Google's page is one parameter table serving both flows**, so the citation to
+prefer is the flow-specific _OAuth 2.0 for Web Server Applications_ page, which lists `nonce` on
+none of its parameter lists. That page does contain the word twenty-seven times - once inside the
+`state` description and the rest throughout the DPoP proof section - and none of those is the OIDC
+authentication nonce, so a grep for it is a red herring.
+
+### `localStorage`, keyed by `state`, and why the obvious technical choice was the wrong one
+
+`sessionStorage` is the better fit on its merits: per-tab, dies with the tab, and the redirect
+returns to the same tab. It is not what this uses, because `/privacy` §10.4 states outright that
+"There is no session storage, no IndexedDB database and no service worker" - an affirmative negative
+claim on the page this whole change exists to keep truthful - and nothing in the suite would catch
+its falsification, since `storage-keys.test.ts` deliberately leaves `sessionStorage` out of its
+`ABSENT_MECHANISMS` text match (three production files mention it in comments). The choice was
+between rewriting a true negative into a qualified one and using the mechanism the page already
+documents. `opendiving:google-sign-in-attempts` is TTL-bounded and consumed on read, exactly as
+`lib/auth-redirect.ts` already does for the magic-link destination.
+
+**Keyed by `state` rather than a single current-attempt record**, and that is not tidiness.
+`localStorage` is shared across tabs, so one slot means the second of two concurrent sign-ins
+overwrites the first; whichever callback returns first then fails its `state` check and reports a
+failure over a sign-in Google actually approved. A map of pending attempts, each removed when its
+own callback consumes it, is what makes two tabs independent. Expired entries are dropped on every
+write, so it cannot grow without bound.
+
+**The destination rides inside that record too**, and an earlier draft had it in the existing
+`rememberPostAuthRedirect`/`consumePostAuthRedirect` pair on the grounds that a second mechanism
+should not be introduced. Right instinct, wrong call: that pair is a _single_ read-once key over one
+`{ path, expiresAt }`, so leaving the destination there reintroduces the same cross-tab bug one
+field lower down and in a quieter form - tab B's `next` overwrites tab A's, tab A then signs in
+perfectly and lands on tab B's page, and nothing anywhere reports a problem.
+
+**30 minutes, and "minutes" was the first draft of that.** An expired entry means no exchange at all
+and an error over a sign-in Google approved, and the round trip is not instant for the visitor who
+most needs it to work: a first sign-in walks an account chooser, a password, a second factor and a
+consent screen, any of which can stall on a phone being found. So the bound clears a slow first
+attempt with room to spare - an order of magnitude under the day `auth-redirect.ts` allows itself,
+and an order of magnitude over the fast path.
+
+### The once-guard on the callback is not the state consumption
+
+Google's authorization codes are single-use and React Strict Mode invokes effects twice in
+development. Consuming the stored attempt before the POST looks like it solves this and does not:
+the second mount then finds no entry and shows the "no attempt" error over a sign-in that actually
+succeeded - trading a double POST for a spurious failure screen, in the environment developers use,
+**while a "confirm exactly one POST" check still passes**. It has to be a separate `useRef` latch
+that survives the remount, the same shape `/auth/verify` uses. Both tests for this assert the
+absence of the error rather than the request count, because the count cannot tell the two designs
+apart.
+
+`/auth/google/callback` also exchanges on load rather than waiting for a click, and the reason
+`/auth/verify` does the opposite does not apply: that page's URL arrives by email, where a mail
+client's link-preview scanner can load it in a real browser. An OAuth callback URL is never emailed,
+is reached only by a redirect from Google, and carries a code worthless without the API's client
+secret and the verifier.
+
+`?error=` is deliberately not an error state. A visitor who cancels at Google's account chooser
+comes back with `error=access_denied`, and lands at `/signin` with every method available and
+nothing phrased as a failure - carrying their abandoned destination with them, so a second try still
+goes where the first was headed.
+
+### What went away with it
+
+The injected script, the `initialize` and `renderButton` effects, the `ResizeObserver` that measured
+a pixel width for GSI's fixed 200-400 range, the `Window` type augmentation, and the invisible
+overlay - a decorative `aria-hidden` visual with GSI's real button stacked on it at `opacity: 0`,
+whose accepted trade-off rested on an assumption about GSI's internals rather than a documented
+contract with Google. The control is now one ordinary `Button`: one accessible name, one tab stop,
+Enter and Space for free.
+
+`?hl=en` went too, and its problem with it. That parameter existed because GIS bakes button language
+into the script response and `renderButton`'s `locale` option alone does not work; a button this app
+renders itself has no such constraint.
+
+`accounts.google.com` now appears in **no CSP directive, in either configuration** - it was in
+`style-src`, `connect-src` and `frame-src` wherever a client ID was set. A top-level navigation is
+governed by none of the fetch directives, so nothing replaced it, and no
+`Cross-Origin-Opener-Policy` is needed either: Google documents `same-origin-allow-popups` as a
+requirement for its _popup_ flows, and this one opens no popup. One side effect worth having: the
+policy no longer discloses whether an instance has Google sign-in turned on.
+
+Google's branding guidelines are **not** newly engaged by any of this. The visible button was
+already fully custom and Google's own rendered pixels were already never shown, so whatever
+compliance posture this app has, it is unchanged - recorded so it is not raised as a new finding.

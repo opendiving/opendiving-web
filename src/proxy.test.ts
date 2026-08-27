@@ -137,6 +137,46 @@ describe("Content-Security-Policy", () => {
       nonceOf(second.headers.get("Content-Security-Policy")),
     );
   });
+
+  // The policy used to name `accounts.google.com` in `style-src`, `connect-src`
+  // and `frame-src` wherever a client ID was set, because Google's sign-in script
+  // injected a stylesheet and an iframe and called home from the page. No Google
+  // code runs here now - the button is a top-level navigation, which no fetch
+  // directive governs - so the origin is gone from every directive in *both*
+  // configurations.
+  //
+  // Both halves are asserted deliberately. The configured one is the behaviour
+  // change; the unconfigured one is the regression guard, since a re-added source
+  // would be conditional again and a single unconfigured check would pass while
+  // the policy named Google for every instance that actually uses it.
+  it.each([
+    ["configured", { GOOGLE_CLIENT_ID: "abc.apps.googleusercontent.com" }],
+    ["unconfigured", {}],
+  ])("names no Google origin when Google sign-in is %s", async (_l, env) => {
+    const proxy = await loadProxy(env);
+
+    const csp = proxy(request("https://dives.example.com/signin")).headers.get(
+      "Content-Security-Policy",
+    );
+
+    expect(csp).toBeTruthy();
+    expect(csp).not.toContain("google");
+    expect(csp).not.toContain("gstatic");
+  });
+
+  // The empty-source filtering that `cspList` does is easy to lose when a
+  // directive stops taking a conditional source, and a doubled space reads as a
+  // typo forever after.
+  it("leaves no doubled spaces behind the sources it dropped", async () => {
+    const proxy = await loadProxy();
+
+    const csp = proxy(request("https://dives.example.com/")).headers.get(
+      "Content-Security-Policy",
+    );
+
+    expect(csp).not.toMatch(/ {2}/);
+    expect(csp).not.toMatch(/;\s*;/);
+  });
 });
 
 describe("matcher", () => {
