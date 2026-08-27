@@ -6,8 +6,8 @@ import PrivacyPage from "./page";
 // §10's counts are prose, and prose is what goes stale. `lib/storage-keys.test.ts`
 // already guarantees that every key production code writes is *listed* here; what it
 // cannot see is that the sentences above the list still agree with its length -
-// "Nine entries", "seven of those nine", "Two are different". One of those three is
-// spelled as a word, which is how a sweep for numerals misses it.
+// "Eight entries", "six of those eight", "Two are different". All three are spelled
+// as words, which is how a sweep for numerals misses every one of them.
 //
 // This is also where the section's conditional half is pinned. §4.8 and the Google
 // storage key exist only where an instance has Google sign-in configured, so every
@@ -73,10 +73,16 @@ describe.each([
     renderPage({ google });
 
     const listed = storageEntries().length;
-    const fixed = 7;
+    // One constant, spelled into both regexes below: the earlier shape wrote the
+    // word out in the first and the numeral in the second, which is two places for
+    // the same figure to be wrong in.
+    const fixed = 6;
     expect(
       screen.getByText(
-        new RegExp(`seven of those ${NUMBER_WORDS[listed]}, you`, "i"),
+        new RegExp(
+          `${NUMBER_WORDS[fixed]} of those ${NUMBER_WORDS[listed]}, you`,
+          "i",
+        ),
       ),
     ).toBeInTheDocument();
     expect(

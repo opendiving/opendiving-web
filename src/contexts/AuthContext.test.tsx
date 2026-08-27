@@ -19,7 +19,6 @@ const {
   clearAccessToken,
   hardNavigate,
   rememberPostAuthRedirect,
-  rememberAuthMethod,
 } = vi.hoisted(() => ({
   passkeysAPI: { verifySignIn: vi.fn() },
   authAPI: {
@@ -37,7 +36,6 @@ const {
   clearAccessToken: vi.fn(),
   hardNavigate: vi.fn(),
   rememberPostAuthRedirect: vi.fn(),
-  rememberAuthMethod: vi.fn(),
 }));
 
 vi.mock("@/lib/api/auth", () => ({ authAPI }));
@@ -45,10 +43,6 @@ vi.mock("@/lib/api/passkeys", () => ({ passkeysAPI }));
 // Real storage would work through Node's shadowed `localStorage` and warn; what
 // matters here is only whether sign-out asks for the destination to be cleared.
 vi.mock("@/lib/auth-redirect", () => ({ rememberPostAuthRedirect }));
-// Same reasoning for the hint the sign-in form shows a returning visitor: the
-// storage itself is unit-tested in `lib/last-auth-method.test.ts`, so what the
-// provider owes is only that each entry point names itself.
-vi.mock("@/lib/last-auth-method", () => ({ rememberAuthMethod }));
 // Signing out leaves for the landing page with a real page load, which jsdom
 // can't perform and won't let a test intercept on `window.location` - hence the
 // wrapper module (see `lib/navigation.ts`), mocked here.
@@ -405,10 +399,10 @@ describe("AuthProvider outcomes", () => {
   });
 });
 
-// The third key sign-out has to decide about, and it goes with the destination
-// rather than with the sign-in hint. Deliberately *not* mocked away like those
-// two: what the module does is the thing being pinned here, so this asserts on
-// the real storage rather than on a call having been made.
+// The second key sign-out has to decide about, and unlike the destination beside
+// it the module is deliberately *not* mocked away: what it does is the thing
+// being pinned here, so this asserts on the real storage rather than on a call
+// having been made.
 describe("AuthProvider sign-out and the entry units", () => {
   beforeEach(() => {
     useStorage(memoryStorage());
@@ -423,7 +417,7 @@ describe("AuthProvider sign-out and the entry units", () => {
     return result;
   }
 
-  // Unlike the two keys either side of it, this one is cleared for what it does
+  // Unlike the destination beside it, this one is cleared for what it does
   // rather than for what it names: an inherited override changes what a dive-form
   // box *parses*, so the next diver at a shared browser could type 200 into a
   // psi-labelled field and commit 13.79 bar - inside the API's range CHECK and
@@ -451,7 +445,18 @@ describe("AuthProvider sign-out and the entry units", () => {
   });
 });
 
-describe("AuthProvider last-used method", () => {
+// Each of these entry points used to record which one it was, for a hint the
+// sign-in form showed a returning visitor. That affordance was dropped, so what
+// is pinned here now is the absence: proving an identity is not an occasion to
+// write anything to this browser, whichever of the four ways in was taken. The
+// assertion is on the store rather than on a spy, because a spy can only watch a
+// module somebody remembered to mock, and the point is that no such module is
+// meant to exist.
+describe("AuthProvider and how the diver signed in", () => {
+  beforeEach(() => {
+    useStorage(memoryStorage());
+  });
+
   async function signedOutProvider() {
     refreshAccessToken.mockRejectedValue(new Error("401"));
     const { result } = renderHook(() => useAuth(), { wrapper });
@@ -460,14 +465,18 @@ describe("AuthProvider last-used method", () => {
     return result;
   }
 
-  it("records which of the three ways in was used", async () => {
+  it("stores nothing about which of the four ways in was used", async () => {
     const result = await signedOutProvider();
     authAPI.verifyEmailLink.mockResolvedValue({ status: "authenticated" });
+    authAPI.verifyEmailCode.mockResolvedValue({ status: "authenticated" });
     authAPI.signInWithGoogle.mockResolvedValue({ status: "authenticated" });
     passkeysAPI.verifySignIn.mockResolvedValue({ status: "authenticated" });
 
     await act(async () => {
       await result.current.verifyEmailLink("tok");
+    });
+    await act(async () => {
+      await result.current.verifyEmailCode("req-1", "481052");
     });
     await act(async () => {
       await result.current.signInWithGoogle(GOOGLE_GRANT);
@@ -476,31 +485,13 @@ describe("AuthProvider last-used method", () => {
       await result.current.signInWithPasskey("flow-1", { id: "c" } as never);
     });
 
-    expect(rememberAuthMethod.mock.calls.flat()).toEqual([
-      "email",
-      "google",
-      "passkey",
-    ]);
+    expect(window.localStorage.length).toBe(0);
   });
 
-  // The link and the code arrive in the same message and claim the same request
-  // row, so "you signed in with your email" is true of both - a fourth method
-  // here would be a distinction the diver never made.
-  it("calls the code in the email the same method as the link", async () => {
-    const result = await signedOutProvider();
-    authAPI.verifyEmailCode.mockResolvedValue({ status: "authenticated" });
-
-    await act(async () => {
-      await result.current.verifyEmailCode("req-1", "481052");
-    });
-
-    expect(rememberAuthMethod).toHaveBeenCalledWith("email");
-  });
-
-  // Onboarding is a sign-in a moment later by the same means, so the method is
-  // recorded where the identity was proved - and `completeProfile`, which
-  // finishes whichever method got that far, is not a method of its own.
-  it("records the method that proved the identity, not the step after it", async () => {
+  // Onboarding is a sign-in a moment later by the same means, and the step after
+  // it is not a method of its own - so neither half of that pair has anything to
+  // record either.
+  it("stores nothing on the way through onboarding", async () => {
     const result = await signedOutProvider();
     authAPI.signInWithGoogle.mockResolvedValue({
       status: "onboarding",
@@ -512,29 +503,11 @@ describe("AuthProvider last-used method", () => {
     await act(async () => {
       await result.current.signInWithGoogle(GOOGLE_GRANT);
     });
-    expect(rememberAuthMethod).toHaveBeenCalledWith("google");
-
-    rememberAuthMethod.mockClear();
     await act(async () => {
       await result.current.completeProfile("New Diver", "newdiver");
     });
 
-    expect(rememberAuthMethod).not.toHaveBeenCalled();
-  });
-
-  // Unlike the remembered destination, which is cleared on the way out: this
-  // names a button rather than a person or a page, and surviving the sign-out is
-  // the whole point of it.
-  it("keeps the hint through a sign-out", async () => {
-    refreshAccessToken.mockResolvedValue("token");
-    authAPI.getCurrentUser.mockResolvedValue(USER);
-    const { result } = renderHook(() => useAuth(), { wrapper });
-    await waitFor(() => expect(result.current.isAuthenticated).toBe(true));
-
-    authAPI.signOut.mockResolvedValue(undefined);
-    await act(() => result.current.signOut());
-
-    expect(rememberAuthMethod).not.toHaveBeenCalled();
+    expect(window.localStorage.length).toBe(0);
   });
 });
 

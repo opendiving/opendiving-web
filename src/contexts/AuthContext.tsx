@@ -25,7 +25,6 @@ import {
 } from "@/lib/api/client";
 import { rememberPostAuthRedirect } from "@/lib/auth-redirect";
 import { clearEntryUnits } from "@/lib/entry-units";
-import { rememberAuthMethod } from "@/lib/last-auth-method";
 import { hardNavigate } from "@/lib/navigation";
 
 // Carried from `/auth/verify` or the Google button to the profile-completion page
@@ -200,17 +199,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
     [],
   );
 
-  // Each of the four entry points below records which one it was, for the hint
-  // `AuthForm` shows a returning visitor (see `lib/last-auth-method.ts`). Written
-  // where the identity was proved rather than inside `applyOutcome`, which is the
-  // one place that cannot tell the methods apart - and written for an
-  // onboarding outcome too, since that is a sign-in a moment later by the same
-  // means. `completeProfile` deliberately records nothing: it finishes whichever
-  // method got that far and is not a method of its own.
+  // The entry points below deliberately record nothing about which one was used.
+  // Each wrote a key the sign-in form read back as a hint; that was dropped on
+  // the owner's product call rather than by attrition, so re-adding it is a
+  // decision to make again - see "The sign-in form no longer remembers which
+  // method this browser used" in `DECISIONS.md`.
   const verifyEmailLink = useCallback(
     async (token: string) => {
       const outcome = await authAPI.verifyEmailLink(token);
-      rememberAuthMethod("email");
       return applyOutcome(outcome);
     },
     [applyOutcome],
@@ -219,7 +215,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const verifyEmailCode = useCallback(
     async (requestId: string, code: string) => {
       const outcome = await authAPI.verifyEmailCode(requestId, code);
-      rememberAuthMethod("email");
       return applyOutcome(outcome);
     },
     [applyOutcome],
@@ -228,7 +223,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const signInWithGoogle = useCallback(
     async (grant: GoogleAuthorizationGrant) => {
       const outcome = await authAPI.signInWithGoogle(grant);
-      rememberAuthMethod("google");
       return applyOutcome(outcome);
     },
     [applyOutcome],
@@ -244,7 +238,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const signInWithPasskey = useCallback(
     async (flowId: string, credential: AuthenticationResponseJSON) => {
       const outcome = await passkeysAPI.verifySignIn(flowId, credential);
-      rememberAuthMethod("passkey");
       return applyOutcome(outcome);
     },
     [applyOutcome],
@@ -333,9 +326,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // an explicit sign-out forgets the psi choice. A reload is not one of these,
     // since the access token is re-derived from the cookie.
     clearEntryUnits();
-    // The last-used method is deliberately *not* cleared here. It names a button,
-    // not a person or a destination, and surviving the sign-out is the whole
-    // point: the next visitor to this browser is nearly always the same diver.
     hardNavigate("/");
   }, []);
 

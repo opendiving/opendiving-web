@@ -753,9 +753,10 @@ export default function PrivacyPage() {
               10.2 Preferences remembered on this device
             </h3>
             <p className="text-foreground mb-4">
-              {googleClientId ? "Ten" : "Nine"} entries in your browser&rsquo;s
-              local storage. Every one of them is read only by the page you are
-              on: none is sent to this server, and none is sent anywhere else.
+              {googleClientId ? "Nine" : "Eight"} entries in your
+              browser&rsquo;s local storage. Every one of them is read only by
+              the page you are on: none is sent to this server, and none is sent
+              anywhere else.
             </p>
             <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
               <li>
@@ -785,13 +786,6 @@ export default function PrivacyPage() {
                   if it never does
                 </li>
               )}
-              <li>
-                <StorageKey name="opendiving:last-auth-method" /> &mdash; which
-                way you signed in last time, so the sign-in form can say so.
-                Written automatically every time you sign in, and deliberately
-                kept when you sign out, on the reasoning that the next visitor
-                to a browser is nearly always the same diver. Kept until cleared
-              </li>
               <li>
                 <StorageKey name="opendiving:passkey-nudge-dismissed" /> &mdash;
                 that you dismissed the offer to add a passkey on this browser.
@@ -832,7 +826,7 @@ export default function PrivacyPage() {
               10.3 Which of these you can switch off, and which you cannot
             </h3>
             <p className="text-foreground mb-4">
-              Honestly: seven of those {googleClientId ? "ten" : "nine"}, you
+              Honestly: six of those {googleClientId ? "nine" : "eight"}, you
               cannot. You can change most of them &mdash; pick a different
               theme, a different set of chart lines, a different period, and the
               stored value changes &mdash; but changing a preference is not the

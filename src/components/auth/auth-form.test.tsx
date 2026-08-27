@@ -77,9 +77,10 @@ const realSetTimeout = globalThis.setTimeout;
 
 beforeEach(() => {
   vi.clearAllMocks();
-  // The last-used-method hint reads `window.localStorage`, which doesn't work
-  // under this runner as jsdom provides it - see `test/memory-storage.ts`. A
-  // fresh store per test also means no test inherits another's hint.
+  // `window.localStorage` doesn't work under this runner as jsdom provides it -
+  // see `test/memory-storage.ts`. Nothing this form renders reads it any more,
+  // which is itself asserted below, and that assertion needs a real object to
+  // spy on rather than the `undefined` the runner would otherwise hand it.
   useStorage(memoryStorage());
   requestEmailLink.mockResolvedValue({ message: "sent", request_id: "req-1" });
   verifyEmailCode.mockResolvedValue(true);
@@ -258,37 +259,28 @@ describe("AuthForm passkeys", () => {
   });
 });
 
-// A hint and nothing more: it answers "which of these did I use?", the one
-// question a screen with three methods creates, without hiding or preselecting
-// any of them.
-describe("AuthForm last-used method", () => {
-  it("says nothing to a browser that has never signed in", async () => {
+// This form used to open with a line naming the method this browser signed in
+// with last, read out of a key written on every sign-in. Both are gone, and the
+// two halves of that are worth pinning separately: a returning visitor is told
+// nothing, and the form does not go looking. The second is the half a rendered
+// assertion cannot see - a build that still read the key but rendered nothing
+// would pass the first test while storing and reading exactly as before.
+describe("AuthForm and the browser's sign-in history", () => {
+  it("says nothing about how this browser signed in before", async () => {
     render(<AuthForm redirectTo={null} />);
 
     await screen.findByLabelText("Email");
     expect(screen.queryByText(/last time you signed in/i)).toBeNull();
-  });
-
-  it("names the method this browser used last", async () => {
-    window.localStorage.setItem("opendiving:last-auth-method", "google");
-
-    render(<AuthForm redirectTo={null} />);
-
-    expect(
-      await screen.findByText("Last time you signed in with Google."),
-    ).toBeInTheDocument();
     // Still every method, in the order they were always in.
     expect(screen.getByLabelText("Email")).toBeInTheDocument();
   });
 
-  // The value is only ever rendered, so a build that no longer has the stored
-  // method has to say nothing rather than name one it doesn't offer.
-  it("ignores a method this build doesn't know", async () => {
-    window.localStorage.setItem("opendiving:last-auth-method", "sms");
+  it("reads nothing out of this browser's storage", async () => {
+    const getItem = vi.spyOn(window.localStorage, "getItem");
 
     render(<AuthForm redirectTo={null} />);
 
     await screen.findByLabelText("Email");
-    expect(screen.queryByText(/last time you signed in/i)).toBeNull();
+    expect(getItem).not.toHaveBeenCalled();
   });
 });
