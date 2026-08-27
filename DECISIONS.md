@@ -8494,6 +8494,13 @@ fail a ceremony the diver has already completed.
 
 ### The sign-in form says which method this browser used last
 
+**Superseded: the affordance and its key are both gone.** `lib/last-auth-method.ts` no longer
+exists, no entry point records anything, `AuthForm` renders no such line, and
+`opendiving:last-auth-method` is off the privacy page — see _"The sign-in form no longer remembers
+which method this browser used"_ at the end of this file for the product call that deleted it and
+the ground it was made on. Kept because it records what the affordance was _for_, which is the
+argument anyone proposing to build it again has to answer.
+
 `lib/last-auth-method.ts` is written by each of `AuthContext`'s entry points and read by `AuthForm`,
 which renders one muted line above the methods. It answers the one question a screen with three ways
 in creates, and does nothing else — no method is hidden, reordered or preselected, and an unknown
@@ -9173,14 +9180,19 @@ rather than contrasting with them** — `DiveProfileChart` and `GasUseCard` sit 
 of spinner gate on their own pages, so that section's `() => null` is the same defensive posture,
 not an accepted snap this key escapes. Do not write a distinction between them into this file.
 
-**The key is cleared on sign-out, and the two next to it are not.** `signOut` already clears
-`opendiving:post-auth-redirect` because it "names a person or a destination" and deliberately keeps
-`opendiving:last-auth-method` because it "names a button, not a person". Entry units name neither,
-so what decides it is a consequence neither sibling has: an inherited override changes what a box
-_parses_. A second diver at a shared browser who never touched a toggle would meet a psi-labelled
-pressure field, type 200 meaning bar, and commit 13.79 bar — inside
-`ck_dive_mixture_start_pressure_range` and indistinguishable from real data afterwards. A chart
-key's worst inherited outcome is a hidden series.
+**The key is cleared on sign-out, and not for the reason that decides the one next to it.**
+`signOut` already clears `opendiving:post-auth-redirect` because it "names a person or a
+destination" and deliberately keeps `opendiving:last-auth-method` because it "names a button, not a
+person". (Half of that contrast has since been deleted: `opendiving:last-auth-method` no longer
+exists at all — see _"The sign-in form no longer remembers which method this browser used"_ — so
+`signOut` now decides about two keys rather than three, and the lead above is amended to match. What
+decides _this_ key is unaffected, since it never rested on the comparison, and the sentence after
+this one still contrasts it with both of the reasons named above.) Entry units name neither, so what
+decides it is a consequence neither sibling has: an inherited override changes what a box _parses_.
+A second diver at a shared browser who never touched a toggle would meet a psi-labelled pressure
+field, type 200 meaning bar, and commit 13.79 bar — inside `ck_dive_mixture_start_pressure_range`
+and indistinguishable from real data afterwards. A chart key's worst inherited outcome is a hidden
+series.
 
 Two alternatives were rejected. **Stamping the record with the signed-in user's id** closes the same
 hazard and would survive a sign-out cycle, but it turns a view-state key into an account-linked one,
@@ -9408,16 +9420,19 @@ it does most of the work.
   meets and the other keys do not, since sign-in and the charts all work without them.
 
 - **`opendiving:last-auth-method` gets its own sentence, and a narrower claim than it first
-  invited.** It is written automatically on every sign-in (`contexts/AuthContext.tsx`) and
-  deliberately survives sign-out. Nobody asked for it, so it fails WP194 §3.6's "the user has
-  explicitly requested the service to remember" premise outright — that much is exactly right. What
-  would be overstated is "no named exemption fits it": true of EU law, but **post-DUAA UK law has
-  one that is arguable**, Sch. A1 ¶6(1)(b)(ii), "otherwise enable an enhancement of the appearance
-  or functionality". The counter-argument belongs here too — the ICO says the appearance exception
-  "is not about adapting the content … based on known or inferred interests or behaviours", and this
-  key is derived from behaviour rather than stated. It ships with plain disclosure rather than
-  dressed in an exemption it does not have, and it is deliberately **not** lumped in with the
-  user-chosen preferences.
+  invited.** _Superseded: there is no such key any more, and §10.2 has no row for it — see "The
+  sign-in form no longer remembers which method this browser used" at the end of this file. The
+  reading below is kept because the owner's call was made on it: the §3.6 failure it identifies is
+  the ground the deletion rests on._ It is written automatically on every sign-in
+  (`contexts/AuthContext.tsx`) and deliberately survives sign-out. Nobody asked for it, so it fails
+  WP194 §3.6's "the user has explicitly requested the service to remember" premise outright — that
+  much is exactly right. What would be overstated is "no named exemption fits it": true of EU law,
+  but **post-DUAA UK law has one that is arguable**, Sch. A1 ¶6(1)(b)(ii), "otherwise enable an
+  enhancement of the appearance or functionality". The counter-argument belongs here too — the ICO
+  says the appearance exception "is not about adapting the content … based on known or inferred
+  interests or behaviours", and this key is derived from behaviour rather than stated. It ships with
+  plain disclosure rather than dressed in an exemption it does not have, and it is deliberately
+  **not** lumped in with the user-chosen preferences.
 
 - **The user-chosen preferences** (`theme`, the two chart-series keys, the two chart-period keys,
   `opendiving:entry-units`, and the passkey nudge) sit on WP194 §3.6, which exempts UI customization
@@ -9467,6 +9482,20 @@ That upgrades disclosure-first from a preference to a cited recommendation.
 
 ### The objection-condition gap: seven keys, UK-only, disclosed rather than closed
 
+**Corrected in its counts, and in one of the two alternatives it rejected.**
+`opendiving:last-auth-method` has since been deleted outright, so every figure below is one lower,
+and each is left standing as the count at the time rather than rewritten. Read them as: the
+heading's "seven keys" is **six**; "Seven of the nine keys have `setItem` and no `removeItem`" is
+**six of the eight**; and the "six modules" a control would have had to reach is **five**, since the
+deleted key was the only one its module wrote. The substantial change is the second rejected
+alternative below, _reducing the surface instead_: it was rejected here on the ground that deleting
+a shipped affordance over a legal argument is a product call rather than something to settle inside
+a copy sweep. That reasoning was right about the copy sweep. The owner has since made the call the
+other way, and taken the half of that alternative concerning `last-auth-method` — see _"The sign-in
+form no longer remembers which method this browser used"_ at the end of this file; the passkey
+un-dismiss half is not part of it. Everything else here stands: the condition is still UK-only,
+site-data clearing is still not the means, and the gap is still open for the keys that remain.
+
 UK Sch. A1 ¶6(1)(d) requires "a simple means of objecting, free of charge, to the storage or
 access". The right is to object **to the storage**, not to the value, and the ICO draws the
 consequence: "if someone does object, you must stop storing or accessing information on their
@@ -9499,8 +9528,10 @@ category labels doing no work: a reader could not tell from them what was stored
 whether they could stop it, and neither could a maintainer checking whether the page was still true.
 Named keys make the page **checkable** — against the browser's own storage inspector, against the
 source, and by a test. That is the same reason §4.4–4.6 enumerate flows rather than saying "third
-party services". A category cannot go stale visibly; a list of nine keys can, and does, which is the
-point.
+party services". A category cannot go stale visibly; a list of named keys can, and does, which is
+the point. (This sentence used to say "a list of nine keys", and went stale itself the moment a key
+was deleted — the count belongs on the page, where a test pins it, and this argument never needed
+it.)
 
 ### The landing page's "No trackers and no analytics" is still true, and here is the reading
 
@@ -10289,3 +10320,56 @@ policy no longer discloses whether an instance has Google sign-in turned on.
 Google's branding guidelines are **not** newly engaged by any of this. The visible button was
 already fully custom and Google's own rendered pixels were already never shown, so whatever
 compliance posture this app has, it is unchanged - recorded so it is not raised as a new finding.
+
+## The sign-in form no longer remembers which method this browser used
+
+`lib/last-auth-method.ts`, the four writes at `AuthContext`'s entry points, the read and the muted
+"Last time you signed in with …" line in `components/auth/auth-form.tsx`, and the
+`opendiving:last-auth-method` row in §10.2 of the privacy page are all gone. This is a deliberate
+product call on the key's legal posture, not a cleanup of something nobody wanted — the affordance
+was designed and argued for, and _"The sign-in form says which method this browser used last"_ above
+is kept in place so that whoever proposes rebuilding it starts from what it was for.
+
+**The ground is WP194 §3.6's threshold condition, which this key fails outright.** UI-customization
+storage is exempt there only where "the user has explicitly requested the service to remember" the
+choice. Nobody requested this one: it was written automatically on every sign-in, at each of the
+four places an identity is proved, and deliberately survived sign-out. The key-by-key reading of the
+exemptions in _"The exemptions, key by key"_ already said so — it called the §3.6 failure "exactly
+right" and then shipped the key with plain disclosure instead, because dressing it in an exemption
+it does not have was the one thing that page refuses to do. Disclosure is honest, and it is what
+CNIL recommends, but it does not make the storage exempt.
+
+**Writing without being asked is not on its own what singles it out**, and saying so is what keeps
+this from proving too much. The two dashboard view keys are written unrequested too: a mount effect
+persists the default scope on a first visit, with no interaction at all
+(`components/dives/gas-use-card.tsx`). What separates them is what the write buys. Those hold up a
+rendered view the diver is looking at and would otherwise lose on every reload; this one bought one
+cosmetic sentence. It never preselected a method, never hid one, never reordered them — a browser
+with the key and a browser without it offered exactly the same three ways in. A screen with three
+methods does create the "which of these did I use?" confusion the hint answered, and that cost is
+accepted: one line of copy is not worth a stored key that cannot be justified under the rules §10
+holds this app to.
+
+**The rejected alternative was to keep the key and fold it into a device-memory control**, so that a
+diver who objected could switch it off along with the display preferences. That preserves the
+affordance and would satisfy the objection condition, at the price of carrying the hardest paragraph
+in the privacy page's legal reading for as long as the key lives — a key that is written without
+being asked, survives sign-out, and buys one sentence. The owner's judgement is that the paragraph
+costs more than the sentence is worth.
+
+**The counts moved with it**, in the three places that carry one: §10.2's "entries in your browser's
+local storage" sentence, §10.3's split between what you can and cannot switch off, and
+`STORAGE_WRITERS` in `lib/storage-keys.test.ts` together with the writer counts in its header prose.
+Each has a test beside it — `app/privacy/page.test.tsx` pins the first two in both Google
+configurations, and the writer list is pinned by its own equality — which is why none of the figures
+is restated here.
+
+**The count sentences in _this_ file have no test behind them, and they did not all move the same
+way.** "All eight current keys follow it by habit" was a key low before this change and is right
+after it, untouched. _"Why §10 names keys rather than categories"_ went the other way: it said "a
+list of nine keys", which was correct until this change and wrong the moment it landed, so it now
+names no figure at all rather than a fresh one to go stale. And the three counts in _"The
+objection-condition gap"_ are left standing under a correction note, because that section records a
+reading made at a moment rather than a fact about the tree. Nothing generalises from any of those to
+the rest: the figures here are prose, and the only way to know one is right is to count the thing it
+counts.
