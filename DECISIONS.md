@@ -3944,6 +3944,15 @@ kept correct, and grown by one on every future bump, in code whose whole job is 
 leak is bounded and inert; the cleanup is unbounded and load-bearing. Written down because "why is
 there a stale key here" is a fair question with a real answer, not an oversight.
 
+_Superseded in its trade, though not in its reasoning._ The device-memory switch does clear this
+key, and every other orphan a bump has left or will leave — but it does it **by prefix**, walking
+live storage rather than consulting a list, so it carries no list of dead names and nothing has to
+be added to it on the next bump. That is the one shape the objection above did not consider and the
+only one it does not apply to: the cleanup stops being unbounded when nothing has to enumerate what
+it cleans. See _"One switch against every remembered preference on this device"_ at the end of this
+file. The trade recorded here is still the right answer for a bump on its own — a key bump owes no
+`removeItem`, and adding one would still start the list this entry refuses.
+
 ## `--ceiling` is one value for both themes, and the original design asked for two
 
 The rev-3 design said to define light and dark values. The three chart accents already there —
@@ -8453,6 +8462,38 @@ a card that would otherwise fire one on every dashboard view. Dismissal is per-b
 where the offer is relevant again, where a server-side flag would suppress it precisely where it
 earns its place, for a column, an endpoint and a migration.
 
+**The dismissal is now reversible, which it was not for its first several releases.**
+`restorePasskeyNudge` removes the key and the settings passkeys card offers it, shown only where a
+dismissal is actually stored, so a browser that never saw the offer is offered nothing to undo. It
+arrived with the device-memory switch, whose §10.3 copy had been carrying the admission that this
+one key "cannot even be changed: there is no way to un-dismiss the offer", but it is owed on plain
+UX grounds independently of that: "not now" meant "never" on this browser, and a diver who changed
+their mind had no move but clearing site data. With the switch on nothing records the dismissal at
+all, so the affordance has nothing to show — consistent rather than a special case.
+
+**What the undo promises is conditional, and the first version of it lied to most of the people who
+see it.** The nudge shows itself only to an account with no passkeys, so the stored dismissal
+routinely outlives the state that made it relevant: a diver dismisses the offer while they have
+none, adds one, and is left holding a dismissal whose removal cannot bring anything back. The
+affordance was first labelled "Show it again" and told everyone the offer would return on their next
+dashboard visit — false for exactly the population reading a card with a passkey listed on it, and
+the test covering it used the two-passkey fixture, so it asserted the false string without noticing.
+The copy is now conditional on the loaded list and the button says "Undo". Gating the affordance
+away from that population was the other option and was rejected: the entry is a stored preference,
+§10.2 says it can be un-stored from here, and the removal is worth having on its own where the offer
+cannot return.
+
+**Which makes the shape of the gate the whole point, and the first attempt at it got that wrong
+too.** It is held back only while the list request is _in flight_, so neither string renders against
+a passkey count that is `[]` only because nothing has landed. A **failed** load is not a reason to
+withhold it: the dismissal is in this browser and removing it needs no API at all, so gating on
+`status === "ready"` took the removal away from the one diver who cannot retry their way back into
+it, on a card that still renders in that state. The count is genuinely unknown there, so
+`nudgeWouldReturn` is false rather than optimistic and the conservative sentence — true whatever the
+count turns out to be — is what shows. §10.2's row was trimmed to match: it names where the undo
+lives and no longer claims the card offers it "whenever this entry exists", because that is an
+absolute the card cannot keep for an instance whose API has no passkey routes at all.
+
 **The nudge is pinned out of the README screenshots.** `scripts/screenshots.mjs` runs a fresh
 browser profile every time, so the card would land in the dashboard hero whenever the demo account
 happened to have no passkey. It is the same class of nondeterminism as the greeting's clock and the
@@ -9440,9 +9481,14 @@ it does most of the work.
   choice to be remembered; remembering longer takes "additional information in a prominent
   location". **Say what that note actually is**: WP194 frames it as a route to valid _consent_ — it
   "would constitute sufficient information for valid consent … negating the requirement to apply an
-  exemption" — not as a wider exemption. §10 is that note. CNIL exempts UI personalisation with no
-  lifetime condition but attaches a different one: only "lorsqu'une telle personnalisation constitue
-  un élément intrinsèque et attendu du service" (Lignes directrices, del. 2020-091, Art. 5 ¶49,
+  exemption" — not as a wider exemption. §10 is that note. _Superseded in what it rests on: these
+  are exactly the keys the device-memory switch covers, so the answer to §3.6's duration problem is
+  no longer a note alone but a control — the diver who did not ask for any of this can now say so,
+  and §10.3 is where. The note stays because it is still what informs the choice; it has simply
+  stopped being the whole answer. See "One switch against every remembered preference on this
+  device" at the end of this file._ CNIL exempts UI personalisation with no lifetime condition but
+  attaches a different one: only "lorsqu'une telle personnalisation constitue un élément intrinsèque
+  et attendu du service" (Lignes directrices, del. 2020-091, Art. 5 ¶49,
   <https://www.cnil.fr/sites/cnil/files/atoms/files/lignes_directrices_de_la_cnil_sur_les_cookies_et_autres_traceurs.pdf>).
   CNIL LD ¶48 adds that a tracker serving several purposes, any one non-exempt, needs consent for
   the whole.
@@ -9480,46 +9526,48 @@ confidentialité"
 (<https://www.cnil.fr/sites/cnil/files/atoms/files/recommandation-cookies-et-autres-traceurs.pdf>).
 That upgrades disclosure-first from a preference to a cited recommendation.
 
-### The objection-condition gap: seven keys, UK-only, disclosed rather than closed
+### The objection-condition gap, and the control that closed it
 
-**Corrected in its counts, and in one of the two alternatives it rejected.**
-`opendiving:last-auth-method` has since been deleted outright, so every figure below is one lower,
-and each is left standing as the count at the time rather than rewritten. Read them as: the
-heading's "seven keys" is **six**; "Seven of the nine keys have `setItem` and no `removeItem`" is
-**six of the eight**; and the "six modules" a control would have had to reach is **five**, since the
-deleted key was the only one its module wrote. The substantial change is the second rejected
-alternative below, _reducing the surface instead_: it was rejected here on the ground that deleting
-a shipped affordance over a legal argument is a product call rather than something to settle inside
-a copy sweep. That reasoning was right about the copy sweep. The owner has since made the call the
-other way, and taken the half of that alternative concerning `last-auth-method` — see _"The sign-in
-form no longer remembers which method this browser used"_ at the end of this file; the passkey
-un-dismiss half is not part of it. Everything else here stands: the condition is still UK-only,
-site-data clearing is still not the means, and the gap is still open for the keys that remain.
+**Superseded in its conclusion, and rewritten rather than left under a correction note.** This
+section recorded a gap that is now shut: §10.3 ships a control, and _"One switch against every
+remembered preference on this device"_ at the end of this file is how. What is kept below is the
+legal reading, because that is what the control was built to satisfy and the argument did not stop
+being true when the software caught up with it. What is gone is the accounting that went with it —
+its "seven keys", "seven of the nine keys have `setItem` and no `removeItem`" and "six modules" were
+each one lower after `last-auth-method` was deleted, were then carried under a note reading them out
+corrected, and are now simply wrong in a third way, since the question they answered was how many
+keys lacked a control. None do. A count nothing tests, restated twice at one remove from what it
+counts, is exactly the shape this file keeps having to correct: the figures live on the page, where
+`app/privacy/page.test.tsx` pins them in both Google configurations.
 
 UK Sch. A1 ¶6(1)(d) requires "a simple means of objecting, free of charge, to the storage or
 access". The right is to object **to the storage**, not to the value, and the ICO draws the
 consequence: "if someone does object, you must stop storing or accessing information on their
-device". Seven of the nine keys have `setItem` and no `removeItem` anywhere, so **rewriting a
-preference is not objecting to it** and none of them offers a way to stop. Only
-`opendiving:entry-units` genuinely removes itself (clearing every override deletes the key) and
-`opendiving:post-auth-redirect` is read-once and expiring.
+device". Most of these keys had `setItem` and no `removeItem` anywhere, so **rewriting a preference
+is not objecting to it** and none of them offered a way to stop. `opendiving:entry-units` genuinely
+removed itself (clearing every override deletes the key) and `opendiving:post-auth-redirect` was
+read-once and expiring; everything else failed the condition outright.
 
-**"Clear your site data" is not the means**, and §10 refuses to call it one: the ICO says an
+**"Clear your site data" is not the means**, and §10 still refuses to call it one: the ICO says an
 operator "must not solely rely on browser settings as an indication" that a person does not object;
 ¶6(1)(d) requires a means the _service_ gives; site-data clearing cannot single one key out; and
 here it also destroys the `refresh_token` cookie and signs the diver out. The condition is UK-only —
-¶4 (strictly necessary) carries no objection limb, and the EU has no counterpart at all.
+¶4 (strictly necessary) carries no objection limb, and the EU has no counterpart at all. That is
+still the reason the paragraph about site-data clearing survives on the page beside the switch, as
+contrast rather than as an offer.
 
-The gap is **accepted knowingly and named on the page** rather than papered over, with the control
-itself spun out into a separate change already in hand. Building it inside a copy sweep would have
-meant a real feature through six modules, and `theme` belongs to next-themes rather than to this
-app. Relief worth banking when it lands: ¶6(2) means the means need only be offered "in respect of
-the initial use".
+Relief worth having banked: ¶6(2) means the means need only be offered "in respect of the initial
+use", so one switch does not have to be re-offered per key or per visit.
 
-Two alternatives were rejected. **Prose alone** is what already failed. And **reducing the surface
-instead** — dropping `last-auth-method` and adding an un-dismiss path for the passkey nudge — was
-genuinely attractive, since it would delete the hardest paragraph in the legal reading, but it
-deletes a shipped affordance on a legal argument, which is a product call and not a copy edit.
+Two alternatives were rejected **at the time**, and both have since been overtaken. **Prose alone**
+is what had already failed. And **reducing the surface instead** — dropping `last-auth-method` and
+adding an un-dismiss path for the passkey nudge — was rejected on the ground that deleting a shipped
+affordance over a legal argument is a product call rather than something to settle inside a copy
+sweep. That reasoning was right about the copy sweep, and wrong about nothing else: the owner made
+both halves of it deliberately afterwards, `last-auth-method` under _"The sign-in form no longer
+remembers which method this browser used"_ and the un-dismiss alongside the switch. What is worth
+keeping from the rejection is its actual shape — the objection was to the venue, not to the change,
+and the two got separated rather than conflated.
 
 ### Why §10 names keys rather than categories
 
@@ -9566,19 +9614,26 @@ Clause 2 is enforced because the prose version is exactly what failed: `opendivi
 added as a ninth key while §10 still described a world of eight, and nobody read the standing rule
 on the way past. Had the test existed it would have failed on that change.
 
-The test enforces the rule in **three checks**, and the second exists only because the first has an
+The test enforces the rule in **four checks**, and the second exists only because the first has an
 obvious escape. (1) Every `opendiving:`-prefixed string literal in production code under `src/`
 appears verbatim in `app/privacy/page.tsx`. (2) The set of production modules that write browser
-storage equals a literal list of seven paths — because a key named without the prefix would never
+storage equals a literal list of eight paths — because a key named without the prefix would never
 enter sweep (1) at all, and the disclosure check would pass while the key shipped undisclosed.
-Nothing else in this repo requires the prefix: no lint rule, nothing in `AGENTS.md`. All eight
+Nothing else in this repo requires the prefix: no lint rule, nothing in `AGENTS.md`. All nine
 current keys follow it by habit, which is exactly the kind of convention that holds until it
 doesn't. (3) The two mechanisms §10.4 names that check (2) cannot see — IndexedDB and service
 workers — are in fact unused; §10.4's third, session storage, is covered by check (2) instead, for
-the reason below.
+the reason below. (4) Every key check (1) finds is classified by `lib/device-memory.ts` as either
+covered by the device-memory switch or deliberately excluded from it, with `theme` — which spells no
+literal for check (1) to find — asserted covered by hand.
+
+Check (4) arrived with the switch, and it is the same rule as clause 2 pointed one section further
+on: a key nobody classified is a key the objection control quietly does not reach, which is the
+disclosure failure with the disclosure swapped for a promise. It carries its own bite test, because
+a classifier that answered for everything would pass every case while enforcing nothing.
 
 Note what check (2) is and is not: it is a tripwire on _where_ storage is written, and it says
-nothing about what any key inside those seven modules is called.
+nothing about what any key inside those eight modules is called.
 
 **That it is a list of filenames at all was the most useful thing this change learned.** It went
 through two richer designs first and both were wrong, in a way worth recording because the pull
@@ -9603,7 +9658,7 @@ ever stopped matching, every argument resolved to `undefined`, every one was ski
 The lesson is not "write a better regex". Resolving an identifier to its value is type-graph work,
 and three rounds of review found a new hole each time because regexes cannot do it. So check (2) was
 **cut back to a tripwire**: the set of production modules that write browser storage must equal a
-literal list of seven filenames. It is none of the four things above wrong — it never masks a key
+literal list of eight filenames. It is none of the four things above wrong — it never masks a key
 behind a name collision, never accuses a file over one, and cannot pass vacuously, since the
 expected list is non-empty so a broken walk fails rather than skips (verified by pointing the walk
 at an empty directory). What it protects is that a module which did not write browser storage before
@@ -9625,13 +9680,14 @@ arriving. Check (3) asserts that no production module mentions `indexedDB`, `ser
 `cookieStore` at all — the last of those is not named on the page, but it is a storage write that
 evades every other pattern here and now is the cheapest moment to catch it.
 
-`sessionStorage` is deliberately **not** in check (3), even though §10.4 names it too. Three
+`sessionStorage` is deliberately **not** in check (3), even though §10.4 names it too. Four
 production modules mention it in comments — `lib/auth-redirect.ts` and `lib/gas-use-view.ts`
 explaining why they chose `localStorage` over it, `lib/api/client.ts` explaining why the access
-token is in neither — so a raw text match would fail on all three for saying nothing at all. Its
-writes are caught by check (2), which is the half that matters. That asymmetry is the whole lesson
-of this file in miniature — what a text match can assert depends on what the codebase happens to
-talk about, and pretending otherwise is how the earlier versions went wrong.
+token is in neither, and `lib/device-memory.ts` explaining why its interposition guards on the
+receiver — so a raw text match would fail on all four for saying nothing at all. Its writes are
+caught by check (2), which is the half that matters. That asymmetry is the whole lesson of this file
+in miniature — what a text match can assert depends on what the codebase happens to talk about, and
+pretending otherwise is how the earlier versions went wrong.
 
 Storage set by the **server** is a different mechanism and deliberately outside this. The
 `refresh_token` cookie arrives as a `Set-Cookie` header forwarded by `lib/api-proxy.ts` and is
@@ -9640,8 +9696,8 @@ reviewer read the earlier "every way this app could plausibly write" as a claim 
 which is fair — the sentence is now scoped to client code explicitly.
 
 **What it gives up, all of it written into the test's header rather than left to be discovered.** A
-_second_, unprefixed key added inside one of the seven files; check (1) covers that whenever the
-prefix is used, which is the style in all seven. `theme`, and a key assembled at run time. And one
+_second_, unprefixed key added inside one of the eight files; check (1) covers that whenever the
+prefix is used, which is the style in all eight. `theme`, and a key assembled at run time. And one
 genuine false positive: it reads raw source, so a production file that merely _mentions_ one of
 those write forms in a comment counts as a writer and fails the equality. Stripping comments
 correctly is parsing, which is precisely the work this check was cut back to avoid, so the trade is
@@ -9774,6 +9830,16 @@ That is a _should_, and the binding duty on the same page is only to "justify th
 relation to the purpose(s) you use them for". §10 does that per key: a preference lasts until you
 change it, which is what a preference is for. **No TTL code was added to chart-view state**, and
 this is recorded so the next reader knows the suggestion was read and answered rather than missed.
+
+_Superseded in the answer, not in the reading._ "Until you change it" is no longer the whole of what
+§10.2 says about those rows: the device-memory switch removes them and stops them coming back, so
+the honest duration is "until you change it, or until you tell this browser to stop remembering",
+and the framing sentence above the §10.2 list now says exactly that rather than each row repeating
+it. That is closer to what the ICO actually asked for than a TTL would have been — the suggestion
+was "automatically removing objects in `localStorage` where appropriate", and a preference removed
+on request rather than on a timer is the version of that which does not throw away a choice the
+diver still wants. Still no TTL. See _"One switch against every remembered preference on this
+device"_ at the end of this file.
 
 ### What was deliberately left alone
 
@@ -10362,14 +10428,168 @@ local storage" sentence, §10.3's split between what you can and cannot switch o
 `STORAGE_WRITERS` in `lib/storage-keys.test.ts` together with the writer counts in its header prose.
 Each has a test beside it — `app/privacy/page.test.tsx` pins the first two in both Google
 configurations, and the writer list is pinned by its own equality — which is why none of the figures
-is restated here.
+is restated here. (The second of those three has since stopped being a split between what you can
+and cannot switch off at all, because a control now reaches every covered key — see _"One switch
+against every remembered preference on this device"_ below. The count is still pinned, and it is now
+counting something else.)
 
 **The count sentences in _this_ file have no test behind them, and they did not all move the same
-way.** "All eight current keys follow it by habit" was a key low before this change and is right
-after it, untouched. _"Why §10 names keys rather than categories"_ went the other way: it said "a
-list of nine keys", which was correct until this change and wrong the moment it landed, so it now
-names no figure at all rather than a fresh one to go stale. And the three counts in _"The
-objection-condition gap"_ are left standing under a correction note, because that section records a
-reading made at a moment rather than a fact about the tree. Nothing generalises from any of those to
-the rest: the figures here are prose, and the only way to know one is right is to count the thing it
-counts.
+way.** "All eight current keys follow it by habit" was a key low before this change and right after
+it — and wrong again one change later, when the objection switch added its own key; it now reads
+nine. _"Why §10 names keys rather than categories"_ went the other way: it said "a list of nine
+keys", which was correct until this change and wrong the moment it landed, so it now names no figure
+at all rather than a fresh one to go stale — and that is why the next change had nothing to fix
+there. The three counts in _"The objection-condition gap"_ were left standing here under a
+correction note, and the switch removed them along with the gap: that section is rewritten, so there
+is no correction note left for this sentence to describe. Nothing generalises from any of those to
+the rest, and the pattern across all four is the lesson rather than any one of them: the figures
+here are prose, they go stale in both directions, **and a change that edits this file makes work for
+the change after it** — every sentence above was written by an earlier change and falsified by a
+later one, twice running.
+
+## One switch against every remembered preference on this device
+
+`/privacy` §10.3 and a `/settings` device card now render one control — "Don't remember display
+preferences on this device" — that clears the preferences already stored in this browser and stops
+the next write of any of them. `lib/device-memory.ts` is the whole of the logic;
+`components/device-memory-switch.tsx` is the only thing that reads it, and both surfaces render that
+one component, so the read path exists once and the two cannot drift apart.
+
+What this closes is UK PECR Sch. A1 ¶6(1)(d), which conditions the appearance/functionality
+exception on the service giving "a simple means of objecting, free of charge, to the storage or
+access" — a condition the EU limbs do not carry, six months old at the time this shipped, and one a
+preference you can rewrite but never un-store does not satisfy. The reading is in _"The
+objection-condition gap, and the control that closed it"_ above; this entry is about the mechanism
+and the calls made building it.
+
+**Suppression is an interposition on `setItem`, not a guard in each writer.** The interposition
+wraps the method on the object that _defines_ it along `window.localStorage`'s prototype chain, and
+drops a write whose key is covered while the flag is present. Two things forced it and neither is
+about elegance. `theme` belongs to next-themes and has no write site in this tree at all — there is
+nothing to add a guard to, which `storage-keys.test.ts` had already recorded as its own blind spot.
+And **wrapping the single `setTheme` call site is defeated by next-themes' own `storage` listener**:
+0.4.6 reacts to another tab removing the key by calling `setTheme(defaultTheme)` and writing it
+straight back (`r.newValue?n(r.newValue):f(l)` in its `dist/index.mjs`), so with a second tab open a
+call-site wrap is a remove-then-rewrite livelock. An interposition catches that rewrite because it
+catches every write, whoever started it. Vendoring the provider was the third option and buys full
+control at the price of owning the CSP-nonce'd pre-hydration script forever — `src/proxy.ts` records
+next-themes' as the only nonce'd inline script here — and of losing upstream fixes.
+
+Three properties the interposition has to have, each of which cost something to get right:
+
+- **It wraps the definition site, not `Storage.prototype` by name.** In a browser those are the same
+  object; under this repo's test harness they are not, because `test/memory-storage.ts` installs a
+  plain object whose methods are own properties. A hard-coded `Storage.prototype` patch would have
+  been invisible to every test in the repo, and the whole suppression suite would have passed
+  against an implementation that did nothing.
+- **It guards on the receiver.** `sessionStorage` shares `Storage.prototype` in a browser, so
+  without that guard the objection would silently reach storage it was never about. Everything else
+  — non-covered keys, `removeItem`, `getItem`, a detached call with no receiver at all — passes
+  through byte-identical.
+- **It reads the flag live, per write, rather than caching a boolean at install time.** The tab that
+  has to honour an objection is usually not the tab that made it: tab A's flag reaches tab B through
+  storage, and tab B's suppressed write is next-themes' rewrite above. A cached boolean is the one
+  mutation of this code that still passes most of the suite, which is why there is a test whose only
+  job is to plant a flag the module never wrote.
+
+**Where it is installed is the load-bearing part, and it is a rendered component rather than an
+import.** `components/device-memory-installer.tsx` is `"use client"`, renders `null`, and calls the
+install from its module scope; `app/layout.tsx` renders it. Module _evaluation_ is what arms it, so
+it lands when the route's client bundle loads rather than when anything renders — which matters
+because `components/dives/gas-use-card.tsx` and `dive-activity-card.tsx` write their view keys from
+a mount effect with no interaction at all, and React runs child effects before parent effects, so an
+install from a provider's own effect would run after those writes. The rejected shapes are worth
+naming because both look smaller. A **side-effect-only import from `app/layout.tsx`** guarantees
+nothing: that file is an async Server Component, a module without `"use client"` compiles into the
+server graph alone, and even one that has it can have a bare no-used-export import dropped from the
+route's client entry — and since `/privacy` and `/settings` pull the module in through the switch
+anyway, the failure would have appeared on `/dashboard` alone, which is precisely where those two
+mount-effect writers are. A **side-effect import bolted onto `components/theme-provider.tsx`** was
+the smallest possible diff and hides a global storage interposition inside a component that reads as
+theme-only, so a later contributor reordering or replacing the theme wrapper disarms the switch
+silently. A **nonce'd inline script** would install ahead of all React, and the guarantee is not
+needed: suppression only has to stop writes, and the pre-hydration script's read of an absent key
+correctly falls back to the OS scheme.
+
+**That one line of JSX has its own test, because nothing else in the suite would miss it.**
+`/privacy` and `/settings` pull the module in through the control itself, so deleting
+`<DeviceMemoryInstaller />` from the layout leaves every other test green while `/dashboard` quietly
+starts storing view keys again for a diver who objected — the failure this whole arrangement exists
+to prevent, reachable by tidying away a component that renders `null`.
+`components/device-memory-installer.test.ts` holds both halves: that importing the module arms the
+suppression with nothing rendered and nothing called, which is the invariant a `useEffect` would
+break; and a source-text tripwire on the layout, in the same spirit as `storage-keys.test.ts`'s
+writer list. The tripwire's reach is worth stating rather than assuming — it shows the layout still
+names the component, not that Next puts the module in every route's client bundle. Nothing under
+jsdom can show the latter, since the bundling decision belongs to the build.
+
+**Clearing goes by prefix; suppression goes by list, and the asymmetry is deliberate.**
+`setOptOut(true)` writes the flag and then walks live storage, removing `theme` plus every
+`opendiving:`-prefixed key present except the named exclusions. What forced that: orphaned keys sit
+in any browser that ran an older build and have no literal left in this tree — the two superseded
+dive-profile series keys from the `-v2` and `-v3` bumps, and the last-auth-method key deleted with
+the sign-in hint. A census cannot see them, and **naming one as a literal would oblige §10 to give a
+row to a key this app no longer writes**, since `storage-keys.test.ts` check (1) sweeps every
+`opendiving:` literal in `src/`. Prefix clearing removes those and any future one by construction.
+Suppression cannot work the same way — a key has to be classified before a write of it can be
+dropped — so the covered set is a list, and check (4) of `storage-keys.test.ts` is what stops a new
+key sitting in neither list.
+
+The flag goes in **before** the removals, not after. A second tab reacting to `theme` disappearing
+has to see the objection already recorded, or its next-themes rewrite lands and the key comes back.
+
+**The promise is honest only within the `opendiving:` namespace, and `access_token` is the one key
+outside it.** `lib/api/client.ts` and `lib/api/auth.ts` wrote it to `localStorage` until the change
+recorded under _"Access token lives in memory only, never in `localStorage`"_, and it carries no
+prefix, so prefix clearing cannot reach it. **The ground for leaving it is population, not harm**:
+this app has never been public and has never been deployed anywhere, so the only browser that ever
+held one is the maintainer's own, and no self-hoster can acquire one because that change predates
+every release. The maintainer clears theirs by hand, once. The rejected alternative — a named legacy
+list alongside the prefix — is technically cheap and would not have tripped check (1), whose pattern
+only matches prefixed strings, but it reopens the enumeration the prefix rule exists to close and
+carries a list forever to serve a population of one. Recorded rather than left implicit because
+anyone re-deriving the orphan set from git history finds this key and will otherwise raise it every
+time.
+
+**Turning the switch on settles the initiating tab's theme.** The control calls `setTheme` back to
+the default after clearing, and the write inside that call is dropped by the interposition. Without
+it the tab the diver flipped the switch in would keep its in-memory theme until reload while every
+_other_ open tab reverted at once, because a same-document `removeItem` fires no `storage` event and
+next-themes has no other change detection. That is one deliberate reset at toggle time, and is not
+the ongoing call-site wrap rejected above. The alternative — keep the in-memory theme until the next
+load, consistent with how the chart and unit preferences keep their in-session state — was cheaper
+but makes the switch's most visible effect invisible in the one tab where it was flipped.
+
+**`opendiving:entry-units` is covered although it already passed the objection test on its own.**
+Emptying every override deletes the key, so it never needed the switch. But a control that says
+"don't remember display preferences" and silently skipped the unit overrides would not do what it
+says, and the page has one rule above all others about not claiming more than it delivers. Its
+sign-out clearing is untouched and is a different concern — data integrity, not privacy: a stale
+override changes what a dive-form box _parses_.
+
+**The exclusions, each named on the page with its ground.** `opendiving:post-auth-redirect` and
+`opendiving:google-sign-in-attempts` are functional storage carrying a sign-in across the
+mail-client or Google hop, both self-removing, and squarely exempt. The flag itself is the
+consent-mechanism-storage case — an objection this browser forgot on tab close would not be one —
+and Sch. A1 ¶6(2) means the means need only be offered "in respect of the initial use", so it does
+not have to be re-offered per key or per visit.
+
+**Off clears nothing and restores nothing.** ¶6(1)(d) is about the storage rather than the value, so
+the stored preferences were the thing objected to and there is nothing to bring back; turning the
+switch off simply lets later interactions store again. Both halves are said in the control's own
+copy rather than left to be discovered.
+
+**What the suite cannot pin, said plainly rather than papered over with a test that cannot fail.**
+jsdom runs neither the pre-hydration script nor cross-document `storage` events, so any assertion
+here about first-paint fallback or about tab B's rewrite being dropped would pass against an
+implementation that does nothing at all. Those are browser checks. What the suite does pin is the
+pure logic — which keys are dropped, when, and on which receiver — plus the one theme assertion that
+is real under jsdom, since `vitest.setup.ts` stubs `matchMedia` and next-themes therefore resolves
+and applies `system` exactly as it does in a browser.
+
+**Two consequences that are the semantics of the choice rather than bugs**, recorded so no review
+round re-files them. With the switch on, "Not now" on the passkey nudge hides the card for the
+session only and it returns on the next dashboard visit. And a diver who chose dark on a light-OS
+machine gets a light first paint on every visit — that is what "not persisted" means, and no flash
+is introduced, because with the key absent the pre-hydration script resolves `system` through
+`matchMedia` before first paint exactly as it does for a first-time visitor.

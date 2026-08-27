@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Metadata } from "next";
 import { runtimeConfig } from "@/lib/runtime-config";
+import { DeviceMemorySwitch } from "@/components/device-memory-switch";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
@@ -20,6 +21,9 @@ function StorageKey({ name }: { name: string }) {
   );
 }
 
+// This page is a Server Component and stays one; §10.3's switch is its only
+// client island. The island renders a stable server-side state and resolves the
+// real one after hydration, which is what every storage consumer here does.
 export default function PrivacyPage() {
   // Read here rather than in a client component for the reason `/contact` reads it
   // here: this is a Server Component, so the instance's configuration is legible
@@ -753,10 +757,13 @@ export default function PrivacyPage() {
               10.2 Preferences remembered on this device
             </h3>
             <p className="text-foreground mb-4">
-              {googleClientId ? "Nine" : "Eight"} entries in your
-              browser&rsquo;s local storage. Every one of them is read only by
-              the page you are on: none is sent to this server, and none is sent
-              anywhere else.
+              {googleClientId ? "Ten" : "Nine"} entries in your browser&rsquo;s
+              local storage. Every one of them is read only by the page you are
+              on: none is sent to this server, and none is sent anywhere else.
+              Where a row below says how long an entry is kept, read it as
+              &ldquo;unless you tell this browser to stop remembering&rdquo;
+              &mdash; 10.3 is the switch that does that, and says which of these
+              it reaches.
             </p>
             <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
               <li>
@@ -789,7 +796,7 @@ export default function PrivacyPage() {
               <li>
                 <StorageKey name="opendiving:passkey-nudge-dismissed" /> &mdash;
                 that you dismissed the offer to add a passkey on this browser.
-                Kept until cleared
+                Kept until you undo that from the passkeys card in your settings
               </li>
               <li>
                 <StorageKey name="opendiving:dive-profile-series-v3" /> &mdash;
@@ -820,51 +827,73 @@ export default function PrivacyPage() {
                 when you sign out, so that the next person at this browser is
                 not handed your choice
               </li>
+              <li>
+                <StorageKey name="opendiving:device-memory-opt-out" /> &mdash;
+                that you used the switch in 10.3 to say this browser should stop
+                remembering your display preferences. 10.3 lists exactly which
+                of the entries above that reaches. This is the one entry here
+                that exists because you asked for it, and the only way this
+                browser can keep honouring that answer after you close the tab.
+                Kept until you turn the switch back off
+              </li>
             </ul>
 
             <h3 className="text-xl font-semibold text-foreground mb-3">
-              10.3 Which of these you can switch off, and which you cannot
+              10.3 Telling this browser to stop remembering
             </h3>
             <p className="text-foreground mb-4">
-              Honestly: six of those {googleClientId ? "nine" : "eight"}, you
-              cannot. You can change most of them &mdash; pick a different
-              theme, a different set of chart lines, a different period, and the
-              stored value changes &mdash; but changing a preference is not the
-              same as declining to have one stored, and this software offers no
-              control that does the second.{" "}
-              <StorageKey name="opendiving:passkey-nudge-dismissed" /> cannot
-              even be changed: there is no way to un-dismiss the offer.
+              Changing a preference is not the same as declining to have one
+              stored, and under some rules &mdash; UK law is the clearest case
+              &mdash; storage of this kind owes you a simple way to object to
+              the storage itself rather than to the value. Here is that way. It
+              applies to this browser, it costs nothing, and you do not need an
+              account to use it.
+            </p>
+            <DeviceMemorySwitch />
+            <p className="text-foreground mb-4 mt-4">
+              Seven of those {googleClientId ? "ten" : "nine"} are covered:{" "}
+              <StorageKey name="theme" />, both chart-line entries, both
+              chart-period entries, <StorageKey name="opendiving:entry-units" />{" "}
+              and <StorageKey name="opendiving:passkey-nudge-dismissed" />.
+              Turning the switch on deletes each of them that exists and refuses
+              the next write of any of them. It also sweeps out anything else
+              this site left behind under the same{" "}
+              <StorageKey name="opendiving:" /> naming, including entries older
+              versions of this software wrote and nothing reads any more.
+              Turning it back off restores nothing &mdash; the stored values
+              were what you objected to &mdash; it only lets later choices be
+              remembered again.
             </p>
             <p className="text-foreground mb-4">
-              {googleClientId ? "Three are different." : "Two are different."}{" "}
-              <StorageKey name="opendiving:entry-units" /> is the one you can
-              genuinely remove: set every field back to the default unit and the
-              entry is deleted rather than rewritten. And{" "}
+              {googleClientId
+                ? "Three are not covered."
+                : "Two are not covered."}{" "}
               <StorageKey name="opendiving:post-auth-redirect" />{" "}
               {googleClientId ? (
                 <>
                   and <StorageKey name="opendiving:google-sign-in-attempts" />{" "}
-                  remove themselves &mdash; each is read once and gone, and
-                  expires on its own if you never come back.
+                  are what carry a sign-in you started here across the hop
+                  through your mail app or through Google, and each removes
+                  itself &mdash; read once and gone, and expiring on its own if
+                  you never come back.
                 </>
               ) : (
                 <>
-                  removes itself &mdash; it is read once and gone, and expires
-                  on its own if you never come back.
+                  is what carries a sign-in you started here across the hop
+                  through your mail app, and it removes itself &mdash; read once
+                  and gone, and expiring on its own if you never come back.
                 </>
-              )}
+              )}{" "}
+              And the switch&rsquo;s own entry stays, because an objection this
+              browser forgot the moment you closed the tab would not be one.
             </p>
             <p className="text-foreground mb-4">
-              Clearing your browser&rsquo;s data for this site does remove all
-              of them, and we would rather not dress that up as a control we
-              give you. It is your browser&rsquo;s, not ours; it cannot single
-              one of these out; and it also destroys the sign-in cookie above
-              and signs you out. Under some rules &mdash; UK law is the clearest
-              case &mdash; storage of this kind owes you a simple way to object
-              to the storage itself, and this software does not yet give you
-              one. That is a real gap rather than an oversight we would rather
-              you did not notice, and closing it properly is a separate piece of
-              work already planned.
+              Clearing your browser&rsquo;s data for this site removes all of
+              them too, and we would still rather not dress that up as a control
+              we give you. It is your browser&rsquo;s, not ours; it cannot
+              single one of these out; and it also destroys the sign-in cookie
+              above and signs you out. The switch is ours, and it is the one
+              that can.
             </p>
 
             <h3 className="text-xl font-semibold text-foreground mb-3">
