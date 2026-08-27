@@ -397,11 +397,17 @@ export default function PrivacyPage() {
                 </h3>
                 <p className="text-foreground mb-4">
                   This copy of OpenDiving offers &ldquo;Continue with
-                  Google&rdquo;, and that has a cost before you choose anything.
-                  Opening the front page or the sign-in page loads
-                  Google&rsquo;s sign-in code into your browser as the page
-                  appears, so Google sees your IP address and your browser at
-                  that moment, and may set cookies of its own under{" "}
+                  Google&rdquo;, and until you press that button nothing about
+                  you reaches Google. Opening the front page or the sign-in page
+                  loads no code of Google&rsquo;s, contacts no Google address,
+                  and gives Google no opportunity to set anything in your
+                  browser. If you sign in another way, or never sign in at all,
+                  Google is never told you were here.
+                </p>
+                <p className="text-foreground mb-4">
+                  Pressing the button takes you to Google, because that is what
+                  signing in with Google means. From that point you are on
+                  Google&rsquo;s own site, under{" "}
                   <a
                     href="https://policies.google.com/privacy"
                     target="_blank"
@@ -411,6 +417,21 @@ export default function PrivacyPage() {
                     its own privacy policy
                   </a>
                   , which this copy of OpenDiving neither controls nor can see.
+                  Anything Google stores there is its own, on its own address,
+                  rather than a third-party cookie on this one. You choose there
+                  whether to go through with it, and if you change your mind
+                  Google returns you here with nothing having happened.
+                </p>
+                <p className="text-foreground mb-4">
+                  What comes back to your browser is a single-use code and
+                  nothing else. It is this server, not your browser, that hands
+                  that code to Google in exchange for confirmation of who you
+                  are &mdash; a call made server to server, which is why nothing
+                  identifying you passes through your browser at any point. This
+                  copy stores no Google credential of any kind: it never asks
+                  Google for the sort of token that would let it act as you
+                  later, and the code and the one-time secret your browser kept
+                  to match it are both used once and discarded.
                 </p>
                 <p className="text-foreground mb-4">
                   If you do sign in with Google, Google learns that you use this
@@ -422,15 +443,9 @@ export default function PrivacyPage() {
                   yours to change.
                 </p>
                 <p className="text-foreground mb-4">
-                  If you never use Google sign-in, signing in another way sends
-                  Google nothing beyond that page load. That page load is the
-                  honest state of things today rather than the state we want:
-                  narrowing it so that nothing reaches Google until you actually
-                  click the button is a separate change already in hand, and
-                  this section will say so differently when it lands. An
-                  operator who would rather not wait can leave Google sign-in
-                  unconfigured, and then none of this &mdash; including this
-                  section &mdash; exists on their copy at all.
+                  An operator who would rather not offer this at all can leave
+                  Google sign-in unconfigured, and then none of this &mdash;
+                  including this section &mdash; exists on their copy at all.
                 </p>
               </>
             )}
@@ -738,9 +753,9 @@ export default function PrivacyPage() {
               10.2 Preferences remembered on this device
             </h3>
             <p className="text-foreground mb-4">
-              Nine entries in your browser&rsquo;s local storage. Every one of
-              them is read only by the page you are on: none is sent to this
-              server, and none is sent anywhere else.
+              {googleClientId ? "Ten" : "Nine"} entries in your browser&rsquo;s
+              local storage. Every one of them is read only by the page you are
+              on: none is sent to this server, and none is sent anywhere else.
             </p>
             <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
               <li>
@@ -758,6 +773,18 @@ export default function PrivacyPage() {
                 anyone else at this browser could read &mdash; which is exactly
                 why it does not linger
               </li>
+              {googleClientId && (
+                <li>
+                  <StorageKey name="opendiving:google-sign-in-attempts" />{" "}
+                  &mdash; the one-time secret that proves a &ldquo;Continue with
+                  Google&rdquo; sign-in coming back from Google is the one you
+                  started here, along with where you were headed. Written only
+                  when you press that button, one entry per attempt so that two
+                  tabs cannot spoil each other&rsquo;s, read once and removed
+                  the moment Google returns you, and expiring after 30 minutes
+                  if it never does
+                </li>
+              )}
               <li>
                 <StorageKey name="opendiving:last-auth-method" /> &mdash; which
                 way you signed in last time, so the sign-in form can say so.
@@ -805,21 +832,33 @@ export default function PrivacyPage() {
               10.3 Which of these you can switch off, and which you cannot
             </h3>
             <p className="text-foreground mb-4">
-              Honestly: seven of those nine, you cannot. You can change most of
-              them &mdash; pick a different theme, a different set of chart
-              lines, a different period, and the stored value changes &mdash;
-              but changing a preference is not the same as declining to have one
-              stored, and this software offers no control that does the second.{" "}
+              Honestly: seven of those {googleClientId ? "ten" : "nine"}, you
+              cannot. You can change most of them &mdash; pick a different
+              theme, a different set of chart lines, a different period, and the
+              stored value changes &mdash; but changing a preference is not the
+              same as declining to have one stored, and this software offers no
+              control that does the second.{" "}
               <StorageKey name="opendiving:passkey-nudge-dismissed" /> cannot
               even be changed: there is no way to un-dismiss the offer.
             </p>
             <p className="text-foreground mb-4">
-              Two are different. <StorageKey name="opendiving:entry-units" /> is
-              the one you can genuinely remove: set every field back to the
-              default unit and the entry is deleted rather than rewritten. And{" "}
-              <StorageKey name="opendiving:post-auth-redirect" /> removes itself
-              &mdash; it is read once and gone, and expires on its own if you
-              never come back.
+              {googleClientId ? "Three are different." : "Two are different."}{" "}
+              <StorageKey name="opendiving:entry-units" /> is the one you can
+              genuinely remove: set every field back to the default unit and the
+              entry is deleted rather than rewritten. And{" "}
+              <StorageKey name="opendiving:post-auth-redirect" />{" "}
+              {googleClientId ? (
+                <>
+                  and <StorageKey name="opendiving:google-sign-in-attempts" />{" "}
+                  remove themselves &mdash; each is read once and gone, and
+                  expires on its own if you never come back.
+                </>
+              ) : (
+                <>
+                  removes itself &mdash; it is read once and gone, and expires
+                  on its own if you never come back.
+                </>
+              )}
             </p>
             <p className="text-foreground mb-4">
               Clearing your browser&rsquo;s data for this site does remove all
@@ -844,13 +883,21 @@ export default function PrivacyPage() {
               is in the build. No fonts are fetched from anywhere at run time.
             </p>
             <p className="text-foreground mb-4">
-              This software sets no third-party cookies of its own. Two outside
-              parties act on their own account rather than ours, and both are
+              This software sets no third-party cookies of its own. One outside
+              party acts on its own account rather than ours, and it is
               disclosed above rather than denied: the map tile provider your
               operator chose, whose servers answer the image requests described
-              in section 4.4 and may set cookies of their own; and, on instances
-              with Google sign-in turned on, Google.
+              in section 4.4 and may set cookies of their own.
             </p>
+            {googleClientId && (
+              <p className="text-foreground mb-4">
+                Google used to be the second, and deliberately is not any more.
+                Nothing of Google&rsquo;s runs in your browser on this site, and
+                Google sets nothing in your browser under this address. Signing
+                in with Google takes you to Google, where whatever it stores is
+                its own on its own address &mdash; section 4.8 has the detail.
+              </p>
+            )}
             <p className="text-foreground mb-4">
               One exception belongs to operators rather than to divers. If this
               copy has the optional admin panel turned on, that panel sets its

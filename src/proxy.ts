@@ -23,33 +23,32 @@ import { runtimeConfig } from "@/lib/runtime-config";
 // scope while everything below is not.
 const API_ORIGIN_SOURCE = apiCspSource(process.env.NEXT_PUBLIC_API_URL) ?? "";
 
-// The host sources the configuration decides on, each empty when the feature behind it
-// is off. Derived on first request rather than at module load - reading the environment
-// while the module is being evaluated risks doing it at build time, and the whole point
-// of `lib/runtime-config.ts` is that a published image reads it in the container it runs
+// The map tile hosts, the one host source this app's configuration still decides on.
+// Derived on first request rather than at module load - reading the environment while
+// the module is being evaluated risks doing it at build time, and the whole point of
+// `lib/runtime-config.ts` is that a published image reads it in the container it runs
 // in. Derived *once* rather than per request for the reason it always was: the
 // environment cannot change while the process lives, and `tileOrigins`' warning for a
 // malformed template would otherwise repeat on every request, burying the one diagnostic
 // it exists to give.
-interface ConfiguredCspSources {
-  tiles: string;
-  google: string;
-}
+//
+// `accounts.google.com` used to sit beside this on the same terms, in `style-src`,
+// `connect-src` and `frame-src`, because Google's sign-in script injected a stylesheet
+// and an iframe and called home from the page. No Google code runs here any more - the
+// button is a top-level navigation to Google (`lib/google-oauth.ts`) - and a top-level
+// navigation is governed by none of the fetch directives, so nothing replaced it. The
+// policy now names Google in no configuration at all, which also means the CSP no longer
+// discloses whether an instance has Google sign-in turned on.
+//
+// `undefined` rather than a falsy check, since an instance whose every tile template is
+// malformed legitimately derives the empty string and must not re-derive it per request.
+let tileSources: string | undefined;
 
-let configuredSources: ConfiguredCspSources | undefined;
-
-function cspSources(): ConfiguredCspSources {
-  if (!configuredSources) {
-    const { googleClientId, tiles } = runtimeConfig();
-    configuredSources = {
-      tiles: tileOrigins(tiles).join(" "),
-      // With no client ID the Google button never renders, GSI's
-      // script is never loaded, and none of the three directives below has anything to
-      // allow.
-      google: googleClientId ? "https://accounts.google.com" : "",
-    };
+function cspTileSources(): string {
+  if (tileSources === undefined) {
+    tileSources = tileOrigins(runtimeConfig().tiles).join(" ");
   }
-  return configuredSources;
+  return tileSources;
 }
 
 // `Strict-Transport-Security` is set here rather than in `next.config.js`'s `headers()`
@@ -84,9 +83,8 @@ function isHttps(request: NextRequest): boolean {
 
 // A directive and its sources, with the empty ones dropped. Every source below the
 // literal ones can vanish - the API origin whenever the API is same-origin, the tile
-// origins when every configured template is malformed, Google when the instance has not
-// turned it on - and a stray double space in a CSP is the kind of thing that reads as a
-// typo forever after.
+// origins when every configured template is malformed - and a stray double space in a
+// CSP is the kind of thing that reads as a typo forever after.
 function cspList(directive: string, ...sources: string[]): string {
   return [directive, ...sources.filter(Boolean)].join(" ");
 }
@@ -112,9 +110,8 @@ export function proxy(request: NextRequest) {
   // policy. Derived by the same module that builds the tile URLs
   // (`lib/map-tiles.ts`) for the same origin-not-path reason as above: a host
   // named in one place and not the other fails as a silently blocked image,
-  // which is a much worse thing to debug than a wrong URL. `google` is empty
-  // unless this instance turned that feature on.
-  const { tiles: tileOriginSources, google: googleSource } = cspSources();
+  // which is a much worse thing to debug than a wrong URL.
+  const tileOriginSources = cspTileSources();
 
   const cspDirectives = [
     "default-src 'self'",
@@ -142,14 +139,12 @@ export function proxy(request: NextRequest) {
     // relaxation - `style-src-elem`/`style-src` (actual `<style>` blocks,
     // where CSS-exfiltration attacks are more feasible) remain nonce-only
     // in production.
-    // `accounts.google.com` - GSI's client script injects its own
-    // `<link rel="stylesheet" href="https://accounts.google.com/gsi/style">`
-    // into `<head>`. A host source is needed even in dev: `'unsafe-inline'`
-    // only covers inline `<style>`, never an external stylesheet. Without it
-    // the real (invisible but click-receiving) Google button renders unstyled.
+    // No host source here any more: the only one this directive ever carried was
+    // `accounts.google.com`, for the stylesheet Google's sign-in script injected
+    // into `<head>`. Nothing of Google's is loaded on this site now.
     isDev
-      ? cspList("style-src", "'self'", "'unsafe-inline'", googleSource)
-      : cspList("style-src", "'self'", `'nonce-${nonce}'`, googleSource),
+      ? "style-src 'self' 'unsafe-inline'"
+      : `style-src 'self' 'nonce-${nonce}'`,
     "style-src-attr 'unsafe-inline'",
     // `blob:` - certification card images and avatars are private, so they're
     // fetched with an `Authorization` header and rendered from an object URL
@@ -167,15 +162,15 @@ export function proxy(request: NextRequest) {
       tileOriginSources,
     ),
     "font-src 'self' data:",
-    // `accounts.google.com` - the "Continue with Google" button
-    // (`components/auth/google-auth-button.tsx`) renders Google's own iframe
-    // there, and its client-side JS calls it directly to complete sign-in.
-    // The script itself (`https://accounts.google.com/gsi/client?hl=en`)
-    // doesn't need a dedicated `script-src` entry - it's injected by our own
-    // already-trusted bundle, which `'strict-dynamic'` (above) automatically
-    // extends trust to.
-    cspList("connect-src", "'self'", apiOrigin, googleSource),
-    cspList("frame-src", "'self'", googleSource),
+    // The API is the only cross-origin destination this app fetches from, and only
+    // in a split-origin build. "Continue with Google"
+    // (`components/auth/google-auth-button.tsx`) needs nothing in either of these:
+    // it is a top-level navigation to Google, which the fetch directives do not
+    // govern. Nor does it need a `Cross-Origin-Opener-Policy` in their place -
+    // Google documents `same-origin-allow-popups` as a requirement for its *popup*
+    // flows, and this one opens no popup.
+    cspList("connect-src", "'self'", apiOrigin),
+    "frame-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

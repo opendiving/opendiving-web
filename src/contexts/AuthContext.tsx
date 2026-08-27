@@ -14,6 +14,7 @@ import {
   authAPI,
   AuthOutcome,
   EmailLinkRequestResult,
+  GoogleAuthorizationGrant,
   User,
 } from "@/lib/api/auth";
 import { passkeysAPI } from "@/lib/api/passkeys";
@@ -74,7 +75,10 @@ interface AuthContextType {
   // tab that requested it. Same three outcomes as `verifyEmailLink`, because it claims
   // the same request row - whichever of the two arrives first wins.
   verifyEmailCode: (requestId: string, code: string) => Promise<AuthOutcome>;
-  signInWithGoogle: (credential: string) => Promise<AuthOutcome>;
+  // The tail of the Google round trip, called from `/auth/google/callback` rather
+  // than from the button: this flow leaves the tab, so what reaches here is an
+  // authorization code the visitor's browser carried back, not an identity.
+  signInWithGoogle: (grant: GoogleAuthorizationGrant) => Promise<AuthOutcome>;
   // The second half of a passkey ceremony: hand back the `flow_id` the options
   // call returned along with the credential the authenticator produced. Resolves
   // with the outcome, on the same contract as the three above.
@@ -222,8 +226,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   );
 
   const signInWithGoogle = useCallback(
-    async (credential: string) => {
-      const outcome = await authAPI.signInWithGoogle(credential);
+    async (grant: GoogleAuthorizationGrant) => {
+      const outcome = await authAPI.signInWithGoogle(grant);
       rememberAuthMethod("google");
       return applyOutcome(outcome);
     },

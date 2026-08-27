@@ -51,8 +51,9 @@ vi.mock("@/contexts/AuthContext", () => ({
 // it is only that it is handed the right request id.
 vi.mock("next/navigation", () => ({ useRouter: () => router }));
 
-// Google Identity Services loads a real script and renders into a real DOM node;
-// none of that is what these tests are about.
+// Pressing the Google button leaves the page entirely - it navigates to Google's
+// authorization endpoint - and none of that is what these tests are about. The
+// mock stays for that reason now rather than for the script it used to load.
 vi.mock("./google-auth-button", () => ({ GoogleAuthButton: () => null }));
 
 // The real hook runs against these, so what these tests exercise is this form's

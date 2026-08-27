@@ -1,12 +1,20 @@
 // Where a visitor should land once they've signed in, and how that destination
 // survives the trip through their inbox.
 //
-// Two very different lifetimes are handled here:
-//   - In-page sign-in (Google) never leaves the tab, so the destination is just
-//     passed down as a prop (`AuthForm` -> `GoogleAuthButton`) - no storage.
+// Three different lifetimes, of which this file stores one:
+//   - In-page sign-in - the six-digit code, and a passkey ceremony - never leaves
+//     the tab, so the destination is just passed down as a prop. No storage.
 //   - The email magic link leaves the app entirely and comes back on
 //     `/auth/verify`, a page that has no idea where the visitor was originally
-//     headed. `localStorage` carries it across that hop.
+//     headed. `localStorage` carries it across that hop, under the single
+//     read-once key below.
+//   - Google leaves the tab too, and comes back on `/auth/google/callback`. Its
+//     destination is *not* stored here: it rides inside the per-attempt record
+//     `lib/google-oauth.ts` keeps, keyed by that attempt's `state`. The single
+//     key below would be the wrong home for it, because two tabs signing in at
+//     once would overwrite each other's - tab A would then sign in perfectly and
+//     land on tab B's page, with nothing anywhere reporting a problem. Only the
+//     sanitizing below is shared with that flow.
 //
 // `localStorage` (not `sessionStorage`) because the link is clicked from a mail
 // client, and that practically never reuses the tab that asked for it: a desktop
@@ -65,8 +73,9 @@ export const RESTORE_PATH = "/restore";
 // the mapping lives here and the call sites pass a status.
 //
 // `next` is only honoured for a sign-in, and is sanitized here rather than at each
-// call site: one of them reads it from `localStorage` and the rest take it from a
-// prop, and neither should have to remember. The other two statuses drop it, exactly
+// call site: two of them read it out of `localStorage` - the magic link from the key
+// in this file, Google from its own per-attempt record - and the rest take it from a
+// prop, and none should have to remember. The other two statuses drop it, exactly
 // as they always have - a brand-new account has nothing to return to, and neither has
 // an account that isn't back yet. Both screens end at the default.
 export function destinationForOutcome(

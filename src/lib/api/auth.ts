@@ -120,6 +120,25 @@ export interface LinkCheckResult {
   purge_after?: string;
 }
 
+// What a completed trip to Google comes back with, ready for the API to redeem.
+// Minted and stored per attempt by `lib/google-oauth.ts`, and read out again by
+// the callback route; snake_cased into the request body by `signInWithGoogle`,
+// which is the only place these names cross into the API's spelling.
+export interface GoogleAuthorizationGrant {
+  // Google's single-use `?code=`. Worthless without the two below and the API's
+  // client secret, which is why it is safe for it to have travelled through the
+  // browser at all.
+  code: string;
+  // The PKCE verifier whose SHA-256 the authorization request committed to. The
+  // API validates it to RFC 7636 §4.1's shape and answers 422 to anything else.
+  codeVerifier: string;
+  // The redirect URI the browser actually used. Google requires the exchange to
+  // repeat it, and the API refuses to exchange against any URI but the one its
+  // own `FRONTEND_URL` derives - which is what makes a misconfigured deployment
+  // this app's own named error rather than an opaque rejection from Google.
+  redirectUri: string;
+}
+
 // Every call that can hand back a session does the same thing with it: the access
 // token lives in memory only (see `client.ts`), so it has to be captured as the
 // response goes past rather than re-read from anywhere later.
@@ -190,12 +209,21 @@ export const authAPI = {
     return captureSession(response.data);
   },
 
-  // Sign in (or start onboarding for a new account) with Google. `credential` is
-  // the ID token JWT handed to us by Google Identity Services after the user picks
-  // an account - the backend verifies it and finds-or-creates the matching identity.
-  async signInWithGoogle(credential: string): Promise<AuthOutcome> {
+  // Sign in (or start onboarding for a new account) with Google.
+  //
+  // What travels here is a single-use authorization code, not an identity. The
+  // backend redeems it at Google's token endpoint using its own client secret and
+  // the PKCE verifier this browser minted, verifies the ID token that comes back,
+  // and finds-or-creates the matching identity. Nothing Google issues that
+  // identifies anyone ever passes through the browser, which is why a code that
+  // did is safe to have travelled this way.
+  async signInWithGoogle(
+    grant: GoogleAuthorizationGrant,
+  ): Promise<AuthOutcome> {
     const response = await apiClient.post<AuthOutcome>("/auth/google", {
-      credential,
+      code: grant.code,
+      code_verifier: grant.codeVerifier,
+      redirect_uri: grant.redirectUri,
     });
     return captureSession(response.data);
   },

@@ -25,8 +25,11 @@ interface UsePasskeySignInOptions {
   autofill: boolean;
   /**
    * Where to land after signing in, when the visitor was headed somewhere
-   * specific. A prop, not storage: this ceremony never leaves the tab, exactly
-   * like Google's (see `lib/auth-redirect.ts`).
+   * specific. A prop, not storage: this ceremony never leaves the tab, so there
+   * is no hop for the destination to survive. Google's *does* leave now - it
+   * navigates to Google and comes back on `/auth/google/callback` - and carries
+   * its destination in its own pending-attempt record rather than in either
+   * prop or the magic link's key (see `lib/auth-redirect.ts`).
    */
   redirectTo?: string | null;
   /** Shown to the visitor when an explicit ceremony fails for a real reason. */
@@ -89,8 +92,9 @@ export function usePasskeySignIn({
     latest.current = { redirectTo, onError, signInWithPasskey, router };
   });
 
-  // The tail of both ceremonies: post the credential, then route the same way the
-  // Google button does. Notably this does *not* call `rememberPostAuthRedirect` -
+  // The tail of both ceremonies: post the credential, then route through
+  // `destinationForOutcome` the way every entry point does. Notably this does
+  // *not* call `rememberPostAuthRedirect` -
   // that `localStorage` slot belongs to the email flow, which leaves the tab and
   // comes back on `/auth/verify` with no other way to know where it was headed.
   // Writing it here would leave a destination behind that a later magic-link
