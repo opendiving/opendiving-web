@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { AvatarCard } from "@/components/settings/avatar-card";
 import { DataExportCard } from "@/components/settings/data-export-card";
 import { DeleteAccountCard } from "@/components/settings/delete-account-card";
+import { DeviceMemoryCard } from "@/components/settings/device-memory-card";
 import { EmailChangeCard } from "@/components/settings/email-change-card";
 import { NotificationsCard } from "@/components/settings/notifications-card";
 import { PasskeysCard } from "@/components/settings/passkeys-card";
@@ -191,6 +192,8 @@ export default function SettingsPage() {
         <UnitsCard />
 
         <PasskeysCard />
+
+        <DeviceMemoryCard />
       </div>
 
       {/* Full width rather than another cell in the grid above: the three rows each

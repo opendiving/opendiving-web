@@ -2,12 +2,17 @@ import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import {
+  COVERED_KEYS,
+  EXCLUDED_KEYS,
+  deviceMemoryClass,
+} from "./device-memory";
 
 // The rule: a browser-storage key that production code writes owes §10 of the privacy
 // page a row in the same change. Prose said so first and prose is what failed -
 // `opendiving:entry-units` shipped a ninth key while §10 still described eight, and
 // nobody read the standing rule in DECISIONS.md on the way past. This is that rule with
-// teeth, in three checks that are deliberately dumb:
+// teeth, in four checks that are deliberately dumb:
 //
 //   1. every `opendiving:`-prefixed string literal in production code under `src/`
 //      appears verbatim in `app/privacy/page.tsx`;
@@ -17,6 +22,11 @@ import { describe, expect, it } from "vitest";
 //   3. the two mechanisms §10.4 names that check (2) cannot see - IndexedDB and
 //      service workers - are in fact unused. §10.4's third, session storage, is
 //      covered by check (2) instead; see the note on `ABSENT_MECHANISMS` for why.
+//   4. every key check (1) finds is classified by `lib/device-memory.ts` as either
+//      covered by the device-memory switch or deliberately excluded from it - so a
+//      new key cannot ship without somebody deciding whether the objection switch
+//      reaches it. `theme` is asserted covered by hand, since it has no literal for
+//      check (1) to find.
 //
 // Check (2) is a tripwire, not an analysis, and that is a correction rather than a
 // shortcut. It began as a regex that read `setItem("literal")`, which missed the house
@@ -50,7 +60,7 @@ import { describe, expect, it } from "vitest";
 //     already had to think about.
 //   - a *second* key added inside a module already on the list below, if it is named
 //     without the `opendiving:` prefix. Check (1) catches it whenever the prefix is
-//     used, which is the house style in all seven of these files.
+//     used, which is the house style in all eight of these files.
 //   - a storage write spelled in some way `STORAGE_WRITE` does not list. It targets the
 //     three forms this app actually uses or could slip into - `setItem`, the index form,
 //     `document.cookie` - and it is a text match over source, not a semantic one, so it
@@ -72,6 +82,9 @@ import { describe, expect, it } from "vitest";
 const STORAGE_WRITERS = [
   "lib/auth-redirect.ts",
   "lib/chart-series-view.ts",
+  // Writes the objection flag, and calls through to the original `setItem` for
+  // everything it does not suppress - so it is a writer twice over.
+  "lib/device-memory.ts",
   "lib/dive-activity-view.ts",
   "lib/entry-units.ts",
   "lib/gas-use-view.ts",
@@ -89,7 +102,7 @@ const PRIVACY_PAGE = path.join(SRC, "app", "privacy", "page.tsx");
 // that cannot fail, quietly diluting the ones that can.
 const KEY_LITERAL = /(['"`])(opendiving:[^'"`]+)\1/g;
 
-// A write to browser storage from client code. `setItem` is how all seven writers do
+// A write to browser storage from client code. `setItem` is how all eight writers do
 // it; the index and cookie forms are here because they are real writes that spell no
 // `setItem` at all, and neither appears in production code today - they are matched so
 // that reaching for one is not a way around the list.
@@ -109,11 +122,12 @@ const STORAGE_WRITE =
 // spells none of `STORAGE_WRITE`, and the cheapest moment to notice it is now.
 //
 // `sessionStorage` is deliberately absent from this pattern even though §10.4 names it
-// too. Three production modules mention it in comments - `lib/auth-redirect.ts` and
-// `lib/gas-use-view.ts` explaining why they chose `localStorage` over it, and
-// `lib/api/client.ts` explaining why the access token is in neither - so matching raw
-// text would fail on all three for saying nothing at all. Its *writes* are caught by
-// `STORAGE_WRITE` above, which is the half that matters.
+// too. Four production modules mention it in comments - `lib/auth-redirect.ts` and
+// `lib/gas-use-view.ts` explaining why they chose `localStorage` over it,
+// `lib/api/client.ts` explaining why the access token is in neither, and
+// `lib/device-memory.ts` explaining why its interposition guards on the receiver - so
+// matching raw text would fail on all four for saying nothing at all. Its *writes* are
+// caught by `STORAGE_WRITE` above, which is the half that matters.
 const ABSENT_MECHANISMS = /\bindexedDB\b|\bserviceWorker\b|\bcookieStore\b/i;
 
 function isProductionSource(file: string): boolean {
@@ -192,5 +206,41 @@ describe("browser storage keys", () => {
       .filter((file) => ABSENT_MECHANISMS.test(readFileSync(file, "utf8")))
       .map((file) => path.relative(SRC, file));
     expect(users).toEqual([]);
+  });
+
+  // §10.3 offers one switch against all of this, and a key nobody classified is
+  // a key that switch quietly does not reach - the same silent gap check (1)
+  // exists to close for disclosure, one section later. So every key the sweep
+  // finds has to be in one of `device-memory.ts`'s two lists, and a new one
+  // fails here until its author decides which.
+  describe("the device-memory switch classifies every key", () => {
+    it.each([...keys].map(([key, file]) => ({ key, file })))(
+      "$key is covered or excluded (defined in $file)",
+      ({ key }) => {
+        expect(deviceMemoryClass(key)).not.toBeNull();
+      },
+    );
+
+    // The half the sweep cannot reach: `theme` is next-themes' own default key,
+    // configured in `app/layout.tsx` with no `storageKey` override, so there is
+    // no literal in this tree for check (1) to find and nothing above would
+    // notice it falling out of the covered list.
+    it("covers `theme`, which no literal in this tree spells", () => {
+      expect(deviceMemoryClass("theme")).toBe("covered");
+    });
+
+    // Without this the check above is only as strong as its inputs: if
+    // `deviceMemoryClass` ever answered for everything, every case would pass
+    // and nothing would be enforced. This is the case that must fail.
+    it("answers for nothing else", () => {
+      expect(deviceMemoryClass("opendiving:never-classified")).toBeNull();
+    });
+
+    // A key in both lists would satisfy the check above while meaning two
+    // contradictory things - cleared and suppressed, and deliberately kept.
+    it("puts no key in both lists", () => {
+      const covered = new Set<string>(COVERED_KEYS);
+      expect(EXCLUDED_KEYS.filter((key) => covered.has(key))).toEqual([]);
+    });
   });
 });

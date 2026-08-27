@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { AppShell } from "@/components/layout/app-shell";
 import { Toaster } from "@/components/ui/toaster";
 import { NonceProvider } from "@/components/nonce-provider";
+import { DeviceMemoryInstaller } from "@/components/device-memory-installer";
 import { publicConfig, runtimeConfig } from "@/lib/runtime-config";
 import "./globals.css";
 
@@ -71,6 +72,12 @@ export default async function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <NonceProvider nonce={nonce}>
+          {/* Rendered rather than imported, and rendered here rather than
+              anywhere narrower: evaluating that module is what arms the
+              device-memory switch's write suppression, and a side-effect-only
+              import from this file - an async Server Component - would reach
+              the browser bundle only conditionally. See the component. */}
+          <DeviceMemoryInstaller />
           {/* Everything below is a Client Component, and this is the only place
               the environment is legible - so the instance's configuration is read
               here and carried down rather than looked up where it is used. */}

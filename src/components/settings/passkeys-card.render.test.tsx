@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { PasskeysCard } from "./passkeys-card";
+import { dismissPasskeyNudge } from "@/lib/passkey-nudge";
+import { memoryStorage, useStorage } from "@/test/memory-storage";
 
 // What only a render can reach: that the list is what a diver can act on - rename
 // it, revoke it, add to it - and that the card removes itself where none of that
@@ -57,6 +59,10 @@ const row = (name: string) =>
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // `window.localStorage` is installed per test rather than used as jsdom
+  // provides it - see `test/memory-storage.ts` for why. The card reads the
+  // dashboard nudge's dismissal out of it.
+  useStorage(memoryStorage());
   mocks.browserSupportsWebAuthn.mockReturnValue(true);
   mocks.getPasskeys.mockResolvedValue([IPHONE, SECURITY_KEY]);
   mocks.renamePasskey.mockResolvedValue(undefined);
@@ -217,5 +223,93 @@ describe("PasskeysCard", () => {
     const { container } = render(<PasskeysCard />);
 
     await waitFor(() => expect(container).toBeEmptyDOMElement());
+  });
+
+  // The un-dismiss the dashboard offer went without. Until this existed,
+  // `opendiving:passkey-nudge-dismissed` was the one stored preference a diver
+  // could not even change, which is what §10.3 of the privacy page said about
+  // it in as many words.
+  describe("the dashboard offer", () => {
+    // The only account the dashboard card would ever offer one to: it asks for
+    // the passkey list and shows itself only when that comes back empty
+    // (`dashboard/passkey-nudge-card.tsx`), so this is the one case where
+    // undoing the dismissal genuinely brings the offer back.
+    it("comes back for an account with no passkeys yet", async () => {
+      const user = userEvent.setup();
+      mocks.getPasskeys.mockResolvedValue([]);
+      dismissPasskeyNudge();
+      render(<PasskeysCard />);
+      await screen.findByText(/no passkeys yet/i);
+
+      expect(
+        screen.getByText(/the dashboard will offer it again/i),
+      ).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: /undo/i }));
+
+      expect(
+        window.localStorage.getItem("opendiving:passkey-nudge-dismissed"),
+      ).toBeNull();
+      expect(screen.queryByRole("button", { name: /undo/i })).toBeNull();
+      expect(screen.getByText(/back on your dashboard/i)).toBeInTheDocument();
+    });
+
+    // And the case that is most of the people who reach this card, where the
+    // same button removes a stored preference but cannot bring anything back.
+    // Promising the offer here would be a false claim on the one surface whose
+    // whole job is not making them: the dismissal outlives the state that made
+    // it relevant, since a diver dismisses the nudge with no passkeys and then
+    // adds one.
+    it("promises only the removal for an account that already has one", async () => {
+      const user = userEvent.setup();
+      dismissPasskeyNudge();
+      render(<PasskeysCard />);
+      await screen.findByText("iPhone");
+
+      expect(
+        screen.getByText(/only offers a passkey to an account that has none/i),
+      ).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: /undo/i }));
+
+      expect(
+        window.localStorage.getItem("opendiving:passkey-nudge-dismissed"),
+      ).toBeNull();
+      expect(
+        screen.getByText(/no longer holding that dismissal/i),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/back on your dashboard/i)).toBeNull();
+    });
+
+    // The dismissal lives in this browser and removing it needs no API, so a
+    // list that failed to load must not take the removal away - it is the one
+    // diver who cannot retry their way into the affordance. The count is
+    // unknown there, so the conservative sentence is the honest one.
+    it("still offers the removal when the list cannot be loaded", async () => {
+      const user = userEvent.setup();
+      mocks.getPasskeys.mockRejectedValue({
+        response: { status: 500, data: { detail: "Database is down" } },
+      });
+      dismissPasskeyNudge();
+      render(<PasskeysCard />);
+      await screen.findByText("Database is down");
+
+      expect(
+        screen.getByText(/only offers a passkey to an account that has none/i),
+      ).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: /undo/i }));
+
+      expect(
+        window.localStorage.getItem("opendiving:passkey-nudge-dismissed"),
+      ).toBeNull();
+      expect(screen.queryByText(/back on your dashboard/i)).toBeNull();
+    });
+
+    // Nothing stored is nothing to undo - including the case that matters to
+    // the device-memory switch, where the dismissal was never written at all.
+    it("offers nothing where no dismissal is stored", async () => {
+      render(<PasskeysCard />);
+      await screen.findByText("iPhone");
+
+      expect(screen.queryByRole("button", { name: /undo/i })).toBeNull();
+    });
   });
 });

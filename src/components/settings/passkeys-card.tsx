@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import {
   Check,
   KeyRound,
@@ -30,6 +30,11 @@ import { getApiErrorMessage } from "@/lib/api/error";
 import { passkeysAPI, type Passkey } from "@/lib/api/passkeys";
 import { PASSKEY_NAME_MAX_LENGTH } from "@/lib/passkey-name";
 import { formatDateTime } from "@/lib/date-time";
+import { subscribeToNothing } from "@/lib/chart-series-view";
+import {
+  isPasskeyNudgeDismissed,
+  restorePasskeyNudge,
+} from "@/lib/passkey-nudge";
 
 // What the list request came back with. `absent` is the instance whose API
 // predates passkeys and 404s: that is not an error to report on a settings page,
@@ -70,6 +75,20 @@ export function PasskeysCard() {
   const [list, setList] = useState<ListState>({ status: "loading" });
   const [edited, setEdited] = useState<EditedName | null>(null);
   const [isRenaming, setIsRenaming] = useState(false);
+
+  // Whether the dashboard offer has been dismissed on this browser, read
+  // through `useSyncExternalStore` so the server renders the "no dismissal"
+  // answer and hydration resolves the real one - the same shape the remembered
+  // chart views use. `subscribeToNothing` because nothing else in this document
+  // changes the key; the un-dismiss below is the one thing that does, and it
+  // hides the row itself rather than going back to storage for an answer it
+  // already knows.
+  const nudgeDismissed = useSyncExternalStore(
+    subscribeToNothing,
+    isPasskeyNudgeDismissed,
+    () => false,
+  );
+  const [nudgeRestored, setNudgeRestored] = useState(false);
 
   // Written as a promise chain rather than `async`/`await` because it is called
   // from the effect below, and `react-hooks/set-state-in-effect` rejects a
@@ -131,6 +150,13 @@ export function PasskeysCard() {
 
   const passkeys = list.status === "ready" ? list.passkeys : [];
   const pendingName = passkeys.find((one) => one.uuid === pendingId)?.name;
+
+  // Whether undoing the dismissal would actually bring the dashboard offer
+  // back. Only an account *known* to have none qualifies: `passkeys` is `[]`
+  // for a list that failed as well as for one that is genuinely empty, and
+  // guessing "empty" there would put the optimistic promise in front of
+  // precisely the diver whose account we could not read.
+  const nudgeWouldReturn = list.status === "ready" && passkeys.length === 0;
 
   const saveName = async () => {
     if (!edited) return;
@@ -342,6 +368,59 @@ export function PasskeysCard() {
           <p className="text-xs text-muted-foreground">
             This browser can&apos;t create passkeys, so there is nothing to add
             here - the ones above still sign you in wherever they live.
+          </p>
+        )}
+
+        {/* The un-dismiss the dashboard offer never had. It shows only where a
+            dismissal is actually stored, so a browser that never saw the offer
+            - or one where the device-memory switch is on, and nothing was
+            stored to begin with - is offered nothing to undo.
+
+            What it promises depends on the account, and saying so is the whole
+            reason these strings are conditional rather than one sentence. The
+            dashboard card offers a passkey only to an account that has none
+            (`dashboard/passkey-nudge-card.tsx`), so for the diver reading a
+            list with a passkey in it - which is most of the people who get
+            here - undoing the dismissal cannot bring the offer back and must
+            not claim to. It is still worth offering them, because the entry is
+            a stored preference and §10.2 of the privacy page promises it can
+            be un-stored; it just buys them the removal rather than the offer.
+
+            Held back only while the list is still in flight, so neither string
+            is shown against a passkey count that is `[]` because nothing has
+            arrived yet. A *failed* load is not a reason to withhold it: the
+            dismissal is in this browser and removing it needs no API at all,
+            so hiding the row there would take the removal away from the one
+            diver who cannot retry into it. It falls back to the conservative
+            sentence instead, which is true whatever the count turns out to
+            be - `nudgeWouldReturn` is deliberately false for an unknown
+            account rather than optimistic about one. */}
+        {list.status !== "loading" && nudgeDismissed && !nudgeRestored && (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-3">
+            <p className="text-xs text-muted-foreground">
+              You dismissed the passkey offer on this browser.{" "}
+              {nudgeWouldReturn
+                ? "Undo that and the dashboard will offer it again."
+                : "Undoing that removes the note, but the dashboard only offers a passkey to an account that has none."}
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                restorePasskeyNudge();
+                setNudgeRestored(true);
+              }}
+            >
+              Undo
+            </Button>
+          </div>
+        )}
+
+        {nudgeRestored && (
+          <p className="text-xs text-muted-foreground border-t pt-3">
+            {nudgeWouldReturn
+              ? "Done - the offer will be back on your dashboard next time you visit it."
+              : "Done - this browser is no longer holding that dismissal."}
           </p>
         )}
       </CardContent>

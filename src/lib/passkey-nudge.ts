@@ -7,9 +7,14 @@
 // suppress the nudge precisely where it earns its place, at the cost of a column,
 // an endpoint and a migration for a banner.
 //
-// The trade is that clearing site data brings the offer back. That is the right
-// way round: the failure mode is one extra card on one dashboard visit, against
-// never being offered a passkey on the laptop you just bought.
+// Clearing site data brings the offer back, and so does the settings passkeys
+// card - `restorePasskeyNudge` below is the un-dismiss this module went without
+// for its first few releases. That it had none was the harshest sentence in the
+// privacy page's §10.3: a stored preference nobody could even change, let alone
+// stop. It is owed on plain UX grounds too, independent of any statute.
+//
+// With the device-memory switch on there is never a stored dismissal, so the
+// affordance simply has nothing to offer - consistent, not a special case.
 
 const PASSKEY_NUDGE_DISMISSED_KEY = "opendiving:passkey-nudge-dismissed";
 
@@ -35,5 +40,21 @@ export function dismissPasskeyNudge(): void {
   } catch {
     // Nothing to do about it and nothing to say: the card closes either way,
     // and the worst case is that it comes back on the next dashboard visit.
+  }
+}
+
+/**
+ * Forgets the dismissal, so the dashboard offers a passkey again.
+ *
+ * Removes the entry rather than storing a "show me" value: absence is already
+ * what an undismissed browser looks like, and a second stored state would be a
+ * value that means the same as no value.
+ */
+export function restorePasskeyNudge(): void {
+  try {
+    window.localStorage.removeItem(PASSKEY_NUDGE_DISMISSED_KEY);
+  } catch {
+    // As above - and a browser that refuses storage was never holding a
+    // dismissal for this to remove.
   }
 }

@@ -5,9 +5,18 @@ import PrivacyPage from "./page";
 
 // §10's counts are prose, and prose is what goes stale. `lib/storage-keys.test.ts`
 // already guarantees that every key production code writes is *listed* here; what it
-// cannot see is that the sentences above the list still agree with its length -
-// "Eight entries", "six of those eight", "Two are different". All three are spelled
-// as words, which is how a sweep for numerals misses every one of them.
+// cannot see is that the sentences above and below the list still agree with its
+// length - "Nine entries", "Seven of those nine are covered", "Two are not covered".
+// All three are spelled as words, which is how a sweep for numerals misses every one
+// of them.
+//
+// The split below used to be between the keys you could switch off and the ones you
+// could not, and the second number was a constant because it was a fact about the
+// code rather than about the list. It is now the split the device-memory switch
+// makes, and the "cannot" side is empty: §10.3 offers a control that reaches every
+// covered key, so the count that moved with each release is gone rather than lowered.
+// The last test in this block is what holds that - a sentence claiming no control
+// exists is the specific thing this section may no longer say.
 //
 // This is also where the section's conditional half is pinned. §4.8 and the Google
 // storage key exist only where an instance has Google sign-in configured, so every
@@ -67,28 +76,59 @@ describe.each([
     ).toBeInTheDocument();
   });
 
-  // The other two counts have to add up to the same total: the ones you cannot
-  // switch off, plus the ones that are "different".
-  it("splits that same total between what you can and cannot switch off", () => {
+  // The other two counts have to add up to the same total: the ones the switch
+  // clears and suppresses, plus the ones it deliberately leaves alone.
+  it("splits that same total between what the switch covers and what it does not", () => {
     renderPage({ google });
 
     const listed = storageEntries().length;
     // One constant, spelled into both regexes below: the earlier shape wrote the
     // word out in the first and the numeral in the second, which is two places for
-    // the same figure to be wrong in.
-    const fixed = 6;
+    // the same figure to be wrong in. It does not vary with the Google
+    // configuration - the key that appears and disappears with it is an excluded
+    // one - so the conditional half of the page lands entirely on the remainder.
+    const covered = 7;
     expect(
       screen.getByText(
         new RegExp(
-          `${NUMBER_WORDS[fixed]} of those ${NUMBER_WORDS[listed]}, you`,
+          `${NUMBER_WORDS[covered]} of those ${NUMBER_WORDS[listed]} are covered`,
           "i",
         ),
       ),
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        new RegExp(`^${NUMBER_WORDS[listed - fixed]} are different`, "i"),
+        new RegExp(`^${NUMBER_WORDS[listed - covered]} are not covered`, "i"),
       ),
+    ).toBeInTheDocument();
+  });
+
+  // The half no count can pin. §10.3 spent a release admitting the control it
+  // describes did not exist; each of these sentences was true then and is false
+  // now, and re-introducing any of them is the way this section goes back to
+  // being wrong about its own software.
+  it.each([
+    [/offers no control/i],
+    [/does not yet give you one/i],
+    [/cannot even be changed/i],
+    [/separate piece of work already planned/i],
+    [/which of these you can switch off, and which you cannot/i],
+  ])("no longer says %s", (claim) => {
+    renderPage({ google });
+
+    expect(screen.queryByText(claim)).toBeNull();
+  });
+
+  // The switch itself, rather than the prose about it: §10.3 is the only surface
+  // reachable without an account - `/settings` is auth-gated - so the control
+  // being present here is what makes the objection available at all.
+  it("renders the switch itself, not only a description of one", () => {
+    renderPage({ google });
+
+    expect(
+      screen.getByRole("checkbox", {
+        name: /remember display preferences on this device/i,
+      }),
     ).toBeInTheDocument();
   });
 });
