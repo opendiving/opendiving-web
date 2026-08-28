@@ -13,9 +13,9 @@ interface PaginationFooterProps {
   onPageChange: (page: number) => void;
 }
 
-// Shared "Showing X to Y of Z" + Previous/Next footer used by the
-// dives/trips/sites list pages. Renders nothing if everything fits on one
-// page.
+// Shared "Showing X to Y of Z" + Previous/Next footer for the list pages and
+// for the cards that paginate a resource inside one. Renders nothing if
+// everything fits on one page.
 export function PaginationFooter({
   currentPage,
   itemsPerPage,

@@ -10938,3 +10938,97 @@ regression fix this change never caused.
 layout and returns zero-sized rects, so a geometry assertion passes against any markup at all. What
 the tests pin is text presence — the sentences, their numbers, and their absence on an unflagged
 dive.
+
+## Adding a resource means sweeping the prose that enumerates the resources
+
+Adding a resource kind is mostly mechanical - a `lib/api/` module, a list page, a detail page, the
+nav and quick-create registries. What is not mechanical is the prose that _enumerates_ the kinds,
+because nothing type-checks a sentence and nothing fails when one goes stale. There are two classes
+of it and they want opposite treatments.
+
+**The user-facing copy has to be swept kind by kind, every time.** These sentences are promises to
+the diver about which of their records get exported, erased or restored, so a missing kind is a
+false statement about their data rather than an untidy comment. The surfaces:
+
+- `app/privacy/page.tsx` - several separate enumerations, not one: what is collected, what is
+  processed, what the ownership paragraph covers, and what deletion destroys.
+- `app/terms/page.tsx` - what the service is for, and the "your content is yours" clause.
+- `components/settings/delete-account-card.tsx` - the card's own warning _and_ the `ConfirmDialog`
+  `description`, which lists the kinds a second time in a different register.
+- `components/auth/restore-account-card.tsx` - the same list in the "erased for good" framing, once
+  in prose and once in a dialog string.
+- `app/goodbye/page.tsx` - both arms, the already-erased one and the still-restorable one.
+- `app/auth/verify/page.tsx` - what restoring brings back, in both the `purgeOn` branch and the
+  dateless one.
+- `components/settings/data-export-card.tsx` - what each export format contains.
+- `README.md`'s feature list.
+
+**They had already drifted, which is the argument for doing this by sweep rather than from memory.**
+`goodbye` and `auth/verify` promised back only "dives, dive sites, certifications and gear", while
+`delete-account-card` and `restore-account-card` named trips in the same breath. Trips cascade with
+the rest of the account, so the shorter pair understated what was at stake on the two screens where
+a diver is actually deciding whether to act - and those are the two furthest from any code that
+could contradict them. Four strings, corrected in the change that added this section. Nothing had
+failed in the meantime: no test asserts on this copy, and there is nothing for a type to disagree
+with.
+
+**The docstrings and comments went the other way: the counts came out.** A doc comment that names
+`dives/[id]`, `sites/[id]`, `trips/[id]` and `gear/[id]` and then says "all four of which" is
+carrying a number no reader needs and the next resource falsifies. Those now read "a detail page",
+"the list pages", "the detail pages and the dive edit page" - true before that change, true after
+it, and true after the next one. Where a list earns its place it stays a list _without_ a number:
+`RecentDivesCard` says it is used on the dashboard and on "the detail pages that scope dives to one
+record - a trip, a dive site, a gear item", because the two modes are the thing worth knowing and
+nothing in the props says so.
+
+**Every count in them was already wrong, and adding a resource is only one of the ways that
+happens.** `recent-dives-card.tsx` claimed it was used on "the dashboard and profile pages". There
+was a profile page once, and it was deleted in `e49846f` - a commit that edited this very file,
+correcting "dashboard/profile" to "dashboard's" in the `limit` prop comment fifteen lines above and
+leaving the sentence below it naming a route that had just stopped existing. The same sentence also
+omitted the site and gear detail pages that really do use the card. `useDeleteResource`'s docstring
+listed the list pages and "the four detail pages" and missed
+`components/settings/passkeys-card.tsx`, which is neither; its "the other five call sites" was
+seven. `dashboard/page.tsx` described "the three cards that can have nothing to say" next to four of
+them, the fourth being the passkey nudge, which the JSX comment beside it describes as rendering
+nothing once taken or dismissed.
+
+That is the durable half. A hand-kept census goes stale on removal as readily as on addition, and it
+survives the very commits that should catch it - reading a file closely enough to fix one sentence
+is not enough to notice the second one twenty lines away. The fix is to stop keeping a census rather
+than to keep correcting it.
+
+**Regenerating the copy list** instead of trusting the one above to have stayed current - probe with
+a kind that exists everywhere:
+
+```bash
+git grep -lni certifications -- src/ README.md
+```
+
+Subtract the certification-_specific_ code (`components/certifications/`, `app/certifications/`,
+`lib/certification.ts`, `lib/api/certifications.ts`, `lib/validations/certification.ts`, their
+tests) and what is left is either enumeration-bearing prose or one of the registries a new kind has
+to extend anyway - `layout/header.tsx`'s nav and quick-create arrays, `layout/quick-create.tsx`'s
+`QuickCreateKind`, `lib/return-to.ts`'s section labels, `dashboard/setup-checklist-card.tsx`.
+`certifications` is the right probe precisely because it was added late: a list that names it is a
+list somebody has maintained recently.
+
+**The docstring figures need a second grep, because they do not mention any kind by name:**
+
+```bash
+git grep -nEi 'list pages?|detail pages?' -- src/
+```
+
+**That second pattern has a hole, and this repo demonstrated it.** Until the de-counting above,
+`hooks/usePaginatedResource.ts` read "for the dives/trips/sites list" / "pages" across a line break,
+and the grep never matched the one file whose whole job is list-page pagination. The rewording
+happens to have pulled "the list pages" back onto a single line, so it matches today - but nothing
+holds it there, and the next edit that lengthens that sentence reopens the hole silently. Any
+multi-word pattern over comment prose has this exposure, and comment prose is wrapped by definition.
+So a clean second sweep is suggestive, never conclusive; the first sweep is the one to lean on for
+coverage, because a single word cannot straddle a line break.
+
+**What is deliberately _not_ swept: this file.** Its own counts - "the four `[id]` detail pages",
+"all eight modules", "seven create/edit dialogs" - record what a particular change faced at the time
+it was made, and are meant to read as history. Updating them to today's numbers would destroy the
+thing they exist for. Only prose claiming to describe the code _as it stands_ is in scope here.

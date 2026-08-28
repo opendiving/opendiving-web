@@ -17,10 +17,10 @@ interface UseDeleteResourceOptions {
 }
 
 /**
- * Shared "confirm, delete, toast, refresh" flow used by the dives/trips/sites/gear/
- * certifications list pages *and* the four detail pages' delete actions.
- * Confirmation is driven by a `ConfirmDialog` (via `pendingId`/`requestDelete`)
- * rather than the blocking native `confirm()`.
+ * Shared "confirm, delete, toast, refresh" flow behind the deletes across the app -
+ * the list pages, the detail pages' delete actions, and the delete controls in
+ * settings. Confirmation is driven by a `ConfirmDialog` (via
+ * `pendingId`/`requestDelete`) rather than the blocking native `confirm()`.
  *
  * The detail pages used to hand-roll this, and had drifted: only `gear/[id]` ran the
  * failure through `getApiErrorMessage`, so a 409 from the API - "this dive site is
@@ -30,8 +30,8 @@ interface UseDeleteResourceOptions {
 export function useDeleteResource(
   // The second argument is for the deletes that take one: `deleteTrip` and
   // `deleteDiveSite` accept the uuid to move the resource's dives onto. A
-  // `deleteFn` that only takes an id satisfies this too, which is why the other
-  // five call sites are unchanged.
+  // `deleteFn` that only takes an id satisfies this too, which is why the call
+  // sites whose delete takes nothing but an id are unchanged.
   deleteFn: (id: string, option?: string) => Promise<unknown>,
   {
     confirmMessage,
