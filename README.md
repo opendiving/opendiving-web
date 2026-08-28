@@ -14,6 +14,11 @@ lives in your own Postgres database, and every dive keeps the original dive-comp
 imported from, downloadable at any time. Self-hosting isn't a feature here; it's the guarantee that
 no shutdown, acquisition, or paywall can ever take your logbook with it.
 
+**This repository is the web app — one component of the stack.** The project itself, and everything
+about running it, lives at **[opendiving/opendiving](https://github.com/opendiving/opendiving)**:
+the install, the configuration reference, the operator guides and the release that ties the
+components together. Start there if you want to run OpenDiving rather than work on this half of it.
+
 ![Dashboard](docs/screenshots/dashboard.png)
 
 ## Features
@@ -83,31 +88,19 @@ Honest answers to "why not X":
 ## Self-hosting
 
 One compose file brings up the whole stack — this app, the API and its worker, Postgres, Redis, and
-a Caddy that provisions TLS for your domain. It ships from the API repository, which is where an
-install is driven from:
+a Caddy that provisions TLS for your domain. That file is not in this repository and neither are the
+instructions for it: an install is a product-level thing, so it is driven from
+**[opendiving/opendiving](https://github.com/opendiving/opendiving)** — the four commands, the six
+values in the `.env` that matter, and the upgrade are all on that page.
 
-```bash
-mkdir opendiving && cd opendiving
-curl -LO https://github.com/opendiving/opendiving-api/releases/latest/download/docker-compose.yml
-curl -LO https://github.com/opendiving/opendiving-api/releases/latest/download/Caddyfile
-curl -Lo .env https://github.com/opendiving/opendiving-api/releases/latest/download/example.env
-$EDITOR .env
-docker compose up -d
-```
+What this repository contributes to it is one image. `ghcr.io/opendiving/opendiving-web` is prebuilt
+for amd64 and arm64, so a Raspberry Pi runs the same bytes as a VPS and there is no build step and
+no Node on the host; it is pulled alongside the API's by that compose file.
 
-That `.env` is the entire configuration surface, and six values in it are the ones that matter: a
-domain, a `SECRET_KEY` you generate, a database password, and the mail relay that carries sign-in
-links. Everything else has a working default.
-
-The images are prebuilt for amd64 and arm64, so a Raspberry Pi runs the same bytes as a VPS and
-there is no build step and no Node on the host — `ghcr.io/opendiving/opendiving-web` is pulled
-alongside the API's. Upgrading is `docker compose pull && docker compose up -d`; the API applies its
-own migrations on startup.
-
-**[Full self-hosting docs](https://github.com/opendiving/opendiving-api/tree/main/docs/self-hosting)**
-— install, every configuration variable, running behind your own reverse proxy instead of the
-bundled Caddy, backup and restore, upgrades, and troubleshooting. They live in one place rather than
-half here and half there.
+**[Full self-hosting docs](https://github.com/opendiving/opendiving/tree/main/docs)** — install,
+every configuration variable, running behind your own reverse proxy instead of the bundled Caddy,
+backup and restore, upgrades, and troubleshooting. They live in one place rather than half here and
+half there.
 
 ### Building the image yourself
 
@@ -188,10 +181,11 @@ made. Security problems go through [SECURITY.md](SECURITY.md) rather than the is
 
 ## Related repositories
 
-|                                                                |                                                      |
-| -------------------------------------------------------------- | ---------------------------------------------------- |
-| [opendiving-api](https://github.com/opendiving/opendiving-api) | FastAPI backend (Postgres, Redis, dive-file parsing) |
-| [opendiving-ios](https://github.com/opendiving/opendiving-ios) | SwiftUI app (early scaffold, parked)                 |
+|                                                                |                                                         |
+| -------------------------------------------------------------- | ------------------------------------------------------- |
+| [opendiving](https://github.com/opendiving/opendiving)         | The product: install bundle, operator docs, the release |
+| [opendiving-api](https://github.com/opendiving/opendiving-api) | FastAPI backend (Postgres, Redis, dive-file parsing)    |
+| [opendiving-ios](https://github.com/opendiving/opendiving-ios) | SwiftUI app (early scaffold, parked)                    |
 
 ## License
 

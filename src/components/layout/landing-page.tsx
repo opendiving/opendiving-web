@@ -25,8 +25,11 @@ import { CoralReefBackground } from "@/components/icons/coral-reef-background";
 // below are load-bearing, not modesty.
 const SOURCE_URL = "https://github.com/opendiving/opendiving-web";
 const ROADMAP_URL = "https://github.com/opendiving/opendiving-web#planned";
-const SELF_HOSTING_URL =
-  "https://github.com/opendiving/opendiving-api/tree/main/docs/self-hosting";
+// The product repository, not this one and not a docs directory inside it: it is the
+// page that carries the pitch *and* the four install commands, so a visitor who clicked
+// "run your own" lands on the thing they came for rather than on a file listing. Both
+// links below share it. See "The install lives in the product repository" in DECISIONS.md.
+const SELF_HOSTING_URL = "https://github.com/opendiving/opendiving";
 
 export function LandingPage() {
   const { isAuthenticated, isLoading } = useRedirectIfAuthenticated();
@@ -250,7 +253,7 @@ export function LandingPage() {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Self-hosting docs
+                How to self-host
                 <ArrowRight className="h-4 w-4 ml-2" />
               </a>
             </Button>

@@ -3280,6 +3280,30 @@ fails with "signed out on the way to /dashboard" and a run that quietly produces
 the sign-in form - which is the failure mode of _any_ future auth regression, not just the one that
 has been fixed.
 
+### The same script writes the product repository's copies
+
+`opendiving/opendiving` renders these three images on its own front page — the page the project is
+judged on — and has nothing that could retake them, because the app they are of is here. So `shot()`
+writes both trees from one shutter press: `docs/screenshots/` in this repository, and
+`$PRODUCT_DIR/docs/screenshots/` when a clone of the product repo sits beside this one, defaulting
+to `../opendiving` in the same `../sibling` shape `API_DIR` already uses. An absent clone is a
+printed note and not a failure — a contributor with one checkout has to be able to run this, which
+is the whole reason the default is a guess rather than a requirement.
+
+**One press, two writes, rather than two presses.** The pages are live: "due in 24 days" counts
+down, the subject dive is whichever recent one has a profile, and two shots taken a second apart are
+not the same image. Writing the buffer twice is what makes the copies identical rather than merely
+similar, and similar is the state that has somebody staring at two diffs wondering what changed.
+
+**The rejected alternatives** were hotlinking this repository's raw URLs from the product README —
+which breaks the day either repository is renamed and leaves that README unrenderable in a clone —
+and letting the copies drift, which is the failure this section's parent already describes for
+hand-cropped shots, one repository over.
+
+The script does not commit anything over there. It writes files into a checkout it does not live in,
+which is already the outer edge of what a script in this repository should do; making commits in
+another repository is not something to discover in a screenshot tool.
+
 ## "Due soon" is a `warning` badge, because `secondary` is invisible on a card
 
 `serviceStatusBadgeVariant` mapped `due_soon` onto the `secondary` badge, which is `bg-secondary`
@@ -7630,20 +7654,44 @@ same-repo PRs: on a fork PR the token is read-only whatever the workflow asks fo
 step would turn a _required_ check red on every external contribution, which is exactly the wrong
 week for it when the repos go public.
 
-## The self-hosting docs live in the API repository, and this README points at them
+## The install lives in the product repository, and this README points at it
 
-An install is one compose file, and that file belongs to `opendiving-api` — it names the `web`
-service, so it could never have lived here without the API repository holding a second copy of the
-same thing. Everything downstream of it follows: the configuration reference, the
-bring-your-own-proxy instructions, backup, restore, upgrade and troubleshooting are written once, in
-`opendiving-api/docs/self-hosting/`, and this README links there rather than paraphrasing. Two
-copies of install instructions do not stay in agreement, and the one that is wrong is always the one
-the reader found first.
+An install is one compose file, and that file belongs to neither component: it names the `web`
+service _and_ the `api` service, so either repository holding it means the other holds a second copy
+of the same thing. It lives in `opendiving/opendiving` along with everything downstream of it — the
+configuration reference, the bring-your-own-proxy instructions, backup, restore, upgrade and
+troubleshooting, written once — and this README links there rather than paraphrasing. Two copies of
+install instructions do not stay in agreement, and the one that is wrong is always the one the
+reader found first.
 
-What stays here is what the API repository has no reason to know: building this image yourself, and
-`NEXT_PUBLIC_API_URL` as a build arg for a split-origin deployment. Both are properties of _this_
-Dockerfile, and neither appears in the bundle at all — the bundle pulls a published image, and the
-browser talks to the origin that served it.
+**That reasoning is why this section's own quickstart was deleted rather than repointed.** This
+README used to carry the four `curl` commands itself, against the API repository's releases; the
+bundle has since moved to the product repository, and swapping the URLs would have kept exactly the
+second copy the paragraph above refuses — the wrong one being, as ever, whichever the reader found
+first. What is left is a link. The still-open gap those commands described travelled with them: no
+`v*` tag has been cut in any of the three repositories, so `releases/latest/download/...` resolves
+to nothing and neither image is on GHCR yet.
+
+**The section heading used to say `opendiving-api`, and the docs did live there first.** They were
+written in `opendiving-api/docs/self-hosting/` because the compose file was, which was the same
+argument reaching a smaller conclusion — the API repository was the only one of the two that could
+hold the bundle without duplication, and it took a third repository to make "neither component" an
+available answer. The reasoning survived the move intact; only its subject changed.
+
+**Both front-facing links out of this app point at the product repository's front page, not at its
+`docs/`.** `README.md`'s _Full self-hosting docs_ is the exception, and goes to
+`.../opendiving/tree/main/docs` because that is what it says it is. But `landing-page.tsx`'s
+`SELF_HOSTING_URL` — the hero's "run your own instance" and the button under _Run your own_ — and
+the contact page's _Self-hosting quickstart_ all land on `https://github.com/opendiving/opendiving`
+itself: that page carries the pitch and the four commands, so a visitor who clicked because they
+were shopping for something to deploy gets the install rather than a file listing. The contact one
+was `opendiving-api#quickstart`, an anchor that never existed under any casing — so it had been
+landing at the top of a component's README since the day it was written.
+
+What stays here is what the product repository has no reason to know: building this image yourself,
+and `NEXT_PUBLIC_API_URL` as a build arg for a split-origin deployment. Both are properties of
+_this_ Dockerfile, and neither appears in the bundle at all — the bundle pulls a published image,
+and the browser talks to the origin that served it.
 
 **The README was written ahead of what it describes, and has since been checked back.** When this
 section first landed none of it could be run: no deploy bundle, no `docs/self-hosting/`, no
@@ -7655,11 +7703,6 @@ draft that predicted it, which is how its asset names came right. The environmen
 `example.env`, not `.env.example`; `Caddyfile` is a third download the first draft omitted entirely;
 and a verbatim copy of that draft would have produced a broken install the day the first release was
 cut.
-
-One gap is still open, and it is the same one for both repositories: no `v*` tag has been cut, so
-`releases/latest/download/...` resolves to nothing and neither image is on GHCR. Every command in
-that section runs the moment the first release exists — until then the quickstart is documentation
-of a thing that works, not a thing you can do.
 
 The "One-command self-hosting" roadmap bullet was removed rather than reworded, on the same
 forward-dated basis: it and the new section describe one feature, and keeping both would leave the
@@ -7693,7 +7736,7 @@ replacements, and the shape of the page follows from it:
   `bg-primary` in dark mode against 3.4:1 for the faded version.
 - **The store badges became a line of prose that answers for them** — there are no mobile apps, the
   iOS companion is parked, and this web app is built for a phone in the meantime — with the source
-  and the self-hosting docs as inline links. The absence needed stating outright rather than being
+  and the way to run your own as inline links. The absence needed stating outright rather than being
   left as a silence, because the badges had already advertised it. `icons/apple-logo.tsx` and
   `icons/google-play-logo.tsx` went with them; they had no other caller.
 - **The Community card became Computer Import**, which is a thing the app does. Sharing is on the
@@ -8004,18 +8047,19 @@ other direction. Rot that reads as rigour is the failure mode in both cases, and
 cases is the same: something has to open a pull request.
 
 The pin-rot argument that drives the api repo's version of this section does not transfer whole, and
-it is worth saying where it stops. That repository has `deploy/docker-compose.yml` pinning three
-third-party images to digests that nothing was renewing, which is strictly worse than not pinning at
-all — an unpinned `postgres:18` drifts _towards_ the patched build while a stale digest drifts away
-from it, both invisibly. There is no deploy bundle here (see "The self-hosting docs live in the API
-repository"), so this repository has exactly two kinds of pin: the `Dockerfile`'s floating
-`node:24-alpine`, which is not a pin and must not become one, and the SHA-pinned third-party actions
-in the workflows. Both are fine. What is _not_ fine, and is this repository's own version of the
-frozen digest, is the four `npx --yes <tool>@<version>` invocations in `code-quality.yml`:
-`depcheck@1.4.7`, `@next/bundle-analyzer@16.3.0`, `madge@8.0.0`, `@axe-core/cli@4.12.1`. They are
-not in `package.json`, so no npm manager sees them; they are in `run:` rather than `uses:`, so no
-actions manager sees them. They are versions somebody typed once, in steps that end in `|| true`,
-and left alone they would still be those versions in five years. The regex `customManagers` entry in
+it is worth saying where it stops. The install bundle pins three third-party images to digests that
+nothing was renewing, which is strictly worse than not pinning at all — an unpinned `postgres:18`
+drifts _towards_ the patched build while a stale digest drifts away from it, both invisibly. That
+bundle was the api repository's when this section was written and is the product repository's now;
+either way it is not here (see "The install lives in the product repository"), so this repository
+has exactly two kinds of pin: the `Dockerfile`'s floating `node:24-alpine`, which is not a pin and
+must not become one, and the SHA-pinned third-party actions in the workflows. Both are fine. What is
+_not_ fine, and is this repository's own version of the frozen digest, is the four
+`npx --yes <tool>@<version>` invocations in `code-quality.yml`: `depcheck@1.4.7`,
+`@next/bundle-analyzer@16.3.0`, `madge@8.0.0`, `@axe-core/cli@4.12.1`. They are not in
+`package.json`, so no npm manager sees them; they are in `run:` rather than `uses:`, so no actions
+manager sees them. They are versions somebody typed once, in steps that end in `|| true`, and left
+alone they would still be those versions in five years. The regex `customManagers` entry in
 `renovate.json5` exists for them and nothing else, and it is the one piece of that file with no
 counterpart in the api's.
 
@@ -9053,11 +9097,15 @@ opendiving-api and so does that funnel, sample files and privacy warning include
 
 `config.yml` sends questions to **opendiving-api's Discussions**, not to a Discussions space of this
 repository's own. One space covers the product; a diver with a question has no reason to know which
-half of it their question is about, and the self-hosting and troubleshooting docs they will have
-been reading already live over there. The third contact link is the mirror of that reasoning for
-bugs: authentication, stored data, imports and the worker are all the API's, so a reporter who
-already knows that skips a round-trip, and one who does not is told to file here anyway rather than
-being made to choose correctly.
+half of it their question is about, and one space is searchable where two are a coin toss. Half of
+that reasoning has since been overtaken: it also said the self-hosting and troubleshooting docs the
+asker had been reading lived over there, and they do not any more — they are in
+`opendiving/opendiving` (see "The install lives in the product repository"). Which repository should
+host the one Discussions space is now an open question and an owner's, not a thing to settle by
+editing a contact link. The third contact link is the mirror of the one-space reasoning for bugs:
+authentication, stored data, imports and the worker are all the API's, so a reporter who already
+knows that skips a round-trip, and one who does not is told to file here anyway rather than being
+made to choose correctly.
 
 Two of those URLs 404 today, deliberately. Private vulnerability reporting and Discussions are both
 switches that only exist on a public repository, and they get flipped in the same sitting as the

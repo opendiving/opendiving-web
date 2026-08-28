@@ -131,9 +131,14 @@ export default function ContactPage() {
                 we cannot see them, restore them, or reset an account on it.
                 Whoever operates that server is the one who can.
               </p>
+              {/* The product repository. This used to be an `#quickstart`
+                  anchor on the API repo's README, which has no heading of that
+                  name and never had one - so the button landed at the top of a
+                  component's README either way. The install is a product-level
+                  thing and now lives where it is written. */}
               <Button asChild variant="outline" className="w-full">
                 <a
-                  href="https://github.com/opendiving/opendiving-api#quickstart"
+                  href="https://github.com/opendiving/opendiving"
                   target="_blank"
                   rel="noopener noreferrer"
                 >

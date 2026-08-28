@@ -69,10 +69,11 @@
   //     (`docker/login-action@dbcb8138... # v4.6.0`). Renovate updates the SHA *and* the
   //     comment, and leaves the tags as tags.
   //
-  // The api's third case - a `deploy/docker-compose.yml` whose third-party images are
+  // The product repo's third case - a `docker-compose.yml` whose third-party images are
   // digest-pinned because an operator *pulls* them rather than building them - has no
-  // counterpart here. The deploy bundle lives in that repository and names this image by tag,
-  // so nothing in this repository is digest-pinned except the third-party actions above.
+  // counterpart here. That install bundle lives in `opendiving/opendiving` and names this
+  // image by tag, so nothing in this repository is digest-pinned except the third-party
+  // actions above.
   // `pinDigests: true`, or the `helpers:pinGitHubActionDigests` preset, would flatten both
   // styles into one and break the first outright.
   "pinDigests": false,

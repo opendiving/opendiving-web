@@ -98,6 +98,13 @@ It signs itself in with a magic link read out of the API container's log, so it 
 local stack. Chromium comes from your existing Chrome install (override with `CHROME_PATH`);
 `playwright-core` only drives it, so `npm install` never downloads a browser.
 
+The same three images are on the front page of
+[opendiving/opendiving](https://github.com/opendiving/opendiving), which has no way to retake them —
+the app is here. So the script writes that repository's copies too when a clone of it sits beside
+this one (`../opendiving`, or `PRODUCT_DIR`), from the same shutter press. With no such clone it
+says so and writes only this repository's, which is what a contributor with one checkout gets.
+Committing the regenerated files over there is a separate, manual step.
+
 Every shot uses one frame, and the month the consumption chart is parked on is a constant beside it
 at the top of `scripts/screenshots.mjs`. Neither dimension is a round number — 1024 is `lg`, where
 the detail pages stop stacking their sidebar, and 1086 is where the dashboard's consumption card
@@ -174,10 +181,13 @@ that does not sign only walls you out of your own push.
 ## Cutting a release
 
 Releases are cut deliberately, not minted per merge, and the version moves in lockstep with
-[opendiving-api](https://github.com/opendiving/opendiving-api): one product version, tagged in both
-repos, so `opendiving-api:0.4.0` and `opendiving-web:0.4.0` are always a matched pair. A pin that
-resolves in one repo and not the other is a broken install, which is why neither repo picks its
-number alone.
+[opendiving-api](https://github.com/opendiving/opendiving-api): one product version, so
+`opendiving-api:0.4.0` and `opendiving-web:0.4.0` are always a matched pair. A pin that resolves in
+one repo and not the other is a broken install, which is why neither repo picks its number alone.
+The product's own release is a third tag, cut in
+[opendiving/opendiving](https://github.com/opendiving/opendiving) after both images have published —
+its workflow refuses to publish unless both exist at that version, which is the check no
+per-repository workflow is in a position to make.
 
 This repo's part is small: bump `version` in `package.json` in its own PR, titled
 `chore: release v0.4.0`, then tag that bump commit and push the tag. The tag push runs **Publish
@@ -185,9 +195,10 @@ Image**, which compares the tag against the manifest and fails the build if they
 nothing is published from a bump and a tag that say different things.
 
 Everything else — the cadence, how to pick the number, the scanner that finds breaking changes in
-the window, the release notes — lives in the api repo's CONTRIBUTING under
-[Cutting a release](https://github.com/opendiving/opendiving-api/blob/main/CONTRIBUTING.md#cutting-a-release).
-It is deliberately in one place: a decision table kept in two repos drifts apart, and that one is
+the window, the release notes, the order the three tags go in — lives in the product repo's
+CONTRIBUTING under
+[Cutting a release](https://github.com/opendiving/opendiving/blob/main/CONTRIBUTING.md#cutting-a-release).
+It is deliberately in one place: a decision table kept in three repos drifts apart, and that one is
 the copy self-hosters read.
 
 ## Staying on top of CVEs
