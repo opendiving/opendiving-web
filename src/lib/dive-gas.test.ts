@@ -83,7 +83,9 @@ function multiTankUse(
   return {
     gas_used: tanks.reduce((sum, entry) => sum + entry.gas_used, 0),
     rmv: 17.4,
-    // Null on every multi-tank dive - see `DiveGasUse.sac_bar_per_min`.
+    // Null on an attributed multi-tank dive - see `DiveGasUse.sac_bar_per_min`,
+    // whose one exception is the additive parallel path with equal volumes, which
+    // this helper does not build.
     sac_bar_per_min: null,
     tanks,
     attributed_seconds: tanks.reduce(
@@ -123,8 +125,20 @@ describe("gasUseUnavailableReason", () => {
   });
 
   it("names multi-tank as a limitation, not a missing field", () => {
+    // A cylinder with no pressures, which is what keeps this on the multi-tank
+    // sentences. The fixture used to be a plain pair - `mixture()` defaults every
+    // row to 200/50 - and that shape is now the nudge's, since it is exactly what
+    // a flaggable sidemount pair looks like. The assertions below were written
+    // when the no-profile branch was the only answer this function had for it;
+    // they were never a specification of where the nudge sits, and the sibling
+    // case is the test immediately after this one.
     const reason = gasUseUnavailableReason(
-      dive({ mixtures: [mixture(), mixture({ id: 2 })] }),
+      dive({
+        mixtures: [
+          mixture(),
+          mixture({ id: 2, start_pressure: null, end_pressure: null }),
+        ],
+      }),
     );
 
     expect(reason).toMatch(/multi-tank/i);
@@ -132,6 +146,89 @@ describe("gasUseUnavailableReason", () => {
     // what's missing is an import that says which tank was breathed when.
     expect(reason).not.toMatch(/^Add /);
     expect(reason).toMatch(/import/i);
+  });
+
+  it("nudges an unflagged pair that has every pressure toward the parallel flag", () => {
+    // The other half of the split above, and the whole point of the nudge's
+    // position: this dive is hand-logged with no profile, so it used to be told
+    // to import a dive-computer file it never made. Everything the additive
+    // branch needs is on the row already except the diver's answer.
+    const reason = gasUseUnavailableReason(
+      dive({ mixtures: [mixture(), mixture({ id: 2 })] }),
+    );
+
+    expect(reason).toMatch(/parallel/i);
+    // It states the condition rather than instructing. A diver whose pair really
+    // was staged must not be walked into a flag that divides the bottle's litres
+    // by the whole dive's average depth.
+    expect(reason).toMatch(/^If these cylinders were breathed alternately/);
+    expect(reason).not.toMatch(/import/i);
+  });
+
+  it("still nudges a half-flagged pair rather than falling silent on it", () => {
+    // One row Parallel, one still Not recorded - the likeliest path into the
+    // feature, and the reason the suppressing gate keys on `staged` rather than
+    // on any explicit `usage`. Silencing this drops the diver onto the
+    // no-profile message, which is wrong advice about an import they never made.
+    const reason = gasUseUnavailableReason(
+      dive({
+        mixtures: [mixture({ usage: "parallel" }), mixture({ id: 2 })],
+      }),
+    );
+
+    expect(reason).toMatch(/^If these cylinders were breathed alternately/);
+  });
+
+  it("says nothing about parallel once a cylinder is explicitly staged", () => {
+    // A pair plus a bottle the diver marked Staged is refused by design, and
+    // someone who used the control exactly right must not be nudged on every
+    // render. The `staged` flag is that set's tell.
+    const reason = gasUseUnavailableReason(
+      dive({
+        mixtures: [
+          mixture({ usage: "parallel" }),
+          mixture({ id: 2, usage: "parallel" }),
+          mixture({ id: 3, usage: "staged" }),
+        ],
+      }),
+    );
+
+    expect(reason).not.toMatch(/marking each of them Parallel/);
+    expect(reason).toMatch(/doesn't have one/);
+  });
+
+  it("keeps a pressure-less pair on its existing reasons rather than nudging", () => {
+    // Gate 1. A bottle with no pressures is the tell of the corpus's commonest
+    // multi-gas shape - back gas plus a staged deco bottle - and nudging it would
+    // re-create the tell-then-refuse-again pattern the no-profile branch was
+    // placed first to stop.
+    const reason = gasUseUnavailableReason(
+      dive({
+        mixtures: [
+          mixture(),
+          mixture({ id: 2, start_pressure: null, end_pressure: null }),
+        ],
+      }),
+    );
+
+    expect(reason).not.toMatch(/Parallel/);
+  });
+
+  it("does not nudge a pair that records no drop at all", () => {
+    // The other half of gate 1: pressures on both, nothing out of either. There
+    // is nothing for the flag to add up, so the existing sentence stands.
+    const reason = gasUseUnavailableReason(
+      dive({
+        profile: profile(),
+        mixtures: [
+          mixture({ start_pressure: 200, end_pressure: 200 }),
+          mixture({ id: 2, start_pressure: 150, end_pressure: 150 }),
+        ],
+      }),
+    );
+
+    expect(reason).not.toMatch(/Parallel/);
+    expect(reason).toMatch(/no gas used to divide up/);
   });
 
   it("blames attribution on the shape the whole corpus actually has", () => {
@@ -260,6 +357,125 @@ describe("gasUseUnavailableReason", () => {
         }),
       ),
     ).toMatch(/^Add each cylinder/);
+  });
+
+  // A flagged pair, which is the shape every case in this block starts from.
+  // `parallel()` names it rather than each test spelling both rows out, since
+  // what each is about is the *one* thing missing from it.
+  function parallelPair(
+    first: Partial<DiveMixture> = {},
+    second: Partial<DiveMixture> = {},
+  ): DiveMixture[] {
+    return [
+      mixture({ usage: "parallel", ...first }),
+      mixture({ id: 2, usage: "parallel", ...second }),
+    ];
+  }
+
+  it("asks a flagged parallel pair for the depth and the pressures together", () => {
+    // The opening state of a sidemount diver's every next dive: the new-dive form
+    // carries `usage` over from the last one, so all-parallel-with-nothing-else is
+    // what they see before typing anything. Two sequential asks here would make
+    // the commonest state of the form a run of refusals.
+    const reason = gasUseUnavailableReason(
+      dive({
+        avg_depth: undefined,
+        mixtures: parallelPair(
+          { start_pressure: null, end_pressure: null },
+          { start_pressure: null, end_pressure: null },
+        ),
+      }),
+    );
+
+    expect(reason).toBe(
+      "Add an average depth and every cylinder's start and end pressure to see your gas consumption.",
+    );
+  });
+
+  it("asks a flagged parallel pair for an average depth on its own", () => {
+    // The round-3 finding this block exists for. Full pressures, no depth - the
+    // additive branch divides by `dive.avg_depth`, so it is genuinely the missing
+    // input. Without this the dive falls to the no-profile message and is told to
+    // import a dive-computer file, which would compute nothing for it.
+    const reason = gasUseUnavailableReason(
+      dive({ avg_depth: undefined, mixtures: parallelPair() }),
+    );
+
+    expect(reason).toBe("Add an average depth to see your gas consumption.");
+    expect(reason).not.toMatch(/import/i);
+  });
+
+  it("refuses a flagged pair on one missing pressure, and says every cylinder", () => {
+    // One null pressure anywhere refuses the whole set: that cylinder's litres
+    // would be missing from the numerator while the whole dive stayed in the
+    // denominator, reporting an RMV that is too low.
+    const reason = gasUseUnavailableReason(
+      dive({
+        mixtures: parallelPair(
+          {},
+          { start_pressure: null, end_pressure: null },
+        ),
+      }),
+    );
+
+    expect(reason).toBe(
+      "Add every cylinder's start and end pressure to see your gas consumption.",
+    );
+
+    // Half a pair is still a missing pressure, and a real form state: a start
+    // typed and the end not yet. Both halves of the test are checked, so a guard
+    // that only ever looked at `start_pressure` would pass the case above.
+    expect(
+      gasUseUnavailableReason(
+        dive({ mixtures: parallelPair({}, { end_pressure: null }) }),
+      ),
+    ).toBe(
+      "Add every cylinder's start and end pressure to see your gas consumption.",
+    );
+  });
+
+  it("says a flagged pair has nothing to add up when no cylinder dropped", () => {
+    // "Add up", not "divide up" - nothing is apportioned on this path. A single
+    // zero-drop row is fine and sums to zero litres; only a zero *total* refuses.
+    const reason = gasUseUnavailableReason(
+      dive({
+        mixtures: parallelPair(
+          { start_pressure: 200, end_pressure: 200 },
+          { start_pressure: 150, end_pressure: 150 },
+        ),
+      }),
+    );
+
+    expect(reason).toBe(
+      "No cylinder on this dive records a drop between its start and end pressure, so there is no gas used to add up.",
+    );
+  });
+
+  it("says nothing at all for a flagged pair with nothing missing", () => {
+    // Unreachable through the app - a set that passes every additive guard has a
+    // figure, so this function is not called for it - and pinned anyway, because
+    // the tempting alternative is to let it fall through to the branches below.
+    // That would hand a flagged sidemount pair "import a dive-computer file",
+    // which is the one sentence this whole block exists to keep away from it.
+    expect(
+      gasUseUnavailableReason(dive({ mixtures: parallelPair() })),
+    ).toBeNull();
+  });
+
+  it("never sends a flagged pair to the no-profile or attribution sentences", () => {
+    // The whole reason this block precedes them. None of those sentences is true
+    // of a derivation that reads no profile at all.
+    for (const mixtures of [
+      parallelPair({ start_pressure: null, end_pressure: null }),
+      parallelPair(
+        { start_pressure: 200, end_pressure: 200 },
+        { start_pressure: 150, end_pressure: 150 },
+      ),
+    ]) {
+      const reason = gasUseUnavailableReason(dive({ mixtures }));
+      expect(reason).not.toMatch(/import/i);
+      expect(reason).not.toMatch(/account for every cylinder/);
+    }
   });
 
   it("asks for an average depth when only that is missing", () => {

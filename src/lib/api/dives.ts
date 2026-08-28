@@ -10,6 +10,23 @@ import { SpeciesSummary } from "./species";
 export const GAS_ROLES = ["bottom", "deco", "diluent", "oxygen"] as const;
 export type GasRole = (typeof GAS_ROLES)[number];
 
+// How a cylinder was breathed, which is not what it was carried for - the two are
+// orthogonal, and a dive can carry a `parallel` pair and a `staged` bottle at once.
+// Mirrors `TankUsage` (`schemas/dive_mixture.py`), which is the single source of truth -
+// the same hand-kept mirroring as `GAS_ROLES` above.
+//
+// `parallel` is a sidemount pair or independent doubles, breathed alternately at the
+// same depth; `staged` is a bottle breathed at its own depth. Null is "not recorded",
+// which is what every imported cylinder says: no format this app parses carries the
+// distinction, so the flag only ever arrives from the diver's own answer on the form.
+//
+// Declaration order is the picker's order, and `parallel` leads for the reason the API's
+// enum gives: it is the answer that does something. A dive whose cylinders are *all*
+// `parallel` gets a consumption figure by summing their litres, which is otherwise
+// unavailable without per-cylinder gas switches; `staged` changes no arithmetic today.
+export const TANK_USAGE = ["parallel", "staged"] as const;
+export type TankUsage = (typeof TANK_USAGE)[number];
+
 // How the dive computer was calibrated for the water it was in, and what a logbook
 // records as a fact about the dive. Mirrors `WaterType` (`schemas/dive.py`), which is
 // the single source of truth - the same hand-kept mirroring as `GAS_ROLES` above and
@@ -62,6 +79,11 @@ export interface DiveMixture {
   // What the cylinder was carried for. Rarely present on an import - most exports
   // don't record it - so this is mostly the diver's own label.
   role?: GasRole | null;
+  // How the cylinder was breathed. *Never* present on an import - no format this app
+  // parses records it, so unlike `role` this is always the diver's own answer - and it
+  // is the one mixture field that changes what the API can derive: a dive whose
+  // cylinders are all `parallel` gets its consumption summed across them.
+  usage?: TankUsage | null;
 }
 
 // A dive site visited during a dive, as embedded in a `Dive`. Dives are
@@ -143,16 +165,31 @@ export interface DiveGasUse {
   // The same consumption as a pressure drop rate, meaningful only alongside
   // this dive's cylinder volume - but it's what a pressure gauge shows.
   //
-  // **Null on a multi-tank dive**, where there is no such thing: 10 bar out of an
-  // 11 L stage and 10 bar out of a 22 L twinset are different amounts of gas, so a
-  // sum across cylinders of different sizes is not a rate of anything. Each entry
-  // in `tanks` carries its own, which is meaningful because a tank has one volume.
+  // **Null on a multi-tank dive**, where there is generally no such thing: 10 bar
+  // out of an 11 L stage and 10 bar out of a 22 L twinset are different amounts of
+  // gas, so a sum across cylinders of different sizes is not a rate of anything.
+  // Each entry in `tanks` carries its own, which is meaningful because a tank has
+  // one volume.
+  //
+  // **One exception**, and it is the whole reason this comment no longer says
+  // "always": a dive whose cylinders are *all* flagged `parallel` **and are of
+  // exactly equal volume** gets their pooled figure - the mean drop across them per
+  // surface-minute, which is what the same pair logged as one manifolded cylinder
+  // would report. Unequal volumes on that path leave this null while `rmv` and
+  // `gas_used` still compute, so a present `rmv` is no longer a promise of a SAC.
   sac_bar_per_min: number | null;
   // Per-cylinder breakdown. The API sends `[]` - not null, not an absent key -
-  // on every dive it derived the single-tank way, so "is this array non-empty"
-  // is the whole test for which layout the consumption card should render.
-  // Typed optional and nullable anyway, because this field is younger than the
-  // interface and a response cached before it existed has neither.
+  // on every dive it derived without attributing time per cylinder, so "is this
+  // array non-empty" is the whole test for which layout the consumption card
+  // should render. Typed optional and nullable anyway, because this field is
+  // younger than the interface and a response cached before it existed has neither.
+  //
+  // **Empty is no longer synonymous with single-tank.** It also arrives on the
+  // additive parallel path, where a flagged sidemount pair is summed against the
+  // dive's own duration and average depth: that derivation needs no attribution and
+  // so has none to break down. The non-empty test still selects the right layout -
+  // an additive dive genuinely has one set of whole-dive figures to show - but
+  // anything reading `[]` as "one cylinder" is now wrong.
   //
   // **A one-entry array is the normal multi-cylinder shape, not a degenerate
   // one**: every multi-gas dive in the corpus is one entry, because a diver
@@ -167,7 +204,9 @@ export interface DiveGasUse {
   // switches but not the gas carried into the water, say - and figures covering
   // 38 of 42 minutes should say so rather than pass for the whole dive.
   //
-  // Both null outside the multi-tank path. Seconds, matching `Dive.duration` and
+  // Both null wherever the whole dive is accounted for and there is no fraction to
+  // report: a single-cylinder dive, and a flagged parallel set summed over the
+  // dive's own duration. Seconds, matching `Dive.duration` and
   // `DiveProfileInfo.duration_seconds`; `duration_seconds` is the profile's span,
   // not `Dive.duration`, because that is what the attribution actually ran over
   // and a hand-edited dive duration would make the fraction unfalsifiable.
@@ -267,9 +306,11 @@ export interface Dive {
   // "fix" a missing value in the list by adding it server-side.
   source_file?: DiveFileInfo | null;
   // Set only when the dive records everything needed to derive it. For one
-  // mixture that is an average depth plus both of its pressures; for several it
-  // additionally needs a profile the API could attribute per cylinder, and the
-  // result then carries `tanks`. Optional for the same reason as `source_file` -
+  // mixture that is an average depth plus both of its pressures. For several,
+  // either a profile the API could attribute per cylinder - the result then
+  // carries `tanks` - or every cylinder flagged `usage: "parallel"` with both
+  // pressures on each, which is summed against the dive's own average depth and
+  // needs no profile at all. Optional for the same reason as `source_file` -
   // it's a detail-response field, and it additionally derives from `mixtures`,
   // which the list response doesn't carry either. Use
   // `gasUseUnavailableReason()` (`lib/dive-gas.ts`) to explain a missing value

@@ -279,6 +279,50 @@ describe("the last-dive prefill", () => {
     expect(screen.getByLabelText(/start pressure/i)).toHaveValue(null);
   });
 
+  it("carries a parallel flag over, which no import will ever supply", async () => {
+    // The field the carry-over helps most: a sidemount diver's next dive is
+    // sidemount, and nothing but their own hand can set this. Re-flagging both
+    // cylinders every dive is the friction that would stop the flag being used.
+    vi.mocked(divesAPI.getDives).mockResolvedValue({
+      ...emptyPage<Dive>(),
+      data: [storedDive()],
+      total_count: 1,
+    });
+    vi.mocked(divesAPI.getDive).mockResolvedValue(
+      storedDive({
+        mixtures: [
+          {
+            id: 7,
+            volume: 11.1,
+            oxygen: 21,
+            helium: 0,
+            start_pressure: 210,
+            end_pressure: 60,
+            usage: "parallel",
+          },
+          {
+            id: 8,
+            volume: 11.1,
+            oxygen: 21,
+            helium: 0,
+            start_pressure: 205,
+            end_pressure: 55,
+            usage: "parallel",
+          },
+        ],
+      }),
+    );
+
+    render(<NewDivePage />);
+
+    await waitFor(() =>
+      expect(screen.getAllByLabelText(/^usage$/i)).toHaveLength(2),
+    );
+    for (const select of screen.getAllByLabelText(/^usage$/i)) {
+      expect(select).toHaveValue("parallel");
+    }
+  });
+
   it("leaves the card empty when the previous dive recorded no gas", async () => {
     vi.mocked(divesAPI.getDives).mockResolvedValue({
       ...emptyPage<Dive>(),

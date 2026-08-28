@@ -38,12 +38,15 @@ interface DiveGasConsumptionCardProps {
  * Gas consumption for the dive, derived by the API from duration, depth and cylinder
  * pressures.
  *
- * Two shapes, chosen by whether the API attributed the dive per cylinder. One tank is
- * three headline figures, as it always was. Several is a table with a row per cylinder
- * and a total beneath, because the per-tank numbers *are* the answer there - a deco
- * bottle emptied at 6 m and a back gas breathed at 40 m have almost nothing to say to
- * each other, and a single averaged RMV would hide exactly the comparison a technical
- * diver opened the page for.
+ * Two shapes, chosen by whether the API attributed the dive per cylinder. Three headline
+ * figures where it did not, which is one tank as it always was - and now also a flagged
+ * parallel set, where the API summed the cylinders' litres against the dive's own
+ * duration and average depth, so there is one whole-dive figure to show and no split to
+ * show it against. An attributed dive is a table with a row per cylinder and a total
+ * beneath, because the per-tank numbers *are* the answer there - a deco bottle emptied
+ * at 6 m and a back gas breathed at 40 m have almost nothing to say to each other, and a
+ * single averaged RMV would hide exactly the comparison a technical diver opened the
+ * page for.
  *
  * Unlike the other optional cards on the detail page, this one still renders when the
  * figures couldn't be derived — and says why. The others are absent because the diver
@@ -258,12 +261,16 @@ export function DiveGasConsumptionCard({ dive }: DiveGasConsumptionCardProps) {
                 <div className="text-sm font-medium text-muted-foreground mb-1">
                   SAC
                 </div>
-                {/* Guarded, though the API pairs a null SAC with a non-empty
-                    `tanks` and so never reaches this branch today. The layout
-                    switch is `rows.length > 0` while the nullability lives on
-                    the wire type, so the two can decouple - and an unguarded
-                    null renders as nothing, leaving a bare "bar/min" under the
-                    heading rather than an obvious absence. */}
+                {/* Guarded, and this branch is now reachable: an additive
+                    parallel set whose cylinders are of *unequal* volume gets a
+                    null SAC alongside an empty `tanks`, because a mean pressure
+                    drop across two different volumes is not a rate of anything.
+                    `rmv` and `gas_used` still compute and are still worth
+                    showing, so the tile renders its muted dash rather than
+                    vanishing - an unguarded null leaves a bare "bar/min" under
+                    the heading, which reads as broken rather than as absent.
+                    (It was written before there was any way to reach it: the
+                    API used to pair a null SAC only with a non-empty `tanks`.) */}
                 <div className="text-2xl font-bold">
                   {gasUse.sac_bar_per_min != null
                     ? formatSac(gasUse.sac_bar_per_min, units)
@@ -279,23 +286,31 @@ export function DiveGasConsumptionCard({ dive }: DiveGasConsumptionCardProps) {
                 </div>
               </div>
             </div>
-            {/* Gated on the same signal as the SAC above, and it has to be:
-                this sentence *names the denominator*, so on a figure derived
-                per cylinder it would assert the dive's average depth produced a
-                rate that was never divided by it. That is the exact claim this
-                branch's own PR deleted from the dashboard chart, and it is the
-                worse failure of the two here - a bare "bar/min" looks broken,
-                where this looks right. Both halves of the layout now make the
-                same assumption about which derivation they are describing.
+            {/* **Not** gated on the SAC, though it was until the additive
+                parallel path existed. This sentence *names the denominator*, so
+                on a figure derived per cylinder it would assert the dive's
+                average depth produced a rate that was never divided by it -
+                the exact claim this card's own branch deleted from the dashboard
+                chart. A null SAC was the marker for that derivation and so stood
+                in for the test.
 
-                `avg_depth` is checked as well, which the raw `{dive.avg_depth}m`
-                this replaced got away with not doing: it rendered "an average
-                depth of m" for a null, where a formatter would print "NaN m".
-                The API never pairs a single-tank SAC with a missing average
-                depth - that absence is one of the reasons it declines to derive
-                one at all - so this guard is a belt on the sentence's own
-                premise rather than a case anyone has seen. */}
-            {gasUse.sac_bar_per_min != null && dive.avg_depth != null && (
+                It no longer is. An unequal-volume parallel set has a null SAC and
+                a whole-dive RMV that genuinely *was* divided by `dive.avg_depth`,
+                so the SAC clause would now hide a true sentence. What guarantees
+                the sentence's claim is position, not the SAC: this whole arm
+                renders only when `tanks` came back empty, which is precisely the
+                set of derivations taken against the dive's own average depth. A
+                re-gate on empty `tanks` was considered and is a condition that
+                cannot be false where the sentence lives, so the clause is simply
+                gone.
+
+                `avg_depth` is still checked, and that half is unrelated: it is
+                what the raw `{dive.avg_depth}m` this replaced got away with not
+                doing, rendering "an average depth of m" for a null where a
+                formatter would print "NaN m". The API declines to derive anything
+                without an average depth on either whole-dive path, so it is a belt
+                on the sentence's own premise rather than a case anyone has seen. */}
+            {dive.avg_depth != null && (
               <p className="text-xs text-muted-foreground mt-4">
                 What you&apos;d have breathed doing the same dive at the
                 surface, from an average depth of{" "}

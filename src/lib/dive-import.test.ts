@@ -55,7 +55,24 @@ describe("mergeMixture", () => {
       po2_limit: 1.4,
       gas_number: 1,
       role: "bottom",
+      // Cleared, and it can be nothing else: no format this app parses carries
+      // the flag, so `ParsedDiveMixture` has no `usage` for a file to supply.
+      usage: "",
     });
+  });
+
+  it("keeps a usage flag the diver set before importing the file", () => {
+    // `mergeMixture` builds its result field by field, so a field left out of that
+    // object is silently *dropped* rather than preserved - the exact
+    // form-value-lost-on-import failure its own JSDoc records. `usage` is the one
+    // field with no file tier at all, which makes it the one where losing the
+    // form's value loses it outright: nothing would ever put it back.
+    const mixture = mergeMixture(
+      parsed({ oxygen: 21, helium: 0 }),
+      onForm({ usage: "parallel" }),
+    ).value;
+
+    expect(mixture.usage).toBe("parallel");
   });
 
   it("leaves the tech fields empty when the file recorded none", () => {
