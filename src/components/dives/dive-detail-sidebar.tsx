@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Dive, WATER_TYPE_LABELS } from "@/lib/api/dives";
 import { Trip } from "@/lib/api/trips";
+import { Course } from "@/lib/api/courses";
 import { formatDateTime } from "@/lib/date-time";
 import { formatDistance, GeoPoint, haversineMeters } from "@/lib/geo-distance";
 import { formatCoordinates } from "@/lib/validations/dive-site";
@@ -13,6 +14,7 @@ import { LocationsMap } from "@/components/map/locations-map-lazy";
 import type { MappableLocation } from "@/components/map/locations-map";
 import {
   Eye,
+  GraduationCap,
   Luggage,
   MapPin,
   Mountain,
@@ -32,6 +34,9 @@ interface DiveDetailSidebarProps {
    * loading, when the dive has no trip, or when that lookup failed — all three are
    * non-fatal and simply hide the trip link. */
   trip: Trip | null;
+  /** The training course this dive was part of, resolved the same way and with the
+   * same three meanings for null. */
+  course: Course | null;
   /** Called after the source file is deleted, so the dive can be re-read. */
   onSourceFileChanged: () => void;
 }
@@ -58,6 +63,7 @@ function fixPoint(
 export function DiveDetailSidebar({
   dive,
   trip,
+  course,
   onSourceFileChanged,
 }: DiveDetailSidebarProps) {
   const units = useUnits();
@@ -172,6 +178,30 @@ export function DiveDetailSidebar({
                 <div className="text-sm tabular-nums">{drift}</div>
               </div>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Its own card rather than a row in "Location" above: a course is not a
+          place, and the card it would otherwise join renders on the strength of
+          the dive having one. A dive with no course looks exactly as it did
+          before courses existed. */}
+      {course && (
+        <Card>
+          <CardHeader>
+            <CardTitle as="h2">Training</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-sm font-medium text-muted-foreground mb-1">
+              Course
+            </div>
+            <Link
+              href={`/courses/${course.uuid}`}
+              className="flex items-center gap-2 text-sm font-medium hover:underline"
+            >
+              <GraduationCap className="h-4 w-4 text-muted-foreground" />
+              {course.name}
+            </Link>
           </CardContent>
         </Card>
       )}

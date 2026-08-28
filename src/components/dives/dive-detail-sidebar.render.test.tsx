@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { DiveDetailSidebar } from "./dive-detail-sidebar";
 import type { LocationsMapProps } from "@/components/map/locations-map";
 import type { Dive, DiveSiteSummary } from "@/lib/api/dives";
+import type { Course } from "@/lib/api/courses";
 import type { UnitSystem } from "@/lib/units";
 
 // These renders read the diver's units, so they need an auth context. Held in a
@@ -68,14 +69,27 @@ function site(overrides: Partial<DiveSiteSummary> = {}): DiveSiteSummary {
   };
 }
 
-function renderSidebar(subject: Dive) {
+function renderSidebar(subject: Dive, course: Course | null = null) {
   return render(
     <DiveDetailSidebar
       dive={subject}
       trip={null}
+      course={course}
       onSourceFileChanged={vi.fn()}
     />,
   );
+}
+
+function course(overrides: Partial<Course> = {}): Course {
+  return {
+    uuid: "course-uuid",
+    name: "Advanced Nitrox + Decompression Procedures",
+    agency: "tdi",
+    status: "completed",
+    user_uuid: "user-uuid",
+    created_at: "2026-03-08T09:00:00Z",
+    ...overrides,
+  };
 }
 
 const mapLocations = (): LocationsMapProps["locations"] =>
@@ -232,5 +246,30 @@ describe("DiveDetailSidebar environment", () => {
     renderSidebar(dive());
 
     expect(screen.queryByText("Environment")).not.toBeInTheDocument();
+  });
+});
+
+describe("DiveDetailSidebar training", () => {
+  it("links the course, outside the Location card", () => {
+    // A course is not a place. The Location card renders on the strength of the
+    // dive having one, and this dive has none - so a course row folded into it
+    // would be invisible on exactly the training dives it is for.
+    renderSidebar(dive(), course());
+
+    const link = screen.getByRole("link", {
+      name: "Advanced Nitrox + Decompression Procedures",
+    });
+    expect(link).toHaveAttribute("href", "/courses/course-uuid");
+    expect(screen.getByText("Training")).toBeInTheDocument();
+    expect(screen.queryByText("Location")).not.toBeInTheDocument();
+  });
+
+  it("shows nothing at all for a dive with no course", () => {
+    // The sidebar without a course looks exactly as it did before courses
+    // existed - no empty card, no placeholder row.
+    renderSidebar(dive());
+
+    expect(screen.queryByText("Training")).not.toBeInTheDocument();
+    expect(screen.queryByText("Course")).not.toBeInTheDocument();
   });
 });

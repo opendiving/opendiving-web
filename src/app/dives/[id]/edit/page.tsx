@@ -62,6 +62,7 @@ function EditDivePageContent() {
       altitude: undefined,
       weight: undefined,
       trip_uuid: undefined,
+      course_uuid: undefined,
       dive_site_uuids: [],
       gear_item_uuids: [],
       notes: "",

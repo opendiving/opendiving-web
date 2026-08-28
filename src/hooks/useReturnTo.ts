@@ -17,6 +17,7 @@ export function useReturnTo(fallback: ReturnTarget): ReturnTarget {
       from: searchParams.get("from"),
       trip_uuid: searchParams.get("trip_uuid"),
       dive_site_uuid: searchParams.get("dive_site_uuid"),
+      course_uuid: searchParams.get("course_uuid"),
     },
     fallback,
   );

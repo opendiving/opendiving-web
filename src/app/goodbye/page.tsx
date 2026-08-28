@@ -69,7 +69,8 @@ function GoodbyeContent({ purgeAfter }: { purgeAfter: string | null }) {
           </h1>
           <p className="text-muted-foreground">
             The date it was due to be erased on has passed, so your dives, dive
-            sites, trips, certifications and gear are no longer recoverable.
+            sites, trips, courses, certifications and gear are no longer
+            recoverable.
           </p>
         </>
       ) : (
@@ -84,8 +85,8 @@ function GoodbyeContent({ purgeAfter }: { purgeAfter: string | null }) {
           {purgeOn ? (
             <p className="text-muted-foreground">
               You&apos;re signed out everywhere, and nothing has been erased
-              yet. Your dives, dive sites, trips, certifications and gear will
-              be permanently erased on{" "}
+              yet. Your dives, dive sites, trips, courses, certifications and
+              gear will be permanently erased on{" "}
               <span className="font-medium text-foreground">
                 {formatPurgeDay(purgeOn)}
               </span>

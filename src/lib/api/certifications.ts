@@ -112,6 +112,11 @@ export interface Certification {
   instructor_number?: string | null;
   training_center?: string | null;
   notes?: string;
+  // The training course this card came out of, if the diver recorded one. The
+  // instructor/training-center fields above are deliberately *not* derived from
+  // it: imported history arrives certification-first, with no course to hang
+  // them on, so a certification has to stand alone.
+  course_uuid?: string | null;
   // Stored card images, embedded by the API so the list can show which cards have
   // photos without a request per row. Optional so a client built against an older
   // API (or a cached response predating the field) still type-checks.
@@ -132,8 +137,13 @@ export interface CertificationCreate {
   instructor_number?: string | null;
   training_center?: string | null;
   notes?: string;
+  course_uuid?: string | null;
 }
 
+// `null` on `course_uuid` detaches the certification from its course; omitting
+// the key leaves whatever course it already has alone. The API takes this shape
+// as its own `CertificationUpdateRequest`, kept apart from the schema its admin
+// panel writes through - `course_uuid` is not a column there.
 export type CertificationUpdate = Partial<
   Omit<CertificationCreate, "user_uuid">
 >;
@@ -183,14 +193,23 @@ export const certificationsAPI = {
     return response.data;
   },
 
-  // Get a user's certifications (paginated), newest first.
+  // Get a user's certifications (paginated), newest first. `courseUuid` narrows
+  // the list to the cards one training course issued, which is what a course's
+  // own page reads; one naming a course that doesn't exist or isn't the caller's
+  // returns an empty page rather than an error.
   async getCertifications(
     userUuid: string,
     page: number = 1,
     items_per_page: number = 10,
+    courseUuid?: string,
   ): Promise<PaginatedCertificationsResponse> {
     const response = await apiClient.get(`/certifications`, {
-      params: { user_uuid: userUuid, page, items_per_page },
+      params: {
+        user_uuid: userUuid,
+        page,
+        items_per_page,
+        ...(courseUuid !== undefined ? { course_uuid: courseUuid } : {}),
+      },
     });
     return response.data;
   },

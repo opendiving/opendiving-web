@@ -37,6 +37,7 @@ const DIVE: Dive = {
   duration: 2730,
   max_depth: 31.4,
   trip_uuid: "trip-7",
+  course_uuid: "course-3",
   dive_sites: [
     { uuid: "site-1", name: "Pescador Island" } as Dive["dive_sites"][number],
   ],
@@ -194,6 +195,7 @@ describe("the edit form's round trip", () => {
         duration: 2730,
         max_depth: 31.4,
         trip_uuid: "trip-7",
+        course_uuid: "course-3",
         dive_site_uuids: ["site-1"],
         gear_item_uuids: [],
         // Sent even though the dive has none, like every other list field: an

@@ -85,8 +85,8 @@ export default function PrivacyPage() {
               </li>
               <li>
                 <strong>Profile Information:</strong> Diving certifications,
-                including any images or PDFs of the cards themselves, and a
-                profile picture
+                including any images or PDFs of the cards themselves, the
+                training courses behind them, and a profile picture
               </li>
               <li>
                 <strong>Dive Logs:</strong> Dive location, depth, duration,
@@ -202,7 +202,8 @@ export default function PrivacyPage() {
             <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
               <li>
                 <strong>Provide the Service:</strong> Store your dives, sites,
-                trips, gear and certifications, and show them back to you
+                trips, gear, courses and certifications, and show them back to
+                you
               </li>
               <li>
                 <strong>Account Management:</strong> Sign you in, keep you
@@ -241,10 +242,10 @@ export default function PrivacyPage() {
             <p className="text-foreground mb-4">
               Nothing you enter is published. There are no public profiles, no
               public dive logs, no feeds, no forums, and no ratings or reviews.
-              Every dive, dive site, trip, gear item and certification belongs
-              to one account and is visible to that account alone. There is no
-              setting that makes any of it public, because there is nothing for
-              such a setting to do.
+              Every dive, dive site, trip, gear item, course and certification
+              belongs to one account and is visible to that account alone. There
+              is no setting that makes any of it public, because there is
+              nothing for such a setting to do.
             </p>
 
             <h3 className="text-xl font-semibold text-foreground mb-3">
@@ -659,8 +660,8 @@ export default function PrivacyPage() {
               <li>
                 The deletion is not a flag or an archive: the account row and
                 everything hanging off it &mdash; dives, sites, trips, gear,
-                certifications &mdash; are destroyed, and the files you uploaded
-                are unlinked from disk with them
+                courses, certifications &mdash; are destroyed, and the files you
+                uploaded are unlinked from disk with them
               </li>
             </ul>
             <p className="text-foreground mb-4">

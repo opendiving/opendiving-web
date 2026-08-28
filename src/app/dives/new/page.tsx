@@ -42,10 +42,12 @@ function NewDivePageContent() {
     token: string;
   } | null>(null);
 
-  // Allow pre-selecting a trip/dive site via ?trip_uuid=... / ?dive_site_uuid=...,
-  // e.g. when logging a dive from a trip's or dive site's detail page.
+  // Allow pre-selecting a trip/dive site/course via ?trip_uuid=... /
+  // ?dive_site_uuid=... / ?course_uuid=..., e.g. when logging a dive from a
+  // trip's, dive site's or course's detail page.
   const initialTripId = searchParams.get("trip_uuid") ?? undefined;
   const initialDiveSiteId = searchParams.get("dive_site_uuid") ?? undefined;
+  const initialCourseId = searchParams.get("course_uuid") ?? undefined;
 
   // Back/Cancel return to wherever this form was opened from - the trip or dive
   // site being logged against, an explicit `?from=`, or the dive list.
@@ -68,6 +70,7 @@ function NewDivePageContent() {
       altitude: undefined,
       weight: undefined,
       trip_uuid: initialTripId,
+      course_uuid: initialCourseId,
       dive_site_uuids:
         initialDiveSiteId !== undefined ? [initialDiveSiteId] : [],
       gear_item_uuids: [],
@@ -151,6 +154,12 @@ function NewDivePageContent() {
           weight: lastDive.weight,
           // URL param takes precedence over the last dive's trip.
           trip_uuid: initialTripId ?? lastDive.trip_uuid,
+          // Deliberately *not* inherited from the last dive, unlike the trip
+          // above: a course ends, and silently tagging the first fun dive after
+          // it as training is a worse default than one extra pick. The mid-course
+          // streak is covered by the course page's own "Log a Dive for this
+          // Course", which arrives here as `initialCourseId`.
+          course_uuid: initialCourseId,
           dive_site_uuids:
             initialDiveSiteId !== undefined ? [initialDiveSiteId] : [],
           // Divers tend to use the same kit dive after dive, so carry it over.
@@ -202,7 +211,7 @@ function NewDivePageContent() {
     return () => {
       cancelled = true;
     };
-  }, [user, form, initialTripId, initialDiveSiteId]);
+  }, [user, form, initialTripId, initialDiveSiteId, initialCourseId]);
 
   if (isAuthLoading) {
     return <PageSpinner />;
@@ -229,6 +238,8 @@ function NewDivePageContent() {
         // `DiveUpdate.trip_uuid`). On create there is nothing to detach from,
         // so the two collapse back into one and the field is simply omitted.
         trip_uuid: data.trip_uuid ?? undefined,
+        // Same collapse, same reason - see `trip_uuid` directly above.
+        course_uuid: data.course_uuid ?? undefined,
         // The select's "Not recorded" option is `""`, which the API's enum would
         // reject. On the edit form it converts to an explicit `null` ("the diver
         // cleared this"); on create there is nothing to clear, so - exactly like

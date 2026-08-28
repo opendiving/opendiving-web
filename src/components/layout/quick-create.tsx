@@ -7,11 +7,13 @@ import { TripDialog } from "@/components/trips/trip-dialog";
 import { DiveSiteDialog } from "@/components/sites/dive-site-dialog";
 import { GearItemDialog } from "@/components/gear/gear-item-dialog";
 import { CertificationDialog } from "@/components/certifications/certification-dialog";
+import { CourseDialog } from "@/components/courses/course-dialog";
 
 // Everything that can be created from anywhere in the app. A dive is missing on
 // purpose: it's the one form too big for a dialog, so it stays a page
 // (`/dives/new`) and is linked to rather than opened from here.
-export type QuickCreateKind = "trip" | "site" | "gear" | "certification";
+export type QuickCreateKind =
+  "trip" | "site" | "gear" | "certification" | "course";
 
 const QuickCreateContext = createContext<
   ((kind: QuickCreateKind) => void) | null
@@ -85,6 +87,12 @@ export function QuickCreateProvider({
             open={kind === "certification"}
             onOpenChange={close}
             onSaved={() => goTo("/certifications")}
+          />
+          <CourseDialog
+            userId={user.uuid}
+            open={kind === "course"}
+            onOpenChange={close}
+            onSaved={(course) => goTo(`/courses/${course.uuid}`)}
           />
         </>
       )}
