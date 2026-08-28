@@ -81,13 +81,13 @@ export const GAS_ROLE_LABELS: Record<GasRole, string> = {
 
 // How each `TankUsage` is written for a diver, on the same terms as `GAS_ROLE_LABELS`
 // above: separate from the wire vocabulary (`TankUsage` in `schemas/dive_mixture.py`),
-// capitalized, and shared by the form's picker and the detail badge so the two cannot
+// capitalized, and shared by the form's picker and the dive page so the two cannot
 // name the same flag differently.
 //
-// One word each, and the width budget is why - these badges land in the same Gas cell
-// the role badge already sits in, which is the cell that section of DECISIONS.md is
-// about. The form's own options spell out what each means ("Parallel (sidemount /
-// independent)"), where there is room for it; a badge in a table has none.
+// One word each because it is a *name*, not a description: it is the word the diver
+// picked in the form, quoted back to them inside `tankUsageSentences` below. The
+// meaning rides alongside it there, and in the form's own longer options ("Parallel
+// (sidemount / independent)") - so this map never has to carry both jobs at once.
 export const TANK_USAGE_LABELS: Record<TankUsage, string> = {
   parallel: "Parallel",
   staged: "Staged",
@@ -121,6 +121,74 @@ export function isParallelSet(mixtures: readonly TankUsageOnly[]): boolean {
 // keys on exactly this and nothing wider - see `gasUseUnavailableReason`.
 export function hasStagedCylinder(mixtures: readonly TankUsageOnly[]): boolean {
   return mixtures.some((mixture) => mixture.usage === "staged");
+}
+
+// What each flag *means*, as the clause trailing its name in the sentences below.
+// Split from `TANK_USAGE_LABELS` rather than folded into it because the two are read
+// at different moments: the label is the word the diver chose and has to match the
+// form's picker exactly, the gloss is the definition a reader who has never used the
+// control needs once. Worded so it holds for one cylinder or five - "at a separate
+// depth" rather than "at its own depth" - since a group can be either.
+const TANK_USAGE_GLOSSES: Record<TankUsage, string> = {
+  parallel:
+    "breathed alternately at the same depth, as a sidemount pair or independent doubles",
+  staged: "breathed at a separate depth",
+};
+
+// "1 and 2", "1, 2 and 3" - the cylinder numbers as the mixtures table's `#` column
+// shows them, which is the only handle a cylinder has: they have no names.
+function cylinderNumberList(numbers: readonly number[]): string {
+  if (numbers.length <= 2) return numbers.join(" and ");
+  return `${numbers.slice(0, -1).join(", ")} and ${numbers[numbers.length - 1]}`;
+}
+
+// Every tank-usage flag on the dive, as sentences to print beneath the mixtures
+// table - one per distinct flag, in the order the flags first appear down the table.
+// Empty when nothing is flagged, which is every imported dive: no format this app
+// parses carries the distinction, so only the diver can ever set it.
+//
+// **Prose rather than a per-row badge, and the width is why.** A third badge in the
+// Gas cell pushed the MOD column 73 px off screen at the 1024 px pinch - measured, not
+// projected - and this table's width is already a settled trade-off in this repo. The
+// invariant the prose has to keep is the one the badge kept for free: every flag a
+// diver recorded is visible on the dive page without opening the edit form, *and* a
+// reader can tell which cylinder each one belongs to. Naming the numbers is what buys
+// the second half back, so a mixed set - a parallel pair plus a staged bottle, the set
+// the per-row control exists to keep expressible - still reads correctly. See
+// DECISIONS.md for the measurements and the decision.
+//
+// Grouped rather than one sentence per row: a sidemount pair is one fact about two
+// cylinders, and "Cylinder 1 is flagged Parallel. Cylinder 2 is flagged Parallel." says
+// it twice while reading like two unrelated cylinders.
+export function tankUsageSentences(
+  mixtures: readonly TankUsageOnly[],
+): string[] {
+  const groups = new Map<TankUsage, number[]>();
+  mixtures.forEach((mixture, index) => {
+    // `""` is how a cleared `<select>` spells itself, and null is how the API sends
+    // an unflagged row - neither is a flag to state.
+    if (!mixture.usage) return;
+    const numbered = groups.get(mixture.usage);
+    if (numbered) numbered.push(index + 1);
+    else groups.set(mixture.usage, [index + 1]);
+  });
+
+  return [...groups].map(([usage, numbers]) => {
+    // Same hand-kept-mirror fallback the role and usage badges carried: a value added
+    // to the API's `TankUsage` before these two maps catch up still names itself and
+    // still says which cylinder it is on. Losing it would leave a flag the diver
+    // recorded visible nowhere but the edit form.
+    const label = TANK_USAGE_LABELS[usage] ?? usage;
+    const gloss = TANK_USAGE_GLOSSES[usage] as string | undefined;
+    const subject =
+      numbers.length === 1
+        ? `Cylinder ${numbers[0]} is`
+        : `Cylinders ${cylinderNumberList(numbers)} are`;
+
+    return gloss
+      ? `${subject} flagged ${label} - ${gloss}.`
+      : `${subject} flagged ${label}.`;
+  });
 }
 
 // The gas badge, sized so every cylinder's pill is the same width whatever it holds.

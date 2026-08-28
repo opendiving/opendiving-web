@@ -13,13 +13,13 @@ import {
 import {
   GAS_BADGE_CLASS,
   GAS_ROLE_LABELS,
-  TANK_USAGE_LABELS,
   diveModWarning,
   gasName,
   isNameableMix,
   isSingleGasParallelSet,
   mod,
   ppO2Limit,
+  tankUsageSentences,
 } from "@/lib/dive-mixtures";
 import { AlertTriangle, Wind } from "lucide-react";
 import { useUnits } from "@/hooks/useUnits";
@@ -41,6 +41,10 @@ interface DiveMixturesCardProps {
  * MOD are derived rather than stored, so they are computed here from
  * `lib/dive-mixtures.ts` rather than asked of the API - see that module's header for
  * why the maths lives client-side.
+ *
+ * How the cylinders were breathed - the `usage` flag - is the one recorded fact that
+ * is *not* in the table: it is stated in prose underneath, naming cylinders by their
+ * `#`, because a third badge in the Gas cell costs more width than this table has.
  */
 export function DiveMixturesCard({ dive }: DiveMixturesCardProps) {
   const units = useUnits();
@@ -73,6 +77,12 @@ export function DiveMixturesCard({ dive }: DiveMixturesCardProps) {
   // unguarded, so a check here would be defending against a value the row it controls
   // would render as a bare "%" anyway. The two lines agree or neither is honest.
   const showHelium = dive.mixtures.some((mixture) => mixture.helium > 0);
+
+  // The tank-usage flags, stated under the table rather than badged in it: a third
+  // badge in the Gas cell pushed MOD off screen at the width this card is narrowest
+  // at. The sentences name each cylinder by the `#` the first column already shows,
+  // which is what keeps the per-row mapping the badge had.
+  const usageSentences = tankUsageSentences(dive.mixtures);
 
   return (
     <Card>
@@ -186,23 +196,10 @@ export function DiveMixturesCard({ dive }: DiveMixturesCardProps) {
                           {GAS_ROLE_LABELS[mixture.role] ?? mixture.role}
                         </Badge>
                       )}
-                      {mixture.usage && (
-                        // Beside the role badge rather than in the Volume cell,
-                        // which was the sanctioned fallback if the width had not
-                        // held. It does: see DECISIONS.md for the number. The Gas
-                        // cell is where the badges already line up down the
-                        // column, and a diver reading "EAN32, the bottom gas,
-                        // breathed in parallel" is reading one sentence.
-                        //
-                        // Same wire-value fallback as the role badge above and
-                        // for the same reason: `TANK_USAGE_LABELS` mirrors the
-                        // API's `TankUsage` by hand, so a value added there
-                        // before this map catches up renders as itself rather
-                        // than as an empty bordered badge.
-                        <Badge variant="outline">
-                          {TANK_USAGE_LABELS[mixture.usage] ?? mixture.usage}
-                        </Badge>
-                      )}
+                      {/* No usage badge here, deliberately: a third badge in this
+                          cell cost the MOD column 73 px it does not have. The flag
+                          is stated in prose under the table instead - see
+                          `tankUsageSentences` and DECISIONS.md. */}
                     </div>
                   </TableCell>
                   <TableCell>{mixture.volume} L</TableCell>
@@ -283,6 +280,15 @@ export function DiveMixturesCard({ dive }: DiveMixturesCardProps) {
             })}
           </TableBody>
         </Table>
+
+        {/* Above the MOD warning rather than below it: this restates what the rows
+            say, the warning is the conclusion drawn from them, and the warning stays
+            the last and loudest thing in the card. */}
+        {usageSentences.length > 0 && (
+          <p className="mt-4 text-sm text-muted-foreground">
+            {usageSentences.join(" ")}
+          </p>
+        )}
 
         {warning && (
           <p className="mt-4 flex items-start gap-2 text-sm text-warning">

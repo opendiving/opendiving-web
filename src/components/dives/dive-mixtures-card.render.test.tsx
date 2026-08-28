@@ -238,8 +238,13 @@ describe("DiveMixturesCard role badge", () => {
   });
 });
 
-describe("DiveMixturesCard usage badge", () => {
-  it("labels a cylinder the diver flagged", () => {
+// The usage flag is stated under the table, not badged in it - a third badge in the
+// Gas cell pushed MOD off screen at the pinch width. `tankUsageSentences` is unit-
+// tested in `lib/dive-mixtures.test.ts`; what only a render reaches is that the card
+// prints those sentences, against the same `#` numbers its own first column shows,
+// and prints nothing when there is nothing to say.
+describe("DiveMixturesCard usage sentence", () => {
+  it("names both cylinders of a pair the diver flagged parallel", () => {
     render(
       <DiveMixturesCard
         dive={dive(
@@ -252,38 +257,60 @@ describe("DiveMixturesCard usage badge", () => {
       />,
     );
 
-    expect(screen.getAllByText("Parallel")).toHaveLength(2);
+    expect(
+      screen.getByText(/Cylinders 1 and 2 are flagged Parallel/),
+    ).toBeInTheDocument();
+    // The meaning travels with the flag: nothing else on this page says what
+    // "Parallel" claims about the dive.
+    expect(
+      screen.getByText(/breathed alternately at the same depth/),
+    ).toBeInTheDocument();
   });
 
-  it("sits beside the role badge rather than replacing it", () => {
-    // The two are orthogonal facts about one cylinder - what it was carried for
-    // and how it was breathed - so a dive can and does say both.
+  it("names each group against its own row number on a mixed set", () => {
+    // The set the per-row control exists to keep expressible, and the case a
+    // whole-dive sentence could not state at all.
     render(
       <DiveMixturesCard
-        dive={dive([{ ...EAN54, role: "deco", usage: "staged" }], 20)}
+        dive={dive(
+          [
+            { ...AIR, usage: "parallel" },
+            { ...AIR, usage: "parallel" },
+            { ...EAN54, role: "deco", usage: "staged" },
+          ],
+          30,
+        )}
       />,
     );
 
-    expect(screen.getByText("EAN54")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /Cylinders 1 and 2 are flagged Parallel.*Cylinder 3 is flagged Staged/,
+      ),
+    ).toBeInTheDocument();
+    // The role badge is untouched by any of this - it stayed in the table.
     expect(screen.getByText("Deco")).toBeInTheDocument();
-    expect(screen.getByText("Staged")).toBeInTheDocument();
   });
 
-  it("shows no badge for the cylinders with no flag, which is every import", () => {
+  it("says nothing at all when no cylinder is flagged, which is every import", () => {
     // No format this app parses carries the distinction, so an unflagged row is
-    // the default state rather than an omission.
+    // the default state rather than an omission - and a sentence about the
+    // absence would be on every imported dive in the corpus.
     render(<DiveMixturesCard dive={dive([AIR, EAN54], 30)} />);
 
-    expect(screen.queryByText("Parallel")).not.toBeInTheDocument();
-    expect(screen.queryByText("Staged")).not.toBeInTheDocument();
+    expect(screen.queryByText(/is flagged/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/are flagged/)).not.toBeInTheDocument();
   });
 
   it("falls back to the wire value for a usage the label map hasn't caught up with", () => {
     // `TANK_USAGE_LABELS` mirrors the API's `TankUsage` by hand, same as the role
-    // map above. Without the fallback this is an empty bordered badge.
+    // map above. Without the fallback a flag the diver recorded would be visible
+    // nowhere outside the edit form.
     const unknown = { ...EAN54, usage: "manifolded" as TankUsage };
-    render(<DiveMixturesCard dive={dive([unknown], 20)} />);
+    render(<DiveMixturesCard dive={dive([AIR, unknown], 20)} />);
 
-    expect(screen.getByText("manifolded")).toBeInTheDocument();
+    expect(
+      screen.getByText("Cylinder 2 is flagged manifolded."),
+    ).toBeInTheDocument();
   });
 });

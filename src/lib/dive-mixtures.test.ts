@@ -11,7 +11,9 @@ import {
   mod,
   modWarning,
   ppO2AtDepth,
+  tankUsageSentences,
 } from "./dive-mixtures";
+import type { TankUsage } from "./api/dives";
 
 describe("gasName", () => {
   it("names the three gases that have their own word", () => {
@@ -607,5 +609,88 @@ describe("a recorded ppO2 limit does not move the warning thresholds", () => {
 
     expect(warning).not.toBeNull();
     expect(warning).toContain("22.0 m");
+  });
+});
+
+describe("tankUsageSentences", () => {
+  it("says nothing when no cylinder is flagged", () => {
+    // The state of every imported dive, and of every hand-logged one until the
+    // diver reaches for the control.
+    expect(tankUsageSentences([{}, {}])).toEqual([]);
+    expect(tankUsageSentences([{ usage: null }, { usage: "" }])).toEqual([]);
+    expect(tankUsageSentences([])).toEqual([]);
+  });
+
+  it("groups a flagged pair into one sentence naming both numbers", () => {
+    expect(
+      tankUsageSentences([{ usage: "parallel" }, { usage: "parallel" }]),
+    ).toEqual([
+      "Cylinders 1 and 2 are flagged Parallel - breathed alternately at the same depth, as a sidemount pair or independent doubles.",
+    ]);
+  });
+
+  it("keeps each group against the right row number on a mixed set", () => {
+    // The set owner decision 4's per-row control exists for, and the one a
+    // whole-dive sentence could not state: the numbers are the only thing tying
+    // either half to a cylinder, since cylinders have no names.
+    expect(
+      tankUsageSentences([
+        { usage: "parallel" },
+        { usage: "parallel" },
+        { usage: "staged" },
+      ]),
+    ).toEqual([
+      "Cylinders 1 and 2 are flagged Parallel - breathed alternately at the same depth, as a sidemount pair or independent doubles.",
+      "Cylinder 3 is flagged Staged - breathed at a separate depth.",
+    ]);
+  });
+
+  it("numbers by table position, not by which rows carry a flag", () => {
+    // A half-flagged pair is the likeliest path into the feature, and the flag
+    // it does carry is on the second row.
+    expect(tankUsageSentences([{}, { usage: "parallel" }])).toEqual([
+      "Cylinder 2 is flagged Parallel - breathed alternately at the same depth, as a sidemount pair or independent doubles.",
+    ]);
+  });
+
+  it("agrees with the number of cylinders it is talking about", () => {
+    const [staged] = tankUsageSentences([{ usage: "staged" }]);
+    const [pair] = tankUsageSentences([
+      { usage: "staged" },
+      { usage: "staged" },
+    ]);
+    const [three] = tankUsageSentences([
+      { usage: "staged" },
+      { usage: "staged" },
+      { usage: "staged" },
+    ]);
+
+    expect(staged).toContain("Cylinder 1 is flagged");
+    expect(pair).toContain("Cylinders 1 and 2 are flagged");
+    expect(three).toContain("Cylinders 1, 2 and 3 are flagged");
+  });
+
+  it("orders the sentences the way the table reads, top to bottom", () => {
+    // The numbers are the reader's index into the table, so prose that jumped
+    // about would make them work for the mapping the badge gave away.
+    expect(
+      tankUsageSentences([
+        { usage: "staged" },
+        { usage: "parallel" },
+        { usage: "parallel" },
+      ]),
+    ).toEqual([
+      "Cylinder 1 is flagged Staged - breathed at a separate depth.",
+      "Cylinders 2 and 3 are flagged Parallel - breathed alternately at the same depth, as a sidemount pair or independent doubles.",
+    ]);
+  });
+
+  it("falls back to the wire value for a flag the label map hasn't caught up with", () => {
+    // `TANK_USAGE_LABELS` mirrors the API's `TankUsage` by hand. Without this a
+    // flag the diver recorded would be visible nowhere but the edit form - and
+    // there is no gloss to offer for a meaning this build does not know.
+    expect(tankUsageSentences([{ usage: "manifolded" as TankUsage }])).toEqual([
+      "Cylinder 1 is flagged manifolded.",
+    ]);
   });
 });
