@@ -93,7 +93,9 @@ export default function TermsPage() {
                 Keep your own list of dive sites and plan trips around them
               </li>
               <li>Track your gear and when it is due for service</li>
-              <li>Record your diving certifications</li>
+              <li>
+                Record your diving certifications and the courses behind them
+              </li>
               <li>
                 Note the species you saw, from public registers of marine life
               </li>
@@ -191,9 +193,9 @@ export default function TermsPage() {
             </h2>
             <p className="text-foreground mb-4">
               What you enter into this copy &mdash; dives, sites, trips, gear,
-              certifications, notes, and the files you import &mdash; is yours,
-              and you are responsible for it. You agree not to use this copy to
-              hold or send:
+              courses, certifications, notes, and the files you import &mdash;
+              is yours, and you are responsible for it. You agree not to use
+              this copy to hold or send:
             </p>
             <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
               <li>

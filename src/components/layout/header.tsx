@@ -28,6 +28,7 @@ import {
   Luggage,
   Backpack,
   BadgeCheck,
+  GraduationCap,
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -51,6 +52,7 @@ const CREATE_ACTIONS: CreateAction[] = [
   { label: "New Dive Site", icon: MapPin, kind: "site" },
   { label: "New Gear", icon: Backpack, kind: "gear" },
   { label: "New Certification", icon: BadgeCheck, kind: "certification" },
+  { label: "New Course", icon: GraduationCap, kind: "course" },
 ];
 
 // The create menu is reachable from every page, so the form it opens is told
@@ -70,6 +72,7 @@ const NAV_SECTIONS: { prefix: string; page: string }[] = [
   { prefix: "/sites", page: "sites" },
   { prefix: "/gear", page: "gear" },
   { prefix: "/certifications", page: "certifications" },
+  { prefix: "/courses", page: "courses" },
 ];
 
 function getCurrentPage(pathname: string | null): string | undefined {
@@ -311,6 +314,15 @@ export function Header() {
                       >
                         <BadgeCheck className="mr-2 h-4 w-4" />
                         Certifications
+                      </Link>
+                    </DropdownMenuItem>
+                    {/* Beside Certifications rather than in the main nav: both
+                        are training records, and the main nav's five slots are
+                        for the destinations a diver goes to on every visit. */}
+                    <DropdownMenuItem asChild>
+                      <Link href="/courses" className="flex items-center">
+                        <GraduationCap className="mr-2 h-4 w-4" />
+                        Courses
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>

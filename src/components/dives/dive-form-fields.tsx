@@ -28,6 +28,7 @@ import {
   MixtureFields,
 } from "@/components/dives/mixture-fields";
 import { TripCombobox } from "@/components/dives/trip-combobox";
+import { CourseCombobox } from "@/components/courses/course-combobox";
 import { DiveSiteMultiSelect } from "@/components/dives/dive-site-multi-select";
 import { DiveGearField } from "@/components/gear/dive-gear-field";
 import { SpeciesMultiSelect } from "@/components/dives/species-multi-select";
@@ -75,6 +76,8 @@ export interface DiveFormValues extends FieldValues {
   // `null` means "no trip", and is distinct from `undefined` ("field not
   // touched") on the edit form - see `DiveUpdate.trip_uuid`.
   trip_uuid?: string | null;
+  // Same three states, same reason, for the training course this dive was on.
+  course_uuid?: string | null;
   dive_site_uuids?: string[];
   gear_item_uuids?: string[];
   species_uuids?: string[];
@@ -146,7 +149,10 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
 
   return (
     <>
-      {/* Basic Information & Trip */}
+      {/* Basic Information, Trip & Course. Three fields in a two-column grid, so
+          the Course row keeps the same column width, gap and label rhythm as
+          every other row in this form - a third column here would make this the
+          one row shaped differently from the rest. */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <FormField
           control={control}
@@ -191,6 +197,24 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
               <FormLabel>Trip</FormLabel>
               <FormControl>
                 <TripCombobox
+                  userId={userId}
+                  value={field.value}
+                  onChange={field.onChange}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={control}
+          name={"course_uuid" as Path<TFieldValues>}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Course</FormLabel>
+              <FormControl>
+                <CourseCombobox
                   userId={userId}
                   value={field.value}
                   onChange={field.onChange}

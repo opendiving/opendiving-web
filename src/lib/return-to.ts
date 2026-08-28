@@ -27,6 +27,7 @@ const SECTIONS: Record<string, { index: string; item: string }> = {
   sites: { index: "Dive Sites", item: "Dive Site" },
   gear: { index: "Gear", item: "Gear" },
   certifications: { index: "Certifications", item: "Certification" },
+  courses: { index: "Courses", item: "Course" },
 };
 
 export function labelForPath(path: string): string {
@@ -50,6 +51,7 @@ export interface ReturnToParams {
   /** The form's own context params, used when there's no explicit `from`. */
   trip_uuid?: string | null;
   dive_site_uuid?: string | null;
+  course_uuid?: string | null;
 }
 
 // Resolution order, most to least specific:
@@ -83,6 +85,13 @@ export function resolveReturnTarget(
     return {
       href: `/sites/${params.dive_site_uuid}`,
       label: "Back to Dive Site",
+    };
+  }
+
+  if (params.course_uuid) {
+    return {
+      href: `/courses/${params.course_uuid}`,
+      label: "Back to Course",
     };
   }
 

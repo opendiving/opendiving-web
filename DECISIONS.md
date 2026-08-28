@@ -10960,8 +10960,12 @@ false statement about their data rather than an untidy comment. The surfaces:
 - `app/goodbye/page.tsx` - both arms, the already-erased one and the still-restorable one.
 - `app/auth/verify/page.tsx` - what restoring brings back, in both the `purgeOn` branch and the
   dateless one.
-- `components/settings/data-export-card.tsx` - what each export format contains.
+- `components/settings/data-export-card.tsx` - what each export format contains, including the UDDF
+  row's list of what has no slot in that format and rides in the archive instead.
 - `README.md`'s feature list.
+- `components/layout/landing-page.tsx`'s closing feature sentence, which enumerates what the app
+  organizes. Added after the `certifications` probe below missed it - see "Courses nest a dialog
+  inside a dialog" for why.
 
 **They had already drifted, which is the argument for doing this by sweep rather than from memory.**
 `goodbye` and `auth/verify` promised back only "dives, dive sites, certifications and gear", while
@@ -11032,3 +11036,77 @@ coverage, because a single word cannot straddle a line break.
 "all eight modules", "seven create/edit dialogs" - record what a particular change faced at the time
 it was made, and are meant to read as history. Updating them to today's numbers would destroy the
 thing they exist for. Only prose claiming to describe the code _as it stands_ is in scope here.
+
+## Courses nest a dialog inside a dialog, and sit in the user menu rather than the nav
+
+A course is the training a diver did: a group of dives, and the cards it issued. It arrived as a
+whole section - `/courses`, `/courses/[id]`, `CourseDialog`, `CourseCombobox` - built out of the
+patterns already recorded above, so what follows is only the places it could not simply follow them.
+
+**The course picker in the certification dialog puts a dialog on top of a dialog, and that holds.**
+`CourseCombobox` mounts its own `CourseDialog` so "Add course..." can hand the created record back
+and select it - the same reason every other picker keeps its own dialog instead of using the
+app-wide quick-create one. In the dive form that is a dialog over a page. In the _certification_
+dialog it is a dialog over a dialog, which is new here, and the fear was the one "A dialog's submit
+event bubbles into the form that opened it" records: the inner form's submit landing in the outer
+one, saving the course and then running the certification's own validation over a half-filled form.
+It does not, and the reason is that the mechanism is already handled - `dialogFormSubmit` stops
+propagation at the inner form, and it is on `CourseDialog` from the first line it was written.
+Radix's own nesting needed nothing: the inner content portals out to `document.body` like the outer
+one, Escape and the overlay click reach the topmost dialog only, and dismissing the inner one leaves
+the outer open and unsubmitted. The recorded fallback - drop "Add course..." in this one host - was
+never needed and is not being kept as an option; **the decision to record is that a picker's
+create-dialog is safe inside another dialog, so the next one needn't re-litigate it.**
+
+**Courses are in the user dropdown beside Certifications, deliberately not in the main nav.** The
+main nav's five slots (Dashboard, Trips, Dives, Sites, Gear) are the destinations a diver goes to on
+an ordinary visit; a course is entered once and read rarely afterwards, which is exactly what
+Certifications already is. So the placement rule was **give Courses whatever treatment
+Certifications has, wherever it has it** - derived with
+`git grep -n '/certifications' src/components/layout/`, which today means a `NAV_SECTIONS` entry (so
+`/courses/{uuid}` still highlights something) and the dropdown item, and pointedly _not_ the desktop
+nav, the mobile menu or the footer. Sweeping `/trips` instead would have been the easy mistake:
+trips are a main-nav entry, and mirroring them would have reintroduced the placement this rejects.
+
+**The dashboard gets no courses card, and the setup checklist gets no fourth step.** Both are the
+dashboard-filler rule from "The dashboard shows only what the app actually tracks": a course that is
+`completed` has nothing to say on a dashboard, and the checklist is a first-run panel that removes
+itself once its three steps are done - a fourth would keep it on screen for every established
+logbook until a course was entered. Worth revisiting only when an `in_progress` course has something
+to surface.
+
+**The courses list is the first list page with a search box**, because the API's `GET /courses` is
+the first list endpoint the app calls that takes a `search`. The wiring is two states, not one: the
+input's own value, and the debounced term the fetcher closes over. That matters because the fetcher
+is `usePaginatedResource`'s `fetchFn`, so changing the term changes the callback's identity and the
+hook re-fetches from page 1 - which is the behaviour wanted (page 3 of the unfiltered list is not a
+page of the filtered one) and is why the term must not change on every keystroke. The empty state
+splits too: "no courses match that name" is a different statement from "no courses yet", and only
+the second one offers a create button.
+
+**A dive's course is not inherited from the last dive, unlike its trip.** `/dives/new` prefills the
+trip from the most recent dive because a second dive is usually on the same trip. A course ends,
+though, and silently tagging the first fun dive after it as training is a worse default than one
+extra pick - it would write a claim the diver never made. The mid-course streak is covered by the
+course page's own "Log a Dive for this Course", which arrives as `?course_uuid=`.
+
+**The dive page's course link is its own Training card, not a row in Location.** A course is not a
+place, and the Location card renders on the strength of the dive having a trip, a site or a GPS fix,
+so a course row folded into it would be invisible on precisely the training dives it is for. The
+invariant the render test pins is that the sidebar without a course looks exactly as it did before
+courses existed: no empty card, no placeholder row.
+
+**`getDives`' course filter is appended last, where it does not belong by meaning.** Its parameters
+are positional (`userUuid, page, items_per_page, tripUuid, diveSiteUuid, gearItemUuid`), and
+`courseUuid` reads as belonging beside `tripUuid` - but inserting it there would silently re-point
+every existing caller's site and gear arguments one place along, and nothing about the types would
+object, since all three are `string | undefined`. Appending is the safe half of that trade.
+`getCertifications` gained its `courseUuid` the same way and had no such choice to make.
+
+**The enumeration sweep needs the `c-card` probe as well as `certifications`.** The inventory in
+"Adding a resource means sweeping the prose that enumerates the resources" says to regenerate the
+copy list with `git grep -lni certifications -- src/ README.md`, and that grep does not return
+`components/layout/landing-page.tsx`, whose closing feature sentence enumerates what the app
+organizes and spells the kind "c-cards". `git grep -ni c-card -- src/ README.md` is what finds it -
+the same trap that section already records for `usePaginatedResource.ts`, arriving through a synonym
+rather than a line break. Run both.

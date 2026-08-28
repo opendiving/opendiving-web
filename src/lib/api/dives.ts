@@ -290,6 +290,10 @@ export interface Dive {
   // rather than a gear item - see the API's DECISIONS.md.
   weight?: number;
   trip_uuid?: string;
+  // The training course this dive was part of, if the diver recorded one. A
+  // separate grouping from the trip: a course is where a dive came from in the
+  // logbook's training sense, and a dive can have both.
+  course_uuid?: string;
   dive_sites: DiveSiteSummary[];
   // Gear used on the dive. A dive records the items themselves, never the gear
   // set they were loaded from - sets are only a form-filling shortcut.
@@ -509,6 +513,7 @@ export interface DiveCreate {
   altitude?: number | null;
   weight?: number | null;
   trip_uuid?: string;
+  course_uuid?: string;
   dive_site_uuids?: string[];
   gear_item_uuids?: string[];
   // Catalog uuids, in spotting order. Every uuid must already exist - the
@@ -540,6 +545,11 @@ export interface DiveUpdate {
   // `TripCombobox` normalizes its cleared value to `null` rather than
   // `undefined`, which the update payload builder drops from the request.
   trip_uuid?: string | null;
+  // Same contract as `trip_uuid` above: `null` detaches the dive from its
+  // training course, and omitting the key leaves whatever course it already has
+  // alone. `CourseCombobox` normalizes its cleared value to `null` for exactly
+  // this reason.
+  course_uuid?: string | null;
   dive_site_uuids?: string[];
   gear_item_uuids?: string[];
   // Same wholesale-replace contract as the two lists above: an omitted key
@@ -716,8 +726,15 @@ export const divesAPI = {
   },
 
   // Get all dives for a user (paginated). Pass `tripUuid`/`diveSiteUuid`/
-  // `gearItemUuid` to only return dives that belong to a given trip / were made
-  // at a given site / used a given piece of gear.
+  // `gearItemUuid`/`courseUuid` to only return dives that belong to a given trip
+  // / were made at a given site / used a given piece of gear / were part of a
+  // given training course. The filters are combinable, and one naming something
+  // that doesn't exist or isn't the caller's returns an empty page rather than
+  // an error.
+  //
+  // `courseUuid` comes last rather than beside `tripUuid`, where it belongs by
+  // meaning: these are positional, and inserting a parameter would silently
+  // re-point every existing call's site and gear filters.
   async getDives(
     userUuid: string,
     page: number = 1,
@@ -725,6 +742,7 @@ export const divesAPI = {
     tripUuid?: string,
     diveSiteUuid?: string,
     gearItemUuid?: string,
+    courseUuid?: string,
   ): Promise<PaginatedDivesResponse> {
     const response = await apiClient.get(`/dives`, {
       params: {
@@ -734,6 +752,7 @@ export const divesAPI = {
         ...(tripUuid !== undefined ? { trip_uuid: tripUuid } : {}),
         ...(diveSiteUuid !== undefined ? { dive_site_uuid: diveSiteUuid } : {}),
         ...(gearItemUuid !== undefined ? { gear_item_uuid: gearItemUuid } : {}),
+        ...(courseUuid !== undefined ? { course_uuid: courseUuid } : {}),
       },
     });
     return response.data;

@@ -42,14 +42,14 @@ const EXPORT_ROWS: ExportRow[] = [
     icon: FileCode,
     title: "UDDF",
     description:
-      "Every dive with its sites, trips, gases, cylinders, gear and full sample profile, in the open format Subsurface, MacDive and divelogs.de import. This is the file to hand another program — gear sets, service history and your c-cards have no slot in it, and ride in the archive instead.",
+      "Every dive with its sites, trips, gases, cylinders, gear and full sample profile, in the open format Subsurface, MacDive and divelogs.de import. This is the file to hand another program — gear sets, service history, your courses and your c-cards have no slot in it, and ride in the archive instead.",
   },
   {
     format: "csv",
     icon: Sheet,
     title: "Spreadsheet",
     description:
-      "One row per dive, flattened for Excel, Numbers or a notebook. The normalized set — cylinders, trips, sites, gear, service history, certifications — ships inside the archive.",
+      "One row per dive, flattened for Excel, Numbers or a notebook. The normalized set — cylinders, trips, sites, gear, service history, courses, certifications — ships inside the archive.",
   },
   {
     format: "archive",

@@ -657,6 +657,28 @@ describe("buildDiveUpdate", () => {
     );
   });
 
+  // The course link has the same three states as the trip, and the same trap:
+  // without a branch of its own here, clearing the course picker would omit the
+  // key and the dive would keep the course it was just detached from.
+  it("sends an explicit null when the course is cleared", () => {
+    const update = buildDiveUpdate({ course_uuid: null });
+
+    expect(update).toHaveProperty("course_uuid");
+    expect(update.course_uuid).toBeNull();
+  });
+
+  it("leaves the course alone when the field was untouched", () => {
+    expect(buildDiveUpdate({ course_uuid: undefined })).not.toHaveProperty(
+      "course_uuid",
+    );
+  });
+
+  it("sends a selected course through unchanged", () => {
+    expect(buildDiveUpdate({ course_uuid: "course-uuid" }).course_uuid).toBe(
+      "course-uuid",
+    );
+  });
+
   // Same distinction, for the nullable measurements.
   it("distinguishes a cleared measurement from an untouched one", () => {
     const cleared = buildDiveUpdate({ max_depth: null, weight: null });
@@ -731,6 +753,11 @@ describe("buildDiveUpdate", () => {
     expect(parsed.success).toBe(true);
   });
 
+  it("accepts a null course through the update schema", () => {
+    const parsed = diveUpdateSchema.safeParse({ course_uuid: null });
+    expect(parsed.success).toBe(true);
+  });
+
   // What the edit form now submits on every save: everything it holds. It used
   // to be filtered down to the fields react-hook-form marked dirty, because a
   // read that hid soft-deleted trips and sites made the form's own seed a lie.
@@ -775,6 +802,7 @@ describe("diveToFormValues", () => {
     duration: 2730,
     max_depth: 31.4,
     trip_uuid: "trip-7",
+    course_uuid: "course-3",
     dive_sites: [
       { uuid: "site-1", name: "Pescador Island" } as Dive["dive_sites"][number],
     ],
@@ -802,6 +830,7 @@ describe("diveToFormValues", () => {
       duration: "45:30",
       max_depth: 31.4,
       trip_uuid: "trip-7",
+      course_uuid: "course-3",
       dive_site_uuids: ["site-1"],
       gear_item_uuids: ["item-1"],
       notes: "Thermocline at 18m",

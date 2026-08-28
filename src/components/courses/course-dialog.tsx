@@ -5,17 +5,19 @@ import { useDialogApiError } from "@/hooks/useDialogApiError";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Plus, Save } from "lucide-react";
+import { courseSchema, CourseInput } from "@/lib/validations/course";
 import {
-  certificationSchema,
-  CertificationInput,
-} from "@/lib/validations/certification";
+  coursesAPI,
+  Course,
+  COURSE_STATUSES,
+  DEFAULT_COURSE_STATUS,
+} from "@/lib/api/courses";
 import {
-  certificationsAPI,
-  Certification,
   CertificationAgency,
   CERTIFICATION_AGENCIES,
   certificationAgencyLabel,
 } from "@/lib/api/certifications";
+import { courseStatusLabel } from "@/lib/course";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { dialogFormSubmit } from "@/lib/dialog-form";
 import {
@@ -34,7 +36,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { CourseCombobox } from "@/components/courses/course-combobox";
 import {
   Select,
   SelectContent,
@@ -44,123 +45,127 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
+import { Button } from "@/components/ui/button";
 
-interface CertificationDialogProps {
+interface CourseDialogProps {
   userId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  // Pass an existing certification to edit it; omit to create a new one.
-  certification?: Certification | null;
-  onSaved: (certification: Certification) => void;
+  // Pass an existing course to edit it; omit to create a new one.
+  course?: Course | null;
+  // Called with the created/updated course so the caller can refresh whatever
+  // list it's showing - and, in the pickers, select it straight away.
+  onSaved: (course: Course) => void;
 }
 
-// Create/edit dialog for a certification's details. Card images are managed
-// separately (see `certification-card-files.tsx`) because they are uploaded
-// against a certification that already exists.
+// The one create/edit form for a course, used by the courses list and detail
+// pages, the header's quick-create menu, and the course pickers on the dive form
+// and in the certification dialog.
 //
-// A dialog rather than `new`/`edit` pages, following the gear precedent: these
-// are a handful of fields typed off a card the diver is holding, not a
-// multi-section form like a dive.
-export function CertificationDialog({
+// A dialog rather than `new`/`edit` pages, following trips and certifications:
+// the flow that matters most is adding a course from inside a half-filled dive
+// form or an open certification dialog, and navigating away would mean either
+// losing that form or building draft-persistence for it. Link management stays
+// out of here for the same reason it stays out of `TripDialog` - a dive picks
+// its course on the dive form, a certification on its own.
+export function CourseDialog({
   userId,
   open,
   onOpenChange,
-  certification,
+  course,
   onSaved,
-}: CertificationDialogProps) {
+}: CourseDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useDialogApiError(open);
-  const isEdit = !!certification;
+  const isEdit = !!course;
 
-  const form = useForm<CertificationInput>({
-    resolver: zodResolver(certificationSchema),
+  const form = useForm<CourseInput>({
+    resolver: zodResolver(courseSchema),
     defaultValues: {
+      name: "",
       agency: "padi",
       agency_other: "",
-      name: "",
-      certification_number: "",
-      certified_on: "",
-      expires_on: "",
+      status: DEFAULT_COURSE_STATUS,
+      start_date: "",
+      end_date: "",
       instructor_name: "",
       instructor_number: "",
       training_center: "",
+      cost: "",
       notes: "",
-      course_uuid: null,
     },
   });
 
   // `agency_other` is only shown - and only accepted by the API - for "other".
-  // `useWatch` rather than `form.watch()`: the latter returns a fresh function
-  // every render that can't be memoized, which the react-hooks lint rules reject.
+  // `useWatch` rather than `form.watch()`, which returns a fresh function every
+  // render that can't be memoized (see DECISIONS.md).
   const agency = useWatch({ control: form.control, name: "agency" });
 
-  // Reload the form whenever the dialog opens, so it shows the certification
-  // being edited rather than whatever the previous invocation left behind.
+  // Reload the form whenever the dialog opens, so it shows the course being
+  // edited rather than whatever the previous invocation left behind.
   const { reset } = form;
   useEffect(() => {
     if (!open) return;
     reset({
-      agency: certification?.agency ?? "padi",
-      agency_other: certification?.agency_other ?? "",
-      name: certification?.name ?? "",
-      certification_number: certification?.certification_number ?? "",
-      certified_on: certification?.certified_on ?? "",
-      expires_on: certification?.expires_on ?? "",
-      instructor_name: certification?.instructor_name ?? "",
-      instructor_number: certification?.instructor_number ?? "",
-      training_center: certification?.training_center ?? "",
-      notes: certification?.notes ?? "",
-      course_uuid: certification?.course_uuid ?? null,
+      name: course?.name ?? "",
+      agency: course?.agency ?? "padi",
+      agency_other: course?.agency_other ?? "",
+      status: course?.status ?? DEFAULT_COURSE_STATUS,
+      start_date: course?.start_date ?? "",
+      end_date: course?.end_date ?? "",
+      instructor_name: course?.instructor_name ?? "",
+      instructor_number: course?.instructor_number ?? "",
+      training_center: course?.training_center ?? "",
+      cost: course?.cost ?? "",
+      notes: course?.notes ?? "",
     });
-    // Same deliberate reset-on-open pattern as `gear-item-dialog.tsx`; clearing a
-    // stale error when the dialog reopens is exactly the "sync to a prop change"
-    // case this rule can't distinguish from a cascading render.
-  }, [open, certification, reset]);
+    // Same deliberate reset-on-open pattern as `certification-dialog.tsx`;
+    // clearing a stale value when the dialog reopens is exactly the "sync to a
+    // prop change" case this rule can't distinguish from a cascading render.
+  }, [open, course, reset]);
 
   const handleOpenChange = (next: boolean) => {
     if (!next) setApiError(null);
     onOpenChange(next);
   };
 
-  const onSubmit = async (data: CertificationInput) => {
+  const onSubmit = async (data: CourseInput) => {
     setApiError(null);
     try {
       setIsSubmitting(true);
 
       // "" is the form's "not set" state for every optional field. On update they
       // go as an explicit null so clearing one actually clears it rather than
-      // being ignored as an omitted key; on create they are simply left off.
+      // being ignored as an omitted key; the API's `CourseUpdate` keeps exactly
+      // these fields off `NON_NULLABLE_FIELDS` for that. On create the same nulls
+      // simply store nothing.
       //
       // `agency_other` is the exception: the API rejects a non-null value unless
       // the agency is "other", so switching away from "other" must send null
       // rather than the stale name still sitting in the form state.
       const shared = {
+        name: data.name,
         agency: data.agency as CertificationAgency,
         agency_other:
           data.agency === "other" ? data.agency_other || null : null,
-        name: data.name,
-        certification_number: data.certification_number || null,
-        certified_on: data.certified_on || null,
-        expires_on: data.expires_on || null,
+        status: data.status,
+        start_date: data.start_date || null,
+        end_date: data.end_date || null,
         instructor_name: data.instructor_name || null,
         instructor_number: data.instructor_number || null,
         training_center: data.training_center || null,
+        cost: data.cost || null,
         notes: data.notes || "",
-        // The picker's own empty state is already `null` rather than `""`, so
-        // this needs no mapping - but it is sent on every save either way, which
-        // is what makes clearing it clear the link. There is no
-        // `buildCertificationUpdate` helper to hold that rule instead: this
-        // dialog shows every field and submits all of them.
-        course_uuid: data.course_uuid ?? null,
       };
 
-      if (certification) {
-        await certificationsAPI.updateCertification(certification.uuid, shared);
-        onSaved({ ...certification, ...shared });
+      if (course) {
+        // The API answers a PATCH with a status message only, so the updated
+        // course is assembled here for the caller.
+        await coursesAPI.updateCourse(course.uuid, shared);
+        onSaved({ ...course, ...shared });
       } else {
-        const created = await certificationsAPI.createCertification({
+        const created = await coursesAPI.createCourse({
           user_uuid: userId,
           ...shared,
         });
@@ -172,7 +177,7 @@ export function CertificationDialog({
       setApiError(
         getApiErrorMessage(
           error,
-          `Failed to ${isEdit ? "update" : "create"} certification. Please try again.`,
+          `Failed to ${isEdit ? "update" : "create"} course. Please try again.`,
         ),
       );
     } finally {
@@ -184,40 +189,86 @@ export function CertificationDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>
-            {isEdit ? "Edit Certification" : "New Certification"}
-          </DialogTitle>
+          <DialogTitle>{isEdit ? "Edit Course" : "New Course"}</DialogTitle>
         </DialogHeader>
 
         <Form {...form}>
+          {/* `dialogFormSubmit` keeps this submit from bubbling into the form
+              this dialog can be opened from - the dive form, or the
+              certification dialog's own form. See `lib/dialog-form.ts`. */}
           <form
             onSubmit={dialogFormSubmit(form.handleSubmit(onSubmit))}
             className="space-y-4"
           >
             <FormField
               control={form.control}
-              name="agency"
+              name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Agency *</FormLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {CERTIFICATION_AGENCIES.map((value) => (
-                        <SelectItem key={value} value={value}>
-                          {certificationAgencyLabel(value)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FormLabel>Course *</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="e.g. Advanced Nitrox + Decompression Procedures"
+                      autoFocus
+                      {...field}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="agency"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Agency *</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {CERTIFICATION_AGENCIES.map((value) => (
+                          <SelectItem key={value} value={value}>
+                            {certificationAgencyLabel(value)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Status *</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {COURSE_STATUSES.map((value) => (
+                          <SelectItem key={value} value={value}>
+                            {courseStatusLabel(value)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             {agency === "other" && (
               <FormField
@@ -239,49 +290,13 @@ export function CertificationDialog({
               />
             )}
 
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Certification *</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="e.g. Advanced Open Water Diver"
-                      autoFocus
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="certification_number"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Certification number</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="As printed on the card"
-                      {...field}
-                      value={field.value ?? ""}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
-                name="certified_on"
+                name="start_date"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Certified on</FormLabel>
+                    <FormLabel>Start date</FormLabel>
                     <FormControl>
                       <DatePicker
                         value={field.value ?? ""}
@@ -295,12 +310,12 @@ export function CertificationDialog({
 
               <FormField
                 control={form.control}
-                name="expires_on"
+                name="end_date"
                 render={({ field }) => (
                   <FormItem>
-                    {/* Most recreational cards never expire; rescue, first-aid
-                        and technical ones do. */}
-                    <FormLabel>Expires on</FormLabel>
+                    {/* Neither date is required, unlike a trip's start date: a
+                        course that is only booked has no dates yet. */}
+                    <FormLabel>End date</FormLabel>
                     <FormControl>
                       <DatePicker
                         value={field.value ?? ""}
@@ -312,31 +327,6 @@ export function CertificationDialog({
                 )}
               />
             </div>
-
-            <FormField
-              control={form.control}
-              name="course_uuid"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Course</FormLabel>
-                  <FormControl>
-                    {/* Opens its own `CourseDialog` on "Add course...", which
-                        puts a dialog on top of this one. `dialogFormSubmit`
-                        keeps that inner submit out of this form - see
-                        DECISIONS.md. */}
-                    <CourseCombobox
-                      userId={userId}
-                      value={field.value}
-                      onChange={field.onChange}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    The training this card came out of, if you logged it.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
             <FormField
               control={form.control}
@@ -388,13 +378,37 @@ export function CertificationDialog({
 
             <FormField
               control={form.control}
+              name="cost"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Cost</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="e.g. EUR 1450"
+                      {...field}
+                      value={field.value ?? ""}
+                    />
+                  </FormControl>
+                  {/* Free text on purpose: cost appears in no agency record, and
+                      a currency-aware number would be real currency handling for
+                      a field nothing ever adds up. */}
+                  <FormDescription>
+                    Whatever you paid, in whatever currency you paid it.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
               name="notes"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Notes</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Specialties covered, restrictions, anything worth remembering..."
+                      placeholder="Skills covered, conditions, anything worth remembering..."
                       className="min-h-[80px]"
                       {...field}
                       value={field.value ?? ""}
@@ -429,7 +443,7 @@ export function CertificationDialog({
                 ) : (
                   <>
                     <Plus className="h-4 w-4 mr-2" />
-                    Create Certification
+                    Create Course
                   </>
                 )}
               </Button>

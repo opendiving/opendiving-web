@@ -8,12 +8,14 @@ describe("labelForPath", () => {
     expect(labelForPath("/dives")).toBe("Back to Dives");
     expect(labelForPath("/sites")).toBe("Back to Dive Sites");
     expect(labelForPath("/dashboard")).toBe("Back to Dashboard");
+    expect(labelForPath("/courses")).toBe("Back to Courses");
   });
 
   it("switches to the singular for a single record", () => {
     expect(labelForPath("/trips/abc")).toBe("Back to Trip");
     expect(labelForPath("/sites/abc")).toBe("Back to Dive Site");
     expect(labelForPath("/dives/abc")).toBe("Back to Dive");
+    expect(labelForPath("/courses/abc")).toBe("Back to Course");
   });
 
   it("ignores a query string or hash", () => {
@@ -42,6 +44,12 @@ describe("resolveReturnTarget", () => {
     expect(resolveReturnTarget({ dive_site_uuid: "abc" }, FALLBACK)).toEqual({
       href: "/sites/abc",
       label: "Back to Dive Site",
+    });
+    // What "Log a Dive for this Course" hands the form, with no `?from=` of its
+    // own - the same wiring the trip's own button gets for free.
+    expect(resolveReturnTarget({ course_uuid: "abc" }, FALLBACK)).toEqual({
+      href: "/courses/abc",
+      label: "Back to Course",
     });
   });
 
