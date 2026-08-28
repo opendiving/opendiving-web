@@ -1,4 +1,5 @@
-// Retakes the README screenshots in `docs/screenshots/`.
+// Retakes the README screenshots in `docs/screenshots/`, and the product repo's copies of
+// the same three images when a clone of it is on disk beside this one.
 //
 //   npm run screenshots -- you@example.com             # all of them
 //   npm run screenshots -- you@example.com dashboard   # just the named ones
@@ -11,7 +12,7 @@
 // Chromium comes from CHROME_PATH, or from the usual Chrome install; playwright-core
 // only drives it, so `npm install` never downloads a browser.
 import { execFileSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
@@ -19,6 +20,18 @@ import { chromium } from "playwright-core";
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = path.join(root, "docs", "screenshots");
 const API_DIR = process.env.API_DIR ?? path.join(root, "..", "opendiving-api");
+// The product repo renders these same three images on the page the project is judged on,
+// and has nothing that can retake them - the app they are of is here. So this script
+// writes both copies from one shutter press rather than leaving the front page to rot on
+// a screenshot of an older UI. Same `../sibling` shape as API_DIR, and skipped with a note
+// when that clone is absent: one clone has to remain enough to run this.
+const PRODUCT_DIR =
+  process.env.PRODUCT_DIR ?? path.join(root, "..", "opendiving");
+const PRODUCT_OUT = existsSync(PRODUCT_DIR)
+  ? path.join(PRODUCT_DIR, "docs", "screenshots")
+  : null;
+// Committing them there is a separate, manual step: this script has no business making
+// commits in a repository it does not live in.
 const WEB = process.env.WEB_URL ?? "http://localhost:3000";
 // Same variable the app builds its axios `baseURL` from, so it carries the `/api/v1`
 // prefix and the fetches below append only the route. Appending the prefix here as well
@@ -104,6 +117,14 @@ if (!chromePath) {
     "No Chrome found. Set CHROME_PATH to a Chrome or Chromium binary.",
   );
   process.exit(1);
+}
+
+// A note rather than a failure: most people running this have one clone, and the product
+// repo's copies are the maintainer's errand.
+if (!PRODUCT_OUT) {
+  console.log(
+    `· no product repo at ${PRODUCT_DIR} - writing this repository's copies only (set PRODUCT_DIR to change that)`,
+  );
 }
 
 // ------------------------------------------------------------------- sign in
@@ -199,12 +220,21 @@ async function cutBelow(page, label) {
   return top;
 }
 
+// One shutter press, written to both trees from the buffer it returns. Shooting twice
+// would produce two *different* images - the pages are live, and "due in 24 days" counts
+// down between them - so the copies would drift the moment anyone looked closely.
 async function shot(page, name, height) {
   await page.setViewportSize({ width: WIDTH, height });
   await hideDevTools(page);
   await page.waitForTimeout(400);
-  await page.screenshot({ path: path.join(OUT, `${name}.png`) });
-  console.log(`✓ ${name}.png  ${WIDTH}x${height} @2x`);
+  const png = await page.screenshot({ path: path.join(OUT, `${name}.png`) });
+  if (PRODUCT_OUT) {
+    mkdirSync(PRODUCT_OUT, { recursive: true });
+    writeFileSync(path.join(PRODUCT_OUT, `${name}.png`), png);
+  }
+  console.log(
+    `✓ ${name}.png  ${WIDTH}x${height} @2x${PRODUCT_OUT ? " (+ product repo)" : ""}`,
+  );
 }
 
 const MONTHS = [

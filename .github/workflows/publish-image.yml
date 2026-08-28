@@ -385,9 +385,11 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   # A release exists for the notes, not for the artifacts - self-hosters install from the
-  # api repo's bundle (see that repo's `deploy/`), and this repo's release is the record
-  # of what went into the image they pull. `.github/release.yml` sorts the PRs by the
-  # labels `pr-title.yml` applies; the human writes the headline and publishes.
+  # bundle the product repo (`opendiving/opendiving`) attaches to its own release, and this
+  # repo's release is the record of what went into the image they pull. That repo's release
+  # is also what verifies this image exists at the version it names.
+  # `.github/release.yml` sorts the PRs by the labels `pr-title.yml` applies; the human
+  # writes the headline and publishes.
   draft-release:
     needs: [prepare, merge]
     if: needs.prepare.outputs.version != ''
