@@ -6266,6 +6266,19 @@ separately. `agentRules: false` would stop it outright, and was rejected because
 carries is real: `node_modules/next/dist/docs/` is the shipped Next 16 documentation, and this app
 is on a version whose conventions predate most training data.
 
+A third thing this file no longer holds: a paragraph explaining that the maintainer's checkout sits
+beneath a parent whose own `CLAUDE.md` loads alongside this one. It went because it could not act on
+either reader. That parent loads by directory ancestry whether or not this file mentions it, so an
+agent working there learns nothing it can use; a standalone clone has no parent to load and nothing
+to do with knowing one exists elsewhere. The maintainer-facing half of that — why `CLAUDE.md` is
+shaped this way at all — survives in the HTML comment at the top of the file, which is stripped
+before the file enters context and so costs nothing to keep.
+
+The tempting second reason — that it named a private repository in a file that ships publicly — does
+not survive being written down. This file ships in the same clone, and explaining the removal at all
+requires naming the same parent, so that argument would defeat itself on the page. Inertness is the
+whole of it.
+
 ### The Prettier override is load-bearing
 
 `.prettierrc.json` gives `AGENTS.md` `proseWrap: "preserve"`, against the `*.md` default of
@@ -8424,18 +8437,23 @@ with a browser-side error pointing nowhere near the header.
 
 ## Signing is enforced locally, because GitHub cannot do it yet
 
-**Superseded in three particulars** by _"Signing stopped being a demand on contributors, and the
-hook learned to check"_ at the end of this file. (i) The opening claim below, that every commit here
-is meant to be signed — the commits in an outside contributor's pull request are exempt, and
-`CONTRIBUTING.md` no longer asks for them. (ii) The instruction below to target _every_ branch with
-the `required_signatures` ruleset the day these repos go public — it is every branch _except_
-`main`, because with required signatures on `main` GitHub refuses to squash-merge a pull request you
-did not author, and squash is the only merge method enabled here, so every outside PR would be
-unmergeable on day one. (iii) The description below of the Claude hook as rejecting the command
-before it runs — it now asks git first and rejects only where the key that command would disable is
-reported on. Everything else here stands, which is why the section is kept whole: that no git
-setting can prevent an inline override, the push hook's mechanics and its `%G?`-of-`N` reasoning,
-the committed-past-`.claude/*` forensics, the Python-version fail-open note, and the
+**Superseded in four particulars** — three by _"Signing stopped being a demand on contributors, and
+the hook learned to check"_ and one by _"The skills are repo content; what wires up the hook is
+not"_, both later in this file. (i) The opening claim below, that every commit here is meant to be
+signed — the commits in an outside contributor's pull request are exempt, and `CONTRIBUTING.md` no
+longer asks for them. (ii) The instruction below to target _every_ branch with the
+`required_signatures` ruleset the day these repos go public — it is every branch _except_ `main`,
+because with required signatures on `main` GitHub refuses to squash-merge a pull request you did not
+author, and squash is the only merge method enabled here, so every outside PR would be unmergeable
+on day one. (iii) The description below of the Claude hook as rejecting the command before it runs —
+it now asks git first and rejects only where the key that command would disable is reported on. (iv)
+The claim below that the hook's _registration_ is committed: `.claude/settings.json` is gone and the
+`PreToolUse` entry lives in the untracked `.claude/settings.local.json`. Both hook scripts are still
+committed. The premise under the claim — that agents only ever see committed files — did not change;
+it still holds, which is exactly why the registration no longer reaches those sessions. Everything
+else here stands, which is why the section is kept whole: that no git setting can prevent an inline
+override, the push hook's mechanics and its `%G?`-of-`N` reasoning, the
+`.claude/*`-versus-`.claude/` re-inclusion mechanic, the Python-version fail-open note, and the
 bare-command-substitution post-mortem.
 
 Every commit here is meant to be signed, and for a while about half of them were not — this repo was
@@ -9023,10 +9041,14 @@ fail-open trap the section above records — any exception escaping `main()` exi
 system treats any exit but 2 as non-blocking, so a raise inside the gate would delete the guard
 without a word.
 
-**The gate, not the gitignore, is what scopes enforcement.** The temptation, once the hook is
+**The gate, not the gitignore, is what scopes enforcement.** ~~The temptation, once the hook is
 conditional, is to make it "local" by moving its registration to `.claude/settings.local.json`. That
 would break the committed-hook property the section above establishes: agent sessions run in fresh
-checkouts under `.claude/worktrees/`, and only committed files reach them.
+checkouts under `.claude/worktrees/`, and only committed files reach them.~~ **Overridden** — the
+registration moved there anyway, not because the argument is wrong (it holds exactly as written for
+a `web-N-*` worktree) but because `settings.json` had to go. The script stays committed. See _"The
+skills are repo content; what wires up the hook is not"_ at the end of this file; the heading here
+holds either way.
 
 **And the verification, because this file has none.** ESLint ignores `.claude/**` and no CI job
 reads it, so the only check the hook gets is running it by hand against a set of JSON payloads — one
@@ -11110,3 +11132,57 @@ copy list with `git grep -lni certifications -- src/ README.md`, and that grep d
 organizes and spells the kind "c-cards". `git grep -ni c-card -- src/ README.md` is what finds it -
 the same trap that section already records for `usePaginatedResource.ts`, arriving through a synonym
 rather than a line break. Run both.
+
+## The skills are repo content; what wires up the hook is not
+
+`.claude/skills/` was ignored along with the rest of `.claude/`, and `CLAUDE.md` said so in the
+preamble to its browser-verification notes: read the skill mentions as _if you have it_, because a
+clone has none of them. True of the setup, wrong about the skills. Both of them describe how to work
+on _this_ repo and nothing else — the local magic-link flow and its rate limits, and
+`scripts/screenshots.mjs` with the framing constants it owns. They are the same kind of artifact as
+`AGENTS.md`, and a clone has the same use for them. So they are committed now, and
+`!.claude/skills/` is the single exception the ignore file carries.
+
+**`.claude/settings.json` went the other way.** It held exactly one thing, the `PreToolUse` entry
+pointing Claude Code at `.claude/hooks/no-unsigned-commits.py`, and it was committed on a premise
+the ignore file stated outright: agents work in fresh checkouts under `.claude/worktrees/` and only
+ever see committed files, so a rule left uncommitted never reaches the sessions it is meant to
+constrain. It is gone, and the registration lives in the untracked `settings.local.json` beside it.
+The script itself stays committed — it is about working on this repo, the same argument the skills
+won on.
+
+**The premise is correct, and giving it up costs something real — so be clear what.** It is tempting
+to think an untracked `.claude/` file reaches a session anyway, because `settings.local.json` and
+`.claude/skills/` both turn up in the worktrees Claude Code creates for itself, written at session
+start rather than checked out. That is real but it is not general: the `web-N-*` worktrees this
+repo's feature branches are actually built in come from a plain `git worktree add`, which copies
+nothing untracked, and not one of them has a `settings.local.json`. `.claude/hooks/` is present in
+all of them only because it is tracked. So a `web-N-*` session now gets the script with nothing
+wired to it, and the `PreToolUse` guard does not fire there.
+
+What holds the line instead is `.githooks/pre-push`, which linked worktrees inherit through
+`core.hooksPath` on the parent clone, so it still refuses the push. The trade is a guard that
+stopped a bad commit being written for one that stops it leaving the machine — and for a clone the
+arithmetic never mattered: the hook fires only on a command that _disables_ signing, so it did
+nothing in a checkout where signing is not configured, and `CONTRIBUTING.md` stopped asking
+contributors to configure it.
+
+This overrides a paragraph that saw it coming and ruled it out — _"The gate, not the gitignore, is
+what scopes enforcement"_, under _"Signing stopped being a demand on contributors"_, which named
+moving the registration to `settings.local.json` as the temptation to resist. Its objection was
+correct on the facts, as the paragraph above concedes; it is overridden by a decision about what
+this repository should carry, not defeated by an argument. Its heading survives and so does its
+reasoning.
+
+**Ignoring the script as well was tried, and reverted before it landed — the reason is worth
+keeping.** Untracking a tracked file does not preserve it. The first `git pull` after such a change
+deletes it from the working tree, because the path is tracked in the merge base and ignored in the
+branch, and since it is ignored afterwards `git status` reports nothing. `settings.local.json` would
+have kept pointing at a file that no longer existed, and a missing command exits non-zero-but-not-2
+— non-blocking, per the fail-open note above. The guard would have gone quiet in the primary
+checkout, not just the worktrees, with nothing to show for it.
+
+The rename that occasioned all this is the smallest part. `od-login` and `dashboard-screenshot`
+became `opendiving-web-login` and `opendiving-web-dashboard-screenshot`, because sibling repos sit
+under one umbrella and skills load by bare name: `dashboard-screenshot` gave no clue whose dashboard
+it shot, and `od-login` no clue that the magic-link flow it drives is this app's.
