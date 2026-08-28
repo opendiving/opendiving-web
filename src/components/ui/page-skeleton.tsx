@@ -9,9 +9,8 @@ interface PageSkeletonProps {
 }
 
 /**
- * The loading state for a detail page (`dives/[id]`, `sites/[id]`,
- * `trips/[id]`, `gear/[id]`), all four of which are a `PageHeader` over the
- * same 2/3 + 1/3 card grid.
+ * The loading state for a detail page, every one of which is a `PageHeader`
+ * over the same 2/3 + 1/3 card grid.
  *
  * It renders the *real* back button rather than a placeholder for it: where
  * that link goes is known before the record is, and it's the one control on

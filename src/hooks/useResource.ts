@@ -22,16 +22,16 @@ interface UseResourceOptions<T> {
 /**
  * Fetch-one-resource-by-route-param, for the `[id]` detail pages.
  *
- * The dives, sites, trips and gear detail pages plus the dive edit page each
- * hand-rolled the same block: read `params.id`, cast it to a string, fetch,
- * toast-and-redirect on failure, clear a loading flag in `finally`. They had
- * drifted in the usual small ways - some guarded against settling after unmount and
- * some didn't, so navigating away from a slow dive page still fired a toast and a
- * redirect on whatever page the diver had landed on.
+ * The detail pages and the dive edit page each hand-rolled the same block: read
+ * `params.id`, cast it to a string, fetch, toast-and-redirect on failure, clear a
+ * loading flag in `finally`. They had drifted in the usual small ways - some
+ * guarded against settling after unmount and some didn't, so navigating away from
+ * a slow dive page still fired a toast and a redirect on whatever page the diver
+ * had landed on.
  *
  * `params.id as string` lives here now too. The cast is unavoidable (Next types the
  * param as `string | string[]`, and only a catch-all route can produce the array),
- * but it is worth making once rather than five times.
+ * but it is worth making once rather than in every page that reads an `[id]`.
  */
 export function useResource<T>(
   fetchFn: (id: string) => Promise<T>,

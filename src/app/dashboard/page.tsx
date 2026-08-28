@@ -64,10 +64,9 @@ function Stat({
 // The signed-in home page.
 //
 // Everything on it is derived from something the diver has actually logged, and the
-// three cards that can have nothing to say - gear service, certification renewals, the
-// setup checklist - return `null` rather than an empty tile. They are direct children
-// of the page's `space-y-6` stack for exactly that reason: a wrapper `<div>` around
-// them would leave its own gap behind on the days they render nothing.
+// cards that can have nothing to say return `null` rather than an empty tile. They are
+// direct children of the page's `space-y-6` stack for exactly that reason: a wrapper
+// `<div>` around them would leave its own gap behind on the days they render nothing.
 //
 // See DECISIONS.md ("The dashboard shows only what the app actually tracks") for what
 // used to be here and why it went.

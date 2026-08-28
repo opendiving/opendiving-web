@@ -50,8 +50,9 @@ export interface RecentDivesCardProps {
 }
 
 // Shows a list of dives for a user (dive number, date, duration, max depth).
-// Used on the dashboard and profile pages (as the 5 most recent dives) and
-// on a trip's detail page (filtered to that trip's dives), so they stay in sync.
+// Used on the dashboard (the most recent few) and on the detail pages that
+// scope dives to one record - a trip, a dive site, a gear item - so they all
+// stay in sync.
 export function RecentDivesCard({
   userId,
   tripId,
@@ -122,9 +123,9 @@ export function RecentDivesCard({
         {isLoadingDives ? (
           // Capped at `RECENT_DIVES_COUNT`, not just `limit`: on the dashboard
           // the two are the same and the placeholder is exactly right, while
-          // the site/trip/gear detail pages pass a limit of 100 for "all of
-          // them", where the real count isn't knowable up front and five rows
-          // is a better guess than a hundred.
+          // a detail page scoping dives to one record passes a large limit
+          // for "all of them", where the real count isn't knowable up front and
+          // a few rows is a better guess than the whole cap.
           <ListRowsSkeleton rows={Math.min(limit, RECENT_DIVES_COUNT)} />
         ) : recentDives.length === 0 ? (
           <div className="text-center py-12">
