@@ -3839,6 +3839,12 @@ counted: at `p-4` a seven-column table spends 224 px of its width on it. Merging
 away was also tried and reverted — worth only ~26 px, and it cost the badge alignment down the
 column.
 
+**And the badge was reconsidered after all, once there was a third one.** A `usage` badge in the
+same cell reproduced this section's failure almost to the pixel — 73 px of MOD clipped — and the
+answer was to take that badge back out of the table rather than to reopen the column set. The
+argument for reversing the line above is in "The usage badge left the table, and the flag is stated
+under it" at the end of this file; the line still stands for the two badges that remain.
+
 ## The API sends `null`, the form schema only understood `""` — and the save button did nothing
 
 Three fields were added to `diveMixtureSchema` in this phase, and all three rejected the value the
@@ -10624,13 +10630,15 @@ choices rather than accidents:
   dive, which is the premise of the combined ask recorded in the next section.
 
 `TANK_USAGE_LABELS` sits beside `GAS_ROLE_LABELS` in `lib/dive-mixtures.ts` for the same reason that
-map lives there — the form's picker and the detail badge have to name a flag identically — and is
-one word each for the same width reason. The form's own `<select>` options are a separate, longer
-set (`TANK_USAGE_OPTION_LABELS` in `mixture-fields.tsx`): "Parallel (sidemount / independent)" and
-"Staged (own depth)". That is not duplication for its own sake. A badge in a table cell has no room
-for a parenthetical, while an option row has a whole line — and this flag changes what the API
-computes, so a diver choosing it by guessing at the bare word is the outcome worth spending option
-width to prevent.
+map lives there — the form's picker and the dive page have to name a flag identically — and is one
+word each because there it is a _name_ rather than a description. The form's own `<select>` options
+are a separate, longer set (`TANK_USAGE_OPTION_LABELS` in `mixture-fields.tsx`): "Parallel
+(sidemount / independent)" and "Staged (own depth)". That is not duplication for its own sake. The
+dive page quotes the one-word label back inside a sentence that carries the meaning alongside it
+(`tankUsageSentences`, and see "The usage badge left the table, and the flag is stated under it"
+below); an option row has no sentence around it and has to carry both at once — and this flag
+changes what the API computes, so a diver choosing it by guessing at the bare word is the outcome
+worth spending option width to prevent.
 
 ## `gasUseUnavailableReason` gained a nudge, and where it sits is the whole design
 
@@ -10794,31 +10802,91 @@ and its `avg_depth` and `gas_used` really are whole-dive figures. Only the comme
 was wrong. That is the second-consumer class recorded elsewhere in this file — a file the change had
 no other reason to open, rendering the old meaning for a new figure.
 
-## The usage badge and the mixtures table's width budget
+## The usage badge left the table, and the flag is stated under it
 
-The table's width is a measured trade-off in this repo, not a guess: the role badge alone cost 73 px
-and pushed MOD off-screen, and a later campaign brought the mixtures table to **471 px in a 582 px
-slot**, measured on dive #493 at a 1024 px viewport — the pinch width, since one pixel below `lg`
-the grid collapses and the card jumps to ~925 px. A third badge in the same cell has to be answered
-against that, so it is.
+The usage badge shipped in the Gas cell beside the role badge, on a **projection** rather than a
+measurement, and the projection was wrong. It is recorded here because the way it was wrong is
+reusable: the estimate reasoned from this repo's own per-badge cost — the role badge's 73 px being a
+6 px `gap-1.5` plus a `px-2.5` pill around a 12 px semibold label — added ~12 px for "Parallel"
+being two characters longer than "Oxygen", and put the table at **~556 px against its 582 px slot**.
+The per-badge increment was close to right. **The base was not**, and the base is what the whole
+projection rested on: it took the 471 px this file records under "Both gas tables finally fit their
+slot" as the current width of a badged row, when that figure is dive #493 as it sits in the corpus,
+carrying no role badge at all.
 
-**The usage badge goes in the Gas cell, beside the role badge.** The sanctioned fallback was the
-Volume cell — `usage` is a property of the cylinder rather than the gas, so `22.2 L` + `Parallel` is
-arguably the more honest pairing — and it is not needed. The projection, from this repo's own
-recorded per-badge cost: the role badge's 73 px is a 6 px `gap-1.5` plus a `px-2.5` pill around a 12
-px semibold label, measured on a row whose widest role label was the six-character "Oxygen".
-"Parallel" is eight characters, so roughly 12 px more, putting a third badge at **~85 px** and the
-table at **~556 px against the 582 px slot** — about 26 px of slack, where the role badge's own
-addition had been 125 px of overflow.
+Measured on the running app afterwards, at a 1024 px viewport — the pinch width, since one pixel
+below `lg` the grid collapses and the card jumps to ~925 px:
 
-**That figure is arithmetic from the recorded numbers, not a browser measurement**, and it is
-labelled as such deliberately rather than presented as one. The suite cannot settle it — jsdom does
-no layout and returns zero-sized rects, so a geometry assertion passes against any markup at all —
-and the confirming step is the recorded method run against the live app: `table.scrollWidth` against
-`table.parentElement.clientWidth`, on dive #493 at 1024 px, with gas + role + usage badges on the
-widest row. Two traps that method exists to dodge still apply: the outer `overflow-x-auto` wrapper
-is gone, so the parent is unambiguously shadcn's own scroll container, and measuring against the
-wrong one reports a comfortable 0 px overflow for a table that is visibly scrolling.
+| Row shape                                | Table  | Slot   | MOD clipped |
+| ---------------------------------------- | ------ | ------ | ----------- |
+| #493 + role + usage, as shipped          | 655 px | 582 px | 73 px       |
+| usage badge moved to the Volume cell     | 641 px | 582 px | 59 px       |
+| usage badge in the Volume cell, stacked  | 599 px | 582 px | 17 px       |
+| #493 + role, no usage badge              | 584 px | 582 px | 2 px        |
+| #493 as it sits in the corpus, no badges | 515 px | 582 px | none        |
 
-If the live number does blow the slot, the move is the Volume cell rather than shortening
-`TANK_USAGE_LABELS`, which is already one word per member.
+So the badge turned a 2 px clip into a 73 px one, and the MOD column — the last one, and the reason
+a multi-gas dive opens this card — was off screen without scrolling on exactly the dives the feature
+is for. That is the same failure "The role badge costs the mixtures table 73 px it did not have"
+records, at almost exactly the same cost, in the same cell, five weeks later.
+
+**Read `scrollWidth` correctly or the numbers above cannot be reproduced.** This table is full
+width, so `table.scrollWidth` returns the _container's_ width whenever the table fits and reveals
+min-content only when it overflows. Every "fits" measurement therefore answers 582 px regardless of
+how much slack is really there, and a fitting table cannot be compared with an overflowing one on
+that number at all. Set `table.style.width = 'min-content'`, read `getBoundingClientRect().width`,
+put it back. The 471 px recorded in the earlier campaign is a min-content figure; a naive
+`scrollWidth` on that same row today answers 582, and reconciling the two is what this paragraph
+exists to prevent. (Its 471 px against today's 515 px is 44 px of drift from changes since —
+per-field entry units among them — not from this work.)
+
+**The badge is gone, and the flag is stated in prose beneath the table**: "Cylinders 1 and 2 are
+flagged Parallel — breathed alternately at the same depth, as a sidemount pair or independent
+doubles. Cylinder 3 is flagged Staged — breathed at a separate depth." `tankUsageSentences` in
+`lib/dive-mixtures.ts` builds them. The invariant it has to keep is the one the badge kept for free
+— every flag a diver recorded is visible on the dive page without opening the edit form, **and** a
+reader can tell which cylinder each one belongs to — and it keeps the second half by naming
+cylinders with the `#` the table's first column already shows. That is what makes a mixed set still
+expressible in the display, which matters because the control that records it is deliberately
+per-row. Prose under this table is also this component's own precedent: "Breathing-gas maths lives
+in `lib/dive-mixtures.ts`, client-side, and is only ever a label" records that the MOD warning is
+spelled out underneath rather than hidden in a `title` tooltip, and this is the second application
+of the same resolution to the same table.
+
+**This reverses the closing line of "The role badge costs the mixtures table 73 px it did not
+have"**, which is "if this is revisited, the thing to reconsider is the column set, not the badge".
+That instruction was right when it was written and the argument against it is narrow. The column set
+is load-bearing on every dive in the log: `Volume`/`Start`/`End` are the gas-consumption inputs and
+`Gas`/`O₂`/`He`/`MOD` the planning facts, and it was settled by a measured campaign that cut 177 px
+out of this table. The usage badge was a five-week-old at-a-glance convenience whose information
+survives in four other places — the edit form, the gas figures it changes, the reasons on the
+consumption card, and now a sentence six inches below where it used to sit. Reopening the column set
+to keep it would spend the expensive thing to save the cheap one. What changed since that line was
+written is that a third badge exists at all; it did not when the line was written.
+
+**Three alternatives were specified and dropped on evidence**, recorded so they are not proposed
+again:
+
+- **The Volume cell**, which this file previously named as the sanctioned fallback. Measured: 14 px
+  inline and 56 px stacked, reaching neither bar. `Badge` is `inline-flex`, the body row is
+  `whitespace-nowrap`, and a table that overflows is already at its minimum width — so moving an
+  inline badge between two columns of one such sum is close to width-neutral by construction.
+- **Icons instead of words.** Touch has no hover, and the MOD-warning decision in the same component
+  already refuses to put the only copy of a meaning behind one.
+- **Icons only in the 1024–1280 band, words elsewhere.** It fits — 579 px against 582 — and it costs
+  a glyph vocabulary, an `sr-only` mechanism, a visible key, a responsive swap in two components and
+  a rewritten test census. It also contradicts "Three glyph families, not five", which records for
+  this same app that at this size a shape is worth about one bit and that the readout says which in
+  words.
+
+**The residual 2 px is pre-existing and is not being fixed here.** Without the usage badge #493 with
+role badges measures 584 px and a trimix row about 588 px, which is the 6 px overflow "Both gas
+tables finally fit their slot" already records as the worst case — independent confirmation that
+removing the badge restores the documented state rather than inventing a new one. A row carrying a
+role badge was 2 px over before `usage` existed, and demanding zero here would be demanding a
+regression fix this change never caused.
+
+**The suite cannot settle any of this**, which is why the numbers are all live ones. jsdom does no
+layout and returns zero-sized rects, so a geometry assertion passes against any markup at all. What
+the tests pin is text presence — the sentences, their numbers, and their absence on an unflagged
+dive.

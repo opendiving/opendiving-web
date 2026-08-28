@@ -302,7 +302,7 @@ describe("MixtureFields role input", () => {
     ]);
   });
 
-  it("spells out what each usage means, which the badges have no room to", () => {
+  it("spells out what each usage means, which the one-word labels do not", () => {
     // The flag changes what the API computes, so choosing it by guessing at the
     // word is the outcome worth spending option width to prevent.
     render(<Harness mixtures={[EAN54]} maxDepth={30} />);
