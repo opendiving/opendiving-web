@@ -41,7 +41,9 @@ instructions live in AGENTS.md" in `DECISIONS.md`.
   reaches for when it fears a hanging commit, and what it leaves behind is a PR whose every commit
   reads _Unverified_ on GitHub. Two guards say so there: a `PreToolUse` hook
   (`.claude/hooks/no-unsigned-commits.py`), which asks git first and only blocks when signing is
-  actually on, and `.githooks/pre-push` wherever a maintainer has enabled it. Where signing is _not_
+  actually on, and `.githooks/pre-push`. Both scripts ship with the repository and both are switched
+  on per machine — the first from the untracked `.claude/settings.local.json`, the second from
+  `core.hooksPath` — so neither runs in a checkout that has not asked for it. Where signing is _not_
   configured, commit normally and do not set it up — your commits do not need to be signed, because
   PRs are squash-merged and GitHub signs the commit that lands on `main`. If signing is on and
   genuinely fails, report the error instead of routing around it. See "Signing stopped being a

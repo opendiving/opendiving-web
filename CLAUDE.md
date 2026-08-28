@@ -13,20 +13,13 @@ having a file for it to write to that isn't this one is the other half of the sp
 
 @AGENTS.md
 
-# Claude Code
-
-This file and the `AGENTS.md` it imports are everything a clone of this repo needs. In the
-maintainer's own checkout the repo sits inside an `opendiving/` umbrella whose `CLAUDE.md` carries
-the conventions spanning the sibling repos, and that file loads alongside this one; nothing here
-depends on it.
-
 ## Verifying in the browser
 
-Some of what follows names maintainer-machine setup rather than anything in the repo: the `od-login`
-and `dashboard-screenshot` skills sit under `.claude/skills/`, which `.gitignore` excludes, and the
-`playwright` MCP server is user scope in `~/.claude.json`. A clone has none of them and needs none
-of them — the failure modes below are properties of the tools themselves, not of that setup — so
-read those mentions as _if you have it_.
+Some of what follows names setup rather than repo content. The `opendiving-web-login` and
+`opendiving-web-dashboard-screenshot` skills are committed under `.claude/skills/`, so a clone has
+those; the `playwright` MCP server is user scope in `~/.claude.json`, and a clone does not. Nothing
+below needs it — the failure modes are properties of the tools themselves, not of that setup — so
+read the `playwright` mentions as _if you have it_.
 
 `computer{action:"screenshot"}` only returns real pixels while the Browser pane is **visible**. A
 hidden pane stops compositing, and the capture falls back to the page background — `rgb(22, 22, 24)`
@@ -60,19 +53,19 @@ the problem. Fall back to the page's own event path (`form.requestSubmit()` fire
 React and react-hook-form handle exactly as a click would) or verify off the browser entirely, and
 say in the write-up which layer you skipped.
 
-That interacts with the `od-login` skill in one useful way: a click that never lands also never
-fires the verifying POST, so the magic-link token is **not** consumed and step 2b's bearer path is
-still available with the same link. Falling back to the API is often the better verification anyway
-— asserting against a real response body beats clicking Save, and it is the only half of the job a
-hidden pane doesn't block.
+That interacts with the `opendiving-web-login` skill in one useful way: a click that never lands
+also never fires the verifying POST, so the magic-link token is **not** consumed and step 2b's
+bearer path is still available with the same link. Falling back to the API is often the better
+verification anyway — asserting against a real response body beats clicking Save, and it is the only
+half of the job a hidden pane doesn't block.
 
 Scroll with `computer{action:"scroll"}` rather than `window.scrollTo` through `javascript_tool` —
 the tool action is tracked by the capture path and fails loudly when the pane is hidden instead of
 silently returning the previous frame.
 
 `scripts/screenshots.mjs` drives its own Playwright browser and is immune to all of this, but it
-exists to regenerate this repo's `docs/screenshots/` (see its `dashboard-screenshot` skill), not to
-answer ad-hoc "does this look right?" questions.
+exists to regenerate this repo's `docs/screenshots/` (see its `opendiving-web-dashboard-screenshot`
+skill), not to answer ad-hoc "does this look right?" questions.
 
 The `playwright` MCP server is the ad-hoc answer — user scope in `~/.claude.json`, so it loads in
 every repo — and it is worth reaching for the moment the pane misbehaves, rather than after a detour
@@ -89,10 +82,10 @@ and by the mechanism above being headed costs nothing in reliability.
 Three traps. Writes are restricted to the workspace roots, so a screenshot cannot go to the
 scratchpad directory — the path comes back rejected as "outside allowed roots"; pass a _relative_
 filename instead and it lands in `.playwright-mcp/`, which is already gitignored. The browser
-profile outlives each call, so an account signed in once stays signed in: run `od-login` once per
-session, not once per navigation. And a session that ends without closing its browser leaves a
-Chrome holding that profile's lock, so the next session's first navigation fails with "Browser is
-already in use".
+profile outlives each call, so an account signed in once stays signed in: run `opendiving-web-login`
+once per session, not once per navigation. And a session that ends without closing its browser
+leaves a Chrome holding that profile's lock, so the next session's first navigation fails with
+"Browser is already in use".
 
 Do not read that message as proof of an orphan. A _live_ sibling session on the same profile
 produces it identically, and concurrent sessions in this checkout are the norm rather than the
