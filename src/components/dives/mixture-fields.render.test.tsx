@@ -1,5 +1,5 @@
 import { beforeEach, describe, it, expect, vi, afterEach } from "vitest";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { FormProvider, useForm } from "react-hook-form";
 import { MixtureFields, useMixtureFieldArray } from "./mixture-fields";
@@ -233,9 +233,14 @@ describe("MixtureFields role input", () => {
 
     expect(screen.getByLabelText(/^role$/i)).toHaveValue("");
     expect(
-      // Anchored: the ppO₂ picker's own empty option reads "Not recorded (1.4
-      // default)", and a loose match now finds both.
-      screen.getByRole("option", { name: /^not recorded$/i }),
+      // Scoped to this `<select>`, not swept off the card. Anchoring alone used
+      // to be enough - the ppO₂ picker's own empty option reads "Not recorded
+      // (1.4 default)", so only a loose match found two - but Usage beside it now
+      // spells its empty option exactly the way Role does, and `getByRole` throws
+      // on the pair.
+      within(screen.getByLabelText(/^role$/i)).getByRole("option", {
+        name: /^not recorded$/i,
+      }),
     ).toBeInTheDocument();
   });
 
@@ -274,6 +279,75 @@ describe("MixtureFields role input", () => {
     fireEvent.change(select, { target: { value: "" } });
 
     expect(select).toHaveValue("");
+  });
+
+  it("defaults usage to an explicit 'not recorded', which every import is", () => {
+    // No format this app parses carries the flag, so unlike Role this one is
+    // *always* unset until the diver answers it.
+    render(<Harness mixtures={[EAN54]} maxDepth={30} />);
+
+    expect(screen.getByLabelText(/^usage$/i)).toHaveValue("");
+  });
+
+  it("offers exactly the usages the API accepts", () => {
+    // `TANK_USAGE` mirrors the API's `TankUsage` enum, which is `extra="forbid"`
+    // on the way in - an option this list invented would be rejected on save.
+    // Scoped to this `<select>` for the same reason the role one is.
+    render(<Harness mixtures={[EAN54]} maxDepth={30} />);
+
+    expect(optionsOf(screen.getByLabelText(/^usage$/i))).toEqual([
+      "",
+      "parallel",
+      "staged",
+    ]);
+  });
+
+  it("spells out what each usage means, which the badges have no room to", () => {
+    // The flag changes what the API computes, so choosing it by guessing at the
+    // word is the outcome worth spending option width to prevent.
+    render(<Harness mixtures={[EAN54]} maxDepth={30} />);
+    const select = screen.getByLabelText(/^usage$/i);
+
+    expect(
+      within(select).getByRole("option", { name: /sidemount \/ independent/i }),
+    ).toBeInTheDocument();
+    expect(
+      within(select).getByRole("option", { name: /own depth/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("lets a chosen usage be cleared back to not recorded", () => {
+    // Same react-hook-form trap as Role: writing `undefined` on clear re-displays
+    // the field's default, so "Not recorded" would snap back to Parallel.
+    render(
+      <Harness mixtures={[{ ...EAN54, usage: "parallel" }]} maxDepth={30} />,
+    );
+    const select = screen.getByLabelText(/^usage$/i);
+    expect(select).toHaveValue("parallel");
+
+    fireEvent.change(select, { target: { value: "" } });
+
+    expect(select).toHaveValue("");
+  });
+
+  it("lets each cylinder answer usage for itself", () => {
+    // Per row, not once for the dive: a parallel pair plus a staged bottle is a
+    // real set, and it is the one the API refuses by design - which it can only
+    // do if the form can express it.
+    render(
+      <Harness
+        mixtures={[
+          { ...EAN54, usage: "parallel" },
+          { ...EAN54, usage: "staged" },
+        ]}
+        maxDepth={30}
+      />,
+    );
+
+    const selects = screen.getAllByLabelText(/^usage$/i);
+    expect(selects).toHaveLength(2);
+    expect(selects[0]).toHaveValue("parallel");
+    expect(selects[1]).toHaveValue("staged");
   });
 
   it("lets a recorded ppO₂ limit be cleared back to the default", () => {

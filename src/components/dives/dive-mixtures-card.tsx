@@ -13,9 +13,11 @@ import {
 import {
   GAS_BADGE_CLASS,
   GAS_ROLE_LABELS,
+  TANK_USAGE_LABELS,
   diveModWarning,
   gasName,
   isNameableMix,
+  isSingleGasParallelSet,
   mod,
   ppO2Limit,
 } from "@/lib/dive-mixtures";
@@ -46,15 +48,21 @@ export function DiveMixturesCard({ dive }: DiveMixturesCardProps) {
   if (!dive.mixtures || dive.mixtures.length === 0) return null;
 
   // One warning for the dive, not one per cylinder - see `diveModWarning` for why a
-  // multi-cylinder dive cannot blame any single mix. Spelled out under the table
+  // multi-cylinder dive usually cannot blame any single mix, and for the parallel
+  // single-gas set that is the exception. Spelled out under the table
   // rather than hidden in a `title`, which would put a safety note behind a hover and
   // out of reach on touch entirely.
   const warning = diveModWarning(dive.mixtures, dive.max_depth, units);
 
   // The amber MOD cell is only meaningful when the warning is actually about that
-  // row's gas, which is exactly the single-cylinder case. With several cylinders the
-  // sentence is about the dive, so marking a row would be pointing at the wrong thing.
-  const attributable = warning !== null && dive.mixtures.length === 1;
+  // row's gas. That is the single-cylinder case, and now also a parallel set holding
+  // one gas: `diveModWarning` judges that as the single mix it is, every row holds
+  // that mix, so marking every row points at exactly what the sentence is about.
+  // With any other multi-cylinder dive the sentence is about the dive, and marking a
+  // row would be pointing at the wrong thing.
+  const attributable =
+    warning !== null &&
+    (dive.mixtures.length === 1 || isSingleGasParallelSet(dive.mixtures));
 
   // Helium is the exception among the fractions: air and nitrox record a flat 0, and
   // a column of zeroes down every recreational dive is width spent saying nothing.
@@ -176,6 +184,23 @@ export function DiveMixturesCard({ dive }: DiveMixturesCardProps) {
                         // gas name. "diluent" unlabelled beats nothing at all.
                         <Badge variant="outline">
                           {GAS_ROLE_LABELS[mixture.role] ?? mixture.role}
+                        </Badge>
+                      )}
+                      {mixture.usage && (
+                        // Beside the role badge rather than in the Volume cell,
+                        // which was the sanctioned fallback if the width had not
+                        // held. It does: see DECISIONS.md for the number. The Gas
+                        // cell is where the badges already line up down the
+                        // column, and a diver reading "EAN32, the bottom gas,
+                        // breathed in parallel" is reading one sentence.
+                        //
+                        // Same wire-value fallback as the role badge above and
+                        // for the same reason: `TANK_USAGE_LABELS` mirrors the
+                        // API's `TankUsage` by hand, so a value added there
+                        // before this map catches up renders as itself rather
+                        // than as an empty bordered badge.
+                        <Badge variant="outline">
+                          {TANK_USAGE_LABELS[mixture.usage] ?? mixture.usage}
                         </Badge>
                       )}
                     </div>

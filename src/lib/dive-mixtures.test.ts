@@ -411,6 +411,81 @@ describe("diveModWarning", () => {
     expect(warning).toContain("66.2 m");
   });
 
+  it("judges a flagged parallel pair holding one gas as that gas", () => {
+    // A sidemount pair breathed alternately at the same depth is one gas plan,
+    // not a switch plan: there is one mix on board and it was breathed
+    // throughout, so the dive's max depth is a depth it genuinely saw. Without
+    // this the pair falls to the multi-cylinder rule, which only reports a depth
+    // *no* gas could reach and would clear a real over-MOD dive.
+    const pair = [
+      { ...EAN32, usage: "parallel" as const },
+      { ...EAN32, usage: "parallel" as const },
+    ];
+
+    expect(diveModWarning(pair, 45, "metric")).toContain("40.0 m limit");
+  });
+
+  it("keeps the working-limit note for a flagged parallel pair too", () => {
+    // The half the multi-cylinder rule deliberately drops, and it is right to
+    // keep here: with one gas on board, exceeding 1.4 is not the normal intended
+    // state of affairs it is on a dive carrying a deco bottle.
+    const pair = [
+      { ...EAN32, usage: "parallel" as const },
+      { ...EAN32, usage: "parallel" as const },
+    ];
+
+    expect(diveModWarning(pair, 36, "metric")).toContain("working limit");
+  });
+
+  it("needs the flag as well as the shared gas", () => {
+    // Two identical cylinders with no flag are not known to have been breathed
+    // together - a spare of the same mix, carried and switched to, is the same
+    // two rows. The diver's answer is what makes the single-mix reading sound.
+    //
+    // The dive-wide sentence, not the single-mix one, and the difference is
+    // visible: the flagged pair above names EAN32's own 40.0 m *limit*, while
+    // this reports that no gas on board reaches the depth. Same number, two
+    // different claims.
+    const warning = diveModWarning([EAN32, EAN32], 45, "metric");
+    expect(warning).toContain("No gas logged for this dive");
+    expect(warning).not.toContain("working limit");
+  });
+
+  it("reads an absent helium as zero when comparing a flagged pair's gas", () => {
+    // `OxygenFractions` allows `helium` absent, while the form and every parser
+    // write a flat 0 - so a pair mixing the two spellings is the same gas and has
+    // to be judged as one, not dropped to the dive-wide rule on a `undefined`
+    // versus `0` comparison.
+    const pair = [
+      { oxygen: 32, usage: "parallel" as const },
+      { oxygen: 32, helium: 0, usage: "parallel" as const },
+    ];
+
+    expect(diveModWarning(pair, 45, "metric")).toContain("40.0 m limit");
+  });
+
+  it("needs the shared gas as well as the flag", () => {
+    // A flagged pair holding *different* gases is a switch plan again, and the
+    // multi-cylinder rule is what applies: EAN54 tops out at 19.6 m and was not
+    // necessarily what saw 45 m.
+    const mixed = [
+      { ...AIR, usage: "parallel" as const },
+      { ...EAN54, usage: "parallel" as const },
+    ];
+
+    expect(diveModWarning(mixed, 45.91, "metric")).toBeNull();
+  });
+
+  it("treats a half-flagged pair as the multi-cylinder set it is", () => {
+    // One row Parallel, one still unset says nothing about how they were
+    // breathed together, so nothing stronger than the dive-wide rule is honest.
+    const half = [{ ...EAN32, usage: "parallel" as const }, EAN32];
+
+    expect(diveModWarning(half, 45, "metric")).toContain(
+      "No gas logged for this dive",
+    );
+  });
+
   it("does not apply the 1.4 working limit across several cylinders", () => {
     // 45.91 m is past air's 56.7 m working limit? No - but EAN32's is 33.8 m,
     // and a multi-cylinder dive must not report that as a problem.

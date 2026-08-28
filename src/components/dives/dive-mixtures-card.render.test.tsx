@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import { DiveMixturesCard } from "./dive-mixtures-card";
-import type { Dive, DiveMixture, GasRole } from "@/lib/api/dives";
+import type { Dive, DiveMixture, GasRole, TankUsage } from "@/lib/api/dives";
 
 // This render reads the diver's units, so it needs an auth context. Metric, which
 // is every existing account's default.
@@ -235,5 +235,55 @@ describe("DiveMixturesCard role badge", () => {
     render(<DiveMixturesCard dive={dive([unknown], 30)} />);
 
     expect(screen.getByText("bailout")).toBeInTheDocument();
+  });
+});
+
+describe("DiveMixturesCard usage badge", () => {
+  it("labels a cylinder the diver flagged", () => {
+    render(
+      <DiveMixturesCard
+        dive={dive(
+          [
+            { ...AIR, usage: "parallel" },
+            { ...AIR, usage: "parallel" },
+          ],
+          30,
+        )}
+      />,
+    );
+
+    expect(screen.getAllByText("Parallel")).toHaveLength(2);
+  });
+
+  it("sits beside the role badge rather than replacing it", () => {
+    // The two are orthogonal facts about one cylinder - what it was carried for
+    // and how it was breathed - so a dive can and does say both.
+    render(
+      <DiveMixturesCard
+        dive={dive([{ ...EAN54, role: "deco", usage: "staged" }], 20)}
+      />,
+    );
+
+    expect(screen.getByText("EAN54")).toBeInTheDocument();
+    expect(screen.getByText("Deco")).toBeInTheDocument();
+    expect(screen.getByText("Staged")).toBeInTheDocument();
+  });
+
+  it("shows no badge for the cylinders with no flag, which is every import", () => {
+    // No format this app parses carries the distinction, so an unflagged row is
+    // the default state rather than an omission.
+    render(<DiveMixturesCard dive={dive([AIR, EAN54], 30)} />);
+
+    expect(screen.queryByText("Parallel")).not.toBeInTheDocument();
+    expect(screen.queryByText("Staged")).not.toBeInTheDocument();
+  });
+
+  it("falls back to the wire value for a usage the label map hasn't caught up with", () => {
+    // `TANK_USAGE_LABELS` mirrors the API's `TankUsage` by hand, same as the role
+    // map above. Without the fallback this is an empty bordered badge.
+    const unknown = { ...EAN54, usage: "manifolded" as TankUsage };
+    render(<DiveMixturesCard dive={dive([unknown], 20)} />);
+
+    expect(screen.getByText("manifolded")).toBeInTheDocument();
   });
 });

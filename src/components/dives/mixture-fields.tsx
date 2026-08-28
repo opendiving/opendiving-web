@@ -27,7 +27,7 @@ import {
   diveModWarning,
   gasHintParts,
 } from "@/lib/dive-mixtures";
-import { GAS_ROLES } from "@/lib/api/dives";
+import { GAS_ROLES, TANK_USAGE } from "@/lib/api/dives";
 import { VolumeCombobox } from "@/components/dives/volume-combobox";
 import { UnitNumberInput } from "@/components/unit-number-input";
 import { EntryUnitToggle } from "@/components/entry-unit-toggle";
@@ -184,13 +184,27 @@ function ppO2LimitChoices(value: number | "" | undefined): string[] {
   );
 }
 
+// The usage options as the form spells them, which is not how the badges do.
+// `TANK_USAGE_LABELS` is one word each because it renders into a table cell that has
+// no room; a `<select>` option has a whole row, and "Parallel" alone does not say what
+// it claims about the dive. The parenthetical is the definition the diver is being
+// asked to agree to - the flag changes what the API computes, so choosing it by
+// guessing at the word is the one outcome worth spending width to prevent.
+const TANK_USAGE_OPTION_LABELS: Record<(typeof TANK_USAGE)[number], string> = {
+  parallel: "Parallel (sidemount / independent)",
+  staged: "Staged (own depth)",
+};
+
 // How long the gas warning has to hold still before it is announced. Long enough to
 // cover typing a two-digit depth without a pause being mistaken for a finished edit.
 const ANNOUNCE_SETTLE_MS = 700;
 
 // The one oxygen-exposure warning the form can honestly make, under the whole set of
 // cylinders rather than under any one of them. `diveModWarning` carries the reasoning
-// for why a multi-cylinder dive gets a claim about the dive and not about a tank.
+// for why a multi-cylinder dive usually gets a claim about the dive and not about a
+// tank - and for the one set that doesn't, a parallel pair holding a single gas, where
+// the sentence is about that gas because there is only one and it was breathed
+// throughout. Both readings arrive here as one string either way.
 //
 // Unlike `MixtureGasHint` above, this deliberately watches the whole `mixtures`
 // array: its answer depends on every cylinder, so there is no narrower subscription
@@ -324,11 +338,20 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
               control={control}
               name={`mixtures.${index}.volume` as Path<TFieldValues>}
               render={({ field }) => (
-                // Full width, so the six fields under it keep their pairs on one
-                // row each: O₂ beside He, start beside end, ppO₂ beside role.
-                // With seven boxes in a two-column grid, an odd one out is
-                // unavoidable - volume is the one with no partner to be split
-                // from, and it used to sit beside the name.
+                // Full width, so the fields under it keep their pairs on one row
+                // each: O₂ beside He, start beside end, ppO₂ beside role. Volume
+                // is full width because the combobox it holds wants the space,
+                // not because it is what was left over - it used to sit beside
+                // the name.
+                //
+                // With eight boxes there are now two without a partner rather
+                // than one. Usage is the second: it follows Role in reading and
+                // tab order, which is what "beside Role" means for a field the
+                // diver reaches straight after saying what the cylinder was for,
+                // and it lands alone on the last row. Pairing the two instead
+                // would mean widening ppO₂ or moving it past Role, and neither
+                // is worth doing to a field this change has no business
+                // touching.
                 <FormItem className="md:col-span-2">
                   <FormLabel>Volume (L)</FormLabel>
                   <FormControl>
@@ -559,6 +582,42 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                       {GAS_ROLES.map((role) => (
                         <option key={role} value={role}>
                           {GAS_ROLE_LABELS[role]}
+                        </option>
+                      ))}
+                    </select>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={control}
+              name={`mixtures.${index}.usage` as Path<TFieldValues>}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Usage</FormLabel>
+                  {/* A plain `<select>` for the same reason as Role above, and
+                      following it deliberately: the two are the cylinder's
+                      answers to "what for" and "how", and a diver setting one
+                      is usually about to consider the other. Per row rather
+                      than once for the dive, so a mixed set - a parallel pair
+                      plus a staged bottle - stays expressible, which is the
+                      shape the API refuses by design and can only refuse if
+                      the form can say it. */}
+                  <FormControl>
+                    <select
+                      className={inputClassName}
+                      {...field}
+                      value={field.value ?? ""}
+                      // `""` straight through, same sentinel and same
+                      // react-hook-form trap as Role above.
+                      onChange={(e) => field.onChange(e.target.value)}
+                    >
+                      <option value="">Not recorded</option>
+                      {TANK_USAGE.map((usage) => (
+                        <option key={usage} value={usage}>
+                          {TANK_USAGE_OPTION_LABELS[usage]}
                         </option>
                       ))}
                     </select>

@@ -182,6 +182,12 @@ function NewDivePageContent() {
               // this dive has no file for it to point into.
               po2_limit: m.po2_limit ?? ("" as const),
               role: m.role ?? ("" as const),
+              // Carried for the same reason, and it is the field the carry-over
+              // helps most: a sidemount diver's next dive is sidemount, and no
+              // import will ever fill this in for them. Re-flagging both
+              // cylinders by hand every dive is exactly the friction that would
+              // stop the flag being used at all.
+              usage: m.usage ?? ("" as const),
               start_pressure: "" as const,
               end_pressure: "" as const,
             })) ?? [],

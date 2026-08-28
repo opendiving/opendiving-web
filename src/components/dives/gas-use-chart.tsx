@@ -725,13 +725,22 @@ function GasUseTooltip({
 // What the RMV above it was worked out from, which is not the same sentence for
 // every dot on this chart.
 //
-// A single-cylinder point is the dive's own average depth over its whole
-// duration, and saying so is what makes the figure checkable. **A multi-tank
-// point is not**: each cylinder is normalized against its own mean depth over
-// the stretch it was breathed for - that is the entire point of the split, see
-// `DiveTankGasUse` - so pairing this rate with `avg_depth` would name a
-// denominator it was never divided by. On dive #493 that reads as "12.4 L/min at
-// 20.87m" for a figure derived at 33.99 m.
+// The split is per-tank versus whole-dive, and it is **not** the same as one
+// cylinder versus several. A whole-dive point is the dive's own average depth
+// over its whole duration, and saying so is what makes the figure checkable -
+// that is every single-cylinder dive, and also a multi-cylinder dive whose
+// cylinders were all flagged as breathed in parallel, where the API summed their
+// litres against exactly that depth and duration. **An attributed point is not**:
+// each cylinder is normalized against its own mean depth over the stretch it was
+// breathed for - that is the entire point of the split, see `DiveTankGasUse` - so
+// pairing that rate with `avg_depth` would name a denominator it was never
+// divided by. On dive #493 that reads as "12.4 L/min at 20.87m" for a figure
+// derived at 33.99 m.
+//
+// So the predicate below asks `tanks`, which is the only thing that actually
+// distinguishes the two, and has always been what it asked. Nothing here changes
+// for the additive path: an additive point takes the whole-dive arm and its
+// `avg_depth` and `gas_used` really are the whole dive's.
 //
 // Its litres are understated in the same way, being the sum over attributed
 // tanks only, so the two are dropped together rather than one of them being

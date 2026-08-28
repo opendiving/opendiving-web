@@ -473,6 +473,7 @@ describe("toDiveMixtureInput", () => {
     po2_limit: null,
     gas_number: null,
     role: null,
+    usage: null,
   };
 
   it("converts a mixture the API recorded nothing optional for into a valid row", () => {
@@ -492,6 +493,7 @@ describe("toDiveMixtureInput", () => {
       // The exception: no input writes it, so it has no cleared state to spell.
       gas_number: undefined,
       role: "",
+      usage: "",
     });
   });
 
@@ -503,6 +505,7 @@ describe("toDiveMixtureInput", () => {
       po2_limit: 1.6,
       gas_number: 0,
       role: "deco",
+      usage: "parallel",
     };
 
     expect(toDiveMixtureInput(recorded)).toEqual({
@@ -517,6 +520,7 @@ describe("toDiveMixtureInput", () => {
       // rather than `||` is load-bearing here.
       gas_number: 0,
       role: "deco",
+      usage: "parallel",
     });
     expect(
       diveMixtureSchema.safeParse(toDiveMixtureInput(recorded)).success,
@@ -537,8 +541,20 @@ describe("toDiveMixtureInput", () => {
         po2_limit: undefined,
         gas_number: undefined,
         role: undefined,
+        usage: undefined,
       },
     ]);
+  });
+
+  it("round-trips a flagged parallel cylinder back to the wire value", () => {
+    // The flag is the one mixture field that changes what the API can derive, so a
+    // save that quietly dropped it would take the dive's gas figure with it.
+    const flagged: DiveMixture = { ...fromApi, usage: "parallel" };
+
+    expect(toDiveMixtureInput(flagged).usage).toBe("parallel");
+    expect(normalizeMixtures([toDiveMixtureInput(flagged)])[0].usage).toBe(
+      "parallel",
+    );
   });
 });
 
@@ -811,6 +827,7 @@ describe("diveToFormValues", () => {
           po2_limit: 1.4,
           gas_number: 0,
           role: "bottom",
+          usage: "parallel",
         } as Dive["mixtures"][number],
       ],
     };
@@ -827,6 +844,7 @@ describe("diveToFormValues", () => {
         po2_limit: 1.4,
         gas_number: 0,
         role: "bottom",
+        usage: "parallel",
       },
     ]);
 
@@ -839,6 +857,7 @@ describe("diveToFormValues", () => {
         oxygen: 32,
         helium: 0,
         po2_limit: 1.4,
+        usage: "parallel",
         gas_number: 0,
         role: "bottom",
       },

@@ -6,11 +6,13 @@ import {
 } from "@/lib/date-time";
 import {
   GAS_ROLES,
+  TANK_USAGE,
   WATER_TYPES,
   type Dive,
   type DiveMixture,
   type DiveUpdate,
   type GasRole,
+  type TankUsage,
 } from "@/lib/api/dives";
 import { barToPsi, displayBound } from "@/lib/units";
 
@@ -190,6 +192,10 @@ export const diveMixtureSchema = z
     // chosen made react-hook-form re-display the imported role instead — clearing a
     // deco badge snapped it straight back. `normalizeMixtures` converts it away.
     role: z.union([z.literal(""), z.enum(GAS_ROLES)]).optional(),
+    // Same shape and same reason as `role` above - a real "Not recorded" option that
+    // has to survive being chosen. The vocabulary is the API's `TankUsage`, so an
+    // invented member would be rejected on save rather than here.
+    usage: z.union([z.literal(""), z.enum(TANK_USAGE)]).optional(),
   })
   .refine(
     (mixture) => {
@@ -243,6 +249,7 @@ export interface NormalizedDiveMixture {
   po2_limit?: number;
   gas_number?: number;
   role?: GasRole;
+  usage?: TankUsage;
 }
 
 // Converts any "" placeholders (used to represent a cleared optional field
@@ -268,6 +275,7 @@ export function normalizeMixtures(
     po2_limit?: number | "";
     gas_number?: number;
     role?: GasRole | "";
+    usage?: TankUsage | "";
   }[],
 ): NormalizedDiveMixture[] {
   return mixtures.map((mixture) => ({
@@ -284,6 +292,7 @@ export function normalizeMixtures(
     // absent, which is why its type carries no `""` to normalize away.
     gas_number: mixture.gas_number,
     role: mixture.role === "" ? undefined : mixture.role,
+    usage: mixture.usage === "" ? undefined : mixture.usage,
   }));
 }
 
@@ -312,6 +321,7 @@ export function toDiveMixtureInput(mixture: DiveMixture): DiveMixtureInput {
     // `normalizeMixtures`, which passes it back out the same way.
     gas_number: mixture.gas_number ?? undefined,
     role: mixture.role ?? "",
+    usage: mixture.usage ?? "",
   };
 }
 

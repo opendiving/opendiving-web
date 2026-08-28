@@ -10593,3 +10593,232 @@ session only and it returns on the next dashboard visit. And a diver who chose d
 machine gets a light first paint on every visit — that is what "not persisted" means, and no flash
 is introduced, because with the key absent the pre-hydration script resolves `system` through
 `matchMedia` before first paint exactly as it does for a first-time visitor.
+
+## `TANK_USAGE` is a fourth hand-kept vocabulary mirror, and the first with no parser behind it
+
+`GAS_ROLES`, `WATER_TYPES` and `GEAR_TYPES` are all copies of a Pydantic `StrEnum` maintained by
+hand, and `TANK_USAGE` in `lib/api/dives.ts` is the fourth, mirroring `TankUsage` in the API's
+`schemas/dive_mixture.py`. Same rules as the other three: declaration order is the picker's order,
+the API is `extra="forbid"` so an invented member is rejected on save rather than caught here, and
+the narrow union — not `string` — is what makes `TANK_USAGE_LABELS[usage]` and
+`toDiveMixtureInput`'s return type check at all.
+
+What makes this one different is that **nothing but the diver can ever set it**. `role` is rarely
+present on an import; `usage` is _never_ present, because no format this app parses records whether
+two cylinders were breathed alternately or one was staged — not Suunto XML or JSON, not FIT, and not
+UDDF, which has no representation for it either. Three consequences follow, and all three are
+choices rather than accidents:
+
+- **`ParsedDiveMixture` does not gain the field.** There is no parser to produce it, so it would be
+  dead weight on the parse schema.
+- **`mergeMixture` (`lib/dive-import.ts`) still has to name it**, and this is the trap. That
+  function builds its result field by field, so a field absent from the constructed object is
+  silently _dropped_ rather than preserved — the form-value-lost-on-import failure its own JSDoc
+  records, and the reason `role` needed an explicit line. `usage` is the field where losing it is
+  worst: with no file tier to restore it, the flag would simply be gone, and the dive's gas figure
+  with it. The line is form-then-nothing, with no file source at all.
+- **The new-dive form carries it over from the last dive**, alongside `role` and the gas fractions.
+  A sidemount diver's next dive is sidemount, and re-flagging both cylinders by hand every time is
+  exactly the friction that stops a flag being used. This is also what makes
+  all-parallel-with-nothing-else-filled-in the _opening_ state of that diver's every subsequent
+  dive, which is the premise of the combined ask recorded in the next section.
+
+`TANK_USAGE_LABELS` sits beside `GAS_ROLE_LABELS` in `lib/dive-mixtures.ts` for the same reason that
+map lives there — the form's picker and the detail badge have to name a flag identically — and is
+one word each for the same width reason. The form's own `<select>` options are a separate, longer
+set (`TANK_USAGE_OPTION_LABELS` in `mixture-fields.tsx`): "Parallel (sidemount / independent)" and
+"Staged (own depth)". That is not duplication for its own sake. A badge in a table cell has no room
+for a parenthetical, while an option row has a whole line — and this flag changes what the API
+computes, so a diver choosing it by guessing at the bare word is the outcome worth spending option
+width to prevent.
+
+## `gasUseUnavailableReason` gained a nudge, and where it sits is the whole design
+
+Two changes to the multi-mixture branch of `lib/dive-gas.ts`, and neither is a new sentence bolted
+to the end of the list.
+
+**The branch no longer claims attribution is always required.** It used to open with "which cylinder
+was breathed when is unknown" as an unconditional fact about several cylinders. It is not one any
+more: a set whose every cylinder is flagged `parallel` is summed by the API's
+`compute_parallel_gas_use` against the dive's own duration and average depth, reading no profile and
+no attribution at all. So the flagged-parallel reasons come _first_, as a block, ahead of everything
+else — because every sentence below them is false of that derivation, and the no-profile branch that
+used to fire first would tell a diver who needs to type an average depth to go and import a
+dive-computer file.
+
+**That block makes `avg_depth` a multi-cylinder input for the first time.** The comment on the
+plural pressures ask says, in as many words, that asking a multi-cylinder dive for an average depth
+sends the diver to a field that changes nothing — true of the attribution path, which takes depth
+per cylinder from the profile, and now false of the dive as a whole. Both the reason and that
+comment moved in the same edit. Without the new reason, a flagged pair with full pressures and no
+average depth falls through to "import a dive-computer file", which would compute nothing for it.
+
+**The first ask is combined, and that is not tidiness.** A flagged set missing both the depth and
+its pressures gets one sentence naming both, the same shape the single-cylinder branch has used all
+along. The reason is the prefill carry-over recorded above: all-parallel-with-nothing-else-yet is
+the opening state of a sidemount diver's every next dive, so asking for the depth and then, once it
+is typed, for the pressures would make the commonest state of this form a run of refusals.
+
+**The nudge outranks the no-profile reason, and carries two gates.** An unflagged multi-cylinder
+dive whose cylinders all record pressures is told, in condition-stating terms, that marking them
+Parallel would add their gas up. It has to precede the no-profile branch: that branch fires before
+any pressure test and covers **18 of the 19 multi-gas dives in the corpus** — hand-logged, no
+profile, no source file — which is exactly where hand-logged sidemount pairs live. Placed after it,
+the nudge would never render for the population it exists for.
+
+Placed before it _ungated_, it would capture that whole population, whose commonest shape is back
+gas plus a staged deco bottle with no bottle pressures, and re-create the
+tell-them-one-thing-then-refuse-again pattern the no-profile branch was put first to stop. Hence:
+
+1. **Every cylinder carries both pressures, and the total drop is positive.** This screens for the
+   staged-bottle _shape_ — a bottle with no pressures is that population's tell — and deliberately
+   **not** for full rescuability. The additive branch also wants an average depth, and leaving that
+   out of the gate is a decision, not an oversight: a missing depth says nothing about whether a
+   pair was breathed in parallel, so widening the gate with it would only drop that diver onto the
+   no-profile message — wrong advice, and no discovery of the flag. A pair with pressures and no
+   depth is therefore nudged, flags Parallel, and meets the missing-depth ask as one follow-up. That
+   two-step is accepted as progressive disclosure rather than tell-then-refuse: the recorded
+   anti-pattern ends in a refusal, while both steps here are actionable and the second ends in the
+   figure.
+2. **No cylinder flagged `staged`.** A parallel pair plus an explicitly staged bottle is refused by
+   design, and a diver who used the control exactly right must not be nudged on every render — the
+   same pattern from the other side. The gate keys on `staged` **and nothing wider**. Suppressing on
+   _any_ explicit `usage` was considered and rejected: it also silences the half-flagged pair — one
+   row Parallel, one still Not recorded — which is the likeliest path into the feature, and drops
+   that diver onto "import a dive-computer file". Under the `staged`-only gate the half-flagged pair
+   keeps the nudge, whose condition-stating wording already covers it. A dedicated partially-flagged
+   sentence was also considered and rejected as a second string doing the nudge's job for a subset
+   of its own population.
+
+This also places the nudge ahead of the attribution-shortfall sentence, so an imported dive with
+pressures on every cylinder and no flags gets the nudge rather than "needs an import whose gas
+switches account for every cylinder". Deliberate: both are true there, the nudge names the action
+available in the app right now, and gate 1 makes the case unreachable in the current corpus anyway —
+all 19 multi-gas dives lack a second-cylinder pressure.
+
+**The wording states the condition rather than issuing an instruction**, and that is a safety
+property. A diver with a genuinely staged pair that _does_ carry both pressures would otherwise be
+walked into a flag whose figure divides the bottle's litres by the whole dive's average depth — the
+exact misattribution the API's multi-cylinder refusal exists to prevent.
+
+**One existing test reverses here, and it is a trap worth naming.** `dive-gas.test.ts`'s "names
+multi-tank as a limitation, not a missing field" used a bare two-row fixture, and the helper
+defaults every row to 200/50 with no profile — which is precisely the nudge's gate-1 shape. Both of
+its assertions go red. **The test is what changes, not the ordering**: those assertions were written
+when the no-profile branch was the only reachable answer for that fixture and were never a
+specification of where the nudge sits. It is split the way the API split its own equivalent — a pair
+with a missing pressure keeps the multi-tank sentence, an unflagged pair with pressures gets the
+nudge.
+
+## `diveModWarning` judges a flagged parallel set of one gas as that one gas
+
+The `length === 1` split in `lib/dive-mixtures.ts` gains a third case. A sidemount pair or
+independent doubles, flagged `parallel` throughout and holding a single `(oxygen, helium)`, is one
+gas plan rather than a switch plan: there is one mix on board and it was breathed throughout, so the
+dive's maximum depth is a depth that gas genuinely saw and the single-cylinder reasoning applies
+unchanged — **including the 1.4 working limit**, which the multi-cylinder case deliberately drops.
+Dropping it there is right because a deco gas exceeding 1.4 somewhere on the dive is the normal
+intended state of affairs; with one gas on board it is not.
+
+Both halves of the predicate are load-bearing. The flag alone is not enough — a flagged pair holding
+_different_ gases is a switch plan again and falls to the dive-wide rule. The shared gas alone is
+not enough either: two identical cylinders with no flag could as easily be a spare that was switched
+to, and it is the diver's own answer that makes the single-mix reading sound. A half-flagged pair —
+one row Parallel, one unset — says nothing about how they were breathed together and stays on the
+dive-wide rule.
+
+**The per-tank-attribution rejection recorded above does not reach this case, and the difference is
+the point.** That rejection is about `DiveGasUse.tanks` offering a _mean_ depth per cylinder, which
+is the right input for a consumption rate and the wrong one for a MOD — a gas averaging 6 m may
+still have seen 20 m for a minute. Nothing is being inferred from a profile here. What the flag
+supplies is the diver's statement that every cylinder saw the same depths, which is exactly the
+missing premise, and no attribution is involved at all.
+
+The gas comparison uses the recorded fractions rather than `gasName`, which rounds: two rows at
+31.6% and 32.4% are both "EAN32" and are not the same fill. `helium` is normalized to `0` because
+`OxygenFractions` allows it absent while the form and every parser write a flat zero, so a pair
+mixing the two spellings is one gas and must be judged as one.
+
+`DiveMixturesCard`'s amber MOD cell follows the same predicate. It used to be
+`mixtures.length === 1` on the reasoning that a multi-cylinder sentence is about the dive and
+marking a row would point at the wrong thing. On a single-gas parallel set the sentence _is_ about
+that mix and every row holds it, so every row is marked — leaving it at `length === 1` would render
+the warning with nothing on screen connecting it to the gas it names.
+
+## The falsified doc comments were a superset of the ones anyone listed
+
+`DiveGasUse`'s web-side comments in `lib/api/dives.ts` are hand-kept mirrors of the
+`schemas/dive.py` docstrings **in claim, not in wording** — the API says "multi-cylinder" where this
+file says "multi-tank", and its `tanks` comment is the `[]`-sentinel rationale rather than the API's
+sentence. The API rewrote three of those docstrings for the additive path; the claims moved here in
+the same change, each in this file's own idiom:
+
+- `sac_bar_per_min` is no longer null on _every_ multi-tank dive. A set flagged `parallel`
+  throughout whose volumes are **exactly equal** carries their pooled figure. Unequal volumes leave
+  it null while `rmv` and `gas_used` still compute, so **a present `rmv` is no longer a promise of a
+  SAC**.
+- `tanks: []` is no longer synonymous with single-tank. It also arrives on the additive path. The
+  non-empty test still selects the right layout — an additive dive genuinely has one set of
+  whole-dive figures — but anything reading `[]` as "one cylinder" is now wrong.
+- `attributed_seconds`/`duration_seconds` are null "wherever the whole dive is accounted for", not
+  "outside the multi-tank path".
+
+**The list of sites was short, and that is the durable lesson.** The API side of this change found
+four falsified strings its own plan never named, on a list that had survived eight review rounds.
+Sweeping for the claim rather than working a list is what found the rest here, with
+`git grep -n -i -E 'multi-tank|multi-cylinder|per-tank|per cylinder|empty array' -- src`. The
+`per cylinder` alternative earns its place: the eight-line comment in
+`dive-gas-consumption-card.tsx` justifying the very `sac_bar_per_min != null` clause this change
+deletes says "per cylinder", so the narrower pattern sails straight past the one comment guaranteed
+to be wrong. Sites the sweep turned up that no list named: that comment, the SAC tile's own guard
+("the API pairs a null SAC with a non-empty `tanks` and so never reaches this branch today" — it
+does now), `gas-use-chart.tsx`'s binary framing of per-tank versus whole-dive, the
+`resolve_gas_use`-mirror comment that tracked two API functions and now tracks three,
+`tankGasUseRows`' presumption that `compute_multi_tank_gas_use` is the only producer of a
+multi-cylinder `gas_use`, `Dive.gas_use`'s own "additionally needs a profile", and a test comment in
+`dive-gas.test.ts` reading "Null on every multi-tank dive".
+
+**The average-depth sentence on the consumption card lost its SAC gate entirely, and did not get a
+new one.** That sentence names `avg_depth` as the denominator, so on a per-cylinder figure it would
+assert a depth the rate was never divided by — and a null SAC used to be the marker for that
+derivation. It no longer is: an unequal-volume parallel set has a null SAC and a whole-dive RMV that
+genuinely _was_ divided by `dive.avg_depth`, so the clause would now hide a true sentence. What
+guarantees the claim is **position**: the sentence lives inside the headline arm, which renders only
+where `tanks` came back empty, and that is precisely the set of derivations taken against the dive's
+own average depth. A re-gate on empty `tanks` was drafted and dropped as a condition that cannot be
+false where the sentence sits. The `dive.avg_depth != null` half stays, and is unrelated — it is
+what stops "an average depth of m" rendering for a null.
+
+`gas-use-chart.tsx` needed **no code change**: an additive point already takes the non-per-tank arm,
+and its `avg_depth` and `gas_used` really are whole-dive figures. Only the comment's binary framing
+was wrong. That is the second-consumer class recorded elsewhere in this file — a file the change had
+no other reason to open, rendering the old meaning for a new figure.
+
+## The usage badge and the mixtures table's width budget
+
+The table's width is a measured trade-off in this repo, not a guess: the role badge alone cost 73 px
+and pushed MOD off-screen, and a later campaign brought the mixtures table to **471 px in a 582 px
+slot**, measured on dive #493 at a 1024 px viewport — the pinch width, since one pixel below `lg`
+the grid collapses and the card jumps to ~925 px. A third badge in the same cell has to be answered
+against that, so it is.
+
+**The usage badge goes in the Gas cell, beside the role badge.** The sanctioned fallback was the
+Volume cell — `usage` is a property of the cylinder rather than the gas, so `22.2 L` + `Parallel` is
+arguably the more honest pairing — and it is not needed. The projection, from this repo's own
+recorded per-badge cost: the role badge's 73 px is a 6 px `gap-1.5` plus a `px-2.5` pill around a 12
+px semibold label, measured on a row whose widest role label was the six-character "Oxygen".
+"Parallel" is eight characters, so roughly 12 px more, putting a third badge at **~85 px** and the
+table at **~556 px against the 582 px slot** — about 26 px of slack, where the role badge's own
+addition had been 125 px of overflow.
+
+**That figure is arithmetic from the recorded numbers, not a browser measurement**, and it is
+labelled as such deliberately rather than presented as one. The suite cannot settle it — jsdom does
+no layout and returns zero-sized rects, so a geometry assertion passes against any markup at all —
+and the confirming step is the recorded method run against the live app: `table.scrollWidth` against
+`table.parentElement.clientWidth`, on dive #493 at 1024 px, with gas + role + usage badges on the
+widest row. Two traps that method exists to dodge still apply: the outer `overflow-x-auto` wrapper
+is gone, so the parent is unambiguously shadcn's own scroll container, and measuring against the
+wrong one reports a comfortable 0 px overflow for a table that is visibly scrolling.
+
+If the live number does blow the slot, the move is the Volume cell rather than shortening
+`TANK_USAGE_LABELS`, which is already one word per member.

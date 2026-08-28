@@ -19,7 +19,7 @@
 // same labels (an export renderer, a mobile client, a notification job); until then
 // one implementation, here.
 
-import type { GasRole } from "@/lib/api/dives";
+import type { GasRole, TankUsage } from "@/lib/api/dives";
 import { formatDepth, type UnitSystem } from "@/lib/units";
 
 // Every depth this module *computes* is metres, and every depth it *prints* goes
@@ -53,6 +53,10 @@ export const DEFAULT_MIXTURE = {
   helium: 0,
   po2_limit: "" as const,
   role: "" as const,
+  // `""` for the same reason as `role`, and it carries no value for the same third
+  // reason too: how the cylinders were breathed is a fact about the dive only the
+  // diver knows, and no import can ever supply it.
+  usage: "" as const,
 };
 
 // How each `GasRole` is written for a diver. Separate from the wire values, which are
@@ -74,6 +78,50 @@ export const GAS_ROLE_LABELS: Record<GasRole, string> = {
   diluent: "Diluent",
   oxygen: "Oxygen",
 };
+
+// How each `TankUsage` is written for a diver, on the same terms as `GAS_ROLE_LABELS`
+// above: separate from the wire vocabulary (`TankUsage` in `schemas/dive_mixture.py`),
+// capitalized, and shared by the form's picker and the detail badge so the two cannot
+// name the same flag differently.
+//
+// One word each, and the width budget is why - these badges land in the same Gas cell
+// the role badge already sits in, which is the cell that section of DECISIONS.md is
+// about. The form's own options spell out what each means ("Parallel (sidemount /
+// independent)"), where there is room for it; a badge in a table has none.
+export const TANK_USAGE_LABELS: Record<TankUsage, string> = {
+  parallel: "Parallel",
+  staged: "Staged",
+};
+
+// Just the flag, so a saved `DiveMixture` and a half-filled form row both satisfy the
+// two predicates below - the same looseness `OxygenFractions` is built on, and the
+// `""` is there for the same reason: it is how a cleared `<select>` spells itself.
+interface TankUsageOnly {
+  usage?: TankUsage | "" | null | undefined;
+}
+
+// Whether this is a set the API will sum: two or more cylinders, every one of them
+// flagged `parallel`. Mirrors the first two guards of `compute_parallel_gas_use`, and
+// exists once rather than at each of its two call sites - `diveModWarning` below and
+// `gasUseUnavailableReason` in `lib/dive-gas.ts` - because a set the reason text calls
+// summable and the warning treats as a switch plan would be two answers to one
+// question.
+//
+// A mixed set is deliberately not partially honoured. The API refuses one outright
+// (a partial sum understates RMV), and there is nothing weaker for the browser to say.
+export function isParallelSet(mixtures: readonly TankUsageOnly[]): boolean {
+  return (
+    mixtures.length >= 2 &&
+    mixtures.every((mixture) => mixture.usage === "parallel")
+  );
+}
+
+// Whether any cylinder is explicitly flagged `staged`, which is the tell of a set the
+// diver has already answered for and that the API refuses by design. `gas-use`'s nudge
+// keys on exactly this and nothing wider - see `gasUseUnavailableReason`.
+export function hasStagedCylinder(mixtures: readonly TankUsageOnly[]): boolean {
+  return mixtures.some((mixture) => mixture.usage === "staged");
+}
 
 // The gas badge, sized so every cylinder's pill is the same width whatever it holds.
 // Both tables render this badge and are read against each other row by row, so a pill
@@ -340,6 +388,15 @@ export interface OxygenFractions {
   // a live form row spells a cleared number that way, and this type exists to be
   // satisfied by both a saved `DiveMixture` and a half-filled one.
   po2_limit?: number | "" | null | undefined;
+  // How the cylinder was breathed, and - unlike `po2_limit` above - genuinely read:
+  // `diveModWarning` uses it to tell a sidemount pair from a set of cylinders
+  // breathed at different depths, which is the one thing that decides whether a
+  // single mix can be judged against the dive's maximum depth.
+  //
+  // `""` is in the union for the reason the interface's lead comment gives, the same
+  // one `po2_limit` carries: a live form row spells a cleared select that way, and
+  // this type has to be satisfied by a half-filled row as well as a saved one.
+  usage?: TankUsage | "" | null | undefined;
 }
 
 /**
@@ -479,6 +536,31 @@ export function gasHintParts({
   return parts;
 }
 
+// A flagged parallel set carrying one gas: the case `diveModWarning` can judge as a
+// single cylinder. Both halves are required - see that function's doc comment just
+// below - and the gas comparison uses the recorded fractions rather than `gasName`,
+// which rounds: two rows at 31.6% and 32.4% are both "EAN32" and are not the same fill.
+//
+// `helium` is normalized to 0 because that is what the form and every parser write for
+// a non-trimix, while `OxygenFractions` allows it absent.
+//
+// It sits *above* that doc block rather than between it and its function: a `/** */`
+// binds to the next declaration whatever `//` comments intervene, so parking a helper
+// in the gap silently reassigns ~50 lines of documentation to it and leaves
+// `diveModWarning` with none.
+export function isSingleGasParallelSet(
+  mixtures: readonly OxygenFractions[],
+): boolean {
+  if (!isParallelSet(mixtures)) return false;
+
+  const [first] = mixtures;
+  return mixtures.every(
+    (mixture) =>
+      mixture.oxygen === first.oxygen &&
+      (mixture.helium ?? 0) === (first.helium ?? 0),
+  );
+}
+
 /**
  * The oxygen-exposure warning for a whole dive, or `null` when there is nothing
  * honest to say.
@@ -490,6 +572,22 @@ export function gasHintParts({
  * - **One cylinder logged.** It was breathed throughout, so the dive's maximum depth
  *   is a depth this gas genuinely saw and `modWarning` applies directly, both
  *   thresholds included.
+ * - **Several cylinders logged, all flagged `parallel` and all holding one gas.** A
+ *   sidemount pair or independent doubles breathed alternately at the same depth is
+ *   one gas plan, not a switch plan: there is only one mix on board and it was
+ *   breathed throughout, so the dive's maximum depth is a depth it genuinely saw and
+ *   the single-cylinder reasoning applies unchanged, working limit included. Both
+ *   halves of that are load-bearing - the flag says the cylinders were breathed
+ *   together, and the equal `(oxygen, helium)` says there is nothing to choose
+ *   between. A flagged pair holding *different* gases is a switch plan again, and
+ *   falls to the case below.
+ *
+ *   This is not the per-tank-attribution argument rejected further down, and that
+ *   rejection does not reach it. Attribution offers a *mean* depth per cylinder,
+ *   which is the wrong input for a MOD; this offers the diver's own statement that
+ *   every cylinder saw the same depths, which is the right one. Nothing is being
+ *   inferred from a profile here.
+ *
  * - **Several cylinders logged.** Which one was breathed at the bottom is unknown, so
  *   no single mix can be judged - a staged deco bottle is *supposed* to have a MOD
  *   far shallower than the dive. The one sound inference left is that if the deepest-
@@ -519,6 +617,13 @@ export function diveModWarning(
   if (mixtures.length === 0) return null;
 
   if (mixtures.length === 1) return modWarning(mixtures[0], maxDepth, units);
+
+  // A flagged parallel set holding one gas is judged as that gas, for the reason this
+  // function's own doc comment gives. Read off the first row because
+  // `isSingleGasParallelSet` has already established that every row matches it.
+  if (isSingleGasParallelSet(mixtures)) {
+    return modWarning(mixtures[0], maxDepth, units);
+  }
 
   const limits = mixtures
     .map((mixture) => mod(mixture.oxygen, PPO2_DECO))

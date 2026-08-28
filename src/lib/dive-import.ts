@@ -136,6 +136,14 @@ export function mergeMixture(
       // is the cleared state the `<select>` and `normalizeMixtures` agree on, so
       // the row this replaces reads the same whether it came from a file or a form.
       role: mixture.role ?? existing?.role ?? "",
+      // Form, then nothing - there is no file tier at all, because no format this
+      // app parses carries the flag and `ParsedDiveMixture` therefore has no
+      // `usage` to read. Listed anyway rather than left out: this object is
+      // constructed field by field, so a field missing from it is silently
+      // *dropped* rather than preserved, which is the exact failure the note above
+      // records. A diver who flagged a pair Parallel and then imported the dive's
+      // computer file would have watched both flags disappear.
+      usage: existing?.usage ?? "",
     },
     sources: {
       volume: volume.source,
