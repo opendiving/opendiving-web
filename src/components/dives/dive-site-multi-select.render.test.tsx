@@ -19,6 +19,11 @@ const { diveSitesAPI } = await import("@/lib/api/dive-sites");
 const getDiveSites = vi.mocked(diveSitesAPI.getDiveSites);
 
 const SITE = { uuid: "site-1", name: "Blue Hole", location: "Dahab, Egypt" };
+const SECOND_SITE = {
+  uuid: "site-2",
+  name: "Thistlegorm",
+  location: "Red Sea, Egypt",
+};
 
 beforeEach(() => {
   getDiveSites.mockReset();
@@ -103,6 +108,54 @@ describe("DiveSiteMultiSelect", () => {
     expect(
       await screen.findByText("Search is unavailable right now."),
     ).toBeInTheDocument();
+  });
+
+  it("names both per-row controls after the site they act on", async () => {
+    // Two rows is the smallest list that can prove it: with one, "Remove" and
+    // "Remove Blue Hole" are equally unambiguous.
+    render(
+      <DiveSiteMultiSelect
+        userId="u1"
+        value={[SITE.uuid, SECOND_SITE.uuid]}
+        knownSites={[SITE, SECOND_SITE]}
+        onChange={() => {}}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Remove Blue Hole" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Remove Thistlegorm" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: /^Reorder Blue Hole, position 1 of 2 \(primary site\)\./,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: /^Reorder Thistlegorm, position 2 of 2\./,
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("removes the site whose button was pressed", async () => {
+    const onChange = vi.fn();
+    render(
+      <DiveSiteMultiSelect
+        userId="u1"
+        value={[SITE.uuid, SECOND_SITE.uuid]}
+        knownSites={[SITE, SECOND_SITE]}
+        onChange={onChange}
+      />,
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove Thistlegorm" }),
+    );
+
+    expect(onChange).toHaveBeenCalledWith([SITE.uuid]);
   });
 
   it("adds nothing on the way out of the field", async () => {

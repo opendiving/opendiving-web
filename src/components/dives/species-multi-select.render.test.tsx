@@ -7,6 +7,7 @@ import type {
   Species,
   SpeciesSearchResponse,
   SpeciesSearchResult,
+  SpeciesSummary,
 } from "@/lib/api/species";
 
 // The first six cases mirror `dive-site-multi-select.render.test.tsx` - both
@@ -83,6 +84,22 @@ const RESOLVED: Species = {
   created_at: "2026-08-19T00:00:00Z",
 };
 
+// The two above as the form hands them over, which is what lets a test seed a
+// multi-row list without a lookup per row.
+const MANTA_SUMMARY: SpeciesSummary = {
+  uuid: "species-manta",
+  scientific_name: "Mobula birostris",
+  common_name: "Giant manta ray",
+  rank: "Species",
+};
+
+const CLOWNFISH_SUMMARY: SpeciesSummary = {
+  uuid: "species-clownfish",
+  scientific_name: "Amphiprion ocellaris",
+  common_name: "Ocellaris clownfish",
+  rank: "Species",
+};
+
 const found = (
   results: SpeciesSearchResult[],
   has_more = false,
@@ -103,11 +120,18 @@ beforeEach(() => {
 // list it already had".
 let submitted: string[] = [];
 
-function Field({ initial = [] as string[] }) {
+function Field({
+  initial = [] as string[],
+  known,
+}: {
+  initial?: string[];
+  known?: SpeciesSummary[];
+}) {
   const [value, setValue] = useState<string[]>(initial);
   return (
     <SpeciesMultiSelect
       value={value}
+      knownSpecies={known}
       onChange={(next) => {
         submitted = next;
         setValue(next);
@@ -395,14 +419,7 @@ describe("SpeciesMultiSelect", () => {
     render(
       <SpeciesMultiSelect
         value={["species-manta"]}
-        knownSpecies={[
-          {
-            uuid: "species-manta",
-            scientific_name: "Mobula birostris",
-            common_name: "Giant manta ray",
-            rank: "Species",
-          },
-        ]}
+        knownSpecies={[MANTA_SUMMARY]}
         onChange={() => {}}
       />,
     );
@@ -423,11 +440,47 @@ describe("SpeciesMultiSelect", () => {
     expect(getSpecies).toHaveBeenCalledWith("species-clownfish");
   });
 
-  it("removes a species without touching the others", async () => {
-    getSpecies.mockResolvedValue(RESOLVED);
-    render(<Field initial={["species-manta", "species-clownfish"]} />);
+  it("names both per-row controls after the species they act on", async () => {
+    // Two rows is the smallest list that can prove it: with one, "Remove" and
+    // "Remove Giant manta ray" are equally unambiguous. The name is the display
+    // name alone - the italic binomial beside it is not part of either label.
+    render(
+      <SpeciesMultiSelect
+        value={["species-manta", "species-clownfish"]}
+        knownSpecies={[MANTA_SUMMARY, CLOWNFISH_SUMMARY]}
+        onChange={() => {}}
+      />,
+    );
 
-    await userEvent.click(screen.getAllByRole("button", { name: "Remove" })[0]);
+    expect(
+      screen.getByRole("button", { name: "Remove Giant manta ray" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Remove Ocellaris clownfish" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: /^Reorder Giant manta ray, position 1 of 2\./,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: /^Reorder Ocellaris clownfish, position 2 of 2\./,
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it("removes a species without touching the others", async () => {
+    render(
+      <Field
+        initial={["species-manta", "species-clownfish"]}
+        known={[MANTA_SUMMARY, CLOWNFISH_SUMMARY]}
+      />,
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Remove Giant manta ray" }),
+    );
 
     expect(submitted).toEqual(["species-clownfish"]);
   });

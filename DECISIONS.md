@@ -10281,6 +10281,56 @@ rows in each list deliberately: a name built from a constant satisfies a one-row
 well as one built from the record, so a one-row test would have passed against the code this
 replaced.
 
+### The same rule holds for chips in a form field
+
+`DiveSiteMultiSelect`, `SpeciesMultiSelect` and `GearItemMultiSelect` each render the current
+selection as a list of rows carrying an icon-only remove button, and all three said `Remove` and
+nothing else. It is worth saying why that is the same failure rather than a milder one, because
+these look like they have an excuse the tables don't: the chips sit inside a labelled form field, so
+a screen reader reaching one in reading order has just heard "Dive sites". That context is real but
+it is not carried anywhere the announcement needs it. A controls list is flat and page-wide, and the
+announcement on focus is the button's name alone - so four sites and three species produce seven
+buttons called "Remove", in one list, with the field they belong to nowhere in it.
+
+All three are `Remove <label>` now, off the same `label` the row already renders.
+`TripLocationMultiSelect`, the fourth of the family, had been named per row from the start and
+carried a comment saying so _in contrast to_ its siblings; that comment is now the odd one out and
+has been reworded, which is the small cost of fixing three of four and the reason to check for it.
+
+Two things about the shape are deliberate. The name is the display label alone and not the muted
+suffix beside it - a site's location, a species' binomial, a gear item's type and its
+Rented/Archived badges. That is the label a diver would say out loud, which is the test the section
+above applies and the one `dive.dive_number` passes above that; the suffix is a second sentence in a
+button name. It is not a claim that the label is unique. All three pickers exclude an
+already-selected row by uuid, so no record repeats - but two _different_ records can share a label,
+and a diver with two matching first stages is the ordinary case, not a contrived one. Where that
+happens the suffix does not rescue it either: identical items carry an identical type, so the two
+rows are indistinguishable on screen, and a name cannot recover what the screen does not show. The
+same paragraph one section up settles the schedule case the same way. Species are the one place a
+suffix would genuinely disambiguate, since two catalog entries can share a common name while their
+binomials differ - but a binomial is precisely what a diver does not say, and the collision is
+incidental rather than structural, which is what separates it from a service kind that repeats by
+design.
+
+And the **drag handles were already named per row** in all three
+(`Reorder Blue Hole, position 1 of 2 (primary site). ...`), which is worth recording as the thing
+that settled the question: the argument that the field's own label supplies enough context was
+already rejected here, one button to the left, by whoever wrote the handles. Leaving the remove
+buttons bare was an oversight, not a position.
+
+The handles were left alone, with one asymmetry left standing and flagged rather than swept: the
+site and species handles announce `position N of M`, and the gear handle does not. All three lists
+are drag-sortable, so the distinction is not that gear has no order. Whether it is deliberate - a
+dive's site order picks out a primary, and `SpeciesMultiSelect`'s prop comment says its order is
+preserved end to end so the diver's first choice shows first, while `GearItemMultiSelect`'s claims
+only "the order they were added" - or simply the third one written, is not recorded anywhere and was
+not resolved here. Naming the remove buttons did not depend on it.
+
+The render tests assert both buttons of both rows, two rows deep, for the reason the section above
+gives - `Remove` and `Remove Blue Hole` are equally unambiguous with one chip on screen, so a
+one-row test passes against the bug. `GearItemMultiSelect` had no render test at all and now has
+one.
+
 ## `role="combobox"` is not allowed on a number input, and fixing that needs a draft string
 
 `VolumeCombobox` was an `<input type="number">` carrying `role="combobox"`. A number input's
