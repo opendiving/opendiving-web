@@ -18,6 +18,8 @@ import {
   Point,
   project,
   TILE_SIZE,
+  needsDarkFilter,
+  tileSrcSet,
   tileUrl,
   unproject,
   visibleTiles,
@@ -32,6 +34,7 @@ import {
 } from "@/hooks/useMapGesture";
 import { Button } from "@/components/ui/button";
 import { Attribution } from "@/components/attribution";
+import { cn } from "@/lib/utils";
 
 // Close enough to street level to see a jetty, far enough out to see which bay
 // it is in - where the map opens when the site already has a position. Deeper
@@ -87,6 +90,10 @@ export function MapPicker({ latitude, longitude, onPick }: MapPickerProps) {
   // at another tile server without a rebuild (`lib/runtime-config.ts`).
   const { tiles: source } = useConfig();
   const template = resolvedTheme === "dark" ? source.dark : source.light;
+  // OpenStreetMap has no dark tiles, so the dark theme's are made here. Scoped
+  // to the tile layer, which is also what the scale transform sits on: the pin,
+  // the crosshair and the attribution are siblings and keep their own colours.
+  const darkFilter = resolvedTheme === "dark" && needsDarkFilter(source);
 
   const hasPosition = latitude !== null && longitude !== null;
   const [view, setView] = useState<MapView>(() =>
@@ -562,7 +569,10 @@ export function MapPicker({ latitude, longitude, onPick }: MapPickerProps) {
               scaled, without each needing to know about it. */}
           <div
             data-testid="tile-layer"
-            className="pointer-events-none absolute left-0 top-0 origin-top-left"
+            className={cn(
+              "pointer-events-none absolute left-0 top-0 origin-top-left",
+              darkFilter && "invert hue-rotate-180",
+            )}
             style={{ transform: `scale(${tileScale})` }}
           >
             {tiles.map((tile) => (
@@ -574,6 +584,7 @@ export function MapPicker({ latitude, longitude, onPick }: MapPickerProps) {
               <img
                 key={tile.key}
                 src={tileUrl(template, tile.x, tile.y, tile.zoom)}
+                srcSet={tileSrcSet(template, tile.x, tile.y, tile.zoom)}
                 alt=""
                 width={TILE_SIZE}
                 height={TILE_SIZE}

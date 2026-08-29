@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 
 import { ConfigProvider, useConfig } from "./ConfigContext";
-import { DEFAULT_DARK_TILE_URL, DEFAULT_TILE_URL } from "@/lib/map-tiles";
+import { DEFAULT_TILE_URL } from "@/lib/map-tiles";
 
 function Readout() {
   const { googleClientId, tiles } = useConfig();
@@ -47,6 +47,7 @@ describe("useConfig", () => {
 
     expect(screen.getByTestId("google")).toHaveTextContent("none");
     expect(screen.getByTestId("light")).toHaveTextContent(DEFAULT_TILE_URL);
-    expect(screen.getByTestId("dark")).toHaveTextContent(DEFAULT_DARK_TILE_URL);
+    // The same template: the default provider has no dark tiles of its own.
+    expect(screen.getByTestId("dark")).toHaveTextContent(DEFAULT_TILE_URL);
   });
 });

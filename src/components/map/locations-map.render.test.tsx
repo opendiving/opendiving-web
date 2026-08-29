@@ -1,7 +1,9 @@
 import { beforeAll, describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import { ThemeProvider } from "next-themes";
 import { LocationsMap } from "./locations-map";
-import { MAX_FIT_ZOOM, MIN_ZOOM } from "@/lib/map-tiles";
+import { MAX_FIT_ZOOM, MIN_ZOOM, tileSource } from "@/lib/map-tiles";
+import { ConfigProvider } from "@/contexts/ConfigContext";
 
 // The fit itself is unit-tested in `lib/map-tiles.test.ts`. What only a render
 // reaches is what this component does with it: which locations it draws at all,
@@ -28,7 +30,9 @@ beforeAll(() => {
 // The view isn't exposed, so it is read back off what the map actually asked
 // for: the zoom in the tile URLs is the scale it settled on.
 const tileZoom = () => {
-  const tile = document.querySelector<HTMLImageElement>("img[src*='cartocdn']");
+  const tile = document.querySelector<HTMLImageElement>(
+    "img[src*='openstreetmap']",
+  );
   return Number(tile!.src.match(/\/(\d+)\/\d+\/\d+\.png$/)![1]);
 };
 
@@ -70,6 +74,117 @@ describe("LocationsMap", () => {
     expect(screen.getByRole("img").getAttribute("aria-label")).toBe(
       "Map of Moalboal, Bohol",
     );
+  });
+
+  // The density itself is the browser's choice and jsdom makes none, so what a
+  // render can check is that it was given the choice: both candidates on every
+  // tile, with the plain one still in `src` for anything that ignores srcSet.
+  it("offers both densities of a configured {r} template", () => {
+    render(
+      <ConfigProvider
+        config={{
+          tiles: tileSource({
+            light: "https://tiles.example/{z}/{x}/{y}{r}.png",
+          }),
+        }}
+      >
+        <LocationsMap
+          subject="the trip's locations"
+          locations={[
+            { name: "Moalboal", latitude: 9.9494, longitude: 123.3986 },
+          ]}
+        />
+      </ConfigProvider>,
+    );
+    const tiles = Array.from(
+      document.querySelectorAll<HTMLImageElement>("img[src*='tiles.example']"),
+    );
+    expect(tiles.length).toBeGreaterThan(0);
+    tiles.forEach((tile) => {
+      const src = tile.getAttribute("src")!;
+      expect(src).not.toContain("@2x");
+      expect(tile.getAttribute("srcset")).toBe(
+        `${src} 1x, ${src.replace(".png", "@2x.png")} 2x`,
+      );
+    });
+  });
+
+  // The dark theme's tiles are made by the app when the provider has none of
+  // its own, and that filter has to stay off the pins: inverting the coral
+  // markers would turn them teal, and they are the one colour held constant
+  // across both themes. What a render can settle is which element carries it.
+  describe("in the dark theme", () => {
+    const renderDark = (config?: Parameters<typeof tileSource>[0]) =>
+      render(
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem={false}
+        >
+          <ConfigProvider config={{ tiles: tileSource(config) }}>
+            <LocationsMap
+              subject="the trip's locations"
+              locations={[
+                { name: "Moalboal", latitude: 9.9494, longitude: 123.3986 },
+              ]}
+            />
+          </ConfigProvider>
+        </ThemeProvider>,
+      );
+
+    it("darkens the tile layer and nothing else", async () => {
+      renderDark();
+
+      const layer = await waitFor(() => {
+        const tiles = screen.getByTestId("tile-layer");
+        expect(tiles).toHaveClass("invert", "hue-rotate-180");
+        return tiles;
+      });
+      // Ancestry, not the pins' own classes: a CSS `filter` applies to the
+      // whole subtree, so what keeps the coral pins coral is that they sit
+      // outside the filtered element. A `className` assertion would hold just
+      // as well with the markers moved inside it, which is the one edit this
+      // is here to catch.
+      const pins = document.querySelectorAll('div[style*="translate3d"]');
+      expect(pins.length).toBeGreaterThan(0);
+      pins.forEach((pin) => expect(layer.contains(pin)).toBe(false));
+    });
+
+    // A provider's own dark tiles beat anything a filter can synthesize.
+    it("leaves configured dark tiles alone", async () => {
+      renderDark({
+        light: "https://tiles.example/light/{z}/{x}/{y}.png",
+        dark: "https://tiles.example/dark/{z}/{x}/{y}.png",
+      });
+
+      await waitFor(() =>
+        expect(
+          document.querySelectorAll("img[src*='tiles.example/dark']").length,
+        ).toBeGreaterThan(0),
+      );
+      expect(screen.getByTestId("tile-layer")).not.toHaveClass("invert");
+    });
+  });
+
+  // The default provider serves no `@2x` at all - so the unconfigured instance
+  // every other test here renders must be asking for one density and saying so.
+  it("offers one density for the unconfigured defaults", () => {
+    render(
+      <LocationsMap
+        subject="the trip's locations"
+        locations={[
+          { name: "Moalboal", latitude: 9.9494, longitude: 123.3986 },
+        ]}
+      />,
+    );
+    const tiles = Array.from(
+      document.querySelectorAll<HTMLImageElement>("img[src*='openstreetmap']"),
+    );
+    expect(tiles.length).toBeGreaterThan(0);
+    tiles.forEach((tile) => {
+      expect(tile.getAttribute("srcset")).toBeNull();
+      expect(tile.getAttribute("src")).not.toContain("@2x");
+    });
   });
 
   // A device's fix and a pin somebody placed are different claims about where
@@ -177,7 +292,7 @@ describe("LocationsMap", () => {
       />,
     );
     expect(
-      document.querySelectorAll("img[src*='cartocdn']").length,
+      document.querySelectorAll("img[src*='openstreetmap']").length,
     ).toBeGreaterThan(0);
     expect(pins()).toBe(1);
   });

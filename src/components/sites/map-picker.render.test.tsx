@@ -374,10 +374,6 @@ describe("MapPicker", () => {
     // the same tab would throw it away.
     expect(osm).toHaveAttribute("target", "_blank");
     expect(osm).toHaveAttribute("rel", expect.stringContaining("noreferrer"));
-    expect(screen.getByRole("link", { name: "© CARTO" })).toHaveAttribute(
-      "href",
-      "https://carto.com/attributions",
-    );
   });
 
   it("does not start a gesture on the attribution links", () => {
@@ -387,7 +383,9 @@ describe("MapPicker", () => {
 
     // `handlePointerDown` calls preventDefault, which suppresses the click that
     // would follow - so a pointerdown swallowed here leaves a dead link.
-    const link = screen.getByRole("link", { name: "© CARTO" });
+    const link = screen.getByRole("link", {
+      name: "© OpenStreetMap contributors",
+    });
     fireEvent.pointerDown(link, {
       pointerId: 1,
       pointerType: "mouse",

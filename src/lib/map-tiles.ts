@@ -18,8 +18,8 @@ export const MAX_LATITUDE = 85.0511287798066;
 // picker's viewport - so the world would float in a void. Zoom 1 is the widest
 // view that still fills it.
 export const MIN_ZOOM = 1;
-// Carto's basemaps stop at 20; 18 is street level and plenty for pinning an
-// entry point, without inviting a zoom that returns blank tiles.
+// OpenStreetMap's standard tiles stop at 19; 18 is street level and plenty for
+// pinning an entry point, without inviting a zoom that returns blank tiles.
 export const MAX_ZOOM = 18;
 
 export interface LatLon {
@@ -319,40 +319,84 @@ export function visibleTiles(
   return tiles;
 }
 
+// What `{r}` becomes in a template asked for at twice the density. Leaflet and
+// OpenLayers both spell it this way, and so do the providers that serve one.
+const HIGH_DENSITY = "@2x";
+
 /**
  * A tile URL from a `{z}/{x}/{y}` template.
+ *
+ * `{r}` - the placeholder for a provider's high-density variant - resolves to
+ * nothing at `density` 1 and to `@2x` above it. A template without one comes
+ * back unchanged, which is what lets a self-hoster's tile server that serves no
+ * such variant carry on being asked only for what it has.
  */
 export function tileUrl(
   template: string,
   x: number,
   y: number,
   zoom: number,
+  density = 1,
 ): string {
   return template
     .replace(/\{z\}/g, String(zoom))
     .replace(/\{x\}/g, String(x))
-    .replace(/\{y\}/g, String(y));
+    .replace(/\{y\}/g, String(y))
+    .replace(/\{r\}/g, density > 1 ? HIGH_DENSITY : "");
 }
 
-// Carto's Positron/Dark Matter, which are OpenStreetMap data restyled. Two
-// reasons to prefer them over OSM's own standard tiles: there is a dark variant
-// that matches the app's theme, and the OSMF tile policy explicitly discourages
-// pointing a broad user base at their servers by default.
+/**
+ * The `srcSet` offering one tile at both densities, or `undefined` for a
+ * template with no high-density variant to offer.
+ *
+ * Which one to draw is left to the browser rather than decided here from
+ * `devicePixelRatio`, for two reasons. That value exists only in the browser,
+ * so a `src` derived from it differs between the server's render and the
+ * client's first one - a hydration mismatch, over a map tile. And of the two
+ * candidates the browser fetches only the one it picks, so offering both costs
+ * one request, not two.
+ *
+ * `undefined` rather than a lone `1x` candidate: a template with no `{r}` would
+ * otherwise be advertising a file as its own double-resolution variant, which
+ * is a claim about the pixels in it that nothing has checked.
+ */
+export function tileSrcSet(
+  template: string,
+  x: number,
+  y: number,
+  zoom: number,
+): string | undefined {
+  if (!template.includes("{r}")) return undefined;
+  return (
+    `${tileUrl(template, x, y, zoom)} 1x, ` +
+    `${tileUrl(template, x, y, zoom, 2)} 2x`
+  );
+}
+
+// OpenStreetMap's own standard tiles. Not the first choice here - Carto's
+// Positron/Dark Matter were, for a matched dark variant this has no answer to -
+// and they were abandoned on 2026-08-28 when every keyless Carto tile turned out
+// to arrive stamped "API KEY REQUIRED" across the map, at every zoom, in every
+// style, at both densities. See DECISIONS.md for what else was decoded that day:
+// of the providers that answer an unregistered request from any domain at all,
+// this is the only one that still carries place names.
 //
-// Deliberately the bare host rather than the documented `{s}.basemaps...`
-// subdomain rotation: sharding is a workaround for HTTP/1.1 connection limits
-// that HTTP/2 made pointless, and one fixed host is one exact CSP `img-src`
-// source instead of a wildcard.
+// Deliberately the bare host rather than the `{s}` subdomain rotation: sharding
+// is a workaround for HTTP/1.1 connection limits that HTTP/2 made pointless, and
+// one fixed host is one exact CSP `img-src` source instead of a wildcard.
+//
+// No `{r}`, because there is no `@2x` here to ask for. The placeholder is still
+// filled for a configured template that has one - see `tileSrcSet` - which on
+// today's evidence means a provider the operator holds a key for.
 export const DEFAULT_TILE_URL =
-  "https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png";
-export const DEFAULT_DARK_TILE_URL =
-  "https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png";
+  "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 // A licence condition of the data, not a nicety - rendered over the map itself.
 // Written in the markdown link syntax `parseAttribution` understands, so the
-// credit can point at the licence rather than merely naming it.
+// credit can point at the licence rather than merely naming it. The OSMF tile
+// policy asks for it plainly visible, which is also why it is not behind a
+// toggle.
 export const DEFAULT_TILE_ATTRIBUTION =
-  "[© OpenStreetMap contributors](https://www.openstreetmap.org/copyright) " +
-  "[© CARTO](https://carto.com/attributions)";
+  "[© OpenStreetMap contributors](https://www.openstreetmap.org/copyright)";
 
 export interface AttributionPart {
   text: string;
@@ -414,29 +458,68 @@ export interface TileConfig {
   light?: string;
   dark?: string;
   attribution?: string;
+  // Substituted for `{key}` in either template. A separate variable rather than
+  // something the operator pastes into both URLs: it is written once, and it is
+  // the one part of the tile configuration that is a credential.
+  apiKey?: string;
+}
+
+// The placeholder a keyed provider's template carries. Every one of them spells
+// the parameter differently - Carto `?key=`, Stadia `?api_key=` - so the query
+// string belongs to the operator's template and only the value comes from here.
+const API_KEY = "{key}";
+
+function withApiKey(template: string, apiKey?: string): string {
+  if (!template.includes(API_KEY)) return template;
+  if (!apiKey) {
+    // Said in production too, like `tileOrigins`: the tile request goes out with
+    // an empty key and comes back a 401 or a watermark, and neither of those
+    // says which variable was never set.
+    console.warn(
+      `[map-tiles] Tile template wants an API key but MAP_TILE_API_KEY is ` +
+        `unset: ${template}. Tiles will be requested with an empty key.`,
+    );
+  }
+  // split/join rather than a `/g` regex: `.test()` on a global regex advances
+  // its own lastIndex, so the same template can answer differently on the
+  // second call.
+  return template.split(API_KEY).join(apiKey ?? "");
 }
 
 /**
- * The configured tile source, or the keyless Carto default.
+ * The configured tile source, or the keyless OpenStreetMap default.
  *
- * What an unset dark template falls back to depends on whether the light one
- * was configured, and the two cases mean different things. Configure neither
- * and you get Carto's own matched pair. Configure only the light one - a
- * self-hoster pointing at their own tile server - and that is "use my tiles",
- * not "use mine in the daytime and a stranger's at night", so it is used for
- * both.
+ * An unset dark template always falls back to the light one, and that single
+ * rule covers both cases that reach it. Configure nothing and there is no dark
+ * variant to fall back to - OpenStreetMap has none, which is what
+ * `needsDarkFilter` exists to answer. Configure only the light one and that is
+ * "use my tiles", not "use mine in the daytime and a stranger's at night".
  *
  * The values are passed in rather than read here: they reach the browser from
  * `lib/runtime-config.ts` through `contexts/ConfigContext.tsx`, so that a
  * published image can be pointed at another tile server without a rebuild.
  */
 export function tileSource(config: TileConfig = {}): TileSource {
-  const light = config.light || DEFAULT_TILE_URL;
+  const light = withApiKey(config.light || DEFAULT_TILE_URL, config.apiKey);
   return {
     light,
-    dark: config.dark || (config.light ? light : DEFAULT_DARK_TILE_URL),
+    dark: config.dark ? withApiKey(config.dark, config.apiKey) : light,
     attribution: config.attribution || DEFAULT_TILE_ATTRIBUTION,
   };
+}
+
+/**
+ * Whether the dark theme's tiles have to be darkened by the app, because the
+ * provider has no dark variant of its own.
+ *
+ * True exactly when the two templates are the same string, which is what
+ * `tileSource` leaves behind for a provider that offers one set of tiles. The
+ * renderers answer it with a CSS `invert(1) hue-rotate(180deg)` over the tile
+ * layer alone - a real dark basemap where one exists is always better, and an
+ * operator who configures one turns this off by doing so. See DECISIONS.md.
+ */
+export function needsDarkFilter(source: TileSource): boolean {
+  return source.dark === source.light;
 }
 
 /**

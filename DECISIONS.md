@@ -5437,6 +5437,12 @@ reads, which is a far worse thing to debug. A malformed `NEXT_PUBLIC_MAP_TILE_UR
 rather than throwing: this runs in middleware on every request, and a typo in an optional map's env
 var must not take the site down.
 
+**This paragraph's provider choice is superseded** — the keyless default is `tile.openstreetmap.org`
+now, and the dark theme a CSS filter rather than a second set of tiles. See "The default basemap is
+OpenStreetMap's own, and the dark theme is a CSS filter" below, which reads the OSMF policy rather
+than recalling it. What follows is the reasoning as it stood, kept because the CSP mechanics above
+it are unchanged.
+
 Carto's Positron/Dark Matter are the keyless default over OSM's own standard tiles, for two reasons:
 there is a dark variant matching the app's theme, and the OSMF tile policy discourages pointing a
 broad user base at their servers by default. The bare `basemaps.cartocdn.com` host is used rather
@@ -5678,13 +5684,16 @@ compatibility mouse events, so swallowing that pointerdown would leave the link 
 
 **The default tile host sees your divers' IP addresses and roughly where their sites are.** Tiles
 are fetched by the browser, so opening the picker discloses the caller's IP and the z/x/y of the
-area being browsed to `basemaps.cartocdn.com`. It is the tile coordinates only — the
-`Referrer-Policy: strict-origin-when-cross-origin` in `next.config.js` keeps the site UUID out of
-the `Referer` — but for a private dive log that is still location data about the user. It is an
-accepted trade for a feature that has to work with no account and no configuration — said out loud
-in `/privacy` §4.4 as well as here, since it is the only outbound flow in the app a diver could not
-guess at — and it is the one place where self-hosting buys real privacy: `NEXT_PUBLIC_MAP_TILE_URL`
-points at your own tile server and the CSP follows it automatically.
+area being browsed to the tile host — `tile.openstreetmap.org` since the change recorded under "The
+default basemap is OpenStreetMap's own, and the dark theme is a CSS filter", `basemaps.cartocdn.com`
+when this was written. The disclosure is the same either way; only the recipient moved. It is the
+tile coordinates only — the `Referrer-Policy: strict-origin-when-cross-origin` in `next.config.js`
+keeps the site UUID out of the `Referer` — but for a private dive log that is still location data
+about the user. It is an accepted trade for a feature that has to work with no account and no
+configuration — said out loud in `/privacy` §4.4 as well as here, since it is the only outbound flow
+in the app a diver could not guess at — and it is the one place where self-hosting buys real
+privacy: `NEXT_PUBLIC_MAP_TILE_URL` points at your own tile server and the CSP follows it
+automatically.
 
 ## A trip's locations are self-describing objects, so nothing has to be resolved
 
@@ -11349,3 +11358,153 @@ nothing.
 **What this cost elsewhere:** the alignment reason recorded for the pressure toggle named this
 button as the source of its row height, and had to be re-derived from the `<h3>` — see the
 correction under "The Gas Mixtures header toggle is deliberately not this component".
+
+## Retina tiles are plumbed and switched off, because Carto's `@2x` is a watermark
+
+Tiles are drawn at 256 CSS px (`lib/map-tiles.ts`), so on a 2× display every one was a 256 px bitmap
+stretched over 512 device pixels, and the labels — the part of a basemap that is text — carried the
+cost. The picker makes it worse than the display alone: `tileScale` already blows the layer up by as
+much as ~1.41× to fill in fractional zoom, so the effective demand there is nearer 2.8×. Asking for
+the provider's double-density variant is the standard answer, and it was implemented before it was
+checked properly.
+
+**Carto serves `@2x` for both default styles and stamps every one of them "API KEY REQUIRED",
+diagonally across the map.** Verified on 2026-08-28 by decoding the PNG, which is the only step that
+settles it.
+
+**The measurement that missed it** was `curl -o /dev/null -w "%{http_code} %{size_download}"`:
+`light_all/4/8/5.png` is 18,422 bytes and `light_all/4/8/5@2x.png` is 45,507, a 200 apiece. That
+ratio is exactly what a real double-density tile looks like — ~2.5× rather than the pixel count's
+4×, because the same map at a higher density compresses well — so the numbers corroborated the plan
+instead of testing it. A watermarked tile is a valid PNG of the right dimensions and a plausible
+size. **A tile provider is verified by looking at the image, not by its status code and byte
+count.**
+
+The stamp is not something a better-shaped request avoids. Sampled at z2, z6, z10 and z14, in
+`light_all` and `dark_all`, at both densities: all watermarked. Fetched again with a Chrome UA,
+`Referer: http://localhost:3000/`, `Origin`, `Accept: image/avif,…` and the `Sec-Fetch-*` trio:
+byte-identical to the bare `curl`. So the keyless tier is watermarked outright, and **the plain
+tiles this app has always used are watermarked too** — a provider-side change, not a consequence of
+anything here. What the `@2x` work did was render that watermark at twice the resolution, which is
+how it got noticed.
+
+**So the mechanism ships and the default templates do not use it.** `tileUrl` fills a `{r}`
+placeholder — Leaflet's and OpenLayers' spelling, `@2x` at the providers that serve one — and
+`tileSrcSet` emits `… .png 1x, … @2x.png 2x` for a template that has one. `DEFAULT_TILE_URL`
+deliberately has none, so the default instance asks for exactly what it asked for before. (It was a
+pair when this was written; the dark default is a CSS filter now — see the section below.) A
+self-hoster pointing `MAP_TILE_URL` at their own tile server, or at a provider they hold a key for,
+opts in by spelling `{r}`.
+
+Two alternatives were considered for the selection itself, and both are worse independently of the
+watermark:
+
+- **Leaflet's `detectRetina`** — request one zoom level deeper and draw those tiles at half size. It
+  quadruples the request count, renders every label at half its intended physical size, and here it
+  would have to compose with the fractional-zoom scaling already dividing the grid's coordinate
+  space. The `{r}` route changes the pixels in a tile and nothing else about the geometry.
+- **Reading `devicePixelRatio` and picking one `src`** — that value exists only in the browser, so
+  the server's render and the client's first one disagree, and a hydration mismatch is a poor price
+  for something the platform does declaratively. It also freezes at mount, where `srcSet` is
+  re-evaluated when a window moves between displays of different densities.
+
+**A template without `{r}` gets no `srcSet` at all** — `undefined`, not a lone `1x` candidate.
+Naming the plain 256 px file as its own `2x` declares an intrinsic size of 128 CSS px; the explicit
+`width`/`height` on the `<img>` pin the layout back to 256 either way, but the declaration is false
+and nothing should rest on the attribute that rescues it. Both candidates would be the same file
+regardless.
+
+The CSP is untouched by any of this: `{r}` sits in the path, so `tileOrigins` parses the same origin
+out of a template that has one, and `img-src` is unchanged.
+
+What that left open turned out to be bigger than the retina question, and it is answered in the next
+section: the plain tiles were watermarked too.
+
+## The default basemap is OpenStreetMap's own, and the dark theme is a CSS filter
+
+Carto's watermark applies to the keyless tier, not to a style or a density — `rastertiles/voyager`
+carries it as well — so an unconfigured instance was showing "API KEY REQUIRED" across every map it
+drew. Six candidate providers were tested on 2026-08-28 to replace it, at one tile (z10/608/432, the
+coast at Safaga: sea, coastline, a labelled town), **decoding every image** rather than trusting a
+status code, and fetching each from three `Referer` values, because that is what separates "works in
+local development" from "works for a self-hoster".
+
+| provider                                 | any domain | clean  | labels | dark | `@2x`       |
+| ---------------------------------------- | ---------- | ------ | ------ | ---- | ----------- |
+| Carto (light_all, dark_all, voyager)     | 200        | **no** | yes    | yes  | watermarked |
+| OpenStreetMap standard                   | 200        | yes    | yes    | no   | none        |
+| OSM DE, OSM France, CyclOSM, OpenTopoMap | 200        | yes    | yes    | no   | none        |
+| Esri Canvas light + dark                 | 200        | yes    | **no** | yes  | none        |
+| Stadia `alidade_smooth` + `_dark`        | **401**    | yes    | yes    | yes  | clean       |
+| Wikimedia `osm-intl`                     | **403**    | yes    | yes    | no   | clean       |
+
+Three of those rows are traps rather than results:
+
+- **Stadia answers from `localhost` and nowhere else.** 200 with `Referer: http://localhost:3000/`;
+  401 with no referer and 401 from `https://dives.example.org/`. It is the closest match to what the
+  app used to look like — a Positron/Dark Matter lineage, a real dark variant, a clean `@2x` — and
+  every one of those virtues would have been visible in local development while every self-hosted
+  instance served 401s.
+- **Esri's Canvas basemaps have no place names.** The base layers are clean and there is a genuine
+  dark one, but the Reference layer that carries the labels returns an identical 872-byte blank tile
+  at z6 and at z10 — no "Safaga" where every other provider has it.
+- **Wikimedia enforces its policy in code**, 403 from a domain that is not theirs.
+
+**So the default is `tile.openstreetmap.org`**, the only keyless-from-anywhere basemap left that
+still carries labels, and the attribution default drops the CARTO half. The OSMF tile policy was
+read rather than recalled, and this app already satisfies it: attribution is rendered over the map
+and not behind a toggle, only visible tiles are fetched (no prefetch, no bulk),
+`Referrer-Policy: strict-origin-when-cross-origin` still sends an origin, and the policy's own
+recommendation against hard-coding a tile URL is what `MAP_TILE_URL` has always been. The residual
+risk is that their capacity is donation-funded and enforcement is discretionary — which lands per
+self-hosted instance, each of them small.
+
+**OSM has no dark tiles, so the dark theme's are made here**, with `invert(1) hue-rotate(180deg)`
+over the tile layer. Both treatments were rendered before choosing: a
+`brightness(.65) saturate(.75)` dim leaves a light map looking washed out rather than dark, while
+the inversion reads as a night map — darker land, dark water, and roads that come out orange-red. It
+is worse than a provider's own dark tiles and better than a bright map in a dark UI, which is the
+whole of the argument.
+
+`needsDarkFilter` is the switch, and it is true exactly when `source.dark === source.light` — the
+state `tileSource` leaves behind for a provider that offers one set of tiles. Configuring
+`MAP_TILE_URL_DARK` therefore turns the filter off by construction rather than by a second setting
+that could disagree with the first.
+
+**The filter's scope is the part to get right, and it is not the obvious element.** It has to cover
+the tiles and nothing else: the markers are `bg-coral`, the one accent held constant across both
+themes, and inverting them turns them teal. In the picker the tile layer already existed —
+`data-testid="tile-layer"`, carrying the fractional-zoom scale — so the classes go there. In
+`LocationsMap` the tiles and the pins were siblings in one container, and the layer had to be
+created. That layer needs an explicit `absolute inset-0` rather than being a bare wrapper: **an
+element with a `filter` becomes the containing block for its absolutely positioned descendants**, so
+the tiles stop resolving against the surface and start resolving against the wrapper, and a wrapper
+with no box of its own is a silent way to move every tile.
+
+**Carto stays as a documented option, keyed.** A key is free — 5 million tiles a month, no account,
+emailed straight back — and `.env.example` carries the whole configuration for it, `{r}` included,
+because a keyed Carto is exactly where the retina work pays off. The key is substituted into both
+templates from `MAP_TILE_API_KEY` through a `{key}` placeholder, so the credential is written once
+rather than pasted into two URLs, and every provider's own spelling of the parameter (`?key=` for
+Carto, `?api_key=` for Stadia) stays in the operator's template where it belongs. It reaches the
+browser, because the browser is what fetches tiles; that is true of every client-side map and the
+documentation says so rather than implying a secret is being kept.
+
+## Stadia is documented beside Carto, because Carto's raster endpoint is legacy
+
+The provider table above ruled Stadia out as a _default_ — the cleanest tiles of the sweep, a real
+dark variant, and a 401 from every domain except `localhost` — but a key is precisely what fixes
+that trap, and `.env.example` now carries the full keyed configuration the way it does for Carto.
+What earns the second block is not style preference. Carto's own basemaps FAQ (read 2026-08-28)
+recommends the vector basemaps and says data updates to the raster ones may stop, with no timeline
+given; this map speaks only raster by construction — the MapLibre decision, much earlier in this
+file — so that road is closed here, and the failure mode is not an outage but a basemap whose place
+names slowly go stale. Stadia maintains raster as a first-class product, which is what makes it the
+hedge worth writing down.
+
+The terms differ enough that the block spells them out rather than letting a self-hoster discover
+them at the 429: Stadia's free tier is 200k tiles a month against Carto's 5M, non-commercial use
+only against Carto's fair-use-and-we'll-get-in-touch, and it hard-limits for the rest of the month
+once spent, with paid plans from $20/month. The attribution example grows an OpenMapTiles credit,
+because Alidade is built on it — the attribution being an operator-set variable that travels with
+the URLs is exactly for provider differences like this one.

@@ -1,8 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   clampCenter,
   clampLatitude,
-  DEFAULT_DARK_TILE_URL,
   DEFAULT_TILE_ATTRIBUTION,
   DEFAULT_TILE_URL,
   fitBounds,
@@ -17,6 +16,8 @@ import {
   TILE_SIZE,
   tileOrigins,
   tileSource,
+  needsDarkFilter,
+  tileSrcSet,
   tileUrl,
   unproject,
   visibleTiles,
@@ -419,6 +420,57 @@ describe("tileUrl", () => {
       tileUrl("https://tiles.example/light/{z}/{x}/{y}.png", 2440, 1698, 12),
     ).toBe("https://tiles.example/light/12/2440/1698.png");
   });
+
+  it("drops {r} at single density and fills it above", () => {
+    const template = "https://tiles.example/light/{z}/{x}/{y}{r}.png";
+    expect(tileUrl(template, 2440, 1698, 12)).toBe(
+      "https://tiles.example/light/12/2440/1698.png",
+    );
+    expect(tileUrl(template, 2440, 1698, 12, 2)).toBe(
+      "https://tiles.example/light/12/2440/1698@2x.png",
+    );
+  });
+
+  // A tile server with no high-density variant must never be asked for one,
+  // whatever density the caller wants.
+  it("leaves a template without {r} alone at any density", () => {
+    const template = "https://tiles.example/light/{z}/{x}/{y}.png";
+    expect(tileUrl(template, 2440, 1698, 12, 2)).toBe(
+      tileUrl(template, 2440, 1698, 12),
+    );
+  });
+});
+
+describe("tileSrcSet", () => {
+  it("offers both densities of a {r} template", () => {
+    expect(
+      tileSrcSet(
+        "https://tiles.example/light/{z}/{x}/{y}{r}.png",
+        2440,
+        1698,
+        12,
+      ),
+    ).toBe(
+      "https://tiles.example/light/12/2440/1698.png 1x, " +
+        "https://tiles.example/light/12/2440/1698@2x.png 2x",
+    );
+  });
+
+  // Not a one-candidate srcSet: naming the plain tile as its own 2x would
+  // claim a resolution the file does not have, and the browser would draw it
+  // at half the size it is.
+  it("offers nothing for a template without {r}", () => {
+    expect(
+      tileSrcSet("https://tiles.example/light/{z}/{x}/{y}.png", 2440, 1698, 12),
+    ).toBeUndefined();
+  });
+
+  // OpenStreetMap serves no `@2x`, so the shipped template asks for no such
+  // thing. Every keyless provider tested was in the same position - a `{r}`
+  // reaching this default would 404 every tile on a retina display.
+  it("offers nothing for the shipped default", () => {
+    expect(tileSrcSet(DEFAULT_TILE_URL, 4, 8, 5)).toBeUndefined();
+  });
 });
 
 describe("parseAttribution", () => {
@@ -432,11 +484,13 @@ describe("parseAttribution", () => {
     ]);
   });
 
-  it("reads the default attribution as two links", () => {
+  it("reads the default attribution as a link to the licence", () => {
     const parts = parseAttribution(DEFAULT_TILE_ATTRIBUTION);
-    expect(parts.filter((part) => part.href).map((part) => part.text)).toEqual([
-      "© OpenStreetMap contributors",
-      "© CARTO",
+    expect(parts.filter((part) => part.href)).toEqual([
+      {
+        text: "© OpenStreetMap contributors",
+        href: "https://www.openstreetmap.org/copyright",
+      },
     ]);
   });
 
@@ -460,16 +514,17 @@ describe("parseAttribution", () => {
 });
 
 describe("tileSource", () => {
-  it("defaults to Carto's matched light/dark pair", () => {
+  it("defaults to OpenStreetMap for both themes", () => {
     const source = tileSource();
     expect(source.light).toBe(DEFAULT_TILE_URL);
-    expect(source.dark).toBe(DEFAULT_DARK_TILE_URL);
-    expect(source.dark).not.toBe(source.light);
+    expect(source.dark).toBe(DEFAULT_TILE_URL);
     expect(source.attribution).toBe(DEFAULT_TILE_ATTRIBUTION);
+    // Which is the whole reason the renderers darken the tiles themselves.
+    expect(needsDarkFilter(source)).toBe(true);
   });
 
-  // "Use my tile server" means in both themes - falling back to Carto's dark
-  // tiles at night would send a self-hoster's divers to a third party they
+  // "Use my tile server" means in both themes - falling back to a stranger's
+  // dark tiles at night would send a self-hoster's divers to a third party they
   // deliberately configured away from.
   it("uses a configured light template for dark too", () => {
     const source = tileSource({
@@ -487,9 +542,10 @@ describe("tileSource", () => {
     ).toBe("https://tiles.example/dark/{z}/{x}/{y}.png");
   });
 
-  // A dark template on its own is the one combination that keeps Carto's light
-  // tiles: the pair is only "mine" once the light one has been pointed away.
-  it("keeps Carto's light default when only the dark one is configured", () => {
+  // A dark template on its own is the one combination that keeps the default
+  // light tiles: the pair is only "mine" once the light one has been pointed
+  // away.
+  it("keeps the light default when only the dark one is configured", () => {
     const source = tileSource({
       dark: "https://tiles.example/dark/{z}/{x}/{y}.png",
     });
@@ -497,10 +553,63 @@ describe("tileSource", () => {
     expect(source.dark).toBe("https://tiles.example/dark/{z}/{x}/{y}.png");
   });
 
+  it("substitutes {key} into both templates", () => {
+    const source = tileSource({
+      light: "https://tiles.example/light/{z}/{x}/{y}.png?key={key}",
+      dark: "https://tiles.example/dark/{z}/{x}/{y}.png?key={key}",
+      apiKey: "s3cret",
+    });
+
+    expect(source.light).toContain("?key=s3cret");
+    expect(source.dark).toContain("?key=s3cret");
+    expect(source.light).not.toContain("{key}");
+  });
+
+  // The request would go out with an empty key and come back a 401 or a
+  // watermark, and neither of those names the variable nobody set.
+  it("warns when a template wants a key and none is configured", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const source = tileSource({
+      light: "https://tiles.example/{z}/{x}/{y}.png?key={key}",
+    });
+
+    expect(source.light).toBe("https://tiles.example/{z}/{x}/{y}.png?key=");
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("MAP_TILE_API_KEY"),
+    );
+    warn.mockRestore();
+  });
+
   it("takes a configured attribution", () => {
     expect(tileSource({ attribution: "© Someone" }).attribution).toBe(
       "© Someone",
     );
+  });
+});
+
+describe("needsDarkFilter", () => {
+  it("is true for a provider with no dark tiles of its own", () => {
+    expect(needsDarkFilter(tileSource())).toBe(true);
+    expect(
+      needsDarkFilter(
+        tileSource({ light: "https://t.example/{z}/{x}/{y}.png" }),
+      ),
+    ).toBe(true);
+  });
+
+  // A real dark basemap beats anything a filter can synthesize, so configuring
+  // one has to switch the filter off - which is the same condition, read the
+  // other way.
+  it("is false once a dark template is configured", () => {
+    expect(
+      needsDarkFilter(
+        tileSource({
+          light: "https://t.example/light/{z}/{x}/{y}.png",
+          dark: "https://t.example/dark/{z}/{x}/{y}.png",
+        }),
+      ),
+    ).toBe(false);
   });
 });
 

@@ -5,11 +5,7 @@ import {
   publicConfig,
   readRuntimeConfig,
 } from "./runtime-config";
-import {
-  DEFAULT_DARK_TILE_URL,
-  DEFAULT_TILE_ATTRIBUTION,
-  DEFAULT_TILE_URL,
-} from "./map-tiles";
+import { DEFAULT_TILE_ATTRIBUTION, DEFAULT_TILE_URL } from "./map-tiles";
 
 describe("readRuntimeConfig", () => {
   afterEach(() => {
@@ -27,7 +23,7 @@ describe("readRuntimeConfig", () => {
       noindex: false,
       tiles: {
         light: DEFAULT_TILE_URL,
-        dark: DEFAULT_DARK_TILE_URL,
+        dark: DEFAULT_TILE_URL,
         attribution: DEFAULT_TILE_ATTRIBUTION,
       },
     });
@@ -47,6 +43,23 @@ describe("readRuntimeConfig", () => {
     expect(config.googleClientId).toBe("client-id.apps.googleusercontent.com");
     expect(config.tiles.light).toBe("https://tiles.example/{z}/{x}/{y}.png");
     expect(config.tiles.attribution).toBe("© Someone");
+  });
+
+  // The one part of the tile configuration that is a credential, so it is its
+  // own variable rather than something pasted into both URL templates.
+  it("substitutes MAP_TILE_API_KEY into both templates", () => {
+    const config = readRuntimeConfig({
+      MAP_TILE_URL: "https://tiles.example/light/{z}/{x}/{y}.png?key={key}",
+      MAP_TILE_URL_DARK: "https://tiles.example/dark/{z}/{x}/{y}.png?key={key}",
+      MAP_TILE_API_KEY: "s3cret",
+    });
+
+    expect(config.tiles.light).toBe(
+      "https://tiles.example/light/{z}/{x}/{y}.png?key=s3cret",
+    );
+    expect(config.tiles.dark).toBe(
+      "https://tiles.example/dark/{z}/{x}/{y}.png?key=s3cret",
+    );
   });
 
   // The whole point of the fallback: a deployment that configured the old,
@@ -181,7 +194,7 @@ describe("publicConfig", () => {
       googleClientId: "client-id",
       tiles: {
         light: DEFAULT_TILE_URL,
-        dark: DEFAULT_DARK_TILE_URL,
+        dark: DEFAULT_TILE_URL,
         attribution: DEFAULT_TILE_ATTRIBUTION,
       },
     });
