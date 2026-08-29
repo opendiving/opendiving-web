@@ -4,16 +4,31 @@ import userEvent from "@testing-library/user-event";
 import GearPage from "./page";
 import { gearAPI, type GearItem, type GearSet } from "@/lib/api/gear";
 
-vi.mock("@/contexts/AuthContext", () => ({
-  useAuth: () => ({
+// Returned by identity rather than rebuilt per call, and for `user` that is
+// load-bearing rather than tidiness: the real `AuthContext` holds it in state, so it
+// keeps one identity across renders, and this page's two fetch callbacks list `user`
+// in their dependencies. A mock handing back a fresh `user` per render gives
+// `usePaginatedResource` a new `fetchFn` every time, and its fetch-on-mount effect
+// re-runs on every render the fetch itself causes. See "The new-dive render test was
+// in a loop with itself" in DECISIONS.md, and "reads the gear list once" below.
+//
+// `vi.hoisted` because a `vi.mock` factory is hoisted above every other statement in
+// the file and so cannot close over an ordinary `const`.
+const stable = vi.hoisted(() => ({
+  auth: {
     user: { uuid: "user-1" },
     isAuthenticated: true,
     isLoading: false,
-  }),
+  },
+  router: { replace: vi.fn(), push: vi.fn() },
+}));
+
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => stable.auth,
 }));
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
+  useRouter: () => stable.router,
 }));
 
 vi.mock("@/lib/api/gear", async (importOriginal) => {
@@ -197,5 +212,27 @@ describe("gear row actions name their row", () => {
     expect(
       screen.getByRole("button", { name: "Delete Warm water rig" }),
     ).toBeInTheDocument();
+  });
+});
+
+// The page's fetch callbacks close over `user`, and `usePaginatedResource` fetches
+// from an effect keyed on the callback - so anything that gives `user` a new identity
+// per render puts the effect in a loop with the fetch it started.
+//
+// `mockImplementation` rather than this file's usual `mockResolvedValue`, and that is
+// the whole reason this test can fail: a single resolved value is one object handed
+// back to every call, so `setItems` receives the array it already holds, React bails
+// out of the re-render, and the loop stalls after a handful of passes. Measured, the
+// same mount goes from 6 fetches a second to ~400 once each call answers with its own
+// object, which is what a real API client does. See "A shared mock response object
+// hides a render loop" in DECISIONS.md.
+describe("the gear list is read once, not once per render", () => {
+  it("reads the gear list once", async () => {
+    getGearItems.mockImplementation(async () => page([gearItem()]));
+
+    render(<GearPage />);
+    await screen.findByText("MK25 EVO");
+
+    expect(getGearItems).toHaveBeenCalledTimes(1);
   });
 });

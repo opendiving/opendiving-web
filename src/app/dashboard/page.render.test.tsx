@@ -10,16 +10,36 @@ import type { UserDiveStats } from "@/lib/api/dive-stats";
 // renders the number it is given rather than a constant - and that it holds the
 // stats row's "—" while the request is still in flight, like its three siblings.
 
-vi.mock("@/hooks/useAuthGuard", () => ({
-  useAuthGuard: () => ({
+// Returned by identity rather than rebuilt per call, and for `user` that is
+// load-bearing rather than tidiness: the real `AuthContext` holds it in state, so it
+// keeps one identity across renders, and this page's stats effect lists `user` in its
+// dependencies. A mock handing back a fresh `user` per render re-runs that effect on
+// every render, and the effect's own `setStats` causes one. See "The new-dive render
+// test was in a loop with itself" in DECISIONS.md, and "reads the stats once" below.
+//
+// Both hooks are pinned, but only the guard's `user` can start the loop - the page
+// reads the context for `units` alone, and a string has no identity to churn.
+// Measured: rebuilding the context's object per call leaves the fetch count at 1.
+// The guard is the one that matters; the context is here so the file has one rule
+// rather than two.
+//
+// `vi.hoisted` because a `vi.mock` factory is hoisted above every other statement in
+// the file and so cannot close over an ordinary `const`.
+const stable = vi.hoisted(() => ({
+  guard: {
     user: { uuid: "user-1", first_name: "Sam" },
     isAuthenticated: true,
     isLoading: false,
-  }),
+  },
+  auth: { user: { uuid: "user-1", units: "metric" } },
+}));
+
+vi.mock("@/hooks/useAuthGuard", () => ({
+  useAuthGuard: () => stable.guard,
 }));
 
 vi.mock("@/contexts/AuthContext", () => ({
-  useAuth: () => ({ user: { uuid: "user-1", units: "metric" } }),
+  useAuth: () => stable.auth,
 }));
 
 vi.mock("@/lib/api/dive-stats", () => ({
@@ -130,5 +150,31 @@ describe("dashboard Species Seen tile", () => {
 
     await waitFor(() => expect(getDiveStats).toHaveBeenCalled());
     expect(screen.queryByText("Species Seen")).not.toBeInTheDocument();
+  });
+});
+
+// The stats effect lists `user`, so anything that gives `user` a new identity per
+// render puts the effect in a loop with its own `setStats`.
+//
+// `mockImplementation` rather than this file's usual `mockResolvedValue`, and that is
+// the whole reason this test can fail: a single resolved value is one object handed
+// back to every call, so `setStats` receives the object it already holds, React bails
+// out of the re-render, and the loop stalls after two passes. Measured, the same
+// mount goes from 2 fetches a second to ~430 once each call answers with its own
+// object, which is what a real API client does. See "A shared mock response object
+// hides a render loop" in DECISIONS.md.
+describe("the stats are read once, not once per render", () => {
+  it("reads the stats once", async () => {
+    getDiveStats.mockImplementation(async () => stats());
+
+    render(<DashboardPage />);
+    await screen.findByText("17");
+    // The loop turns on effects, which React runs on a task rather than a
+    // microtask, so awaiting the rendered figure alone gets here before the second
+    // pass. A short settle is what makes the difference visible: one fetch when the
+    // effect is keyed on a stable `user`, tens of them when it is not.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(getDiveStats).toHaveBeenCalledTimes(1);
   });
 });

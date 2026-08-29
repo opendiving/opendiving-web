@@ -11556,3 +11556,65 @@ the call count rather than any rendered output — the only place the defect sho
 What is left is inherent: a full `NewDivePage` render is ~50ms in jsdom under React's dev build,
 diffusely spread across `jsx()`, `ReactElement` and Radix's `SelectItem`, and each test needs its
 own. Fifteen tests now run in ~2.4s where fourteen took ~2.6s with an unbounded loop inside them.
+
+## A shared mock response object hides a render loop
+
+The defect above was not confined to the new-dive page. The same mock shape —
+`useAuth: () => ({ user: { uuid: "user-1" }, ... })`, a fresh object per call — sat in the gear,
+certifications and dashboard page tests, and all three pages depend on `user`'s identity: gear and
+certifications close over it in the `useCallback` they hand `usePaginatedResource`, whose
+fetch-on-mount effect is keyed on that callback, and the dashboard's stats effect lists it outright.
+Every one of them was looping.
+
+None of them looked like it. The detection recipe from the entry above — render the page, wait a
+second, count the calls to its main API mock — was run against all five candidate files and reported
+6 calls for gear, 4 for certifications, 2 for the dashboard, against the 100-and-climbing that gave
+the new-dive page away. Read at face value that says "settles, slightly wasteful", and it is wrong.
+
+**What flattens the count is `mockResolvedValue`.** It stores one resolved value and hands that same
+object to every call, so the loop's second pass reaches `setItems(response.data)` with the array
+React already holds. Same reference, so React bails out of the re-render, and the loop stalls — not
+because the dependency stopped churning, but because the state stopped changing. Swap the mock to
+`mockImplementation(async () => page([gearItem()]))`, which is what a real API client does — a fresh
+object per response — and the same mount over the same second goes:
+
+| page           | `mockResolvedValue` | `mockImplementation` |
+| -------------- | ------------------: | -------------------: |
+| gear           |                 4–6 |              355–396 |
+| certifications |                   4 |                  288 |
+| dashboard      |                   2 |                  431 |
+
+So the probe has a false-negative mode, and it is the common case: nearly every test in this repo
+stubs with `mockResolvedValue`. A count in the low single digits is not an all-clear — it means
+either "stable" or "looping against a frozen response", and only re-running with a per-call object
+tells the two apart. The new-dive page was caught at all because its loop turns on `form.reset`
+rather than on a list state, and a reset re-renders whatever it is handed.
+
+Two consequences for the pins. Each of the three now has one (`reads the gear list once`,
+`reads the certification list once`, `reads the stats once`), and each **must** use
+`mockImplementation` — written with `mockResolvedValue` the assertion passes with the bug in place,
+which is a test that exists and proves nothing. Verified the only way that means anything: the mock
+was reverted to a per-call object in each file and each pin was watched to fail. The dashboard's
+also needs a beat to settle — the loop turns on effects, which React schedules on a task rather than
+a microtask, so `findByText` returns before the second pass and the count is still 1 when the
+assertion runs.
+
+Two smaller findings from the same sweep:
+
+- **Only the guard's `user` matters on the dashboard.** The page pins `useAuthGuard` and `useAuth`
+  both, but it reads the context for `units` alone, and a string has no identity to churn.
+  Rebuilding the context's object per call leaves the fetch count at 1; rebuilding the guard's takes
+  it to 4 in 50ms.
+- **`avatar-card` and `units-card` do not loop and never did** — one reads a digest that reaches
+  `UserAvatar` as a string, the other one enum off `user`, and neither has an effect keyed on the
+  object. Their mocks were made identity-stable anyway, so that the whole set reads one way. That is
+  the actual guard against recurrence: these files are written by copying a neighbour, and a
+  neighbour that is right is worth more than a rule nobody reads.
+
+A shared `src/test/` helper for these mocks was considered and rejected. `vi.mock` factories are
+hoisted above every import, so a helper can only be reached through `await import()` inside the
+factory, and the thing it would export — an object returned by identity — is exactly what
+`vi.hoisted` already gives with less ceremony. It would also have to cover shapes with nothing in
+common: the auth mocks across this repo return `{user, isAuthenticated, isLoading}`,
+`{verifyEmailLink, restoreAccount}`, `{signInWithGoogle}` and `{restore, restoreAccount}`, among
+others. A module that has to be told its own contents each time is a re-export of `vi.hoisted`.

@@ -8,16 +8,20 @@ import type { UnitSystem } from "@/lib/units";
 // system PATCHes only that field and then re-reads the user, and that a failed save
 // says so instead of leaving the box showing a choice the server never took.
 
+// The whole value is hoisted and returned by identity, `user` included. Nothing this
+// card renders depends on that today - it reads one string off `user` and has no
+// effect keyed on it - but the real `AuthContext` holds `user` in state and so keeps
+// one identity across renders, and a mock that rebuilds it per render is what put the
+// new-dive page's test in an unbounded loop with its own `form.reset`. Varying a
+// field means writing to `auth.user`, which leaves the identity alone. See "The
+// new-dive render test was in a loop with itself" in DECISIONS.md.
 const auth = vi.hoisted(() => ({
-  units: "metric" as UnitSystem,
+  user: { uuid: "user-1", units: "metric" as UnitSystem },
   refreshUser: vi.fn(),
 }));
 
 vi.mock("@/contexts/AuthContext", () => ({
-  useAuth: () => ({
-    user: { uuid: "user-1", units: auth.units },
-    refreshUser: auth.refreshUser,
-  }),
+  useAuth: () => auth,
 }));
 
 vi.mock("@/lib/api/auth", () => ({
@@ -28,7 +32,7 @@ const { authAPI } = await import("@/lib/api/auth");
 const updateProfile = vi.mocked(authAPI.updateProfile);
 
 beforeEach(() => {
-  auth.units = "metric";
+  auth.user.units = "metric";
   auth.refreshUser.mockReset().mockResolvedValue(undefined);
   updateProfile.mockReset().mockResolvedValue(undefined);
 });
@@ -37,7 +41,7 @@ const picker = () => screen.getByLabelText("Measurement system");
 
 describe("UnitsCard", () => {
   it("shows the account's current system", () => {
-    auth.units = "imperial";
+    auth.user.units = "imperial";
     render(<UnitsCard />);
 
     expect((picker() as HTMLSelectElement).value).toBe("imperial");
