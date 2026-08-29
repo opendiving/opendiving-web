@@ -11508,3 +11508,51 @@ only against Carto's fair-use-and-we'll-get-in-touch, and it hard-limits for the
 once spent, with paid plans from $20/month. The attribution example grows an OpenMapTiles credit,
 because Alidade is built on it — the attribution being an operator-set variable that travels with
 the URLs is exactly for provider differences like this one.
+
+## The new-dive render test was in a loop with itself, and the cost was only time
+
+`src/app/dives/new/page.render.test.tsx` was flaky in a way that named nothing: tests failed on
+vitest's default 5s timeout rather than on an assertion, and which of the fourteen failed varied
+from run to run — worse under `npm run ci`, where ten workers compete for the machine. The tempting
+reading is "these tests are just slow, raise `testTimeout`". They were slow, but not for the reason
+the timings suggested.
+
+The page's last-dive prefill is an effect that ends in `form.reset`, and it lists `user` in its
+dependencies. In the app that is fine: `AuthContext` keeps its value referentially stable, so the
+effect runs once. The test's mock did not — `useAuth: () => ({ user: { uuid: "user-1" }, ... })`
+built a fresh `user` on every call, so every render gave the effect a new dependency, and the effect
+ended by causing the next render. On any test whose `getDives` returns a dive, reset and effect
+drove each other round with nothing to stop them.
+
+Measured: `getDives`/`getDive` were called **100 times in the 1.3 seconds** after the prefill landed
+and were still climbing when the component unmounted — about 75 full page re-renders a second,
+running underneath every `waitFor` and every `userEvent` call in the test. Nothing fails; the loop
+only competes. That is what makes it worse under load rather than merely slower: a busier machine
+means longer awaits, longer awaits mean more iterations, and more iterations mean a busier machine.
+
+This is the `useRouter` trap recorded under "Component and hook tests are possible now" one hook
+further along, and worth restating because the shape generalises. **A mock that rebuilds its return
+value per call is only safe while nothing depends on its identity.** `useRouter` was caught because
+`useResource` refetched forever and looked like an infinite loop in the hook. This one was not
+caught, because a loop whose only symptom is elapsed time reads as "the page is heavy".
+
+The fix is `vi.hoisted` objects returned by identity, for `useAuth`, `useRouter`, `useSearchParams`
+and `useToast` alike. It is pinned by "reads the last dive once, not once per render", which asserts
+the call count rather than any rendered output — the only place the defect shows up as a failure.
+
+**Two other things the same investigation turned up, both in the same file:**
+
+- **A real HTTP request.** The gear picker resolves a carried-over uuid it has no name for through
+  `gearAPI.getGearItem`, and only the plural `getGearItems` was mocked. Left real, axios' relative
+  `/api/v1` base resolves against jsdom's `localhost:3000`, so the test answered from whatever dev
+  server happened to be up — at whatever speed it happened to be compiling at, with no axios timeout
+  behind it. A test's timing should not depend on what else is running on the machine.
+- **`userEvent.type` costs ~60ms for five characters here**, against ~3ms for the `fireEvent.change`
+  that sets the same value: the box is a controlled `FormField`, so each keystroke re-renders the
+  page. `userEvent.setup({ delay: null })` does _not_ help — the cost is the re-render, not the
+  inter-key delay, which is worth knowing before reaching for it. Typing is right where the
+  keystrokes are the point (the depth warning) and wrong where a field just needs a value.
+
+What is left is inherent: a full `NewDivePage` render is ~50ms in jsdom under React's dev build,
+diffusely spread across `jsx()`, `ReactElement` and Radix's `SelectItem`, and each test needs its
+own. Fifteen tests now run in ~2.4s where fourteen took ~2.6s with an unbounded loop inside them.

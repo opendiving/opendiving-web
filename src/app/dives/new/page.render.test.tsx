@@ -13,21 +13,42 @@ import type { Species } from "@/lib/api/species";
 // `prefillFromLastDive` then carried to the next dive and `diveModWarning` was happy
 // to raise a depth warning against.
 
-vi.mock("@/contexts/AuthContext", () => ({
-  useAuth: () => ({
+// Every one of these is returned by identity rather than rebuilt per call, and
+// for `user` that is load-bearing rather than tidiness: the real `AuthContext`
+// keeps its value referentially stable, and this page's prefill effect lists
+// `user` in its dependencies. A mock handing back a fresh `user` per render
+// re-runs that effect on every render, and the effect ends in `form.reset` - so
+// on any test whose last dive exists, reset and effect drive each other round in
+// an unbounded loop. It fails nothing outright; it just re-reads the last dive
+// ~75 times a second for as long as the page is mounted, which is what made this
+// file's timings wander and its slowest tests reach vitest's 5s limit. Pinned by
+// "reads the last dive once" below. Same trap as the `useRouter` note in
+// DECISIONS.md, one hook further along.
+//
+// `vi.hoisted` because a `vi.mock` factory is hoisted above every other
+// statement in the file and so cannot close over an ordinary `const`.
+const stable = vi.hoisted(() => ({
+  auth: {
     user: { uuid: "user-1" },
     isAuthenticated: true,
     isLoading: false,
-  }),
+  },
+  router: { push: vi.fn(), replace: vi.fn() },
+  searchParams: new URLSearchParams(),
+  toast: { toast: vi.fn() },
+}));
+
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => stable.auth,
 }));
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
-  useSearchParams: () => new URLSearchParams(),
+  useRouter: () => stable.router,
+  useSearchParams: () => stable.searchParams,
 }));
 
 vi.mock("@/components/ui/use-toast", () => ({
-  useToast: () => ({ toast: vi.fn() }),
+  useToast: () => stable.toast,
 }));
 
 // `importOriginal` throughout: these modules also export the constants and enums the
@@ -81,7 +102,12 @@ vi.mock("@/lib/api/gear", async (importOriginal) => {
   return {
     ...actual,
     fetchAllGearSets: vi.fn(),
-    gearAPI: { ...actual.gearAPI, getGearItems: vi.fn() },
+    // `getGearItem` singular alongside the plural: the gear picker looks a
+    // carried-over uuid up by itself when nothing on hand names it, and left
+    // real this test file put an actual XHR on the wire - resolved against
+    // jsdom's `localhost:3000`, so it answered from whatever dev server
+    // happened to be up, at whatever speed it happened to be compiling at.
+    gearAPI: { ...actual.gearAPI, getGearItems: vi.fn(), getGearItem: vi.fn() },
   };
 });
 
@@ -128,6 +154,14 @@ beforeEach(() => {
   vi.mocked(diveSitesAPI.getDiveSites).mockResolvedValue(emptyPage());
   vi.mocked(gear.fetchAllGearSets).mockResolvedValue([]);
   vi.mocked(gear.gearAPI.getGearItems).mockResolvedValue(emptyPage());
+  vi.mocked(gear.gearAPI.getGearItem).mockImplementation(
+    async (uuid) =>
+      ({
+        uuid,
+        name: "MK25",
+        is_archived: false,
+      }) as Awaited<ReturnType<typeof gear.gearAPI.getGearItem>>,
+  );
   vi.mocked(speciesAPI.searchSpecies).mockResolvedValue({
     results: [],
     has_more: false,
@@ -136,8 +170,17 @@ beforeEach(() => {
 
 // Everything the create schema requires that the page doesn't already seed. Dive
 // number and start time arrive filled in; duration does not.
-async function fillRequiredFields() {
-  await userEvent.type(screen.getByLabelText(/duration/i), "45:00");
+//
+// `fireEvent.change` rather than `userEvent.type`, for the same reason the O₂
+// box below uses it: nothing here is about the keystrokes. The box is a
+// controlled `FormField`, so typing re-renders the whole page once per
+// character - five renders and ~60ms to set a value one change event sets in
+// ~3ms. Where the typing itself is the point (the depth warning below), the
+// tests still type.
+function fillRequiredFields() {
+  fireEvent.change(screen.getByLabelText(/duration/i), {
+    target: { value: "45:00" },
+  });
 }
 
 const logDive = () =>
@@ -147,7 +190,7 @@ describe("logging a dive without touching the gas card", () => {
   it("sends no mixtures at all", async () => {
     render(<NewDivePage />);
     await screen.findByLabelText(/duration/i);
-    await fillRequiredFields();
+    fillRequiredFields();
 
     await logDive();
 
@@ -205,7 +248,7 @@ describe("the gas card, once the diver opens it", () => {
   it("stores an empty list when the only cylinder is removed before saving", async () => {
     render(<NewDivePage />);
     await screen.findByLabelText(/duration/i);
-    await fillRequiredFields();
+    fillRequiredFields();
 
     await userEvent.click(screen.getByRole("button", { name: /add mixture/i }));
     await userEvent.click(
@@ -224,7 +267,7 @@ describe("the gas card, once the diver opens it", () => {
     // the page supplying it.
     render(<NewDivePage />);
     await screen.findByLabelText(/duration/i);
-    await fillRequiredFields();
+    fillRequiredFields();
 
     await userEvent.click(screen.getByRole("button", { name: /add mixture/i }));
     // `fireEvent.change` rather than clear-then-type: react-hook-form re-displays a
@@ -372,6 +415,32 @@ describe("the last-dive prefill", () => {
     expect(screen.getByLabelText(/^altitude/i)).toHaveValue(372);
     expect(screen.getByLabelText(/bottom temperature/i)).toHaveValue(null);
   });
+
+  it("reads the last dive once, not once per render", async () => {
+    // The prefill's own effect writes the form it depends on, so anything that
+    // gives it a new identity every render puts it in a loop with its own
+    // `form.reset`. It ran that way here for a while - the mocks above handed
+    // back a fresh `user` object per call - and cost nothing visible except
+    // time: ~75 last-dive fetches a second for as long as the page was mounted,
+    // which is what made this file's slowest tests wander into vitest's 5s
+    // limit. Counting the calls is the only symptom that shows up as a failure.
+    vi.mocked(divesAPI.getDives).mockResolvedValue({
+      ...emptyPage<Dive>(),
+      data: [storedDive()],
+      total_count: 1,
+    });
+    vi.mocked(divesAPI.getDive).mockResolvedValue(
+      storedDive({ water_type: "brackish" }),
+    );
+
+    render(<NewDivePage />);
+
+    await waitFor(() =>
+      expect(screen.getByLabelText(/water type/i)).toHaveValue("brackish"),
+    );
+    expect(divesAPI.getDives).toHaveBeenCalledTimes(1);
+    expect(divesAPI.getDive).toHaveBeenCalledTimes(1);
+  });
 });
 
 // The create page's own conversion, which no unit test reaches: the select's
@@ -380,7 +449,7 @@ describe("the water type on the way to the API", () => {
   it("omits the field when the picker was left at Not recorded", async () => {
     render(<NewDivePage />);
     await screen.findByLabelText(/duration/i);
-    await fillRequiredFields();
+    fillRequiredFields();
 
     await logDive();
 
@@ -392,7 +461,7 @@ describe("the water type on the way to the API", () => {
   it("sends the water type the diver chose", async () => {
     render(<NewDivePage />);
     await screen.findByLabelText(/duration/i);
-    await fillRequiredFields();
+    fillRequiredFields();
 
     await userEvent.selectOptions(
       screen.getByLabelText(/water type/i),
@@ -440,7 +509,7 @@ describe("what the create form carries over from the last dive", () => {
     render(<NewDivePage />);
     await screen.findByLabelText(/duration/i);
     await waitFor(() => expect(divesAPI.getDive).toHaveBeenCalled());
-    await fillRequiredFields();
+    fillRequiredFields();
 
     await logDive();
 
@@ -482,7 +551,7 @@ describe("saving while a species pick is still resolving", () => {
 
     render(<NewDivePage />);
     await screen.findByLabelText(/duration/i);
-    await fillRequiredFields();
+    fillRequiredFields();
 
     await userEvent.click(screen.getByLabelText("Species spotted"));
     await userEvent.click(
