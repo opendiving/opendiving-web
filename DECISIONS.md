@@ -9436,9 +9436,16 @@ why the wrapper carries `mb-0`, and why that class is load-bearing rather than a
 the fix for the first bug re-creates the misalignment at 8px instead of 2px, in the opposite
 direction. Both were measured in a real browser, before and after.
 
-**The Gas Mixtures header toggle is deliberately not this component.** It sits beside "Add Mixture"
-in a row whose height comes from that 36px button, and flex alignment is exactly right there — the
-toggle is centred against the button and the heading. Measured; it never had the problem.
+**The Gas Mixtures header toggle is deliberately not this component.** Flex alignment is right there
+because the only other child of that row is the `<h3>`, and a heading is block-level already — so
+the blockification that shrinks a `<label>` has nothing to do to it. The row is the h3's 20px line
+box and the 18px toggle centres on it. Measured; it never had the problem.
+
+That reason is _not_ the one this paragraph used to give. It said the row's height came from the
+36px "Add Mixture" button beside the toggle, which was true until that button moved out from under
+the heading (see "Add Mixture sits under the tanks" below) — and would have read as a still-standing
+justification for markup whose stated support had been deleted. A recorded reason that names a
+neighbouring element is only as durable as that element's position.
 
 **None of this is testable in jsdom, and the test file says so.** jsdom does no layout, so every
 rect is zeroes and a geometry assertion would pass against any markup at all — the same vacuous pass
@@ -11272,3 +11279,29 @@ The rename that occasioned all this is the smallest part. `od-login` and `dashbo
 became `opendiving-web-login` and `opendiving-web-dashboard-screenshot`, because sibling repos sit
 under one umbrella and skills load by bare name: `dashboard-screenshot` gave no clue whose dashboard
 it shot, and `od-login` no clue that the magic-link flow it drives is this app's.
+
+## "Add Mixture" sits under the tanks
+
+The button now renders after the tank cards, at the bottom of the Gas Mixtures section, rather than
+in the section header opposite the heading. It sits where the tank it adds will appear, so the
+control and its effect are in reading order and adjacent on screen; from the header it was the one
+control in the section pointing backwards, and a diver on a four-cylinder dive had to scroll back up
+past every card to add the fifth.
+
+The empty state is where the old placement read worst. On a create form with no mixtures the section
+was a heading, a button, and then "No cylinders recorded for this dive." underneath both — the line
+answering a question the button above it had already offered to resolve. In the new order the
+sentence describes the state and the button follows as the way out of it.
+
+**The button is left in normal flow, not wrapped to blockify it.** It is `inline-flex`
+(`ui/button.tsx`), so as an atomic inline in the section's `space-y-4` block it takes a baseline,
+and the neighbouring `EntryUnitLabelRow` sections above record what inline boxes cost in this
+codebase — a wrapper looked like the safe move. Measured in Chrome, bare and wrapped in `flex`, the
+container is 36px either way: an `h-9` inline-flex box is tall enough that the strut's descent fits
+inside it, so no leading escapes below. `space-y-4`'s `margin-top` applies either way, vertical
+margins being live on atomic inlines. The wrapper would have been an unexplained div carrying
+nothing.
+
+**What this cost elsewhere:** the alignment reason recorded for the pressure toggle named this
+button as the source of its row height, and had to be re-derived from the `<h3>` — see the
+correction under "The Gas Mixtures header toggle is deliberately not this component".

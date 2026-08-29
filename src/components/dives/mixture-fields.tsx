@@ -280,31 +280,20 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-medium">Gas Mixtures</h3>
-        <div className="flex items-center gap-2">
-          {/* One toggle for the section rather than one per box: the two pressure
-              fields repeat per tank card, so a four-cylinder dive would carry
-              eight identical controls with eight identical accessible names.
-              Gated on there being a cylinder, because the create form seeds no
-              mixtures and an ungated control would govern no visible field. The
-              stored override is untouched by the gate, so it comes back exactly
-              as the diver left it with the first "Add Mixture". */}
-          {fields.length > 0 && (
-            <EntryUnitToggle
-              dimension="pressure"
-              entryUnits={pressureUnits}
-              onToggle={() => toggleEntryUnits("pressure")}
-            />
-          )}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => append({ ...DEFAULT_MIXTURE })}
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Add Mixture
-          </Button>
-        </div>
+        {/* One toggle for the section rather than one per box: the two pressure
+            fields repeat per tank card, so a four-cylinder dive would carry
+            eight identical controls with eight identical accessible names.
+            Gated on there being a cylinder, because the create form seeds no
+            mixtures and an ungated control would govern no visible field. The
+            stored override is untouched by the gate, so it comes back exactly
+            as the diver left it with the first "Add Mixture". */}
+        {fields.length > 0 && (
+          <EntryUnitToggle
+            dimension="pressure"
+            entryUnits={pressureUnits}
+            onToggle={() => toggleEntryUnits("pressure")}
+          />
+        )}
       </div>
 
       {fields.map((field, index) => (
@@ -649,6 +638,20 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
           No cylinders recorded for this dive.
         </p>
       )}
+
+      {/* Under the tank cards rather than in the section header, so it sits where
+          the next tank will appear: the button and the card it adds are then in
+          reading order, and on a multi-cylinder dive the diver is already
+          scrolled to it after filling in the last one. */}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => append({ ...DEFAULT_MIXTURE })}
+      >
+        <Plus className="h-4 w-4 mr-2" />
+        Add Mixture
+      </Button>
 
       <MixtureSetWarning
         control={control as unknown as Control<MixtureFieldsValues>}
