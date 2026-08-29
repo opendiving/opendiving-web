@@ -328,21 +328,19 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
               control={control}
               name={`mixtures.${index}.volume` as Path<TFieldValues>}
               render={({ field }) => (
-                // Full width, so the fields under it keep their pairs on one row
-                // each: O₂ beside He, start beside end, ppO₂ beside role. Volume
-                // is full width because the combobox it holds wants the space,
-                // not because it is what was left over - it used to sit beside
-                // the name.
+                // Half width, paired with the ppO₂ limit beside it. Volume spent
+                // two earlier layouts at `md:col-span-2`, first because the field
+                // it used to sit beside (the cylinder's name) was removed and
+                // widening it was what kept every remaining pair on a row of its
+                // own, then because a full-width combobox was pleasant to type
+                // into. Eight boxes divide into four rows either way; what the
+                // span cost was the last row, where Usage sat alone.
                 //
-                // With eight boxes there are now two without a partner rather
-                // than one. Usage is the second: it follows Role in reading and
-                // tab order, which is what "beside Role" means for a field the
-                // diver reaches straight after saying what the cylinder was for,
-                // and it lands alone on the last row. Pairing the two instead
-                // would mean widening ppO₂ or moving it past Role, and neither
-                // is worth doing to a field this change has no business
-                // touching.
-                <FormItem className="md:col-span-2">
+                // Volume | ppO₂, O₂ | He, start | end, Role | Usage: four full
+                // rows, and each pair is two facts about the same thing - what
+                // the cylinder holds and what it was planned to, the mix, the
+                // gauge readings, what it was for and how it was carried.
+                <FormItem>
                   <FormLabel>Volume (L)</FormLabel>
                   <FormControl>
                     <VolumeCombobox
@@ -353,6 +351,66 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                   <FormMessage />
                 </FormItem>
               )}
+            />
+
+            <FormField
+              control={control}
+              name={`mixtures.${index}.po2_limit` as Path<TFieldValues>}
+              render={({ field }) => {
+                const choices = ppO2LimitChoices(field.value);
+
+                return (
+                  <FormItem>
+                    <FormLabel>ppO₂ limit (bar)</FormLabel>
+                    {/* A plain `<select>` for the same two reasons as `role`
+                        below: it needs "unset" as a real selectable option,
+                        which Radix reserves `""` for, and `""` has to reach
+                        react-hook-form as the live cleared value rather than
+                        `undefined`, which it re-displays the default over.
+
+                        A picker rather than the number box this started as
+                        because the field has an actual vocabulary. Every value
+                        it could usefully hold is one of seven, while the box
+                        accepted any two decimals in a 0.4-2.0 band - so the
+                        only things free entry bought were typos and a 422 on
+                        save. */}
+                    <FormControl>
+                      <select
+                        className={inputClassName}
+                        {...field}
+                        // From the offered list rather than from the raw value,
+                        // so the two can't disagree about formatting: `1.0` on
+                        // the form has to find the `"1.0"` option, and
+                        // `String(1.0)` is `"1"`.
+                        value={
+                          choices.find(
+                            (option) => Number(option) === field.value,
+                          ) ?? ""
+                        }
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          field.onChange(raw === "" ? "" : parseFloat(raw));
+                        }}
+                      >
+                        {/* The fallback is named rather than pre-selected, so a
+                            cylinder with no recorded limit still says what the
+                            MOD beneath it was worked out from. Selecting 1.4
+                            here would make it claim a limit the diver never
+                            chose - see `DEFAULT_MIXTURE`. */}
+                        <option value="">
+                          Not recorded ({PPO2_WORKING} default)
+                        </option>
+                        {choices.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
 
             <FormField
@@ -479,66 +537,6 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
 
             <FormField
               control={control}
-              name={`mixtures.${index}.po2_limit` as Path<TFieldValues>}
-              render={({ field }) => {
-                const choices = ppO2LimitChoices(field.value);
-
-                return (
-                  <FormItem>
-                    <FormLabel>ppO₂ limit (bar)</FormLabel>
-                    {/* A plain `<select>` for the same two reasons as `role`
-                        below: it needs "unset" as a real selectable option,
-                        which Radix reserves `""` for, and `""` has to reach
-                        react-hook-form as the live cleared value rather than
-                        `undefined`, which it re-displays the default over.
-
-                        A picker rather than the number box this started as
-                        because the field has an actual vocabulary. Every value
-                        it could usefully hold is one of seven, while the box
-                        accepted any two decimals in a 0.4-2.0 band - so the
-                        only things free entry bought were typos and a 422 on
-                        save. */}
-                    <FormControl>
-                      <select
-                        className={inputClassName}
-                        {...field}
-                        // From the offered list rather than from the raw value,
-                        // so the two can't disagree about formatting: `1.0` on
-                        // the form has to find the `"1.0"` option, and
-                        // `String(1.0)` is `"1"`.
-                        value={
-                          choices.find(
-                            (option) => Number(option) === field.value,
-                          ) ?? ""
-                        }
-                        onChange={(e) => {
-                          const raw = e.target.value;
-                          field.onChange(raw === "" ? "" : parseFloat(raw));
-                        }}
-                      >
-                        {/* The fallback is named rather than pre-selected, so a
-                            cylinder with no recorded limit still says what the
-                            MOD beneath it was worked out from. Selecting 1.4
-                            here would make it claim a limit the diver never
-                            chose - see `DEFAULT_MIXTURE`. */}
-                        <option value="">
-                          Not recorded ({PPO2_WORKING} default)
-                        </option>
-                        {choices.map((option) => (
-                          <option key={option} value={option}>
-                            {option}
-                          </option>
-                        ))}
-                      </select>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
-            />
-
-            <FormField
-              control={control}
               name={`mixtures.${index}.role` as Path<TFieldValues>}
               render={({ field }) => (
                 <FormItem>
@@ -554,9 +552,9 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                   <FormControl>
                     <select
                       // `Input`'s own classes rather than a copy of them: this
-                      // sits in the same grid row as the ppO₂ box, and the copy
-                      // it started as had drifted to a shorter, differently-ringed
-                      // control beside it.
+                      // sits in a grid row beside other boxes, and the copy it
+                      // started as had drifted to a shorter, differently-ringed
+                      // control beside them.
                       className={inputClassName}
                       {...field}
                       value={field.value ?? ""}
