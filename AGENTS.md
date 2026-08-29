@@ -27,7 +27,7 @@ instructions live in AGENTS.md" in `DECISIONS.md`.
   API is a one-variable change — and an API host hardcoded anywhere else will be blocked by CSP
   rather than merely misconfigured.
 - **Everything else configurable is read at runtime**, not through `NEXT_PUBLIC_*`. `SITE_URL`,
-  `CONTACT_EMAIL`, `GOOGLE_CLIENT_ID` and the three `MAP_TILE_*` variables are read on the server
+  `CONTACT_EMAIL`, `GOOGLE_CLIENT_ID` and the four `MAP_TILE_*` variables are read on the server
   by `lib/runtime-config.ts` and reach client components through
   `contexts/ConfigContext.tsx`'s `useConfig()`. `WEB_HSTS` and `WEB_NOINDEX` come from the same
   module but stay server-side — `src/proxy.ts` and `app/robots.ts` are their only consumers, so

@@ -160,6 +160,7 @@ export function readRuntimeConfig(
       light: configured(env, "MAP_TILE_URL"),
       dark: configured(env, "MAP_TILE_URL_DARK"),
       attribution: configured(env, "MAP_TILE_ATTRIBUTION"),
+      apiKey: configured(env, "MAP_TILE_API_KEY"),
     }),
     // Read directly rather than through `configured`: these two are new names with no
     // `NEXT_PUBLIC_` past to fall back to, and offering one would invite an operator to

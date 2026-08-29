@@ -8,6 +8,8 @@ import {
   nearestWrappedX,
   project,
   TILE_SIZE,
+  needsDarkFilter,
+  tileSrcSet,
   tileUrl,
   visibleTiles,
 } from "@/lib/map-tiles";
@@ -152,6 +154,10 @@ export function LocationsMap({
   // at another tile server without a rebuild (`lib/runtime-config.ts`).
   const { tiles: source } = useConfig();
   const template = resolvedTheme === "dark" ? source.dark : source.light;
+  // OpenStreetMap has no dark tiles, so the dark theme's are made here. Scoped
+  // to the tile layer: inverting the pins with it would turn the coral markers
+  // teal, and they are the one colour held constant across both themes.
+  const darkFilter = resolvedTheme === "dark" && needsDarkFilter(source);
 
   const [size, setSize] = useState({ width: 0, height: 0 });
   const observerRef = useRef<ResizeObserver | null>(null);
@@ -244,24 +250,33 @@ export function LocationsMap({
         className="absolute inset-0"
       >
         <div aria-hidden className="pointer-events-none absolute inset-0">
-          {tiles.map((tile) => (
-            /* Plain `<img>`, not `next/image`: third-party tiles addressed by
+          <div
+            data-testid="tile-layer"
+            className={cn(
+              "absolute inset-0",
+              darkFilter && "invert hue-rotate-180",
+            )}
+          >
+            {tiles.map((tile) => (
+              /* Plain `<img>`, not `next/image`: third-party tiles addressed by
                z/x/y, so there is nothing for the optimizer to do but proxy
                them. */
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              key={tile.key}
-              src={tileUrl(template, tile.x, tile.y, tile.zoom)}
-              alt=""
-              width={TILE_SIZE}
-              height={TILE_SIZE}
-              draggable={false}
-              className="absolute left-0 top-0 max-w-none"
-              style={{
-                transform: `translate3d(${tile.left}px, ${tile.top}px, 0)`,
-              }}
-            />
-          ))}
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={tile.key}
+                src={tileUrl(template, tile.x, tile.y, tile.zoom)}
+                srcSet={tileSrcSet(template, tile.x, tile.y, tile.zoom)}
+                alt=""
+                width={TILE_SIZE}
+                height={TILE_SIZE}
+                draggable={false}
+                className="absolute left-0 top-0 max-w-none"
+                style={{
+                  transform: `translate3d(${tile.left}px, ${tile.top}px, 0)`,
+                }}
+              />
+            ))}
+          </div>
 
           {markers.map((marker, index) => (
             <div
