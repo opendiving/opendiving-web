@@ -4859,6 +4859,20 @@ Volume takes `md:col-span-2` — it is the field with no partner to be split fro
 life beside the name — which restores every remaining pair to a row of its own. Measured at 1280 px:
 Volume 556 px full width, then O₂ | He, Start | End, ppO₂ | Role at 270 px each.
 
+**And then a `usage` field arrived and the span stopped paying for itself.** Eight boxes again, one
+of them spanning two columns, so the last row held Usage alone — the same half-empty row the span
+was introduced to remove, just at the bottom instead of the middle. The span is gone and ppO₂ moved
+up beside Volume: `Volume | ppO₂`, `O₂ | He`, `Start | End`, `Role | Usage`, four full rows with
+nothing widened. Worth stating because the paragraph above reads as an argument for the span in the
+abstract, and it never was one — it was an argument for pairing, and with an even field count
+pairing no longer needs it. The combobox is narrower for it, which is the one thing lost; it is a
+one-line input over a list of presets, not a field that needs 556 px.
+
+The pairs are also readable as pairs rather than as whatever fell adjacent: what the cylinder holds
+and what it was planned to, the mix, the two gauge readings, what it was for and how it was carried.
+Tab order is the same reading order, and the two `<select>`s end up adjacent at the bottom rather
+than one of them being sandwiched between a picker and a number box.
+
 ## The export filename is the server's, with a local mirror behind it
 
 The settings export card was specified in as many words: "Filename comes from the server's
