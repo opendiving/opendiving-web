@@ -13,6 +13,7 @@
  * See `DECISIONS.md`, "Web config is read at runtime, and the browser is handed it".
  */
 
+import { resolveBasemap, type Basemap } from "@/lib/basemap";
 import { tileSource, type TileSource } from "@/lib/map-tiles";
 
 /**
@@ -32,7 +33,26 @@ export interface PublicConfig {
    * `GOOGLE_CLIENT_ID`.
    */
   googleClientId?: string;
-  /** The map's tile templates and their attribution, already resolved. */
+  /**
+   * The basemap the MapLibre surfaces draw, already resolved: a style URL pair
+   * or a raster template pair, plus the credit rendered over whichever is
+   * active.
+   */
+  basemap: Basemap;
+  /**
+   * The raster tile templates the hand-rolled picker still draws.
+   *
+   * Temporary, and it overlaps `basemap` on purpose. `components/sites/
+   * map-picker.tsx` has not moved to MapLibre yet, and it needs a raster pair in
+   * every configuration - including the default one, where the basemap above is
+   * a vector style and offers it none. Leaving this field out would blank the
+   * picker with nothing failing, since no test asserts a tile URL reaches it.
+   * It goes when that component does, along with `lib/map-tiles.ts`.
+   *
+   * The two can disagree, and knowingly: an operator who sets `MAP_STYLE_URL`
+   * gets their style on the read-only maps and the keyless OpenStreetMap default
+   * under the picker until then. See DECISIONS.md.
+   */
   tiles: TileSource;
 }
 
@@ -156,10 +176,25 @@ export function readRuntimeConfig(
     siteUrl: resolveSiteUrl(configured(env, "SITE_URL")),
     contactEmail: configured(env, "CONTACT_EMAIL"),
     googleClientId: configured(env, "GOOGLE_CLIENT_ID"),
+    // `MAP_ATTRIBUTION` belongs to neither mode, which is why it lost the
+    // `MAP_TILE_` prefix: it is one credit, applying to whichever basemap is
+    // active, and an operator who configures a vector style must be able to set
+    // it. Left inside the raster group - where it used to be - a style could be
+    // configured with no way to credit it, and the app would render the bundled
+    // pair's OpenMapTiles credit over somebody else's tiles: false, and a
+    // licence breach for any style that is not OpenFreeMap's.
+    basemap: resolveBasemap({
+      styleUrl: configured(env, "MAP_STYLE_URL"),
+      styleUrlDark: configured(env, "MAP_STYLE_URL_DARK"),
+      tileUrl: configured(env, "MAP_TILE_URL"),
+      tileUrlDark: configured(env, "MAP_TILE_URL_DARK"),
+      attribution: configured(env, "MAP_ATTRIBUTION"),
+      apiKey: configured(env, "MAP_TILE_API_KEY"),
+    }),
     tiles: tileSource({
       light: configured(env, "MAP_TILE_URL"),
       dark: configured(env, "MAP_TILE_URL_DARK"),
-      attribution: configured(env, "MAP_TILE_ATTRIBUTION"),
+      attribution: configured(env, "MAP_ATTRIBUTION"),
       apiKey: configured(env, "MAP_TILE_API_KEY"),
     }),
     // Read directly rather than through `configured`: these two are new names with no
@@ -196,6 +231,7 @@ export function publicConfig(
 ): PublicConfig {
   return {
     googleClientId: config.googleClientId,
+    basemap: config.basemap,
     tiles: config.tiles,
   };
 }

@@ -7,6 +7,11 @@
 
 # testing
 /coverage
+# Vitest browser mode writes a screenshot beside the test for every failure, and
+# parks larger attachments here. Both are diagnostics for the run that produced
+# them, so they are worth looking at and never worth committing.
+__screenshots__/
+/.vitest-attachments/
 
 # next.js
 /.next/
@@ -38,6 +43,13 @@
 
 # Playwright MCP server scratch output (accessibility snapshots, console logs).
 .playwright-mcp/
+
+# MapLibre's worker, copied out of node_modules by scripts/copy-maplibre-worker.mjs
+# so the renderer boots it from this origin rather than from a `blob:` URL. Build
+# output that happens to live under `public/`, not repository content - the copy
+# has to match the installed version, and a committed one would go stale the next
+# time the dependency moves. `predev`/`prebuild`/`pretest` put it back.
+/public/maplibre/
 
 # debug
 npm-debug.log*

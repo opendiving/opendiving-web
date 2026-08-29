@@ -164,6 +164,87 @@ describe("Content-Security-Policy", () => {
     expect(csp).not.toContain("gstatic");
   });
 
+  // Reading one directive out of the header, so an assertion about `connect-src`
+  // cannot be satisfied by a host that reached `img-src` instead.
+  const directive = async (
+    name: string,
+    env: Record<string, string> = {},
+  ): Promise<string> => {
+    const proxy = await loadProxy(env);
+    const csp =
+      proxy(request("https://dives.example.com/sites")).headers.get(
+        "Content-Security-Policy",
+      ) ?? "";
+    return (
+      csp
+        .split("; ")
+        .find((entry) => entry.startsWith(`${name} `) || entry === name) ?? ""
+    );
+  };
+
+  // **Load-bearing rather than declarative.** This policy emits no `child-src`,
+  // so without this line a worker falls back to `script-src`, whose
+  // `'strict-dynamic'` short-circuits the source list for anything not
+  // parser-inserted - and `new Worker(url)` never is. The policy would then
+  // permit a `blob:` worker with no violation at all, which is the exact hazard
+  // MapLibre was kept out of this app over. `worker-src`'s own check has no such
+  // carve-out.
+  it("governs workers itself rather than letting them fall back", async () => {
+    expect(await directive("worker-src")).toBe("worker-src 'self'");
+  });
+
+  it.each([
+    ["worker-src", {}],
+    ["worker-src", { MAP_TILE_URL: "https://tiles.example/{z}/{x}/{y}.png" }],
+  ])("never admits a blob worker (%s, %j)", async (name, env) => {
+    expect(await directive(name, env)).not.toContain("blob:");
+  });
+
+  // The basemap is a `connect-src` source in *both* modes: MapLibre's image
+  // decoder takes an `ArrayBuffer` and goes `Blob` -> `createImageBitmap`, so
+  // even raster tile bytes arrive by `fetch`.
+  it("names the bundled basemap's provider by default", async () => {
+    expect(await directive("connect-src")).toBe(
+      "connect-src 'self' https://tiles.openfreemap.org",
+    );
+  });
+
+  it("names a configured style's own origin", async () => {
+    expect(
+      await directive("connect-src", {
+        MAP_STYLE_URL: "https://styles.example/day.json",
+        MAP_ATTRIBUTION: "© Someone",
+      }),
+    ).toBe("connect-src 'self' https://styles.example");
+  });
+
+  it("names a raster escape hatch's host", async () => {
+    expect(
+      await directive("connect-src", {
+        MAP_TILE_URL: "https://tiles.example/{z}/{x}/{y}.png",
+      }),
+    ).toBe("connect-src 'self' https://tiles.example");
+  });
+
+  // **`img-src` keeps the tile origins**, and this is the assertion the plan for
+  // this change went looking for and did not find. The site picker still draws
+  // raster `<img>` tiles until it moves to MapLibre, so reading "the basemap host
+  // is a `connect-src` source" as a *move* rather than an *add* would leave the
+  // picker blank with nothing failing anywhere.
+  it("keeps the raster tile host in img-src while the picker still draws it", async () => {
+    expect(
+      await directive("img-src", {
+        MAP_TILE_URL: "https://tiles.example/{z}/{x}/{y}.png",
+      }),
+    ).toContain("https://tiles.example");
+  });
+
+  it("keeps the default tile host in img-src too", async () => {
+    expect(await directive("img-src")).toContain(
+      "https://tile.openstreetmap.org",
+    );
+  });
+
   // The empty-source filtering that `cspList` does is easy to lose when a
   // directive stops taking a conditional source, and a doubled space reads as a
   // typo forever after.

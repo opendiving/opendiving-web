@@ -992,7 +992,12 @@ export default function PrivacyPage() {
               There is no session storage, no IndexedDB database and no service
               worker. There is no analytics or telemetry of any kind &mdash; not
               disabled, not configurable, simply absent, and no such dependency
-              is in the build. No fonts are fetched from anywhere at run time.
+              is in the build. The fonts this site is written in are served from
+              this instance and fetched from nowhere else. The one exception is
+              the lettering on the map itself: its labels are drawn from glyph
+              ranges requested, as they are needed, from the same basemap
+              provider that serves its tiles &mdash; so it is the party already
+              described in section 4.4, and not a new one.
             </p>
             <p className="text-foreground mb-4">
               This software sets no third-party cookies of its own. One outside

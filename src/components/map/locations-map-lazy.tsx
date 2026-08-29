@@ -5,10 +5,10 @@ import dynamic from "next/dynamic";
 /**
  * The read-only map, fetched when there is something to draw.
  *
- * `ssr: false` because the map measures its own element and reads the resolved
- * theme - neither exists on the server - and lazily because the tile grid and
- * the projection maths behind it have no business in the bundle of a page that
- * never shows a place.
+ * `ssr: false` because the map needs a WebGL2 context, a real element to attach
+ * to and the resolved theme, none of which exist on the server - and lazily
+ * because MapLibre is around 250 KB gzipped and has no business in the bundle
+ * of a page that never shows a place.
  *
  * Declared here rather than at each call site so the placeholder cannot drift
  * from the map's own height: a skeleton of a different size makes the page jump

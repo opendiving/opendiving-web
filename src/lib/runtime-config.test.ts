@@ -5,6 +5,12 @@ import {
   publicConfig,
   readRuntimeConfig,
 } from "./runtime-config";
+import {
+  DEFAULT_BASEMAP_ATTRIBUTION,
+  DEFAULT_STYLE_URL,
+  DEFAULT_STYLE_URL_DARK,
+  MISSING_ATTRIBUTION_MESSAGE,
+} from "./basemap";
 import { DEFAULT_TILE_ATTRIBUTION, DEFAULT_TILE_URL } from "./map-tiles";
 
 describe("readRuntimeConfig", () => {
@@ -21,6 +27,13 @@ describe("readRuntimeConfig", () => {
       googleClientId: undefined,
       hstsEnabled: true,
       noindex: false,
+      basemap: {
+        mode: "vector",
+        vendored: true,
+        light: DEFAULT_STYLE_URL,
+        dark: DEFAULT_STYLE_URL_DARK,
+        attribution: DEFAULT_BASEMAP_ATTRIBUTION,
+      },
       tiles: {
         light: DEFAULT_TILE_URL,
         dark: DEFAULT_TILE_URL,
@@ -35,7 +48,7 @@ describe("readRuntimeConfig", () => {
       CONTACT_EMAIL: "hello@example.com",
       GOOGLE_CLIENT_ID: "client-id.apps.googleusercontent.com",
       MAP_TILE_URL: "https://tiles.example/{z}/{x}/{y}.png",
-      MAP_TILE_ATTRIBUTION: "© Someone",
+      MAP_ATTRIBUTION: "© Someone",
     });
 
     expect(config.siteUrl).toBe("https://dives.example.com");
@@ -178,6 +191,55 @@ describe("readRuntimeConfig", () => {
   });
 });
 
+// The refusal has to fire on exactly one of the three basemap states. Trip the
+// default path with it and a stock configuration takes the whole app down at the
+// first request, since `runtimeConfig()` is what every page and the middleware
+// read - which is the shape that once killed the API repo's test collection and
+// its compose stack together.
+describe("the basemap's three states", () => {
+  it("refuses to serve a style configured with no credit", () => {
+    expect(() =>
+      readRuntimeConfig({ MAP_STYLE_URL: "https://styles.example/day.json" }),
+    ).toThrow(MISSING_ATTRIBUTION_MESSAGE);
+  });
+
+  it("serves a style configured with one", () => {
+    const config = readRuntimeConfig({
+      MAP_STYLE_URL: "https://styles.example/day.json",
+      MAP_ATTRIBUTION: "© Someone",
+    });
+    expect(config.basemap).toMatchObject({
+      mode: "vector",
+      vendored: false,
+      light: "https://styles.example/day.json",
+      attribution: "© Someone",
+    });
+  });
+
+  it("serves the raster escape hatch silently", () => {
+    const config = readRuntimeConfig({
+      MAP_TILE_URL: "https://tiles.example/{z}/{x}/{y}.png",
+    });
+    expect(config.basemap.mode).toBe("raster");
+  });
+
+  it("serves the bundled pair silently", () => {
+    expect(readRuntimeConfig({}).basemap).toMatchObject({ vendored: true });
+  });
+
+  // One credit, applying to whichever basemap is active - which is why it lost
+  // the `MAP_TILE_` prefix. The picker still draws raster tiles until it moves
+  // to MapLibre, and it reads the same variable.
+  it("reads one attribution for both renderers", () => {
+    const config = readRuntimeConfig({
+      MAP_TILE_URL: "https://tiles.example/{z}/{x}/{y}.png",
+      MAP_ATTRIBUTION: "© Someone",
+    });
+    expect(config.basemap.attribution).toBe("© Someone");
+    expect(config.tiles.attribution).toBe("© Someone");
+  });
+});
+
 describe("publicConfig", () => {
   // Not a filter over the whole config: a server-only value added later should have
   // to be listed here before it reaches anyone's browser.
@@ -192,6 +254,13 @@ describe("publicConfig", () => {
 
     expect(config).toEqual({
       googleClientId: "client-id",
+      basemap: {
+        mode: "vector",
+        vendored: true,
+        light: DEFAULT_STYLE_URL,
+        dark: DEFAULT_STYLE_URL_DARK,
+        attribution: DEFAULT_BASEMAP_ATTRIBUTION,
+      },
       tiles: {
         light: DEFAULT_TILE_URL,
         dark: DEFAULT_TILE_URL,

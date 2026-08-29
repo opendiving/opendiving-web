@@ -23,12 +23,14 @@ instructions live in AGENTS.md" in `DECISIONS.md`.
   directly instead; it is the full base, `/api/v1` prefix included, not just the origin, and
   without the prefix every request 404s. `.env` sets it to `http://localhost:8000/api/v1`, so local
   dev is the split-origin path. Despite the name, `src/proxy.ts` is Next middleware that builds a
-  nonce-based CSP, not a proxy; it derives `connect-src` from the same variable, so a split-origin
-  API is a one-variable change — and an API host hardcoded anywhere else will be blocked by CSP
-  rather than merely misconfigured.
+  nonce-based CSP, not a proxy; `connect-src` is derived from this variable **and** from the
+  basemap configuration (`lib/basemap.ts`), so a split-origin API is a one-variable change — and an
+  API or basemap host hardcoded anywhere else will be blocked by CSP rather than merely
+  misconfigured.
 - **Everything else configurable is read at runtime**, not through `NEXT_PUBLIC_*`. `SITE_URL`,
-  `CONTACT_EMAIL`, `GOOGLE_CLIENT_ID` and the four `MAP_TILE_*` variables are read on the server
-  by `lib/runtime-config.ts` and reach client components through
+  `CONTACT_EMAIL`, `GOOGLE_CLIENT_ID` and the basemap variables — `MAP_STYLE_URL`,
+  `MAP_STYLE_URL_DARK`, `MAP_ATTRIBUTION` and the `MAP_TILE_*` raster escape hatch — are read on
+  the server by `lib/runtime-config.ts` and reach client components through
   `contexts/ConfigContext.tsx`'s `useConfig()`. `WEB_HSTS` and `WEB_NOINDEX` come from the same
   module but stay server-side — `src/proxy.ts` and `app/robots.ts` are their only consumers, so
   they sit on `RuntimeConfig` and not on `PublicConfig`. Add a new setting there, never as a new

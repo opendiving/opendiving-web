@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ConfigProvider } from "@/contexts/ConfigContext";
+import { resolveBasemap } from "@/lib/basemap";
 import { tileSource } from "@/lib/map-tiles";
 import { memoryStorage, useStorage } from "@/test/memory-storage";
 import { GoogleAuthButton } from "./google-auth-button";
@@ -26,7 +27,13 @@ function renderButton({
   const onError = vi.fn();
   const user = userEvent.setup();
   render(
-    <ConfigProvider config={{ tiles: tileSource(), googleClientId: clientId }}>
+    <ConfigProvider
+      config={{
+        basemap: resolveBasemap(),
+        tiles: tileSource(),
+        googleClientId: clientId,
+      }}
+    >
       <GoogleAuthButton onError={onError} redirectTo={redirectTo} />
     </ConfigProvider>,
   );

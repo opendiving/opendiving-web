@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, type ReactNode } from "react";
+import { resolveBasemap } from "@/lib/basemap";
 import { tileSource } from "@/lib/map-tiles";
 import type { PublicConfig } from "@/lib/runtime-config";
 
@@ -14,6 +15,7 @@ import type { PublicConfig } from "@/lib/runtime-config";
  * shows, which is this.
  */
 const UNCONFIGURED: PublicConfig = {
+  basemap: resolveBasemap(),
   tiles: tileSource(),
 };
 
