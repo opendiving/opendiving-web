@@ -8,16 +8,25 @@ import { AvatarCard } from "./avatar-card";
 // that reaches it, and the two states a diver notices when it breaks are a picture
 // that saved but never appeared (no `refreshUser`) and a failure that says nothing.
 
+// The whole value is hoisted and returned by identity, `user` included. Nothing this
+// card renders depends on that today - the digest reaches `UserAvatar` as a string,
+// and the card's one effect is keyed on an object URL - but the real `AuthContext`
+// holds `user` in state and so keeps one identity across renders, and a mock that
+// rebuilds it per render is what put the new-dive page's test in an unbounded loop
+// with its own `form.reset`. Varying a field means writing to `auth.user`, which
+// leaves the identity alone. See "The new-dive render test was in a loop with
+// itself" in DECISIONS.md.
 const auth = vi.hoisted(() => ({
-  avatarSha: null as string | null,
+  user: {
+    uuid: "user-1",
+    name: "Jane Doe",
+    avatar_sha256: null as string | null,
+  },
   refreshUser: vi.fn(),
 }));
 
 vi.mock("@/contexts/AuthContext", () => ({
-  useAuth: () => ({
-    user: { uuid: "user-1", name: "Jane Doe", avatar_sha256: auth.avatarSha },
-    refreshUser: auth.refreshUser,
-  }),
+  useAuth: () => auth,
 }));
 
 vi.mock("@/lib/api/auth", async (importOriginal) => ({
@@ -97,7 +106,7 @@ const originalRevoke = URL.revokeObjectURL;
 const croppedBlob = new Blob(["png"], { type: "image/png" });
 
 beforeEach(() => {
-  auth.avatarSha = null;
+  auth.user.avatar_sha256 = null;
   auth.refreshUser.mockReset().mockResolvedValue(undefined);
   getAvatarBlob.mockReset().mockResolvedValue(new Blob(["png"]));
   uploadAvatar.mockReset().mockResolvedValue({ sha256: "newsha" });
@@ -235,7 +244,7 @@ describe("AvatarCard", () => {
   });
 
   it("removes an existing picture with no confirmation step", async () => {
-    auth.avatarSha = "abc123";
+    auth.user.avatar_sha256 = "abc123";
     render(<AvatarCard />);
 
     await userEvent.click(screen.getByRole("button", { name: /Remove/ }));
@@ -248,7 +257,7 @@ describe("AvatarCard", () => {
   });
 
   it("says so when the remove fails", async () => {
-    auth.avatarSha = "abc123";
+    auth.user.avatar_sha256 = "abc123";
     removeAvatar.mockRejectedValue(new Error("nope"));
     render(<AvatarCard />);
 
