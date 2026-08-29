@@ -64,6 +64,25 @@ export function certificationAgencyLabel(
 }
 
 /**
+ * Names one certification for a screen reader: the agency and the level, e.g.
+ * "PADI Advanced Nitrox". Certifications carry no unique-name constraint - a
+ * diver can hold the same level from two agencies, and often does - so the name
+ * alone would leave two rows' controls indistinguishable. Falls back to the bare
+ * name when the agency is missing.
+ */
+export function certificationLabel(certification: {
+  name: string;
+  agency?: string | null;
+  agency_other?: string | null;
+}): string {
+  const agency = certificationAgencyLabel(
+    certification.agency,
+    certification.agency_other,
+  );
+  return agency ? `${agency} ${certification.name}` : certification.name;
+}
+
+/**
  * Which face of the physical card a stored file shows.
  */
 export const CERTIFICATION_SIDES = ["front", "back"] as const;
