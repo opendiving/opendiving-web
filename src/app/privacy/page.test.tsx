@@ -33,14 +33,18 @@ function renderPage({ google }: { google: boolean }) {
   render(<PrivacyPage />);
 }
 
-// The `<ul>` that follows the §10.2 heading, which is the disclosure list itself.
-function storageEntries(): string[] {
-  const heading = screen.getByText(
-    /10\.2 Preferences remembered on this device/,
-  );
-  const list = heading.nextElementSibling?.nextElementSibling;
+// Every list on this page that a section's own prose counts or closes over sits
+// two elements after its heading: the heading, the sentence introducing the list,
+// then the list. §10.2's is the disclosure list; the rest are the ones below.
+function listAfterHeading(heading: RegExp): string[] {
+  const found = screen.getByText(heading);
+  const list = found.nextElementSibling?.nextElementSibling;
   expect(list?.tagName).toBe("UL");
   return [...list!.querySelectorAll("li")].map((li) => li.textContent ?? "");
+}
+
+function storageEntries(): string[] {
+  return listAfterHeading(/10\.2 Preferences remembered on this device/);
 }
 
 const NUMBER_WORDS = [
@@ -129,6 +133,106 @@ describe.each([
       screen.getByRole("checkbox", {
         name: /remember display preferences on this device/i,
       }),
+    ).toBeInTheDocument();
+  });
+});
+
+// The counts and closure claims outside §10, which until server-side sessions
+// arrived were pinned by nothing at all. Each of the three is a sentence that
+// stops being true when a list under it grows, and each had already been written
+// to be exhaustive - §2.2 counts what is recorded, §3 closes with "And nothing
+// else.", §6.2 splits six rights into the ones that are buttons and the ones that
+// are requests. Adding the session and audit records moved all three at once,
+// which is what these pins exist to catch next time.
+//
+// Parameterised over both configurations like §10's, not because any of these
+// sections has a Google-conditional half today, but so that one growing one is
+// covered by construction rather than by somebody remembering.
+describe.each([
+  ["with Google sign-in configured", true],
+  ["without Google sign-in", false],
+])("the page's other closed lists %s", (_label, google) => {
+  // §2.2 opens by counting itself, twice in one sentence: "Five things are
+  // recorded ... and all five are ordinary machinery".
+  it("§2.2 counts the things it says are recorded automatically", () => {
+    renderPage({ google });
+
+    const listed = listAfterHeading(
+      /2\.2 Automatically Collected Information/,
+    ).length;
+    expect(
+      screen.getByText(
+        new RegExp(
+          `${NUMBER_WORDS[listed]} things are recorded without you asking for them, and all ${NUMBER_WORDS[listed]} are`,
+          "i",
+        ),
+      ),
+    ).toBeInTheDocument();
+  });
+
+  // §3's closure has no number in it, so what can be pinned is the thing that
+  // makes it false: something section 2.2 records with no use listed here. The
+  // two records added alongside these pins are the case in point - both are
+  // collected, so both owe §3 a purpose before "And nothing else." can stand.
+  it("§3 closes over a list that names why the security records are kept", () => {
+    renderPage({ google });
+
+    const uses = listAfterHeading(/3\. How We Use Your Information/).join(" ");
+    expect(uses).toMatch(/signed-in devices/i);
+    expect(uses).toMatch(/account security events/i);
+    expect(screen.getByText(/And nothing else\./)).toBeInTheDocument();
+  });
+
+  // §6.1 is the list of what Settings can do without asking anyone, and the
+  // sessions card is on it. It carries no count, so the pin is the entry.
+  it("§6.1 lists signing a device out among what Settings can do", () => {
+    renderPage({ google });
+
+    expect(listAfterHeading(/6\.1 Account Control/).join(" ")).toMatch(
+      /sign any of them out/i,
+    );
+  });
+
+  // §6.2 splits its rights into two groups by ordinal - "The first four",
+  // "The last two" - and the two have to add up to the list. The sentence also
+  // now carves out what the buttons do *not* reach, which is the half that made
+  // "access ... and portability are all buttons in Settings" untrue.
+  it("§6.2 splits its rights into groups that add up", () => {
+    renderPage({ google });
+
+    const rights = listAfterHeading(/6\.2 Data Rights/).length;
+    const split = screen.getByText(
+      /The first \w+ need no request/,
+    ).textContent!;
+
+    const first = NUMBER_WORDS.indexOf(
+      /The first (\w+) need no request/.exec(split)![1].toLowerCase(),
+    );
+    const last = NUMBER_WORDS.indexOf(
+      /The last (\w+),/.exec(split)![1].toLowerCase(),
+    );
+
+    expect(first).toBeGreaterThan(0);
+    expect(last).toBeGreaterThan(0);
+    expect(first + last).toBe(rights);
+    // And the carve-out itself, which is what stops the first group being read
+    // as covering everything this copy holds about you.
+    expect(split).toMatch(/is not part of the export/i);
+    expect(split).toMatch(/has to be asked for/i);
+  });
+
+  // §7's two retention periods are facts about the API's own sweep, and the page
+  // is the only place a diver can read them. Both, and the asymmetry between
+  // them, have to survive an edit to either paragraph.
+  it("§7 states both retention periods and where the erasure stops", () => {
+    renderPage({ google });
+
+    expect(screen.getByText(/after 90 days/i)).toBeInTheDocument();
+    expect(screen.getByText(/after 7 days/i)).toBeInTheDocument();
+    // The honest partial claim: an address the account moved off is not reached
+    // by the deletion and is bounded by the sweep alone.
+    expect(
+      screen.getByText(/an address you later moved off are not named/i),
     ).toBeInTheDocument();
   });
 });

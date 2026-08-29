@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   PASSKEY_NAME_MAX_LENGTH,
+  deviceNameForUserAgent,
   passkeyNameForUserAgent,
 } from "./passkey-name";
 
@@ -101,4 +102,37 @@ describe("passkeyNameForUserAgent", () => {
       expect(name.length).toBeLessThanOrEqual(PASSKEY_NAME_MAX_LENGTH);
     }
   });
+});
+
+describe("deviceNameForUserAgent", () => {
+  // The reason both readers share one function: a session row and a passkey row
+  // on the same settings page must never call the same browser two different
+  // things. Everything a UA string is actually recognised by is the same
+  // reading, and the fallback is the only difference there is.
+  it("reads a recognised string exactly as the passkey label does", () => {
+    for (const userAgent of Object.values(USER_AGENTS)) {
+      expect(deviceNameForUserAgent(userAgent)).toBe(
+        passkeyNameForUserAgent(userAgent),
+      );
+    }
+  });
+
+  // Without this the generalization could silently have done nothing: every
+  // other case in this file passes whether or not the fallback was ever
+  // parameterized, because every other case is recognised by the tables.
+  //
+  // Both inputs are the same class of unreadable string, and the API produces
+  // both: `curl/8.7.1` is a client that sent a header the tables know nothing
+  // about, and the empty string is what `user_agent` holds where the client sent
+  // no header at all.
+  it.each([["curl/8.7.1"], [""]])(
+    "falls back to a device-shaped label rather than to a passkey's, for %j",
+    (userAgent) => {
+      expect(deviceNameForUserAgent(userAgent)).toBe("Unknown device");
+      expect(deviceNameForUserAgent(userAgent)).not.toBe("Passkey");
+      // And the passkey side is unmoved: the ceremony still files an
+      // unrecognised browser's credential under the word for what it is.
+      expect(passkeyNameForUserAgent(userAgent)).toBe("Passkey");
+    },
+  );
 });

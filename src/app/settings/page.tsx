@@ -21,6 +21,7 @@ import { DeviceMemoryCard } from "@/components/settings/device-memory-card";
 import { EmailChangeCard } from "@/components/settings/email-change-card";
 import { NotificationsCard } from "@/components/settings/notifications-card";
 import { PasskeysCard } from "@/components/settings/passkeys-card";
+import { SessionsCard } from "@/components/settings/sessions-card";
 import { UnitsCard } from "@/components/settings/units-card";
 import { User, Save } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -192,6 +193,8 @@ export default function SettingsPage() {
         <UnitsCard />
 
         <PasskeysCard />
+
+        <SessionsCard />
 
         <DeviceMemoryCard />
       </div>
