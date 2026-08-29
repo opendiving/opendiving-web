@@ -134,6 +134,36 @@ describe("MixtureFields with no cylinders", () => {
   });
 });
 
+// The add button sits under the tank cards rather than in the section header, so the
+// control and the card it appends are adjacent and in reading order. DOM order is the
+// half of that jsdom can actually check - the layout half is measured in a browser and
+// recorded in DECISIONS.md - and it is the half that a later edit to this component
+// would silently undo.
+describe("MixtureFields add button placement", () => {
+  it("follows the last tank rather than preceding the first", () => {
+    render(<Harness mixtures={[EAN54, EAN54]} maxDepth={30} />);
+
+    const add = screen.getByRole("button", { name: /add mixture/i });
+    const lastRemove = screen.getByRole("button", { name: /remove tank 2/i });
+
+    expect(
+      lastRemove.compareDocumentPosition(add) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("follows the empty-state line when there are no tanks", () => {
+    render(<Harness mixtures={[]} maxDepth={30} />);
+
+    const add = screen.getByRole("button", { name: /add mixture/i });
+    const empty = screen.getByText(/no cylinders recorded for this dive/i);
+
+    expect(
+      empty.compareDocumentPosition(add) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+});
+
 // The options one `<select>` offers, in the order it offers them.
 function optionsOf(select: HTMLElement): string[] {
   return [...select.querySelectorAll("option")].map((option) => option.value);
