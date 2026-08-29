@@ -10245,6 +10245,42 @@ page's controls is the point, not merely a name that exists. The dive rows key o
 `dive.dive_number` rather than the date, because the number is what the row leads with and what a
 diver would say out loud.
 
+### The gear detail page's service card, where the row is not the unit
+
+`GearServiceCard` on `/gear/[id]` had the same six repeated names - `Log service`, `Pause`/`Resume`,
+`Edit`, `Delete` on every schedule, `Edit`/`Delete` on every logged service - and could not be fixed
+the way the list tables were. It is a detail page rather than a list page, so a sweep over the list
+tables reaches it only by hand - and four things about it are not true of a table.
+
+**Two lists sit on one card, and their rows describe the same thing.** A schedule and the service
+that satisfied it are both "Service (First stage)": name each row after its own identity and the
+page carries two `Edit Service` buttons, which is where it started. So the name has to say which
+list as well as which row. Schedules carry the noun - `Edit Service schedule`, matching the
+`ConfirmDialog` that opens - and history entries carry the date.
+
+**The identity is a pair, not a column.** A schedule is `serviceKindLabel(kind)` plus its optional
+free-text `label`, and that pair is not merely what the row renders: it is what the API keys on,
+matching a logged service with no `gear_service_schedule_uuid` to "the one schedule matching (item,
+kind, label)". Two schedules of one kind therefore differ by label or not at all - and where they
+don't, they are indistinguishable on screen and to the API too, so there is nothing for the name to
+recover.
+
+**A history row's kind repeats by design.** The point of a schedule is that the same work happens
+again, so `Service` names every entry in the list and only `serviced_on` separates them -
+`Edit Service on Mar 12, 2025`. Same reasoning as `dive.dive_number` above, landing on a different
+field because a different one is what a diver would say out loud ("the visual inspection in March").
+
+**One name was already variable.** The pause control reads `Pause` or `Resume` depending on the
+schedule, and the row name had to be added to that rather than replacing it - the same prefix-don't-
+replace point as the chart pickers' `aria-labelledby` below.
+
+**And axe cannot see any of this.** The rule the tables originally failed reports a _missing_ name;
+`aria-label="Edit"` ten times over passes it, and passed it here for as long as this card has
+existed. The regression cover is `gear-service-card.render.test.tsx` instead, and it renders **two**
+rows in each list deliberately: a name built from a constant satisfies a one-row test exactly as
+well as one built from the record, so a one-row test would have passed against the code this
+replaced.
+
 ## `role="combobox"` is not allowed on a number input, and fixing that needs a draft string
 
 `VolumeCombobox` was an `<input type="number">` carrying `role="combobox"`. A number input's
