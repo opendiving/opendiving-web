@@ -9,6 +9,7 @@ import {
   certificationsAPI,
   certificationAgencyLabel,
   certificationFile,
+  certificationLabel,
   Certification,
 } from "@/lib/api/certifications";
 import {
@@ -172,6 +173,7 @@ export default function CertificationsPage() {
                   const expiry = certificationExpiryStatus(
                     certification.expires_on,
                   );
+                  const label = certificationLabel(certification);
                   return (
                     <TableRow key={certification.uuid}>
                       <TableCell>
@@ -221,11 +223,16 @@ export default function CertificationsPage() {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
+                        {/* Named per row, not per action: ten identical "Edit"s
+                            tell a screen reader's controls list nothing about
+                            which card. The agency goes in the name because two
+                            cards may share a level - see DECISIONS.md, "Ten rows
+                            of 'Edit' name nothing". */}
                         <div className="flex justify-end gap-2">
                           <Button
                             variant="ghost"
                             size="sm"
-                            aria-label="Card images"
+                            aria-label={`Card images for ${label}`}
                             onClick={() => setManagingFiles(certification)}
                           >
                             <Images className="h-4 w-4" />
@@ -233,7 +240,7 @@ export default function CertificationsPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            aria-label="Edit"
+                            aria-label={`Edit ${label}`}
                             onClick={() => setEditing(certification)}
                           >
                             <Edit className="h-4 w-4" />
@@ -241,7 +248,7 @@ export default function CertificationsPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            aria-label="Delete"
+                            aria-label={`Delete ${label}`}
                             onClick={() => requestDelete(certification.uuid)}
                             disabled={deletingId === certification.uuid}
                           >

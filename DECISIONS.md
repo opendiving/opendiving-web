@@ -10252,6 +10252,36 @@ page's controls is the point, not merely a name that exists. The dive rows key o
 `dive.dive_number` rather than the date, because the number is what the row leads with and what a
 diver would say out loud.
 
+**That sweep was table-by-table, and it missed three tables.** The certifications list and both gear
+lists (items and sets) kept their bare `Edit`/`Delete`/`Card images`/`Archive`, and the courses list
+added later was written to the convention rather than swept into it - so "the row actions are named"
+was true of the three tables someone had walked and of nothing else. Nothing catches this: every one
+of these labels passes `button-name`, because axe checks that a name exists and not that it says
+anything. The only signal is reading the page's controls list, which is why it took a live walk over
+`/certifications` to notice. All seven tables now carry the row's identity, and every one of their
+row-action blocks carries a comment saying why, so the next table copied from one of them starts
+named.
+
+**The certification rows name the agency as well as the level, and the level alone would not do.**
+Certifications carry no unique-name constraint, deliberately - a diver who holds Advanced Nitrox
+from PADI and from TDI has two cards, both correctly called "Advanced Nitrox", and the API is right
+to store them. Naming the controls by level alone would give that diver two `Edit Advanced Nitrox`
+buttons, which is the same failure as ten `Edit`s in a smaller font. `certificationLabel` in
+`lib/api/certifications.ts` is what builds the name, mirroring `gearItemLabel`'s brand-then-name
+shape: `PADI Advanced Nitrox`. The gear rows get the same treatment from `gearItemLabel`, which was
+already built for this - a model name says far less on its own than a brand and a model together.
+
+**The chips subsection below declines to add a qualifier, and that is not a contradiction** - it is
+the same two tests landing the other way. A diver says "my PADI Advanced Nitrox" and does not say a
+species' binomial, and the collision here is structural rather than incidental: crossover and
+renewal across agencies are ordinary, which is why the API carries no unique-name constraint on
+certifications in the first place. Where those two tests fail, a qualifier is a second sentence in a
+button name; where they pass, it is the name.
+
+The row-name assertions live in `app/certifications/page.render.test.tsx` and
+`app/gear/page.render.test.tsx`, and both render two rows rather than one, for the reason the
+service-card subsection below develops at length.
+
 ### The gear detail page's service card, where the row is not the unit
 
 `GearServiceCard` on `/gear/[id]` had the same six repeated names - `Log service`, `Pause`/`Resume`,

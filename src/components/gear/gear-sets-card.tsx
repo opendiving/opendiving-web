@@ -108,11 +108,14 @@ export function GearSetsCard({
                     {set.weight != null ? formatWeight(set.weight, units) : "—"}
                   </TableCell>
                   <TableCell className="text-right">
+                    {/* Named per row, not per action: ten identical "Edit"s tell
+                        a screen reader's controls list nothing about which set.
+                        See DECISIONS.md, "Ten rows of 'Edit' name nothing". */}
                     <div className="flex justify-end gap-2">
                       <Button
                         variant="ghost"
                         size="sm"
-                        aria-label="Edit"
+                        aria-label={`Edit ${set.name}`}
                         onClick={() => onEdit(set)}
                       >
                         <Edit className="h-4 w-4" />
@@ -120,7 +123,7 @@ export function GearSetsCard({
                       <Button
                         variant="ghost"
                         size="sm"
-                        aria-label="Delete"
+                        aria-label={`Delete ${set.name}`}
                         onClick={() => onDelete(set.uuid)}
                         disabled={deletingId === set.uuid}
                       >
