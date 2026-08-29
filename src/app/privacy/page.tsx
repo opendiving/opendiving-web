@@ -126,16 +126,50 @@ export default function PrivacyPage() {
               2.2 Automatically Collected Information
             </h3>
             <p className="text-foreground mb-4">
-              Three things are recorded without you asking for them, and all
-              three are ordinary machinery rather than measurement:
+              Five things are recorded without you asking for them, and all five
+              are ordinary machinery rather than measurement:
             </p>
             <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
               <li>
                 <strong>Server logs:</strong> Your IP address and browser user
                 agent, written by the web server the way every web server writes
-                them. How long they are kept, and whether they are kept at all,
-                is a question about the operator&rsquo;s deployment rather than
-                about this software
+                them. How long <em>those</em> are kept, and whether they are
+                kept at all, is a question about the operator&rsquo;s deployment
+                rather than about this software. The next two entries are a
+                different matter: there the app stores the same two facts
+                itself, in its own database, and section 7 says for how long
+              </li>
+              <li>
+                <strong>Signed-in devices:</strong> Each time you sign in, this
+                copy writes down the session &mdash; the IP address the sign-in
+                came from, your browser&rsquo;s user agent as it sent it, and
+                when the session was made and last used. That record is what
+                makes the list in Settings possible, and it is the only reason
+                signing another device out can work at all. It holds nothing
+                from the sign-in cookie itself
+              </li>
+              <li>
+                <strong>Account security events:</strong> A record of things
+                that happen to accounts on this copy, and this is the whole list
+                &mdash; a sign-in link requested; a sign-in succeeding, or a
+                sign-in code got wrong; a verified sign-in being offered a new
+                account to make, or a deleted one to bring back; an account
+                created or restored; a second way of signing in attached to an
+                existing account; a passkey added or removed; a passkey
+                reporting a use count that suggests it has been copied; an email
+                address change asked for or completed; an account asked to be
+                deleted; a sign-out; one device signed out, or every other one
+                at once; and a spent sign-in cookie turning up again. Each entry
+                holds what happened and when, the IP address and user agent it
+                came from, which way of signing in it was about &mdash; email,
+                Google or a passkey &mdash; where that applies, and either the
+                account it was about or, for something that happened before any
+                account existed, the email address that was typed. Never a link,
+                a code or a token itself, only the fact that one was issued or
+                used. Nothing in the app shows these to you; they are there for
+                whoever runs this copy to look into a break-in or a burst of
+                sign-in attempts, and section 6.2 says what that means for
+                asking for a copy
               </li>
               <li>
                 <strong>Rate-limit counters:</strong> To stop sign-in and the
@@ -163,8 +197,10 @@ export default function PrivacyPage() {
             <p className="text-foreground mb-4">
               What is kept in your browser is a separate matter, and section 10
               lists all of it. No usage data is collected: nothing here measures
-              which pages you visit, which features you use or how long you
-              spend.
+              which pages you visit, which dives you open, or how long you
+              spend, and none of the five above is counted, compared or
+              profiled. The security record names things that happened to your
+              account &mdash; not what you were doing in the app.
             </p>
 
             <h3 className="text-xl font-semibold text-foreground mb-3">
@@ -222,6 +258,13 @@ export default function PrivacyPage() {
               <li>
                 <strong>Keep the instance standing:</strong> Apply the rate
                 limits described in section 2.2
+              </li>
+              <li>
+                <strong>Keep your account secure:</strong> Keep the record of
+                signed-in devices from section 2.2, so you can see them and sign
+                one out, and keep the record of account security events, so
+                whoever runs this copy can look into a break-in or a burst of
+                sign-in attempts. Both expire on a schedule &mdash; section 7
               </li>
             </ul>
             <p className="text-foreground mb-4">
@@ -474,7 +517,11 @@ export default function PrivacyPage() {
               <li>
                 <strong>Single-use sessions:</strong> The cookie that keeps you
                 signed in is spent and replaced on every use, and re-using a
-                spent one is treated as a stolen session rather than a mistake
+                spent one is treated as a stolen session rather than a mistake.
+                Each session is also a record on the server rather than only a
+                token in your browser, which is what lets you see the devices
+                signed in to your account and sign one of them out from another
+                &mdash; section 6.1
               </li>
               <li>
                 <strong>Nothing sensitive in browser storage:</strong> The
@@ -515,6 +562,10 @@ export default function PrivacyPage() {
             <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
               <li>Update your profile and account information</li>
               <li>Change the email address you sign in with</li>
+              <li>
+                See every device signed in to your account, and sign any of them
+                out
+              </li>
               <li>Export everything you have entered</li>
               <li>Delete your account and everything attached to it</li>
             </ul>
@@ -558,9 +609,15 @@ export default function PrivacyPage() {
             <p className="text-foreground mb-4">
               The first four need no request: access, correction, deletion and
               portability are all buttons in Settings, and they act immediately
-              rather than being forwarded to somebody. The last two, and
-              anything else, go to whoever runs this copy &mdash; section 13
-              says how to reach them.
+              rather than being forwarded to somebody. Two things sit outside
+              those buttons, and naming them is better than letting that
+              sentence read wider than it is. The list of signed-in devices is
+              on the settings page but is not part of the export. And the record
+              of account security events in section 2.2 is in neither: nothing
+              in the app shows it to you and no button copies it, so a copy of
+              that one has to be asked for like the rights below. The last two,
+              that request, and anything else go to whoever runs this copy
+              &mdash; section 13 says how to reach them.
             </p>
 
             <h3 className="text-xl font-semibold text-foreground mb-3">
@@ -646,6 +703,20 @@ export default function PrivacyPage() {
               your older dives would be the wrong product.
             </p>
             <p className="text-foreground mb-4">
+              Two of the records in section 2.2 expire on their own, whether or
+              not you delete anything, because neither is anything you entered.
+              A <strong>signed-in device&rsquo;s session</strong> is deleted
+              once it can no longer sign you in: you signed that device out, you
+              signed out on it, or it went unused long enough to lapse. And the{" "}
+              <strong>account security events</strong> are swept on a schedule
+              &mdash; entries tied to an account after 90 days, and entries that
+              name only an email address, from before any account existed, after
+              7 days. That shorter one is deliberately the same short life the
+              sign-in link&rsquo;s own record already has: an address someone
+              typed into this copy and never came back to should not outlive it
+              here.
+            </p>
+            <p className="text-foreground mb-4">
               When you delete your account:
             </p>
             <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
@@ -662,6 +733,15 @@ export default function PrivacyPage() {
                 everything hanging off it &mdash; dives, sites, trips, gear,
                 courses, certifications &mdash; are destroyed, and the files you
                 uploaded are unlinked from disk with them
+              </li>
+              <li>
+                Your sessions and your account security events go with it. The
+                entries made before the account existed have nothing linking
+                them to it, so they are found by the email address instead
+                &mdash; the same way the sign-in records already are. The one
+                gap that cannot close: entries left under an address you later
+                moved off are not named by the deletion, and expire on their own
+                7-day schedule instead
               </li>
             </ul>
             <p className="text-foreground mb-4">
@@ -737,14 +817,22 @@ export default function PrivacyPage() {
               with the clock started again. So the window rolls rather than
               running out on a fixed date &mdash; signing in keeps you signed in
               on this browser until about a week goes by without you using the
-              app, not for a week from when you signed in. A browser you keep
-              using stays signed in indefinitely. &ldquo;About a week&rdquo; is
-              the standard setting, and the operator of this copy can change it.
+              app, not for a week from when you signed in. So a browser you keep
+              using stays signed in for as long as nothing ends its session, and
+              the next paragraph is what can. &ldquo;About a week&rdquo; is the
+              standard setting, and the operator of this copy can change it.
             </p>
             <p className="text-foreground mb-4">
               It is cleared when you sign out and when your account is deleted.
-              A spent one turning up again is treated as a stolen session rather
-              than as a retry.
+              It also stops being accepted when the session behind it is ended
+              somewhere else: signing that device out from the list in Settings,
+              using &ldquo;Sign out other sessions&rdquo; there, or &mdash; on
+              an account with an improbable number of devices signed in at once
+              &mdash; this copy dropping the least recently used one to make
+              room. In each of those the browser can keep working a little
+              longer on the short-lived token described below, which runs out on
+              its own, and is then signed out. A spent cookie turning up again
+              is treated as a stolen session rather than as a retry.
             </p>
             <p className="text-foreground mb-4">
               The token that actually authorises each request is deliberately

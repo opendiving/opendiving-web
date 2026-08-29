@@ -11618,3 +11618,112 @@ factory, and the thing it would export — an object returned by identity — is
 common: the auth mocks across this repo return `{user, isAuthenticated, isLoading}`,
 `{verifyEmailLink, restoreAccount}`, `{signInWithGoogle}` and `{restore, restoreAccount}`, among
 others. A module that has to be told its own contents each time is a re-export of `vi.hoisted`.
+
+## One User-Agent reading, two fallbacks
+
+The settings page now names a browser in two places: the label a new passkey is filed under, and the
+device hint on a signed-in session's row. They are the same question, so they are one function —
+`lib/passkey-name.ts` — and a session row and a passkey row on that one page can never disagree
+about what to call the same browser.
+
+That is also why the label is derived here rather than stored. The API keeps the **raw** header on a
+session row, because a security record wants the string it actually saw, and hands it back on the
+diver's own rows; what it deliberately does not do is parse it. The file's own header has said so
+since it was written — _the server sees a User-Agent header it has no business parsing_ — and the
+alternative on the table was a second regex table on the server, diverging from this one release by
+release.
+
+**The generalization is one line wide, and that is the whole design.** Everything a UA string is
+actually recognised by is shared; the exported pair differ on nothing but the last resort. A passkey
+falls back to `"Passkey"`, because that string becomes a _name_ the diver can then rename. A session
+falls back to `"Unknown device"`, because a row describing a `curl` client is not a passkey and
+cannot be renamed, so the passkey word there is simply false.
+
+**The pin that matters is the one for the fallback, and it is not obvious why.** Every other case in
+`passkey-name.test.ts` — Edge over Chrome, iOS collapsing to the device, ChromeOS over Linux —
+passes whether or not the parameterization ever happened, because every one of them is recognised by
+the tables and never reaches a fallback at all. A generalization that silently did nothing would
+have shipped green. So there is a case per unreadable input, asserting both halves at once: the
+device name is not `"Passkey"` and the passkey name still is. Verified by reverting
+`deviceNameForUserAgent` to the passkey fallback and watching exactly those cases fail.
+
+The empty string is in that set beside `curl/8.7.1` for a reason rather than for symmetry: it is
+what `user_agent` holds when the client sent no header at all, which is a state the API produces
+rather than a hypothetical.
+
+## The current session's row carries nothing, not a disabled control
+
+`SessionsCard` marks the row you are reading it on and gives it **no** revoke button — not a
+greyed-out one. Ending your own session is what signing out is: it has to clear the refresh cookie
+and spend the token pair as well as mark the row, so a revoke here would be a worse logout than the
+one already in the menu, and `AuthContext`'s documented care that a failed logout must not leave
+"signed out" as a display state over a live session is exactly the thing it would walk into.
+
+The API answers 409 for it, and that is a backstop rather than the design. A disabled button would
+have been the other reading of the same rule and is worse: a control that exists and refuses reads
+as broken, where an absent one reads as "this is not a thing you do here", which is true.
+
+Two smaller calls in the same card:
+
+- **"Sign out other sessions" is gated on `sessions.some((one) => !one.current)`, not on
+  `sessions.length > 1`.** An access token minted before server-side sessions existed carries no
+  session id, so nothing on the list comes back marked current — and the count test would then hide
+  the button from the one caller whose single listed row genuinely _is_ another device.
+- **The toast reports the count out of the response body and can do it no other way.** The
+  confirmation fires before the request, so the dialog never knew how many rows there were to end;
+  the API returns the number it actually revoked, and that is the only honest source for the
+  sentence.
+
+## The privacy page's other closed lists have pins now
+
+`app/privacy/page.test.tsx` used to pin §10's counts and nothing else, and §10 was the only section
+whose prose counted itself in numerals a sweep could find. The rest of the page is full of the same
+shape written so that no sweep finds it: §2.2 opens "Five things are recorded without you asking for
+them", §3 ends its list with "And nothing else.", §6.2 splits six rights into "The first four" and
+"The last two". Adding the session and account-event records moved **all three at once**, which is
+what it took to notice that not one of them would have failed a test.
+
+Each now has one, and they are deliberately different shapes because the sentences are:
+
+- **§2.2 counts itself twice in one sentence** ("Five things … and all five are"), so the pin reads
+  the list length and requires the word in both places. Same technique as §10.2's.
+- **§3 has no number to count**, so the pin is on what makes its closure false rather than on
+  arithmetic: something §2.2 says is collected with no purpose listed in §3. Both new records are
+  named in the §3 list, and "And nothing else." has to still be there. That pin is weaker than a
+  count and is the strongest thing available — a closure claim over a list of purposes cannot be
+  checked mechanically against the software, only against the page's own other section.
+- **§6.2's two ordinals have to add up to its list**, which is checkable arithmetic, and the pin
+  also holds the carve-out that made the amendment necessary: the export is not a copy of everything
+  this copy holds about you any more, and the sentence has to keep saying so.
+- **§6.1 carries no count at all**, so its pin is simply the entry: signing a device out is one of
+  the things Settings does without asking anyone, and the list saying so is what §5 and §6.2 both
+  now point at.
+- **§7's two retention periods are pinned as figures**, because unlike the refresh window and the
+  access-token lifetime they are fixed constants in the API rather than operator settings — so the
+  page is entitled to state them, and a diver has nowhere else to read them. Pinned with them: the
+  one thing the erasure cannot reach, which is an entry left under an address the account later
+  moved off.
+
+Every one of them was verified by breaking the page one claim at a time and watching the matching
+pin fail. A pin written against a page you just edited passes by construction; the bite test is the
+only thing that distinguishes it from a comment.
+
+**One claim on this page has no pin available and had to be caught by review instead.** §2.2's
+account-security-events entry enumerates what the audit trail records, and the authority for that
+list is an enum in the API — another repository, which nothing here can read at build time or test
+time. The first draft named twelve of its eighteen members and omitted the stored sign-in-provider
+column outright, which is precisely the understatement the surrounding sections are written to
+avoid, and every test on the page passed. So the entry says "and this is the whole list" and is
+complete as of this change, the API's `AuthEventType` is the thing to re-read when it looks wrong,
+and this paragraph is the only warning that exists that the two can drift. A pin would need the
+sibling checkout, which a clone of this repository does not have.
+
+**And the counterpart rule: a figure that is an operator setting does not go on this page as a
+fact.** §10.1 had already got this right for the refresh window — "About a week" is the standard
+setting, and the operator of this copy can change it — and the first draft of the sessions copy got
+it wrong twice in the other direction, promising that a signed-out device stops working within half
+an hour and that the session cap is a hundred. The first is an operator setting outright; the second
+is a constant in the API's own module. Neither is visible from this repository, and nothing here
+would ever have swept either when it moved. They ship as "a little longer, on the short-lived token
+described below" and "an improbable number of devices" instead. The claim survives; the number that
+could go stale silently does not.
