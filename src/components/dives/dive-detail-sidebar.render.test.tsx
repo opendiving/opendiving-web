@@ -24,8 +24,9 @@ afterEach(() => {
 // combination - a site's pin, an entry fix, an exit fix, none of them - and the
 // combinations are the whole point: exit-only is the ordinary recording, and a
 // dive with fixes but no trip and no site still has somewhere to show them. The
-// projection and the fit belong to `locations-map.render.test.tsx`, so the map
-// is a stub that records what it was handed.
+// fit and the markers belong to `locations-map.browser.test.tsx`, which needs a
+// real browser for them, so here the map is a stub that records what it was
+// handed.
 vi.mock("@/components/map/locations-map-lazy", () => ({
   LocationsMap: ({ locations, subject }: LocationsMapProps) => (
     <div

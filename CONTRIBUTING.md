@@ -35,8 +35,15 @@ lockfile-exact install.
 CI runs lint, type-check, tests and a build. One command runs the same set locally:
 
 ```bash
+npx playwright install chromium   # once per machine, see below
 npm run ci
 ```
+
+**The first line is not optional, and skipping it fails rather than skips.** Most tests run under
+jsdom, but the map's contract tests need a real WebGL2 context, so they run in Chromium through
+Vitest's browser mode. `npm install` does not fetch a browser — that is still true, and deliberate —
+so the browser has to be asked for once. Without it that project fails to start, which is the right
+way round: a map test that silently skipped would be worse than one that stops you.
 
 Individually: `npm run lint` (`lint:fix` to autofix), `npm run type-check`, `npm test`
 (`test:watch`, `test:coverage`), `npm run build`. Formatting is Prettier — run `npm run format`
@@ -67,10 +74,14 @@ Components in `src/components/ui/` come from shadcn/ui — prefer adding a new p
 hand-rolling one in a feature directory. Charts (the dive profile, the consumption trend) are
 hand-written SVG on purpose; there is no charting dependency and we'd like to keep it that way.
 
-Tests are colocated: `foo.ts` gets `foo.test.ts` next to it, run by Vitest with jsdom. Coverage is
-measured over `src/lib/**`, which is where the logic worth unit-testing lives — validation schemas,
-formatting, gas and profile math, API error mapping. New helpers in `src/lib/` should come with
-tests; bug fixes should come with a test that fails without the fix.
+Tests are colocated: `foo.ts` gets `foo.test.ts` next to it, run by Vitest. Most of them use jsdom;
+a file named `foo.browser.test.tsx` belongs to the second project instead and runs in real Chromium
+(see the note above about installing it). Reach for that only when jsdom genuinely cannot answer the
+question — today that means the map, which needs a WebGL2 context — because a real browser is slower
+and the isolation is weaker. Coverage is measured over `src/lib/**`, `src/hooks/**`,
+`src/contexts/**`, `src/components/**` and `src/app/**`, with floors per directory in
+`vitest.config.mts`. New helpers in `src/lib/` should come with tests; bug fixes should come with a
+test that fails without the fix.
 
 ## Two things that will bite you
 

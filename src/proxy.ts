@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiCspSource } from "@/lib/api-base";
+import { basemapOrigins } from "@/lib/basemap";
 import { tileOrigins } from "@/lib/map-tiles";
 import { runtimeConfig } from "@/lib/runtime-config";
 
@@ -49,6 +50,20 @@ function cspTileSources(): string {
     tileSources = tileOrigins(runtimeConfig().tiles).join(" ");
   }
   return tileSources;
+}
+
+// The basemap's own hosts, on the same terms and for the same reasons. A
+// separate derivation from the one above because the two directives are not the
+// same set: `img-src` carries the raster tile hosts the *picker* still draws
+// with `<img>`, while this is whatever MapLibre fetches - a style, its glyphs,
+// its sprite, its vector tiles and, in raster mode, the tile bytes too.
+let basemapSources: string | undefined;
+
+function cspBasemapSources(): string {
+  if (basemapSources === undefined) {
+    basemapSources = basemapOrigins(runtimeConfig().basemap).join(" ");
+  }
+  return basemapSources;
 }
 
 // `Strict-Transport-Security` is set here rather than in `next.config.js`'s `headers()`
@@ -104,14 +119,19 @@ export function proxy(request: NextRequest) {
   // `lib/api-base.ts` is what reduces an absolute value to an origin and what knows a
   // relative one can't go through `new URL` at all.
   const apiOrigin = API_ORIGIN_SOURCE;
-  // `tiles` is the map picker's raster tiles, and the *only* thing the map needs
-  // from CSP - which is the whole reason it is hand-rolled rather than MapLibre,
-  // whose web worker would have forced `worker-src blob:` into a strict nonce
-  // policy. Derived by the same module that builds the tile URLs
-  // (`lib/map-tiles.ts`) for the same origin-not-path reason as above: a host
-  // named in one place and not the other fails as a silently blocked image,
-  // which is a much worse thing to debug than a wrong URL.
+  // `tiles` is the raster tiles the site picker still draws as `<img>` elements,
+  // and it keeps its place in `img-src` for exactly as long as that renderer
+  // does. Derived by the same module that builds those URLs (`lib/map-tiles.ts`)
+  // for the same origin-not-path reason as above: a host named in one place and
+  // not the other fails as a silently blocked image, which is a much worse thing
+  // to debug than a wrong URL.
   const tileOriginSources = cspTileSources();
+  // The basemap MapLibre draws, which is a `connect-src` source in *both* of its
+  // modes. That is not a choice about vector tiles: MapLibre's image decoder
+  // takes an `ArrayBuffer` and goes `Blob` -> `createImageBitmap`, so raster
+  // tile bytes arrive by `fetch` too. See `basemapOrigins`, which also says why
+  // nothing may set `refreshExpiredTiles`.
+  const basemapOriginSources = cspBasemapSources();
 
   const cspDirectives = [
     "default-src 'self'",
@@ -162,14 +182,25 @@ export function proxy(request: NextRequest) {
       tileOriginSources,
     ),
     "font-src 'self' data:",
-    // The API is the only cross-origin destination this app fetches from, and only
-    // in a split-origin build. "Continue with Google"
+    // **Load-bearing, not declarative.** `worker-src` has no `child-src` above
+    // it in this policy, so without this line a worker falls back to
+    // `script-src` - whose `'strict-dynamic'` short-circuits the source-list
+    // check entirely for anything not parser-inserted, and a `new Worker(url)`
+    // never is. The policy would therefore permit a `blob:` worker without a
+    // violation, which is precisely the hazard MapLibre was rejected over.
+    // `worker-src`'s own pre-request check has no such carve-out, so this is the
+    // one thing that makes the blob path fail loudly if MapLibre ever falls
+    // through to `importAsBlobUrl` instead of using the same-origin copy
+    // `components/map/map-canvas.tsx` points it at.
+    "worker-src 'self'",
+    // The API and the basemap are the cross-origin destinations this app fetches
+    // from. "Continue with Google"
     // (`components/auth/google-auth-button.tsx`) needs nothing in either of these:
     // it is a top-level navigation to Google, which the fetch directives do not
     // govern. Nor does it need a `Cross-Origin-Opener-Policy` in their place -
     // Google documents `same-origin-allow-popups` as a requirement for its *popup*
     // flows, and this one opens no popup.
-    cspList("connect-src", "'self'", apiOrigin),
+    cspList("connect-src", "'self'", apiOrigin, basemapOriginSources),
     "frame-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",

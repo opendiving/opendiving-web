@@ -11727,3 +11727,290 @@ is a constant in the API's own module. Neither is visible from this repository, 
 would ever have swept either when it moved. They ship as "a little longer, on the short-lived token
 described below" and "an improbable number of devices" instead. The claim survives; the number that
 could go stale silently does not.
+
+## The basemap is a MapLibre style, and raster is the escape hatch
+
+The map was a hand-rolled grid of `<img>` tiles and about ninety lines of Web-Mercator arithmetic,
+for a reason recorded above under "The map picker is hand-rolled, and `img-src` is the whole bill":
+MapLibre boots its renderer in a worker created from a `blob:` URL, and `worker-src blob:` in a
+nonce-based policy is what upstream itself calls equivalent to `unsafe-eval`. That objection was
+correct and is now answerable — see the next section — and three compromises had stopped being
+cosmetic:
+
+- **Labels were whatever script the tile baker chose.** `tile.openstreetmap.org` renders each
+  place's local `name` only, so Egypt is Arabic-only: سفاجا, never "Safaga". For a dive log that is
+  a functional gap rather than a preference, because dive destinations skew hard toward non-Latin
+  scripts — Egypt, Thailand, Japan, Greece, the Maldives. No keyless raster basemap fixes it: OSM's
+  German mirror is the only other keyless Latin option and it renders "Ägypten".
+- **Dark was `invert(1) hue-rotate(180deg)`** over light tiles, which is better than a bright map in
+  a dark UI and worse than any real dark basemap.
+- **Retina was plumbed and switched off**, because OSM serves no `@2x`.
+
+Vector tiles dissolve all three at once. Names ship as data and the _style_ — which this app now
+owns — decides what to draw; dark is a style rather than a filter; and a vector map is crisp at any
+density, so the `{r}` question evaporates for the default. The bundled styles are OpenFreeMap's
+Liberty and Dark, whose labels are bilingual by default: Safaga renders as "Safaga" over "سفاجا" on
+two lines, with no expression rewriting, no dependency and no style mutation step.
+
+**Liberty rather than Positron**, which is smaller and closer to what the app shipped with: Positron
+renders the sea grey, and on a dive log the water has to read as water. Bright was rejected as
+near-identical cartography to Liberty and busier under a coral marker. Dark ships as-is despite
+being low-contrast, because it is strictly better than the filter it replaces and, being vendored,
+adjusting it later is a JSON edit in this repository.
+
+**Style JSON and sprites are vendored; glyphs are hotlinked.** That split is arithmetic rather than
+taste. The two styles are 43 KB and 21 KB, and a vendored copy is what keeps the map looking the
+same after an upstream restyle — a basemap that changes appearance under the app is a regression
+nobody committed. The sprite set is shared by all five OpenFreeMap styles and totals 219 KB, so it
+travels too. Glyphs cannot: `glyphs` is a _single_ URL template per style, so it cannot be split
+between vendored and remote ranges without standing a proxy route in front of it, and the payload is
+617 KB for Latin alone, 1.25 MB adding Cyrillic and Arabic, and **89.9 MB across 486 files** once
+CJK is included — for a bilingual map of Japan and Thailand, which is precisely the audience this
+exists for.
+
+**Raster survives as configuration, not as a second renderer.** `MAP_TILE_URL` and friends are
+wrapped into a minimal one-source style by `rasterStyle`, so the escape hatch runs through MapLibre
+like everything else. Two details make that work rather than merely typecheck. `tileSize` is stated
+as 256 instead of taking the style spec's default of 512, or every tile would be drawn over four
+tiles' worth of ground. And `{r}` — this app's spelling of the density placeholder, and what both
+keyed blocks in `.env.example` still use — is renamed to MapLibre's `{ratio}`, which resolves from
+`map.getPixelRatio()` to exactly the same `@2x`/empty pair. Without that rename a keyed template
+requests a literal `{r}` and 404s, which would break precisely the two configurations the escape
+hatch exists to preserve. One behavioural change worth recording: `srcSet` offered both densities
+and let the browser choose, while MapLibre picks one from `devicePixelRatio`.
+
+**Attribution belongs to neither mode**, which is why `MAP_TILE_ATTRIBUTION` became
+`MAP_ATTRIBUTION`. Left inside the raster group, an operator who configured a style would have had
+no way to credit it, and the app would have rendered the bundled pair's OpenMapTiles credit over
+somebody else's tiles — false, and a licence breach for any style that is not OpenFreeMap's.
+
+**A style URL set without an attribution is a configuration error, and the app refuses to serve.**
+It cannot default to "whatever the active basemap requires", because both ways of learning that are
+shut: the derivation runs in the request path and may not fetch and parse a remote style, and the
+credit is rendered as parsed `[label](url)` text rather than as the style's own HTML (see
+"Attribution is parsed into parts, not injected as HTML" — an argument written specifically against
+mapping libraries, which `attributionControl: false` honours). Of the three answers available,
+defaulting to this app's own credit ships a false statement, and rendering nothing breaches the
+licence of essentially every OSM-derived source. Refusing is the only one that is neither wrong nor
+silent.
+
+Two constraints on how that refusal is built, and the second is the one with a scar behind it. It
+fires **once, at config resolution**, not per map — though "at config resolution" is later than it
+sounds, and worth knowing before you go looking for it. `runtimeConfig()` is lazy and memoized, so
+the process starts normally and the throw arrives on the first request that renders a layout or
+passes through middleware. Every page then 500s while `/healthz` — outside the middleware matcher,
+reading no configuration — goes on answering 200, so the `HEALTHCHECK` in the `Dockerfile` reports
+the container healthy. It refuses to _serve_, not to _start_, and only somebody opening a page finds
+out. And it fires on **exactly** that combination: the all-unset default and raster mode both stay
+silent. A cross-field validator that also tripped the default path would take the whole app down on
+a stock configuration at the first request, since `runtimeConfig()` is what every page and the
+middleware read — which is how the API repo once killed `pytest` collection and `docker compose` at
+the same time. `runtime-config.test.ts` carries a case for each of the three states for that reason.
+
+## The worker is same-origin, and `worker-src 'self'` is what makes the blob path fail loudly
+
+`setWorkerUrl()` pointed at a copy of `maplibre-gl-worker.mjs` on this app's own origin is what
+retires the `blob:` objection. It is settled in MapLibre's source rather than by documentation:
+`workerFactory()` takes `createWorker(url)` — a direct `new Worker(url)` — when `isCrossOrigin(url)`
+is false, and only falls through to `fetchAsBlobUrl`/`importAsBlobUrl` when it is true.
+
+The copy is made by `scripts/copy-maplibre-worker.mjs`, and **both files have to travel**:
+`maplibre-gl-worker.mjs` imports `./maplibre-gl-shared.mjs` on its first line. MapLibre's own
+Next.js note exists because Turbopack turns
+`new URL('maplibre-gl/dist/maplibre-gl-worker.mjs', import.meta.url)` into a hashed asset _without_
+emitting that sibling — and the resulting failure is silent. Upstream's maplibre-gl-js#8074 is the
+same shape: a worker chunk that never starts fires no error event and writes no console line. The
+map simply never reaches `load`.
+
+Two consequences follow, and both are easy to get wrong.
+
+**The copy runs before tests, not only before builds.** npm resolves a pre-hook against the exact
+script name, so `pretest` does not run for `npm run test:coverage` — which is what CI runs. All of
+`predev`, `prebuild`, `pretest`, `pretest:watch` and `pretest:coverage` call it. A browser test
+executing against a missing worker is the silent failure above, dressed as a slow network.
+
+**`worker-src 'self'` is load-bearing rather than declarative**, and the reasoning that makes it so
+runs the opposite way to the obvious one. `worker-src` falls back to `child-src`, then `script-src`,
+then `default-src`, and this policy emits no `child-src` — so the directive governing a worker today
+would be `script-src 'nonce-…' 'strict-dynamic' https: 'unsafe-inline'`. `'strict-dynamic'`
+short-circuits the source-list check entirely for any script-like destination that is not
+parser-inserted, and a `new Worker(url)` never is. **The policy as it stood would therefore have
+permitted a `blob:` worker with no violation at all.** `worker-src`'s own pre-request check has no
+such carve-out, so naming it is the only thing that makes the blob path fail audibly if MapLibre
+ever falls through to `importAsBlobUrl`.
+
+**The basemap is a `connect-src` source in both modes**, and that is not a statement about vector
+tiles. MapLibre's image decoder takes an `ArrayBuffer` and goes `Blob` → `createImageBitmap`, so
+even raster tile bytes arrive by `fetch`. It holds because `refreshExpiredTiles` defaults to `true`
+— reading the cache header requires the fetch path — which is why nothing sets that option. Treat it
+as part of the CSP contract rather than as a tuning knob: setting it to `false` sends raster tiles
+back through `new Image()` and `img-src`, silently splitting the policy this app derives.
+
+While the site picker still draws raster `<img>` tiles, `img-src` **keeps** the tile origins as
+well. Reading "the basemap host is a `connect-src` source" as a move rather than an addition would
+leave the picker blank with nothing failing anywhere, because until now nothing asserted that a tile
+origin reached the header. `proxy.test.ts` now does.
+
+## MapLibre's zoom is one number below the slippy convention
+
+MapLibre's transform measures against a **512 px** tile — `worldSize` is
+`this._tileSize * this._scale` with `_tileSize = 512` — while `lib/map-tiles.ts`, Leaflet and the
+whole slippy convention measure against 256. The same view is therefore one number lower in
+MapLibre's units, and `coveringZoomLevel` agrees from the other end: for a 256 px raster source it
+asks for `zoom + log2(512/256)`, so MapLibre zoom 9 requests z10 tiles.
+
+Carried across as the same integers, this app's three zoom constants would each have opened one
+level too deep, and nothing about the rendered map would have said so. `MIN_ZOOM` 1 becomes 0,
+`MAX_ZOOM` 18 becomes 17, and `MAX_FIT_ZOOM` 10 becomes 9. `basemap.test.ts` asserts the
+relationship against the originals rather than restating the numbers, so moving one without the
+other fails instead of merely looking odd.
+
+Two related notes. The vector source's own maxzoom is 14, so anything past it is overzoomed tiles;
+that is expected and wanted, not something to clamp. And `MAX_FIT_ZOOM` is still what keeps a lone
+place from opening at street level, where a single marker on a grid of house numbers says nothing —
+and, for the half of dive sites that are offshore, on nothing but open water.
+
+**`fitBounds` is not absorbed, and two places will not show you that.** Ours unwraps every box
+against the first before unioning, so a trip to Fiji and Samoa spans about six degrees rather than
+the 354 going the other way round the planet. MapLibre's `LngLatBounds.extend()` unions with plain
+`Math.min`/`Math.max` on raw longitude, and `Map.fitBounds` documents that the caller owns the
+ordering. What rescues a _two_-place check is `cameraForBounds` calling `adjustAntiMeridian()` on
+the finished box — which cannot see that the union was built the long way round on the way there. So
+the union survives as `unionBounds`, MapLibre does the camera arithmetic from its result, and both
+its unit test and its browser test use **three** places. The browser one asserts the left-to-right
+order of the markers, which is the thing that actually differs: unwrapped it reads Suva, Taveuni,
+Apia; unioned raw it reads Apia, Suva, Taveuni.
+
+`unionBounds` therefore lives in `lib/basemap.ts`, and the hand-rolled `fitBounds` was **deleted**
+rather than kept. That is the asymmetric call going the other way: MapLibre genuinely does supply
+the half that walked candidate zoom levels until the union fitted, so keeping ours would have left
+dead code with nothing but its own tests to justify it — the picker never called it, and the
+read-only map was its only caller. Its two antimeridian tests moved with the function and got
+stronger on the way, to three places from two; the rest, which pinned the zoom walk and the
+projected-midpoint centring, went with the arithmetic MapLibre replaced.
+
+What that leaves in `lib/map-tiles.ts` is the picker's own arithmetic plus four things
+`lib/basemap.ts` imports from it — the two coordinate folds, the Mercator cut-off and the raster
+default's credit. Those move here when the picker does; importing them the other way round would be
+a cycle, which `code-quality.yml` fails on.
+
+## The contract tests run in a real browser, and two things do not carry over into it
+
+MapLibre needs a WebGL2 context. jsdom has not got one, and the obvious way out is a trap:
+`vitest-webgl-canvas-mock` is WebGL1-only and was last published in 2023, and MapLibre's own suite
+constructs `Map` instances under jsdom only because `beforeMapTest()` installs a 355-line
+`NullWebGL2RenderingContext` that the package's `exports` map puts out of reach. Adopting it means
+reimplementing that, not adding a dependency.
+
+So `vitest.config.mts` grew a second project: Vitest 4's browser mode with the Playwright provider,
+driving real Chromium. The tests, the coverage gate and `npm run ci` all stay where they were; the
+cost is two dependencies, one CI step installing Chromium, and the pre-hooks above. Files ending
+`.browser.test.tsx` belong to it. Playwright component testing was the other candidate and is dead —
+`@playwright/experimental-ct-react` was deleted from Playwright in August 2026.
+
+**Adopting the full `playwright` package does not reverse "playwright-core, not playwright".** That
+section's rationale — that the full package "downloads ~130MB of browsers on every `npm install`" —
+is stale: `playwright@1.62.1` publishes no install script at all. Browsers arrive only from an
+explicit `npx playwright install`, so `CONTRIBUTING.md`'s promise that `npm install` never downloads
+one stays true.
+
+Two scoping traps, both of which cost time to find:
+
+- **`resolve.alias` is not inherited by inline projects.** It has to be repeated in each, or `@/…`
+  resolves nowhere and the failure reads as a missing module rather than as a missing alias.
+- **Root `setupFiles` _are_ inherited.** `vitest.setup.ts` is a jsdom patch kit — a no-op
+  `ResizeObserver`, a `matchMedia` that always answers false, pointer-capture no-ops. Left at the
+  root it would load into real Chromium and override working implementations with stubs, breaking
+  exactly the behaviour a real browser was brought in to test. `setupFiles` is therefore per
+  project, and `vitest.setup.browser.ts` carries only jest-dom's matchers and cleanup.
+
+`@vitest/browser-playwright` peer-pins `vitest` to the exact version, so those two move in lockstep
+from here.
+
+## The map is built in a callback ref, and `load` must not fire against a placeholder
+
+`MapCanvas` owns the MapLibre instance, and several details of how are worth keeping.
+
+**A callback ref rather than a mount effect**, for the same reason the read-only map already
+measured itself that way: the element is not always there at mount. A caller with nothing to draw
+renders `null`, and the component renders its unsupported fallback instead when WebGL2 is missing,
+so an effect that found no element on mount would never look again. React 19 runs the cleanup a ref
+callback returns, which is what lets the teardown live beside the construction. It also keeps the
+instance out of an effect: calling `setState` with it there is a cascading render, which this repo's
+React lint rules reject outright.
+
+**The style is resolved before the map is constructed, not swapped in afterwards.** Building with an
+empty placeholder and applying the real style once it arrives is simpler, and it is what this did
+first. It is wrong for one specific reason: `load` then fires against the _placeholder_, before the
+real style has been asked for. That event is the only signal separating a working renderer from a
+worker that never started — which produces no error and no console line — so making it fire early
+turns the one check for that failure into a check for nothing. The test that catches this was
+written first and failed, which is how the placeholder was found.
+
+`map-canvas.browser.test.tsx` therefore waits for `load` against a style carrying a GeoJSON source,
+because GeoJSON is parsed and indexed worker-side: a source that reports itself loaded is a worker
+that ran. The wait carries an explicit timeout, since the failure it guards against is silence and
+an unbounded wait would hang the suite rather than fail it. Deleting
+`public/maplibre/ maplibre-gl-shared.mjs` and re-running is the negative control, and it reproduces
+the upstream symptom exactly: no error, no log, three tests timing out.
+
+**A theme swap is guarded against what the map is showing, not against what it was built with**, and
+the difference is not academic. `basemapStyle` returns a fresh object for the bundled pair and for
+raster mode, but for a configured `MAP_STYLE_URL` it returns the style _URL string_ — so the same
+theme resolves to the same value every time. A guard written against the built-with style therefore
+lets light → dark through and silently drops dark → light, because the second resolves to exactly
+the string the map was constructed with, and the map stays dark for good. Only the one configuration
+that returns a primitive shows it, and only on the return trip, which is why the test that pins it
+changes the theme twice. Four rounds of review over the whole change missed this; the round that
+re-read the finished diff caught it.
+
+**WebGL2 is detected by this app.** MapLibre v6 dropped WebGL1 and removed `isSupported()` in
+3.0.0-pre.6, and 6.6.0's constructor does not throw on a missing context — it fires an `ErrorEvent`
+that upstream acknowledges cannot be caught, because it is emitted before the caller has an instance
+to listen on. So `lib/webgl.ts` creates a canvas and asks for `webgl2`, and the surfaces render a
+message instead of an empty box. Nothing is lost when it comes back false: a dive site's coordinates
+remain typeable, which was the picker's design premise before there was a map.
+
+## `PublicConfig` carries a basemap and a raster tile source, for one change only
+
+They overlap, knowingly. `components/sites/map-picker.tsx` still draws `<img>` tiles, and it needs a
+raster pair in _every_ configuration — including the default one, where the basemap is a vector
+style and offers it none. Dropping `tiles` in the same change that added `basemap` would have
+blanked the picker with nothing failing, because no test asserts that a tile URL reaches it.
+
+The two can disagree, and that is the accepted cost rather than an oversight: an operator who sets
+`MAP_STYLE_URL` gets their style on the read-only maps and the keyless OpenStreetMap default under
+the picker until it moves.
+
+**One consequence lands on the privacy page, and it is worth naming because nothing catches it.**
+While both renderers exist, an unconfigured instance contacts _two_ third parties rather than one —
+`tiles.openfreemap.org` for the vector maps and `tile.openstreetmap.org` for the picker's raster
+tiles — and §10.4 still says "One outside party acts on its own account". That sentence was true
+before this change and is true again the moment the picker moves, so it is deliberately **not**
+being rewritten twice: the page is corrected once, when the renderer split is over, along with
+§4.4's "image requests" and the rest of that sweep. The sentence is pinned by a test added alongside
+the active-sessions work, which asserts the wording rather than the count, so nothing fails in the
+meantime — which is exactly why it is written down here instead. `MAP_ATTRIBUTION` feeds both, so
+the credit is at least the same string on both surfaces. Both `tiles` and `lib/map-tiles.ts` go when
+the picker does, and the pieces of that module which are not tile arithmetic — the two coordinate
+folds, the Mercator cut-off, the raster default's credit, `unionBounds` and the two coordinate types
+— move into `lib/basemap.ts`.
+
+## The install bundle's map variables are a separate job, in a repository this one cannot reach
+
+The rename to `MAP_ATTRIBUTION` and the two new `MAP_STYLE_URL*` variables land here, but the
+shipped install bundle lives in the product repository, and its `docker-compose.yml` deliberately
+enumerates each variable it passes into the web container rather than using `env_file` — so that a
+compromised Node process cannot read the database credentials out of its own environment. That is
+the right call and it has a consequence: **a variable absent from that list is unsettable by a
+self-hoster, whatever this repository's `.env.example` says.** Until it is updated, the bundle
+passes a name nothing reads any more and passes none of the new ones.
+
+Recorded here rather than fixed here because a change spanning two repositories is two changes, and
+this one cannot open a pull request against the other. It is tracked as follow-up work alongside the
+same file's pre-existing omission of `MAP_TILE_API_KEY`. The names to copy across are the ones in
+`lib/runtime-config.ts`, which is the only authority on what this app actually reads.
+
+This section exists because the gap is invisible from inside this repository — every check here
+passes — and because an independent review of the change found it four times running, which is four
+times the same true finding cost a round.
