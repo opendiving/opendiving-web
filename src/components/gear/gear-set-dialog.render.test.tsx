@@ -90,6 +90,11 @@ const patchedBody = async () => {
 const save = () =>
   userEvent.click(screen.getByRole("button", { name: /Save Changes/ }));
 
+// The picker names each row's remove button after the item it drops, so these
+// say which one they mean rather than taking whatever is first.
+const removeItem = (label: string) =>
+  userEvent.click(screen.getByRole("button", { name: `Remove ${label}` }));
+
 const editSidemount = () =>
   render(
     <GearSetDialog
@@ -144,7 +149,7 @@ describe("the gear set dialog's PATCH body", () => {
   it("carries the whole remaining list when the diver removes an item", async () => {
     editSidemount();
 
-    await userEvent.click(screen.getAllByRole("button", { name: "Remove" })[0]);
+    await removeItem("Scubapro MK25 EVO");
     await save();
 
     expect((await patchedBody()).gear_item_uuids).toEqual(["item-2"]);
@@ -156,8 +161,8 @@ describe("the gear set dialog's PATCH body", () => {
     // hid the rest", so it can be taken at its word.
     editSidemount();
 
-    await userEvent.click(screen.getAllByRole("button", { name: "Remove" })[0]);
-    await userEvent.click(screen.getAllByRole("button", { name: "Remove" })[0]);
+    await removeItem("Scubapro MK25 EVO");
+    await removeItem("Scubapro R195");
     await save();
 
     expect((await patchedBody()).gear_item_uuids).toEqual([]);
@@ -176,7 +181,7 @@ describe("the gear set dialog's PATCH body", () => {
     };
     const { rerender } = render(<GearSetDialog {...props} open />);
 
-    await userEvent.click(screen.getAllByRole("button", { name: "Remove" })[0]);
+    await removeItem("Scubapro MK25 EVO");
     rerender(<GearSetDialog {...props} open={false} />);
     rerender(<GearSetDialog {...props} open />);
     await save();

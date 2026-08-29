@@ -227,7 +227,7 @@ export function GearItemMultiSelect({
                 )}
                 <button
                   type="button"
-                  aria-label="Remove"
+                  aria-label={`Remove ${label}`}
                   disabled={disabled}
                   className="text-muted-foreground hover:text-foreground"
                   onClick={() => removeItem(id)}

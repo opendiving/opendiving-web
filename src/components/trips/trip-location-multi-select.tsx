@@ -369,8 +369,8 @@ export function TripLocationMultiSelect({
                 </span>
                 <button
                   type="button"
-                  // Named, unlike the sibling multiselects' bare "Remove": with
-                  // up to twenty rows, a screen reader would otherwise announce
+                  // Named per row, as in the sibling multiselects: with up to
+                  // twenty rows, a screen reader would otherwise announce
                   // twenty identical buttons in a list whose order is the point.
                   ref={index === value.length - 1 ? lastRemoveRef : undefined}
                   aria-label={`Remove ${location.name}`}
