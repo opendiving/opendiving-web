@@ -140,9 +140,10 @@ docker build --build-arg NEXT_PUBLIC_API_URL=https://api.example.com/api/v1 -t o
 
 It is the full base with the `/api/v1` prefix included, and `NEXT_PUBLIC_*` values are inlined into
 the client bundle by the compiler — so that address is fixed at build time and changing it means
-rebuilding, which is exactly why it is no longer the default path. It is also what the CSP's
-`connect-src` is derived from, so an API host reached any other way is blocked rather than merely
-misconfigured. Left unset, none of this applies.
+rebuilding, which is exactly why it is no longer the default path. It is also one of the two things
+the CSP's `connect-src` is derived from — the other is the basemap, whose host comes from the
+runtime settings `.env.example` documents — so an API or basemap host reached any other way is
+blocked rather than merely misconfigured. Left unset, none of this applies.
 
 ## Development setup
 
