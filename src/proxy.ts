@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiCspSource } from "@/lib/api-base";
 import { basemapOrigins } from "@/lib/basemap";
-import { tileOrigins } from "@/lib/map-tiles";
 import { runtimeConfig } from "@/lib/runtime-config";
 
 // Nonce-based, strict Content-Security-Policy. This is computed fresh per
@@ -24,13 +23,13 @@ import { runtimeConfig } from "@/lib/runtime-config";
 // scope while everything below is not.
 const API_ORIGIN_SOURCE = apiCspSource(process.env.NEXT_PUBLIC_API_URL) ?? "";
 
-// The map tile hosts, the one host source this app's configuration still decides on.
+// The basemap's hosts, the one host source this app's configuration still decides on.
 // Derived on first request rather than at module load - reading the environment while
 // the module is being evaluated risks doing it at build time, and the whole point of
 // `lib/runtime-config.ts` is that a published image reads it in the container it runs
 // in. Derived *once* rather than per request for the reason it always was: the
-// environment cannot change while the process lives, and `tileOrigins`' warning for a
-// malformed template would otherwise repeat on every request, burying the one diagnostic
+// environment cannot change while the process lives, and `basemapOrigins`' warning for a
+// malformed value would otherwise repeat on every request, burying the one diagnostic
 // it exists to give.
 //
 // `accounts.google.com` used to sit beside this on the same terms, in `style-src`,
@@ -41,22 +40,13 @@ const API_ORIGIN_SOURCE = apiCspSource(process.env.NEXT_PUBLIC_API_URL) ?? "";
 // policy now names Google in no configuration at all, which also means the CSP no longer
 // discloses whether an instance has Google sign-in turned on.
 //
-// `undefined` rather than a falsy check, since an instance whose every tile template is
+// It reaches `connect-src` and nothing else. There was a second derivation beside this
+// one until the site picker moved to MapLibre, feeding the raster tile hosts it drew as
+// `<img>` elements into `img-src`; no `<img>` in this app now points anywhere but at its
+// own origin, so that directive names no third party at all.
+//
+// `undefined` rather than a falsy check, since an instance whose every basemap value is
 // malformed legitimately derives the empty string and must not re-derive it per request.
-let tileSources: string | undefined;
-
-function cspTileSources(): string {
-  if (tileSources === undefined) {
-    tileSources = tileOrigins(runtimeConfig().tiles).join(" ");
-  }
-  return tileSources;
-}
-
-// The basemap's own hosts, on the same terms and for the same reasons. A
-// separate derivation from the one above because the two directives are not the
-// same set: `img-src` carries the raster tile hosts the *picker* still draws
-// with `<img>`, while this is whatever MapLibre fetches - a style, its glyphs,
-// its sprite, its vector tiles and, in raster mode, the tile bytes too.
 let basemapSources: string | undefined;
 
 function cspBasemapSources(): string {
@@ -97,8 +87,8 @@ function isHttps(request: NextRequest): boolean {
 }
 
 // A directive and its sources, with the empty ones dropped. Every source below the
-// literal ones can vanish - the API origin whenever the API is same-origin, the tile
-// origins when every configured template is malformed - and a stray double space in a
+// literal ones can vanish - the API origin whenever the API is same-origin, the basemap
+// origins when every configured value is malformed - and a stray double space in a
 // CSP is the kind of thing that reads as a typo forever after.
 function cspList(directive: string, ...sources: string[]): string {
   return [directive, ...sources.filter(Boolean)].join(" ");
@@ -119,18 +109,14 @@ export function proxy(request: NextRequest) {
   // `lib/api-base.ts` is what reduces an absolute value to an origin and what knows a
   // relative one can't go through `new URL` at all.
   const apiOrigin = API_ORIGIN_SOURCE;
-  // `tiles` is the raster tiles the site picker still draws as `<img>` elements,
-  // and it keeps its place in `img-src` for exactly as long as that renderer
-  // does. Derived by the same module that builds those URLs (`lib/map-tiles.ts`)
-  // for the same origin-not-path reason as above: a host named in one place and
-  // not the other fails as a silently blocked image, which is a much worse thing
-  // to debug than a wrong URL.
-  const tileOriginSources = cspTileSources();
   // The basemap MapLibre draws, which is a `connect-src` source in *both* of its
   // modes. That is not a choice about vector tiles: MapLibre's image decoder
   // takes an `ArrayBuffer` and goes `Blob` -> `createImageBitmap`, so raster
   // tile bytes arrive by `fetch` too. See `basemapOrigins`, which also says why
-  // nothing may set `refreshExpiredTiles`.
+  // nothing may set `refreshExpiredTiles`. Derived by the same module the
+  // renderer takes its URLs from, for the origin-not-path reason above: a host
+  // named in one place and not the other fails as a silently blocked request,
+  // which is a much worse thing to debug than a wrong URL.
   const basemapOriginSources = cspBasemapSources();
 
   const cspDirectives = [
@@ -173,14 +159,12 @@ export function proxy(request: NextRequest) {
     // widens nothing an attacker could reach: a `blob:` URL can only name data
     // this document already created. Avatars take that same path, which is why
     // no avatar host is named here: they are served by this app's own API.
-    cspList(
-      "img-src",
-      "'self'",
-      "data:",
-      "blob:",
-      apiOrigin,
-      tileOriginSources,
-    ),
+    //
+    // No third-party host at all any more. The map tile hosts were the only ones
+    // this directive ever carried, and the last `<img>` grid pointed at them went
+    // when the site picker moved to MapLibre - which fetches every tile, in both
+    // of its modes, under `connect-src` instead.
+    cspList("img-src", "'self'", "data:", "blob:", apiOrigin),
     "font-src 'self' data:",
     // **Load-bearing, not declarative.** `worker-src` has no `child-src` above
     // it in this policy, so without this line a worker falls back to

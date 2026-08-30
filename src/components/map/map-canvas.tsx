@@ -37,6 +37,12 @@ import { cn } from "@/lib/utils";
 // assignment happens in the browser, once, on the way to the first map.
 setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
 
+// A pointer that moved less than this between press and release was a tap on a
+// place, not a drag that happened to end where it started. MapLibre's own
+// default is 3 px; this is the figure the hand-rolled gesture handler used, and
+// it is what "click to place the dive site" was tuned against on a phone.
+const TAP_SLOP_PX = 5;
+
 export interface MapCanvasProps {
   /** Which basemap to draw, from `useConfig().basemap`. */
   basemap: Basemap;
@@ -44,7 +50,9 @@ export interface MapCanvasProps {
   theme: "light" | "dark";
   /**
    * Whether the map handles its own gestures. Read-only surfaces pass `false`,
-   * which also switches off the keyboard handling and the scroll capture.
+   * which switches every handler off; `true` brings in the interaction policy
+   * documented on the constructor below - cooperative gestures, no rotation or
+   * pitch, and no keyboard of MapLibre's own.
    */
   interactive?: boolean;
   className?: string;
@@ -177,7 +185,65 @@ export function MapCanvas({
         // `connect-src`, which is what `proxy.ts` derives. Setting it to `false`
         // would send raster tiles back through `new Image()` and `img-src`,
         // silently splitting the policy this app builds.
+        //
+        // **The interaction policy, and every line of it is a behaviour this app
+        // already had.** All of it is inert while `interactive` is false, since
+        // MapLibre registers no handlers at all then - so this is the picker's
+        // contract stated once, in the component that owns the instance, rather
+        // than reached into from outside.
+        //
+        // `cooperativeGestures` is the one that carries the most: one finger
+        // scrolls the page instead of panning the map (the surface sits inside a
+        // `max-h-[90vh] overflow-y-auto` dialog and covers much of it on a
+        // phone, so a thumb landing on it has to be able to reach Save), two
+        // fingers drive the map, and the wheel only zooms with ctrl/cmd - which
+        // is also what a trackpad pinch sends. It sets `touch-action: pan-x
+        // pan-y` on the canvas and `preventDefault`s `touchmove` from two
+        // touches up, which is the half `touch-action` cannot express. Its own
+        // overlay is suppressed in `globals.css`; the app draws its own, off the
+        // `cooperativegestureprevented` event.
+        cooperativeGestures: interactive,
+        // And MapLibre's own wording for it, emptied. Its default mobile string
+        // is *exactly* the sentence the app's hint carries, so leaving it would
+        // put a second copy of that sentence in the document for anything
+        // reading the page - a test included - to find twice.
+        locale: {
+          "CooperativeGesturesHandler.WindowsHelpText": "",
+          "CooperativeGesturesHandler.MacHelpText": "",
+          "CooperativeGesturesHandler.MobileHelpText": "",
+        },
+        // **A pan ends when the pointer lifts.** MapLibre's drag handler adds
+        // inertia, which this app's own never had, and on a placement control it
+        // is worse than a preference: the frame is 160 px tall inside a scrolling
+        // dialog, and a map still gliding when the next click lands puts the pin
+        // somewhere nobody aimed at. There is no `inertia: false`, so this is
+        // said in the units the handler has - a fling capped at no speed eases
+        // for no time and travels no distance.
+        dragPan: { maxSpeed: 0 },
+        // No rotation and no pitch: the map's feature set did not grow with the
+        // renderer, and a dive site is a point on a north-up map. `dragRotate`
+        // carries the drag-to-pitch with it, roll is off by default, and touch
+        // rotation is not a constructor option at all - it is switched off on
+        // the handler below.
+        dragRotate: false,
+        touchPitch: false,
+        boxZoom: false,
+        // A double click on this map is two placements, not a zoom - the `+`/`-`
+        // buttons and ctrl+wheel are how it zooms, and MapLibre's default would
+        // fire both at once.
+        doubleClickZoom: false,
+        // The keyboard belongs to the caller. MapLibre's own handler pans and
+        // zooms about the *centre*, which is exactly the behaviour the picker
+        // exists not to have (see its `anchorFor`), and it has nothing to say
+        // about Enter placing a site.
+        keyboard: false,
+        clickTolerance: TAP_SLOP_PX,
       });
+      if (interactive) {
+        // There is no constructor option for this: `touchZoomRotate` enables the
+        // combined handler and rotation is turned off on the handler itself.
+        instance.touchZoomRotate.disableRotation();
+      }
       map.current = instance;
       applied.current = initialStyle;
       notify.current?.(instance);

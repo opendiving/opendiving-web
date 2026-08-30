@@ -5408,7 +5408,15 @@ and western longitude impossible to type — most of the Caribbean, Indonesia an
 
 ## The map picker is hand-rolled, and `img-src` is the whole bill
 
-`components/sites/map-picker.tsx` draws a slippy map out of `<img>` tiles and about ninety lines of
+**Superseded on 2026-08-29: the picker draws through MapLibre, and `img-src` names no third party at
+all.** The CSP objection this section is built on was answered rather than waived — see "The basemap
+is a MapLibre style, and raster is the escape hatch", "The worker is same-origin, and
+`worker-src 'self'` is what makes the blob path fail loudly", and "The picker's contract outlived
+its renderer" below. Kept because the reasoning that follows is why the app had a hand-rolled map
+for as long as it did, and because the Leaflet comparison still holds for anything that is not this
+map.
+
+`components/sites/map-picker.tsx` drew a slippy map out of `<img>` tiles and about ninety lines of
 Web-Mercator arithmetic (`lib/map-tiles.ts`), rather than pulling in a mapping library. The reason
 is the CSP, not the bundle.
 
@@ -5451,6 +5459,17 @@ host is one exact CSP source instead of a wildcard. Verified in the browser: til
 console reports **zero** CSP violations, which is the single check that says this approach paid off.
 
 ## The map writes into the coordinate fields, and can tell its own echo from a diver typing
+
+**Partly superseded on 2026-08-29, and the split is worth stating rather than leaving to be guessed
+at.** Everything below about the round trip with the form — the echo record, spending it once, never
+arming it on a placement that changed nothing, the latched "ever placed", and comparing against the
+props rather than against the view — survived the move to MapLibre intact, and is still the picker's
+hardest part. What did not: the tile grid and its fractional-zoom scaling, `clampCenter` and the
+rest of the Web-Mercator arithmetic, and `hooks/useMapGesture.ts`, which this section locates pan,
+pinch and tap in and which no longer exists. The gesture _rules_ all survive, as MapLibre
+configuration — see "The picker's contract outlived its renderer" below, which says which knob each
+one became. The tile-host privacy sentence is superseded too: the browser contacts the basemap host
+now, not `tile.openstreetmap.org`.
 
 The picker holds no position of its own. It reads `latitude`/`longitude` off the form and writes
 back through `setValue`, so the pair stays typeable, pasteable and clearable exactly as it was
@@ -11361,12 +11380,17 @@ correction under "The Gas Mixtures header toggle is deliberately not this compon
 
 ## Retina tiles are plumbed and switched off, because Carto's `@2x` is a watermark
 
-Tiles are drawn at 256 CSS px (`lib/map-tiles.ts`), so on a 2× display every one was a 256 px bitmap
-stretched over 512 device pixels, and the labels — the part of a basemap that is text — carried the
-cost. The picker makes it worse than the display alone: `tileScale` already blows the layer up by as
-much as ~1.41× to fill in fractional zoom, so the effective demand there is nearer 2.8×. Asking for
-the provider's double-density variant is the standard answer, and it was implemented before it was
-checked properly.
+**Superseded on 2026-08-29.** `{r}`, `tileUrl` and `tileSrcSet` went with the hand-rolled renderer;
+the density question is MapLibre's `{ratio}` now, and only in raster mode — see "The basemap is a
+MapLibre style, and raster is the escape hatch". The provider finding below is still the reason the
+default is not Carto.
+
+Tiles were drawn at 256 CSS px (`lib/map-tiles.ts`), so on a 2× display every one was a 256 px
+bitmap stretched over 512 device pixels, and the labels — the part of a basemap that is text —
+carried the cost. The picker makes it worse than the display alone: `tileScale` already blows the
+layer up by as much as ~1.41× to fill in fractional zoom, so the effective demand there is nearer
+2.8×. Asking for the provider's double-density variant is the standard answer, and it was
+implemented before it was checked properly.
 
 **Carto serves `@2x` for both default styles and stamps every one of them "API KEY REQUIRED",
 diagonally across the map.** Verified on 2026-08-28 by decoding the PNG, which is the only step that
@@ -11421,6 +11445,12 @@ What that left open turned out to be bigger than the retina question, and it is 
 section: the plain tiles were watermarked too.
 
 ## The default basemap is OpenStreetMap's own, and the dark theme is a CSS filter
+
+**Superseded on 2026-08-29 in both halves.** The default is OpenFreeMap's Liberty and Dark,
+vendored, and dark is a style rather than a filter — the last `invert(1) hue-rotate(180deg)` went
+with the picker's tile layer, along with `tileSource` and `needsDarkFilter`. See "The basemap is a
+MapLibre style, and raster is the escape hatch". The provider survey below is what ruled Carto out,
+and it is why the raster escape hatch still documents a key.
 
 Carto's watermark applies to the keyless tier, not to a style or a density — `rastertiles/voyager`
 carries it as well — so an unconfigured instance was showing "API KEY REQUIRED" across every map it
@@ -11889,10 +11919,11 @@ read-only map was its only caller. Its two antimeridian tests moved with the fun
 stronger on the way, to three places from two; the rest, which pinned the zoom walk and the
 projected-midpoint centring, went with the arithmetic MapLibre replaced.
 
-What that leaves in `lib/map-tiles.ts` is the picker's own arithmetic plus four things
-`lib/basemap.ts` imports from it — the two coordinate folds, the Mercator cut-off and the raster
-default's credit. Those move here when the picker does; importing them the other way round would be
-a cycle, which `code-quality.yml` fails on.
+What that left in `lib/map-tiles.ts` was the picker's own arithmetic plus what `lib/basemap.ts`
+imported from it, and **that list was written short twice before anyone walked the module's
+exports** — once here and once in "`PublicConfig` carries a basemap and a raster tile source" below.
+See "What `lib/map-tiles.ts` actually left behind", which is the sweep that was finally done. The
+module went with the picker on 2026-08-29.
 
 ## The contract tests run in a real browser, and two things do not carry over into it
 
@@ -11991,10 +12022,15 @@ being rewritten twice: the page is corrected once, when the renderer split is ov
 §4.4's "image requests" and the rest of that sweep. The sentence is pinned by a test added alongside
 the active-sessions work, which asserts the wording rather than the count, so nothing fails in the
 meantime — which is exactly why it is written down here instead. `MAP_ATTRIBUTION` feeds both, so
-the credit is at least the same string on both surfaces. Both `tiles` and `lib/map-tiles.ts` go when
-the picker does, and the pieces of that module which are not tile arithmetic — the two coordinate
-folds, the Mercator cut-off, the raster default's credit, `unionBounds` and the two coordinate types
-— move into `lib/basemap.ts`.
+the credit is at least the same string on both surfaces.
+
+**All of that ended on 2026-08-29.** `PublicConfig` carries one basemap again, `lib/map-tiles.ts` is
+gone, and the two renderers no longer disagree about what an operator configured. The list this
+section gave of what moves into `lib/basemap.ts` was short — see "What `lib/map-tiles.ts` actually
+left behind" below. What the section was holding open and is still open is the privacy page: §10.4's
+"One outside party acts on its own account" is true again now that only `tiles.openfreemap.org` is
+contacted, and §4.4's "loads its images directly from a third-party tile provider" became false in
+the same change, so both are to be judged rather than assumed.
 
 ## The install bundle's map variables are a separate job, in a repository this one cannot reach
 
@@ -12014,3 +12050,134 @@ same file's pre-existing omission of `MAP_TILE_API_KEY`. The names to copy acros
 This section exists because the gap is invisible from inside this repository — every check here
 passes — and because an independent review of the change found it four times running, which is four
 times the same true finding cost a round.
+
+## The picker's contract outlived its renderer
+
+`components/sites/map-picker.tsx` draws through MapLibre now, and the port's rule was deliberately
+the whole file: read it end to end and carry over every behaviour that is not tile arithmetic. Three
+earlier attempts at a _list_ of what MapLibre absorbs were each wrong in a different place, so what
+follows is the answer per behaviour rather than a summary of the library.
+
+**Four of the gesture rules are one option.** `cooperativeGestures: true` is what makes a lone
+finger scroll the page instead of panning the map, two fingers drive it, the wheel zoom require
+ctrl/⌘, and `touchmove` be prevented from two touches up — the last of which is the half
+`touch-action` cannot express and which `useMultiTouchScrollLock` existed for. It also sets
+`touch-action: pan-x pan-y` on the canvas, where the surface used to carry `pan-y`. The one thing it
+does _not_ do the app's way is say so: it draws a 40%-black screen of its own for **every** blocked
+gesture, including a plain wheel, and a plain wheel over this map is the diver scrolling down the
+dialog towards Save. So the screen is hidden in `globals.css`, MapLibre's three strings for it are
+set to empty in the `locale` option, and the picker listens for `cooperativegestureprevented` and
+shows its own hint on `gestureType === "touch_pan"` alone. Emptying the strings is not
+belt-and-braces: MapLibre's default mobile wording is _character for character_ the sentence this
+app already used, so leaving it would put two copies of that sentence in the document for anything
+reading the page to find twice.
+
+**The tail of a pinch still does not nag**, and by MapLibre's own mechanism rather than ours.
+`TouchPanHandler.touchend` resets itself the moment the remaining touch count is one under
+cooperative gestures, so the single finger left after a pinch finds `_active` false and never
+reaches `notifyGestureBlocked`. That is the same rule the hand-rolled handler spelled as
+`maxPointers === 1`, arrived at from the other end.
+
+**A pan ends when the pointer lifts.** MapLibre's drag handler adds inertia and this app's never had
+any. On a placement control that is worse than a preference — the frame is 160 px tall inside a
+scrolling dialog, and a map still gliding when the next click lands puts the pin somewhere nobody
+aimed at. There is no `inertia: false`, so it is said in the units the handler has:
+`dragPan: { maxSpeed: 0 }` caps the fling at no speed, which eases for no time and travels no
+distance. Pinch-zoom inertia is not overridable the same way and is left alone; it moves the scale
+rather than the ground and does not move a pin out from under a click.
+
+**`clickTolerance` is 5, not MapLibre's 3**, because 5 px is the slop the hand-rolled tap detector
+used and what "click to place the dive site" was tuned against on a phone. Both directions are
+pinned: a 4 px wobble is still a placement, a 6 px drag is a pan. `doubleClickZoom` is off — a
+double click here is two placements, and MapLibre's default would fire a zoom through the middle of
+them.
+
+**Anchored zoom is the one most likely to be lost, and `around` is the whole of it.** `easeTo` zooms
+about the centre unless `around` is passed, and the picker zooms about _the pin while it is on
+screen_ and about the crosshair otherwise — for the `+`/`−` buttons and the keyboard, which have no
+pointer. Anchoring on a pin the diver has panned away from does the opposite of what the rule is
+for, which is why `anchorFor` measures before it decides. It folds the pin's longitude to the copy
+of the repeating world nearest the view before projecting, because `Map.project` does no folding: a
+site at 179°E under a view centred on 179°W projects a whole world away and would read as off screen
+while plainly visible. That is `nearestWrappedX` in degrees, and it is the only piece of the old
+wrapping arithmetic the picker still needs — the _marker_ is a MapLibre `Marker`, which does its own
+via `smartWrap`.
+
+**The keyboard is the app's, `keyboard: false` on the map.** MapLibre has a keyboard handler and it
+pans and zooms about the centre, which is precisely the behaviour above; it also has nothing to say
+about Enter placing a site. Its bindings would have collided rather than helped.
+
+**`role="application"` sits on this component's own element, not on MapLibre's container.** The
+renderer owns and rebuilds its container, and the crosshair, the hint and the credit are siblings of
+it — which is why the tests still select through `[role="application"] >`. Two consequences follow.
+The credit is rendered _outside_ `MapCanvas` rather than as its child, so it survives a browser with
+no WebGL2, where that component renders its fallback and nothing else. And MapLibre's canvas is set
+to `tabindex="-1"` after construction: it ships `tabindex="0"` for the keyboard handler that is now
+switched off, and left there it is a second tab stop inside the surface and a click target that
+takes focus off the element whose `:focus-visible` decides whether the crosshair is drawn.
+
+**The camera is MapLibre's; the decision about where to point it is still React's.** The
+render-phase block that tells an echo from a diver typing is unchanged, but it can no longer move
+the view itself — a camera call is a side effect. So it sets a `recentre` state during render and a
+`useLayoutEffect` applies it, which is the same commit and the same frame. Three layout effects run
+in a fixed order on the commit where the map first exists: attach the listeners, jump to the world
+view, then apply whatever position the dialog opened with. Attaching first is load-bearing — the
+zoom mirrored into React for the two buttons' disabled state arrives through MapLibre's `zoom`
+event, and a listener attached after the opening jump would miss it. It cannot be caught up in the
+effect either, because `setState` called synchronously in one is a cascading render
+`react-hooks/set-state-in-effect` rejects outright, so the state is _seeded_ with the value those
+effects will produce.
+
+**`clampCenter` is absorbed and has no replacement here.** MapLibre's transform constrains the
+viewport inside the world vertically, and centres it when the world is shorter — which is exactly
+what that function did. The property it protected on the _output_ side is not absorbed: `unproject`
+bounds nothing, so `emit` still folds through `clampLatitude` and `wrapLongitude`, and a browser
+test asserts that every position the picker emits round-trips through the form's own parser.
+
+## What `lib/map-tiles.ts` actually left behind
+
+The module is deleted. Two earlier notes in this file said what would move out of it and both said
+it short, so this is the sweep of every exported symbol rather than another summary.
+
+| symbol                                           | where it went                                           |
+| ------------------------------------------------ | ------------------------------------------------------- |
+| `clampLatitude`, `wrapLongitude`, `MAX_LATITUDE` | `lib/basemap.ts` — they bound what the picker _emits_   |
+| `LatLon`, `LatLonBounds`, `WORLD_CENTER`         | `lib/basemap.ts`                                        |
+| `DEFAULT_TILE_ATTRIBUTION`                       | `lib/basemap.ts`, as the raster hatch's fallback credit |
+| `parseAttribution`, `AttributionPart`            | `components/attribution.tsx`, beside its one consumer   |
+| `project`, `unproject`, `nearestWrappedX`        | absorbed by MapLibre                                    |
+| `clampCenter`                                    | absorbed by MapLibre's transform                        |
+| `TILE_SIZE`, `MIN_ZOOM`, `MAX_ZOOM`              | deleted; the MapLibre figures are in `lib/basemap.ts`   |
+| `visibleTiles`, `VisibleTile`, `Point`           | deleted with the `<img>` grid                           |
+| `tileUrl`, `tileSrcSet`                          | deleted; `{ratio}` is MapLibre's, and only in raster    |
+| `tileSource`, `TileSource`, `TileConfig`         | deleted; `resolveBasemap` is the one resolver           |
+| `needsDarkFilter`, `DEFAULT_TILE_URL`            | deleted with the CSS filter and the raster default      |
+| `tileOrigins`                                    | deleted; `basemapOrigins` is what `proxy.ts` derives    |
+
+**`parseAttribution` went to the component rather than to `lib/basemap.ts`**, which is where both
+earlier notes assumed it would land. Nothing about parsing a credit line is basemap arithmetic, and
+half of what reaches `Attribution` is the geocoder's credit rather than a map's — it only ever lived
+in the tile module because the basemap credit was the first string that needed it.
+
+**`img-src` now names no third party at all.** `proxy.ts` had two derivations, one per directive;
+the raster tile hosts fed `img-src` for exactly as long as the picker drew `<img>` tiles, and
+`proxy.test.ts` pinned that retention on purpose so that dropping it would be a decision rather than
+an accident. Those two cases are replaced by one asserting the directive is `'self' data: blob:` in
+all three basemap configurations. Every tile the app fetches goes through `connect-src` now, in both
+of MapLibre's modes — see "The basemap is a MapLibre style, and raster is the escape hatch" for why
+that is not a choice.
+
+**What was swept here and what was not, because the line between them is a rule rather than a
+list.** Anything a _reader outside this file_ would be misled by was corrected in this change: three
+passages in `.env.example` that told a self-hoster their picker still contacted
+`tile.openstreetmap.org` whatever they configured (each of which dated itself, "until the picker
+moves too"), and the privacy page's §4.4 and §10.4 sentences about the browser loading map _images_.
+Operator-facing configuration and a privacy disclosure are not prose about the codebase; a wrong one
+costs somebody a second provider or a false statement about where their divers' IP addresses go.
+That is the same call PR #133 made about `.env.example` for its own rename, and the same reason.
+
+What is left is this file's own history. The sections above that this change falsifies carry a dated
+one-line pointer and nothing more - rewriting their prose, and `README.md`'s stale `connect-src`
+sentence, is a documentation pass of its own. The rule used for the pointer was narrow and worth
+stating so that sweep can tell what was already done: a section got one when its _subject_ is code
+this change deleted.

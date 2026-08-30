@@ -226,23 +226,29 @@ describe("Content-Security-Policy", () => {
     ).toBe("connect-src 'self' https://tiles.example");
   });
 
-  // **`img-src` keeps the tile origins**, and this is the assertion the plan for
-  // this change went looking for and did not find. The site picker still draws
-  // raster `<img>` tiles until it moves to MapLibre, so reading "the basemap host
-  // is a `connect-src` source" as a *move* rather than an *add* would leave the
-  // picker blank with nothing failing anywhere.
-  it("keeps the raster tile host in img-src while the picker still draws it", async () => {
-    expect(
-      await directive("img-src", {
+  // **`img-src` names no third party at all**, and the two assertions this
+  // replaces said the opposite on purpose. They pinned the tile hosts' retention
+  // for as long as the site picker drew raster `<img>` tiles, so that dropping
+  // them would be a decision rather than an accident; the picker draws through
+  // MapLibre now, which fetches every tile under `connect-src` in both of its
+  // modes, and no `<img>` in this app points anywhere but at its own origin.
+  it.each([
+    ["by default", {}],
+    [
+      "with a raster escape hatch configured",
+      {
         MAP_TILE_URL: "https://tiles.example/{z}/{x}/{y}.png",
-      }),
-    ).toContain("https://tiles.example");
-  });
-
-  it("keeps the default tile host in img-src too", async () => {
-    expect(await directive("img-src")).toContain(
-      "https://tile.openstreetmap.org",
-    );
+      },
+    ],
+    [
+      "with a style configured",
+      {
+        MAP_STYLE_URL: "https://styles.example/day.json",
+        MAP_ATTRIBUTION: "© Someone",
+      },
+    ],
+  ])("names no basemap host in img-src (%s)", async (_case, env) => {
+    expect(await directive("img-src", env)).toBe("img-src 'self' data: blob:");
   });
 
   // The empty-source filtering that `cspList` does is easy to lose when a

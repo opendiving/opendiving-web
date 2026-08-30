@@ -330,8 +330,8 @@ export default function PrivacyPage() {
               4.4 Map Tiles
             </h3>
             <p className="text-foreground mb-4">
-              Several places in the app show a map, and your browser loads its
-              images directly from a third-party tile provider. That provider
+              Several places in the app show a map, and your browser fetches its
+              tiles directly from a third-party basemap provider. That provider
               therefore sees your IP address and which part of the world the map
               is showing — which is, roughly, where you dive. It does not
               receive your account, your dive log, or the name of anything on
@@ -1002,9 +1002,9 @@ export default function PrivacyPage() {
             <p className="text-foreground mb-4">
               This software sets no third-party cookies of its own. One outside
               party acts on its own account rather than ours, and it is
-              disclosed above rather than denied: the map tile provider your
-              operator chose, whose servers answer the image requests described
-              in section 4.4 and may set cookies of their own.
+              disclosed above rather than denied: the basemap provider your
+              operator chose, whose servers answer the requests described in
+              section 4.4 and may set cookies of their own.
             </p>
             {googleClientId && (
               <p className="text-foreground mb-4">

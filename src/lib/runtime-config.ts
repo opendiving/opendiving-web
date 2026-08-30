@@ -14,7 +14,6 @@
  */
 
 import { resolveBasemap, type Basemap } from "@/lib/basemap";
-import { tileSource, type TileSource } from "@/lib/map-tiles";
 
 /**
  * The variables, as a plain bag of strings. Narrower than `NodeJS.ProcessEnv`, whose
@@ -34,26 +33,16 @@ export interface PublicConfig {
    */
   googleClientId?: string;
   /**
-   * The basemap the MapLibre surfaces draw, already resolved: a style URL pair
-   * or a raster template pair, plus the credit rendered over whichever is
-   * active.
+   * The basemap every map draws, already resolved: a style URL pair or a raster
+   * template pair, plus the credit rendered over whichever is active.
+   *
+   * One field, and it was briefly two. A `tiles` pair sat beside it for the one
+   * change in which the site picker still drew its own `<img>` tiles and needed
+   * a raster template in every configuration - including the default, where this
+   * is a vector style and offers none. Both renderers are MapLibre now, so an
+   * operator's `MAP_STYLE_URL` reaches every map rather than all but one.
    */
   basemap: Basemap;
-  /**
-   * The raster tile templates the hand-rolled picker still draws.
-   *
-   * Temporary, and it overlaps `basemap` on purpose. `components/sites/
-   * map-picker.tsx` has not moved to MapLibre yet, and it needs a raster pair in
-   * every configuration - including the default one, where the basemap above is
-   * a vector style and offers it none. Leaving this field out would blank the
-   * picker with nothing failing, since no test asserts a tile URL reaches it.
-   * It goes when that component does, along with `lib/map-tiles.ts`.
-   *
-   * The two can disagree, and knowingly: an operator who sets `MAP_STYLE_URL`
-   * gets their style on the read-only maps and the keyless OpenStreetMap default
-   * under the picker until then. See DECISIONS.md.
-   */
-  tiles: TileSource;
 }
 
 /** `PublicConfig` plus the parts only the server renders with. */
@@ -139,7 +128,7 @@ function flag(
  * `metadataBase` is a `new URL(...)`, which throws on a malformed value - and it is
  * built in the root layout, so a typo'd `SITE_URL` would take every page down over
  * OpenGraph tags. Failing back to the default and saying so is the same trade
- * `lib/api-base.ts` and `lib/map-tiles.ts` make for the CSP.
+ * `lib/api-base.ts` and `lib/basemap.ts` make for the CSP.
  */
 function resolveSiteUrl(value: string | undefined): string {
   if (!value) return DEFAULT_SITE_URL;
@@ -191,12 +180,6 @@ export function readRuntimeConfig(
       attribution: configured(env, "MAP_ATTRIBUTION"),
       apiKey: configured(env, "MAP_TILE_API_KEY"),
     }),
-    tiles: tileSource({
-      light: configured(env, "MAP_TILE_URL"),
-      dark: configured(env, "MAP_TILE_URL_DARK"),
-      attribution: configured(env, "MAP_ATTRIBUTION"),
-      apiKey: configured(env, "MAP_TILE_API_KEY"),
-    }),
     // Read directly rather than through `configured`: these two are new names with no
     // `NEXT_PUBLIC_` past to fall back to, and offering one would invite an operator to
     // set a variable that reaches the browser for a decision the server makes alone.
@@ -232,6 +215,5 @@ export function publicConfig(
   return {
     googleClientId: config.googleClientId,
     basemap: config.basemap,
-    tiles: config.tiles,
   };
 }

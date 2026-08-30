@@ -4,7 +4,6 @@ import { ThemeProvider } from "next-themes";
 import { LocationsMap, type MappableLocation } from "./locations-map";
 import { resolveBasemap, type BasemapConfig } from "@/lib/basemap";
 import { ConfigProvider } from "@/contexts/ConfigContext";
-import { tileSource } from "@/lib/map-tiles";
 
 // **A real browser, not jsdom.** MapLibre needs a WebGL2 context, which jsdom
 // does not have and no mock supplies - `vitest-webgl-canvas-mock` is WebGL1-only
@@ -36,9 +35,7 @@ const withConfig = (
   children: React.ReactNode,
   config: BasemapConfig = OFFLINE,
 ) => (
-  <ConfigProvider
-    config={{ basemap: resolveBasemap(config), tiles: tileSource() }}
-  >
+  <ConfigProvider config={{ basemap: resolveBasemap(config) }}>
     {children}
   </ConfigProvider>
 );

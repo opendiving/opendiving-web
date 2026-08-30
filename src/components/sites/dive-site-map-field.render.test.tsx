@@ -14,9 +14,9 @@ const RESULT: GeocodeResult = {
   attribution: "Data © OpenStreetMap contributors, ODbL 1.0.",
 };
 
-// The map is covered by `map-picker.render.test.tsx` and the search by
+// The map is covered by `map-picker.browser.test.tsx` and the search by
 // `place-search.render.test.tsx`; here each only needs to be something that can
-// hand a pick over. Stubbing them keeps the tile grid, `next/dynamic` and a
+// hand a pick over. Stubbing them keeps a WebGL map, `next/dynamic` and a
 // debounced round trip out of the way of what this file is about - which is the
 // wiring between the two of them and the form.
 vi.mock("./map-picker", () => ({

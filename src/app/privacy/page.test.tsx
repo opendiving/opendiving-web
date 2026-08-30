@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { tileSource } from "@/lib/map-tiles";
 import PrivacyPage from "./page";
 
 // §10's counts are prose, and prose is what goes stale. `lib/storage-keys.test.ts`
@@ -27,7 +26,6 @@ vi.mock("@/lib/runtime-config", () => ({ runtimeConfig }));
 
 function renderPage({ google }: { google: boolean }) {
   runtimeConfig.mockReturnValue({
-    tiles: tileSource(),
     googleClientId: google ? "abc.apps.googleusercontent.com" : undefined,
   });
   render(<PrivacyPage />);

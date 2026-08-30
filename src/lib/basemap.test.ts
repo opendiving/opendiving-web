@@ -4,11 +4,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   basemapOrigins,
   basemapStyle,
+  clampLatitude,
   DEFAULT_BASEMAP_ATTRIBUTION,
   DEFAULT_BASEMAP_ORIGIN,
   DEFAULT_STYLE_URL,
   DEFAULT_STYLE_URL_DARK,
+  DEFAULT_TILE_ATTRIBUTION,
   MAX_FIT_ZOOM,
+  MAX_LATITUDE,
   MAX_ZOOM,
   MIN_ZOOM,
   MISSING_ATTRIBUTION_MESSAGE,
@@ -16,17 +19,18 @@ import {
   resolveBasemap,
   unionBounds,
   withRatioToken,
+  WORLD_CENTER,
+  wrapLongitude,
 } from "./basemap";
-import {
-  MAX_ZOOM as SLIPPY_MAX_ZOOM,
-  MIN_ZOOM as SLIPPY_MIN_ZOOM,
-} from "./map-tiles";
 
-// The slippy figure `MAX_FIT_ZOOM` replaces. Written out rather than imported
-// because the constant it came from went with `fitBounds`, whose zoom-walking
-// MapLibre's own `fitBounds` now does - the other two are still live, because
-// the site picker still reads them.
+// The slippy figures these replace. Written out rather than imported now that
+// the module holding them has gone with the hand-rolled renderer - they are a
+// fact about the two conventions rather than about any code that is left.
+const SLIPPY_MIN_ZOOM = 1;
+const SLIPPY_MAX_ZOOM = 18;
 const SLIPPY_MAX_FIT_ZOOM = 10;
+// `PLACED_ZOOM` in `components/sites/map-picker.tsx`, which never lived here.
+const SLIPPY_PLACED_ZOOM = 12;
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -347,6 +351,85 @@ describe("zoom, against the numbers it replaces", () => {
     ["MAX_FIT_ZOOM", MAX_FIT_ZOOM, SLIPPY_MAX_FIT_ZOOM],
   ])("%s is one level below the slippy figure", (_name, maplibre, slippy) => {
     expect(maplibre).toBe(slippy - 1);
+  });
+
+  // The picker's own opening zoom is the fourth of these, and it is the one that
+  // has to stay *deeper* than the read-only map's cap: a dive site's map opens
+  // further out than the picker that placed its pin, and neither number says so
+  // on its own.
+  it("keeps a placed pin deeper than a lone place is fitted", () => {
+    expect(SLIPPY_PLACED_ZOOM - 1).toBeGreaterThan(MAX_FIT_ZOOM);
+    expect(MAX_FIT_ZOOM).toBeGreaterThan(MIN_ZOOM);
+    expect(MAX_ZOOM).toBeGreaterThan(SLIPPY_PLACED_ZOOM - 1);
+  });
+});
+
+// The coordinate folds, which arrived here with the hand-rolled renderer's
+// arithmetic and outlived it. MapLibre clamps its own camera and would happily
+// report a longitude of 542 after a pan; what these protect is the *emitted*
+// pair, whose range has to stay a strict subset of what the form's own parser
+// and the API accept.
+describe("wrapLongitude", () => {
+  it("leaves an in-range longitude alone", () => {
+    expect(wrapLongitude(34.5372)).toBeCloseTo(34.5372, 10);
+    expect(wrapLongitude(-179.9)).toBeCloseTo(-179.9, 10);
+  });
+
+  it("folds a longitude that has run past the antimeridian", () => {
+    // Panning east from 179 degrees by 3 arrives at 178W, not at 182E.
+    expect(wrapLongitude(182)).toBeCloseTo(-178, 10);
+    expect(wrapLongitude(-182)).toBeCloseTo(178, 10);
+    expect(wrapLongitude(540)).toBeCloseTo(180 - 360, 10);
+  });
+
+  it("settles the two names for the antimeridian on one", () => {
+    expect(wrapLongitude(180)).toBe(-180);
+    expect(wrapLongitude(-180)).toBe(-180);
+  });
+
+  it("is idempotent", () => {
+    for (const longitude of [0, 34.5372, 182, -182, 359.9, -540]) {
+      const once = wrapLongitude(longitude);
+      expect(wrapLongitude(once)).toBeCloseTo(once, 10);
+    }
+  });
+});
+
+describe("clampLatitude", () => {
+  it("cuts at the latitudes Mercator can represent", () => {
+    expect(clampLatitude(89)).toBe(MAX_LATITUDE);
+    expect(clampLatitude(-89)).toBe(-MAX_LATITUDE);
+    expect(clampLatitude(28.5717)).toBe(28.5717);
+  });
+
+  // Web Mercator is undefined at the poles and conventionally cut where the
+  // projected world becomes square. Anything the fold produces is a latitude the
+  // API's own bound accepts, which is the property that matters here.
+  it("stays inside the range the API accepts", () => {
+    expect(MAX_LATITUDE).toBeLessThan(90);
+    expect(MAX_LATITUDE).toBeGreaterThan(85);
+  });
+});
+
+describe("WORLD_CENTER", () => {
+  // Shared by both surfaces so the two open on the same view by construction,
+  // rather than on two literals that agree until somebody edits one.
+  it("is a little north of the equator, where the diving is", () => {
+    expect(WORLD_CENTER).toEqual({ latitude: 20, longitude: 0 });
+  });
+});
+
+describe("DEFAULT_TILE_ATTRIBUTION", () => {
+  // The raster escape hatch's fallback credit, and it has to stay parseable as
+  // `[label](url)` - a licence link nobody can follow is not much of a credit.
+  it("credits OpenStreetMap with a link to the licence", () => {
+    expect(DEFAULT_TILE_ATTRIBUTION).toBe(
+      "[© OpenStreetMap contributors](https://www.openstreetmap.org/copyright)",
+    );
+    expect(
+      resolveBasemap({ tileUrl: "https://tiles.example/{z}/{x}/{y}.png" })
+        .attribution,
+    ).toBe(DEFAULT_TILE_ATTRIBUTION);
   });
 });
 

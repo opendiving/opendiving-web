@@ -3,7 +3,6 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ConfigProvider } from "@/contexts/ConfigContext";
 import { resolveBasemap } from "@/lib/basemap";
-import { tileSource } from "@/lib/map-tiles";
 import { memoryStorage, useStorage } from "@/test/memory-storage";
 import { GoogleAuthButton } from "./google-auth-button";
 
@@ -30,7 +29,6 @@ function renderButton({
     <ConfigProvider
       config={{
         basemap: resolveBasemap(),
-        tiles: tileSource(),
         googleClientId: clientId,
       }}
     >

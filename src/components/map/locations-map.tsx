@@ -4,8 +4,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useTheme } from "next-themes";
 import { Marker, type Map as MapLibreMap } from "maplibre-gl";
 
-import { MAX_FIT_ZOOM, MIN_ZOOM, unionBounds } from "@/lib/basemap";
-import { WORLD_CENTER, type LatLonBounds } from "@/lib/map-tiles";
+import {
+  MAX_FIT_ZOOM,
+  MIN_ZOOM,
+  unionBounds,
+  WORLD_CENTER,
+  type LatLonBounds,
+} from "@/lib/basemap";
 import { useConfig } from "@/contexts/ConfigContext";
 import { formatTripLocationNames } from "@/lib/trip-locations";
 import { Attribution } from "@/components/attribution";

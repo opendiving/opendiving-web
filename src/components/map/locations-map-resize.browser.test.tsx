@@ -3,7 +3,6 @@ import { render, waitFor } from "@testing-library/react";
 import { LocationsMap } from "./locations-map";
 import { resolveBasemap } from "@/lib/basemap";
 import { ConfigProvider } from "@/contexts/ConfigContext";
-import { tileSource } from "@/lib/map-tiles";
 
 // **One test, in a file of its own, and that is the finding rather than a
 // preference.** Vitest gives each browser test file its own page, and this check
@@ -33,7 +32,6 @@ const withConfig = (children: React.ReactNode) => (
         attribution:
           "[© OpenStreetMap](https://www.openstreetmap.org/copyright)",
       }),
-      tiles: tileSource(),
     }}
   >
     {children}
