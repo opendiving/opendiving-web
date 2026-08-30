@@ -78,10 +78,12 @@ Tests are colocated: `foo.ts` gets `foo.test.ts` next to it, run by Vitest. Most
 a file named `foo.browser.test.tsx` belongs to the second project instead and runs in real Chromium
 (see the note above about installing it). Reach for that only when jsdom genuinely cannot answer the
 question — today that means the map, which needs a WebGL2 context — because a real browser is slower
-and the isolation is weaker. Coverage is measured over `src/lib/**`, `src/hooks/**`,
-`src/contexts/**`, `src/components/**` and `src/app/**`, with floors per directory in
-`vitest.config.mts`. New helpers in `src/lib/` should come with tests; bug fixes should come with a
-test that fails without the fix.
+and the isolation is weaker. If your question is about layout, read "jsdom answers no layout
+question, and the browser lane only answers one with the stylesheet loaded" in
+[DECISIONS.md](DECISIONS.md) before writing anything either way. Coverage is measured over
+`src/lib/**`, `src/hooks/**`, `src/contexts/**`, `src/components/**` and `src/app/**`, with floors
+per directory in `vitest.config.mts`. New helpers in `src/lib/` should come with tests; bug fixes
+should come with a test that fails without the fix.
 
 ## Two things that will bite you
 

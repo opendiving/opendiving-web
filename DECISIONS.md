@@ -12476,6 +12476,60 @@ ever draws attention to it. They are left as they are here, deliberately — thi
 section of prose and touches no test — but they are the worked example of the paragraph above rather
 than a counterexample to it.
 
+**"Left as they are" lasted one change, and both guards have now been watched failing
+(2026-08-30).** Each of the two files carries `import "@/app/globals.css"` at the top, under a
+comment saying why, because it reads as a stray import and deleting it fails nothing. The line is
+the smaller half. The half worth copying is the negative control: `invert hue-rotate-180` was put
+back on the two elements the guards walk — the `role="img"` frame in `locations-map.tsx` and the
+`role="application"` surface in `map-picker.tsx` — and the suite run twice against it. Without the
+import both guards **passed** with the regression sitting in the markup. With it both **failed**.
+The classes then came out and the project went green again, 51 of 51. Do that for any guard written
+as an absence before believing it: there is no arrangement of the markup under which such a test
+complains, so the only evidence it works is having seen it fail on purpose.
+
+**The rest of the lane was swept rather than assumed, and it splits three ways.** Ten lines in the
+browser project read a computed style or a measured box — `getComputedStyle`,
+`getBoundingClientRect`, `offsetWidth`/`offsetHeight`, `clientWidth`/`clientHeight` — across three
+of the four `*.browser.test.tsx` files; `map-canvas.browser.test.tsx` has none, and one of the ten
+is prose rather than code, in the JSDoc over `map-picker.browser.test.tsx`'s `canvas()`. Of the nine
+that run: six now **load the stylesheet** (five in `locations-map.browser.test.tsx`, one the
+picker's theme guard). Two **demonstrably do not depend on one** —
+`locations-map-resize.browser.test.tsx` gives itself a `<div>` with an inline `width`, narrows it,
+and asserts a containment and a `< 300`; measured both ways the figures shift by the app border's
+2px and every assertion holds either way, which is why that file is left without the import. The
+ninth is a **third** case the bar above did not name: _a harness stylesheet that deliberately
+overrides the app's_. `map-picker.browser.test.tsx` injects
+`[role="application"] { width: 512px; height: 256px }` in `beforeAll`, unlayered, and Tailwind's
+output sits inside `@layer utilities` — so the harness still wins after the import, which is the
+point of it. Every client coordinate in that file is written against 512x256 and would otherwise
+follow the runner's viewport.
+
+**And the stylesheet exposed a live layout defect that is not fixed here (2026-08-30).**
+`map-canvas.tsx` renders the map's container as `absolute inset-0`, and that class never applies —
+not in the tests, and not in the app. `maplibre-gl.css` sets
+`.maplibregl-map { position: relative; overflow: hidden }` and MapLibre stamps that class on the
+container as the `Map` is constructed; the rule is **unlayered**, Tailwind's `.absolute` sits in
+`@layer utilities`, and an unlayered declaration outranks every layer whatever the specificity or
+the source order. So the container keeps `position: relative`, has no in-flow children — MapLibre's
+canvas is absolutely positioned — collapses to zero height, and clips its own canvas with its own
+`overflow: hidden`. Measured against the CSS a real `next build` emits, loaded into a real Chromium
+over the markup `locations-map.tsx` produces: the `role="img"` frame is 412x158, the container
+inside it is 412x0, and `document.elementFromPoint` at the middle of the frame returns the frame
+rather than the canvas. The same probe inside the browser project agrees.
+`map-picker.browser.test.tsx` never saw it because its harness sheet sets `position: absolute` on
+that element, unlayered, and so wins — the comment there used to blame the collapse on Tailwind
+being absent, which was the wrong cause for a real symptom.
+
+Two things follow for whoever takes the fix. The collapse is height-only — the container keeps its
+width — and MapLibre's fallback is per-axis (`clientWidth || 400`, `clientHeight || 300`), so
+`locations-map.browser.test.tsx`'s spans are measured on a canvas as wide as the frame — which
+follows the runner's window — and a flat 300 tall, taller than the frame it is clipped by. Repairing
+the collapse moves every one of those figures, and they have to be re-read rather than assumed to
+carry over. And the trap generalises past this component: **a vendored stylesheet this app does not
+control can outrank any Tailwind utility, because Tailwind layers its output and vendor CSS does
+not.** That is the same hazard the cooperative-gesture rule in `globals.css` is written two class
+names deep to survive, stated there as a worry about arrival order; layering makes it unconditional.
+
 **The bar is two conditions and both have to hold.** The invariant has to be **genuinely geometric**
 — a height, a baseline, an alignment, one box's position relative to another — _and_ the jsdom
 assertion of it has to be one that would **pass vacuously**. Either alone lets in tests that belong
@@ -12491,3 +12545,10 @@ Layout is now a second such thing, and naming it there would invite browser test
 jsdom handles perfectly well, against a lane that is slower and whose isolation is weaker. The steer
 stays narrow on purpose, and this section is the second answer — for somebody who already has a
 geometry question and needs to know it is answerable, and at what price.
+
+**One clause was added after all, and the steer was not (2026-08-30).** `CONTRIBUTING.md` now names
+this section where it introduces the browser lane, so somebody holding a geometry question can find
+their way here instead of never learning the answer exists. What it still does not do is put layout
+beside WebGL2 as a reason to reach for the lane: that sentence is unchanged, and the two-condition
+bar above is unchanged with it. A pointer is discoverability; a second named reason would be an
+invitation, and the paragraph above is why that was refused.
