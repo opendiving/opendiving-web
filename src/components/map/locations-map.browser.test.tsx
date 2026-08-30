@@ -5,6 +5,17 @@ import { LocationsMap, type MappableLocation } from "./locations-map";
 import { resolveBasemap, type BasemapConfig } from "@/lib/basemap";
 import { ConfigProvider } from "@/contexts/ConfigContext";
 
+// **Load-bearing, and it looks like a stray import.** The browser project loads
+// no stylesheet of this app's - `map-canvas.tsx` brings `maplibre-gl.css` with
+// it, but Tailwind arrives only through `app/layout.tsx`, which no test renders.
+// Without this line every Tailwind class in the tree computes to nothing, and
+// the dark-theme guard below - which asserts an *absence*, that no element
+// carries a CSS `filter` - passes whether or not the `invert hue-rotate-180` it
+// exists to catch is present. Removing it does not fail a test; it silently
+// stops one from being able to fail. See "jsdom answers no layout question, and
+// the browser lane only answers one with the stylesheet loaded" in DECISIONS.md.
+import "@/app/globals.css";
+
 // **A real browser, not jsdom.** MapLibre needs a WebGL2 context, which jsdom
 // does not have and no mock supplies - `vitest-webgl-canvas-mock` is WebGL1-only
 // and unmaintained, and MapLibre's own suite works only because it installs a
@@ -55,6 +66,18 @@ const canvasReady = () =>
 // handle on the map: the component keeps its instance private, which is the
 // contract worth keeping. Two places drawn further apart on screen is a deeper
 // zoom, and that is all these comparisons need.
+//
+// Every figure here is a *comparison* between two spans or a containment check,
+// never an absolute pixel count, and that is what keeps them meaningful: the
+// canvas is as wide as the frame, which follows the runner's window, and it is
+// taller than the frame it sits in. `.maplibregl-map`'s own unlayered
+// `position: relative` outranks the `absolute inset-0` that `map-canvas.tsx`
+// puts on the same element, so the map container collapses to zero *height*
+// while keeping its width, and MapLibre's per-axis fallback
+// (`clientWidth || 400`, `clientHeight || 300`) hands back that real width and a
+// flat 300. Loading `globals.css` above does not change that; it changes the
+// frame around it. Fix the collapse and these numbers move, so re-read them
+// rather than assuming they carry over.
 const spanOnScreen = async () => {
   await canvasReady();
   return waitFor(() => {

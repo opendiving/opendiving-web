@@ -11,6 +11,19 @@ import {
   parseFormPosition,
 } from "@/lib/validations/dive-site";
 
+// **Load-bearing, and it looks like a stray import.** Nothing in the browser
+// project loads this app's Tailwind - it arrives only through `app/layout.tsx`,
+// which no test renders - so without this line every Tailwind class in the tree
+// computes to nothing. The theme guard at the bottom of this file asserts an
+// *absence*, that no element carries a CSS `filter`, and the regression it
+// guards against is a pair of Tailwind classes: unloaded, they compute to
+// `filter: none` whether present or not and the guard cannot fail. Removing this
+// import breaks no test; it quietly disarms one. It does *not* govern the
+// geometry below - the `beforeAll` stylesheet does, deliberately, and still
+// wins. See "jsdom answers no layout question, and the browser lane only answers
+// one with the stylesheet loaded" in DECISIONS.md.
+import "@/app/globals.css";
+
 // **A real browser, not jsdom.** The picker draws through MapLibre, which needs
 // a WebGL2 context - so this file belongs to the browser project
 // (`vitest.config.mts`), which is why it is named `.browser.test.tsx`.
@@ -38,14 +51,27 @@ const OFFLINE: BasemapConfig = {
     "[© OpenStreetMap contributors](https://www.openstreetmap.org/copyright)",
 };
 
-// **Tailwind is not compiled into the browser project**, so the picker's own
-// `relative h-40 w-full` and `MapCanvas`'s `absolute inset-0` are inert class
-// names here: the surface measures zero and MapLibre falls back to its own
-// 400x300. Left alone that is merely odd, but it also puts the canvas outside
-// the box its own ancestors occupy, and a real Playwright click then hit-tests
-// onto `<body>` and never lands. These two rules are the geometry those classes
-// describe and nothing else - `:first-child` rather than a class name, because
-// the map's container is the first thing `MapCanvas` renders.
+// **The geometry every pointer test below is written against, and it overrides
+// the app's own on purpose.** Tailwind now reaches this file - see the
+// `globals.css` import above - so the picker's `relative h-40 w-full` would
+// otherwise size the surface from the window, and every client coordinate here
+// would move with the runner's viewport. A fixed 512x256 is what makes
+// `clientAt(x, y)` mean the same thing on every machine, so these rules stay and
+// deliberately win: they are unlayered, and Tailwind's output sits inside
+// `@layer utilities`.
+//
+// The second rule is not the same kind of thing. `MapCanvas`'s
+// `absolute inset-0` does not apply even with Tailwind loaded, because
+// `maplibre-gl.css` sets `.maplibregl-map { position: relative; overflow:
+// hidden }` unlayered and unlayered outranks any layer. Left alone the map's
+// container collapses to zero height - keeping the 512 width the rule above
+// gives it - so MapLibre's per-axis fallback (`clientHeight || 300`) draws a
+// 512x300 canvas that is clipped outside the box its ancestors occupy, and a
+// real Playwright click then hit-tests onto `<body>` and never lands. So this
+// rule stands in for a class name that loses, rather than for one that is
+// missing.
+// `:first-child` rather than a class name, because the map's container is the
+// first thing `MapCanvas` renders.
 const FRAME = { width: 512, height: 256 };
 
 beforeAll(() => {
