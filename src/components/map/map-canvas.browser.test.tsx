@@ -5,6 +5,19 @@ import { getWorkerUrl, type Map as MapLibreMap } from "maplibre-gl";
 import { MapCanvas } from "./map-canvas";
 import { resolveBasemap, type BasemapConfig } from "@/lib/basemap";
 
+// **Load-bearing, and it looks like a stray import.** The browser project loads
+// no stylesheet of this app's - `map-canvas.tsx` brings `maplibre-gl.css` with
+// it, but Tailwind arrives only through `app/layout.tsx`, which no test renders.
+// The geometry check below is the one thing here that measures the app's own
+// layout rather than MapLibre's: without this line the classes it depends on
+// compute to nothing, the container collapses to 320x0 for want of a stylesheet
+// rather than for want of the fix, and the test reports the harness's failure as
+// the component's. (The frame stays 320 wide either way - it is sized inline,
+// and MapLibre's fallback is per-axis. See the note on the canvas below.) See
+// "jsdom answers no layout question, and the browser lane only answers one with
+// the stylesheet loaded" in DECISIONS.md.
+import "@/app/globals.css";
+
 // A style with a source the **worker** has to parse, served from nowhere.
 //
 // That combination is the point. An empty style loads without the worker ever
@@ -38,9 +51,16 @@ const asConfig = (): BasemapConfig => ({
   attribution: "© Someone",
 });
 
+// The frame a caller gives the map, and the figures the geometry test reads it
+// back against. Inline styles rather than classes so that every other test here
+// is sized the same whether or not a stylesheet ever loads; 180 is deliberately
+// not 300, which is MapLibre's own fallback height and would make a collapsed
+// container measure as a correct one.
+const FRAME = { width: 320, height: 180 };
+
 function renderCanvas(onMap: (map: MapLibreMap | null) => void) {
   return render(
-    <div style={{ position: "relative", width: 320, height: 180 }}>
+    <div data-testid="frame" style={{ position: "relative", ...FRAME }}>
       <MapCanvas
         basemap={resolveBasemap(asConfig())}
         theme="light"
@@ -100,6 +120,59 @@ afterEach(() => {
 });
 
 describe("MapCanvas", () => {
+  // **The map has to fill the frame its caller gives it, and on `main` it filled
+  // nothing.** MapLibre stamps `.maplibregl-map { position: relative;
+  // overflow: hidden }` on the element it is handed, from an unlayered
+  // stylesheet - and unlayered beats `@layer utilities`, where Tailwind's output
+  // lives, at any specificity. The `absolute inset-0` this component used to put
+  // on that same element therefore never applied: the container kept its width,
+  // collapsed to zero height, and clipped its own absolutely positioned canvas
+  // out of sight with the library's `overflow: hidden`. The zoom controls and
+  // the attribution still drew, because those are MapLibre's own control DOM, so
+  // it read as a styled empty box rather than as a crash and shipped.
+  //
+  // Nothing in this suite could see it. jsdom does no layout, and this project
+  // loaded no stylesheet of the app's until the import at the top of this file.
+  // So the assertions below are the point of the fix rather than a check on it:
+  // revert `map-canvas.tsx` to one element and every one of them fails.
+  it("fills the frame its caller gives it, rather than collapsing", async () => {
+    renderCanvas(() => {});
+    await waitFor(() =>
+      expect(document.querySelector(".maplibregl-map")).not.toBeNull(),
+    );
+
+    const frame = screen.getByTestId("frame").getBoundingClientRect();
+    const container = document
+      .querySelector<HTMLElement>(".maplibregl-map")!
+      .getBoundingClientRect();
+
+    expect(container.width).toBeCloseTo(frame.width, 0);
+    expect(container.height).toBeCloseTo(frame.height, 0);
+    expect(container.top).toBeCloseTo(frame.top, 0);
+    expect(container.left).toBeCloseTo(frame.left, 0);
+
+    // Read off the canvas as well, because that is the half the diver sees.
+    // MapLibre sizes it from the container's own box and falls back per axis
+    // (`clientWidth || 400`, `clientHeight || 300`) - so a collapsed container
+    // hands back the frame's real width and a flat 300, which is why `FRAME` is
+    // 180 tall and not 300.
+    const canvas = document
+      .querySelector<HTMLCanvasElement>("canvas.maplibregl-canvas")!
+      .getBoundingClientRect();
+    expect(canvas.height).toBeCloseTo(FRAME.height, 0);
+
+    // And the assertion the other three cannot make: that the map is actually
+    // *there*, at the point a diver would click. Clipped away by
+    // `overflow: hidden` the canvas keeps a plausible box of its own while
+    // hit-testing falls through to whatever is behind it, which is how a real
+    // click on the picker used to land on `<body>`.
+    const hit = document.elementFromPoint(
+      frame.left + frame.width / 2,
+      frame.top + frame.height / 2,
+    );
+    expect(document.querySelector(".maplibregl-map")!.contains(hit)).toBe(true);
+  });
+
   // **The check that catches the worker trap.** `setWorkerUrl` names a copy in
   // `public/`, put there by `scripts/copy-maplibre-worker.mjs` - which also
   // copies the sibling the worker imports on its first line. Miss either half

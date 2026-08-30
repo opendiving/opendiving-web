@@ -12530,6 +12530,19 @@ control can outrank any Tailwind utility, because Tailwind layers its output and
 not.** That is the same hazard the cooperative-gesture rule in `globals.css` is written two class
 names deep to survive, stated there as a worry about arrival order; layering makes it unconditional.
 
+**Fixed, and the fix is the next section (2026-08-30).** `MapCanvas` now keeps the app's layout on a
+wrapper MapLibre never sees and hands it a bare element inside that one, so the two paragraphs above
+describe a defect that is gone rather than one to work around. What they still describe correctly is
+the cascade rule and the trap that generalises from it. Three consequences for this section's own
+subject: the browser project can now be asked "does this fill its frame", and is — `MapCanvas`,
+`LocationsMap` and `MapPicker` each carry a case that measures the container against the frame and
+hit-tests its centre; `map-picker.browser.test.tsx`'s harness lost the second of its two rules,
+because that rule was supplying the layout the app could not and its pointer tests were pressing on
+the harness's geometry rather than the component's; and the figures promised above did move —
+`locations-map.browser.test.tsx` now measures a canvas that is exactly the frame (412x158 at the
+runner's 414px window) rather than 412x300, while every comparison in the file carried over
+untouched, which is what writing them as comparisons bought.
+
 **The bar is two conditions and both have to hold.** The invariant has to be **genuinely geometric**
 — a height, a baseline, an alignment, one box's position relative to another — _and_ the jsdom
 assertion of it has to be one that would **pass vacuously**. Either alone lets in tests that belong
@@ -12552,3 +12565,54 @@ their way here instead of never learning the answer exists. What it still does n
 beside WebGL2 as a reason to reach for the lane: that sentence is unchanged, and the two-condition
 bar above is unchanged with it. A pointer is discoverability; a second named reason would be an
 invitation, and the paragraph above is why that was refused.
+
+## The element MapLibre owns carries none of this app's styling
+
+`MapCanvas` renders two divs where one would do. The outer one is the app's — `absolute inset-0`,
+plus whatever `className` a caller passes — and the inner one, the element handed to the `Map`
+constructor, carries no class and no inline style at all. It fills the outer one because the outer
+one is a `grid` and it is the only item in it.
+
+The reason is the whole of the section above: MapLibre stamps
+`.maplibregl-map { position: relative; overflow: hidden }` onto whatever element it is given, from a
+stylesheet with no `@layer` in it, and an unlayered declaration outranks every layer at any
+specificity and in any source order. So for as long as this component put `absolute inset-0` on that
+same element, `relative` won, `inset-0` had nothing to anchor to, the container sat at its parent's
+width and zero height, and `overflow: hidden` clipped the absolutely positioned canvas out of sight.
+The map did not render anywhere in the app, from the change that introduced MapLibre through the
+four that followed it. It did not read as a crash, because the zoom controls and the attribution are
+not inside the container and went on drawing, and no test could see it: jsdom performs no layout,
+and the browser project loaded no stylesheet of this app's until the change recorded above. Reading
+the markup is not enough to catch this, which is why five rounds of review did not — the answer is
+in which of two stylesheets wins, and only a browser computes that.
+
+**What makes the two-element shape different from a stronger selector is that it has no opponent.**
+The inner element declares nothing, so there is nothing for a vendor rule to outrank; its size comes
+from its parent's layout. `min-height: auto` on a grid item resolves to zero for a scroll container,
+which `overflow: hidden` makes it, so nothing MapLibre puts inside can push it out of the frame
+either. `position: relative` still wins on that element and is now simply correct — it is what the
+canvas needs as a containing block.
+
+_Rejected:_ an inline style on the same single element, which cannot be outranked but takes the
+map's box out of the vocabulary the rest of the app's layout is written in, and would silently beat
+a caller's `className` for the same properties. An unlayered rule in `globals.css`, which is what
+the cooperative-gesture rule at the end of that file does — but that rule survives on specificity
+because the comment beside it says arrival order cannot be relied on, and here the competing
+selector is `.maplibregl-map` itself, so winning would mean out-specifying it and leaving the next
+person's Tailwind class to lose to _our_ unlayered rule instead. Both are the same race with today's
+winner reversed, which is the shape of the bug rather than a fix for it.
+
+`className` moved to the wrapper in the same change. Nobody passes it today, and on the container it
+was a promise this component could not keep for anything MapLibre sets.
+
+**One consequence for tests.** `map-picker.browser.test.tsx` used to inject
+`[role="application"] > div:first-child { position: absolute; inset: 0 }` in `beforeAll`, and that
+rule was standing in for the missing layout: the map under every coordinate its pointer tests press
+was there because the harness put it there, not because the component did. It is gone, and the file
+keeps only the rule that fixes the surface at 512x256 so client coordinates do not follow the
+runner's window. Most of those tests go on passing without it even with the collapse restored —
+`fireEvent` hands MapLibre coordinates directly, and a canvas of the wrong size still projects
+consistently — so the file was made to notice in its own right, with a case that measures the
+container against the surface and hit-tests the middle of it. A stand-in like that is worth
+suspecting wherever a harness stylesheet declares something the component ought to be declaring
+itself.
