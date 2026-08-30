@@ -12181,3 +12181,108 @@ one-line pointer and nothing more - rewriting their prose, and `README.md`'s sta
 sentence, is a documentation pass of its own. The rule used for the pointer was narrow and worth
 stating so that sweep can tell what was already done: a section got one when its _subject_ is code
 this change deleted.
+
+## A course fills a certification's fields in once, and never touches what the diver typed
+
+Course and certification each carry their own `training_center`, `instructor_name` and
+`instructor_number` — plus their own `agency`/`agency_other` pair — and that duplication stays. The
+API's own comment says why: imported history arrives certification-first, with no course to hang
+those fields on, so a certification has to stand alone. What was worth removing is the double
+_entry_: every card that came out of a logged course made the diver type all three twice.
+
+So the fix is a **one-time copy into the form**, client-side. Never a server-side inheritance, never
+a read-time fallback. The rejected shapes are worth keeping because each looks reasonable until you
+name what it costs:
+
+- **Splitting field ownership** (the course owns the training centre, the card owns the instructor)
+  loses the data outright for a standalone card, and cannot express a referral, where the certifying
+  instructor and centre legitimately differ from the course's.
+- **A read-time fallback** — show the course's value where the card has none — makes editing
+  confusing (which record does this box belong to?) and leaves the export semantics ambiguous.
+- **Fill only if empty** breaks on `agency`, whose create default is `padi` and so is never empty,
+  and it leaves course A's values stranded on the form after switching to course B.
+- **Always replace** clobbers what the diver typed, which is the data loss the whole thing was meant
+  to avoid.
+
+What survives is **create-only, and replaces exactly the fields the dialog itself put there**.
+Picking a course fills in the agency, training centre and instructor; anything the diver typed stays
+put. Switching course A → B replaces the fields still holding A's copy and empties the ones B has
+nothing for — keeping A's instructor number under B's name would attribute it to the wrong course.
+
+**Clearing the course unlinks and touches nothing.** Clearing asserts "no logged course", not "those
+facts are wrong", and the card is designed to stand alone.
+
+**The edit dialog gets no prefill at all**, and that is mechanics as much as taste: it seeds itself
+from the stored card through `reset(...)`, which makes every settled value the baseline — so any
+"untouched" test would call the whole card untouched and hand it over to whichever course was
+picked. Relinking an existing card corrects the link, not the card. Its values stay a pure function
+of the certification being edited.
+
+**`name` and `notes` are not copied.** A course name ("TDI Advanced Nitrox + Decompression
+Procedures") is not the level printed on a card, and one course can issue two differently-named
+cards; a course's notes describe the training, a card's notes describe the card. Both are
+plausible-but-wrong values that would be saved without being read, and `name` is the required,
+identity-bearing field — an empty box is what makes the diver look at their card. Five fields are
+copied, two are excluded on purpose, and the agency pair counts as one of the five because the API
+validates `agency` and `agency_other` together.
+
+**This is not the inheritance "A dive's course is not inherited from the last dive" rejects**, and
+the distinction is the diver's own act. That one would write a claim nobody made, by guessing from a
+previous record. This one only runs when the diver picks a course, fills in fields that are visible
+and editable on the form in front of them, and writes nothing on save that they cannot see. It is
+the same framing as "Per-gear-type service presets are prefills, not safety advice". The comment in
+`lib/api/certifications.ts` saying the instructor and training-centre fields are deliberately _not_
+derived from the course stays true as written: nothing derives them at read time, and the stored
+copy is the diver's, not the course's.
+
+## A silently prefilled field is not a clean field
+
+React Hook Form's `dirtyFields` is the obvious way to ask "has the diver touched this?", and it does
+not survive contact with the prefill above. `setValue(field, value, { shouldDirty: false })` leaves
+the field out of `dirtyFields` at the time — but that map is not append-only bookkeeping. In
+react-hook-form 7.84, whenever a field is edited back to a value equal to its default, the change
+handler recomputes `dirtyFields` for the **whole form** from `_defaultValues` against `_formValues`
+and replaces it wholesale (`updateTouchAndDirty` → `getDirtyFields` → `updateDirtyFields`).
+
+A prefilled field differs from its default by construction. So clearing _any unrelated box_ back to
+empty — typing a certification name and deleting it again is enough — marks every prefilled field
+dirty, and from then on the prefill treats them as the diver's and silently stops replacing them.
+Switching course A → B does nothing, with no error and nothing on screen to explain it.
+
+Measured before relying on it, in a throwaway test:
+`setValue("a", "prefilled", { shouldDirty: false })`, type into `b`, clear `b`. `dirtyFields` goes
+from `{b: true}` to `{a: true}`.
+
+`CertificationDialog` therefore keeps its own record — `autofilledRef`, the values it last wrote
+into those five fields itself, starting from the ones the dialog opened with. A field still holding
+that value is one nobody has typed into; anything else is the diver's and is left alone. That is
+also a more direct statement of the rule than dirtiness is, because it is the rule: _a field the
+diver has edited away from the value it opened with is never overwritten._
+
+One consequence is accepted rather than worked around: a field typed back to exactly the value it
+opened with reads as untouched again and takes the next course's value. Neither mechanism can tell
+that apart — it would need keystroke history — and the outcome is arguably the right one anyway.
+`certification-dialog.render.test.tsx` pins the failure mode above directly, so a later
+simplification to `dirtyFields` fails a test rather than shipping.
+
+## "Add certification" lives in the card that lists them, and the card owns the create flow
+
+The course page listed a course's certifications and offered no way to add one; its description said
+to "Link one from its own form", which was the only route there was. The button belongs in that card
+rather than in the page header — the action sits next to the list it changes — and it appears twice,
+in the header and in the empty state, named differently in each ("Add certification", "Add the first
+certification") for the reason "Ten rows of 'Edit' name nothing" gives: a screen reader's controls
+list is flat.
+
+**The card owns the dialog, not the page.** The card fetches its own list in an effect and had no
+refetch seam, so a certification created anywhere else would not appear until a reload. Handing the
+card a `refreshKey` prop to bump, or lifting the fetch to the page, would both work; putting the
+create flow _in_ the card makes the refresh a function call and leaves nothing to keep in step. That
+is also why the card now takes the whole `Course` rather than a `courseUuid`: the dialog it opens
+wants the course's agency, training centre and instructor, and the page has already loaded them, so
+passing the uuid would mean fetching a record that is two components away in memory.
+
+Creating from here chains into the card-photo upload step exactly as the certifications page does,
+because photographing the card is the point of the feature — the same `CertificationCardFiles`
+dialog and the same refresh-and-re-point handoff after a file changes, reused rather than
+reimplemented.
