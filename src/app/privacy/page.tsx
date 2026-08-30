@@ -224,7 +224,7 @@ export default function PrivacyPage() {
               The app never asks your browser where you are. That is not a
               promise about restraint: the page is served with a header that
               switches the browser&rsquo;s geolocation feature off outright, so
-              the question cannot be asked even by mistake. What the map tile
+              the question cannot be asked even by mistake. What the basemap
               provider sees when a map is on screen is a different question, and
               section 4.4 answers it.
             </p>
@@ -351,8 +351,8 @@ export default function PrivacyPage() {
               nobody.
             </p>
             <p className="text-foreground mb-4">
-              If you run your own copy of OpenDiving you can point it at your
-              own tile server, and none of this leaves your machine.
+              If you run your own copy of OpenDiving you can point it at a
+              basemap you serve yourself, and none of this leaves your machine.
             </p>
 
             <h3 className="text-xl font-semibold text-foreground mb-3">

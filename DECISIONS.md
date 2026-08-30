@@ -5945,6 +5945,15 @@ than after it. No `z.preprocess` or `.transform` anywhere in it either, which is
 
 ## The confirmation map is not `MapPicker`, and that is most of why it is short
 
+**Superseded on 2026-08-30 in its mechanics, not in its argument.** Both maps draw through MapLibre
+and share `components/map/map-canvas.tsx` and `lib/basemap.ts`; `lib/map-tiles.ts` is gone,
+whole-zoom-only went with the hand-rolled grid — MapLibre's zoom is fractional everywhere — and the
+tiles are vector, so "never CSS-scaled" is no longer a property anyone has to arrange. The line
+counts moved with all of it. What survives untouched is the reason the two components are two: this
+one emits nothing, so none of the write-back machinery has to be built and then switched off. The
+`bg-coral` marker and the attribution sitting outside the `role="img"` surface survive as well, and
+both are still load-bearing.
+
 `MapPicker` is 705 lines; `LocationsMap` is about 250 and shares only `lib/map-tiles.ts` with it.
 The difference is not restraint, it is that nearly everything in the picker exists to serve
 write-back — telling a position the map emitted apart from one the diver typed into the coordinate
@@ -6001,6 +6010,15 @@ pair — a half-set position, which only raw SQL can produce, draws nothing and 
 
 ## `fitBounds` unwraps longitudes before it unions them
 
+**Superseded on 2026-08-30: there is no `fitBounds` any more.** MapLibre supplies the half that
+walked candidate zoom levels, so that half was deleted; the unwrapping this section is named for
+survives as `unionBounds` in `lib/basemap.ts`, and MapLibre does the camera arithmetic from its
+result. The projected-midpoint centring went with the zoom walk, `nearestWrappedX` went with the
+projection, and `MAX_FIT_ZOOM` is **9** rather than 10 — the same view, counted against MapLibre's
+512 px tile. See "MapLibre's zoom is one number below the slippy convention" below for the count and
+"What `lib/map-tiles.ts` actually left behind" for the symbol-by-symbol sweep. The trip to Fiji and
+Samoa is why any of it was kept, so that case stays written out here.
+
 A trip to Fiji and Samoa spans about six degrees — across the antimeridian. Unioning the raw
 coordinates instead describes the 354 degrees of ocean going the other way round the planet, which
 fits at exactly one zoom: the whole world, with both pins at opposite edges of it. So every box is
@@ -6019,6 +6037,14 @@ is useless — a trip location is a town, an island, a sea, so it should open wh
 coast is recognisable, not at the street level where a lone dot sits in a grid of house numbers.
 
 ## A dive site's map opens further out than the picker that placed its pin
+
+**The numbers below are the slippy ones and the app no longer counts that way (2026-08-30).** The
+rendered views are unchanged; the constants are `PLACED_ZOOM` **11** in
+`components/sites/map-picker.tsx` and `MAX_FIT_ZOOM` **9** in `lib/basemap.ts`, each one lower
+because MapLibre measures against a 512 px tile. Read every "12" below as 11 and every "10" as 9,
+and the evidence paragraph — which describes what a rendered tile actually shows — as still exact.
+`fitBounds` is gone; the single cap is MapLibre's `maxZoom` on the fit, and the argument for keeping
+it single is unaffected.
 
 `MapPicker` opens at zoom 12 for a site that already has a position; the map on the site's page fits
 to `MAX_FIT_ZOOM` (10), the same cap a trip location gets. Matching the picker is the obvious thing
@@ -6354,6 +6380,11 @@ from where the dive computer says the dive happened is a mis-pinned site, and th
 what make that visible at a glance instead of arithmetic.
 
 ## The drift between entry and exit is a line of text, not a line on the map
+
+**One number below is stale and the physics is not (2026-08-30).** `MAX_FIT_ZOOM` is **9**, not 10 —
+MapLibre counts against a 512 px tile, so the same view is one number lower. The ground scale it is
+being reasoned from is unchanged: at that cap a pixel is still about 100 m of ocean, which is what
+makes a surface swim sub-pixel. Nothing about the conclusion moves.
 
 Drawing a segment between the two fixes is the obvious rendering and it cannot work here. This map
 is capped at `MAX_FIT_ZOOM` (10) for reasons that have nothing to do with dives — see "A dive site's
@@ -7041,6 +7072,13 @@ is also the column's server default and so the right answer for every existing r
 
 ## The trip form's map is always on screen, and its fields are asked in a different order
 
+**Superseded on 2026-08-30 in its last mechanism paragraph only.** `showWhenEmpty`, the field order
+and the label reasoning are all untouched. What moved is where the empty view comes from:
+`lib/map-tiles.ts` is gone, so `WORLD_CENTER` and `MIN_ZOOM` are `lib/basemap.ts`'s, `MIN_ZOOM` is
+**0** rather than 1, and there is no `fitBounds` left to have disagreed with `MapPicker`'s
+`DEFAULT_VIEW` in the first place. The constant is still hoisted and both maps still read it, so
+"like the dive site form" is still true by construction rather than by two matching literals.
+
 `TripDialog` used to gate the confirmation map on `mappedLocations.length > 0`, which also kept the
 map's chunk unfetched until there was something in it to see. It now renders unconditionally, with
 `showWhenEmpty` - a new opt-in prop on `LocationsMap` - drawing the whole world until the first
@@ -7489,6 +7527,20 @@ shape. Adding it renumbered Legal Requirements from 4.6 to 4.7; nothing links to
 except this file.
 
 ## Web config is read at runtime, and the browser is handed it
+
+**Superseded on 2026-08-30 wherever this section names the map's plumbing.** The mechanism it is
+actually about — runtime reads, the computed-key fallback, `generateMetadata()`, the lazy memo — is
+unchanged, but four particulars below are not. `lib/map-tiles.ts` is deleted; the module making the
+same fail-open trade for a malformed value is `lib/basemap.ts`. `tileOrigins` is `basemapOrigins`,
+and it warns on the same terms. `tileSource()` is gone with the raster-only resolver;
+`resolveBasemap()` is the one that takes what was configured and applies the defaults, and it is
+where the light-set-means-both rule now lives — with one deliberate exception, since a style URL set
+without an attribution is refused rather than defaulted. And the last bullet's closing clause, "the
+only third-party origins left in `img-src` are the map tile hosts", is **false**: `img-src` names no
+third-party host in any configuration — `'self' data: blob:`, plus this instance's own API origin on
+a split-origin build — and the basemap reaches `connect-src` instead. The opening paragraph's "three
+map-tile variables" is left as written, because it is a statement about what was build-time before
+the proxy route rather than about what exists now.
 
 `NEXT_PUBLIC_*` values are inlined by the compiler wherever they appear as a literal, so every one
 of them is frozen at build time. That is the same trap the API address was in before the proxy route
@@ -8933,8 +8985,13 @@ The dependency was worth taking. It is MIT, has one runtime dependency (`normali
 pinch and touch for free, and its peer range has been an open `react >= 16.4.0` since 2019, so React
 19 was never a question. Zoom is a native `<input type="range">` rather than a Radix slider — one
 value, no empty state, keyboard- and touch-reachable without another package. It is nothing like the
-MapLibre call recorded under _"The map picker is hand-rolled, and `img-src` is the whole bill"_: no
-worker, no remote assets, nothing the CSP notices beyond the stylesheet above.
+MapLibre question weighed under _"The map picker is hand-rolled, and `img-src` is the whole bill"_:
+no worker, no remote assets, nothing the CSP notices beyond the stylesheet above. **That comparison
+now reads the other way round, and the point of it still holds (2026-08-30).** MapLibre was adopted,
+and it costs the three things this cropper does not: a same-origin worker copied into `public/` by a
+build step, a `worker-src` directive that exists to make the blob path fail audibly, and basemap
+hosts in `connect-src`. A dependency that needs none of that is still the cheap kind; the map turned
+out to be worth the expensive kind.
 
 ### The `accept` list is load-bearing, not decoration
 
@@ -9915,6 +9972,15 @@ Precisely:
 
 The rule above is the guard. The CSP only narrows the quiet ways to break it, and a sentence that
 says otherwise invites the next person to rely on the wrong thing.
+
+**Two of those three bullets have moved, and the conclusion is unchanged (2026-08-30).**
+`connect-src` no longer names Google in any configuration — no Google code runs in the browser — and
+it does now name the basemap's hosts, so it lists `'self'`, the API origin and the basemap.
+`img-src` is `'self' data: blob:` — plus the API's own origin on a split-origin build — with no
+third-party host at all, the raster tile origins having left with the hand-rolled `<img>` grid. So a
+same-origin beacon is still not blocked, a bundled script still loads under `'strict-dynamic'`, and
+a `data:`/`blob:` pixel still passes. The list got shorter without the guarantee getting stronger,
+which is exactly the misreading this correction exists to prevent.
 
 ### The numbering in §4 is load-bearing, and §4.8 has changed hands
 
@@ -11522,6 +11588,15 @@ documentation says so rather than implying a secret is being kept.
 
 ## Stadia is documented beside Carto, because Carto's raster endpoint is legacy
 
+**Superseded on 2026-08-30 in its premise, which was inverted rather than merely dated.** "This map
+speaks only raster by construction" was true when this was written and is the opposite of true now:
+the default is a vector style and raster is the escape hatch. So Carto's own recommendation to move
+to vector basemaps is a road this app has taken, and the raster block's slowly-staling place names
+are a risk only for an operator who chooses a raster template anyway. The conclusion survives on a
+narrower footing — a self-hoster who wants keyed raster is better served by a provider that
+maintains it — and both blocks stay in `.env.example` for exactly those operators. See "The basemap
+is a MapLibre style, and raster is the escape hatch" below.
+
 The provider table above ruled Stadia out as a _default_ — the cleanest tiles of the sweep, a real
 dark variant, and a 401 from every domain except `localhost` — but a key is precisely what fixes
 that trap, and `.env.example` now carries the full keyed configuration the way it does for Carto.
@@ -11881,13 +11956,22 @@ well. Reading "the basemap host is a `connect-src` source" as a move rather than
 leave the picker blank with nothing failing anywhere, because until now nothing asserted that a tile
 origin reached the header. `proxy.test.ts` now does.
 
+**That paragraph expired on 2026-08-29 and is kept because the trap it describes is general.** The
+picker draws through MapLibre, so `img-src` names no third-party host — `'self' data: blob:`, and
+the API's own origin on a split-origin build — and the two `proxy.test.ts` cases pinning the
+retention were replaced by one asserting the directive in all three basemap configurations. The
+retention was planted so that dropping it would be a decision rather than an accident, and that is
+what it bought — see "What `lib/map-tiles.ts` actually left behind". Everything above this paragraph
+is current.
+
 ## MapLibre's zoom is one number below the slippy convention
 
 MapLibre's transform measures against a **512 px** tile — `worldSize` is
-`this._tileSize * this._scale` with `_tileSize = 512` — while `lib/map-tiles.ts`, Leaflet and the
-whole slippy convention measure against 256. The same view is therefore one number lower in
-MapLibre's units, and `coveringZoomLevel` agrees from the other end: for a 256 px raster source it
-asks for `zoom + log2(512/256)`, so MapLibre zoom 9 requests z10 tiles.
+`this._tileSize * this._scale` with `_tileSize = 512` — while `lib/map-tiles.ts` (deleted since, see
+the end of this section), Leaflet and the whole slippy convention measure against 256. The same view
+is therefore one number lower in MapLibre's units, and `coveringZoomLevel` agrees from the other
+end: for a 256 px raster source it asks for `zoom + log2(512/256)`, so MapLibre zoom 9 requests z10
+tiles.
 
 Carried across as the same integers, this app's three zoom constants would each have opened one
 level too deep, and nothing about the rendered map would have said so. `MIN_ZOOM` 1 becomes 0,
@@ -12027,10 +12111,15 @@ the credit is at least the same string on both surfaces.
 **All of that ended on 2026-08-29.** `PublicConfig` carries one basemap again, `lib/map-tiles.ts` is
 gone, and the two renderers no longer disagree about what an operator configured. The list this
 section gave of what moves into `lib/basemap.ts` was short — see "What `lib/map-tiles.ts` actually
-left behind" below. What the section was holding open and is still open is the privacy page: §10.4's
-"One outside party acts on its own account" is true again now that only `tiles.openfreemap.org` is
-contacted, and §4.4's "loads its images directly from a third-party tile provider" became false in
-the same change, so both are to be judged rather than assumed.
+left behind" below. What the section was holding open was the privacy page: §10.4's "One outside
+party acts on its own account" is true again now that only `tiles.openfreemap.org` is contacted, and
+§4.4's "loads its images directly from a third-party tile provider" became false in the same change.
+
+**Closed on 2026-08-30.** Both were judged rather than assumed: §4.4's sentence was rewritten to
+"fetches its tiles directly from a third-party basemap provider", §10.4 needed no edit and its test
+is green, and the rest of the page was swept in the same pass — see "The documentation caught up
+with the renderer, and where the sweep for it was blind" at the end of this file. Nothing on the
+page is now waiting on the renderer split.
 
 ## The install bundle's map variables are a separate job, in a repository this one cannot reach
 
@@ -12286,3 +12375,44 @@ Creating from here chains into the card-photo upload step exactly as the certifi
 because photographing the card is the point of the feature — the same `CertificationCardFiles`
 dialog and the same refresh-and-re-point handoff after a file changes, reused rather than
 reimplemented.
+
+## The documentation caught up with the renderer, and where the sweep for it was blind
+
+The move to MapLibre landed over three changes, and the first two corrected only the prose their own
+diff falsified — operator-facing text and a privacy disclosure, on the rule that a wrong one costs
+somebody a second provider or a false statement about where their divers' IP addresses go. This is
+the pass that took the rest: this file's own history, `README.md`'s `connect-src` sentence, and the
+passages that were merely imprecise rather than false.
+
+**What changed outside this file.** `README.md` said `connect-src` was derived from
+`NEXT_PUBLIC_API_URL` alone; it names the basemap as the second source now. `SECURITY.md`'s
+out-of-scope list said "map tiles" where the app now fetches a style's tiles, glyphs and sprite, so
+it says "the basemap". `.env.example`'s closing privacy note opened "before you leave the default in
+place" and described the picker fetching raster tiles — true of a raster default that no longer
+exists — and now states the trade for whichever basemap is configured, bundled one included. On the
+privacy page, §2 said "map tile provider" where §4.4 and §10.4 both say "basemap provider", and
+§4.4's self-hosting sentence offered "your own tile server" when the setting a self-hoster reaches
+for first is a whole style.
+
+**What was deliberately left, because a sweep needs to be able to tell.** The heading "4.4 Map
+Tiles" stays. Vector tiles are tiles, it is the word a reader scans for, and the section's body was
+already corrected to "basemap provider" — renaming the heading would buy consistency in the one
+place a stale heading costs nothing and would move a heading that several entries in this file pin
+by number. Nothing in `CONTRIBUTING.md` or `AGENTS.md` needed touching: both were corrected as the
+change went in.
+
+**The sweep that found all of this had a blind spot worth recording, because it is a property of the
+method rather than of this change.** The obvious derivation is to grep the repository for the
+mechanism and its aliases — `raster`, `maplibre`, `img-src`, `connect-src`, `tile`, `jsdom`,
+`fitBounds` and so on. Run over this file that returns hundreds of rows and still returned **zero**
+inside three whole sections that were stale: "`fitBounds` unwraps longitudes before it unions them",
+"A dive site's map opens further out than the picker that placed its pin", and "The drift between
+entry and exit is a line of text, not a line on the map". Not one term matched, `tile` included.
+They discuss what the map _does_ — how far it opens, what a pixel is worth on it — rather than what
+it is built from, and a mechanism sweep cannot see a section written in behavioural vocabulary. The
+terms that reach them are the constants (`MAX_FIT_ZOOM`, `PLACED_ZOOM`) and the function names
+(`unionBounds`, `nearestWrappedX`), which is to say: **sweep for the identifiers a change deleted or
+renumbered, not only for the subsystem it changed.** The same rule found the transitional last
+paragraph of "The worker is same-origin, and `worker-src 'self'` is what makes the blob path fail
+loudly", which no earlier list had named because the section's subject — the worker — is code that
+survived; only its final paragraph was about code that did not.
