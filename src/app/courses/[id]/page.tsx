@@ -173,10 +173,7 @@ export default function CourseDetailPage() {
             newDiveLabel="Log a Dive for this Course"
           />
 
-          <CourseCertificationsCard
-            userId={user?.uuid ?? ""}
-            courseUuid={course.uuid}
-          />
+          <CourseCertificationsCard userId={user?.uuid ?? ""} course={course} />
         </div>
 
         <div className="space-y-6">

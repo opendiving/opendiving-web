@@ -30,6 +30,14 @@ export const CERTIFICATION_AGENCIES = [
 
 export type CertificationAgency = (typeof CERTIFICATION_AGENCIES)[number];
 
+/**
+ * What the certification form opens on, mirroring the order above: PADI is the
+ * agency most divers hold a card from, so it is the pick that needs changing
+ * least often. Named rather than repeated because the create form, its
+ * reset-on-open and the course prefill all have to agree on it.
+ */
+export const DEFAULT_CERTIFICATION_AGENCY: CertificationAgency = "padi";
+
 // Display labels. These are acronyms rather than words, so none of them can be
 // derived by capitalizing the value.
 const CERTIFICATION_AGENCY_LABELS: Record<CertificationAgency, string> = {
