@@ -12416,3 +12416,78 @@ renumbered, not only for the subsystem it changed.** The same rule found the tra
 paragraph of "The worker is same-origin, and `worker-src 'self'` is what makes the blob path fail
 loudly", which no earlier list had named because the section's subject — the worker — is code that
 survived; only its final paragraph was about code that did not.
+
+## jsdom answers no layout question, and the browser lane only answers one with the stylesheet loaded
+
+The second Vitest project was built to give MapLibre a WebGL2 context. How it is wired, what it
+costs and the two ways it is easy to misconfigure are in "The contract tests run in a real browser,
+and two things do not carry over into it" above, and none of that is restated here. What that
+section does not say, because it is not why the project was added, is that the lane is the first
+mechanism in this repo able to answer a question about **layout** — and that reaching for it takes
+more than renaming a file.
+
+**jsdom performs no layout at all.** It parses HTML and builds a tree; nothing is ever laid out, so
+every `getBoundingClientRect()` comes back zeroed and `offsetWidth`/`offsetHeight` are `0`. The
+damage is not that geometry is untestable there. It is that a geometry assertion **passes**:
+`expect(box.left).toBeGreaterThanOrEqual(frame.left - 1)` is `0 >= -1` for every element on the
+page, against any markup whatsoever, and it prints a green tick indistinguishable from a real one.
+That is the same vacuous pass `memory-storage.ts` exists to prevent, in a place where nothing warns.
+
+This file already said so twice, both times as an aside about the component in hand — under "The
+toggle sits in the label row without being laid out in it" and under "The usage badge left the
+table, and the flag is stated under it". Neither is where somebody arrives holding a geometry
+question, which is why it is stated here as a property of the suite rather than of a component.
+
+**The case for wanting the lane.** A change once wrapped a `FormLabel` and a toggle in
+`flex items-center justify-between` — the obvious markup, and the one this file records as wrong
+twice over under the first of those headings: a flex parent blockifies an inline `<label>`, which
+shrank the label to its `leading-none` line box, handed the row's height to the toggle, and left
+every toggle-bearing field 2px out of line with the field beside it in the same grid row. It
+survived eight rounds of clean-context review before it was built, then the implementer that built
+it and the reviewer that read the diff, and was found by the owner looking at the running app.
+Nobody reads a `<label>`'s used display value off a diff, and no jsdom test could have been written
+that would have failed. A browser test could.
+
+**But not the browser test somebody would write first.** The browser project loads no stylesheet of
+this app's. `map-canvas.tsx` imports `maplibre-gl/dist/maplibre-gl.css`, so that one arrives with
+the component under test; `src/app/globals.css` — Tailwind, and so every class this app's layout is
+actually made of — is imported by `app/layout.tsx`, which no test renders. Measured in the browser
+project as it stands: `h-40` is 0px tall, `flex items-center justify-between` computes to
+`display: block`, and the `<label>` inside it stays `inline` at its correct 18px. **The markup that
+caused the misalignment and the markup that fixed it measure identically.** That is a second vacuous
+pass, inside the lane brought in to escape the first, and it is the quieter of the two because the
+environment is real and the numbers are not zeroes.
+
+`import "@/app/globals.css"` at the top of the test file is the whole fix. With it the same probe
+reports 160px, `display: flex`, and a `<label>` blockified to `block` at 24px — the bug, reproduced.
+Put that import in any browser test that asserts geometry, and treat its absence as the first thing
+to check when such a test passes against markup you expected it to reject.
+
+**Two tests in the browser project are already in that state, and finding them is what this section
+is for.** The map tests mostly measure marker positions against the canvas box, which MapLibre sets
+from inline transforms of its own and no stylesheet affects. But `locations-map.browser.test.tsx`'s
+"draws the dark style, and filters nothing" and `map-picker.browser.test.tsx`'s "filters nothing, in
+either theme" both walk an element and all its descendants asserting `getComputedStyle(el).filter`
+is `none`. They are regression guards against the discarded dark theme, which was `invert` and
+`hue-rotate-180` applied as **Tailwind classes** — so with no stylesheet loaded, the class coming
+back would compute to `filter: none` and both would go on passing. An assertion of an absence is the
+shape most exposed to this: there is no arrangement of the markup under which it fails, so nothing
+ever draws attention to it. They are left as they are here, deliberately — this change is one
+section of prose and touches no test — but they are the worked example of the paragraph above rather
+than a counterexample to it.
+
+**The bar is two conditions and both have to hold.** The invariant has to be **genuinely geometric**
+— a height, a baseline, an alignment, one box's position relative to another — _and_ the jsdom
+assertion of it has to be one that would **pass vacuously**. Either alone lets in tests that belong
+in the unit project, because plenty of visual-feeling questions are structural: which classes an
+element carries, whether a variant renders, what sits where in the tree. jsdom answers those at
+jsdom's speed and with jsdom's isolation. The alignment fix above is the model in both directions —
+its geometry was settled in a real browser, and what its jsdom tests pin is the three structural
+properties the alignment rests on.
+
+**`CONTRIBUTING.md` is deliberately not changed.** It says to reach for the browser "only when jsdom
+genuinely cannot answer the question — today that means the map, which needs a WebGL2 context".
+Layout is now a second such thing, and naming it there would invite browser tests for questions
+jsdom handles perfectly well, against a lane that is slower and whose isolation is weaker. The steer
+stays narrow on purpose, and this section is the second answer — for somebody who already has a
+geometry question and needs to know it is answerable, and at what price.
