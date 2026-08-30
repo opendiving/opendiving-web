@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { GeocodeResult } from "@/lib/api/geocoding";
-import { LatLon } from "@/lib/map-tiles";
+import { LatLon } from "@/lib/basemap";
 import {
   formatCoordinateForForm,
   parseFormPosition,
@@ -10,11 +10,11 @@ import {
 import { Attribution } from "@/components/attribution";
 import { PlaceSearch } from "@/components/sites/place-search";
 
-// Still `next/dynamic` although the map is always shown: the tile grid, the
-// projection maths and the gesture handling then live in their own chunk,
-// fetched when this dialog opens rather than sitting in the bundle every page
-// pays for. `ssr: false` because the picker measures its own element and reads
-// the resolved theme - neither exists on the server.
+// Still `next/dynamic` although the map is always shown: MapLibre is around
+// 250 KB gzipped, and it lives in its own chunk, fetched when this dialog opens
+// rather than sitting in the bundle every page pays for. `ssr: false` because
+// the picker needs a WebGL2 context, a real element to attach to and the
+// resolved theme, none of which exist on the server.
 //
 // The skeleton's height duplicates the picker's own, and has to keep agreeing
 // with it: a placeholder of a different size makes the dialog jump when the

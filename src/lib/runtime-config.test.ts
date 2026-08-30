@@ -11,7 +11,6 @@ import {
   DEFAULT_STYLE_URL_DARK,
   MISSING_ATTRIBUTION_MESSAGE,
 } from "./basemap";
-import { DEFAULT_TILE_ATTRIBUTION, DEFAULT_TILE_URL } from "./map-tiles";
 
 describe("readRuntimeConfig", () => {
   afterEach(() => {
@@ -34,11 +33,6 @@ describe("readRuntimeConfig", () => {
         dark: DEFAULT_STYLE_URL_DARK,
         attribution: DEFAULT_BASEMAP_ATTRIBUTION,
       },
-      tiles: {
-        light: DEFAULT_TILE_URL,
-        dark: DEFAULT_TILE_URL,
-        attribution: DEFAULT_TILE_ATTRIBUTION,
-      },
     });
   });
 
@@ -54,8 +48,8 @@ describe("readRuntimeConfig", () => {
     expect(config.siteUrl).toBe("https://dives.example.com");
     expect(config.contactEmail).toBe("hello@example.com");
     expect(config.googleClientId).toBe("client-id.apps.googleusercontent.com");
-    expect(config.tiles.light).toBe("https://tiles.example/{z}/{x}/{y}.png");
-    expect(config.tiles.attribution).toBe("© Someone");
+    expect(config.basemap.light).toBe("https://tiles.example/{z}/{x}/{y}.png");
+    expect(config.basemap.attribution).toBe("© Someone");
   });
 
   // The one part of the tile configuration that is a credential, so it is its
@@ -67,10 +61,10 @@ describe("readRuntimeConfig", () => {
       MAP_TILE_API_KEY: "s3cret",
     });
 
-    expect(config.tiles.light).toBe(
+    expect(config.basemap.light).toBe(
       "https://tiles.example/light/{z}/{x}/{y}.png?key=s3cret",
     );
-    expect(config.tiles.dark).toBe(
+    expect(config.basemap.dark).toBe(
       "https://tiles.example/dark/{z}/{x}/{y}.png?key=s3cret",
     );
   });
@@ -88,7 +82,7 @@ describe("readRuntimeConfig", () => {
     expect(config.siteUrl).toBe("https://old.example.com");
     expect(config.contactEmail).toBe("hello@example.com");
     expect(config.googleClientId).toBe("old-client-id");
-    expect(config.tiles.light).toBe(
+    expect(config.basemap.light).toBe(
       "https://old-tiles.example/{z}/{x}/{y}.png",
     );
   });
@@ -228,15 +222,21 @@ describe("the basemap's three states", () => {
   });
 
   // One credit, applying to whichever basemap is active - which is why it lost
-  // the `MAP_TILE_` prefix. The picker still draws raster tiles until it moves
-  // to MapLibre, and it reads the same variable.
-  it("reads one attribution for both renderers", () => {
-    const config = readRuntimeConfig({
-      MAP_TILE_URL: "https://tiles.example/{z}/{x}/{y}.png",
-      MAP_ATTRIBUTION: "© Someone",
-    });
-    expect(config.basemap.attribution).toBe("© Someone");
-    expect(config.tiles.attribution).toBe("© Someone");
+  // the `MAP_TILE_` prefix. An operator who configures a style has to be able to
+  // credit it, and there is exactly one credit on screen at a time.
+  it("reads one attribution for whichever mode is active", () => {
+    expect(
+      readRuntimeConfig({
+        MAP_TILE_URL: "https://tiles.example/{z}/{x}/{y}.png",
+        MAP_ATTRIBUTION: "© Someone",
+      }).basemap.attribution,
+    ).toBe("© Someone");
+    expect(
+      readRuntimeConfig({
+        MAP_STYLE_URL: "https://styles.example/day.json",
+        MAP_ATTRIBUTION: "© Someone",
+      }).basemap.attribution,
+    ).toBe("© Someone");
   });
 });
 
@@ -260,11 +260,6 @@ describe("publicConfig", () => {
         light: DEFAULT_STYLE_URL,
         dark: DEFAULT_STYLE_URL_DARK,
         attribution: DEFAULT_BASEMAP_ATTRIBUTION,
-      },
-      tiles: {
-        light: DEFAULT_TILE_URL,
-        dark: DEFAULT_TILE_URL,
-        attribution: DEFAULT_TILE_ATTRIBUTION,
       },
     });
   });

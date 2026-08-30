@@ -27,7 +27,7 @@ export const DEFAULT_API_BASE_URL = "/api/v1";
  * exact path and nothing under it - `http://localhost:8000/api/v1` as a source would
  * allow a request to `/api/v1` alone and block every real call.
  *
- * Malformed values fail closed, for the same reason `tileOrigins` does: this runs in
+ * Malformed values fail closed, for the same reason `basemapOrigins` does: this runs in
  * middleware on every request, so a typo'd variable must not take the site down. The
  * cost is that the API is then blocked by a CSP that simply never named it, which the
  * console message exists to explain.

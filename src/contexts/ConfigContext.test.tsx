@@ -2,18 +2,20 @@ import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 
 import { ConfigProvider, useConfig } from "./ConfigContext";
-import { DEFAULT_STYLE_URL, resolveBasemap } from "@/lib/basemap";
-import { DEFAULT_TILE_URL } from "@/lib/map-tiles";
+import {
+  DEFAULT_STYLE_URL,
+  DEFAULT_STYLE_URL_DARK,
+  resolveBasemap,
+} from "@/lib/basemap";
 
 function Readout() {
-  const { googleClientId, basemap, tiles } = useConfig();
+  const { googleClientId, basemap } = useConfig();
 
   return (
     <dl>
       <dd data-testid="google">{googleClientId ?? "none"}</dd>
-      <dd data-testid="style">{basemap.light}</dd>
-      <dd data-testid="light">{tiles.light}</dd>
-      <dd data-testid="dark">{tiles.dark}</dd>
+      <dd data-testid="light">{basemap.light}</dd>
+      <dd data-testid="dark">{basemap.dark}</dd>
     </dl>
   );
 }
@@ -26,13 +28,9 @@ describe("useConfig", () => {
           googleClientId: "client-id",
           basemap: resolveBasemap({
             styleUrl: "https://styles.example/day.json",
+            styleUrlDark: "https://styles.example/night.json",
             attribution: "© Someone",
           }),
-          tiles: {
-            light: "https://tiles.example/{z}/{x}/{y}.png",
-            dark: "https://tiles.example/dark/{z}/{x}/{y}.png",
-            attribution: "© Someone",
-          },
         }}
       >
         <Readout />
@@ -40,11 +38,11 @@ describe("useConfig", () => {
     );
 
     expect(screen.getByTestId("google")).toHaveTextContent("client-id");
-    expect(screen.getByTestId("style")).toHaveTextContent(
+    expect(screen.getByTestId("light")).toHaveTextContent(
       "https://styles.example/day.json",
     );
-    expect(screen.getByTestId("light")).toHaveTextContent(
-      "https://tiles.example/{z}/{x}/{y}.png",
+    expect(screen.getByTestId("dark")).toHaveTextContent(
+      "https://styles.example/night.json",
     );
   });
 
@@ -55,11 +53,12 @@ describe("useConfig", () => {
     render(<Readout />);
 
     expect(screen.getByTestId("google")).toHaveTextContent("none");
-    // The bundled MapLibre style, which is what an instance that configures
-    // nothing actually draws.
-    expect(screen.getByTestId("style")).toHaveTextContent(DEFAULT_STYLE_URL);
-    expect(screen.getByTestId("light")).toHaveTextContent(DEFAULT_TILE_URL);
-    // The same template: the default provider has no dark tiles of its own.
-    expect(screen.getByTestId("dark")).toHaveTextContent(DEFAULT_TILE_URL);
+    // The bundled MapLibre pair, which is what an instance that configures
+    // nothing actually draws - on every map, now that there is only one
+    // renderer and no raster source beside it.
+    expect(screen.getByTestId("light")).toHaveTextContent(DEFAULT_STYLE_URL);
+    expect(screen.getByTestId("dark")).toHaveTextContent(
+      DEFAULT_STYLE_URL_DARK,
+    );
   });
 });

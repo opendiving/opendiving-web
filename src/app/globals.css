@@ -281,3 +281,30 @@
     cursor: pointer;
   }
 }
+
+/* MapLibre's cooperative-gesture screen, hidden so the app can draw its own.
+
+   `cooperativeGestures` is what gives the picker four behaviours at once - one
+   finger scrolls the page, two drive the map, the wheel only zooms with
+   ctrl/cmd, and `touchmove` is prevented from two touches up. It also renders a
+   40%-black overlay of its own, with MapLibre's wording, on *every* blocked
+   gesture. That last part is a regression rather than a feature here: a plain
+   wheel over this map is the diver scrolling down the dialog towards Save, and
+   flashing a dark panel over the map every time they do it is worse than the
+   silence it replaces. So the screen is hidden and
+   `components/sites/map-picker.tsx` listens for `cooperativegestureprevented`
+   instead, showing the app's own hint for the one case that needs explaining.
+
+   Outside `@layer base`, and two class names deep, because `maplibre-gl.css` is
+   imported from a client component's own chunk rather than from here - so its
+   rules may arrive after these, and only specificity can be relied on.
+
+   And a stylesheet rather than `map.cooperativeGestures.disable()`, which is the
+   obvious way to be rid of the screen and takes the behaviour with it: its
+   `_destroyUI()` removes `maplibregl-cooperative-gestures` from the canvas
+   container, and that class is what MapLibre's own `touch-action: pan-x pan-y`
+   rule keys off. Hiding one element cannot touch a class on another, which is
+   exactly why it is the right instrument here. */
+.maplibregl-map .maplibregl-cooperative-gesture-screen {
+  display: none;
+}

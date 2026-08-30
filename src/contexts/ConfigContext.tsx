@@ -2,7 +2,6 @@
 
 import { createContext, useContext, type ReactNode } from "react";
 import { resolveBasemap } from "@/lib/basemap";
-import { tileSource } from "@/lib/map-tiles";
 import type { PublicConfig } from "@/lib/runtime-config";
 
 /**
@@ -16,7 +15,6 @@ import type { PublicConfig } from "@/lib/runtime-config";
  */
 const UNCONFIGURED: PublicConfig = {
   basemap: resolveBasemap(),
-  tiles: tileSource(),
 };
 
 const ConfigContext = createContext<PublicConfig>(UNCONFIGURED);

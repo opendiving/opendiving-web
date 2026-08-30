@@ -24,17 +24,73 @@ import type { MapOptions } from "maplibre-gl";
 export type BasemapStyle = NonNullable<MapOptions["style"]>;
 type StyleDocument = Exclude<BasemapStyle, string>;
 
-// One direction only, and it is the direction that survives: `map-tiles.ts` is
-// the hand-rolled renderer's arithmetic and goes away with the picker, at which
-// point these four move into this file. Importing the other way would be a
-// cycle, which `code-quality.yml` fails on.
-import {
-  clampLatitude,
-  DEFAULT_TILE_ATTRIBUTION,
-  MAX_LATITUDE,
-  wrapLongitude,
-  type LatLonBounds,
-} from "@/lib/map-tiles";
+/** A position in decimal degrees, which is how this app carries one everywhere. */
+export interface LatLon {
+  latitude: number;
+  longitude: number;
+}
+
+/**
+ * A rectangular extent in degrees, as a geocoder reports a place's footprint.
+ *
+ * `west` may be greater than `east`: a box straddling the antimeridian is not
+ * malformed, and the API deliberately does not reject one. A single point is
+ * the degenerate case where both pairs are equal, which is what lets a place
+ * with a position but no footprint go through the same path.
+ */
+export interface LatLonBounds {
+  south: number;
+  north: number;
+  west: number;
+  east: number;
+}
+
+/**
+ * Where a map opens with nothing on it yet, at `MIN_ZOOM`: the whole world,
+ * centred a little north of the equator because that is where the land - and
+ * most of the world's diving - is. Shared by the site picker and the read-only
+ * map so the two open on the same view by construction, rather than on two
+ * literals that agree until somebody edits one.
+ */
+export const WORLD_CENTER: LatLon = { latitude: 20, longitude: 0 };
+
+// Web Mercator is undefined at the poles and conventionally cut here, which is
+// what makes the projected world square: this is the latitude whose projected y
+// equals the map's own width. MapLibre owns the camera now and clamps its own,
+// but this is still what keeps a position this app *emits* inside the range the
+// form's parser and the API both accept.
+export const MAX_LATITUDE = 85.0511287798066;
+
+/**
+ * Latitude cut to the range Web Mercator can represent.
+ */
+export function clampLatitude(latitude: number): number {
+  return Math.min(MAX_LATITUDE, Math.max(-MAX_LATITUDE, latitude));
+}
+
+/**
+ * Longitude folded back into [-180, 180), so panning past the antimeridian
+ * yields a coordinate a diver (and the API's `ge=-180, le=180` bound) accepts.
+ *
+ * Exactly 180 comes back as -180. They are the same meridian, and picking one
+ * representative is what keeps the range half-open and the folding idempotent.
+ */
+export function wrapLongitude(longitude: number): number {
+  return ((((longitude + 180) % 360) + 360) % 360) - 180;
+}
+
+/**
+ * The credit the keyless raster default owed, kept as the raster escape hatch's
+ * fallback: an operator who points `MAP_TILE_URL` at OpenStreetMap's own tiles
+ * and sets no attribution still ships a credit rather than nothing.
+ *
+ * Written in the `[label](url)` syntax `parseAttribution` understands, so the
+ * credit can point at the licence rather than merely naming it. The OSMF tile
+ * policy asks for it plainly visible, which is also why it is not behind a
+ * toggle.
+ */
+export const DEFAULT_TILE_ATTRIBUTION =
+  "[© OpenStreetMap contributors](https://www.openstreetmap.org/copyright)";
 
 /**
  * The styles this app ships, served from `public/basemap/`.
@@ -79,21 +135,24 @@ export const DEFAULT_BASEMAP_ATTRIBUTION =
  * Zoom, in MapLibre's units.
  *
  * MapLibre measures zoom against a **512 px** tile - its transform's `worldSize`
- * is `512 * 2 ** zoom` - while `lib/map-tiles.ts`, Leaflet and the whole slippy
- * convention measure against 256. The same view is therefore one number *lower*
- * here than in the numbers this app used before the renderer changed, which is
- * why these three are not the constants they replace:
+ * is `512 * 2 ** zoom` - while Leaflet and the whole slippy convention measure
+ * against 256, as this app's own hand-rolled renderer did. The same view is
+ * therefore one number *lower* here than in the numbers this app used before the
+ * renderer changed, which is why these are not the constants they replace:
  *
- * | view              | slippy (`map-tiles.ts`) | MapLibre |
- * | ----------------- | ----------------------- | -------- |
- * | widest useful     | `MIN_ZOOM` 1            | 0        |
- * | street level      | `MAX_ZOOM` 18           | 17       |
- * | a lone place      | `MAX_FIT_ZOOM` 10       | 9        |
+ * | view              | slippy | MapLibre |
+ * | ----------------- | ------ | -------- |
+ * | widest useful     | 1      | 0        |
+ * | street level      | 18     | 17       |
+ * | a lone place      | 10     | 9        |
+ * | a placed pin      | 12     | 11       |
  *
  * Carried across as the same integers they would each open one level too deep.
- * `basemap.test.ts` pins the relationship, against the two slippy constants the
- * picker still exports and against the third written out there, so that moving
- * one without the other fails rather than merely looking odd.
+ * `basemap.test.ts` pins the relationship against the slippy figures, which are
+ * written out there now that the module holding them is gone, so that moving one
+ * without the other fails rather than merely looking odd. The fourth row is
+ * `PLACED_ZOOM` in `components/sites/map-picker.tsx`, which is the one that never
+ * lived here.
  */
 export const MIN_ZOOM = 0;
 export const MAX_ZOOM = 17;
@@ -393,8 +452,7 @@ export function basemapOrigins(basemap: Basemap): string[] {
  * one zoom: the whole world, with both pins at opposite edges of it.
  *
  * `west` and `east` may come back outside [-180, 180]. That is the point: the
- * pair describes one interval, and both `fitBounds` below and MapLibre's
- * `Map.fitBounds` read it as one.
+ * pair describes one interval, and MapLibre's `Map.fitBounds` reads it as one.
  *
  * **MapLibre does not do this for you, and checking it with two places will not
  * reveal that.** `LngLatBounds.extend()` unions with plain `Math.min`/`Math.max`
@@ -403,10 +461,6 @@ export function basemapOrigins(basemap: Basemap): string[] {
  * `adjustAntiMeridian()` on the *finished* box, which cannot see that the union
  * was built the long way round on the way there - so a two-point check passes
  * whether or not this function survived. Hence three places in its tests.
- *
- * It lives here rather than with the rest of the Web-Mercator arithmetic in
- * `lib/map-tiles.ts` because it outlives that module: the hand-rolled renderer
- * goes and this does not.
  */
 export function unionBounds(boxes: LatLonBounds[]): LatLonBounds | null {
   if (boxes.length === 0) return null;
