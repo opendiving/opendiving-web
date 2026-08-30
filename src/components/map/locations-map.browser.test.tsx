@@ -11,9 +11,13 @@ import { ConfigProvider } from "@/contexts/ConfigContext";
 // Without this line every Tailwind class in the tree computes to nothing, and
 // the dark-theme guard below - which asserts an *absence*, that no element
 // carries a CSS `filter` - passes whether or not the `invert hue-rotate-180` it
-// exists to catch is present. Removing it does not fail a test; it silently
-// stops one from being able to fail. See "jsdom answers no layout question, and
-// the browser lane only answers one with the stylesheet loaded" in DECISIONS.md.
+// exists to catch is present. Removing it does not fail that test; it silently
+// stops it from being able to fail. That was the whole of the import's job until
+// this file gained a geometry case: "fills its own frame with the map" measures
+// boxes that only have a size while these classes apply, so the import is now
+// load-bearing loudly as well as quietly. See "jsdom answers no layout question,
+// and the browser lane only answers one with the stylesheet loaded" in
+// DECISIONS.md.
 import "@/app/globals.css";
 
 // **A real browser, not jsdom.** MapLibre needs a WebGL2 context, which jsdom
@@ -68,16 +72,14 @@ const canvasReady = () =>
 // zoom, and that is all these comparisons need.
 //
 // Every figure here is a *comparison* between two spans or a containment check,
-// never an absolute pixel count, and that is what keeps them meaningful: the
-// canvas is as wide as the frame, which follows the runner's window, and it is
-// taller than the frame it sits in. `.maplibregl-map`'s own unlayered
-// `position: relative` outranks the `absolute inset-0` that `map-canvas.tsx`
-// puts on the same element, so the map container collapses to zero *height*
-// while keeping its width, and MapLibre's per-axis fallback
-// (`clientWidth || 400`, `clientHeight || 300`) hands back that real width and a
-// flat 300. Loading `globals.css` above does not change that; it changes the
-// frame around it. Fix the collapse and these numbers move, so re-read them
-// rather than assuming they carry over.
+// never an absolute pixel count, and that is what keeps them meaningful. The
+// canvas is now exactly the frame - both axes follow the runner's window, which
+// is narrower than the `sm:` breakpoint, so the height is `h-40` less the app's
+// border - and the fit is computed against that box. Until the container
+// collapse was fixed it was the frame's real width and a flat 300 tall,
+// MapLibre's per-axis fallback (`clientWidth || 400`, `clientHeight || 300`)
+// standing in for a box that had none. Every comparison here carried over
+// unchanged across that repair, which is what writing them this way buys.
 const spanOnScreen = async () => {
   await canvasReady();
   return waitFor(() => {
@@ -457,6 +459,61 @@ describe("LocationsMap", () => {
     );
     await canvasReady();
     expect(document.querySelectorAll(".maplibregl-ctrl-attrib").length).toBe(0);
+  });
+
+  // **The frame this component draws is the frame the map fills**, which was
+  // false in the shipped app for as long as `MapCanvas` handed MapLibre an
+  // element it also tried to lay out with a class. MapLibre's unlayered
+  // `.maplibregl-map { position: relative; overflow: hidden }` outranks any
+  // Tailwind utility on that element, so the container sat at the frame's width
+  // and zero height and clipped its own canvas away; the credit and the controls
+  // still drew, because they are not inside it, and the map read as a styled
+  // empty box. The fit and marker assertions above cannot see any of that - they
+  // compare one span against another, and a canvas of the wrong size still
+  // projects consistently - so this is stated separately and measured.
+  //
+  // Every figure is read off the frame rather than written down, because the
+  // frame's width follows the runner's window.
+  it("fills its own frame with the map", async () => {
+    render(
+      withConfig(
+        <LocationsMap
+          subject="the trip's locations"
+          locations={[
+            { name: "Moalboal", latitude: 9.9494, longitude: 123.3986 },
+            { name: "Bohol", latitude: 9.85, longitude: 124.14 },
+          ]}
+        />,
+      ),
+    );
+    await canvasReady();
+
+    const frame = screen.getByRole("img").getBoundingClientRect();
+    expect(frame.height).toBeGreaterThan(0);
+
+    const container = document
+      .querySelector<HTMLElement>(".maplibregl-map")!
+      .getBoundingClientRect();
+    expect(container.width).toBeCloseTo(frame.width, 0);
+    expect(container.height).toBeCloseTo(frame.height, 0);
+    expect(container.top).toBeCloseTo(frame.top, 0);
+    expect(container.left).toBeCloseTo(frame.left, 0);
+
+    // The canvas follows the container, so a collapse shows up here as
+    // MapLibre's flat 300 fallback rather than as the frame's own height.
+    const canvas = document
+      .querySelector<HTMLCanvasElement>("canvas.maplibregl-canvas")!
+      .getBoundingClientRect();
+    expect(canvas.height).toBeCloseTo(frame.height, 0);
+
+    // And that the map is genuinely *at* that point rather than clipped out of
+    // it: `overflow: hidden` leaves a canvas with a plausible box of its own
+    // while hit-testing falls through to whatever is behind it.
+    const hit = document.elementFromPoint(
+      frame.left + frame.width / 2,
+      frame.top + frame.height / 2,
+    );
+    expect(document.querySelector(".maplibregl-map")!.contains(hit)).toBe(true);
   });
 
   // The dark theme is now a different *style*, not a CSS filter over the light

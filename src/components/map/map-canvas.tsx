@@ -281,7 +281,36 @@ export function MapCanvas({
 
   return (
     <>
-      <div ref={attachMap} className={cn("absolute inset-0", className)} />
+      {/* **Two elements, and the inner one carries no styling of this app's at
+          all.** MapLibre stamps `.maplibregl-map { position: relative;
+          overflow: hidden }` onto whatever element it is handed, and
+          `maplibre-gl.css` is unlayered while Tailwind's output sits in
+          `@layer utilities` - so an unlayered vendor declaration outranks any
+          utility class on that element whatever its specificity or the source
+          order. This component used to hand MapLibre a single
+          `absolute inset-0` div and lost that race: `relative` won, `inset-0`
+          had nothing to anchor to, the container sat at zero height with its
+          absolutely positioned canvas clipped away by the library's own
+          `overflow: hidden`, and the map did not render anywhere in the app -
+          through five changes and every review of them, because reading the
+          markup cannot tell you which of two stylesheets won.
+
+          So the layout lives on an element MapLibre never touches, and the
+          element it does own is a bare grid item - stretched to its parent's
+          only cell by `align/justify-self: normal`, with `min-height: auto`
+          resolving to zero because `overflow: hidden` makes it a scroll
+          container. Its size comes from its parent's layout rather than from a
+          declaration of ours, so there is nothing here for a future vendor
+          rule to outrank. Fixing this with a stronger selector instead would
+          be the same race with today's winner reversed, which is why it was
+          not done that way.
+
+          `className` lands here too, on the element the app owns: passed to
+          the container it would have been subject to the same silent override
+          for anything MapLibre sets. */}
+      <div className={cn("absolute inset-0 grid", className)}>
+        <div ref={attachMap} />
+      </div>
       {children}
     </>
   );
