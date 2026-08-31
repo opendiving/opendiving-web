@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { inputClassName } from "@/components/ui/input";
+import { FormApiError } from "@/components/ui/form-api-error";
 import { UNIT_SYSTEMS, UNIT_SYSTEM_LABELS, type UnitSystem } from "@/lib/units";
 
 // Which system every measurement in the app is shown and typed in.
@@ -88,7 +89,7 @@ export function UnitsCard() {
           </p>
         </div>
 
-        {error && <p className="text-sm text-destructive mt-3">{error}</p>}
+        <FormApiError error={error} className="mt-3" />
       </CardContent>
     </Card>
   );
