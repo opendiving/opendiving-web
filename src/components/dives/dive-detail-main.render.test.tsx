@@ -186,3 +186,105 @@ describe("DiveDetailMain species card", () => {
     expect(screen.queryByText("Species Spotted")).not.toBeInTheDocument();
   });
 });
+
+// The image column, in the half jsdom can answer. Whether the rows end up the
+// same *height* is a layout question and jsdom performs no layout - every
+// `getBoundingClientRect()` there is zeroed, so such an assertion would pass
+// against any markup at all. That half is `dive-detail-main.browser.test.tsx`.
+//
+// What is pinned here is what the DOM alone settles: a row with a digest renders
+// an image, a row without renders none, and the photo is never the thing that
+// carries a species' name.
+describe("DiveDetailMain species photos", () => {
+  const PHOTOGRAPHED = {
+    uuid: "species-1",
+    scientific_name: "Amphiprion ocellaris",
+    common_name: "Ocellaris clownfish",
+    rank: "Species",
+    photo_sha256:
+      "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+  };
+
+  const UNPHOTOGRAPHED = {
+    uuid: "species-2",
+    scientific_name: "Chromodoris annae",
+    common_name: "Anna's chromodoris",
+    rank: "Species",
+    photo_sha256: null,
+  };
+
+  it("renders a thumbnail for a species that has a photo", () => {
+    const { container } = render(
+      <DiveDetailMain dive={dive({ species: [PHOTOGRAPHED] })} />,
+    );
+
+    const images = [...container.querySelectorAll("img")];
+    expect(images).toHaveLength(1);
+    // Built against the API client's own base, and carrying the digest so a
+    // replaced photo cannot be served from the browser's cache.
+    expect(images[0].getAttribute("src")).toContain(
+      `/species/${PHOTOGRAPHED.uuid}/photo?v=`,
+    );
+  });
+
+  it("draws nothing at all in the cell of a species without one", () => {
+    // Not a placeholder, not a broken-image glyph, not stranded alt text. The
+    // cell is still there - that is what keeps the rows aligned - and it is
+    // empty.
+    const { container } = render(
+      <DiveDetailMain dive={dive({ species: [UNPHOTOGRAPHED] })} />,
+    );
+
+    expect(container.querySelectorAll("img")).toHaveLength(0);
+  });
+
+  it("renders one image for the photographed row of a mixed table", () => {
+    const { container } = render(
+      <DiveDetailMain
+        dive={dive({ species: [PHOTOGRAPHED, UNPHOTOGRAPHED] })}
+      />,
+    );
+
+    expect(container.querySelectorAll("img")).toHaveLength(1);
+    expect(container.querySelectorAll("tbody tr")).toHaveLength(2);
+  });
+
+  it("links each species to its page, naming the link once", () => {
+    render(<DiveDetailMain dive={dive({ species: [PHOTOGRAPHED] })} />);
+
+    // Exactly one *named* link per species, even though the thumbnail beside it
+    // is clickable too: the image link is `aria-hidden` and out of the tab order
+    // precisely so a screen reader's link list doesn't carry the same
+    // destination twice with nothing to tell them apart.
+    const named = screen.getAllByRole("link", {
+      name: "Ocellaris clownfish",
+    });
+    expect(named).toHaveLength(1);
+    expect(named[0]).toHaveAttribute("href", `/species/${PHOTOGRAPHED.uuid}`);
+  });
+
+  it("names the link for a species with no common name", () => {
+    // The visible cell is an em-dash for these, and "—" is not a link name -
+    // so the accessible name falls back to the binomial rather than to nothing.
+    render(
+      <DiveDetailMain
+        dive={dive({
+          species: [
+            {
+              uuid: "species-3",
+              scientific_name: "Muraenidae",
+              common_name: null,
+              rank: "Family",
+              photo_sha256: null,
+            },
+          ],
+        })}
+      />,
+    );
+
+    expect(screen.getByRole("link", { name: "Muraenidae" })).toHaveAttribute(
+      "href",
+      "/species/species-3",
+    );
+  });
+});

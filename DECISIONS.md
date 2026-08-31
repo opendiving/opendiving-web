@@ -12791,3 +12791,89 @@ Every assertion added here was run against the markup it replaces, and the ones 
 were rewritten rather than kept for the count. That is how the margin-collapsing correction above
 was found: the first version of the layout test passed against a deliberately broken component,
 which made it worthless as written.
+
+## Species photos are a plain `<img>` at the API, which is why the base URL had to be exported
+
+Every other stored image in this app is private, so the pattern was settled before this one arrived:
+fetch the bytes through the API client with an `Authorization` header and render them from an object
+URL (`hooks/useAuthedBlobUrl.ts`). Species photos deliberately do not take that path, and the reason
+is the life list. That hook re-fetches on every mount - this file already said so under "Avatars are
+this instance's own", naming gallery scale as the thing it "would need real thought" for - and a
+grid of two dozen thumbnails, each a separate authenticated round trip on every render, is exactly
+the case it was warning about.
+
+So the API serves these bytes without a token and the client points an `<img>` straight at them. The
+bytes disclose nothing that makes that a concession: the species catalog is global and ownerless, a
+species uuid is not an existence oracle for anything private, and the files are Commons images
+anybody can fetch from Commons directly. What is served is a copy this instance fetched once and
+stored, which is the whole point - hotlinking would have put a third-party host back in the CSP and
+told Wikimedia which species each viewer is looking at, both of which the Gravatar removal refused
+to keep.
+
+**The consequence for this repo is one exported constant, and it is not cosmetic.**
+`lib/api/client.ts` held `process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_BASE_URL` privately,
+because axios was the only thing that needed it - every call site hands the client a route-relative
+path and the client prepends the base. An `<img src>` has no client to prepend anything, so the URL
+is composed by hand, and composing it against a literal `/api/v1` is the failure mode worth naming:
+it **works** in the shipped same-origin topology and resolves to the wrong origin in a split-origin
+build. Local dev is a split-origin build - `.env` sets `NEXT_PUBLIC_API_URL` to
+`http://localhost:8000/api/v1` - so a correct photo URL there points at `:8000`, not `:3000`, and
+reading "same origin" literally when checking it would score a correct implementation as broken. The
+composed base therefore moved down into `lib/api-base.ts` beside `apiCspSource`, which is already
+the module that knows what an absolute base means, and `client.ts` imports it rather than keeping a
+second copy of the `||`.
+
+`img-src` needed no change for any of this: it lists `'self'` unconditionally and already
+contributed `apiOrigin` for a split-origin build. But the _comment_ above it did, in `src/proxy.ts`
+and again in `src/proxy.test.ts`, because both said no `<img>` in this app points anywhere but at
+its own origin. That was true when the raster tile grid went and is not true now. The claim that
+replaces it is that every `<img>` points at this instance, which covers both topologies - and the
+same wording trap applies as last time: the `proxy.ts` copy wraps mid-sentence, so a one-line grep
+for the phrase finds only the test.
+
+## `next/link` needs a `process` global in the browser test project
+
+The second Vitest project runs real Chromium, and until species photos arrived every tenant of it
+was a map component. None of those renders a link. Then the species card's row-height guard became
+the first browser test over an ordinary app component, and it failed before a single assertion ran,
+with `ReferenceError: process is not defined` thrown out of `next/dist/client/has-base-path.js`.
+
+It is the inverse of everything else in `vitest.setup.ts`. That file exists to stand in for browser
+APIs jsdom lacks; this is a **Node** global that Next's client code reads at module scope
+(`process.env.__NEXT_ROUTER_BASEPATH`), which a real Next build inlines to a literal so that nothing
+survives to be read at runtime. Vite bundles the module as written, so the read is still there and
+there is nothing to answer it.
+
+`globalThis.process ??= { env: {} }` in `vitest.setup.browser.ts` is the whole fix, and an empty
+`env` is correct rather than lazy - every value Next looks for there is optional, and supplying real
+ones would be inventing build configuration a test has no business deciding. It is worth recognising
+by its shape: it surfaces as a failed _import_ of the test file rather than as a failed assertion,
+so it looks like a broken module resolution and not like a missing polyfill. The jsdom project is
+unaffected, which is why this never came up in a render test.
+
+## The row-height guard was watched failing, and the stylesheet is what decides whether it can
+
+"jsdom answers no layout question, and the browser lane only answers one with the stylesheet loaded"
+records the trap; this is the second worked example of it, and the first one written from scratch
+rather than found in place.
+
+The claim is that a species with no photo leaves an empty cell that still reserves the thumbnail's
+box, so rows stay level down the dive card's table. Nothing about that is checkable in jsdom - the
+DOM-side half, an `<img>` being present or absent, is pinned in the render test instead. In
+`dive-detail-main.browser.test.tsx` it is, and the procedure that file follows is the one worth
+copying rather than the assertion:
+
+- The regression was put back - `SpeciesThumbnail` returning `null` instead of an empty div - and
+  the suite run **twice** against it. With `import "@/app/globals.css"` both guards failed. Without
+  it both **passed**, with the collapse sitting in the markup. That is the vacuous pass the
+  DECISIONS section describes, reproduced on purpose.
+- A third assertion was then added specifically so the import cannot be deleted quietly: it requires
+  the row to be taller than a bare line of text, which is only true once Tailwind has loaded. It is
+  the one test in the file that fails when the stylesheet is missing, and it exists to convert a
+  silent hollowing-out into a red build.
+
+Two smaller things the measuring turned up. Rows are compared to within a pixel rather than for
+equality, because the table's own last-row border makes them 81 and 80.5 - a tolerance far below the
+thirty-odd pixel collapse the test is looking for. And the "all rows photo-less" case needs two
+_distinct_ uuids: React keys a table of two identically-keyed rows as one row, and the duplicate-key
+warning in the console was the only thing that said so.

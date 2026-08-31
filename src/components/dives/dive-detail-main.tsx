@@ -4,7 +4,8 @@ import Link from "next/link";
 import { Dive } from "@/lib/api/dives";
 import { gearTypeLabel } from "@/lib/api/gear";
 import { formatDurationHoursMinutes } from "@/lib/date-time";
-import { speciesNameWithRank } from "@/lib/species";
+import { speciesDisplayName, speciesNameWithRank } from "@/lib/species";
+import { SpeciesThumbnail } from "@/components/species/species-thumbnail";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DiveProfileCard } from "@/components/dives/dive-profile-card";
@@ -168,10 +169,9 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
       {/* Between the kit and the notes, mirroring where the form puts the picker.
           A `Table` for the same reason the Gear card above is one: a real dive
           can carry a dozen sightings, and a list of glued-together strings gives
-          the eye nothing to scan down. Two columns, common name leading, because
-          that is the one a diver reads - the binomial is what makes it
-          unambiguous, not what makes it findable. No links: there is no species
-          page to point at yet. */}
+          the eye nothing to scan down. Common name leads the two text columns,
+          because that is the one a diver reads - the binomial is what makes it
+          unambiguous, not what makes it findable. */}
       {dive.species && dive.species.length > 0 && (
         <Card>
           <CardHeader>
@@ -184,6 +184,12 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
             <Table>
               <TableHeader>
                 <TableRow>
+                  {/* The image column's header is a name for screen readers and
+                      nothing for the eye: a word over a column of photographs
+                      labels what needs no label. */}
+                  <TableHead className="w-16">
+                    <span className="sr-only">Photo</span>
+                  </TableHead>
                   <TableHead>Common name</TableHead>
                   <TableHead>Scientific name</TableHead>
                 </TableRow>
@@ -191,10 +197,48 @@ export function DiveDetailMain({ dive }: DiveDetailMainProps) {
               <TableBody>
                 {dive.species.map((species) => (
                   <TableRow key={species.uuid}>
+                    {/* Every row gets this cell, and `SpeciesThumbnail` reserves
+                        its box whether or not there is a photo to put in it - so
+                        the rows stay the same height down the table instead of a
+                        photo-less one collapsing to the height of its text. */}
+                    <TableCell className="w-16">
+                      <Link
+                        href={`/species/${species.uuid}`}
+                        // The name cell beside this links to the same page and
+                        // carries the accessible name. Two adjacent links to one
+                        // destination is a tab stop nobody wants and a link list
+                        // entry that says nothing, so this one is taken out of
+                        // both while staying clickable for the mouse.
+                        aria-hidden="true"
+                        tabIndex={-1}
+                      >
+                        <SpeciesThumbnail
+                          uuid={species.uuid}
+                          photoSha256={species.photo_sha256}
+                          className="h-12 w-12"
+                        />
+                      </Link>
+                    </TableCell>
                     <TableCell className="font-medium">
-                      {species.common_name || (
-                        <span className="text-muted-foreground">—</span>
-                      )}
+                      {/* The link the card's comment used to say did not exist
+                          yet. It is also the attribution route: the photo beside
+                          it carries no credit of its own, and this is the page
+                          that does.
+
+                          `aria-label` because the visible content is an em-dash
+                          for the many species with no English name, and "—" is
+                          not a link name. Where there *is* a common name the
+                          label is that same string, so nothing diverges from
+                          what is on screen. */}
+                      <Link
+                        href={`/species/${species.uuid}`}
+                        className="hover:underline"
+                        aria-label={speciesDisplayName(species)}
+                      >
+                        {species.common_name || (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </Link>
                     </TableCell>
                     {/* Italic by the binomial convention, and the rank comes
                         along when the row isn't one - "Muraenidae" on its own

@@ -4,6 +4,7 @@ import {
   speciesNameWithRank,
   speciesRankLabel,
   speciesSecondaryName,
+  speciesSeenRange,
 } from "./species";
 
 describe("speciesDisplayName", () => {
@@ -114,5 +115,50 @@ describe("speciesNameWithRank", () => {
         }),
       ).toBe("Amphiprion ocellaris");
     }
+  });
+});
+
+describe("speciesSeenRange", () => {
+  it("prints one date for a species seen exactly once", () => {
+    const seen = "2026-08-30T09:15:00+02:00";
+
+    expect(speciesSeenRange(seen, seen)).toBe("Aug 30, 2026");
+  });
+
+  // The bug this function exists to hold. `first_seen`/`last_seen` are dive
+  // start times to the second, so two dives on one day - the ordinary case,
+  // since a diver logs several at a site and sees the same fish on each - are
+  // different strings that render as the same date. Collapsing on the raw
+  // values instead of the formatted ones gives "Aug 30, 2026 - Aug 30, 2026".
+  it("collapses two sightings on the same day to one date", () => {
+    expect(
+      speciesSeenRange(
+        "2026-08-30T09:15:00+02:00",
+        "2026-08-30T14:40:00+02:00",
+      ),
+    ).toBe("Aug 30, 2026");
+  });
+
+  it("prints a range when the sightings fall on different days", () => {
+    expect(
+      speciesSeenRange(
+        "2026-08-30T09:15:00+02:00",
+        "2026-09-02T11:00:00+02:00",
+      ),
+    ).toBe("Aug 30, 2026 \u2013 Sep 2, 2026");
+  });
+
+  // Both ends are rendered in the offset the dive carries, not the viewer's -
+  // the app-wide contract for a dive `start_time`. This pair is late enough on
+  // the 30th in Thailand to be the 30th there and the 29th in UTC, so a
+  // formatter that re-derived a local time would print the wrong day here and
+  // the right one for any fixture logged at +00:00.
+  it("reports each end in the offset its own dive was logged in", () => {
+    expect(
+      speciesSeenRange(
+        "2026-08-30T02:00:00+07:00",
+        "2026-08-30T02:00:00+07:00",
+      ),
+    ).toBe("Aug 30, 2026");
   });
 });

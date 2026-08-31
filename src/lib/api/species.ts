@@ -1,4 +1,5 @@
-import { apiClient } from "./client";
+import { API_BASE_URL } from "@/lib/api-base";
+import { apiClient, PaginatedResponse } from "./client";
 
 // The bounds `GET /species/search` declares on its own `q`. Mirrored rather than
 // discovered, for the same reason `MIN_PLACE_QUERY_LENGTH` is: a query outside
@@ -18,12 +19,26 @@ export const MAX_SPECIES_QUERY_LENGTH = 255;
  * the scientific name. `rank` is WoRMS's open vocabulary ("Species", "Genus",
  * "Family", ...) rather than a closed enum, so it is a plain string - a
  * genus- or family-level sighting ("a moray eel") is a legitimate log entry.
+ *
+ * `photo_sha256` is the *whole* photo contract - see `speciesPhotoUrl`. No URL
+ * comes down the wire; the digest answers "is there a photo" and "which one" at
+ * once, and the client composes the address itself.
+ *
+ * It is **optional, not merely nullable**, and the difference carries meaning.
+ * `null` is the API saying this species has no photo; absent is this object not
+ * being in a position to know. The picker constructs summaries out of
+ * `SpeciesSearchResult`s, which carry no digest at all - a search feed includes
+ * species not yet in the catalog, which by construction have no stored photo -
+ * so writing `null` there would state something the row never said. Nothing
+ * renders a photo from those summaries, which is why the picker has no
+ * thumbnails.
  */
 export interface SpeciesSummary {
   uuid: string;
   scientific_name: string;
   common_name: string | null;
   rank: string;
+  photo_sha256?: string | null;
 }
 
 /**
@@ -53,10 +68,52 @@ export interface Species extends SpeciesSummary {
   is_marine: boolean | null;
   is_brackish: boolean | null;
   is_freshwater: boolean | null;
-  // The Wikidata entity behind the common name, when one was found. Stored for
-  // the photos iteration, which starts from P18 on this entity.
+  // The Wikidata entity behind the common name, when one was found, and the
+  // entity the stored photo was found through: the API reads P18 off it.
   wikidata_qid: string | null;
   created_at: string;
+  // The stored photo's provenance, as the parts a compliant credit is built
+  // from rather than one ready-made string - which is the opposite of what
+  // `SpeciesSearchResult.attribution` does, and deliberately so: a credit here
+  // needs *two* hyperlinks, the licence and the source page, and one string can
+  // carry at most one of them. `SpeciesPhotoCredit` composes them; nothing here
+  // is markup, and none of it may be interpolated as HTML.
+  //
+  // Every field is independently null. A photo whose author Commons did not
+  // record is a real state, not a defensive one.
+  photo_file: string | null;
+  photo_author: string | null;
+  photo_license: string | null;
+  photo_license_url: string | null;
+  photo_source_url: string | null;
+}
+
+/**
+ * One row of the life list at `GET /user/species` - a species this diver has
+ * logged, and their whole history with it.
+ *
+ * Not a `Species` with extras: `dive_count`, `first_seen` and `last_seen` are
+ * facts about *this caller's* logbook rather than about the taxon, which is why
+ * the route hangs off `/user/` and not off the ownerless `/species/`. The taxon
+ * half is the same subset `SpeciesSummary` carries, so a card renders without a
+ * second request per row.
+ *
+ * **`first_seen` and `last_seen` are dive start times, so they carry the offset
+ * of the dive behind each end of the range - not UTC.** That is the app-wide
+ * contract every dive-derived surface honours, and it means they are formatted
+ * with `formatDiveDateTime`, never with `formatDateTime`. Re-deriving a local
+ * time from either would report the viewer's clock for a dive logged in
+ * Thailand; the error is invisible against any dive logged at `+00:00`.
+ */
+export interface SpeciesLifeListEntry {
+  uuid: string;
+  scientific_name: string;
+  common_name: string | null;
+  rank: string;
+  photo_sha256: string | null;
+  dive_count: number;
+  first_seen: string;
+  last_seen: string;
 }
 
 /**
@@ -104,10 +161,50 @@ export interface SpeciesSearchResponse {
   has_more: boolean;
 }
 
+// How much of the digest goes in the cache-busting query. Enough that no two
+// stored photos collide in practice, short enough not to put 64 characters in
+// every `src` on a page of fifty. The value is opaque to the API - it serves
+// whatever photo the uuid names and ignores `v` entirely - so this is purely
+// about giving a replaced photo a URL the browser has not cached.
+const PHOTO_VERSION_LENGTH = 12;
+
+/**
+ * Where to point an `<img>` at a species' photo, or `null` when it has none.
+ *
+ * **Composed here rather than sent by the API**, following the avatar precedent:
+ * one nullable digest on the wire answers existence, version and cache-busting
+ * at once. Pass the `photo_sha256` off whatever carries it - a dive's embedded
+ * species, a life-list row, the catalog record - and render nothing at all when
+ * this returns `null`.
+ *
+ * Unlike an avatar this is a plain `<img src>` rather than an authenticated blob
+ * fetch (`hooks/useAuthedBlobUrl.ts`): the route is deliberately unauthenticated,
+ * because an `<img>` cannot carry the in-memory bearer token and the blob path
+ * re-fetches on every mount - which a life list of fifty thumbnails is exactly
+ * the wrong shape for. The bytes disclose nothing: the catalog is global and
+ * ownerless, and they are Commons files anyone can fetch from Commons.
+ *
+ * **Built against `API_BASE_URL`, never a literal `/api/v1`.** A hard-coded path
+ * resolves against the page's own origin, which is right in the shipped
+ * same-origin topology and wrong in a split-origin build - including local dev,
+ * where the photo must go to `:8000` and not to `:3000`. That failure is silent:
+ * the image simply does not load, and only the network panel says why.
+ */
+export function speciesPhotoUrl(
+  uuid: string,
+  photoSha256: string | null | undefined,
+): string | null {
+  if (!photoSha256) return null;
+  const version = photoSha256.slice(0, PHOTO_VERSION_LENGTH);
+  return `${API_BASE_URL}/species/${encodeURIComponent(uuid)}/photo?v=${encodeURIComponent(version)}`;
+}
+
 /**
  * The global species catalog, and the live WoRMS + Wikidata search in front of
  * it - all proxied by the API, so no third-party host needs a `connect-src`
  * entry and the providers see one identified client rather than every browser.
+ * The stored photos are served the same way, from this instance's own API: the
+ * browser never contacts Wikimedia, so `img-src` names no third party either.
  *
  * Unlike every other module here, these records belong to nobody: a species is a
  * fact about the ocean, so the endpoints require auth but have no owner to
@@ -166,8 +263,39 @@ export const speciesAPI = {
   // Fetch one catalog row by uuid. The picker's safety net for labelling a
   // selection it has nothing else to go on - a dive being edited hands its
   // species over directly, so this is a per-uuid fallback, not the usual path.
+  // Also what the species page reads, since it renders the classification and
+  // the photo credit that only this schema carries.
   async getSpecies(uuid: string): Promise<Species> {
     const response = await apiClient.get<Species>(`/species/${uuid}`);
+    return response.data;
+  },
+
+  /**
+   * The signed-in diver's life list: every species they have ever logged, most
+   * recently seen first.
+   *
+   * Always the caller's own account - the route takes no uuid, like the rest of
+   * `/user/...`, so there is no ownership argument to get backwards. `search`
+   * matches any name the species goes by, the same way the catalog search does.
+   *
+   * Counts live dives only, so `total_count` equals the `species_seen` on
+   * `getDiveStats()` for the same account, and soft-deleting the only dive that
+   * recorded a species drops it from both.
+   */
+  async getLifeList(
+    page: number = 1,
+    items_per_page: number = 10,
+    search?: string,
+  ): Promise<PaginatedResponse<SpeciesLifeListEntry>> {
+    const response = await apiClient.get<
+      PaginatedResponse<SpeciesLifeListEntry>
+    >(`/user/species`, {
+      params: {
+        page,
+        items_per_page,
+        ...(search ? { search } : {}),
+      },
+    });
     return response.data;
   },
 };
