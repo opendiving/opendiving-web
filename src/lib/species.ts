@@ -1,7 +1,9 @@
-// How a species reads on screen. Composed once here because the two surfaces
-// that show one - the dive form's picker and the dive page's card - have to
-// agree on the same two decisions: what to call a species that has no common
-// name, and how to say that a row is not a species at all.
+// How a species reads on screen. Composed once here because the surfaces that
+// show one - the dive form's picker, the dive page's card, the life list and the
+// species page - have to agree on the same two decisions: what to call a species
+// that has no common name, and how to say that a row is not a species at all.
+
+import { formatDiveDateTime } from "@/lib/date-time";
 
 interface NamedSpecies {
   scientific_name: string;
@@ -104,4 +106,40 @@ export function speciesNameWithRank(species: RankedSpecies): string {
   const rank = speciesRankLabel(species.rank);
   if (!rank || rank.toLowerCase() === "species") return species.scientific_name;
   return `${species.scientific_name} (${rank})`;
+}
+
+/**
+ * When a diver saw this species, as one line: a single date when every sighting
+ * falls on one day, and a range otherwise.
+ *
+ * **The two inputs are dive `start_time`s, so they carry the offset of the dive
+ * behind each end of the range rather than UTC** - the app-wide contract every
+ * dive-derived surface honours. That is why this goes through
+ * `formatDiveDateTime` and not `formatDateTime`: the latter would re-derive the
+ * *viewer's* local time and report a dive logged in Thailand at the reader's
+ * clock. The error is invisible against any dive logged at `+00:00`, which is
+ * most fixtures and almost no real log.
+ *
+ * **The collapse compares the formatted dates, not the timestamps behind them**,
+ * and that distinction is the whole reason this is a function rather than an
+ * inline ternary. The values are start times to the second, so two sightings on
+ * one day - the ordinary case, since a diver logs several dives at a site and
+ * sees the same fish on each - differ as strings while rendering as one date.
+ * Comparing the raw values prints "Aug 30, 2026 - Aug 30, 2026" for every one of
+ * them, and only a species seen exactly once ever collapses.
+ */
+export function speciesSeenRange(firstSeen: string, lastSeen: string): string {
+  const first = seenOn(firstSeen);
+  const last = seenOn(lastSeen);
+  return first === last ? first : `${first} – ${last}`;
+}
+
+// A dive start time as a bare date. Separate from the range above only so both
+// ends are formatted identically by construction.
+function seenOn(startTime: string): string {
+  return formatDiveDateTime(startTime, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
 }

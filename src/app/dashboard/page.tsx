@@ -34,30 +34,55 @@ import { formatDepth } from "@/lib/units";
 // `value` is `null` only while the stats request is in flight, and renders as a
 // dash rather than a zero: "0 dives" is a statement about the logbook, and
 // showing it before the answer is known reads as one.
+//
+// `href` makes the cell a link where the number has a page behind it. It is a
+// `<Link>` wrapping the same markup rather than a card with an action in it -
+// this component was renamed from `StatCard` to `Stat` precisely because it
+// renders a cell, and the grid it sits in is what gives it its shape. Anything
+// that turned it back into a card would break the four-across row.
 function Stat({
   title,
   icon,
   value,
   hint,
+  href,
 }: {
   title: string;
   icon: ReactNode;
   value: string | null;
   hint: string;
+  href?: string;
 }) {
-  return (
-    <div>
+  const body = (
+    <>
       {/* The icon leads the label rather than sitting opposite it, as it did
           when each of these was a card wide enough to push the two apart. In a
           quarter-width column there is nothing to push against, and a right-
           aligned icon just floats away from the words it belongs to. */}
-      <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground mb-1">
+      {/* `group-hover:` is inert without a `group` ancestor, so the same markup
+          serves both branches: the linked cell picks up the hover colour, the
+          plain one is unaffected. */}
+      <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground mb-1 group-hover:text-coral-text">
         {icon}
         {title}
       </div>
       <div className="text-2xl font-bold">{value ?? "—"}</div>
       <p className="text-xs text-muted-foreground">{hint}</p>
-    </div>
+    </>
+  );
+
+  // `block` so the anchor fills its grid cell the way the plain `<div>` does -
+  // an inline anchor would shrink to its text and leave the number unclickable
+  // wherever the words are shorter than the column.
+  return href ? (
+    <Link
+      href={href}
+      className="group block rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      {body}
+    </Link>
+  ) : (
+    <div>{body}</div>
   );
 }
 
@@ -229,11 +254,15 @@ export default function DashboardPage() {
                 value={stats && formatDurationHoursMinutes(stats.total_time)}
                 hint="Underwater"
               />
+              {/* The one tile with a page behind it: the life list is exactly
+                  this number, itemised. The other three summarise the whole
+                  logbook and have nowhere more specific to go. */}
               <Stat
                 title="Species Seen"
                 icon={<Fish className="h-4 w-4" />}
                 value={stats && String(stats.species_seen)}
                 hint="Distinct species spotted"
+                href="/species"
               />
             </div>
           </CardContent>

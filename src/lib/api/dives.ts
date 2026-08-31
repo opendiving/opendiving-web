@@ -726,15 +726,16 @@ export const divesAPI = {
   },
 
   // Get all dives for a user (paginated). Pass `tripUuid`/`diveSiteUuid`/
-  // `gearItemUuid`/`courseUuid` to only return dives that belong to a given trip
-  // / were made at a given site / used a given piece of gear / were part of a
-  // given training course. The filters are combinable, and one naming something
-  // that doesn't exist or isn't the caller's returns an empty page rather than
-  // an error.
+  // `gearItemUuid`/`courseUuid`/`speciesUuid` to only return dives that belong to
+  // a given trip / were made at a given site / used a given piece of gear / were
+  // part of a given training course / recorded a given species. The filters are
+  // combinable, and one naming something that doesn't exist or isn't the
+  // caller's returns an empty page rather than an error.
   //
-  // `courseUuid` comes last rather than beside `tripUuid`, where it belongs by
-  // meaning: these are positional, and inserting a parameter would silently
-  // re-point every existing call's site and gear filters.
+  // `courseUuid` and `speciesUuid` come last rather than beside `tripUuid`, where
+  // they belong by meaning: these are positional, and inserting a parameter would
+  // silently re-point every existing call's site and gear filters. Appending is
+  // the only safe direction, which is why each new filter joins the end.
   async getDives(
     userUuid: string,
     page: number = 1,
@@ -743,6 +744,7 @@ export const divesAPI = {
     diveSiteUuid?: string,
     gearItemUuid?: string,
     courseUuid?: string,
+    speciesUuid?: string,
   ): Promise<PaginatedDivesResponse> {
     const response = await apiClient.get(`/dives`, {
       params: {
@@ -753,6 +755,7 @@ export const divesAPI = {
         ...(diveSiteUuid !== undefined ? { dive_site_uuid: diveSiteUuid } : {}),
         ...(gearItemUuid !== undefined ? { gear_item_uuid: gearItemUuid } : {}),
         ...(courseUuid !== undefined ? { course_uuid: courseUuid } : {}),
+        ...(speciesUuid !== undefined ? { species_uuid: speciesUuid } : {}),
       },
     });
     return response.data;

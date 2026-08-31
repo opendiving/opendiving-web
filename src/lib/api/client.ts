@@ -1,6 +1,6 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
 
-import { DEFAULT_API_BASE_URL } from "@/lib/api-base";
+import { API_BASE_URL } from "@/lib/api-base";
 
 /**
  * Dispatched when a token refresh fails so `AuthContext` can clear the stale
@@ -16,7 +16,11 @@ export const AUTH_SESSION_EXPIRED_EVENT = "auth:session-expired";
 // resolved by the browser against whatever origin loaded the page. `NEXT_PUBLIC_API_URL`
 // overrides it at build time for a split-origin deployment, and local dev sets it in
 // `.env` so the browser keeps talking to `localhost:8000` directly.
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_BASE_URL;
+//
+// Declared in `lib/api-base.ts` rather than here because axios is no longer its only
+// consumer: a species photo is an unauthenticated `<img src>` that never goes through
+// this client and still has to resolve to the same base. Two copies of the `||` would be
+// two places for the split-origin build to break.
 
 // The access token is intentionally kept in memory only, never in
 // localStorage/sessionStorage: those are readable by any JS running on the

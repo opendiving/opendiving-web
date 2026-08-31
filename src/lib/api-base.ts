@@ -19,6 +19,25 @@
 export const DEFAULT_API_BASE_URL = "/api/v1";
 
 /**
+ * The base every API URL is built from, `/api/v1` prefix included - the override when
+ * one is configured, the relative default otherwise.
+ *
+ * `lib/api/client.ts` sets axios' `baseURL` from this, and axios is what appends the
+ * route-relative path for every call that goes through it. This constant exists for the
+ * calls that *cannot*: an `<img src>` carries no `Authorization` header and never touches
+ * the client, so a species photo's URL has to be composed by hand. Composing it against
+ * a literal `/api/v1` instead would work in the shipped same-origin topology and silently
+ * point at the wrong origin in a split-origin build - which is the topology local dev
+ * runs, `.env` setting `NEXT_PUBLIC_API_URL` to `http://localhost:8000/api/v1`.
+ *
+ * `process.env.NEXT_PUBLIC_API_URL` is inlined by the compiler at build time, so this is
+ * a literal in the bundle rather than a runtime read - the same reason `AGENTS.md` says
+ * every *other* setting goes through `lib/runtime-config.ts` instead.
+ */
+export const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_BASE_URL;
+
+/**
  * The CSP source expression for the API, or `null` when it is same-origin.
  *
  * `null` means "`'self'` already covers it": both `connect-src` and `img-src` list

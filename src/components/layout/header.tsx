@@ -29,6 +29,7 @@ import {
   Backpack,
   BadgeCheck,
   GraduationCap,
+  Fish,
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -73,6 +74,7 @@ const NAV_SECTIONS: { prefix: string; page: string }[] = [
   { prefix: "/gear", page: "gear" },
   { prefix: "/certifications", page: "certifications" },
   { prefix: "/courses", page: "courses" },
+  { prefix: "/species", page: "species" },
 ];
 
 function getCurrentPage(pathname: string | null): string | undefined {
@@ -323,6 +325,16 @@ export function Header() {
                       <Link href="/courses" className="flex items-center">
                         <GraduationCap className="mr-2 h-4 w-4" />
                         Courses
+                      </Link>
+                    </DropdownMenuItem>
+                    {/* Here for the same reason, by a different argument: the
+                        life list is a look-at-my-collection page rather than a
+                        working destination, so it does not earn one of those
+                        five slots either. */}
+                    <DropdownMenuItem asChild>
+                      <Link href="/species" className="flex items-center">
+                        <Fish className="mr-2 h-4 w-4" />
+                        Species
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>

@@ -42,8 +42,17 @@ const API_ORIGIN_SOURCE = apiCspSource(process.env.NEXT_PUBLIC_API_URL) ?? "";
 //
 // It reaches `connect-src` and nothing else. There was a second derivation beside this
 // one until the site picker moved to MapLibre, feeding the raster tile hosts it drew as
-// `<img>` elements into `img-src`; no `<img>` in this app now points anywhere but at its
-// own origin, so that directive names no third party at all.
+// `<img>` elements into `img-src`; that directive names no third party at all now, and
+// the basemap is not what would put one back.
+//
+// Every `<img>` in this app points at this instance - its own origin, or `apiOrigin`
+// where the API is split off onto another one, which `img-src` already lists. Species
+// photos are the case that makes the distinction worth stating rather than saying
+// "own origin": they are `<img src>` elements pointed straight at the API, because the
+// route serving them is deliberately unauthenticated, so in a split-origin build - which
+// local dev is - they resolve to `apiOrigin` and not to the page's origin. The bytes are
+// Wikimedia's, fetched once by the server and stored here; no browser ever asks
+// Wikimedia for them, which is the whole point of serving them ourselves.
 //
 // `undefined` rather than a falsy check, since an instance whose every basemap value is
 // malformed legitimately derives the empty string and must not re-derive it per request.
@@ -160,7 +169,14 @@ export function proxy(request: NextRequest) {
     // this document already created. Avatars take that same path, which is why
     // no avatar host is named here: they are served by this app's own API.
     //
-    // No third-party host at all any more. The map tile hosts were the only ones
+    // Species photos are the one image kind that does *not* take that path - they
+    // are public bytes on an unauthenticated route, so they are a plain `<img src>`
+    // at the API. `apiOrigin` is therefore load-bearing for them rather than
+    // incidental: it is empty in the shipped same-origin topology, where `'self'`
+    // covers them, and a real origin in a split-origin build, where nothing else
+    // would.
+    //
+    // No third-party host at all, still. The map tile hosts were the only ones
     // this directive ever carried, and the last `<img>` grid pointed at them went
     // when the site picker moved to MapLibre - which fetches every tile, in both
     // of its modes, under `connect-src` instead.

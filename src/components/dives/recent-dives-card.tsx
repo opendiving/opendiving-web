@@ -37,6 +37,9 @@ export interface RecentDivesCardProps {
   // Only show dives that were part of this training course. When omitted, shows
   // dives regardless of course.
   courseId?: string;
+  // Only show dives that recorded this species. When omitted, shows dives
+  // regardless of what was spotted.
+  speciesId?: string;
   // Maximum number of dives to fetch/display. Defaults to 5 for the
   // dashboard's "recent dives" use case.
   limit?: number;
@@ -54,14 +57,15 @@ export interface RecentDivesCardProps {
 
 // Shows a list of dives for a user (dive number, date, duration, max depth).
 // Used on the dashboard (the most recent few) and on the detail pages that
-// scope dives to one record - a trip, a dive site, a gear item, a course - so
-// they all stay in sync.
+// scope dives to one record - a trip, a dive site, a gear item, a course, a
+// species - so they all stay in sync.
 export function RecentDivesCard({
   userId,
   tripId,
   diveSiteId,
   gearItemId,
   courseId,
+  speciesId,
   limit = RECENT_DIVES_COUNT,
   title = "Recent Dives",
   description = "Your latest underwater adventures",
@@ -90,6 +94,7 @@ export function RecentDivesCard({
           diveSiteId,
           gearItemId,
           courseId,
+          speciesId,
         );
         setRecentDives(response.data);
       } catch (error) {
@@ -100,7 +105,7 @@ export function RecentDivesCard({
     };
 
     fetchRecentDives();
-  }, [userId, tripId, diveSiteId, gearItemId, courseId, limit]);
+  }, [userId, tripId, diveSiteId, gearItemId, courseId, speciesId, limit]);
 
   return (
     <Card>

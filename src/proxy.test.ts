@@ -231,7 +231,15 @@ describe("Content-Security-Policy", () => {
   // for as long as the site picker drew raster `<img>` tiles, so that dropping
   // them would be a decision rather than an accident; the picker draws through
   // MapLibre now, which fetches every tile under `connect-src` in both of its
-  // modes, and no `<img>` in this app points anywhere but at its own origin.
+  // modes.
+  //
+  // What every `<img>` in this app points at is *this instance* - the page's own
+  // origin, or `apiOrigin` where the API is split onto another one. That is not
+  // the same claim as "its own origin", and species photos are why: they are
+  // plain `<img src>` elements aimed straight at the API, since the route serving
+  // them takes no token, so a split-origin build resolves them to `apiOrigin`.
+  // The assertions below still hold, because `apiOrigin` is not a third party and
+  // is not a basemap host either.
   it.each([
     ["by default", {}],
     [

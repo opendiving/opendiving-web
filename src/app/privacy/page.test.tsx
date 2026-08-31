@@ -219,6 +219,44 @@ describe.each([
     expect(split).toMatch(/has to be asked for/i);
   });
 
+  // §4.6 is a census of the outside services the *server* contacts on the
+  // diver's behalf for species, and it had no pin at all until species photos
+  // added the third one. The section is prose rather than a list, so there is no
+  // length to count; what is pinned instead is the thing that makes the census
+  // false - a service contacted with nothing said about it, which is exactly how
+  // this section was wrong the moment photos shipped and before it was rewritten.
+  //
+  // The last two assertions are the ones that carry the disclosure rather than
+  // the naming. Hotlinking was rejected *partly* to avoid telling divers their
+  // browser talks to Wikimedia, so a page that named Commons and left out where
+  // the bytes are served from would be a worse statement than the one it
+  // replaced, not a better one.
+  it("§4.6 names every outside service contacted for species, and who contacts it", () => {
+    renderPage({ google });
+
+    // The two registers the picker's search asks. Still exactly two - Commons is
+    // asked for a file, never for the typed search string - which is why this
+    // sentence keeps its count.
+    expect(
+      screen.getByText(/It asks two public registers/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/World Register of Marine Species/),
+    ).toBeInTheDocument();
+
+    // The third service, and the two facts that make naming it honest: the
+    // bytes are stored here, and the browser never reaches Wikimedia itself.
+    expect(screen.getByText(/Wikimedia Commons/)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /stored on this copy of OpenDiving and served from here/,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/your browser never contacts Wikimedia/),
+    ).toBeInTheDocument();
+  });
+
   // §7's two retention periods are facts about the API's own sweep, and the page
   // is the only place a diver can read them. Both, and the asymmetry between
   // them, have to survive an edit to either paragraph.

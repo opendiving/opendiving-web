@@ -82,6 +82,15 @@ const RESOLVED: Species = {
   is_freshwater: null,
   wikidata_qid: "Q1126155",
   created_at: "2026-08-19T00:00:00Z",
+  // The picker renders no photo, so what these say does not reach the assertions
+  // below - they are here because `Species` mirrors a wire schema that always
+  // carries them, and a fixture missing a field is a fixture that stops matching.
+  photo_sha256: null,
+  photo_file: null,
+  photo_author: null,
+  photo_license: null,
+  photo_license_url: null,
+  photo_source_url: null,
 };
 
 // The two above as the form hands them over, which is what lets a test seed a

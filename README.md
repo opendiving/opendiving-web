@@ -43,6 +43,11 @@ components together. Start there if you want to run OpenDiving rather than work 
 - **Gear tracking** — your equipment with per-item dive counts, groupable into gear sets you can
   attach to a dive in one click, plus **service schedules** (annual service, visual inspection,
   hydro test…) with due-soon reminders on the dashboard and by email.
+- **Marine life** — record what you saw against a real species catalog, resolved live against the
+  World Register of Marine Species and Wikidata so a name you half-remember still finds the animal.
+  Your **life list** collects every species you have ever logged, with a photograph fetched once
+  from Wikimedia Commons and served from your own instance — your browser never talks to Wikimedia,
+  and each species has a page carrying its credit, its classification and the dives you saw it on.
 - **Certifications** — keep photos of your c-cards on hand at the dive shop without digging out the
   plastic.
 - **Courses** — the training itself, with the agency, instructor, shop and cost: link the dives you
@@ -67,7 +72,7 @@ Roadmap items, roughly in priority order — contributions welcome:
   UDDF export), then Shearwater Cloud exports; a pluggable importer layer so every format someone is
   stranded with is a migration path in. Longer term,
   [libdivecomputer](https://www.libdivecomputer.org/) for direct hardware support.
-- **Statistics** — depth/time records, dives per year, sites map, species log.
+- **Statistics** — depth/time records, dives per year, sites map.
 - **Sharing** — public link to a dive or trip.
 - **iOS companion app** — parked until the server story is done
   ([opendiving-ios](https://github.com/opendiving/opendiving-ios)).

@@ -404,25 +404,44 @@ export default function PrivacyPage() {
               and nothing about you or the dive.
             </p>
             <p className="text-foreground mb-4">
-              Most of the time neither request happens at all. Answers are kept
-              for a month, and they are shared by everyone using this copy of
-              OpenDiving rather than held per diver, so once anyone has searched
-              for a name, nobody&rsquo;s search for it leaves again that month.
-              The species themselves are shared in the same way: they are saved
-              here once and belong to no one diver, so picking one that somebody
-              has already picked sends nothing. The longer a copy of OpenDiving
-              runs, the less it has to ask.
+              At that same moment we also ask a third outside service, Wikimedia
+              Commons, whether it has a photograph of that species, and download
+              the picture once if it does. What Commons receives is the name of
+              an image file, worked out from the species&rsquo; number: again,
+              not what you typed, and nothing about you or the dive. The picture
+              is then stored on this copy of OpenDiving and served from here, so
+              your browser never contacts Wikimedia and Wikimedia is never told
+              which species you are looking at. Nothing is downloaded when a
+              species already has its photo, and a species that has none is left
+              without one rather than shown something else.
+            </p>
+            <p className="text-foreground mb-4">
+              Most of the time none of those requests happens at all. Answers
+              are kept for a month, and they are shared by everyone using this
+              copy of OpenDiving rather than held per diver, so once anyone has
+              searched for a name, nobody&rsquo;s search for it leaves again
+              that month. The species themselves are shared in the same way:
+              they are saved here once and belong to no one diver, so picking
+              one that somebody has already picked sends nothing. The longer a
+              copy of OpenDiving runs, the less it has to ask.
             </p>
             <p className="text-foreground mb-4">
               All of this happens only as you fill a dive in, never when you
-              view a dive you have already saved, and nothing is sent at all if
-              you never open the species picker.
+              view a dive, a species or your species list you have already
+              saved, and nothing is sent at all if you never open the species
+              picker. The photographs on those pages come from this copy of
+              OpenDiving like every other image on the site.
             </p>
             <p className="text-foreground mb-4">
               If you run your own copy of OpenDiving you can point it at your
-              own copies of either register. Leaving them unset does not switch
-              the search off &mdash; it narrows it to the species your own copy
-              already holds.
+              own copies of the two registers, and of the service the picture
+              details are read from. The picture file itself is always fetched
+              from Wikimedia&rsquo;s own servers: that one address is fixed in
+              the software deliberately, so that a mistake in configuration
+              cannot send this copy off to download images from somewhere it
+              should not. Leaving any of them unset does not switch the search
+              off &mdash; it narrows it to the species your own copy already
+              holds.
             </p>
 
             <h3 className="text-xl font-semibold text-foreground mb-3">
