@@ -6,6 +6,7 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { DiveSiteDialog } from "./dive-site-dialog";
 
 vi.mock("@/lib/api/dive-sites", () => ({
@@ -21,12 +22,43 @@ vi.mock("@/lib/api/geocoding", () => ({
   MAX_PLACE_QUERY_LENGTH: 200,
 }));
 
+// Only the call is stubbed; `diveSitePlaceContext` is the rule this dialog
+// writes the Location field by, and a stand-in for it here would be testing the
+// stand-in.
+vi.mock("@/lib/api/dive-site-catalog", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api/dive-site-catalog")>()),
+  diveSiteCatalogAPI: { suggestDiveSites: vi.fn() },
+}));
+
+// The search puts a distance on its rows, and that is read off the diver's
+// account.
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({ user: { uuid: "user-1", units: "metric" } }),
+}));
+
 const { geocodingAPI } = await import("@/lib/api/geocoding");
 const reverseGeocode = vi.mocked(geocodingAPI.reverseGeocode);
+const { diveSiteCatalogAPI } = await import("@/lib/api/dive-site-catalog");
+const suggestDiveSites = vi.mocked(diveSiteCatalogAPI.suggestDiveSites);
+
+const THISTLEGORM = {
+  name: "SS Thistlegorm",
+  name_en: null,
+  latitude: 27.814092,
+  longitude: 33.920048,
+  country: "Egypt",
+  region: "South Sinai",
+  source: "osm" as const,
+  source_id: "node/255316037",
+  attribution:
+    "[Data © OpenStreetMap contributors, ODbL 1.0.](https://osm.org/copyright)",
+};
 
 beforeEach(() => {
   reverseGeocode.mockReset();
   reverseGeocode.mockResolvedValue({ status: "unknown" });
+  suggestDiveSites.mockReset();
+  suggestDiveSites.mockResolvedValue({ results: [], has_more: false });
 });
 
 // `parseCoordinatePair` and the both-or-neither rule are unit-tested in
@@ -181,5 +213,131 @@ describe("DiveSiteDialog coordinate accessibility", () => {
       expect.stringContaining("into either field to fill both"),
       "Longitude is required when latitude is given",
     ]);
+  });
+});
+
+// Picking a dive site out of the catalog, which is the one pick that fills the
+// Name field. Driven through the real search rather than a stub, because what is
+// under test is the whole chain: a tagged pick coming back from a menu row, and
+// which of the form's fields each kind of row writes.
+describe("DiveSiteDialog catalog picks", () => {
+  const pickFirstSuggestion = async () => {
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("combobox"));
+    await user.paste("thistlegorm");
+    await user.click(
+      await screen.findByRole(
+        "option",
+        { name: /SS Thistlegorm/ },
+        {
+          timeout: 2000,
+        },
+      ),
+    );
+  };
+
+  it("fills the name, the location and the coordinate pair", async () => {
+    // `region, country`, in English, and never an ISO code: this field is an
+    // ordinary text input whose own example reads "Dahab, Egypt".
+    suggestDiveSites.mockResolvedValue({
+      results: [THISTLEGORM],
+      has_more: false,
+    });
+    renderDialog();
+
+    await pickFirstSuggestion();
+
+    expect(screen.getByLabelText("Name *")).toHaveValue("SS Thistlegorm");
+    expect(screen.getByLabelText("Location")).toHaveValue("South Sinai, Egypt");
+    expect(latitude()).toHaveValue("27.814092");
+    expect(longitude()).toHaveValue("33.920048");
+  });
+
+  it("writes over a name the diver had already typed", async () => {
+    // The owner's call, reversing what a place pick does: a diver who wants
+    // something else types over it, exactly as they already do with Location.
+    // Filling it only when empty never clobbers anything, at the price of a rule
+    // nobody can predict from looking at the form.
+    suggestDiveSites.mockResolvedValue({
+      results: [THISTLEGORM],
+      has_more: false,
+    });
+    renderDialog();
+    fireEvent.change(screen.getByLabelText("Name *"), {
+      target: { value: "My house reef" },
+    });
+
+    await pickFirstSuggestion();
+
+    expect(screen.getByLabelText("Name *")).toHaveValue("SS Thistlegorm");
+  });
+
+  it("leaves a typed location alone for a site that resolved to nowhere", async () => {
+    // A few dozen records sit further than 50 km from any administrative
+    // boundary and ship anyway. That is not an answer about where the site is,
+    // so it is no grounds to empty a field the diver filled in - the same
+    // distinction the reverse geocode already draws between "no name here" and
+    // "we never got to ask".
+    suggestDiveSites.mockResolvedValue({
+      results: [{ ...THISTLEGORM, country: null, region: null }],
+      has_more: false,
+    });
+    renderDialog();
+    fireEvent.change(screen.getByLabelText("Location"), {
+      target: { value: "Somewhere in the Red Sea" },
+    });
+
+    await pickFirstSuggestion();
+
+    expect(screen.getByLabelText("Location")).toHaveValue(
+      "Somewhere in the Red Sea",
+    );
+    // The rest of the pick still lands - it is only the Location it had nothing
+    // to say about.
+    expect(screen.getByLabelText("Name *")).toHaveValue("SS Thistlegorm");
+    expect(latitude()).toHaveValue("27.814092");
+  });
+
+  it("looks nothing up for a pick that already knows where it is", async () => {
+    // The catalog resolved the place when it was built, so a pick costs no
+    // request beyond the search that produced it - in particular not the reverse
+    // geocode a dropped pin fires.
+    suggestDiveSites.mockResolvedValue({
+      results: [THISTLEGORM],
+      has_more: false,
+    });
+    renderDialog();
+
+    await pickFirstSuggestion();
+
+    expect(reverseGeocode).not.toHaveBeenCalled();
+  });
+
+  it("credits the catalog for the location it just wrote", async () => {
+    // The "Location from ..." line names whichever source supplied the value now
+    // in the field, exactly as it names the geocoder for a place pick.
+    suggestDiveSites.mockResolvedValue({
+      results: [THISTLEGORM],
+      has_more: false,
+    });
+    renderDialog();
+
+    await pickFirstSuggestion();
+
+    expect(screen.getByText(/Location from/)).toBeInTheDocument();
+  });
+
+  it("credits nothing for a site whose location it did not write", async () => {
+    // Crediting a source for a value it did not supply would be a false
+    // statement about the field the line sits under.
+    suggestDiveSites.mockResolvedValue({
+      results: [{ ...THISTLEGORM, country: null, region: null }],
+      has_more: false,
+    });
+    renderDialog();
+
+    await pickFirstSuggestion();
+
+    expect(screen.queryByText(/Location from/)).not.toBeInTheDocument();
   });
 });

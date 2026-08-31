@@ -14,7 +14,12 @@ import {
 } from "@/lib/validations/dive-site";
 import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
 import { GeocodeResult } from "@/lib/api/geocoding";
+import {
+  diveSitePlaceContext,
+  DiveSiteSuggestion,
+} from "@/lib/api/dive-site-catalog";
 import { DiveSiteMapField } from "@/components/sites/dive-site-map-field";
+import type { PlacePick } from "@/components/sites/place-search";
 import { useGeocodedLocation } from "@/hooks/useGeocodedLocation";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { dialogFormSubmit } from "@/lib/dialog-form";
@@ -148,8 +153,9 @@ export function DiveSiteDialog({
     geocoded.lookup(position);
   };
 
-  // A place picked from the search already knows its own name, so there is
-  // nothing to look up - but it fills exactly the same three fields.
+  // A geocoded place fills the coordinate pair and the Location beside it. It
+  // has nothing to say about what the *site* is called - the geocoder knows
+  // where Dahab is, not that there is a Blue Hole in it - so Name is left alone.
   const placeResult = (result: GeocodeResult) => {
     const position = {
       latitude: formatCoordinateForForm(result.latitude),
@@ -158,6 +164,41 @@ export function DiveSiteDialog({
     setPosition(position);
     geocoded.adopt(position, result);
   };
+
+  // A catalog dive site fills Name as well, and always - a diver who wanted
+  // something else types over it, exactly as they do with the Location the
+  // geocoder writes. Filling it only when empty would never clobber typed text,
+  // at the price of a rule nobody can predict from looking at the form.
+  //
+  // Location comes off the record rather than out of a lookup: the catalog
+  // already resolved `region, country` when it was built, so a pick spends no
+  // request at all beyond the search that produced it. Where the record resolved
+  // to neither, `diveSitePlaceContext` answers null and the field is left
+  // untouched - a site with no place context is not an answer about where the
+  // site is, and clearing what a diver typed on the strength of one would be the
+  // mistake `useGeocodedLocation` already refuses for an `unknown` lookup.
+  const placeCatalogSite = (site: DiveSiteSuggestion) => {
+    const position = {
+      latitude: formatCoordinateForForm(site.latitude),
+      longitude: formatCoordinateForForm(site.longitude),
+    };
+    setValue("name", site.name, { shouldValidate: true, shouldDirty: true });
+    setPosition(position);
+    const location = diveSitePlaceContext(site);
+    geocoded.adopt(
+      position,
+      location ? { location, attribution: site.attribution } : null,
+    );
+  };
+
+  // A row picked from the search already knows its own name, so there is
+  // nothing to look up. Which fields it fills depends on where it came from,
+  // and the pick says so itself rather than leaving this to be read off the
+  // menu-row id it came back as.
+  const placePick = (pick: PlacePick) =>
+    pick.kind === "catalog"
+      ? placeCatalogSite(pick.site)
+      : placeResult(pick.result);
 
   // A pasted "27.8506, 34.3136" fills both fields rather than landing whole in
   // whichever one had focus. Anything that isn't a pair pastes as usual.
@@ -329,7 +370,7 @@ export function DiveSiteDialog({
               latitude={watchedLatitude}
               longitude={watchedLongitude}
               onPick={placePosition}
-              onPickPlace={placeResult}
+              onPickPlace={placePick}
               credit={geocoded.credit}
               announcement={geocoded.announcement}
             />

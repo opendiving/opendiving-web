@@ -7247,6 +7247,12 @@ reordering, no free-text creation, and no value of its own. What is left is a se
 one `GeocodeResult` whole, because the caller has three fields to fill from it rather than one — the
 pair, and the name.
 
+**Three is now the geocoder's number rather than the field's**, since the catalog was added below —
+see "The site search has two sources, and only one of them names the dive site" further down. A
+geocoded place still fills exactly those three and never the Name; a catalog dive site fills the
+Name as well, which is why the field hands back a tagged pick rather than one shape. Everything else
+in this section is unchanged by that.
+
 **It is the second way in, not the only one**, which is the whole difference from the trip form. A
 trip location is a _name_ — a country, an island, a sea — so searching is all that form does. A dive
 site is its exact point, and the geocoder knows where Dahab is, not where the Blue Hole's north
@@ -7265,8 +7271,9 @@ says.** A `CreatableCombobox` without it is a single-select, and a single-select
 this field must not: `handleInputChange` picks on an exactly-typed name as you key it in, and
 `commit()` picks the same match again on blur. Both are right where the input _is_ the value —
 typing a trip's name into the trip picker is how you choose it without a mouse, and dropping the
-text on blur would lose the edit. Neither holds here, where a pick writes two coordinate fields and
-a Location and moves the map, and where the field is explicitly not the value.
+text on blur would lose the edit. Neither holds here, where a pick writes two coordinate fields, a
+Location — and, for a catalog dive site, the Name as well — and moves the map, and where the field
+is explicitly not the value.
 
 It was caught in review and settled in the browser, because the two readings — "an unconsidered gap"
 and "the documented single-select behaviour every other consumer inherits" — are indistinguishable
@@ -12616,3 +12623,106 @@ consistently — so the file was made to notice in its own right, with a case th
 container against the surface and hit-tests the middle of it. A stand-in like that is worth
 suspecting wherever a harness stylesheet declares something the component ought to be declaring
 itself.
+
+## The site search has two sources, and only one of them names the dive site
+
+`PlaceSearch` now fans out to two places: the geocoder it has always used, and
+`GET /api/v1/dive-sites/suggest`, a read-only catalog of real dive sites extracted from
+OpenStreetMap and Wikidata and vendored inside the API image. Catalog hits are listed first, flat,
+with no section headings — the primitive preserves the order the caller returns and has no grouping
+concept, so ordering _is_ the decision, and a named dive site beats a town.
+
+**No prop was added to `CreatableCombobox`, and that is the same answer this file already gave
+once** — see "The place-search credit holds its line open" above, which rejects a footer prop "for a
+concern exactly one of them has". Eight files render that primitive now, this one included, and one
+more imports its index helper without rendering it — so a change to its keyboard model reaches
+further again than a change to how it draws a row. The species picker is the precedent that settles
+it: it merges two heterogeneous sources into one flat list, shows no section labels, and has never
+touched the primitive. The `hint` slot carries the distinction between a dive site and a town for a
+fraction of the cost, and sectioning stays available later as a strictly additive change.
+
+**A catalog pick fills the Name field. A geocoded pick still does not**, and the difference is what
+each source knows. The geocoder knows where Dahab is, not that there is a Blue Hole in it; the
+catalog's whole content is dive site names. So the search hands back a tagged pick —
+`{ kind: "catalog", site }` or `{ kind: "geocode", result }` — rather than one shape, and the
+handler in `DiveSiteDialog` forks on the tag. **Deliberately not on the menu-row id**, although
+those are namespaced (`catalog:osm:node/255316037` against the geocoder's `lat:lon:display_name`):
+the prefix is there to keep two sources' rows from colliding in one results map, and classifying a
+pick by picking a string apart is how that prefix quietly becomes load-bearing in a second place.
+
+Name is filled **always**, not only when empty. A diver who wants something else types over it,
+exactly as they already do with the Location the geocoder writes. Filling it conditionally never
+clobbers typed text, at the price of a rule nobody can predict by looking at the form — the diver
+cannot tell whether the next pick will write the field.
+
+**Location is `region, country`, and never an ISO code.** The catalog resolved both when it was
+built, so a pick spends no request beyond the search that produced it — in particular no reverse
+geocode, which is what a dropped pin fires. Where a record resolved to only one of the two, that one
+stands alone; **where it resolved to neither, the Location field is left exactly as the diver left
+it.** A few dozen records sit further than 50 km from any administrative boundary and ship anyway,
+so this is a live path rather than a corner, and it is the same distinction `useGeocodedLocation`
+already draws between a `nameless` reverse geocode and an `unknown` one: only a definite "there is
+no name here" is grounds to empty a field somebody typed into. That is why `adopt` now takes
+`AdoptedPlace | null` rather than a `GeocodeResult` — it wrote `onUseLocation(result.location)`
+unconditionally, so routing an unresolved record through it unchanged would have cleared the field.
+The credit line follows the same rule: it names whichever source supplied the value now in the
+field, so a pick that wrote no Location credits nobody for one.
+
+**Two sites sharing a name _and_ a resolved location will collide, and v1 accepts it.** The per-user
+unique index on `(lower(name), lower(location))` refuses the second `POST /dive-site`, and the API's
+own message — "A dive site with this name already exists at this location" — surfaces on the
+dialog's existing form-level error line, where `useDialogApiError` already puts every other failure.
+Nothing was built for this: mapping it onto the Name field would need `form.setError` field-mapping
+that exists nowhere in this repo, against a 422 whose shape is indistinguishable from any other, and
+it would change duplicate-name presentation for every hand-typed save in a dialog four surfaces
+share. `region, country` is what keeps the collision rare rather than routine — it separates the two
+Malaysian `Shark Point` records, which a country-only Location would have collided. It does not save
+the seven `Diving Spot` records that share a bay, and nothing in the record shape can.
+
+**One source failing must not blank the other**, which is why the two requests are settled with
+`Promise.allSettled` rather than awaited together. The combobox reads any throw from `onSearch` as
+total failure — it empties the menu and renders `searchErrorLabel` — so a single `await` of both
+would let the geocoder's per-user rate limit, or any network blip, delete catalog rows that arrived
+perfectly well, and let a catalog failure regress the box that worked before this change. Whatever
+answered is rendered; the error appears only when neither could. Pinned in the suite rather than
+left to a live walk, because both clients are mockable and staging a real geocoder outage in a
+browser is not.
+
+**The catalog client carries its own length guard, and does not inherit one.** `PlaceSearch` hands
+`minSearchLength`/`maxSearchLength` to the combobox, but those feed the empty menu's _wording_ only:
+the primitive's search effect calls `onSearch` with no length gate at all, including once with `""`
+the moment the menu opens. `geocodingAPI.searchPlaces` has always guarded itself for exactly this
+reason and `suggestDiveSites` does the same. Without it, every open of the dive site dialog would
+fire `q=`, take a 422, and show "couldn't reach the search" before a diver typed a character.
+
+**`has_more` had to be wired here.** The "keep typing to narrow" footer has been in the primitive
+since web #18 and `SpeciesMultiSelect` feeds it, but `PlaceSearch`'s `search` ended
+`return { items }` and never set it — so the footer could not render however the endpoint answered.
+Only the catalog has a cap to report; the geocoder returns a bare array and says nothing about what
+it held back.
+
+**No distance rides on the wire, by design on the API side.** The endpoint ranks by distance when
+the form has a position but returns none, because `haversineMeters` and `formatDistance` are already
+here and already wired to the diver's unit preference. A pre-formatted or metric-only distance from
+the API would have silently ignored that preference in a way no reviewer reading one diff would
+catch.
+
+**The map's credit is untouched, and the two stay separate.** The catalog's per-result `attribution`
+joins the search's own credit line through the existing accumulator, which collapses repeats by
+string — and the API serves the catalog's OSM credit byte-identical to the geocoder's, so a menu
+showing both sources shows one OpenStreetMap credit with no deduplication of ours. A Wikidata row
+adds its own, CC0 rather than ODbL. Merging that line with the map's would be worse than it was when
+this file first rejected it: the map's default credit now names three providers (OpenFreeMap,
+OpenMapTiles and OpenStreetMap as the data source) and is configured independently of the geocoder,
+so one merged line would be a false statement about at least one of them. The variables that
+configure it were also renamed — read them from `lib/basemap.ts` and `lib/runtime-config.ts` rather
+than from the `NEXT_PUBLIC_MAP_TILE_URL`/`_ATTRIBUTION` spellings the older section above still
+quotes.
+
+**The form's position goes down to the search when it has one.** `DiveSiteMapField` already parses
+it out of the two coordinate strings for the map, so this costs one prop and no second parse. Sent,
+the endpoint ranks nearest first — the only thing that separates a same-name cluster — and the hint
+carries the distance. Absent, which is the ordinary case for a brand-new site, the request carries
+no position and the endpoint ranks by match quality. Half a pair is unrepresentable on the way in:
+the client takes a whole position or none, because the endpoint answers 422 to one coordinate
+without the other.
