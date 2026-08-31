@@ -56,12 +56,14 @@ jobs:
       - name: Run type checking
         run: npm run type-check
 
-      # The map's contract tests run in real Chromium - MapLibre needs a WebGL2
-      # context, which jsdom has not got and no maintained mock supplies. `npm
-      # ci` installs no browser (`playwright` has published no install script
-      # since somewhere between 1.30 and 1.40), so this step is what puts one
-      # there; without it the browser project fails to start rather than
-      # skipping, which is the right way round.
+      # Some tests run in real Chromium, through Vitest's browser project.
+      # jsdom has no WebGL2 context - and no maintained mock supplies one - and
+      # it performs no layout at all, so a question about a real renderer or
+      # about measured geometry belongs there. `npm ci` installs no browser
+      # (`playwright` has published no install script since somewhere between
+      # 1.30 and 1.40), so this step is what puts one there; without it the
+      # browser project fails to start rather than skipping, which is the right
+      # way round.
       - name: Install Chromium for the browser tests
         run: npx playwright install --with-deps chromium
 
