@@ -40,10 +40,11 @@ npm run ci
 ```
 
 **The first line is not optional, and skipping it fails rather than skips.** Most tests run under
-jsdom, but the map's contract tests need a real WebGL2 context, so they run in Chromium through
-Vitest's browser mode. `npm install` does not fetch a browser — that is still true, and deliberate —
-so the browser has to be asked for once. Without it that project fails to start, which is the right
-way round: a map test that silently skipped would be worse than one that stops you.
+jsdom; the ones that ask it for something it has not got run in Chromium instead, through Vitest's
+browser mode. `npm install` does not fetch a browser — `playwright` publishes no install script, so
+that stays true and is deliberate — and the browser has to be asked for once. Without it that
+project fails to start, which is the right way round: a test that silently skipped would be worse
+than one that stops you.
 
 Individually: `npm run lint` (`lint:fix` to autofix), `npm run type-check`, `npm test`
 (`test:watch`, `test:coverage`), `npm run build`. Formatting is Prettier — run `npm run format`
@@ -77,13 +78,22 @@ hand-written SVG on purpose; there is no charting dependency and we'd like to ke
 Tests are colocated: `foo.ts` gets `foo.test.ts` next to it, run by Vitest. Most of them use jsdom;
 a file named `foo.browser.test.tsx` belongs to the second project instead and runs in real Chromium
 (see the note above about installing it). Reach for that only when jsdom genuinely cannot answer the
-question — today that means the map, which needs a WebGL2 context — because a real browser is slower
-and the isolation is weaker. If your question is about layout, read "jsdom answers no layout
-question, and the browser lane only answers one with the stylesheet loaded" in
-[DECISIONS.md](DECISIONS.md) before writing anything either way. Coverage is measured over
-`src/lib/**`, `src/hooks/**`, `src/contexts/**`, `src/components/**` and `src/app/**`, with floors
-per directory in `vitest.config.mts`. New helpers in `src/lib/` should come with tests; bug fixes
-should come with a test that fails without the fix.
+question, because a real browser is slower and the isolation is weaker. What qualifies is a property
+of the question rather than a subject area: jsdom has no WebGL2 context, and it performs no layout
+at all, so a question about a real renderer or about measured geometry belongs in that lane and
+everything else does not.
+
+**A geometry assertion there is vacuous without `import "@/app/globals.css"` in the test file.** The
+browser project renders no `app/layout.tsx`, so none of this app's Tailwind is loaded: without that
+import `h-12` measures 0px and `flex items-center` computes to `display: block`, and the test passes
+against exactly the markup it was written to reject. Read "jsdom answers no layout question, and the
+browser lane only answers one with the stylesheet loaded" in [DECISIONS.md](DECISIONS.md) before
+writing a test in either project — it has the worked examples, and the negative control to run
+against your own.
+
+Coverage is measured over `src/lib/**`, `src/hooks/**`, `src/contexts/**`, `src/components/**` and
+`src/app/**`, with floors per directory in `vitest.config.mts`. New helpers in `src/lib/` should
+come with tests; bug fixes should come with a test that fails without the fix.
 
 ## Two things that will bite you
 
