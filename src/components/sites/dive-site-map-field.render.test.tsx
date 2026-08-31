@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { DiveSiteMapField } from "./dive-site-map-field";
 import type { GeocodeResult } from "@/lib/api/geocoding";
+import type { PlacePick } from "./place-search";
 
 const BLUE_HOLE = { latitude: 28.5717, longitude: 34.5372 };
 
@@ -28,9 +29,19 @@ vi.mock("./map-picker", () => ({
 }));
 
 vi.mock("./place-search", () => ({
-  PlaceSearch: ({ onPick }: { onPick: (r: GeocodeResult) => void }) => (
-    <button type="button" onClick={() => onPick(RESULT)}>
+  PlaceSearch: ({
+    onPick,
+    position,
+  }: {
+    onPick: (pick: PlacePick) => void;
+    position?: { latitude: number; longitude: number } | null;
+  }) => (
+    <button
+      type="button"
+      onClick={() => onPick({ kind: "geocode", result: RESULT })}
+    >
       pick a place
+      {position ? ` near ${position.latitude},${position.longitude}` : ""}
     </button>
   ),
 }));
@@ -65,9 +76,11 @@ describe("DiveSiteMapField", () => {
     });
   });
 
-  it("hands a searched place on whole", async () => {
-    // Unconverted: a searched place carries a name as well as a position, and
-    // only the dialog knows there are three fields to fill.
+  it("hands a searched row on whole, still tagged", async () => {
+    // Unconverted, and untouched: a picked row carries a name as well as a
+    // position, and only the dialog knows which fields each kind fills - a
+    // geocoded place writes the pair and the Location, a catalog dive site
+    // writes the Name as well.
     const onPickPlace = vi.fn();
     render(
       <DiveSiteMapField
@@ -78,9 +91,48 @@ describe("DiveSiteMapField", () => {
         announcement=""
       />,
     );
-    screen.getByRole("button", { name: "pick a place" }).click();
+    screen.getByRole("button", { name: /pick a place/ }).click();
 
-    expect(onPickPlace).toHaveBeenCalledWith(RESULT);
+    expect(onPickPlace).toHaveBeenCalledWith({
+      kind: "geocode",
+      result: RESULT,
+    });
+  });
+
+  it("passes the form's position down to the search", async () => {
+    // So the catalog can rank a same-name cluster nearest first. Parsed here
+    // once, for the map, rather than a second time inside the search.
+    render(
+      <DiveSiteMapField
+        latitude="27.8506"
+        longitude="34.3136"
+        onPick={vi.fn()}
+        onPickPlace={vi.fn()}
+        announcement=""
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "pick a place near 27.8506,34.3136" }),
+    ).toBeInTheDocument();
+  });
+
+  it("sends no position while the coordinate fields are unusable", async () => {
+    // Half a pair, or a half-typed number, is not a position - and the endpoint
+    // answers 422 to one coordinate without the other.
+    render(
+      <DiveSiteMapField
+        latitude="27.8506"
+        longitude=""
+        onPick={vi.fn()}
+        onPickPlace={vi.fn()}
+        announcement=""
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "pick a place" }),
+    ).toBeInTheDocument();
   });
 
   // The API folds the licence URL into the credit as a markdown link, so this

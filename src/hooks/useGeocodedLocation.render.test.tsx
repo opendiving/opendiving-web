@@ -95,6 +95,19 @@ function Harness({
       >
         pick a place
       </button>
+      {/* A catalog dive site far enough offshore to have resolved to neither a
+          region nor a country: a position and a name, and nothing to say about
+          the Location field. */}
+      <button
+        type="button"
+        onClick={() => {
+          const picked = { latitude: "28.5011", longitude: "34.5136" };
+          setPosition(picked);
+          geocoded.adopt(picked, null);
+        }}
+      >
+        pick a place that named nowhere
+      </button>
       <button
         type="button"
         onClick={() => setLocation("Blue Hole (north entry)")}
@@ -418,5 +431,54 @@ describe("useGeocodedLocation, adopting a searched place", () => {
     await waitFor(() => expect(reverseGeocode).toHaveBeenCalled());
     expect(onUseLocation).not.toHaveBeenCalledWith("Staler, Egypt");
     expect(onUseLocation).toHaveBeenCalledWith("Dahab, Egypt");
+  });
+});
+
+// A catalog dive site can resolve to no place at all - a few dozen sit further
+// than 50 km from any administrative boundary and ship anyway. That is a fact
+// about the catalog, not about the position, so it is no more grounds to empty
+// the Location field than an `unknown` lookup is.
+describe("useGeocodedLocation, adopting a row that named nowhere", () => {
+  const pickNowhere = () =>
+    screen
+      .getByRole("button", { name: "pick a place that named nowhere" })
+      .click();
+
+  it("leaves the location field exactly as the diver left it", async () => {
+    const onUseLocation = vi.fn();
+    render(
+      <Harness
+        onUseLocation={onUseLocation}
+        initialLocation="Somewhere in the Red Sea"
+      />,
+    );
+    pickNowhere();
+
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent("Placed at"),
+    );
+    expect(onUseLocation).not.toHaveBeenCalled();
+  });
+
+  it("announces the placement without claiming a location was set", async () => {
+    render(<Harness />);
+    pickNowhere();
+
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "Placed at 28.5011, 34.5136.",
+      ),
+    );
+    expect(screen.getByRole("status")).not.toHaveTextContent("Location set to");
+  });
+
+  it("credits nobody for a location it did not write", async () => {
+    render(<Harness />);
+    pickNowhere();
+
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent("Placed at"),
+    );
+    expect(credit()).not.toBeInTheDocument();
   });
 });

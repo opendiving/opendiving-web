@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { geocodingAPI, GeocodeResult } from "@/lib/api/geocoding";
+import { geocodingAPI } from "@/lib/api/geocoding";
 
 // A whole position, as the form holds it.
 export interface GeocodedPosition {
@@ -20,6 +20,19 @@ export interface UseGeocodedLocationOptions {
   onUseLocation: (location: string) => void;
 }
 
+/**
+ * The parts of a picked row this hook uses: what to write into the Location
+ * field, and who to credit for it.
+ *
+ * Structural rather than `GeocodeResult`, because two things are picked from the
+ * search now - a geocoded place and a dive site out of the catalog - and neither
+ * one's whole shape is any of this hook's business.
+ */
+export interface AdoptedPlace {
+  location: string;
+  attribution: string;
+}
+
 export interface GeocodedLocation {
   /**
    * Name the position that was just placed, and write the answer into the
@@ -28,10 +41,16 @@ export interface GeocodedLocation {
    */
   lookup: (position: GeocodedPosition) => void;
   /**
-   * Take the name a searched place already came with, which needs no lookup -
-   * and cancel any that is still in the air, since it is about the old pin.
+   * Take the name a picked row already came with, which needs no lookup - and
+   * cancel any that is still in the air, since it is about the old pin.
+   *
+   * Pass `null` for a row that carries no place context at all. That is not the
+   * same as one that carries an empty place: the Location field is then left
+   * exactly as the diver left it, and nothing is credited for a value the pick
+   * did not supply. A catalog dive site far enough offshore resolves to neither
+   * a region nor a country and ships anyway, which is the case this is for.
    */
-  adopt: (position: GeocodedPosition, result: GeocodeResult) => void;
+  adopt: (position: GeocodedPosition, place: AdoptedPlace | null) => void;
   /** The licence credit for the name in the field, while it still describes the
    * position on screen. */
   credit?: string;
@@ -40,7 +59,8 @@ export interface GeocodedLocation {
 }
 
 /**
- * The dive site form's Location field, in so far as the geocoder fills it in.
+ * The dive site form's Location field, in so far as anything but the diver fills
+ * it in - the geocoder by lookup, a picked row by `adopt`.
  *
  * Owned by `DiveSiteDialog` rather than by the map beneath it, because three
  * separate things now place a position - the map, the place search above it, and
@@ -64,10 +84,11 @@ export function useGeocodedLocation({
   const [geocoded, setGeocoded] = useState<{
     latitude: string;
     longitude: string;
-    // Null for a position the API looked up and found no name for. There is
-    // nothing to credit in that case, but there is still something to announce -
-    // the field was emptied, and nobody is watching it.
-    result: GeocodeResult | null;
+    // Null when nothing named this position: the API looked it up and found no
+    // name, or a picked row carried no place context. There is nothing to credit
+    // in either case, but there is still something to announce - nobody is
+    // watching the field.
+    place: AdoptedPlace | null;
     // Composed where the event happened rather than derived here, because the
     // three ways in have three different things to say - and a searched place
     // has to name the coordinates it moved the pin to, which nothing else on
@@ -157,7 +178,7 @@ export function useGeocodedLocation({
         const result = outcome.status === "named" ? outcome.result : null;
         setGeocoded({
           ...placed,
-          result,
+          place: result,
           // Said out loud because the Location field writes itself a round trip
           // after the position was placed, and nobody is looking at it when it
           // happens - least of all when what it did was empty the field.
@@ -174,21 +195,29 @@ export function useGeocodedLocation({
       .catch(() => {});
   };
 
-  const adopt = (placed: GeocodedPosition, result: GeocodeResult) => {
+  const adopt = (placed: GeocodedPosition, place: AdoptedPlace | null) => {
     // No lookup to make - the search already answered - but a reply in the air
     // is about the position this one replaces, and the guards it runs would
     // pass if the diver happened to be back where they started.
     requestRef.current++;
     setGeocoded({
       ...placed,
-      result,
-      // Both halves, because a searched place moves the pin as well as filling
-      // the field and neither is visible to a screen reader: the map announces
-      // only what it placed itself, and the coordinate inputs say nothing at
-      // all when they are written to.
-      announcement: `Placed at ${placed.latitude}, ${placed.longitude}. Location set to ${result.location}.`,
+      place,
+      // Both halves where there are two, because a picked row moves the pin as
+      // well as filling the field and neither is visible to a screen reader: the
+      // map announces only what it placed itself, and the coordinate inputs say
+      // nothing at all when they are written to. A row with no place context
+      // announces the placement alone - saying the location was set would be
+      // describing something that did not happen.
+      announcement: place
+        ? `Placed at ${placed.latitude}, ${placed.longitude}. Location set to ${place.location}.`
+        : `Placed at ${placed.latitude}, ${placed.longitude}.`,
     });
-    onUseLocation(result.location);
+    // Deliberately not called with `""` for a row that named nowhere. Emptying
+    // the field would be claiming the pick answered a question it never asked -
+    // the same distinction `lookup` draws between a `nameless` position and an
+    // `unknown` one, and only the first is grounds to clear what a diver typed.
+    if (place) onUseLocation(place.location);
   };
 
   // A position moved by hand afterwards - typed, pasted, or cleared - is no
@@ -203,7 +232,7 @@ export function useGeocodedLocation({
   return {
     lookup,
     adopt,
-    credit: current?.result?.attribution,
+    credit: current?.place?.attribution,
     announcement: current?.announcement ?? "",
   };
 }

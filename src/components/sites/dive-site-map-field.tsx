@@ -1,14 +1,13 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { GeocodeResult } from "@/lib/api/geocoding";
 import { LatLon } from "@/lib/basemap";
 import {
   formatCoordinateForForm,
   parseFormPosition,
 } from "@/lib/validations/dive-site";
 import { Attribution } from "@/components/attribution";
-import { PlaceSearch } from "@/components/sites/place-search";
+import { PlaceSearch, PlacePick } from "@/components/sites/place-search";
 
 // Still `next/dynamic` although the map is always shown: MapLibre is around
 // 250 KB gzipped, and it lives in its own chunk, fetched when this dialog opens
@@ -36,9 +35,13 @@ interface DiveSiteMapFieldProps {
   longitude?: string;
   // Called with a position placed on the map, as the form's own strings.
   onPick: (position: { latitude: string; longitude: string }) => void;
-  // Called with a place picked from the search, whole: it carries a name as well
-  // as a position, so the caller has one more field to fill than `onPick` does.
-  onPickPlace: (result: GeocodeResult) => void;
+  // Called with a row picked from the search, whole and tagged with the source
+  // it came from: both kinds carry a name as well as a position, so the caller
+  // has more fields to fill than `onPick` does - and a catalog row fills one
+  // more again, since it names the dive site itself rather than the place it is
+  // in. The tag is what lets the caller tell them apart without picking the id
+  // string back apart.
+  onPickPlace: (pick: PlacePick) => void;
   // The licence credit for the name currently in the Location field, while that
   // name still describes the position on screen.
   credit?: string;
@@ -76,8 +79,13 @@ export function DiveSiteMapField({
     <div className="space-y-2">
       {/* Above the map, because it is the coarse half of the same question:
           search puts the pin in the right bay, and the map does the last hundred
-          metres. */}
-      <PlaceSearch onPick={onPickPlace} />
+          metres.
+
+          The position goes down with it: a form that already has one gets
+          catalog suggestions ranked nearest first, which is the only thing that
+          separates a same-name cluster. Already parsed here for the map, so this
+          costs nothing and there is one parse rather than two. */}
+      <PlaceSearch onPick={onPickPlace} position={position} />
 
       <MapPicker
         latitude={position?.latitude ?? null}
