@@ -38,6 +38,8 @@ vi.mock("@/contexts/AuthContext", () => ({
 
 const { geocodingAPI } = await import("@/lib/api/geocoding");
 const reverseGeocode = vi.mocked(geocodingAPI.reverseGeocode);
+const { diveSitesAPI } = await import("@/lib/api/dive-sites");
+const createDiveSite = vi.mocked(diveSitesAPI.createDiveSite);
 const { diveSiteCatalogAPI } = await import("@/lib/api/dive-site-catalog");
 const suggestDiveSites = vi.mocked(diveSiteCatalogAPI.suggestDiveSites);
 
@@ -59,6 +61,7 @@ beforeEach(() => {
   reverseGeocode.mockResolvedValue({ status: "unknown" });
   suggestDiveSites.mockReset();
   suggestDiveSites.mockResolvedValue({ results: [], has_more: false });
+  createDiveSite.mockReset();
 });
 
 // `parseCoordinatePair` and the both-or-neither rule are unit-tested in
@@ -339,5 +342,66 @@ describe("DiveSiteDialog catalog picks", () => {
     await pickFirstSuggestion();
 
     expect(screen.queryByText(/Location from/)).not.toBeInTheDocument();
+  });
+});
+
+describe("DiveSiteDialog API refusal", () => {
+  // The catalog makes this a normal path rather than a rare one: it carries seven
+  // records all named "Diving Spot" that resolve to the same "Banten, Indonesia", so
+  // a diver adding two of them in turn meets this refusal by design. The documented
+  // recovery is that they edit the name, which needs them to know the save was
+  // refused - and until the region below was permanent, a screen reader said nothing
+  // and the submit read as doing nothing at all.
+  it("announces a refused save from a region that was already mounted", async () => {
+    createDiveSite.mockRejectedValue({
+      response: {
+        data: {
+          detail: "A dive site with this name already exists at this location",
+        },
+      },
+    });
+    renderDialog();
+
+    // Present, and silent, before the save is even attempted. This is the half that
+    // a `{apiError && <p>}` cannot do: the region has to be registered *before* the
+    // message lands in it.
+    const region = screen.getByRole("alert");
+    expect(region).toBeEmptyDOMElement();
+
+    await userEvent.type(screen.getByLabelText("Name *"), "Diving Spot");
+    await userEvent.click(
+      screen.getByRole("button", { name: /Create Dive Site/ }),
+    );
+
+    await waitFor(() =>
+      expect(region).toHaveTextContent(
+        "A dive site with this name already exists at this location",
+      ),
+    );
+    // The same node throughout, so what a screen reader announces is a change
+    // inside a region it already knows about.
+    expect(screen.getByRole("alert")).toBe(region);
+  });
+
+  it("leaves the dialog open and editable so the diver can fix the name", async () => {
+    createDiveSite.mockRejectedValue({
+      response: {
+        data: { detail: "A dive site with this name already exists" },
+      },
+    });
+    renderDialog();
+
+    await userEvent.type(screen.getByLabelText("Name *"), "Diving Spot");
+    await userEvent.click(
+      screen.getByRole("button", { name: /Create Dive Site/ }),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent(/already exists/),
+    );
+
+    const name = screen.getByLabelText("Name *") as HTMLInputElement;
+    await userEvent.clear(name);
+    await userEvent.type(name, "Diving Spot (west)");
+    expect(name.value).toBe("Diving Spot (west)");
   });
 });

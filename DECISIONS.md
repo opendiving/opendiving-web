@@ -12726,3 +12726,68 @@ carries the distance. Absent, which is the ordinary case for a brand-new site, t
 no position and the endpoint ranks by match quality. Half a pair is unrepresentable on the way in:
 the client takes a whole position or none, because the endpoint answers 422 to one coordinate
 without the other.
+
+## A refused save has to be announced, and `role="alert"` alone does not do it
+
+Ten forms rendered the form-level API error as a bare
+`{apiError && <p className="text-sm text-destructive">{apiError}</p>}` - the eight dialogs on
+`useDialogApiError` plus `UnitsCard` and `NotificationsCard`, which own the same state by hand. The
+message reached the DOM, the dialog stayed open and editable, and nothing in the ancestor chain up
+to the `<form>` carried live-region semantics, so a screen reader announced nothing and the submit
+read as silently doing nothing.
+
+The dive-site catalog is what moved this from rare to routine. It carries seven records all named
+"Diving Spot" resolving to the same "Banten, Indonesia", so a diver adding two of them in turn meets
+the API's duplicate refusal as designed behaviour, and the accepted recovery - edit the name - needs
+them to know the save was refused.
+
+**Adding `role="alert"` to that conditional `<p>` would not have fixed it.** A live region that
+mounts _together with_ its text is typically not announced at all: screen readers register the
+region on insertion and read only _subsequent_ changes. This file already learned that once, under
+"The live region is rendered unconditionally, `sr-only` until there is something to say" in the
+dive-import section, where conditionally rendering the region reintroduced the silence it had been
+added to fix. The attribute is the obvious half of this fix and the half that does nothing on its
+own.
+
+So `FormApiError` renders the region unconditionally and `sr-only` until there is something to say,
+taking on `text-sm text-destructive` only once it has a message. `sr-only` is `position: absolute`,
+so the silent region is out of flow and the spacing around the visible message is unchanged from the
+conditional markup it replaced.
+
+**How much `sr-only` is doing there depends on the container, and less than it first appears.** In
+`space-y-4`, which is what every dialog form here uses, an empty _visible_ `<p>` would have been
+free as well: its zero height lets the margins either side collapse through it, so the
+field-to-footer gap measures 16px whether the node is absent, `sr-only` or a plain empty paragraph.
+The claim first written here - that a visible empty node would add a gap above every dialog footer -
+was wrong, and measuring is what caught it. Where the choice does show up is a `gap`-based flex
+column, which has no margin collapsing and charges a full extra 16px for an in-flow empty node. Both
+kinds are in use (`UnitsCard` and `NotificationsCard` space their message with `mt-3` inside a
+`CardContent` rather than by `space-y`), so `sr-only` is what makes the component safe to drop into
+either - and `form-api-error.browser.test.tsx` pins the out-of-flow half in the flex column, because
+that is the only harness where the test can fail.
+
+**`role="alert"` rather than the `role="status"`** used by the import note and the MOD warning:
+those are advisory and polite is right for them, while this one blocks what the diver was trying to
+do. That matches `StatusMessage`, which is the same choice for the same reason - and `StatusMessage`
+itself is not the answer here, because its icon, border and tint are presentation these ten call
+sites do not have.
+
+A component rather than ten copies for the same reason `useDialogApiError` owns the state half: the
+correct markup is subtle enough that ten hand-written copies would drift back to the conditional
+version, which is exactly the shape that looks right and announces nothing.
+
+**The `accessibility-check` job cannot catch this class, and no amount of configuring it will.** axe
+is a static snapshot analyzer - it has no rule for "this content appeared later and was not
+announced", because from a snapshot it cannot know the content appeared later at all. Three further
+things would have to change before it even got the chance: the job scans one unauthenticated URL
+while these forms are behind sign-in, opening a dialog and driving a failing submit is beyond
+`@axe-core/cli`, and the step ends in `|| true`, so it is advisory and cannot fail a build whatever
+it finds. The guard that does work is a render test asserting the region exists _before_ the message
+does - the shape `dive-file-import.render.test.tsx` established - and the jsdom suites were
+confirmed to fail against the old conditional markup with "Unable to find an accessible element with
+the role alert" before being kept.
+
+Every assertion added here was run against the markup it replaces, and the ones that could not fail
+were rewritten rather than kept for the count. That is how the margin-collapsing correction above
+was found: the first version of the layout test passed against a deliberately broken component,
+which made it worthless as written.
