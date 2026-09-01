@@ -12,7 +12,15 @@ export const metadata: Metadata = {
 // everything else speaks for the operator of this copy. Bare "OpenDiving" is the
 // name of the software and never a party doing anything — collapsing the two back
 // into one voice would hand the project's AGPL liability shield to an operator who
-// never agreed to it. See "The terms page has two speakers" in DECISIONS.md.
+// never agreed to it.
+//
+// The two speakers are roles, not necessarily two different parties. The project
+// may run a copy itself, and on that copy it holds both roles: it speaks through
+// the operator's sections as well as its own, and is answerable as operator there
+// like anyone else. So nothing on this page says the project never operates
+// anything — the headings separate the roles, which is the only separation the
+// liability shield needs, and it holds whether one party or two are standing in
+// them. See "The terms page has two speakers" in DECISIONS.md.
 export default function TermsPage() {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -38,15 +46,16 @@ export default function TermsPage() {
               use this copy.
             </p>
             <p className="text-foreground mb-4">
-              Two different parties appear on this page, and it keeps them apart
-              because they are not the same and do not owe you the same things:
+              Two roles appear on this page, and it keeps them apart because
+              they do not owe you the same things:
             </p>
             <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
               <li>
                 <strong>The OpenDiving project</strong> &mdash; the people who
-                write the software. The project operates nothing: it runs no
-                servers for this copy, receives no data from it, and never sees
-                what you log here.
+                write the software. Authorship on its own gives the project
+                nothing here: where it is not the one running this copy, it runs
+                no servers for it, receives no data from it, and never sees what
+                you log here.
               </li>
               <li>
                 <strong>The operator of this copy</strong> &mdash; whoever
@@ -56,6 +65,15 @@ export default function TermsPage() {
                 tomorrow.
               </li>
             </ul>
+            <p className="text-foreground mb-4">
+              Those are two roles rather than necessarily two parties, and one
+              party can hold both. The OpenDiving project may run a copy of its
+              own, and on such a copy it is the operator as well as the author
+              &mdash; bound by everything these Terms say of the operator, and
+              speaking through those sections in that role. What never merges is
+              the roles themselves: the sections below keep them apart whoever
+              is standing in them.
+            </p>
             <p className="text-foreground mb-4">
               Every section below speaks for the operator of this copy unless
               its heading says otherwise, and &ldquo;we&rdquo; in those sections
@@ -214,9 +232,13 @@ export default function TermsPage() {
             </ul>
             <p className="text-foreground mb-4">
               You keep every right you have in what you enter. Nothing here
-              gives the OpenDiving project any rights in your content: the
-              project runs no servers, receives no data from this copy, and
-              never sees what you log.
+              gives the OpenDiving project any rights in your content as the
+              software&rsquo;s author &mdash; writing a program grants no claim
+              on what is entered into a copy of it, and where the project is not
+              the one running this copy it receives no data from it and never
+              sees what you log. Where the project is the one running it, it
+              holds what the next paragraph grants the operator and nothing
+              beyond that.
             </p>
             <p className="text-foreground mb-4">
               You grant the operator of this copy only the permission
@@ -275,9 +297,11 @@ export default function TermsPage() {
               The licence also gives you something as someone merely using a
               copy over a network: if the operator of this copy has modified
               OpenDiving, section 13 of the AGPLv3 requires them to offer you
-              the source of their modified version. That offer is theirs to make
-              and not the project&rsquo;s. The project publishes its own source
-              publicly, and that is not necessarily what is running here.
+              the source of their modified version. That offer is the
+              operator&rsquo;s to make rather than the author&rsquo;s &mdash;
+              including where the project runs this copy, and so owes it as
+              operator. The project publishes its own source publicly, and that
+              is not necessarily what is running here.
             </p>
             <p className="text-foreground mb-4">
               The licence text ships with the software and is the authority on
@@ -295,8 +319,10 @@ export default function TermsPage() {
               of this copy&rsquo;s to decide. They may modify or discontinue
               features, take it down for maintenance, or stop running it
               altogether. Nothing in the software guarantees uptime, and the
-              OpenDiving project cannot promise any: it does not run this copy
-              and could not keep it up if it wanted to.
+              OpenDiving project promises none of it as the software&rsquo;s
+              author: where it does not run this copy it could not keep this one
+              up if it wanted to, and where it does, the promise would be the
+              operator&rsquo;s to make and it has made none.
             </p>
             <p className="text-foreground mb-4">
               These Terms are part of the software, so they change when the
@@ -342,14 +368,20 @@ export default function TermsPage() {
             </ul>
             <p className="text-foreground mb-4">
               This limitation is agreed for the benefit of the OpenDiving
-              project and its contributors, who are not parties to these Terms
-              but may rely on this section. It adds to, and does not narrow,
-              sections 15 to 17 of the AGPLv3.
+              project and its contributors. The contributors are not parties to
+              these Terms and rely on this section as third parties; so does the
+              project itself, wherever it is not the one running this copy.
+              Where it is, it is a party in the operator&rsquo;s role, and this
+              section still limits only what it owes you as the software&rsquo;s
+              author. It adds to, and does not narrow, sections 15 to 17 of the
+              AGPLv3.
             </p>
             <p className="text-foreground mb-4">
-              The operator of this copy is a different party and says nothing
-              here. Their position is the last paragraph of section 8, and it is
-              theirs to replace.
+              The operator of this copy speaks in a different role and says
+              nothing here, and that holds even where the project is the one
+              running this copy: what is limited above is the author&rsquo;s
+              liability, never an operator&rsquo;s. Their position is the last
+              paragraph of section 8, and it is theirs to replace.
             </p>
           </section>
 
@@ -365,8 +397,11 @@ export default function TermsPage() {
             </p>
             <p className="text-foreground mb-4">
               This section does not cover the operator of this copy. They are
-              not indemnified by it, and an operator who wants an indemnity has
-              to ask for one in terms of their own.
+              not indemnified by it, and it reaches the project no further where
+              the project is the one running this copy: what is indemnified is
+              the writing of the software, never the running of a copy of it. An
+              operator who wants an indemnity has to ask for one in terms of
+              their own.
             </p>
           </section>
 
@@ -414,13 +449,20 @@ export default function TermsPage() {
               For a defect in the software itself &mdash; a bug, or a sentence
               on a page like this one that the software does not live up to
               &mdash; the OpenDiving project is who to tell, in its public
-              source repository. The project cannot answer for how this copy is
-              run: it has no access to it and holds none of your data.
+              source repository. As the software&rsquo;s author the project
+              cannot answer for how a copy it does not run is run: it has no
+              access to that copy and holds none of the data in it. Where the
+              project is this copy&rsquo;s operator too, questions about how
+              this copy is run still go the way the paragraph above says, not to
+              the repository.
             </p>
             <p className="text-foreground mb-4">
               There is deliberately no project address printed here. A question
-              about your own account sent to the project reaches people who
-              cannot act on it. How quickly the operator of this copy answers,
+              about your own account belongs to whoever runs this copy, and the
+              contact page above is how to reach them &mdash; on a copy the
+              project runs itself, that page reaches the project in the role
+              that can act. Sent to the author instead, such a question reaches
+              people who cannot. How quickly the operator of this copy answers,
               and whether they do, is theirs to say rather than this
               page&rsquo;s.
             </p>
