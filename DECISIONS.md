@@ -13125,14 +13125,25 @@ publishes the vector source in editable form to anyone who clones it, which is t
 the licence names. Buying it did not buy either of those. Both files are gone, and the hero renders
 without a background accent until something original replaces them.
 
-**The screenshots are clean, and the check is worth recording so nobody repeats it.** Every image
-ever committed to this repository is enumerable: the eight files under `docs/screenshots/`, the
-three basemap sprites, and the two glow PNGs above. All eight screenshots are of authenticated pages
-— `scripts/screenshots.mjs` only ever shoots dashboard, dive-detail and gear-item, and the five
-since deleted (`dives`, `gear`, `sites`, `trip`, `dive-profile`) were app pages too. The reef
-rendered on the _landing_ hero, which no screenshot captures, and the two PNGs rendered nowhere at
-all. The old images do carry the previous waves mark, but that was lucide under ISC, which permits
-redistribution.
+**The screenshots are clean, and the check is worth recording so nobody repeats it.** Nine images
+have ever been committed here, across all of history: `docs/screenshots/`'s `dashboard.png`,
+`dive-detail.png` and `gear-item.png`; the two basemap sprite sheets `public/basemap/sprite/ofm.png`
+and `ofm@2x.png`; `public/coral.png` and `public/octo.png`; and the brand mark's own
+`src/app/icon.svg` and `src/app/favicon.ico`. All three screenshots are of authenticated pages —
+`scripts/screenshots.mjs` shoots dashboard, dive-detail and gear-item and nothing else. The reef
+rendered on the _landing_ hero, which no screenshot captures, and the two glow PNGs rendered nowhere
+at all. The older screenshots do carry the previous waves mark, but that was lucide under ISC, which
+permits redistribution.
+
+**Getting that list right took three tries, and each wrong answer came from the tool rather than the
+tree.** A first sweep globbed `png|jpe?g|webp|gif` and so silently dropped `favicon.ico` and
+`icon.svg` — an extension list is a completeness claim, and that one was short by two formats. A
+second counted "three basemap sprites" from a directory holding four files, only two of them images;
+the rest are JSON manifests. And `git log --all` walks `refs/stash`, so a local stash on one machine
+contributed five `docs/screenshots/*.png` that were never committed to any branch —
+`--branches --tags --remotes` is the spelling that answers "what would a clone see". A completeness
+claim inside a licensing audit is the one kind of prose here that gets relied on instead of
+re-derived, so it is worth the third try.
 
 The general rule the trio leaves behind: **artwork that arrives under someone else's terms cannot
 live in this tree at all.** Not with a notice, not with attribution, not behind a comment recording

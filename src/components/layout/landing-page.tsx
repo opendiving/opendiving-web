@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { useRedirectIfAuthenticated } from "@/hooks/useRedirectIfAuthenticated";
 import { AuthForm } from "@/components/auth/auth-form";
 import { Fish, Anchor, ArrowRight, HardDriveDownload } from "lucide-react";
+import { HeroBackdrop } from "@/components/layout/hero-backdrop";
 
 // Every claim on this page has to be true of the software as it stands, because
 // the page is served by whoever is running the instance and they are the ones it
@@ -45,6 +46,7 @@ export function LandingPage() {
     <div className="bg-background">
       {/* Hero Section */}
       <section id="get-started" className="relative overflow-x-hidden py-20">
+        <HeroBackdrop className="pointer-events-none absolute inset-x-0 bottom-0 hidden w-full max-h-[210px] overflow-visible text-teal lg:block" />
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
             <div className="text-center">
