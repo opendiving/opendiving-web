@@ -205,6 +205,6 @@ made. Security problems go through [SECURITY.md](SECURITY.md) rather than the is
 version as a service, you share your changes. Nobody gets to take this closed-source and lock
 divers' data away.
 
-Third-party artwork and vendored assets that travel in this tree — the lucide icon the brand mark is
-drawn from, Google's sign-in mark, the MapLibre build, the OpenFreeMap styles — are credited in
-[NOTICE.md](NOTICE.md).
+Third-party artwork and vendored assets that travel in this tree — Google's sign-in mark, the
+MapLibre build, the OpenFreeMap styles — are credited in [NOTICE.md](NOTICE.md). The brand mark
+isn't among them: it's original to this project.

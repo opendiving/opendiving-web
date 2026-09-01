@@ -13086,41 +13086,64 @@ strings copied verbatim out of the component**, and a variant-prefixed class is 
 from its bare form. Where the state cannot be forced — a `:hover` colour — read the generated rule
 out of the served stylesheet instead, which is also the only way to confirm a class compiled at all.
 
-## The brand mark is a copied lucide icon, and copied artwork needs a notice
+## The brand mark is original now, and marketplace artwork cannot ship here
 
-`components/logo.tsx` and `app/icon.svg` draw lucide's `waves-horizontal` icon path-for-path rather
-than importing `Waves` from `lucide-react`. That is deliberate — the mark is the one place the app's
-identity is drawn, and it should not move because a dependency bumped — but it makes the two files
-copies of somebody else's artwork rather than a call into a package, and copies carry obligations a
-dependency does not.
+`components/logo.tsx` and `app/icon.svg` used to draw lucide's `waves-horizontal` icon
+path-for-path. Two things were wrong with that, and only one of them was the licence.
 
-Lucide is ISC. The single condition is that its copyright notice appears in copies, which the hand-
-copied paths were not carrying: nothing in the tree named lucide outside `package.json` and
-`node_modules/`. `NOTICE.md` is the fix, with a pointer in each of the two files so the next person
-to touch the mark finds the obligation attached to the thing it applies to.
+The licence half was straightforward. Lucide is ISC, whose single condition is that its copyright
+notice appears in copies, and the hand-copied paths were not carrying it: nothing in the tree named
+lucide outside `package.json` and `node_modules/`. That was fixable with a notice, and briefly was.
 
-**The name in the old docstring had also gone stale.** It described the icon as lucide's `Waves`;
-lucide renamed it to `waves-horizontal` and kept `Waves` as an alias re-export, so both names still
-draw these three paths and the comment was never _wrong_ — just a version behind, and pointing at
-the shallower of the two names. `waves-horizontal` is also not in the Feather-derived list at the
-bottom of lucide's LICENSE, so only ISC applies here and Feather's MIT notice does not.
+**The half that mattered more is that a stock icon cannot be a mark.** It is not distinctive, so it
+is not registrable; it cannot be exclusive, because every other dive app reaching for a water icon
+lands on the same three wavy lines; and it smears at favicon size, three 2.5px strokes at 16px
+resolving to a grey blur. None of that is a licence problem and no notice fixes any of it. The mark
+is now three bubbles rising left to right, growing as they climb, drawn for this project — which
+costs a `NOTICE.md` entry, gains something ownable, and stays legible at 16px because the smallest
+bubble goes solid rather than mushy at the favicon's heavier stroke.
+
+**Marketplace artwork cannot ship in this repository, and the reason generalises past the one asset
+that proved it.** `icons/coral-reef-background.tsx` was 14 KB of reef line art on the landing hero,
+and `public/coral.png` a neon-glow rendering of the same drawing, unreferenced but still served out
+of `public/`. Both came from a paid Etsy listing whose terms permit "personal projects and
+small-business physical products" and forbid "sharing, reselling or redistributing the digital files
+themselves". A hosted web app is not a physical product, and this repository — AGPL-3.0, and public
+at launch — publishes the vector source in editable form to anyone who clones it, which is the
+redistribution the licence names. Buying it did not buy either of those. Both files are gone, and
+the hero renders without a background accent until something original replaces them.
+
+The general rule the pair leaves behind: **artwork that arrives under someone else's terms cannot
+live in this tree at all.** Not with a notice, not with attribution, not behind a comment recording
+where it came from — the tree itself is what gets published, so anything in it is redistributed by
+definition, and a stock licence that allows use in a product almost never allows that. The three
+entries left in `NOTICE.md` survive precisely because their terms do allow it: ISC, 3-Clause BSD,
+and a trademark used under Google's own branding guidelines.
+
+**Provenance has to be recorded when the artwork lands, because it cannot be recovered later.** The
+reef component's docstring said "Path data unmodified from the source artwork" and named no source;
+its only commit was `98c72af feat: Authentication flow update (#6)`, which is about something else
+entirely. Nothing in the repository could answer where it came from, and the licence question was
+only settleable by asking the person who made the purchase. A file that says it came from somewhere
+without saying where is worse than one that says nothing, because it establishes the obligation
+while withholding what would let anyone discharge it.
 
 **`NOTICE.md` covers the tree, not the dependency graph**, and the boundary is load-bearing rather
-than lazy. Listed: artwork redrawn into source (`logo.tsx`, `icon.svg`, `icons/google-icon.tsx`) and
-vendored build output and assets under `public/` (MapLibre's two `.mjs` files, the OpenFreeMap style
-JSON and sprite). Excluded: everything in `node_modules/`, which is installed rather than
-redistributed from here and ships its own licence text. A file that tried to be a full dependency
-inventory would be a generated artefact pretending to be a hand-written one, and would be wrong
-within a release of being written.
+than lazy. Listed: artwork redrawn into source (`icons/google-icon.tsx`) and vendored build output
+and assets under `public/` (MapLibre's two `.mjs` files, the OpenFreeMap style JSON and sprite).
+Excluded: everything in `node_modules/`, which is installed rather than redistributed from here and
+ships its own licence text. A file that tried to be a full dependency inventory would be a generated
+artefact pretending to be a hand-written one, and would be wrong within a release.
 
-Two entries needed narrowing before they were true, and both traps are the same shape — a claim that
-reads fine until you check the code. Google's "G" is _not_ unmodified: the mark's own pixels are,
-but the pill background from the same download was dropped and the ids are namespaced per instance.
-And the basemap does not "refuse to start without an attribution" flatly — `lib/basemap.ts` ships
-`DEFAULT_BASEMAP_ATTRIBUTION` for the bundled styles and throws only when `MAP_STYLE_URL` is set
-without `MAP_ATTRIBUTION`. An attribution file that overstates its own accuracy is worse than none.
+Two of its entries needed narrowing before they were true, and both traps are the same shape — a
+claim that reads fine until you check the code. Google's "G" is _not_ unmodified: the mark's own
+pixels are, but the pill background from the same download was dropped and the ids are namespaced
+per instance. And the basemap does not "refuse to start without an attribution" flatly —
+`lib/basemap.ts` ships `DEFAULT_BASEMAP_ATTRIBUTION` for the bundled styles and throws only when
+`MAP_STYLE_URL` is set without `MAP_ATTRIBUTION`. An attribution file that overstates its own
+accuracy is worse than none.
 
-**The image had to be taught to carry both files.** The runner stage copies `public/` and the two
+**The image had to be taught to carry the notices.** The runner stage copies `public/` and the two
 `.next/` directories and nothing else, so `LICENSE` never reached it either — an operator who only
-ever pulls the image received the software with neither notice attached, which is the case AGPL-3.0
-§4 and ISC are both written about. One `COPY --from=builder` in the runner stage fixes both.
+ever pulls the image received the software with no notice attached, which is the case AGPL-3.0 §4
+and 3-Clause BSD are both written about. One `COPY --from=builder` in the runner stage fixes both.

@@ -49,7 +49,7 @@ RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 # The licences travel with the image, not just with the repository. AGPL-3.0 asks
-# that the notice reach every copy conveyed, and NOTICE.md carries the ISC and BSD
+# that the notice reach every copy conveyed, and NOTICE.md carries the third-party
 # terms for the artwork and vendored builds baked into this one - an operator who
 # only ever pulls the image would otherwise receive neither.
 COPY --from=builder /app/LICENSE /app/NOTICE.md ./

@@ -8,36 +8,10 @@ It is deliberately not an inventory of the npm dependency graph. Those packages 
 redistributed from here, and each carries its own license text inside `node_modules/` — and inside
 the bundle, for the ones whose code reaches the browser.
 
-## Lucide
-
-<https://lucide.dev>
-
-The OpenDiving brand mark is Lucide's `waves-horizontal` icon (also exported as `Waves`, an alias
-kept from the name it used to carry), reproduced path-for-path in `src/components/logo.tsx` and
-`src/app/icon.svg` so the mark does not depend on the `lucide-react` package at the one position
-where the app's identity is drawn. `lucide-react` is also a direct dependency, and is where every
-other icon in the app comes from.
-
-`waves-horizontal` is not among the icons Lucide derives from Feather, so only the ISC terms below
-apply to the mark.
-
-```
-ISC License
-
-Copyright (c) 2026 Lucide Icons and Contributors
-
-Permission to use, copy, modify, and/or distribute this software for any
-purpose with or without fee is hereby granted, provided that the above
-copyright notice and this permission notice appear in all copies.
-
-THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
-WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
-MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
-ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
-WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
-ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
-OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-```
+The brand mark is not listed because it is not third-party: `src/components/logo.tsx` and
+`src/app/icon.svg` are original artwork for this project. See `DECISIONS.md` for why the mark
+stopped being a copied icon, and for the standing rule about marketplace artwork that the same pass
+produced.
 
 ## Google
 
