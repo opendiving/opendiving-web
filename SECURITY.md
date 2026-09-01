@@ -1,15 +1,16 @@
 # Security Policy
 
-OpenDiving is self-hosted software, so "a security problem with OpenDiving" means two different
-things with two different owners. Work out which one you have before you send it anywhere.
+OpenDiving is yours to self-host, and every instance run from this repository is somebody's own
+server — so "a security problem with OpenDiving" means two different things with two different
+owners. Work out which one you have before you send it anywhere.
 
 ## Is it an instance, or the code?
 
 **An instance** is a server somebody runs at their own domain, holding their own divers' data. Only
-its operator can see it, fix it, or tell the people using it — this project's maintainers have no
-access to any instance and no way to reach its users. A misconfigured deployment, an exposed
-database, a stale image on someone's box: report it to whoever runs that server. Its contact form,
-if it has one, reaches that operator and nobody else.
+its operator can see it, fix it, or tell the people using it; where that operator is not this
+project, its maintainers have no access to the instance and no way to reach its users. A
+misconfigured deployment, an exposed database, a stale image on someone's box: report it to whoever
+runs that server. Its contact form, if it has one, reaches that operator and nobody else.
 
 **The code** is a flaw in this repository that would affect anyone running it. That one is ours, and
 the rest of this file is about it.

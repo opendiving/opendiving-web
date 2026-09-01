@@ -1,7 +1,7 @@
 # OpenDiving Web
 
-**A self-hosted dive log, built to outlive every vendor. Your dives, your data — original files
-kept, open formats, on your own server.**
+**A dive log built to outlive every vendor. Your dives, your data — original files kept, open
+formats, and yours to self-host.**
 
 OpenDiving is an open-source logbook for scuba divers — recreational and technical: log dives with
 multi-tank gas mixtures (nitrox and trimix), import dives straight from your dive computer's export
@@ -10,9 +10,10 @@ them into trips, and keep your gear service history and c-cards in one place.
 
 Cloud dive logs come and go — Movescount, Deepblu, Diveboard — and when they go, years of dive
 history go with them. OpenDiving is built on a different premise: the app is AGPL-licensed, the data
-lives in your own Postgres database, and every dive keeps the original dive-computer export it was
-imported from, downloadable at any time. Self-hosting isn't a feature here; it's the guarantee that
-no shutdown, acquisition, or paywall can ever take your logbook with it.
+sits in a plain Postgres database, and every dive keeps the original dive-computer export it was
+imported from, downloadable at any time. Self-hosting isn't a feature here; it's the guarantee
+behind the rest — anyone can run this software, and one click hands the whole log back in open
+formats, so no shutdown, acquisition, or paywall can ever take your logbook with it.
 
 **This repository is the web app — one component of the stack.** The project itself, and everything
 about running it, lives at **[opendiving/opendiving](https://github.com/opendiving/opendiving)**:
@@ -46,8 +47,9 @@ components together. Start there if you want to run OpenDiving rather than work 
 - **Marine life** — record what you saw against a real species catalog, resolved live against the
   World Register of Marine Species and Wikidata so a name you half-remember still finds the animal.
   Your **life list** collects every species you have ever logged, with a photograph fetched once
-  from Wikimedia Commons and served from your own instance — your browser never talks to Wikimedia,
-  and each species has a page carrying its credit, its classification and the dives you saw it on.
+  from Wikimedia Commons and served from the instance you are on — your browser never talks to
+  Wikimedia, and each species has a page carrying its credit, its classification and the dives you
+  saw it on.
 - **Certifications** — keep photos of your c-cards on hand at the dive shop without digging out the
   plastic.
 - **Courses** — the training itself, with the agency, instructor, shop and cost: link the dives you
@@ -83,12 +85,13 @@ Honest answers to "why not X":
 
 - **[Subsurface](https://subsurface-divelog.org/)** — the open-source reference, with unmatched
   dive-computer support and a full deco planner. It's desktop-first with no web app or self-hostable
-  server; OpenDiving is the server-shaped complement — a modern web UI on your own box, API-first,
-  reachable from any browser. Use Subsurface to download from cables; a Subsurface import is high on
-  the roadmap so both can hold the same log.
+  server; OpenDiving is the server-shaped complement — a modern web UI, API-first, reachable from
+  any browser, and self-hostable on a box of your own. Use Subsurface to download from cables; a
+  Subsurface import is high on the roadmap so both can hold the same log.
 - **[Submersion](https://submersion.app/) / [Bubbletrail](https://bubbletrail.app/)** — excellent
   newer open-source _apps_: local-first, on-device databases, Bluetooth downloads. OpenDiving is the
-  household-server alternative: one instance, every browser and family member, one backup, an API.
+  server-shaped alternative: one instance behind every browser and every family member, with an API
+  — and yours to run on the household server if that is where you want it.
 - **Vendor clouds (Shearwater, Garmin, Suunto, Oceanic+)** — where dives are born, not where they
   should live. OpenDiving imports their exports and keeps the original file forever, so switching
   computers never splits your history.

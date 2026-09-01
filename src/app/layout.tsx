@@ -33,27 +33,31 @@ export function generateMetadata(): Metadata {
     // having to repeat the product name. Pages that export their own `title` string
     // get it wrapped; `default` covers the ones that export none.
     title: {
-      default: "OpenDiving - a self-hosted dive log",
+      default: "OpenDiving - a dive log built to outlive every vendor",
       template: "%s | OpenDiving",
     },
     // The README's pitch rather than the previous "Open source diving platform", which
-    // said nothing a diver deciding whether to click would care about.
+    // said nothing a diver deciding whether to click would care about. It leads with what
+    // the log is rather than with how it is deployed: this metadata is served by every
+    // instance, and "a self-hosted dive log" is a claim about the reader's server that the
+    // reader may well not be the one running. See "Self-hosting is a capability, not the
+    // product's identity" in DECISIONS.md.
     description:
-      "A self-hosted dive log. Your dives, your data - in open formats, on your own server.",
+      "A dive log built to outlive every vendor. Your dives, your data - original files kept, open formats, and yours to self-host.",
     applicationName: "OpenDiving",
     openGraph: {
       type: "website",
       siteName: "OpenDiving",
-      title: "OpenDiving - a self-hosted dive log",
+      title: "OpenDiving - a dive log built to outlive every vendor",
       description:
         "An open-source logbook for scuba divers: gas mixtures, multiple sites per dive, dive-computer import with full depth profiles, gear service history and c-cards.",
       url: siteUrl,
     },
     twitter: {
       card: "summary_large_image",
-      title: "OpenDiving - a self-hosted dive log",
+      title: "OpenDiving - a dive log built to outlive every vendor",
       description:
-        "An open-source logbook for scuba divers. Your dives, your data - in open formats, on your own server.",
+        "An open-source logbook for scuba divers. Your dives, your data - original files kept, in open formats, and yours to take out at any time.",
     },
   };
 }
