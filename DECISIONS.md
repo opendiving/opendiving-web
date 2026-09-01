@@ -13122,8 +13122,8 @@ arrived. Both came from a paid Etsy listing whose terms permit "personal project
 physical products" and forbid "sharing, reselling or redistributing the digital files themselves". A
 hosted web app is not a physical product, and this repository — AGPL-3.0, and public at launch —
 publishes the vector source in editable form to anyone who clones it, which is the redistribution
-the licence names. Buying it did not buy either of those. Both files are gone, and the hero renders
-without a background accent until something original replaces them.
+the licence names. Buying it did not buy either of those. Both files are gone, replaced on the hero
+by `icons/kelp-background.tsx`, drawn for this project and owing nobody a notice.
 
 **The screenshots are clean, and the check is worth recording so nobody repeats it.** Nine images
 have ever been committed here, across all of history: `docs/screenshots/`'s `dashboard.png`,
