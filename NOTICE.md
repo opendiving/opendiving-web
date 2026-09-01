@@ -8,10 +8,11 @@ It is deliberately not an inventory of the npm dependency graph. Those packages 
 redistributed from here, and each carries its own license text inside `node_modules/` — and inside
 the bundle, for the ones whose code reaches the browser.
 
-The brand mark is not listed because it is not third-party: `src/components/logo.tsx` and
-`src/app/icon.svg` are original artwork for this project. See `DECISIONS.md` for why the mark
-stopped being a copied icon, and for the standing rule about marketplace artwork that the same pass
-produced.
+The brand mark and the landing page's artwork are not listed because they are not third-party:
+`src/components/logo.tsx`, `src/app/icon.svg` and the dive profile drawn in
+`src/components/layout/hero-backdrop.tsx` are original artwork for this project. See `DECISIONS.md`
+for why the mark stopped being a copied icon, and for the standing rule about marketplace artwork
+that the same pass produced.
 
 ## Google
 

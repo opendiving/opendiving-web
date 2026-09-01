@@ -32,7 +32,7 @@ export function HeroBackdrop({ className }: { className?: string }) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 1200 210"
+      viewBox="0 0 1200 200"
       preserveAspectRatio="xMidYMax meet"
       fill="none"
       strokeLinecap="round"
@@ -50,28 +50,33 @@ export function HeroBackdrop({ className }: { className?: string }) {
           bottom edge, so the section below starts on a clean background. */}
       <rect
         x="-2400"
-        y="10"
+        y="6"
         width="6000"
-        height="200"
+        height="194"
         fill={`url(#${washId})`}
       />
       <g stroke="currentColor" strokeWidth="2.5">
         {/* The surface, as one low wave repeated across the width. */}
         <path
           opacity="0.35"
-          d="M-2400 10q40 -7 80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0"
+          d="M-2400 6q40 -7 80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0t80 0"
         />
         {/* The profile. */}
         <path
           opacity="0.6"
-          d="M100 10C140 12 170 150 205 188C225 200 245 202 265 200C330 194 400 190 470 178C540 166 610 160 680 150C740 142 800 138 840 120C870 106 885 48 915 42C945 38 985 38 1020 40C1040 40 1052 14 1072 10"
+          d="M100 6C140 8 170 136 205 172C222 182 240 185 258 184C300 182 330 180 365 172C395 166 410 174 445 170C505 162 560 156 615 146C665 136 720 132 760 126C800 120 830 116 848 106C878 90 890 42 918 38C948 34 986 34 1020 36C1040 36 1052 10 1072 6"
         />
       </g>
       {/* The mark: three bubbles leaving the deepest point of the dive. */}
-      <g className="text-coral" stroke="currentColor" strokeWidth="2.5" opacity="0.85">
-        <circle cx="268" cy="176" r="4" />
-        <circle cx="283" cy="152" r="6.5" />
-        <circle cx="302" cy="122" r="8.5" />
+      <g
+        className="text-coral"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        opacity="0.85"
+      >
+        <circle cx="262" cy="162" r="4" />
+        <circle cx="277" cy="138" r="6.5" />
+        <circle cx="296" cy="108" r="8.5" />
       </g>
     </svg>
   );

@@ -46,7 +46,7 @@ export function LandingPage() {
     <div className="bg-background">
       {/* Hero Section */}
       <section id="get-started" className="relative overflow-x-hidden py-20">
-        <HeroBackdrop className="pointer-events-none absolute inset-x-0 bottom-0 hidden w-full max-h-[210px] overflow-visible text-teal lg:block" />
+        <HeroBackdrop className="pointer-events-none absolute inset-x-0 bottom-0 hidden w-full max-h-[200px] overflow-visible text-teal lg:block" />
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
             <div className="text-center">

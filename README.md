@@ -206,5 +206,5 @@ version as a service, you share your changes. Nobody gets to take this closed-so
 divers' data away.
 
 Third-party artwork and vendored assets that travel in this tree — Google's sign-in mark, the
-MapLibre build, the OpenFreeMap styles — are credited in [NOTICE.md](NOTICE.md). The brand mark
-isn't among them: it's original to this project.
+MapLibre build, the OpenFreeMap styles — are credited in [NOTICE.md](NOTICE.md). The brand mark and
+the landing page's artwork aren't among them: both are original to this project.
