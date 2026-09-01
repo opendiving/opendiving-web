@@ -13122,39 +13122,8 @@ arrived. Both came from a paid Etsy listing whose terms permit "personal project
 physical products" and forbid "sharing, reselling or redistributing the digital files themselves". A
 hosted web app is not a physical product, and this repository — AGPL-3.0, and public at launch —
 publishes the vector source in editable form to anyone who clones it, which is the redistribution
-the licence names. Buying it did not buy either of those. Both files are gone, and what stands in
-the hero now was drawn here.
-
-**The hero's backdrop is an original reef in the old drawing's idiom, because the owner's brief was
-"something like that", and both abstractions offered instead were turned down.** The first attempt
-at a replacement was sparse line art - a sea fan, fronds, a kelp field - which at 25% read as a
-scribble. The second was a full-width dive-profile band under the hero grid, honest about the
-product and clear of every line of text, and it was rejected on sight: the reef with the fish was
-what the page was meant to feel like. What stands there now is drawn from scratch in the same idiom
-as the licensed piece - a branching coral, a cluster of tube sponges, a fish, a sandy bottom - as
-clean outlines in the mark's stroke, with the mark's three bubbles rising off the reef.
-`components/layout/reef-backdrop.tsx` holds all of it, which is why `NOTICE.md` names it beside the
-mark as not third-party. Do not offer the abstraction a third time; the brief is an illustrated
-scene, in the reef's old slot.
-
-**The outlines are hollow by knockout, not by outline geometry.** A lobed coral drawn as strokes
-shows every branch crossing every other. Instead each lobe is a single centreline painted twice:
-once in teal at its width plus two stroke widths, then again in the page background at its width.
-The second pass erases the interior, including where lobes meet, so the tree comes out as one
-continuous hollow outline with round tips - the look of the original's filled-evenodd paths, from
-eight short paths instead of 14 KB of outline coordinates. The trunk alone has butt caps and ends on
-the sand line, which is painted over it afterwards, so it stands in the sand rather than on a
-rounded foot. The sponges, the fish and its tail use the same trick as filled shapes, painted back
-to front, so nearer bodies hide the ones behind.
-
-**The knockout colour is `hsl(var(--background))`, set inline, and the opacity sits on the
-`<svg>`.** The background token is what makes the erasures invisible in both themes; a hard-coded
-colour would show as a dark or light patch inside every lobe in the other theme. It is set through
-`style` rather than a `fill-background` utility so there is no class that could fail to compile and
-paint nothing. Group opacity is applied to the `<svg>` as a whole, so the knockouts composite at
-full strength first and only the finished outlines are faded - opacity on the individual strokes
-would let the erased interiors show through. The stroke is 3 units in a 240-unit box, matching the
-original's weight at the 240px it renders at; at 2 the drawing thinned to a sketch under the fade.
+the licence names. Buying it did not buy either of those. Both files are gone, and the hero renders
+without a background accent until something original replaces them.
 
 **The screenshots are clean, and the check is worth recording so nobody repeats it.** Nine images
 have ever been committed here, across all of history: `docs/screenshots/`'s `dashboard.png`,
