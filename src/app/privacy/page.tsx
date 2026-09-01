@@ -53,12 +53,18 @@ export default function PrivacyPage() {
             </p>
             <p className="text-foreground mb-4">
               So &ldquo;we&rdquo; and &ldquo;our servers&rdquo; on this page
-              mean whoever runs this copy of OpenDiving. They are not the
-              OpenDiving project. The project writes the software and operates
-              nothing: it runs no servers for this copy, receives no data from
-              it, and never sees what you log here. Under data-protection law
-              the operator of this copy is the controller of your data, and they
-              are who is answerable for it.
+              mean whoever runs this copy of OpenDiving. Writing the software
+              and running a copy of it are two roles rather than necessarily two
+              parties: the OpenDiving project is the author of the software
+              always, and is an operator only of the copies it runs itself.
+              Authorship on its own carries nothing across &mdash; for a copy
+              the project does not run, it runs no servers for that copy,
+              receives no data from it, and never sees what you log there. Where
+              the project does run a copy, it is that copy&rsquo;s operator as
+              well, and every commitment this page makes of the operator is one
+              it makes in that role, exactly as any other operator does. Under
+              data-protection law the operator of this copy is the controller of
+              your data, and they are who is answerable for it.
             </p>
             <p className="text-foreground mb-4">
               Because the software is public, so is every claim on this page.
@@ -453,8 +459,10 @@ export default function PrivacyPage() {
               from an authority with jurisdiction over them. That is a duty that
               falls on the operator, not a permission this page grants itself,
               and what they must do about such a demand is a question for them
-              and their jurisdiction. The OpenDiving project holds none of your
-              data and so has nothing it could be asked for.
+              and their jurisdiction. Where the OpenDiving project is not the
+              one running this copy, it holds none of your data and so has
+              nothing it could be asked for; where it is, it is the operator
+              this paragraph is about, and the duty falls on it like any other.
             </p>
 
             {googleClientId && (
@@ -1119,9 +1127,10 @@ export default function PrivacyPage() {
               For anything else &mdash; a question about this page, about how
               this copy is run, or about a right in section 6.2 that Settings
               does not cover &mdash; the person to ask is whoever runs this copy
-              of OpenDiving. They are the controller of your data; the
-              OpenDiving project is not, holds none of it, and could not answer
-              for them. The{" "}
+              of OpenDiving. They are the controller of your data, whether that
+              is the OpenDiving project running a copy of its own or somebody
+              else entirely; an author who does not run this copy holds none of
+              your data and could not answer for whoever does. The{" "}
               <Link
                 href="/contact"
                 className="underline hover:text-muted-foreground"
@@ -1132,12 +1141,16 @@ export default function PrivacyPage() {
             </p>
             <p className="text-foreground mb-4">
               Two things this page will not do, both deliberately. It will not
-              print an address belonging to the OpenDiving project, because a
-              privacy request sent there reaches people who cannot act on it.
-              And it will not point you at a public issue tracker, because a
-              question about your own data is not something you should have to
-              ask in public. How quickly you get an answer is the
-              operator&rsquo;s to say, not this page&rsquo;s.
+              print an address belonging to the OpenDiving project as the
+              software&rsquo;s author, because the address that can act on a
+              privacy request is the operator&rsquo;s, and the contact page
+              above is already it &mdash; on a copy the project runs itself,
+              that page reaches the project too, in the role that can answer.
+              Sent to the author instead, the request reaches people with no
+              access to this copy. And it will not point you at a public issue
+              tracker, because a question about your own data is not something
+              you should have to ask in public. How quickly you get an answer is
+              the operator&rsquo;s to say, not this page&rsquo;s.
             </p>
           </section>
         </div>

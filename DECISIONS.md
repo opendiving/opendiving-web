@@ -12877,3 +12877,65 @@ equality, because the table's own last-row border makes them 81 and 80.5 - a tol
 thirty-odd pixel collapse the test is looking for. And the "all rows photo-less" case needs two
 _distinct_ uuids: React keys a table of two identically-keyed rows as one row, and the duplicate-key
 warning in the console was the only thing that said so.
+
+## The author and the operator are two roles, and one party may hold both
+
+`/privacy` and `/terms` both stated as plain fact that the OpenDiving project never runs anything:
+"The project operates nothing: it runs no servers for this copy, receives no data from it, and never
+sees what you log here", "holds none of your data and so has nothing it could be asked for", "it
+does not run this copy and could not keep it up if it wanted to". Every one of those is a claim
+about the world rather than about the software, and a project-operated instance is planned.
+Self-hosters are the audience these pages were written for; they are not the whole of it. The day
+that instance exists those sentences are false on the copy most people would be reading them on, and
+the standing rule the privacy sweep quotes — _"A privacy policy that overstates what is collected is
+not the safe direction to be wrong in"_ — condemns a page that is wrong in _either_ direction about
+who holds the data.
+
+**The per-copy framing was right and is kept.** "This copy" and "the operator of this copy" resolve
+correctly on a self-hosted instance and on a project-run one alike, so the mechanism recorded in
+"The terms page has two speakers, and the headings are the mechanism" is untouched. What was wrong
+sits one step below it: the pages treated _author_ and _operator_ as two parties, when they are two
+**roles** that one party may hold at once.
+
+So the claims are conditioned rather than deleted. Authorship on its own still grants the project
+nothing — for a copy it does not run, it runs no servers for that copy, receives no data from it and
+never sees what is logged there — but that is now scoped by "where the project is not the one
+running this copy" instead of asserted universally. Where the project _is_ the operator, it is
+answerable in that role like anyone else, and the operator's sections speak for it.
+
+**What this deliberately does not say.** It does not claim a project-operated instance exists; there
+is none today, and announcing one would be the same class of error in the opposite direction. It
+adds nothing about aggregation, telemetry or contribution features either: none of that follows from
+the project running an instance, and all of it would be new collection owing its own disclosure
+under the standing rule about a feature that shows one diver's content to anyone else.
+
+**The project-only sections survive as they were, and are now separated explicitly by role.** What
+terms §9 limits is the _author's_ liability and what §10 indemnifies is the _writing_ of the
+software; neither is collected by an operator who happens to be the same party. The AGPL finding
+recorded above is unaffected — a diver on a project-run instance is no more a licensee than one on
+anybody else's, so §9 stays load-bearing.
+
+**One contact rule needed a new reason rather than a rewrite.** Both pages refuse to print a project
+address, and the old justification — a request sent there reaches people who cannot act on it —
+stops being true the moment the project runs the copy. The refusal survives on a different footing:
+the address that can act on such a request is the _operator's_, and the contact page is already how
+this copy offers to reach them, which on a project-run copy reaches the project in the role that can
+answer.
+
+**Grepping for the absolutes undercounts, as it always does.** Several spots were outside the
+obvious set, and none of them contains any of the phrases that found the others: terms §7's "That
+offer is theirs to make and not the project's" (on a _modified_ project-run copy the AGPLv3 §13
+source offer is the project's, as operator), §9's "The operator of this copy is a different party",
+§10's scope sentence, and — caught only by a reviewer reading §9 whole, after the first three were
+already fixed — §9's third-party-beneficiary sentence, "the OpenDiving project and its contributors,
+who are not parties to these Terms". All of them assert that the parties differ rather than
+describing two roles, which is the shape to grep for next time: a claim about identity, not a claim
+about servers.
+
+That last one is the one worth remembering, and it is why this paragraph no longer opens with a
+count. It survived a sweep written by someone who knew exactly what they were hunting: _party_ also
+appears there in its innocent, technical sense, the sentence reads as boilerplate about contributors
+until you notice it names the project too, and it sits three lines above the new sentence conceding
+that the project may be running this copy — so the section contradicted itself within one screen.
+Reading each affected section end to end is what finds this class; grepping for the phrasing of the
+last one is what misses it.
