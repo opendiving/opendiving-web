@@ -42,17 +42,31 @@
     --accent: 210 40% 96%;
     --accent-foreground: 222.2 84% 4.9%;
 
-    --destructive: 0 84.2% 60.2%;
+    /* Errors and destructive actions are coral, not red. Hue 10 sits six degrees
+       off the brand --coral's 16, in the same warm family as every other accent
+       here; shadcn's default is a saturated hue-0 red, the one colour in the app
+       belonging to no other token, and against a palette built on coral and teal it
+       read as imported rather than chosen.
+
+       Also darker than the red it replaces - 42% against 60.2% - and that is not a
+       side effect of the hue change. `text-destructive` is real body text in
+       `FormMessage`, and at 60.2% it was 3.76:1 on --background: an AA failure on
+       every validation message in the app. Hue 10 at 42% is 5.5:1 there, and 4.6:1
+       over its own /10 tint, which is the surface `StatusMessage` and the
+       delete-account panel put it on. */
+    --destructive: 10 88% 42%;
     --destructive-foreground: 210 40% 98%;
 
-    /* Same red, darkened until white label text clears WCAG AA (5.8:1). At
-       --destructive's own lightness a filled destructive button reaches only 3.6:1,
-       which fails on the most consequential control in the app - but --destructive
-       itself has to stay light enough to read as *text* on the dark theme's
-       background, which is the other half of the same tension. So it splits, exactly
-       as --teal / --teal-solid and --coral / --coral-solid already do: --destructive
-       for text, icons and tints; --destructive-solid for anything filled. */
-    --destructive-solid: 0 72% 42%;
+    /* Same coral, darkened until the label on it clears WCAG AA - 5.6:1 under the
+       light theme's near-white --destructive-foreground, 5.9:1 under the dark
+       theme's pure white. The split
+       survives the recolour, but its reason has narrowed: --destructive is now dark
+       enough in *this* theme to carry white itself, and what still needs a separate
+       token is the dark theme, where --destructive has to be light enough to read as
+       text on a near-black background and so cannot sit under a white label. Same
+       shape as --teal / --teal-solid and --coral / --coral-solid: --destructive for
+       text, icons and tints; --destructive-solid for anything filled. */
+    --destructive-solid: 10 88% 40%;
 
     /* The counterpart to --destructive, for a confirmation that has to persist in
        place rather than in a toast (see `StatusMessage`). Five components each
@@ -150,9 +164,11 @@
 
   /* macOS Dark Mode's actual system colors: windowBackgroundColor /
      systemGray6 for surfaces (a very slightly cool/blue-gray, not a
-     perfectly neutral gray), labelColor for text, macOS's "Graphite"
-     system accent color (a desaturated gray, not blue) for primary/ring,
-     and systemRed for destructive actions. */
+     perfectly neutral gray), labelColor for text, and macOS's "Graphite"
+     system accent color (a desaturated gray, not blue) for primary/ring.
+     Destructive used to be systemRed and no longer is - it left the system
+     palette for the coral family along with its light-theme counterpart,
+     for the reasons on the token itself below. */
   .dark {
     --background: 240 4% 9%;
     --foreground: 240 6% 93%;
@@ -190,12 +206,15 @@
     --accent: 240 4% 18%;
     --accent-foreground: 240 6% 93%;
 
-    --destructive: 4 100% 61%;
+    /* Same hue 10 as the light theme, lightened for the dark surface exactly as
+       --success and --warning are: 6.9:1 on --background and 6.2:1 on --card, which
+       it needs because this is the theme where --destructive is read as text. */
+    --destructive: 10 100% 68%;
     --destructive-foreground: 0 0% 100%;
 
     /* Constant across themes, like --teal-solid and --coral-solid: it is only ever
        under white label text, so it has nothing to adapt to. */
-    --destructive-solid: 0 72% 42%;
+    --destructive-solid: 10 88% 40%;
 
     /* The light theme needs a dark coral for text; on this background the brand
        coral itself is already 8:1, so text can simply use it. */

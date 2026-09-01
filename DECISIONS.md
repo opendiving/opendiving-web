@@ -12993,3 +12993,95 @@ for every instance that ever runs the image, and it repeated the identity claim 
 across the `title`, the description, the OpenGraph card and the Twitter card. Any future pass over
 what this project says about itself has to read the metadata exports as prose, because that is what
 they are.
+
+## Errors are coral, and the recolour fixed a contrast bug it did not set out to fix
+
+`--destructive` was shadcn's default `0 84.2% 60.2%` — a saturated hue-0 red, the one colour in the
+app that belonged to no other token. Every other accent here is warm-or-cool by design: `--coral` at
+16, `--teal` at 187 across the wheel from it, `--pressure` at 265 opposite the pair. A fire-engine
+red beside them reads as imported rather than chosen, which is what "bare red fights the palette"
+means in practice.
+
+Both tokens moved into the coral family: `--destructive` is `10 88% 42%` light and `10 100% 68%`
+dark, `--destructive-solid` is `10 88% 40%` in both. **Hue 10, not 16** — six degrees off the brand
+coral, close enough to sit in the same family and far enough to stay a distinguishable pigment where
+the two land near each other. They do land near each other: the sign-in button is `bg-coral-solid`
+and a delete button is now `bg-destructive-solid`, and those are visibly the same kind of colour.
+That collision was raised and accepted deliberately — the alternative was keeping a red that
+belonged to nothing. Anything that needs the destructive control to be unmistakable has to carry it
+in the label or a confirm step, not in the hue, and `ConfirmDialog` already does.
+
+**The lightness change is the load-bearing half, and it was not the point of the exercise.**
+`text-destructive` is real body text in `FormMessage` — every per-field validation message in the
+app — and at 60.2% it was 3.76:1 on `--background`. That is an AA failure, and it survived the
+colour sweep documented under _Theme tokens_ above because that sweep was hunting raw Tailwind
+classes, not auditing the tokens it was moving things onto. Hue 10 at 42% is 5.5:1 there and 4.6:1
+over its own `/10` tint, which supersedes the 3.3:1 figure quoted in _Theme tokens_ and the comment
+in `status-message.tsx` that carried it. `StatusMessage`'s body text still stays on `foreground` at
+~17:1: the token passing on its own is not a reason to spend the contrast.
+
+### Two points apart is a real gap, and the toast was leaning on eighteen
+
+The `--destructive` / `--destructive-solid` split exists because a colour tuned to sit behind white
+text cannot also be read as text. In the light theme that tension has now mostly dissolved — 42%
+already carries white at 5.4:1 — and the split survives for the **dark** theme, where
+`--destructive` has to be light enough (68%) to read on a near-black background and so cannot sit
+under a white label. The two are eighteen points apart no longer; in light mode they are two.
+
+`ToastAction` was quietly depending on that old gap. On the destructive toast it hovered to
+`bg-destructive` over a `bg-destructive-solid` fill, and the hover was legible only because the
+former was much lighter. On the coral pair it became invisible. Both controls on that toast are now
+drawn in `--destructive-foreground` at varying opacity — a white wash for the action's hover, `/80`
+for the close button — which lifts in both themes and depends on no relationship between the two
+destructive tokens.
+
+That is the general shape of the risk here: **a token pair whose two halves are tuned independently
+for contrast will drift in relative lightness, so nothing may encode the distance between them.**
+`bg-x/10` over `bg-x` is the pattern to look for.
+
+### The last raw red in the app was on the close button nobody looks at
+
+`ToastClose` still carried
+`text-red-300 hover:text-red-50 focus:ring-red-400 focus:ring-offset-red-600` from shadcn, four
+hardcoded palette classes on the one control small enough and faint enough to be missed by both the
+token sweep and every contrast scan since. It is tokens now. `--ceiling` (`0 80% 55%`, the dive
+profile's deco ceiling) is consequently the only true red left in the app, and stays that way on
+purpose: it is the convention every dive computer uses for a limit, it is a chart stroke rather than
+UI chrome, and the two never share a surface.
+
+### Measured, and the colour-parsing trap that made the first pass wrong
+
+Every figure above is read off the rendered page, per _Verifying colour work_ — both themes, on
+`--background` and on `--card`:
+
+| Surface                                           | Light  | Dark   | Bar   |
+| ------------------------------------------------- | ------ | ------ | ----- |
+| `FormMessage` validation text on page             | 5.5:1  | 6.9:1  | 4.5:1 |
+| Same on `--card`                                  | 5.5:1  | 6.2:1  | 4.5:1 |
+| `StatusMessage` / danger-panel icon on `/10` tint | 4.6:1  | 6.0:1  | 3:1   |
+| `StatusMessage` body copy on the tint             | 17.0:1 | 13.3:1 | 4.5:1 |
+| Destructive button label on the fill              | 5.6:1  | 5.9:1  | 4.5:1 |
+| Destructive fill against the page                 | 5.9:1  | 3.1:1  | 3:1   |
+| `ToastClose` glyph on the fill                    | 4.1:1  | 4.2:1  | 3:1   |
+
+`ToastClose` is at `/80` rather than the `/70` that would mirror the default variant's
+`text-foreground/50` dimming: `/70` measured 3.4:1, which clears the 3:1 a glyph is held to but
+leaves nothing in hand, and the affordance survives the extra ten points intact.
+
+**The first measuring pass produced two wrong numbers, and both failure modes are worth knowing.**
+The probe parsed colours with `c.match(/[\d.]+/g)` and read the first three numbers as RGB. Tailwind
+v4 emits an opacity modifier as `color-mix(in oklab, hsl(var(--destructive)) 10%, transparent)`, and
+`getComputedStyle` hands that back as `oklab(0.725 0.144 0.093 / 0.1)` — so the parser read
+lightness-chroma-hue as if it were red-green-blue, turned a coral tint into near-black at 10%, and
+reported a plausible 4.35:1 that was measuring grey. The fix is to stop parsing: paint the ancestor
+background stack onto a `<canvas>` in order and read the pixel back, letting the browser do the
+colour-space conversion and the alpha compositing exactly as it does on screen.
+
+The second was subtler. The probe injected class strings that _were not in any source file_ —
+`bg-destructive-foreground/15` rather than the
+`group-[.destructive]:hover:bg-destructive-foreground/15` the component actually carries. Tailwind
+generates from a scan of the source, so those classes did not exist, the elements rendered unstyled,
+and the measurement silently described inherited colours. **A runtime probe can only measure class
+strings copied verbatim out of the component**, and a variant-prefixed class is a different string
+from its bare form. Where the state cannot be forced — a `:hover` colour — read the generated rule
+out of the served stylesheet instead, which is also the only way to confirm a class compiled at all.

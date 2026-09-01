@@ -41,11 +41,11 @@ export function StatusMessage({
       )}
     >
       {/* The state is carried by the icon, the border and the tint - not by the
-          body text, which stays `foreground`. `text-destructive` on
-          `bg-destructive/10` is only 3.3:1 in light mode: `--destructive` is tuned
-          as a button *background* under white, and reusing it as small body text
-          over its own tint fails AA. This way the message is legible at ~17:1 and
-          the colour still reads at a glance. */}
+          body text, which stays `foreground`. `text-destructive` over
+          `bg-destructive/10` clears AA on its own since the coral recolour darkened
+          the token (4.6:1 in light mode, where the old red was 3.3:1), but the
+          message is a paragraph and `foreground` reads it at ~17:1. Colour is the
+          glance; the words are the text. */}
       <Icon
         className={cn(
           "mt-0.5 h-4 w-4 shrink-0",
