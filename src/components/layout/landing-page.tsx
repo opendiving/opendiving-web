@@ -172,8 +172,14 @@ export function LandingPage() {
               <CardHeader>
                 <Anchor className="h-12 w-12 text-teal mb-4" />
                 <CardTitle>Yours To Keep</CardTitle>
+                {/* "self-hostable", not "self-hosted": this card renders on
+                    every instance, and most visitors are signing in to a log
+                    somebody else runs. The capability is the promise; the
+                    deployment is not theirs to be told about. See
+                    "Self-hosting is a capability, not the product's identity"
+                    in DECISIONS.md. */}
                 <CardDescription>
-                  Open source, self-hosted, and exportable in one click
+                  Open source, self-hostable, and exportable in one click
                 </CardDescription>
               </CardHeader>
               <CardContent>

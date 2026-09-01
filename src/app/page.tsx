@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   // visitor then lands on is the one mismatch a search result cannot explain away.
   title: { absolute: "OpenDiving - The Ultimate Diving App" },
   description:
-    "An open-source logbook for scuba divers. Log dives with gas mixtures and multiple sites, import straight from your dive computer with the full depth profile, and keep gear service history and c-cards in one place - on your own server.",
+    "An open-source logbook for scuba divers. Log dives with gas mixtures and multiple sites, import straight from your dive computer with the full depth profile, and keep gear service history and c-cards in one place - in a log built to outlive every vendor.",
 };
 
 export default function HomePage() {

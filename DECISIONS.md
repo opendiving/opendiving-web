@@ -12939,3 +12939,57 @@ until you notice it names the project too, and it sits three lines above the new
 that the project may be running this copy — so the section contradicted itself within one screen.
 Reading each affected section end to end is what finds this class; grepping for the phrasing of the
 last one is what misses it.
+
+## Self-hosting is a capability, not the product's identity
+
+The section above corrected the legal pages: the author and the operator are two roles, and one
+party may hold both. The positioning copy needed the same correction one layer up, and for the same
+reason. `README.md` opened with "**A self-hosted dive log**", the root layout's `<title>`, OpenGraph
+and Twitter cards all said "OpenDiving - a self-hosted dive log", and the `#features` card promised
+"Open source, self-hosted, and exportable in one click". Every one of those defines the product as
+_self-hosted_ rather than as _self-hostable_, which is a claim about the reader's deployment made by
+a page the reader did not deploy.
+
+**Who is reading is the whole of it.** "The landing page can only claim what the instance can back
+up" already established that most people arriving are divers signing in to a log somebody else runs,
+and that leading with the deployment story pitches the hero at the minority. This is the sharper
+version of the same finding: "a self-hosted dive log" does not merely _lead_ with the deployment, it
+tells a diver who set nothing up that they are self-hosting. The register is what fixes it —
+_self-hostable_, _yours to self-host_, _run it yourself_ describe what the software affords, and
+stay true regardless of who is running the copy in front of you.
+
+**The guarantee framing survives, because it was never the problem.** "Self-hosting isn't a feature
+here; it's the guarantee that…" is doing real work — it is the answer to Movescount, Deepblu and
+Diveboard — so it is kept and re-pointed: the guarantee is that anyone can run this software and
+that one click hands the whole log back, not that _you_ are the one running it. AGPL's "run it,
+change it, self-host it freely" was already in the capability register and is untouched, as is the
+`Self-hosting` nav item, which points at a how-to and reads as one.
+
+**The universal spatial claims went with them.** "on your own server", "the data lives in your own
+Postgres database", "a modern web UI on your own box", "one instance, every browser and family
+member, one backup" — each of those says where the bytes physically sit, which is only knowable to
+whoever runs the copy. The durable form of the same promise is the one the export already carries:
+the original dive-computer file is kept, the whole log comes back out in open formats on demand, and
+that holds on anybody's hardware. Where the deployment genuinely is the subject — the _Self-hosting_
+README section, the _Run your own_ landing section, the install links — nothing changed.
+
+**`SECURITY.md` was the one outside the marketing files, and the one that mattered most.** It opened
+"OpenDiving is self-hosted software" and told a reporter that "this project's maintainers have no
+access to any instance and no way to reach its users". That is not positioning, it is _routing_: a
+vulnerability report is sent somewhere on the strength of it, and a maintainer who does operate an
+instance is reachable about it. It now opens "OpenDiving is yours to self-host, and every instance
+run from this repository is somebody's own server", and conditions the no-access sentence on the
+operator not being this project — the same conditioning the legal pages took. The rest of the file
+survives untouched, because the rest of it addresses self-hosters as an _audience_ ("for
+self-hosters the fix arrives as `docker compose pull`") rather than asserting that every reader is
+one, and that is the line to judge by: who the sentence is talking _to_ is never the problem, what
+it claims the reader _is_ always was.
+
+**The metadata is where the sweep would have stopped short.** Grepping the obvious marketing surface
+— `README.md` and `landing-page.tsx` — finds the headline and the card and misses `app/layout.tsx`
+and `app/page.tsx` entirely, because nobody thinks of `generateMetadata()` as copy. It is the copy
+with the widest reach in the repository: it is the tab title, the search result and the link unfurl
+for every instance that ever runs the image, and it repeated the identity claim four times over
+across the `title`, the description, the OpenGraph card and the Twitter card. Any future pass over
+what this project says about itself has to read the metadata exports as prose, because that is what
+they are.
