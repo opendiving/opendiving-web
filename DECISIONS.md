@@ -3183,9 +3183,17 @@ for everything, and no reason to special-case the hero on that axis.
 **Height is per page, and the cut lands on a card boundary rather than a round figure.** Cutting at
 the _end_ of a card matters more than the exact number, and more than the three shots agreeing: a
 frame that stops just shy of finishing a card reads as an off-by-one, while one that stops well
-inside a card the reader can see continues reads as a page that goes on. 1086 is where the dive
-page's profile chart finishes - it also clears the sidebar column beside it - and where the gear
-page's service history does.
+inside a card the reader can see continues reads as a page that goes on. 1086 clears the dive page's
+profile chart and the sidebar column beside it, and ends the gear page below its service history.
+
+**It does not, however, land on a boundary on the dive page, and that sentence used to claim it
+did.** The frame runs past the profile card and stops part-way through the glyphs of the _Gas
+Consumption_ heading below it - true on `main` as much as on any branch, and checked by decoding
+both PNGs rather than by eye. The wrong claim cost a review round: a reviewer read it, compared it
+to the image, and reported a regression that a validator then refuted, because the clipping was
+never a regression at all. The real fix, if the edge is ever worth tidying, is a `CUT_BELOW` entry
+for `dive-detail` naming the profile card - the mechanism `dashboard` already uses - and never
+another hand-measured number.
 
 **The dashboard measures its own cut, because a written-down height goes stale quietly.** It was on
 1086 too, back when consumption was its only chart and that was where the card ended. Dive activity
