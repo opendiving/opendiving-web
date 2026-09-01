@@ -13125,40 +13125,36 @@ publishes the vector source in editable form to anyone who clones it, which is t
 the licence names. Buying it did not buy either of those. Both files are gone, and what stands in
 the hero now was drawn here.
 
-**The hero's backdrop is a dive profile, because that is the one drawing this product can make and a
-stock library cannot.** A reef, a fish, a diver in silhouette - every water-adjacent brand reaches
-for those, and the first attempt at an original replacement, line-art reef and kelp in the reef's
-old slot, came out looking like the clip art it was meant to replace. The profile is the shape a
-diver already knows from their computer and from this app's own dive page: a descent, a bottom phase
-that shallows the way a reef does, the ascent, three minutes at five metres, the surface. It is
-honest about what the product is, and nobody else's water icon looks like it. The mark's three
-bubbles leave the deepest point in coral, so the one warm accent in the drawing is the logo. All of
-`components/layout/hero-backdrop.tsx` is original, which is why `NOTICE.md` names it beside the mark
-as not third-party.
+**The hero's backdrop is an original reef in the old drawing's idiom, because the owner's brief was
+"something like that", and both abstractions offered instead were turned down.** The first attempt
+at a replacement was sparse line art - a sea fan, fronds, a kelp field - which at 25% read as a
+scribble. The second was a full-width dive-profile band under the hero grid, honest about the
+product and clear of every line of text, and it was rejected on sight: the reef with the fish was
+what the page was meant to feel like. What stands there now is drawn from scratch in the same idiom
+as the licensed piece - a branching coral, a cluster of tube sponges, a fish, a sandy bottom - as
+clean outlines in the mark's stroke, with the mark's three bubbles rising off the reef.
+`components/layout/reef-backdrop.tsx` holds all of it, which is why `NOTICE.md` names it beside the
+mark as not third-party. Do not offer the abstraction a third time; the brief is an illustrated
+scene, in the reef's old slot.
 
-**It is a band under the hero grid, not a watermark behind the text, and that is what let it be
-drawn at full weight.** The reef sat in the gap between the columns at 25% opacity because anything
-stronger would have fought the paragraph it overlapped, and at 25% it was a scribble nobody could
-read. The backdrop is anchored to the section's bottom edge instead, sized so the surface line lands
-just under the heading column and the sign-in card, with the profile running under the short
-paragraph beneath them: its bottom phase below that paragraph's last line, its ascent to the right
-of it, the bubbles to its left. Nothing sits on a stroke, so the strokes are 60% teal rather than
-25%. The clearances were checked at 1024, 1280 and 1536 in both themes, and hold from `lg` up
-because the container is capped at 1280 and the drawing is centred under it. Below `lg` it is
-hidden, as the reef was - stacked, the text and the drawing would share one column. The wash is
-strongest at the surface and gone by the bottom edge, deliberately: one that deepened with depth
-would have ended in a hard tinted line against the features section.
+**The outlines are hollow by knockout, not by outline geometry.** A lobed coral drawn as strokes
+shows every branch crossing every other. Instead each lobe is a single centreline painted twice:
+once in teal at its width plus two stroke widths, then again in the page background at its width.
+The second pass erases the interior, including where lobes meet, so the tree comes out as one
+continuous hollow outline with round tips - the look of the original's filled-evenodd paths, from
+eight short paths instead of 14 KB of outline coordinates. The trunk alone has butt caps and ends on
+the sand line, which is painted over it afterwards, so it stands in the sand rather than on a
+rounded foot. The sponges, the fish and its tail use the same trick as filled shapes, painted back
+to front, so nearer bodies hide the ones behind.
 
-**One drawing fits every width through `preserveAspectRatio="xMidYMax meet"` and
-`overflow-visible`.** `meet` keeps the profile's proportions and centres it under the centred
-content, and `max-h` stops it growing past the space under the grid on wide screens. That leaves
-margins either side on anything wider than the drawing, which is what the surface line and the wash
-are for: both are drawn thousands of units past the viewBox, `overflow-visible` lets them render
-there, and the section's own `overflow-x-hidden` clips them at its edges. Without `overflow-visible`
-the horizon stops at the viewBox and the water ends short of the screen edge at 1536. That
-`overflow-x-hidden` is also why nothing in the backdrop may extend _vertically_ past the section:
-hiding one overflow axis makes the other compute to `auto`, so a path poking out below the section
-would put a scrollbar on the hero rather than being clipped.
+**The knockout colour is `hsl(var(--background))`, set inline, and the opacity sits on the
+`<svg>`.** The background token is what makes the erasures invisible in both themes; a hard-coded
+colour would show as a dark or light patch inside every lobe in the other theme. It is set through
+`style` rather than a `fill-background` utility so there is no class that could fail to compile and
+paint nothing. Group opacity is applied to the `<svg>` as a whole, so the knockouts composite at
+full strength first and only the finished outlines are faded - opacity on the individual strokes
+would let the erased interiors show through. The stroke is 3 units in a 240-unit box, matching the
+original's weight at the 240px it renders at; at 2 the drawing thinned to a sketch under the fade.
 
 **The screenshots are clean, and the check is worth recording so nobody repeats it.** Nine images
 have ever been committed here, across all of history: `docs/screenshots/`'s `dashboard.png`,

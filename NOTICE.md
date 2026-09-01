@@ -10,7 +10,7 @@ the bundle, for the ones whose code reaches the browser.
 
 The brand mark and the landing page's artwork are not listed because they are not third-party:
 `src/components/logo.tsx`, `src/app/icon.svg` and the dive profile drawn in
-`src/components/layout/hero-backdrop.tsx` are original artwork for this project. See `DECISIONS.md`
+`src/components/layout/reef-backdrop.tsx` are original artwork for this project. See `DECISIONS.md`
 for why the mark stopped being a copied icon, and for the standing rule about marketplace artwork
 that the same pass produced.
 
