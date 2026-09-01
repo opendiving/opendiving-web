@@ -13116,9 +13116,12 @@ the hero renders without a background accent until something original replaces t
 The general rule the pair leaves behind: **artwork that arrives under someone else's terms cannot
 live in this tree at all.** Not with a notice, not with attribution, not behind a comment recording
 where it came from — the tree itself is what gets published, so anything in it is redistributed by
-definition, and a stock licence that allows use in a product almost never allows that. The three
-entries left in `NOTICE.md` survive precisely because their terms do allow it: ISC, 3-Clause BSD,
-and a trademark used under Google's own branding guidelines.
+definition, and a stock licence that allows use in a product almost never allows that. Two of the
+three entries left in `NOTICE.md` survive precisely because their terms do allow it: MapLibre's
+3-Clause BSD, and a trademark used under Google's own branding guidelines. The third, the
+OpenFreeMap styles, is the one still open — the vendored copies carry no licence metadata at all, so
+nobody here has read the terms they travel under, and that is worth settling before the repository
+goes public.
 
 **Provenance has to be recorded when the artwork lands, because it cannot be recovered later.** The
 reef component's docstring said "Path data unmodified from the source artwork" and named no source;
