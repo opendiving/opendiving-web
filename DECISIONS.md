@@ -13085,3 +13085,42 @@ and the measurement silently described inherited colours. **A runtime probe can 
 strings copied verbatim out of the component**, and a variant-prefixed class is a different string
 from its bare form. Where the state cannot be forced — a `:hover` colour — read the generated rule
 out of the served stylesheet instead, which is also the only way to confirm a class compiled at all.
+
+## The brand mark is a copied lucide icon, and copied artwork needs a notice
+
+`components/logo.tsx` and `app/icon.svg` draw lucide's `waves-horizontal` icon path-for-path rather
+than importing `Waves` from `lucide-react`. That is deliberate — the mark is the one place the app's
+identity is drawn, and it should not move because a dependency bumped — but it makes the two files
+copies of somebody else's artwork rather than a call into a package, and copies carry obligations a
+dependency does not.
+
+Lucide is ISC. The single condition is that its copyright notice appears in copies, which the hand-
+copied paths were not carrying: nothing in the tree named lucide outside `package.json` and
+`node_modules/`. `NOTICE.md` is the fix, with a pointer in each of the two files so the next person
+to touch the mark finds the obligation attached to the thing it applies to.
+
+**The name in the old docstring had also gone stale.** It described the icon as lucide's `Waves`;
+lucide renamed it to `waves-horizontal` and kept `Waves` as an alias re-export, so both names still
+draw these three paths and the comment was never _wrong_ — just a version behind, and pointing at
+the shallower of the two names. `waves-horizontal` is also not in the Feather-derived list at the
+bottom of lucide's LICENSE, so only ISC applies here and Feather's MIT notice does not.
+
+**`NOTICE.md` covers the tree, not the dependency graph**, and the boundary is load-bearing rather
+than lazy. Listed: artwork redrawn into source (`logo.tsx`, `icon.svg`, `icons/google-icon.tsx`) and
+vendored build output and assets under `public/` (MapLibre's two `.mjs` files, the OpenFreeMap style
+JSON and sprite). Excluded: everything in `node_modules/`, which is installed rather than
+redistributed from here and ships its own licence text. A file that tried to be a full dependency
+inventory would be a generated artefact pretending to be a hand-written one, and would be wrong
+within a release of being written.
+
+Two entries needed narrowing before they were true, and both traps are the same shape — a claim that
+reads fine until you check the code. Google's "G" is _not_ unmodified: the mark's own pixels are,
+but the pill background from the same download was dropped and the ids are namespaced per instance.
+And the basemap does not "refuse to start without an attribution" flatly — `lib/basemap.ts` ships
+`DEFAULT_BASEMAP_ATTRIBUTION` for the bundled styles and throws only when `MAP_STYLE_URL` is set
+without `MAP_ATTRIBUTION`. An attribution file that overstates its own accuracy is worse than none.
+
+**The image had to be taught to carry both files.** The runner stage copies `public/` and the two
+`.next/` directories and nothing else, so `LICENSE` never reached it either — an operator who only
+ever pulls the image received the software with neither notice attached, which is the case AGPL-3.0
+§4 and ISC are both written about. One `COPY --from=builder` in the runner stage fixes both.

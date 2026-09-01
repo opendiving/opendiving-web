@@ -48,6 +48,12 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
+# The licences travel with the image, not just with the repository. AGPL-3.0 asks
+# that the notice reach every copy conveyed, and NOTICE.md carries the ISC and BSD
+# terms for the artwork and vendored builds baked into this one - an operator who
+# only ever pulls the image would otherwise receive neither.
+COPY --from=builder /app/LICENSE /app/NOTICE.md ./
+
 # Copy built application
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
