@@ -13,8 +13,12 @@ import * as React from "react";
  * 2px stroke, round caps - so it reads as part of the same set. `currentColor`
  * means it drops in anywhere an icon would (e.g.
  * `<Logo className="h-8 w-8 text-coral" />`) and follows the active theme.
- * `src/app/icon.svg` is the same three circles at a heavier stroke, which is
- * what keeps the smallest bubble from turning to mush at favicon sizes.
+ * The smallest bubble is filled rather than hollow. Its hole was the first
+ * thing to close up as the mark got smaller, so it read as a solid dot at
+ * favicon sizes and a ring everywhere else; filling it deliberately makes the
+ * mark the same shape at every size. The fill sits inside the stroke, so the
+ * silhouette is unchanged. `src/app/icon.svg` is the same three circles at a
+ * heavier stroke, which is what keeps that bubble crisp at 16px.
  */
 export function Logo({ className, ...props }: React.SVGProps<SVGSVGElement>) {
   return (
@@ -30,7 +34,7 @@ export function Logo({ className, ...props }: React.SVGProps<SVGSVGElement>) {
       className={className}
       {...props}
     >
-      <circle cx="6.5" cy="18.5" r="1.6" />
+      <circle cx="6.5" cy="18.5" r="1.6" fill="currentColor" />
       <circle cx="11.5" cy="12.5" r="2.6" />
       <circle cx="17" cy="5.5" r="3.4" />
     </svg>
