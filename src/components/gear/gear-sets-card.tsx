@@ -1,3 +1,5 @@
+"use client";
+
 import { GearSet, gearItemLabel } from "@/lib/api/gear";
 import { Button } from "@/components/ui/button";
 import { CountBadge } from "@/components/ui/count-badge";
@@ -13,6 +15,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Edit, Loader2, Plus, Trash2 } from "lucide-react";
+import { useUnits } from "@/hooks/useUnits";
+import { formatWeight } from "@/lib/units";
 
 interface GearSetsCardProps {
   sets: GearSet[];
@@ -47,10 +51,15 @@ export function GearSetsCard({
   deletingId,
   onDelete,
 }: GearSetsCardProps) {
+  const units = useUnits();
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex flex-wrap items-center justify-between gap-3">
+        <CardTitle
+          as="h2"
+          className="flex flex-wrap items-center justify-between gap-3"
+        >
           <span>Gear Sets</span>
           <div className="flex items-center gap-3">
             <CountBadge count={totalCount} isLoading={isLoading} label="set" />
@@ -96,14 +105,17 @@ export function GearSetsCard({
                       : set.gear_items.map(gearItemLabel).join(", ")}
                   </TableCell>
                   <TableCell className="text-muted-foreground whitespace-nowrap">
-                    {set.weight != null ? `${set.weight} kg` : "—"}
+                    {set.weight != null ? formatWeight(set.weight, units) : "—"}
                   </TableCell>
                   <TableCell className="text-right">
+                    {/* Named per row, not per action: ten identical "Edit"s tell
+                        a screen reader's controls list nothing about which set.
+                        See DECISIONS.md, "Ten rows of 'Edit' name nothing". */}
                     <div className="flex justify-end gap-2">
                       <Button
                         variant="ghost"
                         size="sm"
-                        aria-label="Edit"
+                        aria-label={`Edit ${set.name}`}
                         onClick={() => onEdit(set)}
                       >
                         <Edit className="h-4 w-4" />
@@ -111,7 +123,7 @@ export function GearSetsCard({
                       <Button
                         variant="ghost"
                         size="sm"
-                        aria-label="Delete"
+                        aria-label={`Delete ${set.name}`}
                         onClick={() => onDelete(set.uuid)}
                         disabled={deletingId === set.uuid}
                       >

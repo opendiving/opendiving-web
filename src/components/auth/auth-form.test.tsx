@@ -2,6 +2,7 @@ import { afterEach, describe, it, expect, vi, beforeEach } from "vitest";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AuthForm } from "./auth-form";
+import { memoryStorage, useStorage } from "@/test/memory-storage";
 
 // What only a render can reach: which of the two "a link is on its way" paths
 // remember the destination. The storage itself is unit-tested in
@@ -9,19 +10,66 @@ import { AuthForm } from "./auth-form";
 //
 // `vi.hoisted` because `vi.mock` is lifted above every other statement in the
 // file, so a plain `const` here would not exist yet when the factory runs.
-const { rememberPostAuthRedirect, requestEmailLink } = vi.hoisted(() => ({
+const {
+  rememberPostAuthRedirect,
+  requestEmailLink,
+  verifyEmailCode,
+  signInWithPasskey,
+  browserSupportsWebAuthn,
+  browserSupportsWebAuthnAutofill,
+  startAuthentication,
+  cancelCeremony,
+  requestSignInOptions,
+  router,
+} = vi.hoisted(() => ({
   rememberPostAuthRedirect: vi.fn(),
   requestEmailLink: vi.fn(),
+  verifyEmailCode: vi.fn(),
+  signInWithPasskey: vi.fn(),
+  browserSupportsWebAuthn: vi.fn<() => boolean>(),
+  browserSupportsWebAuthnAutofill: vi.fn<() => Promise<boolean>>(),
+  startAuthentication: vi.fn(),
+  cancelCeremony: vi.fn(),
+  requestSignInOptions: vi.fn(),
+  // One stable object, per `DECISIONS.md` - a fresh router per call re-runs
+  // every effect that depends on it.
+  router: { push: vi.fn() },
 }));
 
-vi.mock("@/lib/auth-redirect", () => ({ rememberPostAuthRedirect }));
+// The sanitizer and the default destination stay real - the passkey ceremony and
+// the "check your email" card both route through them. Only the storage write is
+// a spy.
+vi.mock("@/lib/auth-redirect", async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  rememberPostAuthRedirect,
+}));
 vi.mock("@/contexts/AuthContext", () => ({
-  useAuth: () => ({ requestEmailLink }),
+  useAuth: () => ({ requestEmailLink, verifyEmailCode, signInWithPasskey }),
 }));
+// The "check your email" card routes with the router once a code verifies. Its own
+// behaviour is covered in `check-email-card.test.tsx`; what these tests need from
+// it is only that it is handed the right request id.
+vi.mock("next/navigation", () => ({ useRouter: () => router }));
 
-// Google Identity Services loads a real script and renders into a real DOM node;
-// none of that is what these tests are about.
+// Pressing the Google button leaves the page entirely - it navigates to Google's
+// authorization endpoint - and none of that is what these tests are about. The
+// mock stays for that reason now rather than for the script it used to load.
 vi.mock("./google-auth-button", () => ({ GoogleAuthButton: () => null }));
+
+// The real hook runs against these, so what these tests exercise is this form's
+// own wiring into it - which method is offered, and when the armed ceremony is
+// stood down. The ceremony's own behaviour is pinned in
+// `hooks/usePasskeySignIn.test.tsx`.
+vi.mock("@simplewebauthn/browser", () => ({
+  browserSupportsWebAuthn,
+  browserSupportsWebAuthnAutofill,
+  startAuthentication,
+  WebAuthnAbortService: { cancelCeremony },
+  WebAuthnError: class extends Error {},
+}));
+vi.mock("@/lib/api/passkeys", () => ({
+  passkeysAPI: { requestSignInOptions },
+}));
 
 // Captured before any test can fake the clock, so the one unavoidable real wait
 // below has something real to wait on.
@@ -29,7 +77,23 @@ const realSetTimeout = globalThis.setTimeout;
 
 beforeEach(() => {
   vi.clearAllMocks();
-  requestEmailLink.mockResolvedValue({ message: "sent" });
+  // `window.localStorage` doesn't work under this runner as jsdom provides it -
+  // see `test/memory-storage.ts`. Nothing this form renders reads it any more,
+  // which is itself asserted below, and that assertion needs a real object to
+  // spy on rather than the `undefined` the runner would otherwise hand it.
+  useStorage(memoryStorage());
+  requestEmailLink.mockResolvedValue({ message: "sent", request_id: "req-1" });
+  verifyEmailCode.mockResolvedValue(true);
+  // The default is a browser with no WebAuthn at all, so every test that isn't
+  // about passkeys sees exactly the form it always did.
+  browserSupportsWebAuthn.mockReturnValue(false);
+  browserSupportsWebAuthnAutofill.mockResolvedValue(true);
+  requestSignInOptions.mockResolvedValue({
+    flow_id: "flow-1",
+    options: { challenge: "abc" },
+  });
+  startAuthentication.mockResolvedValue({ id: "credential-id" });
+  signInWithPasskey.mockResolvedValue(true);
 });
 
 afterEach(() => {
@@ -41,7 +105,8 @@ async function requestLink(redirectTo: string | null) {
   render(<AuthForm redirectTo={redirectTo} />);
 
   await user.type(screen.getByLabelText("Email"), "diver@example.com");
-  await user.click(screen.getByRole("button", { name: /sign in/i }));
+  // Anchored, so it can't also match "Sign in with a passkey" beside it.
+  await user.click(screen.getByRole("button", { name: /^sign in$/i }));
   await screen.findByText("Check your email");
 
   return user;
@@ -98,5 +163,124 @@ describe("AuthForm", () => {
       expect(rememberPostAuthRedirect).toHaveBeenCalledWith("/dives/abc"),
     );
     expect(requestEmailLink).toHaveBeenCalledTimes(2);
+  });
+
+  // A resend supersedes the request row the previous email was about, so the code
+  // being typed has to be verified against the *new* one. Getting this wrong is
+  // invisible until a diver resends and then types the code they were sent second,
+  // which is the ordinary way this screen is used.
+  it("verifies the code against the resent link's request, not the first one", async () => {
+    const user = await requestLink(null);
+    requestEmailLink.mockResolvedValue({
+      message: "sent",
+      request_id: "req-2",
+    });
+
+    await runOutCooldown();
+    await user.click(screen.getByRole("button", { name: /^resend link$/i }));
+    await screen.findByText("Link resent - check your email.");
+
+    await user.type(screen.getByLabelText(/enter the code/i), "481052");
+    await user.click(screen.getByRole("button", { name: /^verify$/i }));
+
+    expect(verifyEmailCode).toHaveBeenCalledWith("req-2", "481052");
+  });
+
+  // The code in the previous email no longer signs anyone in, so leaving it typed
+  // would only lead the diver into spending one of five attempts on it.
+  it("clears a half-typed code when the link is resent", async () => {
+    const user = await requestLink(null);
+
+    await user.type(screen.getByLabelText(/enter the code/i), "481052");
+    await runOutCooldown();
+    await user.click(screen.getByRole("button", { name: /^resend link$/i }));
+
+    await waitFor(() =>
+      expect(screen.getByLabelText(/enter the code/i)).toHaveValue(""),
+    );
+  });
+});
+
+describe("AuthForm passkeys", () => {
+  // The plain-HTTP LAN instance, where the browser exposes no WebAuthn API. The
+  // method hides itself rather than offering a button that can never work - the
+  // same shape `GoogleAuthButton` uses for a missing client ID.
+  it("offers no passkey button on a browser without WebAuthn", async () => {
+    render(<AuthForm redirectTo={null} />);
+
+    await screen.findByLabelText("Email");
+    expect(
+      screen.queryByRole("button", { name: /passkey/i }),
+    ).not.toBeInTheDocument();
+    expect(requestSignInOptions).not.toHaveBeenCalled();
+  });
+
+  it("offers one where the browser has WebAuthn", async () => {
+    browserSupportsWebAuthn.mockReturnValue(true);
+
+    render(<AuthForm redirectTo={null} />);
+
+    expect(
+      await screen.findByRole("button", { name: /sign in with a passkey/i }),
+    ).toBeInTheDocument();
+  });
+
+  // The dropdown is anchored to this field, and the browser will not arm a
+  // conditional ceremony without the `webauthn` token on it.
+  it("marks the email field as a passkey autofill target", async () => {
+    render(<AuthForm redirectTo={null} />);
+
+    expect(await screen.findByLabelText("Email")).toHaveAttribute(
+      "autocomplete",
+      "username webauthn",
+    );
+  });
+
+  it("arms the autofill ceremony on mount", async () => {
+    browserSupportsWebAuthn.mockReturnValue(true);
+
+    render(<AuthForm redirectTo={null} />);
+
+    await waitFor(() =>
+      expect(startAuthentication).toHaveBeenCalledWith(
+        expect.objectContaining({ useBrowserAutofill: true }),
+      ),
+    );
+  });
+
+  // The "check your email" card replaces the whole form, taking the input the
+  // ceremony is anchored to with it.
+  it("stands the ceremony down when the sent card replaces the form", async () => {
+    browserSupportsWebAuthn.mockReturnValue(true);
+
+    await requestLink(null);
+
+    expect(cancelCeremony).toHaveBeenCalled();
+  });
+});
+
+// This form used to open with a line naming the method this browser signed in
+// with last, read out of a key written on every sign-in. Both are gone, and the
+// two halves of that are worth pinning separately: a returning visitor is told
+// nothing, and the form does not go looking. The second is the half a rendered
+// assertion cannot see - a build that still read the key but rendered nothing
+// would pass the first test while storing and reading exactly as before.
+describe("AuthForm and the browser's sign-in history", () => {
+  it("says nothing about how this browser signed in before", async () => {
+    render(<AuthForm redirectTo={null} />);
+
+    await screen.findByLabelText("Email");
+    expect(screen.queryByText(/last time you signed in/i)).toBeNull();
+    // Still every method, in the order they were always in.
+    expect(screen.getByLabelText("Email")).toBeInTheDocument();
+  });
+
+  it("reads nothing out of this browser's storage", async () => {
+    const getItem = vi.spyOn(window.localStorage, "getItem");
+
+    render(<AuthForm redirectTo={null} />);
+
+    await screen.findByLabelText("Email");
+    expect(getItem).not.toHaveBeenCalled();
   });
 });

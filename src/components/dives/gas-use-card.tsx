@@ -53,6 +53,8 @@ import {
 import { subscribeToNothing } from "@/lib/chart-series-view";
 import { diveWallClockTime } from "@/lib/date-time";
 import { cn } from "@/lib/utils";
+import { useUnits } from "@/hooks/useUnits";
+import { displayNumber, unitLabel, type UnitSystem } from "@/lib/units";
 
 // The dashboard's gas-consumption trend.
 //
@@ -63,6 +65,7 @@ import { cn } from "@/lib/utils";
 // `GasUseChart` owns that message, since it's the component that knows two
 // points are the minimum.
 export function GasUseCard() {
+  const units = useUnits();
   const [points, setPoints] = useState<DiveGasUsePoint[] | null>(null);
   // Both of these hold *this visit's* choice, and both are null until the diver
   // makes one - which is what leaves room for the remembered view underneath.
@@ -73,12 +76,17 @@ export function GasUseCard() {
   const [chosenScope, setChosenScope] = useState<ChartScope | null>(null);
   const [anchor, setAnchor] = useState<number | null>(null);
 
-  // Names the period dropdown without renaming it. `aria-label` here would
-  // *replace* the trigger's accessible name, and that name is the value -
-  // "September 2025" - which is the one thing a diver needs read back. A
-  // description is announced after it instead, so the control keeps saying which
-  // period it is on and gains which chart it drives.
+  // Names the period dropdown without talking over what it says. `aria-label`
+  // here would *replace* the trigger's accessible name, and part of that name is
+  // its own value - "September 2025" - which is the one thing a diver needs read
+  // back. This id leads an `aria-labelledby` that ends with the trigger's own, so
+  // the chart's name is prefixed onto the value rather than swapped for it. It
+  // was an `aria-describedby` until a description turned out never to reach the
+  // name at all; the reasoning is beside the attribute, below.
   const periodHintId = useId();
+  // The trigger names itself as well as being named - see the `aria-labelledby`
+  // below.
+  const periodTriggerId = useId();
 
   // The view remembered from last time.
   //
@@ -187,7 +195,7 @@ export function GasUseCard() {
               and the controls to the right put a wrapper between it and the
               title - so the pair has to carry the gap itself. */}
           <div className="space-y-1.5">
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle as="h2" className="flex items-center gap-2">
               <Activity className="h-5 w-5" />
               Gas Consumption
             </CardTitle>
@@ -245,8 +253,20 @@ export function GasUseCard() {
                     if (picked) setAnchor(picked.anchor);
                   }}
                 >
+                  {/* `aria-labelledby`, not the `aria-describedby` this was: a
+                      description does not contribute to the accessible name, so
+                      the trigger's only name was whatever `SelectValue` had
+                      rendered - and on the period with no registered item (the
+                      case the note above is about) that is nothing at all, which
+                      axe reports as `button-name`, critical.
+
+                      Both ids, in this order, so the name is "Gas consumption
+                      period" *followed by* the period showing - the second is the
+                      trigger's own text, which naming it by anything else would
+                      have replaced rather than prefixed. */}
                   <SelectTrigger
-                    aria-describedby={periodHintId}
+                    id={periodTriggerId}
+                    aria-labelledby={`${periodHintId} ${periodTriggerId}`}
                     className="h-8 w-40 px-2 text-sm font-medium"
                   >
                     <SelectValue />
@@ -283,8 +303,10 @@ export function GasUseCard() {
                 with dives" in it are four coin flips. The card name leads rather
                 than trails so the list groups by chart when it is scanned or
                 sorted. Same ambiguity `screenshots.mjs` hit from the automation
-                side, where the fix was to scope by the card's `<h3>` - the
-                heading is exactly the context a controls list drops. */}
+                side, where the fix was to scope by the card's own heading, which
+                is exactly the context a controls list drops. (Named by role
+                rather than by level, there and here: this title has been an
+                `<h3>` and is now an `<h2>`, and the scoping never cared.) */}
             {/* A segmented control built from plain buttons - the app has no
                 tabs/toggle-group primitive, and three buttons in a bordered row
                 is the whole of it. */}
@@ -318,7 +340,7 @@ export function GasUseCard() {
           <ChartSkeleton stats={3} legend />
         ) : (
           <>
-            {summary && <GasUseSummaryRow summary={summary} />}
+            {summary && <GasUseSummaryRow summary={summary} units={units} />}
             <GasUseChart points={points} scope={scope} anchor={activeAnchor} />
           </>
         )}
@@ -332,15 +354,21 @@ export function GasUseCard() {
 // The chart shows the shape; this answers "am I improving", which is the
 // question the card exists for and the one a scatter of dots is worst at
 // answering at a glance.
-function GasUseSummaryRow({ summary }: { summary: GasUseSummary }) {
+function GasUseSummaryRow({
+  summary,
+  units,
+}: {
+  summary: GasUseSummary;
+  units: UnitSystem;
+}) {
   return (
     <div className="mb-5 flex flex-wrap items-end gap-x-8 gap-y-3">
       <ChartStat label="Average">
-        <Figure value={summary.average} />
+        <Figure value={summary.average} units={units} />
         <Change summary={summary} />
       </ChartStat>
       <ChartStat label="Best dive">
-        <Figure value={summary.best} />
+        <Figure value={summary.best} units={units} />
       </ChartStat>
       <ChartStat label="Dives">
         <span className="text-xl font-semibold tabular-nums">
@@ -351,17 +379,28 @@ function GasUseSummaryRow({ summary }: { summary: GasUseSummary }) {
   );
 }
 
-// One decimal. The API returns two, which is more resolution than a figure
-// derived from a hand-read pressure gauge honestly has - and these are averages
-// over a whole period, where the second decimal is noise about noise. (The hover
-// card on the chart still shows a single dive's own two, as it always has.)
-function Figure({ value }: { value: number }) {
+// One decimal in metric. The API returns two, which is more resolution than a
+// figure derived from a hand-read pressure gauge honestly has - and these are
+// averages over a whole period, where the second decimal is noise about noise.
+// (The hover card on the chart still shows a single dive's own two, as it always
+// has.)
+//
+// Imperial keeps both of its own, and that is not an inconsistency: a cubic foot
+// is 28 litres, so 0.64 cuft/min is already coarser than the 18.2 L/min this
+// prints beside it. Rounding it further would merge rates a diver can tell apart.
+//
+// Value and unit are drawn at different sizes, so this builds the string from the
+// two halves `lib/units.ts` exports rather than calling `formatRmv` - the numbers
+// and the label are the same either way.
+function Figure({ value, units }: { value: number; units: UnitSystem }) {
   return (
     <>
       <span className="text-xl font-semibold tabular-nums">
-        {value.toFixed(1)}
+        {displayNumber(value, "rmv", units, { decimals: 1 })}
       </span>
-      <span className="text-sm text-muted-foreground">L/min</span>
+      <span className="text-sm text-muted-foreground">
+        {unitLabel("rmv", units)}
+      </span>
     </>
   );
 }

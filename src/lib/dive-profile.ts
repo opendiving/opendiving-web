@@ -5,6 +5,14 @@ import type {
   DiveProfileSeries,
 } from "@/lib/api/dives";
 import { niceDomain, type Domain } from "@/lib/chart-scale";
+import {
+  toDisplayUnits,
+  unitLabel,
+  unitSeparator,
+  unitWord,
+  type Dimension,
+  type UnitSystem,
+} from "@/lib/units";
 
 // All of the dive profile chart's arithmetic, kept out of the component per the
 // repo convention: pure functions in `lib/` get Vitest coverage, components
@@ -158,6 +166,61 @@ export interface ChannelSeries {
   values: number[];
 }
 
+// Which of `lib/units.ts`'s dimensions each channel is a reading of.
+//
+// The ceiling is a **depth**, and sharing depth's dimension is what keeps the two
+// converting identically - the same binding `scale` already has for the same
+// reason. A shaded deco region drawn against a curve converted by any other factor
+// would drift off the water it bounds.
+const CHANNEL_DIMENSION: Record<ProfileChannelKey, Dimension> = {
+  depth: "depth",
+  ceiling: "depth",
+  temperature: "temperature",
+  pressure: "pressure",
+};
+
+/**
+ * A channel as it is labelled and quoted for one system.
+ *
+ * The metric channel unchanged, or one carrying the imperial unit and no decimals
+ * at all: a foot, a degree Fahrenheit and a psi are each finer than the tenth of a
+ * metric unit the stored scale resolves to, so a decimal there would be inventing
+ * precision rather than preserving it.
+ */
+export function displayChannel(
+  channel: ProfileChannel,
+  units: UnitSystem,
+): ProfileChannel {
+  if (units === "metric") return channel;
+
+  return {
+    ...channel,
+    unit: unitLabel(CHANNEL_DIMENSION[channel.key], units),
+    decimals: 0,
+  };
+}
+
+/**
+ * One reading, converted - **after** the wire scale has been divided out.
+ *
+ * That order is the whole rule: `scale` is a pair with `schemas/dive_profile.py`
+ * and describes how the API encodes an integer, not how a diver reads one. Folding
+ * a unit conversion into it would make this app's idea of a centimetre disagree
+ * with the API's.
+ */
+export function toChannelDisplay(
+  scaledValue: number,
+  key: ProfileChannelKey,
+  units: UnitSystem,
+): number {
+  return toDisplayUnits(scaledValue, CHANNEL_DIMENSION[key], units);
+}
+
+/** The spoken unit for a channel, for the chart's accessible description. */
+export function channelWord(key: ProfileChannelKey, units: UnitSystem): string {
+  return unitWord(CHANNEL_DIMENSION[key], units);
+}
+
 // A channel's stored integers as display units, or `null` when the profile
 // doesn't carry that channel.
 //
@@ -167,15 +230,23 @@ export interface ChannelSeries {
 export function toChannelSeries(
   profile: DiveProfile,
   key: "depth" | "ceiling" | "temperature",
+  units: UnitSystem,
 ): ChannelSeries | null {
   const series: DiveProfileSeries | null | undefined = profile[key];
   if (!series || series.t.length === 0) return null;
 
   const channel = PROFILE_CHANNELS[key];
+  // Converted here, once, rather than at each of the dozen places downstream that
+  // read `values`. Everything past this point - the domains, the axis ticks, the
+  // crosshair, the accessible extremes - is then already in the units it renders
+  // in, so `niceDomain` picks round numbers in the system the diver is reading
+  // and there is nowhere left for a conversion to be forgotten.
   return {
-    channel,
+    channel: displayChannel(channel, units),
     t: series.t,
-    values: series.v.map((value) => value / channel.scale),
+    values: series.v.map((value) =>
+      toChannelDisplay(value / channel.scale, key, units),
+    ),
   };
 }
 
@@ -183,15 +254,18 @@ export function toChannelSeries(
 // its `gas_number`.
 export function toPressureSeries(
   profile: DiveProfile,
+  units: UnitSystem,
 ): (ChannelSeries & { gasNumber: number })[] {
   const channel = PROFILE_CHANNELS.pressure;
   return (profile.pressure ?? [])
     .filter((cylinder) => cylinder.t.length > 0)
     .map((cylinder: DiveProfilePressureSeries) => ({
-      channel,
+      channel: displayChannel(channel, units),
       gasNumber: cylinder.gas_number,
       t: cylinder.t,
-      values: cylinder.v.map((value) => value / channel.scale),
+      values: cylinder.v.map((value) =>
+        toChannelDisplay(value / channel.scale, "pressure", units),
+      ),
     }));
 }
 
@@ -582,5 +656,11 @@ export function formatChannelValue(
   value: number,
   channel: ProfileChannel,
 ): string {
-  return `${value.toFixed(channel.decimals)} ${channel.unit}`;
+  // `value` is already in the channel's own units - the series were converted when
+  // they were built, so there is nothing to convert here and converting again would
+  // double it. The separator comes from the same table the label does, which is
+  // what makes a temperature read "21.6°C" here exactly as it does in the sidebar;
+  // it used to be a hardcoded space, and was the one place in the app that spaced
+  // a degree symbol.
+  return `${value.toFixed(channel.decimals)}${unitSeparator(CHANNEL_DIMENSION[channel.key])}${channel.unit}`;
 }

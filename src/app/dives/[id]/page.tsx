@@ -7,6 +7,7 @@ import { useResource } from "@/hooks/useResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { divesAPI, Dive } from "@/lib/api/dives";
 import { tripsAPI, Trip } from "@/lib/api/trips";
+import { coursesAPI, Course } from "@/lib/api/courses";
 import { DiveDetailMain } from "@/components/dives/dive-detail-main";
 import { DiveDetailSidebar } from "@/components/dives/dive-detail-sidebar";
 import { DiveDateNav } from "@/components/dives/dive-date-nav";
@@ -24,6 +25,7 @@ export default function DiveDetailPage() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
   const [trip, setTrip] = useState<Trip | null>(null);
+  const [course, setCourse] = useState<Course | null>(null);
 
   const {
     resource: dive,
@@ -49,34 +51,47 @@ export default function DiveDetailPage() {
   });
   const isDeleting = del.deletingId !== null;
 
-  // Once the dive has loaded, resolve its trip's name (the dive itself only
-  // stores the trip's ID; its dive site(s) come embedded on the dive already).
-  // Failures here are non-fatal - the dive page still works, it just won't
-  // show the trip link.
+  // Once the dive has loaded, resolve the names of the two records it stores by
+  // uuid alone - its trip and its training course. (Its dive site(s) come
+  // embedded on the dive already.) Failures here are non-fatal: the dive page
+  // still works, it just won't show that link.
+  //
+  // One effect running both lookups concurrently rather than two effects or two
+  // awaits: they are independent, and a dive with both would otherwise pay for
+  // them in series.
   useEffect(() => {
     let cancelled = false;
 
-    const fetchTrip = async () => {
-      if (!user || !dive?.trip_uuid) {
-        setTrip(null);
-        return;
-      }
+    const fetchLinks = async () => {
+      const tripUuid = user ? dive?.trip_uuid : undefined;
+      const courseUuid = user ? dive?.course_uuid : undefined;
 
-      try {
-        const tripData = await tripsAPI.getTrip(dive.trip_uuid);
-        if (!cancelled) setTrip(tripData);
-      } catch (error) {
-        console.error("Failed to fetch trip:", error);
-        if (!cancelled) setTrip(null);
-      }
+      const [tripData, courseData] = await Promise.all([
+        tripUuid
+          ? tripsAPI.getTrip(tripUuid).catch((error) => {
+              console.error("Failed to fetch trip:", error);
+              return null;
+            })
+          : null,
+        courseUuid
+          ? coursesAPI.getCourse(courseUuid).catch((error) => {
+              console.error("Failed to fetch course:", error);
+              return null;
+            })
+          : null,
+      ]);
+
+      if (cancelled) return;
+      setTrip(tripData);
+      setCourse(courseData);
     };
 
-    fetchTrip();
+    fetchLinks();
 
     return () => {
       cancelled = true;
     };
-  }, [user, dive?.trip_uuid]);
+  }, [user, dive?.trip_uuid, dive?.course_uuid]);
 
   if (isAuthLoading) {
     return <PageSpinner variant="inset" />;
@@ -171,6 +186,7 @@ export default function DiveDetailPage() {
         <DiveDetailSidebar
           dive={dive}
           trip={trip}
+          course={course}
           onSourceFileChanged={refreshDive}
         />
       </div>

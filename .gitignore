@@ -7,6 +7,11 @@
 
 # testing
 /coverage
+# Vitest browser mode writes a screenshot beside the test for every failure, and
+# parks larger attachments here. Both are diagnostics for the run that produced
+# them, so they are worth looking at and never worth committing.
+__screenshots__/
+/.vitest-attachments/
 
 # next.js
 /.next/
@@ -19,12 +24,32 @@
 .DS_Store
 *.pem
 
-# Claude Code working directory (agent worktrees, launch config). Hundreds of MB
-# of scratch checkouts - never wanted in a commit or a Docker build context.
-.claude/
+# Claude Code working directory (agent worktrees, launch config, local settings).
+# Hundreds of MB of scratch checkouts - never wanted in a commit or a Docker
+# build context. Two exceptions, both about working on this repo rather than
+# about one machine: the signing hook, and the skills. That is also why the
+# pattern is `.claude/*` - git cannot re-include a path whose parent directory is
+# excluded outright.
+# What is NOT re-included is `settings.local.json`, which registers the hook, and
+# a `git worktree add` copies nothing untracked - so a `web-N-*` worktree gets the
+# script without anything wired to it. See DECISIONS.md, "The skills are repo
+# content; what wires up the hook is not".
+.claude/*
+!.claude/hooks/
+!.claude/skills/
+# Re-including the directory re-includes whatever Python leaves in it. The api
+# repo ignores this globally; a JavaScript repo has no reason to, until now.
+.claude/hooks/__pycache__/
 
 # Playwright MCP server scratch output (accessibility snapshots, console logs).
 .playwright-mcp/
+
+# MapLibre's worker, copied out of node_modules by scripts/copy-maplibre-worker.mjs
+# so the renderer boots it from this origin rather than from a `blob:` URL. Build
+# output that happens to live under `public/`, not repository content - the copy
+# has to match the installed version, and a committed one would go stale the next
+# time the dependency moves. `predev`/`prebuild`/`pretest` put it back.
+/public/maplibre/
 
 # debug
 npm-debug.log*

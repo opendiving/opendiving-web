@@ -5,17 +5,22 @@ import { useToast } from "@/components/ui/use-toast";
 import { getApiErrorMessage } from "@/lib/api/error";
 
 interface UseDeleteResourceOptions {
-  confirmMessage: string;
+  // Omitted by the two callers whose confirmation dialog owns its own copy -
+  // `DeleteWithReassignDialog` states the consequence of deleting a trip or a
+  // dive site, which is kind-specific and lives with the rest of that wording.
+  confirmMessage?: string;
+  // What the toast says. A caller with something to add for one particular
+  // delete passes it to `confirmDelete` instead - see `successOverride`.
   successMessage: string;
   errorMessage: string;
   onDeleted: () => void | Promise<void>;
 }
 
 /**
- * Shared "confirm, delete, toast, refresh" flow used by the dives/trips/sites/gear/
- * certifications list pages *and* the four detail pages' delete actions.
- * Confirmation is driven by a `ConfirmDialog` (via `pendingId`/`requestDelete`)
- * rather than the blocking native `confirm()`.
+ * Shared "confirm, delete, toast, refresh" flow behind the deletes across the app -
+ * the list pages, the detail pages' delete actions, and the delete controls in
+ * settings. Confirmation is driven by a `ConfirmDialog` (via
+ * `pendingId`/`requestDelete`) rather than the blocking native `confirm()`.
  *
  * The detail pages used to hand-roll this, and had drifted: only `gear/[id]` ran the
  * failure through `getApiErrorMessage`, so a 409 from the API - "this dive site is
@@ -23,7 +28,11 @@ interface UseDeleteResourceOptions {
  * replaced by a generic "Please try again." on dives, sites and trips.
  */
 export function useDeleteResource(
-  deleteFn: (id: string) => Promise<unknown>,
+  // The second argument is for the deletes that take one: `deleteTrip` and
+  // `deleteDiveSite` accept the uuid to move the resource's dives onto. A
+  // `deleteFn` that only takes an id satisfies this too, which is why the call
+  // sites whose delete takes nothing but an id are unchanged.
+  deleteFn: (id: string, option?: string) => Promise<unknown>,
   {
     confirmMessage,
     successMessage,
@@ -38,18 +47,22 @@ export function useDeleteResource(
   const requestDelete = (id: string) => setPendingId(id);
   const cancelDelete = () => setPendingId(null);
 
-  const confirmDelete = async () => {
+  // `successOverride` replaces `successMessage` for this one call, for a toast
+  // that can only be written where the delete is confirmed: the trip and
+  // dive-site deletes can name where the dives went, and that name comes from
+  // the dialog's picker rather than from anything the API answers with.
+  const confirmDelete = async (option?: string, successOverride?: string) => {
     if (!pendingId) return;
     const id = pendingId;
     setPendingId(null);
 
     try {
       setDeletingId(id);
-      await deleteFn(id);
+      await deleteFn(id, option);
 
       toast({
         title: "Success",
-        description: successMessage,
+        description: successOverride ?? successMessage,
       });
 
       await onDeleted();

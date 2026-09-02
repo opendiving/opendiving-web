@@ -13,9 +13,11 @@ import { LandingPage } from "@/components/layout/landing-page";
 export const metadata: Metadata = {
   // `absolute` opts out of the root layout's " | OpenDiving" template - this title
   // already names the product, and "OpenDiving ... | OpenDiving" reads as a bug.
-  title: { absolute: "OpenDiving - a self-hosted dive log" },
+  // Matches the `<h1>`, deliberately: a title that disagrees with the headline the
+  // visitor then lands on is the one mismatch a search result cannot explain away.
+  title: { absolute: "OpenDiving - The Ultimate Diving App" },
   description:
-    "An open-source logbook for scuba divers. Log dives with gas mixtures and multiple sites, import straight from your dive computer with the full depth profile, and keep gear service history and c-cards in one place - on your own server.",
+    "An open-source logbook for scuba divers. Log dives with gas mixtures and multiple sites, import straight from your dive computer with the full depth profile, and keep gear service history and c-cards in one place - in a log built to outlive every vendor.",
 };
 
 export default function HomePage() {

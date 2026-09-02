@@ -18,6 +18,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { ListRowsSkeleton } from "@/components/ui/skeleton";
 import { Waves, Plus, Clock, ArrowDownToLine } from "lucide-react";
+import { useUnits } from "@/hooks/useUnits";
+import { formatDepth } from "@/lib/units";
 
 const RECENT_DIVES_COUNT = 5;
 
@@ -32,6 +34,12 @@ export interface RecentDivesCardProps {
   // Only show dives this gear item was used on. When omitted, shows dives
   // regardless of gear.
   gearItemId?: string;
+  // Only show dives that were part of this training course. When omitted, shows
+  // dives regardless of course.
+  courseId?: string;
+  // Only show dives that recorded this species. When omitted, shows dives
+  // regardless of what was spotted.
+  speciesId?: string;
   // Maximum number of dives to fetch/display. Defaults to 5 for the
   // dashboard's "recent dives" use case.
   limit?: number;
@@ -48,13 +56,16 @@ export interface RecentDivesCardProps {
 }
 
 // Shows a list of dives for a user (dive number, date, duration, max depth).
-// Used on the dashboard and profile pages (as the 5 most recent dives) and
-// on a trip's detail page (filtered to that trip's dives), so they stay in sync.
+// Used on the dashboard (the most recent few) and on the detail pages that
+// scope dives to one record - a trip, a dive site, a gear item, a course, a
+// species - so they all stay in sync.
 export function RecentDivesCard({
   userId,
   tripId,
   diveSiteId,
   gearItemId,
+  courseId,
+  speciesId,
   limit = RECENT_DIVES_COUNT,
   title = "Recent Dives",
   description = "Your latest underwater adventures",
@@ -66,6 +77,7 @@ export function RecentDivesCard({
   newDiveLabel = "Log Your First Dive",
 }: RecentDivesCardProps) {
   const [recentDives, setRecentDives] = useState<Dive[]>([]);
+  const units = useUnits();
   const [isLoadingDives, setIsLoadingDives] = useState(true);
 
   useEffect(() => {
@@ -81,6 +93,8 @@ export function RecentDivesCard({
           tripId,
           diveSiteId,
           gearItemId,
+          courseId,
+          speciesId,
         );
         setRecentDives(response.data);
       } catch (error) {
@@ -91,7 +105,7 @@ export function RecentDivesCard({
     };
 
     fetchRecentDives();
-  }, [userId, tripId, diveSiteId, gearItemId, limit]);
+  }, [userId, tripId, diveSiteId, gearItemId, courseId, speciesId, limit]);
 
   return (
     <Card>
@@ -102,7 +116,7 @@ export function RecentDivesCard({
             description to twice every other card's 6px. */}
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-1.5">
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle as="h2" className="flex items-center gap-2">
               <Waves className="h-5 w-5" />
               {title}
             </CardTitle>
@@ -119,9 +133,9 @@ export function RecentDivesCard({
         {isLoadingDives ? (
           // Capped at `RECENT_DIVES_COUNT`, not just `limit`: on the dashboard
           // the two are the same and the placeholder is exactly right, while
-          // the site/trip/gear detail pages pass a limit of 100 for "all of
-          // them", where the real count isn't knowable up front and five rows
-          // is a better guess than a hundred.
+          // a detail page scoping dives to one record passes a large limit
+          // for "all of them", where the real count isn't knowable up front and
+          // a few rows is a better guess than the whole cap.
           <ListRowsSkeleton rows={Math.min(limit, RECENT_DIVES_COUNT)} />
         ) : recentDives.length === 0 ? (
           <div className="text-center py-12">
@@ -175,7 +189,12 @@ export function RecentDivesCard({
                   </div>
                   <div className="flex items-center gap-1">
                     <ArrowDownToLine className="h-4 w-4" />
-                    {dive.max_depth ? `${Math.round(dive.max_depth)}m` : "-"}
+                    {/* Whole units in this row, unlike the detail page's two
+                        decimals: it is a scanning list, and the second decimal
+                        of a depth is not what anyone is scanning for. */}
+                    {dive.max_depth
+                      ? formatDepth(dive.max_depth, units, { decimals: 0 })
+                      : "-"}
                   </div>
                 </div>
               </Link>

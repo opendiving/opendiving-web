@@ -6,6 +6,22 @@ on:
       - main
   pull_request:
 
+# Both jobs only read: they check out, install, run npm scripts and upload reports as
+# artifacts. `contents: read` is what checkout needs and the whole of what they need, and
+# saying so keeps the token off whatever the repository default happens to grant. This
+# workflow has more reason to care than most: on top of the dependency tree it executes
+# while linting, building and testing, four of its steps are `npx --yes` fetching a tool
+# at run time, so the code running beside that token is not the code the lockfile pinned.
+# `persist-credentials: false` on each checkout is the other half - without it the token
+# is left behind in `.git/config`, in the same workspace all of that runs in.
+#
+# The commented-out "Comment PR with quality report" step is the one thing here that would
+# want more than read. Reviving it means giving that job a block of its own - `contents:
+# read` plus `pull-requests: write` - because a job-level block replaces this one rather
+# than adding to it.
+permissions:
+  contents: read
+
 jobs:
   code-quality:
     runs-on: ubuntu-latest
@@ -15,6 +31,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Use Node.js 24.x
         uses: actions/setup-node@v7
@@ -28,9 +45,16 @@ jobs:
       # Runs the npm script rather than repeating its globs. This step and
       # `format:check` in package.json are the same check; with the file list copied
       # into both, extending one silently leaves the other behind.
+      #
+      # It fails the job, joining ESLint, `tsc --strict` and the `npm run build` inside
+      # the bundle-size step. Of the advisory checks this job had, depcheck and madge
+      # remain - both `|| true`, where this one was `continue-on-error`. Formatting was
+      # the one worth promoting: the tool that reports the problem also fixes it, so
+      # `npm run format` and a push is the whole remedy and no finding is ever arguable.
+      # The cost is that this runs first, so the steps below it do not report until it
+      # is green.
       - name: Run Prettier check
         run: npm run format:check
-        continue-on-error: true
 
       - name: Run ESLint with detailed output
         run: |
@@ -120,6 +144,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Use Node.js 24.x
         uses: actions/setup-node@v7
@@ -132,8 +158,6 @@ jobs:
 
       - name: Build application
         run: npm run build
-        env:
-          NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
 
       - name: Start application
         run: npm start &

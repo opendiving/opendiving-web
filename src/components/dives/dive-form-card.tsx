@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { UseFormReturn } from "react-hook-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form } from "@/components/ui/form";
@@ -12,6 +13,7 @@ import { DiveFormActions } from "@/components/dives/dive-form-actions";
 import { MixtureFieldArray } from "@/components/dives/mixture-fields";
 import { DiveFileInfo, DiveSiteSummary } from "@/lib/api/dives";
 import { GearItemSummary } from "@/lib/api/gear";
+import { SpeciesSummary } from "@/lib/api/species";
 
 export interface DiveFormCardProps<TFieldValues extends DiveFormValues> {
   form: UseFormReturn<TFieldValues>;
@@ -31,6 +33,7 @@ export interface DiveFormCardProps<TFieldValues extends DiveFormValues> {
   // The dive's existing sites, when editing - see `DiveFormFields`.
   knownDiveSites?: DiveSiteSummary[];
   knownGearItems?: GearItemSummary[];
+  knownSpecies?: SpeciesSummary[];
   // Note shown under the dive number - see `DiveFormFields`.
   diveNumberNotice?: { forValue: number; message: string } | null;
 }
@@ -54,12 +57,19 @@ export function DiveFormCard<TFieldValues extends DiveFormValues>({
   attachedFile,
   knownDiveSites,
   knownGearItems,
+  knownSpecies,
   diveNumberNotice,
 }: DiveFormCardProps<TFieldValues>) {
+  // Owned here rather than in `DiveFormFields` because the button that has to
+  // wait for it is this component's, not that one's. A species picked but not
+  // yet resolved is not in form state, so a save that beat the resolve would
+  // write the dive without the sighting and say nothing about it.
+  const [isResolvingSpecies, setIsResolvingSpecies] = useState(false);
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Dive Details</CardTitle>
+        <CardTitle as="h2">Dive Details</CardTitle>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -79,6 +89,8 @@ export function DiveFormCard<TFieldValues extends DiveFormValues>({
               mixtureFieldArray={mixtureFieldArray}
               knownDiveSites={knownDiveSites}
               knownGearItems={knownGearItems}
+              knownSpecies={knownSpecies}
+              onSpeciesPendingChange={setIsResolvingSpecies}
               diveNumberNotice={diveNumberNotice}
             />
 
@@ -88,6 +100,8 @@ export function DiveFormCard<TFieldValues extends DiveFormValues>({
               isSubmitting={isSubmitting}
               submittingLabel={submittingLabel}
               submitLabel={submitLabel}
+              isBusy={isResolvingSpecies}
+              busyLabel="Adding species..."
             />
           </form>
         </Form>

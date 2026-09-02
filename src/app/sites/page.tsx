@@ -18,11 +18,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PaginationFooter } from "@/components/ui/pagination-footer";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DeleteWithReassignDialog } from "@/components/dives/delete-with-reassign-dialog";
 import { DiveSiteDialog } from "@/components/sites/dive-site-dialog";
 import { Plus, Eye, Edit, Trash2, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { PageSpinner } from "@/components/ui/page-spinner";
+
+// The plain-delete toast, and the first half of the one a move gets - "moved to
+// Blue Hole" is an addition to what happened, not a replacement for it.
+const DELETED_MESSAGE = "Dive site deleted successfully.";
 
 export default function SitesPage() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
@@ -57,14 +61,11 @@ export default function SitesPage() {
   const {
     deletingId,
     pendingId,
-    confirmMessage,
     requestDelete: requestDeleteDiveSite,
     cancelDelete: cancelDeleteDiveSite,
     confirmDelete: confirmDeleteDiveSite,
   } = useDeleteResource(diveSitesAPI.deleteDiveSite, {
-    confirmMessage:
-      "Are you sure you want to delete this dive site? This action cannot be undone.",
-    successMessage: "Dive site deleted successfully.",
+    successMessage: DELETED_MESSAGE,
     errorMessage: "Failed to delete dive site. Please try again.",
     onDeleted: refetch,
   });
@@ -94,7 +95,7 @@ export default function SitesPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
+          <CardTitle as="h2" className="flex items-center justify-between">
             <span>Dive Site List</span>
             <CountBadge
               count={totalCount}
@@ -140,8 +141,16 @@ export default function SitesPage() {
                     </TableCell>
                     <TableCell>{diveSite.location || "-"}</TableCell>
                     <TableCell className="text-right">
+                      {/* Named per row, not per action: ten identical "Edit"s tell a
+                          screen reader's controls list nothing about which site.
+                          See DECISIONS.md on the export card's three Downloads. */}
                       <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="sm" asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label={`View ${diveSite.name}`}
+                          asChild
+                        >
                           <Link href={`/sites/${diveSite.uuid}`}>
                             <Eye className="h-4 w-4" />
                           </Link>
@@ -149,7 +158,7 @@ export default function SitesPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          aria-label="Edit"
+                          aria-label={`Edit ${diveSite.name}`}
                           onClick={() => setEditingSite(diveSite)}
                         >
                           <Edit className="h-4 w-4" />
@@ -157,6 +166,7 @@ export default function SitesPage() {
                         <Button
                           variant="ghost"
                           size="sm"
+                          aria-label={`Delete ${diveSite.name}`}
                           onClick={() => requestDeleteDiveSite(diveSite.uuid)}
                           disabled={deletingId === diveSite.uuid}
                         >
@@ -194,14 +204,18 @@ export default function SitesPage() {
         onSaved={refetch}
       />
 
-      <ConfirmDialog
-        open={pendingId !== null}
-        onOpenChange={(open) => !open && cancelDeleteDiveSite()}
-        title="Delete dive site"
-        description={confirmMessage}
-        confirmText="Delete"
-        isLoading={deletingId === pendingId}
-        onConfirm={confirmDeleteDiveSite}
+      <DeleteWithReassignDialog
+        kind="dive-site"
+        userId={user?.uuid ?? ""}
+        targetId={pendingId}
+        isDeleting={deletingId === pendingId}
+        onCancel={cancelDeleteDiveSite}
+        onConfirm={(moveDivesTo, name) =>
+          confirmDeleteDiveSite(
+            moveDivesTo,
+            name ? `${DELETED_MESSAGE} Its dives moved to ${name}.` : undefined,
+          )
+        }
       />
     </div>
   );

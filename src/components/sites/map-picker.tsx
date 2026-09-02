@@ -1,46 +1,30 @@
 "use client";
 
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
 import { Minus, Plus } from "lucide-react";
+import { Marker, type LngLat, type Map as MapLibreMap } from "maplibre-gl";
+
 import {
-  clampCenter,
-  LatLon,
+  clampLatitude,
   MAX_ZOOM,
   MIN_ZOOM,
-  nearestWrappedX,
-  parseAttribution,
-  Point,
-  project,
-  TILE_SIZE,
-  tileSource,
-  tileUrl,
-  unproject,
-  visibleTiles,
-} from "@/lib/map-tiles";
-import {
-  GesturePoint,
-  useMapGesture,
-  useMultiTouchScrollLock,
-  useWheelZoom,
-} from "@/hooks/useMapGesture";
+  WORLD_CENTER,
+  wrapLongitude,
+  type LatLon,
+} from "@/lib/basemap";
+import { useConfig } from "@/contexts/ConfigContext";
 import { Button } from "@/components/ui/button";
+import { Attribution } from "@/components/attribution";
+import { MapCanvas } from "@/components/map/map-canvas";
 
 // Close enough to street level to see a jetty, far enough out to see which bay
 // it is in - where the map opens when the site already has a position. Deeper
-// than the site page's own map fits to, which is deliberate: this one can be
-// zoomed out by hand, and that one cannot. See DECISIONS.md.
-const PLACED_ZOOM = 12;
-// Where it opens when it does not. Centred a little north of the equator
-// because that is where the land - and most of the world's diving - is.
-const DEFAULT_VIEW = { latitude: 20, longitude: 0, zoom: MIN_ZOOM };
+// than the site page's own map fits to (`MAX_FIT_ZOOM`), which is deliberate:
+// this one can be zoomed out by hand, and that one cannot. In MapLibre's units,
+// so one below the 12 this was before the renderer changed - see
+// `lib/basemap.ts` and DECISIONS.md.
+const PLACED_ZOOM = 11;
 // How long the "use two fingers" hint stays up after a one-finger drag.
 const TOUCH_HINT_MS = 1600;
 // How far one arrow key press moves the view.
@@ -53,8 +37,40 @@ const PICK_DECIMALS = 5;
 
 const round = (value: number) => Number(value.toFixed(PICK_DECIMALS));
 
-interface MapView extends LatLon {
-  zoom: number;
+/**
+ * A position MapLibre reported, folded into the ranges the form's own parser
+ * accepts.
+ *
+ * MapLibre keeps longitude unwrapped as the map is panned across the
+ * antimeridian, and its inverse projection is not bounded by the Mercator
+ * cut-off. Neither matters to the renderer and both matter here: the emitter's
+ * output range has to stay a strict subset of what `parseFormPosition` takes, or
+ * a placement can come back from the form as `(null, null)`.
+ */
+const positionOf = (lngLat: LngLat): LatLon => ({
+  latitude: clampLatitude(lngLat.lat),
+  longitude: wrapLongitude(lngLat.lng),
+});
+
+/**
+ * The map's own idea of how big it is, which is not always the container's.
+ *
+ * MapLibre falls back to 400x300 for a container that measures zero and sizes
+ * its canvas to whatever it decided, so the canvas is the only element whose box
+ * is guaranteed to be the one `project` and `unproject` were computed against.
+ */
+const frameOf = (map: MapLibreMap) => ({
+  width: map.getCanvas().clientWidth,
+  height: map.getCanvas().clientHeight,
+});
+
+/** Where the view should be looking, as decided by something other than the map. */
+interface Recentre {
+  latitude: number;
+  longitude: number;
+  // Whether to raise the zoom to `PLACED_ZOOM`, which only the site's first ever
+  // position does.
+  raise: boolean;
 }
 
 export interface MapPickerProps {
@@ -66,82 +82,51 @@ export interface MapPickerProps {
 }
 
 /**
- * A raster-tile map for placing a dive site, hand-rolled on `lib/map-tiles.ts`.
+ * A map for placing a dive site, drawn by MapLibre through `MapCanvas`.
  *
  * Loaded through `next/dynamic` by its only caller (`dive-site-map-field.tsx`),
- * so the tile grid, the projection maths and the gesture handling sit in their
- * own chunk, fetched when the dive site dialog opens rather than in the bundle
- * every page pays for. Tiles themselves load as soon as it mounts, which is why
- * `/privacy` says so.
+ * so the renderer and its worker sit in their own chunk, fetched when the dive
+ * site dialog opens rather than in the bundle every page pays for. The basemap
+ * loads as soon as it mounts, which is why `/privacy` says so.
  *
  * This is an enhancement, not the only way in: the latitude and longitude
  * inputs beside it accept the same position typed or pasted, which is what
- * keeps the feature usable without a pointer. The map is still operable from
- * the keyboard on its own terms (arrows pan, +/- zoom, Enter places at the
+ * keeps the feature usable without a pointer - and what makes a browser with no
+ * WebGL2 a message rather than a dead end. The map is still operable from the
+ * keyboard on its own terms (arrows pan, +/- zoom, Enter places at the
  * crosshair), because a control that only answers to a mouse is a dead end for
  * anyone who cannot use one.
+ *
+ * MapLibre owns the camera. What this component owns is everything the renderer
+ * has no opinion about: the round trip with the form, where a zoom is anchored,
+ * the keyboard, and the crosshair that says where Enter would place the site.
  */
 export function MapPicker({ latitude, longitude, onPick }: MapPickerProps) {
   const { resolvedTheme } = useTheme();
-  const source = useMemo(() => tileSource(), []);
-  const attribution = useMemo(
-    () => parseAttribution(source.attribution),
-    [source.attribution],
-  );
-  const template = resolvedTheme === "dark" ? source.dark : source.light;
+  // From the instance's runtime configuration, so a published image can be
+  // pointed at another basemap without a rebuild (`lib/runtime-config.ts`).
+  const { basemap } = useConfig();
 
   const hasPosition = latitude !== null && longitude !== null;
-  const [view, setView] = useState<MapView>(() =>
-    hasPosition
-      ? { latitude, longitude, zoom: PLACED_ZOOM }
-      : { ...DEFAULT_VIEW },
-  );
-  // The view as of the last *change*, which is not the same as the view of the
-  // last render. Wheel and pointer events arrive faster than React commits - a
-  // 120 Hz trackpad against a 60 Hz render - and every one of them computes the
-  // next view from the current one. Read from the render closure, a burst of
-  // thirty pinch events all start from the same stale zoom and twenty-nine of
-  // them are thrown away; measured at 0.04 levels where 1.2 were asked for.
-  // The pan path was already immune, because it measures an absolute delta
-  // against a snapshot taken at the start of the gesture rather than composing
-  // one change onto the last.
-  const viewRef = useRef(view);
-  // `useLayoutEffect`, not `useEffect`. The render-phase follow below changes
-  // the view without going through `applyView` - it cannot, since writing a ref
-  // during render is exactly what `react-hooks/refs` forbids - so the ref is
-  // caught up here instead. A passive effect is deferred to a later task, which
-  // leaves a window in which a wheel event or a pointerdown would baseline
-  // against the pre-change view and snap the map back; a layout effect runs
-  // inside the same synchronous commit, where no event can be processed.
-  useLayoutEffect(() => {
-    viewRef.current = view;
-  });
-  // Everything driven by an event goes through here, so the ref is current for
-  // the next event whether or not React has re-rendered in between.
-  const applyView = (next: MapView) => {
-    viewRef.current = next;
-    setView(next);
-  };
 
-  const [size, setSize] = useState({ width: 0, height: 0 });
+  const [map, setMap] = useState<MapLibreMap | null>(null);
+  // The camera's zoom, mirrored into React only so the two buttons can disable
+  // themselves at the limits. Everything else reads it off the instance.
+  //
+  // Seeded with what the camera effects below will open on rather than read off
+  // an instance that does not exist yet: this cannot be caught up in an effect,
+  // because `setState` called synchronously in one is a cascading render the
+  // React lint rules reject outright. Every later value arrives through
+  // MapLibre's own `zoom` event.
+  const [zoom, setZoom] = useState(() =>
+    hasPosition ? PLACED_ZOOM : MIN_ZOOM,
+  );
   const [showCrosshair, setShowCrosshair] = useState(false);
   const [announcement, setAnnouncement] = useState("");
+  const [showTouchHint, setShowTouchHint] = useState(false);
 
   const surfaceRef = useRef<HTMLDivElement | null>(null);
-
-  // The tile grid is sized from the element rather than from a fixed width, so
-  // it fills the dialog on a desktop and a phone alike without either guessing
-  // or a media query that would then have to agree with the CSS.
-  useEffect(() => {
-    const surface = surfaceRef.current;
-    if (!surface) return;
-    const observer = new ResizeObserver(([entry]) => {
-      const { width, height } = entry.contentRect;
-      setSize({ width, height });
-    });
-    observer.observe(surface);
-    return () => observer.disconnect();
-  }, []);
+  const hintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // The props as of the last render, the last position this map handed out, and
   // whether the site has ever had a position at all. Three separate facts,
@@ -157,6 +142,13 @@ export function MapPicker({ latitude, longitude, onPick }: MapPickerProps) {
     everPlaced: hasPosition,
   });
 
+  // Where an *outside* change wants the view. Set during render below and
+  // consumed by the layout effect further down, because moving a camera is a
+  // side effect and this decision is not one React can make twice.
+  const [recentre, setRecentre] = useState<Recentre | null>(() =>
+    hasPosition ? { latitude, longitude, raise: true } : null,
+  );
+
   // Follow the position when it changes from *outside* - the diver typing into
   // the latitude field, or pasting a pair - so the map is not left showing
   // somewhere the site no longer is. A position that came back from this map's
@@ -171,12 +163,11 @@ export function MapPicker({ latitude, longitude, onPick }: MapPickerProps) {
   // stale props, so the echo would arrive unrecognised. It only worked as long
   // as the parent happened to update in the same batch.
   //
-  // Adjusted during render rather than in an effect. React re-runs the render
-  // before committing anything, so the map never paints at the old centre
-  // first, where an effect would cost a visible frame at the wrong place and a
-  // cascading re-render. Comparing against the *props*, rather than against the
-  // view, is what leaves panning alone: a pan moves the view every frame and
-  // must not be yanked back to the pin.
+  // Decided during render rather than in an effect. React re-runs the render
+  // before committing anything, so the decision is made against the props that
+  // arrived rather than one render later. Comparing against the *props*, rather
+  // than against the camera, is what leaves panning alone: a pan moves the view
+  // every frame and must not be yanked back to the pin.
   //
   // Zoom is raised only the first time the site ever gets a position. Doing it
   // on every outside change punishes a diver who deliberately zoomed out for
@@ -213,65 +204,13 @@ export function MapPicker({ latitude, longitude, onPick }: MapPickerProps) {
         tracked.everPlaced || (latitude !== null && longitude !== null),
     });
 
+    // A cleared position updates the record and leaves the view where it is:
+    // there is nowhere to follow to, and jumping somewhere arbitrary because a
+    // field was emptied is worse than staying put.
     if (!isEcho && latitude !== null && longitude !== null) {
-      setView((current) => ({
-        latitude,
-        longitude,
-        zoom: isFirstPosition
-          ? Math.max(current.zoom, PLACED_ZOOM)
-          : current.zoom,
-      }));
+      setRecentre({ latitude, longitude, raise: isFirstPosition });
     }
   }
-
-  // Clamped so the viewport never overhangs a pole, where `visibleTiles`
-  // rightly refuses to ask for tiles that do not exist and the overhang renders
-  // as bare background. Applied here as well as in the movers below, because a
-  // latitude typed into the field arrives without passing through either.
-  const centerOf = (of: MapView) =>
-    clampCenter(project(of, of.zoom), size.height, of.zoom);
-  const center = centerOf(view);
-  const origin = {
-    x: center.x - size.width / 2,
-    y: center.y - size.height / 2,
-  };
-
-  // Zoom is continuous, tiles are not: they exist only at whole levels. So the
-  // grid is drawn at the nearest one and the whole layer is CSS-scaled to make
-  // up the difference, which is what turns a pinch from a series of jumps into
-  // a glide. Rounding rather than flooring keeps that scale within
-  // [1/sqrt2, sqrt2], so a tile is never stretched by more than ~41% either
-  // way; flooring would only ever magnify, up to 2x, and look softer for it.
-  const tileZoom = Math.min(
-    MAX_ZOOM,
-    Math.max(MIN_ZOOM, Math.round(view.zoom)),
-  );
-  const tileScale = 2 ** (view.zoom - tileZoom);
-
-  // The grid is computed in the *tile* level's own pixel space - the centre and
-  // the viewport both divided down by the scale the layer will be blown back up
-  // by - so `visibleTiles` never has to know that zoom can be fractional.
-  const tiles =
-    size.width > 0 && size.height > 0
-      ? visibleTiles(
-          { x: center.x / tileScale, y: center.y / tileScale },
-          size.width / tileScale,
-          size.height / tileScale,
-          tileZoom,
-        )
-      : [];
-
-  // Where the marker sits on screen. `nearestWrappedX` is what keeps a site at
-  // 179°E visible when the view has been panned across the antimeridian.
-  const marker = hasPosition
-    ? (() => {
-        const point = project({ latitude, longitude }, view.zoom);
-        return {
-          left: nearestWrappedX(point.x, center.x, view.zoom) - origin.x,
-          top: point.y - origin.y,
-        };
-      })()
-    : null;
 
   const emit = (position: LatLon) => {
     const rounded = {
@@ -313,112 +252,114 @@ export function MapPicker({ latitude, longitude, onPick }: MapPickerProps) {
     onPick(rounded);
   };
 
-  // Turns an offset within the map surface into a position. Reads the view from
-  // a ref-free closure on purpose: every caller below already runs in a render
-  // where `center`/`origin` are current.
-  const positionAt = useCallback(
-    (offsetX: number, offsetY: number) =>
-      unproject({ x: origin.x + offsetX, y: origin.y + offsetY }, view.zoom),
-    [origin.x, origin.y, view.zoom],
-  );
+  // The map's own listeners are attached once per instance and would otherwise
+  // close over the props and state of the render that built it.
+  const emitRef = useRef(emit);
+  useEffect(() => {
+    emitRef.current = emit;
+  });
 
-  // Every deliberate move of the view goes through here, so the clamp is
-  // applied *before* the centre is stored. Clamping only at render would let a
-  // drag keep pushing an invisible centre past the pole, and the way back would
-  // then start with an equal amount of dead movement.
-  const moveTo = (point: Point, zoom: number) =>
-    applyView({
-      ...unproject(clampCenter(point, size.height, zoom), zoom),
-      zoom,
+  // **A layout effect, and before the two camera effects below**, so the zoom
+  // listener is in place for the jump they make on the very first commit. As a
+  // passive effect it would attach after that jump, and a position that arrived
+  // while the style was still resolving would leave `zoom` behind the camera -
+  // which shows up as the "Zoom out" button disabled over a map nowhere near its
+  // limit.
+  useLayoutEffect(() => {
+    if (!map) return;
+    // MapLibre puts `tabindex="0"` on its canvas for a keyboard handler this app
+    // switches off (`map-canvas.tsx`). Left there it is a second tab stop inside
+    // the surface, and a click landing on it takes focus off the element whose
+    // `:focus-visible` decides whether the crosshair is shown.
+    map.getCanvas().setAttribute("tabindex", "-1");
+
+    const syncZoom = () => setZoom(map.getZoom());
+    // Every gesture, not only one that turns into a drag: the surface has to
+    // take focus so the keys work straight after a pan, and a crosshair left
+    // over from the keyboard has to go the moment a pointer takes over.
+    const began = () => {
+      setShowCrosshair(false);
+      surfaceRef.current?.focus();
+    };
+    const pick = (event: { lngLat: LngLat }) =>
+      emitRef.current(positionOf(event.lngLat));
+    // Shown only after a one-finger drag has already failed to move the map -
+    // never for a blocked wheel, which is the diver scrolling the dialog towards
+    // Save and has nothing to be told.
+    const blocked = (event: { gestureType: "wheel_zoom" | "touch_pan" }) => {
+      if (event.gestureType !== "touch_pan") return;
+      setShowTouchHint(true);
+      if (hintTimer.current) clearTimeout(hintTimer.current);
+      hintTimer.current = setTimeout(
+        () => setShowTouchHint(false),
+        TOUCH_HINT_MS,
+      );
+    };
+
+    map.on("zoom", syncZoom);
+    map.on("mousedown", began);
+    map.on("touchstart", began);
+    map.on("click", pick);
+    map.on("cooperativegestureprevented", blocked);
+    return () => {
+      map.off("zoom", syncZoom);
+      map.off("mousedown", began);
+      map.off("touchstart", began);
+      map.off("click", pick);
+      map.off("cooperativegestureprevented", blocked);
+    };
+  }, [map]);
+
+  // The view a map with nothing placed opens on: the whole world, on the shared
+  // centre every other map with nothing to draw opens on.
+  useLayoutEffect(() => {
+    if (!map) return;
+    map.jumpTo({
+      center: [WORLD_CENTER.longitude, WORLD_CENTER.latitude],
+      zoom: MIN_ZOOM,
     });
+  }, [map]);
 
-  // From `center`, not from `project(view)`: a latitude typed into the field
-  // arrives through neither mover and is stored unclamped, so near a pole the
-  // two disagree and the first arrow-key press would be spent re-clamping to
-  // where the map already is.
-  const panBy = (dx: number, dy: number) => {
-    const from = viewRef.current;
-    const at = centerOf(from);
-    moveTo({ x: at.x + dx, y: at.y + dy }, from.zoom);
-  };
+  // ...and then wherever the position came from, which on the first commit is
+  // the position the dialog opened with. Declared after the effect above so the
+  // two run in that order in the one commit where both fire.
+  useLayoutEffect(() => {
+    if (!map || !recentre) return;
+    map.jumpTo({
+      center: [recentre.longitude, recentre.latitude],
+      zoom: recentre.raise
+        ? // A diver already deeper than this is not zoomed *out* by placing a
+          // first pin.
+          Math.max(map.getZoom(), PLACED_ZOOM)
+        : map.getZoom(),
+    });
+  }, [map, recentre]);
 
-  // Zoom is always about a point that must not move: the cursor under a wheel,
-  // the centroid of a pinch, and for the buttons and the keyboard - which have
-  // no pointer - the pin, or the crosshair when there is no pin.
-  //
-  // Only while the pin is on screen, though. Anchoring on one the diver has
-  // panned away from does the opposite of what it is for: it holds the *old*
-  // position still and throws whatever was under the crosshair - the place they
-  // panned to in order to zoom in on it - twice as far out, doubling again on
-  // every press. Computed against the view being zoomed from rather than the
-  // rendered one, so it stays right mid-gesture.
-  const anchorFor = (of: MapView, ofCenter: Point, ofOrigin: Point) => {
-    const centre = { x: size.width / 2, y: size.height / 2 };
-    if (latitude === null || longitude === null) return centre;
-
-    const point = project({ latitude, longitude }, of.zoom);
-    const pin = {
-      x: nearestWrappedX(point.x, ofCenter.x, of.zoom) - ofOrigin.x,
-      y: point.y - ofOrigin.y,
+  // The pin. A MapLibre marker rather than an absolutely positioned child, which
+  // is what hands the renderer the job of drawing a site at 179E in the copy of
+  // the world the view is actually showing after a pan across the antimeridian.
+  useEffect(() => {
+    if (!map || latitude === null || longitude === null) return;
+    const element = document.createElement("div");
+    // `bg-coral`, not `bg-primary`: primary is near-black in light and mid-grey
+    // in dark, which is invisible against a dark basemap. Coral is the one
+    // accent deliberately held constant across both themes, and a warm pin on a
+    // desaturated basemap is what every map does anyway.
+    element.className =
+      "h-3 w-3 rounded-full border-2 border-background bg-coral shadow";
+    // Decorative: the announcement below is this placement's channel to anyone
+    // not looking at the screen.
+    element.setAttribute("aria-hidden", "true");
+    // How the tests find it, now that its placement is a transform MapLibre
+    // writes rather than one this component does.
+    element.dataset.marker = "pin";
+    const marker = new Marker({ element })
+      .setLngLat([longitude, latitude])
+      .addTo(map);
+    return () => {
+      marker.remove();
     };
-    const onScreen =
-      pin.x >= 0 && pin.x <= size.width && pin.y >= 0 && pin.y <= size.height;
-    return onScreen ? pin : centre;
-  };
-
-  // Pure: the view that zooming `from` by `delta` about `anchor` produces, or
-  // null when it is already at a limit. Kept separate from applying it because
-  // a pinch zooms the *gesture's baseline* rather than the live view - see
-  // `onZoom` below - while a wheel composes onto the live one.
-  const zoomView = (
-    from: MapView,
-    delta: number,
-    anchor?: GesturePoint,
-  ): MapView | null => {
-    const zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, from.zoom + delta));
-    if (zoom === from.zoom) return null;
-
-    const fromCenter = centerOf(from);
-    const fromOrigin = {
-      x: fromCenter.x - size.width / 2,
-      y: fromCenter.y - size.height / 2,
-    };
-    // Without a pointer to anchor on - the buttons, the keyboard - hold the pin
-    // if it is on screen, and the crosshair otherwise.
-    const at = anchor ?? anchorFor(from, fromCenter, fromOrigin);
-    // Whatever is under the anchor keeps its offset from the centre, which is
-    // what "this point does not move" means once the scale has changed.
-    const held = unproject(
-      { x: fromOrigin.x + at.x, y: fromOrigin.y + at.y },
-      from.zoom,
-    );
-    const after = project(held, zoom);
-    const next = clampCenter(
-      {
-        x: after.x - (at.x - size.width / 2),
-        y: after.y - (at.y - size.height / 2),
-      },
-      size.height,
-      zoom,
-    );
-    return { ...unproject(next, zoom), zoom };
-  };
-
-  // The wheel, the buttons and the keyboard: compose onto the live view, since
-  // each is a change on top of wherever the map has got to.
-  const zoomAt = (delta: number, anchor?: GesturePoint) => {
-    const next = zoomView(viewRef.current, delta, anchor);
-    if (next) applyView(next);
-  };
-
-  // The view the current gesture is measured against, held whole rather than as
-  // a centre so a pinch can zoom it. Movement is reported as an absolute delta
-  // from here, which is what keeps a long drag free of accumulated rounding -
-  // and what makes a two-finger gesture composable, since the zoom and the pan
-  // it reports for the same event are both relative to this one view.
-  const gestureStart = useRef<MapView>(view);
-  const [showTouchHint, setShowTouchHint] = useState(false);
-  const hintTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  }, [map, latitude, longitude]);
 
   useEffect(
     () => () => {
@@ -427,61 +368,65 @@ export function MapPicker({ latitude, longitude, onPick }: MapPickerProps) {
     [],
   );
 
-  const gesture = useMapGesture(surfaceRef, {
-    onStart: () => {
-      // From the live view, not the rendered one - see `viewRef`. A ctrl+wheel
-      // zoom followed straight away by a drag would otherwise baseline the drag
-      // against the pre-zoom view and snap the map back a step.
-      gestureStart.current = viewRef.current;
-      setShowCrosshair(false);
-      surfaceRef.current?.focus();
-    },
-    // The map follows the pointer, so the world moves *against* the drag.
-    onPan: (dx, dy) => {
-      const from = gestureStart.current;
-      const at = centerOf(from);
-      moveTo({ x: at.x - dx, y: at.y - dy }, from.zoom);
-    },
-    // Zooms the baseline rather than the live view, and the pan that follows in
-    // the same event is then applied to the result. Composing onto the live
-    // view instead would count the pan twice, since the live view already
-    // carries the previous event's.
-    //
-    // A zoom refused at a limit leaves the baseline alone, so the pan still
-    // lands against a view that matches the origin it was measured from.
-    onZoom: (delta, anchor) => {
-      const zoomed = zoomView(gestureStart.current, delta, anchor);
-      if (!zoomed) return;
-      gestureStart.current = zoomed;
-      applyView(zoomed);
-    },
-    onTap: (point) => emit(positionAt(point.x, point.y)),
-    onTouchDrag: () => {
-      setShowTouchHint(true);
-      if (hintTimer.current) clearTimeout(hintTimer.current);
-      hintTimer.current = setTimeout(
-        () => setShowTouchHint(false),
-        TOUCH_HINT_MS,
-      );
-    },
-  });
+  /**
+   * Where a zoom with no pointer behind it should be anchored, or `null` for the
+   * centre.
+   *
+   * Zoom is always about a point that must not move: the cursor under a wheel,
+   * the centroid of a pinch - both MapLibre's own - and, for the buttons and the
+   * keyboard, the pin, or the crosshair when there is none.
+   *
+   * Only while the pin is on screen, though. Anchoring on one the diver has
+   * panned away from does the opposite of what it is for: it holds the *old*
+   * position still and throws whatever was under the crosshair - the place they
+   * panned to in order to zoom in on it - twice as far out, doubling again on
+   * every press.
+   *
+   * The longitude is folded to whichever copy of the repeating world sits
+   * nearest the view before it is projected. `Map.project` does no such folding,
+   * so a site at 179E under a view centred on 179W would otherwise project a
+   * whole world away and read as off screen while plainly visible.
+   */
+  const anchorFor = (instance: MapLibreMap): [number, number] | null => {
+    if (latitude === null || longitude === null) return null;
+    const near =
+      longitude +
+      Math.round((instance.getCenter().lng - longitude) / 360) * 360;
+    const pin = instance.project([near, latitude]);
+    const { width, height } = frameOf(instance);
+    const onScreen =
+      pin.x >= 0 && pin.x <= width && pin.y >= 0 && pin.y <= height;
+    return onScreen ? [near, latitude] : null;
+  };
 
-  useMultiTouchScrollLock(surfaceRef);
-
-  useWheelZoom(surfaceRef, (delta, anchor) => zoomAt(delta, anchor));
+  // The buttons and the keyboard. `around` omitted rather than passed as the
+  // centre: that is what MapLibre already does without one, and saying it twice
+  // invites the two to disagree.
+  const zoomBy = (delta: number) => {
+    if (!map) return;
+    const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, map.getZoom() + delta));
+    if (next === map.getZoom()) return;
+    const anchor = anchorFor(map);
+    map.easeTo({
+      zoom: next,
+      ...(anchor ? { around: anchor } : {}),
+      duration: 0,
+    });
+  };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     // A modified key belongs to the browser, not to the map: ctrl/cmd with
     // `-`/`=` is page zoom, and alt with an arrow is back/forward. Claiming
     // those would trap someone who relies on browser zoom - and the map takes
     // focus on any pointerdown, so it is easy to land here without ever
-    // intending to use the keyboard. `useWheelZoom` splits the wheel the same
-    // way round, leaving the plain one to the dialog. Shift is deliberately not
-    // in this list: `+` and `_` need it on most layouts.
+    // intending to use the keyboard. Cooperative gestures split the wheel the
+    // same way round, leaving the plain one to the dialog. Shift is deliberately
+    // not in this list: `+` and `_` need it on most layouts.
     if (event.ctrlKey || event.metaKey || event.altKey) return;
+    if (!map) return;
 
     // The crosshair tracks how the map is being driven *now*, rather than being
-    // snapshotted at focus. the gesture hook focuses the surface itself, so
+    // snapshotted at focus. A pointer gesture focuses the surface itself, so
     // a value frozen at that moment is wrong both ways round: click then use
     // the arrow keys and there is no crosshair to place against, Tab in then
     // click and one lingers beside the pin the click just placed.
@@ -496,25 +441,26 @@ export function MapPicker({ latitude, longitude, onPick }: MapPickerProps) {
     if (pan[event.key]) {
       event.preventDefault();
       handled();
-      panBy(...pan[event.key]);
+      map.panBy(pan[event.key], { duration: 0 });
       return;
     }
     if (event.key === "+" || event.key === "=") {
       event.preventDefault();
       handled();
-      zoomAt(1);
+      zoomBy(1);
       return;
     }
     if (event.key === "-" || event.key === "_") {
       event.preventDefault();
       handled();
-      zoomAt(-1);
+      zoomBy(-1);
       return;
     }
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
       handled();
-      emit(positionAt(size.width / 2, size.height / 2));
+      // The centre, which is exactly what the crosshair marks.
+      emit(positionOf(map.getCenter()));
     }
   };
 
@@ -527,13 +473,15 @@ export function MapPicker({ latitude, longitude, onPick }: MapPickerProps) {
           // map instead of spending them on its own reading cursor. Justified
           // by the keys below being the whole interaction - and safe because
           // the same position can always be typed into the fields beside it.
+          // On this element rather than on MapLibre's container, which the
+          // renderer owns and rebuilds: the crosshair and the hint are its
+          // siblings, and the tests select through it for exactly that reason.
           role="application"
           aria-label="Map. Click to place the dive site."
           aria-describedby="map-picker-help"
           tabIndex={0}
-          {...gesture}
           onKeyDown={handleKeyDown}
-          // `:focus-visible`, not plain focus. `handlePointerDown` focuses the
+          // `:focus-visible`, not plain focus. A pointer gesture focuses the
           // surface itself so the keys work straight after a drag, so a plain
           // `onFocus` leaves a crosshair sitting at the centre after every
           // mouse click - next to the pin the click just placed, answering a
@@ -542,51 +490,20 @@ export function MapPicker({ latitude, longitude, onPick }: MapPickerProps) {
             setShowCrosshair(event.currentTarget.matches(":focus-visible"))
           }
           onBlur={() => setShowCrosshair(false)}
-          // `touch-pan-y`, not `touch-none`. `touch-none` is what a map wants
-          // - it is the only way a one-finger drag reaches the gesture handler
-          // rather than scrolling - but this map lives inside a
-          // `max-h-[90vh] overflow-y-auto` dialog and covers a large share of
-          // it on a phone, so claiming the vertical axis leaves a thumb landing
-          // on the map unable to reach Notes or Save at all. Scrolling past the
-          // control wins over panning within it, so one finger is the page's
-          // and two are the map's - see `useMapGesture`, and
-          // `useMultiTouchScrollLock` for the half `touch-action` cannot
-          // express.
-          //
-          // The wheel is split the same way and for the same reason: a plain
-          // one is left to scroll the dialog, and only ctrl/cmd+wheel zooms
-          // (`useWheelZoom`), which is also what a trackpad pinch sends.
-          className="relative h-56 w-full cursor-grab touch-pan-y select-none bg-muted outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing sm:h-64"
+          className="relative h-40 w-full select-none bg-muted outline-none focus-visible:ring-2 focus-visible:ring-ring sm:h-48"
         >
-          {/* The fractional part of the zoom, applied to the whole grid at
-              once. `origin-top-left` is what makes the tiles' own offsets -
-              which are in tile-level pixels - land where they belong once
-              scaled, without each needing to know about it. */}
-          <div
-            data-testid="tile-layer"
-            className="pointer-events-none absolute left-0 top-0 origin-top-left"
-            style={{ transform: `scale(${tileScale})` }}
-          >
-            {tiles.map((tile) => (
-              /* Plain `<img>`, not `next/image`: these are third-party tiles
-                 addressed by z/x/y, so there is nothing for the optimizer to do
-                 but proxy them. Positioned by transform rather than by top/left
-                 so a pan is a composite, not a layout of every tile. */
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                key={tile.key}
-                src={tileUrl(template, tile.x, tile.y, tile.zoom)}
-                alt=""
-                width={TILE_SIZE}
-                height={TILE_SIZE}
-                draggable={false}
-                className="pointer-events-none absolute left-0 top-0 max-w-none"
-                style={{
-                  transform: `translate3d(${tile.left}px, ${tile.top}px, 0)`,
-                }}
-              />
-            ))}
-          </div>
+          <MapCanvas
+            basemap={basemap}
+            theme={resolvedTheme === "dark" ? "dark" : "light"}
+            interactive
+            onMap={setMap}
+            unsupported={
+              <p className="flex h-full items-center justify-center px-4 text-center text-xs text-muted-foreground">
+                This browser cannot display the map. The coordinates can still
+                be typed into the fields above.
+              </p>
+            }
+          />
 
           {showCrosshair && (
             // Only under keyboard focus: it marks where Enter would place
@@ -594,34 +511,11 @@ export function MapPicker({ latitude, longitude, onPick }: MapPickerProps) {
             // is asking.
             <div
               aria-hidden
-              className="pointer-events-none absolute left-1/2 top-1/2 h-6 w-6 -translate-x-1/2 -translate-y-1/2"
+              data-testid="crosshair"
+              className="pointer-events-none absolute left-1/2 top-1/2 z-10 h-6 w-6 -translate-x-1/2 -translate-y-1/2"
             >
               <div className="absolute left-1/2 top-0 h-full w-px -translate-x-1/2 bg-foreground/60" />
               <div className="absolute left-0 top-1/2 h-px w-full -translate-y-1/2 bg-foreground/60" />
-            </div>
-          )}
-
-          {marker && (
-            <div
-              aria-hidden
-              // `left-0 top-0` rather than relying on the static position
-              // happening to resolve to the container's origin - which holds
-              // only while every preceding sibling is also out of flow.
-              className="pointer-events-none absolute left-0 top-0"
-              style={{
-                transform: `translate3d(${marker.left}px, ${marker.top}px, 0)`,
-              }}
-            >
-              {/* Pulled back by half its own size in both axes, so the dot is
-                  centred on the coordinate rather than hanging below and to
-                  the right of it.
-
-                  `bg-coral`, not `bg-primary`: primary is near-black in light
-                  and mid-grey in dark, which is invisible against Dark Matter's
-                  near-black tiles. Coral is the one accent deliberately held
-                  constant across both themes, and a warm pin on a desaturated
-                  basemap is what every map does anyway. */}
-              <div className="h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-background bg-coral shadow" />
             </div>
           )}
 
@@ -631,47 +525,40 @@ export function MapPicker({ latitude, longitude, onPick }: MapPickerProps) {
             // question the diver has just asked, and nobody on a mouse ever
             // asks it. `aria-hidden` because it describes a touch gesture to
             // people who did not use one - the help text below covers the rest.
+            // MapLibre draws a screen of its own for the same event, with the
+            // same sentence; `globals.css` hides it and `map-canvas.tsx` empties
+            // its wording, because it flashes for a blocked wheel too.
             <div
               aria-hidden
-              className="pointer-events-none absolute inset-0 flex items-center justify-center bg-background/70 text-sm font-medium"
+              className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-background/70 text-sm font-medium"
             >
               Use two fingers to move the map
             </div>
           )}
 
-          {/* `pointer-events-auto` so the licence links can be clicked, which
-              costs a drag that happens to start on this corner. Every map makes
-              the same trade. `target="_blank"` is not decoration either: this
-              sits in a dialog holding a half-filled form, and navigating away
-              in the same tab would throw it away. */}
-          <div className="pointer-events-auto absolute bottom-0 right-0 bg-background/80 px-1 text-[10px] leading-4 text-muted-foreground">
-            {attribution.map((part, index) =>
-              part.href ? (
-                <a
-                  key={index}
-                  href={part.href}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                  className="underline underline-offset-2 hover:text-foreground"
-                >
-                  {part.text}
-                </a>
-              ) : (
-                <span key={index}>{part.text}</span>
-              ),
-            )}
+          {/* Outside `MapCanvas` so the credit survives a browser with no
+              WebGL2, where that component renders its fallback and nothing
+              else. `target="_blank"` is not decoration either: this sits in a
+              dialog holding a half-filled form, and navigating away in the same
+              tab would throw it away.
+
+              A gesture never starts here, and that is now structural rather than
+              a guard: MapLibre's handlers are on its own canvas container, which
+              this is a sibling of rather than a child. */}
+          <div className="absolute bottom-0 right-0 z-10 bg-background/80 px-1 text-[10px] leading-4 text-muted-foreground">
+            <Attribution value={basemap.attribution} />
           </div>
         </div>
 
-        <div className="absolute left-2 top-2 flex flex-col gap-1">
+        <div className="absolute left-2 top-2 z-10 flex flex-col gap-1">
           <Button
             type="button"
             variant="secondary"
             size="icon"
             className="h-7 w-7"
             aria-label="Zoom in"
-            disabled={view.zoom >= MAX_ZOOM}
-            onClick={() => zoomAt(1)}
+            disabled={zoom >= MAX_ZOOM}
+            onClick={() => zoomBy(1)}
           >
             <Plus className="h-4 w-4" />
           </Button>
@@ -681,8 +568,8 @@ export function MapPicker({ latitude, longitude, onPick }: MapPickerProps) {
             size="icon"
             className="h-7 w-7"
             aria-label="Zoom out"
-            disabled={view.zoom <= MIN_ZOOM}
-            onClick={() => zoomAt(-1)}
+            disabled={zoom <= MIN_ZOOM}
+            onClick={() => zoomBy(-1)}
           >
             <Minus className="h-4 w-4" />
           </Button>

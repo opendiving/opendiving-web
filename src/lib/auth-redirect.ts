@@ -1,12 +1,20 @@
 // Where a visitor should land once they've signed in, and how that destination
 // survives the trip through their inbox.
 //
-// Two very different lifetimes are handled here:
-//   - In-page sign-in (Google) never leaves the tab, so the destination is just
-//     passed down as a prop (`AuthForm` -> `GoogleAuthButton`) - no storage.
+// Three different lifetimes, of which this file stores one:
+//   - In-page sign-in - the six-digit code, and a passkey ceremony - never leaves
+//     the tab, so the destination is just passed down as a prop. No storage.
 //   - The email magic link leaves the app entirely and comes back on
 //     `/auth/verify`, a page that has no idea where the visitor was originally
-//     headed. `localStorage` carries it across that hop.
+//     headed. `localStorage` carries it across that hop, under the single
+//     read-once key below.
+//   - Google leaves the tab too, and comes back on `/auth/google/callback`. Its
+//     destination is *not* stored here: it rides inside the per-attempt record
+//     `lib/google-oauth.ts` keeps, keyed by that attempt's `state`. The single
+//     key below would be the wrong home for it, because two tabs signing in at
+//     once would overwrite each other's - tab A would then sign in perfectly and
+//     land on tab B's page, with nothing anywhere reporting a problem. Only the
+//     sanitizing below is shared with that flow.
 //
 // `localStorage` (not `sessionStorage`) because the link is clicked from a mail
 // client, and that practically never reuses the tab that asked for it: a desktop
@@ -21,6 +29,8 @@
 // tab - so it carries its own expiry rather than relying on the tab closing.
 // `lib/gas-use-view.ts` and the two other remembered-view modules store their
 // preferences the same way, for a related reason.
+
+import type { AuthStatus } from "@/lib/api/auth";
 
 const POST_AUTH_REDIRECT_KEY = "opendiving:post-auth-redirect";
 
@@ -47,6 +57,42 @@ interface StoredRedirect {
 // Where every auth entry point sends a freshly signed-in user when there's no
 // remembered destination.
 export const DEFAULT_POST_AUTH_REDIRECT = "/dashboard";
+
+// The two destinations that are not a sign-in: a verified identity with no account
+// yet, and an account inside its deletion grace period. Both are screens that ask for
+// one more explicit decision before there is a session.
+export const ONBOARDING_PATH = "/onboarding";
+export const RESTORE_PATH = "/restore";
+
+// Where an applied `AuthOutcome` sends the visitor, in the one place that decides it.
+//
+// Four entry points reach this - the magic link, the six-digit code, Google and a
+// passkey - and every one of them used to branch on a boolean that had only ever had
+// two possible values. A third status arriving at four separate ternaries is four
+// chances to route somebody holding no onboarding token into the onboarding form, so
+// the mapping lives here and the call sites pass a status.
+//
+// `next` is only honoured for a sign-in, and is sanitized here rather than at each
+// call site: two of them read it out of `localStorage` - the magic link from the key
+// in this file, Google from its own per-attempt record - and the rest take it from a
+// prop, and none should have to remember. The other two statuses drop it, exactly
+// as they always have - a brand-new account has nothing to return to, and neither has
+// an account that isn't back yet. Both screens end at the default.
+export function destinationForOutcome(
+  status: AuthStatus,
+  next?: string | null,
+): string {
+  switch (status) {
+    case "onboarding_required":
+      return ONBOARDING_PATH;
+    case "deletion_pending":
+      return RESTORE_PATH;
+    // Exhaustive on purpose: a fourth status added to `AuthStatus` is a type error
+    // here, in the one file, rather than a silent mis-route in four.
+    case "authenticated":
+      return sanitizeRedirectPath(next) ?? DEFAULT_POST_AUTH_REDIRECT;
+  }
+}
 
 // Anything a browser could read as *another* origin - `//evil.example`, an
 // absolute URL, or the backslash variants some parsers normalise to `//`.

@@ -142,9 +142,18 @@ combobox. `TripCombobox` is a thin single-select wrapper that just supplies the 
 calls. `DiveSiteMultiSelect` wraps it too, but for picking _several_ dive sites (a dive can have
 more than one, e.g. a drift dive that crosses named sites) - it renders `CreatableCombobox` as the
 "add a site" input (always called with `value={undefined}` so it clears after each pick) plus its
-own reorderable list of already-added sites above it. If a third "pick or create" entity type is
-needed, wrap `CreatableCombobox` the same way rather than copy-pasting the interaction logic
-(filtering, commit-on-blur/Enter, mouse-down-prevents-blur for option clicks).
+own reorderable list of already-added sites above it. `GearItemMultiSelect` and `SpeciesMultiSelect`
+followed. Wrap `CreatableCombobox` the same way for any further "pick or create" entity type rather
+than copy-pasting the interaction logic (filtering, commit-on-blur/Enter, mouse-down-prevents-blur
+for option clicks).
+
+**Read the species picker's section before writing the next one**, though — "The species picker
+resolves a pick into a catalog row before form state sees it" below. It is the only wrapper whose
+pick can need a round trip before it has a value at all, and the three things that fall out of that
+(a pending row held outside form state, the submit guard that stops a save racing it, and reading
+the selection from a ref so two concurrent resolves don't drop each other) are not visible from this
+section or from the two synchronous wrappers. A pointer rather than a summary, so there is only one
+place for it to be wrong.
 
 ## Every dive form picker searches server-side
 
@@ -260,6 +269,9 @@ through every page.
 If a new route needs to opt out of the shared chrome (e.g. another standalone/full-bleed page like
 `/signin`), add its path to `NO_CHROME_ROUTES` in `app-shell.tsx` rather than trying to suppress
 `Header`/`Footer` from within the page itself - there's no longer a per-page mechanism for that.
+Then render `layout/standalone-shell.tsx` rather than hand-rolling the centered card: `AppShell` is
+where the app's `<main>` lives, and that component is where the chrome-free half of the app keeps
+its own. See "The chrome-free routes had no `<main>`" at the end of this file.
 
 ## Shared list-page pattern: `useAuthGuard` + `usePaginatedResource` + `useDeleteResource`
 
@@ -323,15 +335,97 @@ part worth remembering before changing any of them:
 
 - `src/proxy.ts` needs an _origin_ for the CSP's `connect-src` (a source expression with a path
   matches that exact path only), so it runs the value through `new URL(...).origin` and the prefix
-  is discarded.
+  is discarded. That reduction now lives in `lib/api-base.ts`'s `apiCspSource`, because the value
+  may also be relative, which `new URL` throws on - see the next section.
 - `scripts/screenshots.mjs` reads the same variable for its own `fetch` calls and used to append
   `/api/v1` itself. Left that way, anyone with the variable exported in their shell got
-  `.../api/v1/api/v1/...`; it now appends only the route, like the app does.
+  `.../api/v1/api/v1/...`; it now appends only the route, like the app does. It runs in Node with no
+  page origin to resolve against, so an absolute value is the only kind it can use - which is one
+  reason `.env.example` keeps the absolute URL for dev even though the deployed default is relative.
 
 The alternative - keep the variable an origin and have `client.ts` append the prefix - was not
 taken. The prefix is fixed on the API side, but the path is not: an instance behind a reverse proxy
 that mounts the API under a subpath has nowhere else to say so, and `proxy.ts` was already written
 around the variable carrying a path.
+
+The variable is no longer _required_, though. It is a build-time override for a split-origin
+deployment; unset, the base is the relative `/api/v1` and this app proxies it - see the next
+section.
+
+## The web app proxies `/api/v1` to the API, and that is the shipped topology
+
+`NEXT_PUBLIC_API_URL` unset, axios' `baseURL` is the relative `/api/v1` (`DEFAULT_API_BASE_URL` in
+`lib/api-base.ts`) and a catch-all route handler, `app/api/v1/[...path]/route.ts`, streams whatever
+reaches it through to `API_INTERNAL_URL` (default `http://api:8000`, the compose service name;
+`http://localhost:8000` under `next dev`). Everything the browser touches is one origin.
+
+The reason is the `NEXT_PUBLIC_*` build-time trap. Those values are inlined into the client bundle
+by the compiler, so a bundle built with an API address baked in only works for whoever built it -
+which is why the `Dockerfile` used to hard-fail without the build-arg, and why a prebuilt image was
+impossible. Nothing about the API's address is in the bundle any more; one published image runs on
+any domain. Consequences, all simplifying: no CORS to configure, no cross-site request for the
+`SameSite=Lax` refresh cookie to fall foul of, and `Content-Disposition` finally visible to JS
+(`lib/download.ts` explains why it usually isn't).
+
+Why a route handler rather than `rewrites()` in `next.config.js`: rewrites are evaluated when the
+config is loaded and serialized into the build output under `output: "standalone"`, so a prebuilt
+image would carry whatever the _builder_ had set - the same trap one layer down. Route handlers run
+per request and read `process.env` then. This is the pattern Next's own self-hosting guide points at
+for "one image promoted through multiple environments".
+
+Things that are load-bearing in `lib/api-proxy.ts`, each of which was found by breaking it:
+
+- **`Expect` must be dropped.** `undici` (the `fetch` behind route handlers) rejects the header
+  outright with `UND_ERR_NOT_SUPPORTED`, so forwarding it fails the entire request. Node has already
+  answered the `100-continue` by the time a handler runs, so there is nothing to forward. Browsers
+  never send it - only `curl` and similar do, on large bodies - so this surfaces as "every upload
+  from a script 502s" and nothing else.
+- **`Accept-Encoding` must not be forwarded, and `Content-Encoding` must not be passed back.**
+  `fetch` negotiates its own encoding for the hop it opens (`gzip, deflate`) and decodes the reply
+  transparently, but leaves `content-encoding` on the response object. Copy the response headers
+  verbatim and the browser is told to gunzip bytes that are already plain. `content-length` goes
+  with it, being the compressed length of a body that no longer is. Forwarding the browser's own
+  list is worse than useless: it can advertise a codec `fetch` will not decode, and then the header
+  is telling the truth and stripping it is what corrupts the body.
+- **`Set-Cookie` has to be re-added with `getSetCookie()`.** Iterating `Headers` joins repeats with
+  a comma, and cookie `Expires` values contain one. The refresh cookie is the whole session.
+- **No body for `HEAD`/204/205/304**, or the `Response` constructor throws.
+- **Nothing is buffered.** `request.body` goes straight into `fetch` (which needs `duplex: "half"`
+  before it will accept a stream), so a 20 MB upload arrives at the API as it is being sent. This
+  holds only because `src/proxy.ts`'s matcher excludes `api/`: a request that reaches middleware has
+  its body cloned into memory first, capped at Next's 10 MB default and **silently truncated** past
+  it (`experimental.proxyClientMaxBodySize`). Widening that matcher would quietly break every upload
+  over 10 MB.
+- **The unreachable-API log names the path, never the query string.** Two precheck routes carry a
+  live, single-use sign-in token as `?token=...`, and that error branch fires precisely when the
+  check never reached the API - so the token is still valid at the moment it would be written. The
+  API refuses to log those for the same reason.
+- **`X-Forwarded-For` is passed through, not appended to.** A route handler cannot see the socket
+  peer - `NextRequest.ip` was removed in Next 15 - but it does not need to: Next's own server fills
+  `x-forwarded-for`, `-proto`, `-host` and `-port` from the connection when they are absent and
+  leaves a front proxy's values when they are not, so the chain is already assembled by the time the
+  handler runs. Copying it across is what keeps the API's ten per-IP rate limits in separate
+  buckets. The API only believes that chain when its peer is listed in `TRUSTED_PROXY_IPS`, and its
+  peer is _this container_, not the operator's own proxy - which the API never talks to directly. An
+  install that omits it gets one shared bucket rather than a forgeable one. That is the shipped
+  case, and it inverts when nothing appends: Next fills the header in only when it is _absent_
+  (`req.headers['x-forwarded-for'] ??= originalRequest?.socket?.remoteAddress`, `base-server.js`),
+  so a caller that sends its own arrives with it intact and its socket address never appended.
+  Behind a proxy that does append - Caddy, Traefik, nginx - that is harmless: the appended entry is
+  the real caller and the right-most one no listed proxy vouched for, so the API's right-to-left
+  walk stops there and the forged prefix is ignored. Expose this container directly, with nothing in
+  front of it, and cover it in `TRUSTED_PROXY_IPS` anyway, and the forged entry _is_ that right-most
+  untrusted one - all ten limits, magic-link and contact form included, bypassable by rotating one
+  header. There it is _setting_ the variable that makes the bucket forgeable, and omitting it is
+  still the safe direction. Not fixable at this layer either: with no socket peer to compare
+  against, an honest chain and a forged one are the same bytes, and stripping the header would merge
+  every caller into one bucket on the topology that actually ships. `.env.example` carries the
+  warning instead, beside where an operator meets the proxy setup.
+
+Local dev keeps the split-origin shape: `.env` sets `NEXT_PUBLIC_API_URL` to the API's own published
+port, so the route handler is never reached and `scripts/screenshots.mjs`, which reads the same
+variable from Node, still has an absolute URL to fetch. Both paths are exercised - the relative
+default is what CI builds, the absolute override is what dev runs.
 
 ## Strict, nonce-based CSP via `src/proxy.ts` - Node server only
 
@@ -381,16 +475,19 @@ This only works because the app runs as a persistent Node server (`output: "stan
   just breaks dev styling for reasons outside this app's control. Production never inline-injects
   CSS - it ships static, hashed `<link rel="stylesheet">` files covered by `'self'`, so the nonce
   requirement costs nothing there.
-- `style-src` also lists `https://accounts.google.com` in _both_ modes. GSI's client script injects
-  its own `<link rel="stylesheet" href="https://accounts.google.com/gsi/style">` into `<head>`, and
-  a host source is the only thing that allows it: `'unsafe-inline'` covers inline `<style>` blocks
-  only, never an external stylesheet, so the dev branch needs the entry just as much as production
-  does. Without it the browser reports a `style-src-elem` violation for that URL and the real
-  (invisible, click-receiving) Google button in `components/auth/google-auth-button.tsx` renders
-  unstyled - it still sits under the custom visual, so nothing looks broken, which is exactly why
-  this went unnoticed. The same origin already appears in `connect-src`/`frame-src`; note that
-  adding a host source alongside a nonce is fine - a nonce only disables the `'unsafe-inline'`
-  fallback for its directive, not host allowlisting.
+- **Superseded:** `style-src` no longer lists `https://accounts.google.com`, and neither does any
+  other directive, in either configuration - see _""Continue with Google" is a redirect, and
+  Google's code never reaches the browser"_ below. The bullet as written: `style-src` also lists
+  `https://accounts.google.com` in _both_ modes. GSI's client script injects its own
+  `<link rel="stylesheet" href="https://accounts.google.com/gsi/style">` into `<head>`, and a host
+  source is the only thing that allows it: `'unsafe-inline'` covers inline `<style>` blocks only,
+  never an external stylesheet, so the dev branch needs the entry just as much as production does.
+  Without it the browser reports a `style-src-elem` violation for that URL and the real (invisible,
+  click-receiving) Google button in `components/auth/google-auth-button.tsx` renders unstyled - it
+  still sits under the custom visual, so nothing looks broken, which is exactly why this went
+  unnoticed. The same origin already appears in `connect-src`/`frame-src`; note that adding a host
+  source alongside a nonce is fine - a nonce only disables the `'unsafe-inline'` fallback for its
+  directive, not host allowlisting.
 - Radix components that lock body scroll (`Dialog`, `Popover`, `DropdownMenu`, ...) pull in
   `react-remove-scroll` -> `react-style-singleton`, which injects a `<style>` tag straight into
   `document.head` via raw DOM APIs - completely outside React/Next's own nonce propagation. It looks
@@ -403,6 +500,42 @@ This only works because the app runs as a persistent Node server (`output: "stan
   ordering is reliable even though the scroll lock itself only activates later (e.g. when a dialog
   opens). Without this, opening the first `Dialog`/`Popover`/etc. throws a `style-src-elem` CSP
   violation for react-remove-scroll's un-nonced style tag.
+- The matcher deliberately carries **no `missing:` clause**, which is a departure from Next's own
+  CSP guide (`node_modules/next/dist/docs/01-app/02-guides/content-security-policy.md`). The guide
+  puts one at that exact spot, listing `next-router-prefetch` and `purpose: prefetch`, and justifies
+  it only with "prefetches ... don't need the CSP header". The concern it is usually explained by -
+  a nonce baked into a prefetched RSC payload going stale in the client router cache, then being
+  replayed under a document whose CSP carries a different nonce - does not arise here, because a
+  real prefetch payload has no nonce in it at all. Measured against the production stack
+  (`http://localhost:8080`, behind the shipped Caddy; the dev server on `:3000` is a weaker
+  instrument for this and reports different `Cache-Control`):
+  `curl -H "RSC: 1" -H "next-router-prefetch: 1" .../privacy` returns a 267-byte router-tree stub
+  with no `<script>` and no nonce, while the same URL with `RSC: 1` alone returns ~36 KB carrying
+  the request's nonce. What the clause did buy was a one-header opt-out from the policy: with
+  `purpose: prefetch`, or any value at all of `next-router-prefetch`, the middleware never ran and a
+  full 66 KB HTML document with 22 `<script>` tags came back with no CSP, no HSTS and no
+  `X-Robots-Tag`. Two facts bound that, and neither rescues the clause. `matchHas`
+  (`node_modules/next/dist/shared/lib/router/utils/prepare-destination.js`) looks a header up by
+  exact lowercased key and compiles its value as an anchored regex, so the `Sec-Purpose: prefetch`
+  that Chrome's speculation rules and Google's prefetch proxy actually send never matched the
+  `purpose` key - those requests always kept the CSP, and only a hand-written header stripped it.
+  And the responses are `private, no-cache, no-store, max-age=0, must-revalidate` with no `ETag`, so
+  no shared cache could store the CSP-less document and there was no 304 path to poison. Cache
+  poisoning was therefore never the motivation for removing it; the header-stripping primitive
+  itself was. `src/proxy.test.ts` asserts the exported `config` carries no `has`/`missing` entry -
+  Vitest does not run Next's matcher, so a static assertion is the only form that guarantee can
+  take, and every other test in that file calls `proxy()` directly and would not notice the clause
+  coming back.
+- The one change that would reopen the question above is enabling `cacheComponents`/PPR, which
+  `next.config.js` has no `experimental` block for today. App-shell prefetches
+  (`next-router-prefetch: 3`, `FetchStrategy.RuntimeShell` in
+  `node_modules/next/dist/client/components/segment-cache/cache.js`, which writes the response into
+  the client cache as a prerender) would then be cacheable, and a per-request nonce baked into one
+  is exactly the stale nonce the upstream clause guards against. That is not a reason to restore
+  four lines to the matcher, though: the same guide already calls Partial Prerendering
+  "incompatible" with nonce-based CSP outright, "since static shell scripts won't have access to the
+  nonce", so turning it on means rethinking this whole mechanism - see the static-export bullet
+  above for the shape that rethink would take.
 
 ## Unified auth flow: `/signin`/`/signup` are gone, replaced by `AuthForm` on the landing page
 
@@ -449,6 +582,12 @@ editing (name/username/email) is unaffected; it was never part of the auth flow 
 `PATCH /user/{uuid}`.
 
 ### `GoogleAuthButton` talks to `google.accounts.id` directly - `@react-oauth/google` was removed
+
+**Superseded, along with the four entries below it.** No Google script is loaded at all any more, so
+there is no library choice left to make and no `?hl=en` problem to solve - see _""Continue with
+Google" is a redirect, and Google's code never reaches the browser"_ below. Kept because it records
+why `@react-oauth/google` is not in `package.json`, which is still worth knowing before anyone adds
+it back.
 
 This app used to render Google's button through the `@react-oauth/google` package
 (`GoogleOAuthProvider` in `app/layout.tsx`, `GoogleLogin` in `GoogleAuthButton`). It's no longer a
@@ -519,6 +658,11 @@ methods actually used (`initialize`, `renderButton`) - no need to pull in `@reac
 
 ### The button's border radius and dark-mode outline aren't config options - GSI's own pixels can't be reached, so a wrapper draws the missing edge instead
 
+**Superseded.** Google renders no pixels here any more, so none of this is reachable or needed - see
+_""Continue with Google" is a redirect, and Google's code never reaches the browser"_ below. The
+button is an ordinary `Button` with the app's own corner radius and theme, which is what the three
+entries here were trying to approximate from the outside.
+
 A follow-on request: match the button's corner radius to `Button`'s own `rounded-md`, and fix how
 the button visually disappears in dark mode (the `filled_black` theme has no border of its own, and
 blends into the near-black `--card` background it sits on).
@@ -553,6 +697,9 @@ accessibility trade-off above to fully eliminate.
 
 ### `colorScheme` on the render target, kept in sync with `resolvedTheme` (not hardcoded to `"light"`)
 
+**Superseded.** There is no render target: nothing of Google's is rendered into this page - see
+_""Continue with Google" is a redirect, and Google's code never reaches the browser"_ below.
+
 A reasonable follow-up question, prompted by
 [a Medium post](https://medium.com/@ludvig.flyckt/fixing-the-react-google-auth-button-background-in-dark-mode-150e12220256)
 describing a real `@react-oauth/google` dark-mode fix: wrapping the button in a
@@ -581,6 +728,10 @@ actually resolved this.
 
 ### Resolution: `theme` is always `"outline"`, regardless of the app's own light/dark mode
 
+**Superseded.** No `theme` is passed to anything, because nothing of Google's is configured or
+rendered - see _""Continue with Google" is a redirect, and Google's code never reaches the browser"_
+below.
+
 With the logo-backing chip confirmed as genuinely unreachable (not a CSS/config issue - see both
 entries above), the two remaining options were: (1) accept a fully custom button via the
 invisible-`renderButton()`-overlay trick from above, accessibility trade-off included, or (2) stop
@@ -602,6 +753,19 @@ If a truly dark-native button (no light patches anywhere) becomes worth the acce
 later, the fully custom overlay approach from above is still the one documented path to get there.
 
 ### Resolution, take two: the fully custom overlay button, with the focus-ring trade-off actually mitigated
+
+**Superseded, and the trade-off it describes is gone rather than mitigated.** The overlay - a
+decorative `aria-hidden` visual with GSI's real button stacked on it at `opacity: 0` - rested on an
+assumption about GSI's internals rather than a documented contract with Google, which this entry was
+honest about. There is no injected button to hide behind now, so the control is one real `<button>`
+carrying its own name, and the `group-has-[:focus-visible]` machinery went with the rest. See
+_""Continue with Google" is a redirect, and Google's code never reaches the browser"_ below.
+
+Two details here are additionally stale about the code as it stood _before_ that change, and should
+not be cited as current by anyone reading back: the `renderButton` effect was keyed on
+`[ready, width]`, not `[ready, width, resolvedTheme]`, and `theme` was hardcoded to `"outline"`
+rather than tracking light/dark. The icon is at `components/icons/google-icon.tsx`, not
+`components/google-icon.tsx`.
 
 The all-`"outline"` button above shipped first as the cheap, zero-risk fix, but was revisited in
 favor of the fully custom button after all: `GoogleAuthButton` now renders its own `Button`-styled
@@ -861,15 +1025,32 @@ defaulted - `""` means unknown, and 0 bar would read as an empty tank.
 
 **`guessed` is keyed off the file alone**, and getting that wrong made the whole warning dead code
 on both real forms. It first asked whether _no_ source had the value - file or carried-over
-cylinder - which reads sensibly and never fires: both dive pages seed `mixtures` with a complete
-`DEFAULT_MIXTURE` cylinder before any import happens, and the create form's last-dive prefill
-supplies all three too, so the carried cylinder is never null. For the ordinary
-one-cylinder-file-against-a-one-cylinder-form case the counts always match, so the note appeared
-only when the cylinder counts differed - a minority path, and one that made it look like it worked.
+cylinder - which reads sensibly and almost never fires, because a form that already holds a cylinder
+has all three values: at the time both dive pages seeded `mixtures` with a complete
+`DEFAULT_MIXTURE` cylinder before any import happened, and the create form's last-dive prefill
+supplies all three too. For the ordinary one-cylinder-file-against-a-one-cylinder-form case the
+counts always match, so the note appeared only when the cylinder counts differed - a minority path,
+and one that made it look like it worked.
 
-`applyParsedDiveToForm` is tested against the pages' literal seed rather than a hand-picked
+That premise has since gone entirely: the create form seeds `[]` rather than a cylinder (see "The
+create form proposes no cylinder, and the last one is removable" below), and the edit form seeds
+`[]` for a dive that records no gas (see "The edit form submits the whole dive, because the read is
+the whole dive"), so an untouched form on either page may hold nothing to consult. **The conclusion
+is unchanged and the reasoning is stronger for it**, not weaker - "no source had it" is still dead
+on any form the prefill filled in, on any dive that has cylinders, and on the second of two
+complementary imports, which are exactly the cases the warning exists for. Do not re-derive it from
+the seed; the seed is not what makes it right.
+
+What an empty form does change is the _wording_ the same one-cylinder import gets. With no cylinder
+to pair against, `volume` and `helium` genuinely fall to `DEFAULT_MIXTURE`, so the note reads "Those
+are defaults" where it used to say "already on this form" - which is the more urgent of the two
+sentences and, for a number the page supplied rather than the diver, the only true one.
+
+`applyParsedDiveToForm` is tested against the pages' literal seeds rather than a hand-picked
 `existing` cylinder, because the bug lived entirely in that seam: every unit test of the merge
-passed, and none of them used the input the app actually produces.
+passed, and none of them used the input the app actually produces. There are two such seeds now -
+`[]` for an untouched create form and one `DEFAULT_MIXTURE` for anything the diver, the prefill or
+an earlier import has filled in - and `dive-file-import.test.ts` covers both.
 
 **The note says where the value came from, not just that it was guessed.** `mergeMixture` reports
 per field whether the number now in the box came from the file, from the cylinder already on the
@@ -1149,6 +1330,46 @@ losing that form or building draft-persistence for it. Both dialogs take an opti
 record: passing one edits it in place, omitting one creates. `/gear/[id]` still exists as a detail
 page, since it hosts the "Dives with this Gear" list that makes an item's dive count explorable.
 
+## The gear delete dialog offers "Archive instead", and had to stop lying first
+
+Both gear delete confirmations used to say "Dives you already logged it on keep showing it. To
+retire gear without touching your log, archive it instead." Neither half held up. The API stopped
+rendering soft-deleted gear on a dive read (`crud_dive_gear_items.py`) and in a set
+(`crud_gear_set_items.py`), so a deleted item drops off the log entirely; and the archive it pointed
+at was offered nowhere in that dialog, only behind a row action the diver had already walked past.
+
+Both are fixed together, because the honest sentence is what makes the button worth having:
+
+> Deleting removes this gear from your dives and gear sets. To keep it in your log and its service
+> history, archive it instead. Either way, its service reminders stop.
+
+`ConfirmDialog` grew a `secondaryAction?: { label, onClick }` for it, rendered between Cancel and
+confirm. Between, not beside Cancel: leaving by it is a deliberate action rather than a way out of
+one. It is disabled by `isLoading` and _not_ by `confirmDisabled` - `isLoading` means the
+destructive request is already gone and there is nothing left to divert, while `confirmDisabled`
+only means the dialog's own content is incomplete, which says nothing about the gentler action.
+
+**The offer is conditional on `is_archived`.** Both pages archive through a _toggle_
+(`toggleArchived` on the list, `handleToggleArchived` on the detail page), so wiring the button
+straight to one on an already-archived item would unarchive it - the exact opposite of its label,
+under a label that reads as the safe choice. Archived gear reaches the delete dialog through the
+list's "Show archived", so this is a real path, not a theoretical one.
+
+It also archives **directly**, skipping the separate archive confirmation the row action opens
+(`handleArchiveToggle` / `setIsArchiveConfirmOpen`). Stacking a second confirmation on a diver who
+is already reading one, to confirm the milder of the two things in front of them, is a dialog for
+its own sake - and the copy they are reading already says what the button does.
+
+**The reminders sentence stands on its own, and that placement is the whole point of it.** Archiving
+stops service reminders exactly as deleting does - `send_gear_service_digests` filters
+`GearItem.is_archived.is_(False)` alongside `is_deleted` (see the backend DECISIONS.md: silencing a
+retired item's rules without having to pause each one is why). The first draft hung the clause off
+the delete - "Deleting ... and stops its service reminders. To keep it ..., archive it instead" -
+where both halves are individually true and the contrast between them still reads as "archiving
+keeps them". That is the same shape of untruth this section exists to remove, one step subtler, so
+it went the same way. "Either way" is doing real work; a future edit that reattaches the clause to
+either verb reintroduces the claim. Pinned by a test.
+
 ## `ui/checkbox.tsx` is a plain `<input type="checkbox">`
 
 Every other `ui/` primitive wraps a Radix component, but `@radix-ui/react-checkbox` isn't a
@@ -1345,9 +1566,10 @@ DECISIONS.md for why it isn't a gear item) is rendered directly below the gear p
 Temperature/Visibility.
 
 The split the form makes is _what the diver observed_ vs. _how the diver was configured_: depth,
-temperature and visibility are readings taken from the dive, while gear and weight are choices
-carried into it. Weight is also the field a diver most often looks up in an old log precisely to
-check it against the suit and cylinder they were using, so it wants to be next to them.
+temperature, visibility, water type and altitude are facts about the dive and the water it was in,
+while gear and weight are choices carried into it. Weight is also the field a diver most often looks
+up in an old log precisely to check it against the suit and cylinder they were using, so it wants to
+be next to them.
 
 Two follow-on details:
 
@@ -1940,7 +2162,7 @@ page and dropped the message), links to a `github.com/opendiving/opendiving` rep
 thing was rebuilt around things that are real.
 
 **Where the message goes.** There is no mail provider on this side and no server-side secret to hold
-one - the app is a client for the API, which already owns the Resend integration. So
+one - the app is a client for the API, which already owns the mail transport. So
 `contactAPI.sendMessage` posts to `POST /contact`, and the API forwards it to its
 `CONTACT_FORM_EMAIL` (see the API's `DECISIONS.md`). Nothing here decides, or can decide, the
 recipient.
@@ -2011,16 +2233,20 @@ this code:
   `window` is real, so there's nothing to gain from the hook version. (`/signin` itself _does_ use
   `useSearchParams`, and therefore _does_ have a `Suspense` boundary - same shape as
   `/auth/verify`.)
-- **The email flow needs storage; Google doesn't.** Google sign-in never leaves the tab, so the
-  destination is just a prop (`AuthForm` -> `GoogleAuthButton`). The magic link leaves the app
-  entirely and comes back on `/auth/verify`, which has no idea what the visitor originally wanted -
-  so `AuthForm` stashes it when requesting the link and `/auth/verify` consumes it.
-  `rememberPostAuthRedirect` is called on _every_ link request, including with no destination,
-  precisely so it clears a stale one; `consumePostAuthRedirect` removes the key as it reads it,
-  including on the onboarding branch. Without both of those, a destination abandoned earlier could
-  silently hijack an unrelated later sign-in. If the link is opened in another browser the value
-  simply isn't there and the visitor lands on `/dashboard`, which is the intended fallback, not a
-  failure.
+- **The email flow needs storage; Google doesn't.** **Superseded for Google, which now does** - it
+  leaves the tab for Google's authorization endpoint and comes back on `/auth/google/callback`, and
+  it carries its destination inside its own per-attempt record rather than in the key described
+  here. See _""Continue with Google" is a redirect, and Google's code never reaches the browser"_
+  below for why it is not this key. The rest of this bullet, about the magic link, stands. As
+  written: Google sign-in never leaves the tab, so the destination is just a prop (`AuthForm` ->
+  `GoogleAuthButton`). The magic link leaves the app entirely and comes back on `/auth/verify`,
+  which has no idea what the visitor originally wanted - so `AuthForm` stashes it when requesting
+  the link and `/auth/verify` consumes it. `rememberPostAuthRedirect` is called on _every_ link
+  request, including with no destination, precisely so it clears a stale one;
+  `consumePostAuthRedirect` removes the key as it reads it, including on the onboarding branch.
+  Without both of those, a destination abandoned earlier could silently hijack an unrelated later
+  sign-in. If the link is opened in another browser the value simply isn't there and the visitor
+  lands on `/dashboard`, which is the intended fallback, not a failure.
 
 #### That storage has to be `localStorage`, and it carries an expiry
 
@@ -2279,6 +2505,10 @@ be a lie about the pages either side.
 
 ### The Gravatar line moved to `/settings`, reworded
 
+**Superseded.** There is no Gravatar line any more - see _"Avatars are this instance's own, and
+Gravatar left rather than becoming a fallback"_ below. What `/settings` shows there now is the
+picture itself, with the controls that change it.
+
 It was attribution under a picture on the profile page. `/settings` shows no avatar, so it would
 have been attribution for nothing there; it is now a "Profile Picture" note in the profile form
 saying where the avatar comes from and that changing it on Gravatar changes it here. That is the
@@ -2433,6 +2663,15 @@ passes through. Doing it there rather than in `getApiErrorMessage` keeps all ~26
 synchronous instead of forcing an async variant onto the handful that fetch binary. A body that
 isn't JSON is left as the Blob and the caller's fallback is used - throwing from inside the
 interceptor would replace the real error with a parse error.
+
+**The fixture for that "isn't JSON" case must not contain a NUL.** It was a raw `\x00\x01` written
+straight into the string literal in `client.test.ts`, which is enough for git to classify the whole
+file as binary: `git diff` printed `Binary files differ` and GitHub rendered no diff for it at all,
+so the entire test file was unreviewable in every PR that touched it. The fixture only needs bytes
+that fail `JSON.parse`, never a NUL specifically - it is now the escape sequence
+`"\x89PNG-ish bytes"`, a real PNG magic byte spelled out in ASCII source. Worth knowing if this ever
+recurs: git marks a diff binary when _either_ side contains a NUL, so the commit that removes one
+still shows as binary, and only the diffs after it come back as text.
 
 `useAuthedBlobUrl` returns the raw `error` alongside `hasError` so callers can run it through
 `getApiErrorMessage` themselves; the hook has no opinion about what the fallback message should be.
@@ -2603,9 +2842,14 @@ fine behind white button text and not fine as text. Those links now use the app'
 idiom - a plain underline inheriting the surrounding colour, which is why `contact/page.tsx` passed
 axe when `terms` and `privacy` did not.
 
-`npx @axe-core/cli` over `/`, `/signin`, `/contact`, `/privacy` and `/terms` reports 0 violations.
-The `code-quality` workflow only scans `/`; the others were checked by hand here, and are worth
-re-checking the same way after any change to `globals.css`.
+`npx @axe-core/cli` over `/`, `/signin`, `/contact`, `/privacy` and `/terms` reports 0 violations
+_under WCAG tags_ - `--tags="wcag2a,wcag2aa,wcag21aa"`, the set the `code-quality` workflow runs,
+and the set that covers contrast. That is what was actually verified here, and it still holds. It is
+not the whole of what the CLI reports by default: unrestricted, axe also runs its best-practice
+rules, and all five of these pages were failing those - see "The footer's column labels were
+headings, and the footer is shared chrome" below, which fixed four of them and did not fix
+`/signin`. The `code-quality` workflow only scans `/`, and only inside `main`, so it sees neither
+set on the other four pages. They are worth re-checking by hand after any change to `globals.css`.
 
 ## Metadata, and why the landing page is a Server Component
 
@@ -2939,9 +3183,17 @@ for everything, and no reason to special-case the hero on that axis.
 **Height is per page, and the cut lands on a card boundary rather than a round figure.** Cutting at
 the _end_ of a card matters more than the exact number, and more than the three shots agreeing: a
 frame that stops just shy of finishing a card reads as an off-by-one, while one that stops well
-inside a card the reader can see continues reads as a page that goes on. 1086 is where the dive
-page's profile chart finishes - it also clears the sidebar column beside it - and where the gear
-page's service history does.
+inside a card the reader can see continues reads as a page that goes on. 1086 clears the dive page's
+profile chart and the sidebar column beside it, and ends the gear page below its service history.
+
+**It does not, however, land on a boundary on the dive page, and that sentence used to claim it
+did.** The frame runs past the profile card and stops part-way through the glyphs of the _Gas
+Consumption_ heading below it - true on `main` as much as on any branch, and checked by decoding
+both PNGs rather than by eye. The wrong claim cost a review round: a reviewer read it, compared it
+to the image, and reported a regression that a validator then refuted, because the clipping was
+never a regression at all. The real fix, if the edge is ever worth tidying, is a `CUT_BELOW` entry
+for `dive-detail` naming the profile card - the mechanism `dashboard` already uses - and never
+another hand-measured number.
 
 **The dashboard measures its own cut, because a written-down height goes stale quietly.** It was on
 1086 too, back when consumption was its only chart and that was where the card ended. Dive activity
@@ -3035,6 +3287,30 @@ The `/signin` check in `visit()` stays. It cost nothing and it is the difference
 fails with "signed out on the way to /dashboard" and a run that quietly produces four screenshots of
 the sign-in form - which is the failure mode of _any_ future auth regression, not just the one that
 has been fixed.
+
+### The same script writes the product repository's copies
+
+`opendiving/opendiving` renders these three images on its own front page — the page the project is
+judged on — and has nothing that could retake them, because the app they are of is here. So `shot()`
+writes both trees from one shutter press: `docs/screenshots/` in this repository, and
+`$PRODUCT_DIR/docs/screenshots/` when a clone of the product repo sits beside this one, defaulting
+to `../opendiving` in the same `../sibling` shape `API_DIR` already uses. An absent clone is a
+printed note and not a failure — a contributor with one checkout has to be able to run this, which
+is the whole reason the default is a guess rather than a requirement.
+
+**One press, two writes, rather than two presses.** The pages are live: "due in 24 days" counts
+down, the subject dive is whichever recent one has a profile, and two shots taken a second apart are
+not the same image. Writing the buffer twice is what makes the copies identical rather than merely
+similar, and similar is the state that has somebody staring at two diffs wondering what changed.
+
+**The rejected alternatives** were hotlinking this repository's raw URLs from the product README —
+which breaks the day either repository is renamed and leaves that README unrenderable in a clone —
+and letting the copies drift, which is the failure this section's parent already describes for
+hand-cropped shots, one repository over.
+
+The script does not commit anything over there. It writes files into a checkout it does not live in,
+which is already the outer edge of what a script in this repository should do; making commits in
+another repository is not something to discover in a screenshot tool.
 
 ## "Due soon" is a `warning` badge, because `secondary` is invisible on a card
 
@@ -3212,14 +3488,23 @@ nothing else, and four arrows all reading "Previous period with dives" in it are
 So each `aria-label` leads with its card: `Dive activity: previous period with dives`,
 `Gas consumption: time range`. Leading rather than trailing, so the list groups by chart when it is
 scanned or sorted. This is the same ambiguity `screenshots.mjs` hit from the automation side, where
-the fix was to scope by the card's `<h3>` - and a heading is exactly the context a controls list
-drops, which is why the two needed separate fixes.
+the fix was to scope by the card's own heading, and a heading is exactly the context a controls list
+drops, which is why the two needed separate fixes. (Both scope by role rather than by level. These
+titles were `<h3>`s when this was written and are `<h2>`s since the sweep recorded at the end of
+this file; nothing about the scoping depended on which.)
 
 **The period dropdown is described, not labelled**, and the distinction is load-bearing.
 `aria-label="Dive activity period"` on the `SelectTrigger` would _replace_ its accessible name, and
 that name is its own value - "September 2025" - which is the one thing a diver needs read back from
 it. An `aria-describedby` pointing at a visually-hidden span is announced after the name instead, so
 the control keeps saying which period it is on and gains which chart it drives.
+
+(The `aria-describedby` half of that no longer holds - a description never reaches the accessible
+name at all, so on a period matching no registered item the trigger had no name whatever. The span
+is the same one; it is wired as an `aria-labelledby` naming the hint and then the trigger's own
+text. See "`aria-describedby` never reaches the accessible name" below. What does still hold is why
+`aria-label` was rejected: it would replace the value rather than prefix it, which is exactly what
+the two-id ordering avoids.)
 
 That hidden span is why `screenshots.mjs` waits on `getByRole("heading")` rather than
 `getByText("Gas Consumption")`: `getByText` matches case-insensitive substrings, so a bare card
@@ -3319,9 +3604,9 @@ sweep costs about a second. Nothing in `.prettierrc.json` changed: the `*.md` ov
 existed. opendiving-api wraps its markdown at 100 too, via mdformat, so the two `DECISIONS.md` files
 stay visually alike.
 
-`code-quality.yml` runs `npm run format:check` instead of repeating the globs inline. It is still
-`continue-on-error: true`, like most of that workflow - the check tells you what drifted,
-`npm run format` before pushing is what keeps it from drifting.
+`code-quality.yml` runs `npm run format:check` instead of repeating the globs inline. It was
+`continue-on-error: true` when that landed, like most of that workflow; it is not any more - see
+"The Prettier check fails the build now, and it is the only advisory step that should" below.
 
 Two things Prettier does to markdown beyond wrapping, both cosmetic and both applied across the docs
 in one commit: `*emphasis*` becomes `_emphasis_`, and a `*` list bullet becomes `-`. That commit
@@ -3586,6 +3871,12 @@ counted: at `p-4` a seven-column table spends 224 px of its width on it. Merging
 away was also tried and reverted — worth only ~26 px, and it cost the badge alignment down the
 column.
 
+**And the badge was reconsidered after all, once there was a third one.** A `usage` badge in the
+same cell reproduced this section's failure almost to the pixel — 73 px of MOD clipped — and the
+answer was to take that badge back out of the table rather than to reopen the column set. The
+argument for reversing the line above is in "The usage badge left the table, and the flag is stated
+under it" at the end of this file; the line still stands for the two badges that remain.
+
 ## The API sends `null`, the form schema only understood `""` — and the save button did nothing
 
 Three fields were added to `diveMixtureSchema` in this phase, and all three rejected the value the
@@ -3691,14 +3982,23 @@ kept correct, and grown by one on every future bump, in code whose whole job is 
 leak is bounded and inert; the cleanup is unbounded and load-bearing. Written down because "why is
 there a stale key here" is a fair question with a real answer, not an oversight.
 
-## `--ceiling` is one value for both themes, and the plan asked for two
+_Superseded in its trade, though not in its reasoning._ The device-memory switch does clear this
+key, and every other orphan a bump has left or will leave — but it does it **by prefix**, walking
+live storage rather than consulting a list, so it carries no list of dead names and nothing has to
+be added to it on the next bump. That is the one shape the objection above did not consider and the
+only one it does not apply to: the cleanup stops being unbounded when nothing has to enumerate what
+it cleans. See _"One switch against every remembered preference on this device"_ at the end of this
+file. The trade recorded here is still the right answer for a bump on its own — a key bump owes no
+`removeItem`, and adding one would still start the list this entry refuses.
 
-The rev-3 plan said to define light and dark values. The three chart accents already there —
+## `--ceiling` is one value for both themes, and the original design asked for two
+
+The rev-3 design said to define light and dark values. The three chart accents already there —
 `--teal`, `--coral`, `--pressure` — are each declared once and deliberately never redeclared under
 `.dark`, and the recorded reason is that a per-theme pair has to be tuned twice and drifts.
-Following the plan would have made the fourth accent the odd one out, so it is a single `0 80% 55%`,
-and the contrast was computed rather than assumed: **4.3:1 against the light card and 3.8:1 against
-the dark theme's 13% one**, clearing the 3:1 WCAG asks of a graphical object in both. The web
+Following that would have made the fourth accent the odd one out, so it is a single `0 80% 55%`, and
+the contrast was computed rather than assumed: **4.3:1 against the light card and 3.8:1 against the
+dark theme's 13% one**, clearing the 3:1 WCAG asks of a graphical object in both. The web
 `accessibility-check` job would not have caught a failure here in any case — it runs axe against the
 landing page only, and with `|| true`.
 
@@ -4567,9 +4867,23 @@ Volume takes `md:col-span-2` — it is the field with no partner to be split fro
 life beside the name — which restores every remaining pair to a row of its own. Measured at 1280 px:
 Volume 556 px full width, then O₂ | He, Start | End, ppO₂ | Role at 270 px each.
 
+**And then a `usage` field arrived and the span stopped paying for itself.** Eight boxes again, one
+of them spanning two columns, so the last row held Usage alone — the same half-empty row the span
+was introduced to remove, just at the bottom instead of the middle. The span is gone and ppO₂ moved
+up beside Volume: `Volume | ppO₂`, `O₂ | He`, `Start | End`, `Role | Usage`, four full rows with
+nothing widened. Worth stating because the paragraph above reads as an argument for the span in the
+abstract, and it never was one — it was an argument for pairing, and with an even field count
+pairing no longer needs it. The combobox is narrower for it, which is the one thing lost; it is a
+one-line input over a list of presets, not a field that needs 556 px.
+
+The pairs are also readable as pairs rather than as whatever fell adjacent: what the cylinder holds
+and what it was planned to, the mix, the two gauge readings, what it was for and how it was carried.
+Tab order is the same reading order, and the two `<select>`s end up adjacent at the bottom rather
+than one of them being sandwiched between a picker and a number box.
+
 ## The export filename is the server's, with a local mirror behind it
 
-The plan for the settings export card said, in as many words: "Filename comes from the server's
+The settings export card was specified in as many words: "Filename comes from the server's
 `Content-Disposition` — parse it rather than re-deriving." That is what runs: `lib/api/export.ts`
 calls `filenameFromContentDisposition` on the response and saves what the API named the file.
 
@@ -5102,7 +5416,15 @@ and western longitude impossible to type — most of the Caribbean, Indonesia an
 
 ## The map picker is hand-rolled, and `img-src` is the whole bill
 
-`components/sites/map-picker.tsx` draws a slippy map out of `<img>` tiles and about ninety lines of
+**Superseded on 2026-08-29: the picker draws through MapLibre, and `img-src` names no third party at
+all.** The CSP objection this section is built on was answered rather than waived — see "The basemap
+is a MapLibre style, and raster is the escape hatch", "The worker is same-origin, and
+`worker-src 'self'` is what makes the blob path fail loudly", and "The picker's contract outlived
+its renderer" below. Kept because the reasoning that follows is why the app had a hand-rolled map
+for as long as it did, and because the Leaflet comparison still holds for anything that is not this
+map.
+
+`components/sites/map-picker.tsx` drew a slippy map out of `<img>` tiles and about ninety lines of
 Web-Mercator arithmetic (`lib/map-tiles.ts`), rather than pulling in a mapping library. The reason
 is the CSP, not the bundle.
 
@@ -5131,6 +5453,12 @@ reads, which is a far worse thing to debug. A malformed `NEXT_PUBLIC_MAP_TILE_UR
 rather than throwing: this runs in middleware on every request, and a typo in an optional map's env
 var must not take the site down.
 
+**This paragraph's provider choice is superseded** — the keyless default is `tile.openstreetmap.org`
+now, and the dark theme a CSS filter rather than a second set of tiles. See "The default basemap is
+OpenStreetMap's own, and the dark theme is a CSS filter" below, which reads the OSMF policy rather
+than recalling it. What follows is the reasoning as it stood, kept because the CSP mechanics above
+it are unchanged.
+
 Carto's Positron/Dark Matter are the keyless default over OSM's own standard tiles, for two reasons:
 there is a dark variant matching the app's theme, and the OSMF tile policy discourages pointing a
 broad user base at their servers by default. The bare `basemaps.cartocdn.com` host is used rather
@@ -5139,6 +5467,17 @@ host is one exact CSP source instead of a wildcard. Verified in the browser: til
 console reports **zero** CSP violations, which is the single check that says this approach paid off.
 
 ## The map writes into the coordinate fields, and can tell its own echo from a diver typing
+
+**Partly superseded on 2026-08-29, and the split is worth stating rather than leaving to be guessed
+at.** Everything below about the round trip with the form — the echo record, spending it once, never
+arming it on a placement that changed nothing, the latched "ever placed", and comparing against the
+props rather than against the view — survived the move to MapLibre intact, and is still the picker's
+hardest part. What did not: the tile grid and its fractional-zoom scaling, `clampCenter` and the
+rest of the Web-Mercator arithmetic, and `hooks/useMapGesture.ts`, which this section locates pan,
+pinch and tap in and which no longer exists. The gesture _rules_ all survive, as MapLibre
+configuration — see "The picker's contract outlived its renderer" below, which says which knob each
+one became. The tile-host privacy sentence is superseded too: the browser contacts the basemap host
+now, not `tile.openstreetmap.org`.
 
 The picker holds no position of its own. It reads `latitude`/`longitude` off the form and writes
 back through `setValue`, so the pair stays typeable, pasteable and clearable exactly as it was
@@ -5372,13 +5711,16 @@ compatibility mouse events, so swallowing that pointerdown would leave the link 
 
 **The default tile host sees your divers' IP addresses and roughly where their sites are.** Tiles
 are fetched by the browser, so opening the picker discloses the caller's IP and the z/x/y of the
-area being browsed to `basemaps.cartocdn.com`. It is the tile coordinates only — the
-`Referrer-Policy: strict-origin-when-cross-origin` in `next.config.js` keeps the site UUID out of
-the `Referer` — but for a private dive log that is still location data about the user. It is an
-accepted trade for a feature that has to work with no account and no configuration — said out loud
-in `/privacy` §4.4 as well as here, since it is the only outbound flow in the app a diver could not
-guess at — and it is the one place where self-hosting buys real privacy: `NEXT_PUBLIC_MAP_TILE_URL`
-points at your own tile server and the CSP follows it automatically.
+area being browsed to the tile host — `tile.openstreetmap.org` since the change recorded under "The
+default basemap is OpenStreetMap's own, and the dark theme is a CSS filter", `basemaps.cartocdn.com`
+when this was written. The disclosure is the same either way; only the recipient moved. It is the
+tile coordinates only — the `Referrer-Policy: strict-origin-when-cross-origin` in `next.config.js`
+keeps the site UUID out of the `Referer` — but for a private dive log that is still location data
+about the user. It is an accepted trade for a feature that has to work with no account and no
+configuration — said out loud in `/privacy` §4.4 as well as here, since it is the only outbound flow
+in the app a diver could not guess at — and it is the one place where self-hosting buys real
+privacy: `NEXT_PUBLIC_MAP_TILE_URL` points at your own tile server and the CSP follows it
+automatically.
 
 ## A trip's locations are self-describing objects, so nothing has to be resolved
 
@@ -5611,6 +5953,15 @@ than after it. No `z.preprocess` or `.transform` anywhere in it either, which is
 
 ## The confirmation map is not `MapPicker`, and that is most of why it is short
 
+**Superseded on 2026-08-30 in its mechanics, not in its argument.** Both maps draw through MapLibre
+and share `components/map/map-canvas.tsx` and `lib/basemap.ts`; `lib/map-tiles.ts` is gone,
+whole-zoom-only went with the hand-rolled grid — MapLibre's zoom is fractional everywhere — and the
+tiles are vector, so "never CSS-scaled" is no longer a property anyone has to arrange. The line
+counts moved with all of it. What survives untouched is the reason the two components are two: this
+one emits nothing, so none of the write-back machinery has to be built and then switched off. The
+`bg-coral` marker and the attribution sitting outside the `role="img"` surface survive as well, and
+both are still load-bearing.
+
 `MapPicker` is 705 lines; `LocationsMap` is about 250 and shares only `lib/map-tiles.ts` with it.
 The difference is not restraint, it is that nearly everything in the picker exists to serve
 write-back — telling a position the map emitted apart from one the diver typed into the coordinate
@@ -5667,6 +6018,15 @@ pair — a half-set position, which only raw SQL can produce, draws nothing and 
 
 ## `fitBounds` unwraps longitudes before it unions them
 
+**Superseded on 2026-08-30: there is no `fitBounds` any more.** MapLibre supplies the half that
+walked candidate zoom levels, so that half was deleted; the unwrapping this section is named for
+survives as `unionBounds` in `lib/basemap.ts`, and MapLibre does the camera arithmetic from its
+result. The projected-midpoint centring went with the zoom walk, `nearestWrappedX` went with the
+projection, and `MAX_FIT_ZOOM` is **9** rather than 10 — the same view, counted against MapLibre's
+512 px tile. See "MapLibre's zoom is one number below the slippy convention" below for the count and
+"What `lib/map-tiles.ts` actually left behind" for the symbol-by-symbol sweep. The trip to Fiji and
+Samoa is why any of it was kept, so that case stays written out here.
+
 A trip to Fiji and Samoa spans about six degrees — across the antimeridian. Unioning the raw
 coordinates instead describes the 354 degrees of ocean going the other way round the planet, which
 fits at exactly one zoom: the whole world, with both pins at opposite edges of it. So every box is
@@ -5685,6 +6045,14 @@ is useless — a trip location is a town, an island, a sea, so it should open wh
 coast is recognisable, not at the street level where a lone dot sits in a grid of house numbers.
 
 ## A dive site's map opens further out than the picker that placed its pin
+
+**The numbers below are the slippy ones and the app no longer counts that way (2026-08-30).** The
+rendered views are unchanged; the constants are `PLACED_ZOOM` **11** in
+`components/sites/map-picker.tsx` and `MAX_FIT_ZOOM` **9** in `lib/basemap.ts`, each one lower
+because MapLibre measures against a 512 px tile. Read every "12" below as 11 and every "10" as 9,
+and the evidence paragraph — which describes what a rendered tile actually shows — as still exact.
+`fitBounds` is gone; the single cap is MapLibre's `maxZoom` on the fit, and the argument for keeping
+it single is unaffected.
 
 `MapPicker` opens at zoom 12 for a site that already has a position; the map on the site's page fits
 to `MAX_FIT_ZOOM` (10), the same cap a trip location gets. Matching the picker is the obvious thing
@@ -5714,14 +6082,25 @@ it, and omitting the key when nothing changed would buy one skipped re-insert at
 "remove them all" inexpressible — an empty form field and an untouched one would send the same
 request.
 
+This was written as a decision about locations and is now the rule for every list field the app
+edits: a dive's sites, a dive's gear, a dive's cylinders and a gear set's members are all sent on
+every save, on the same reasoning. It only ever read as an exception during the window when the API
+hid soft-deleted rows from a read, which made the _other_ forms' seeds untrustworthy while this one
+stayed whole — see "The edit form submits the whole dive, because the read is the whole dive" and "A
+gear set's members are sent on every save, like a trip's locations". The condition the argument
+actually turns on is the form knowing the whole set, and nothing is hidden from a read now.
+
 The map beneath the picker is driven by `useWatch` rather than `form.watch()`. `watch()` re-renders
 the whole dialog on every change to any field, which would mean re-fitting and re-rendering a tile
 grid on each keystroke in the notes textarea. It is gated on there being at least one location with
 a position, which also keeps the map's chunk unfetched — it is a `next/dynamic` import with
 `ssr: false`, since it measures its own element and reads the resolved theme, neither of which
-exists on the server. The dynamic wrapper lives in its own file rather than at each of the two call
-sites, so the skeleton's height cannot drift from the map's and make the page jump when the chunk
-lands.
+exists on the server. (The gate is gone — the trip form's map is on screen from the moment the
+dialog opens, and so is its chunk. See "The trip form's map is always on screen, and its fields are
+asked in a different order" below. Everything else here still holds, `useWatch` most of all: an
+always-mounted tile grid is more expensive to re-render needlessly, not less.) The dynamic wrapper
+lives in its own file rather than at each of the two call sites, so the skeleton's height cannot
+drift from the map's and make the page jump when the chunk lands.
 
 ## A "+N" is a promise that hovering will say what N was
 
@@ -5963,6 +6342,19 @@ separately. `agentRules: false` would stop it outright, and was rejected because
 carries is real: `node_modules/next/dist/docs/` is the shipped Next 16 documentation, and this app
 is on a version whose conventions predate most training data.
 
+A third thing this file no longer holds: a paragraph explaining that the maintainer's checkout sits
+beneath a parent whose own `CLAUDE.md` loads alongside this one. It went because it could not act on
+either reader. That parent loads by directory ancestry whether or not this file mentions it, so an
+agent working there learns nothing it can use; a standalone clone has no parent to load and nothing
+to do with knowing one exists elsewhere. The maintainer-facing half of that — why `CLAUDE.md` is
+shaped this way at all — survives in the HTML comment at the top of the file, which is stripped
+before the file enters context and so costs nothing to keep.
+
+The tempting second reason — that it named a private repository in a file that ships publicly — does
+not survive being written down. This file ships in the same clone, and explaining the removal at all
+requires naming the same parent, so that argument would defeat itself on the page. Inertness is the
+whole of it.
+
 ### The Prettier override is load-bearing
 
 `.prettierrc.json` gives `AGENTS.md` `proseWrap: "preserve"`, against the `*.md` default of
@@ -5972,6 +6364,6876 @@ the comparison fails, and the next dev-server start rewrites it unwrapped — so
 `next dev` each undo the other, and whoever runs `format:check` after a dev server fails on a file
 they never touched. `preserve` keeps the file in the formatter for everything else and costs only
 hand-wrapping the prose, which is noted at the top of `AGENTS.md`.
+
+## A recorded fix is a location with a different marker, not a second map
+
+The dive page draws three kinds of position at once — the pin of each site the dive was logged
+against, where the diver entered the water, and where they surfaced — and only the first is a place
+somebody chose. Two maps side by side was never seriously on the table, but a second component (or a
+`sites`/`fixes` pair of props on this one) was, and it is the wrong shape: everything about drawing
+them is identical, and only the marker differs.
+
+So `MappableLocation` gained one optional field, `variant?: "pin" | "fix"`, defaulting to the pin
+every existing caller already draws. That keeps the prop minimalism recorded above in "The read-only
+map lives in `components/map/`" — it still knows about positions and names and nothing about dives —
+while making the distinction visible. A domain-shaped `kind: "site" | "gps"` was rejected for the
+same reason `subject` is a string: the map has no business knowing what a dive site is.
+
+The fix inverts the pin's two colours rather than changing its size, shape or hue: same coral, same
+12px, `border-coral` with a `bg-background/80` centre against the pin's `border-background` over
+`bg-coral`. One accent reads as one legend where a second colour would read as a second meaning, and
+the tinted rather than transparent centre is what keeps the ring legible over a busy coastline on
+both Positron and Dark Matter. What this buys is the failure case: a site pinned a few kilometres
+from where the dive computer says the dive happened is a mis-pinned site, and the two shapes are
+what make that visible at a glance instead of arithmetic.
+
+## The drift between entry and exit is a line of text, not a line on the map
+
+**One number below is stale and the physics is not (2026-08-30).** `MAX_FIT_ZOOM` is **9**, not 10 —
+MapLibre counts against a 512 px tile, so the same view is one number lower. The ground scale it is
+being reasoned from is unchanged: at that cap a pixel is still about 100 m of ocean, which is what
+makes a surface swim sub-pixel. Nothing about the conclusion moves.
+
+Drawing a segment between the two fixes is the obvious rendering and it cannot work here. This map
+is capped at `MAX_FIT_ZOOM` (10) for reasons that have nothing to do with dives — see "A dive site's
+map opens further out than the picker that placed its pin" above — and at zoom 10 a pixel is about
+100 m of ocean — so a surface swim, which is what a diver's entry-to-exit separation usually is, is
+a sub-pixel line between two overlapping markers. Lifting the cap for this one case would trade a
+drawable line for the blank grey square that cap exists to avoid.
+
+`lib/geo-distance.ts` answers the same question in text instead: `haversineMeters` between the two
+pairs, `formatDistance` to whole metres below a kilometre and one decimal above. Haversine rather
+than projected-metre subtraction because it needs no antimeridian special case — it works on the
+difference between the longitudes, so 179.9999°E to 179.9999°W is the 22 m it looks like on a globe.
+Whole metres because a consumer GPS fix is good to something like five of them and "212.4 m" claims
+a precision the reading never had; the rounding happens before the unit is chosen, so 999.6 m
+renders as "1.0 km" rather than as a "1000 m" that looks like a different unit from the "1.0 km" a
+millimetre further on.
+
+The map still answers "where in the world was this", which is the question it is good at. The
+coordinate rows and the distance answer "what happened", and metres is the only unit they come in —
+nothing in this app has a unit preference to consult (the same sidebar hardcodes °C and m two cards
+down), and inventing one for a single row was not the place to start.
+
+## The dive's location card renders on GPS alone
+
+The card was gated on `trip || dive.dive_sites.length > 0`, which is exactly wrong for the dives
+this feature is for: an imported file carries fixes whether or not the diver ever attached the dive
+to a site, and that dive is the one whose position is most worth showing. The gate now also admits a
+dive with either coordinate pair, and the map inside it is gated separately on there being at least
+one position among the sites and the fixes — the same two-level arrangement the site page uses,
+where the inner gate's job is keeping the `next/dynamic` chunk unfetched rather than keeping an
+empty frame off the screen.
+
+Both gates use `!= null` per coordinate, never truthiness. A dive off West Africa exits at longitude
+0 and one in the Galápagos at latitude 0; `formatCoordinates` already guards this way and the map's
+own `placedLocations` does too, so the trap is only in code that reaches for the numbers directly,
+which is why the pair is turned into a point once at the top of the component and read from there.
+
+The card is now titled **"Location"** rather than "Trip & Dive Site", which is the other half of the
+same change: a heading naming the two things that used to be its whole contents is wrong on a card
+whose contents may be a map and two coordinate rows. One title for every combination rather than a
+conditional one — a heading that changes between two dives reads as two different cards, and every
+block inside is labelled anyway ("Trip", "Dive Site", "Entry", "Exit"), so nothing is lost by the
+heading getting shorter.
+
+## The edit form submits the whole dive, because the read is the whole dive
+
+`PATCH /dive` is a partial update, and for a while the edit form used it as one: `buildDiveUpdate`
+took react-hook-form's `dirtyFields` and dropped every field the diver had not touched. That
+machinery is gone. The form sends everything it holds on every save.
+
+The filter existed because the API soft-deleted trips and dive sites and then hid them from a dive
+read, which made the form's own seed a lie. A dive whose trip had been deleted came back with
+`trip_uuid: null`; the form echoed that null, `patch_dive` read it as "the diver cleared the trip",
+and the link was gone. A dive whose site had been deleted came back one entry short, and echoing
+that list back put it through the same delete-and-reinsert the picker uses. Pressing Save on a dive
+nobody had edited destroyed both, with no undelete path and no trace left in `export.json`.
+
+**The API stopped hiding rows, so the echo stopped being a lie.** Trip, DiveSite, GearItem, GearSet
+and GearServiceSchedule are hard-deleted now, and the `ON DELETE` rules already declared on every
+referencing FK do the cleanup — a dive whose trip is deleted has `trip_id` set to null in the
+database, not merely rendered without one. A read is therefore the whole truth about the dive, and
+sending it back says exactly what the dive already holds.
+
+What is worth keeping from the argument, because it is what made the fix land here rather than in
+the API: **"the diver cleared the trip" and "the client echoed back a null it was handed" are the
+same PATCH on the wire.** The API could not tell them apart and never will be able to. That is not
+an argument for filtering — it is an argument for never letting a read differ from the record, which
+is what the API change did. The client-side filter was the expensive way to live with a read filter,
+and it only ever covered the untouched save; the diver who edited the very list a hidden row was
+missing from lost it anyway, and no browser could have prevented that.
+
+`buildDiveUpdate` keeps its one real rule, which predates all of this: `undefined` means "not sent",
+`null` means "the diver cleared it". Collapsing those two is what once made a trip impossible to
+remove.
+
+### Seeding the edit form has to be faithful, and `mixtures` is where that bites
+
+Sending the whole form is only safe if the form holds the dive. It did not, in one place: the edit
+page seeded `mixtures` with a synthetic `DEFAULT_MIXTURE` row when the dive had none —
+`diveData.mixtures?.length ? … : [{ ...DEFAULT_MIXTURE }]`. A dive with zero cylinders is a real
+record (`DiveCreate.mixtures` is `default_factory=list`) and `patch_dive` replaces the list
+wholesale on presence, so unfiltered that seed writes an 11.1 L cylinder of air to a dive whose only
+edit was to the notes — and `compute_gas_use` then derives an RMV from it. A new instance of exactly
+the class of bug this change exists to close.
+
+The fix is to seed from the dive faithfully, in an exported `diveToFormValues` beside
+`toDiveMixtureInput`, so the seeding is testable at the seam where it lives rather than inline in a
+page component. No synthetic row, and therefore no special case anywhere downstream.
+
+**The obvious narrower fix is wrong, and worth recording as wrong.** It was a guard in
+`buildDiveUpdate`: omit `mixtures` when the dive arrived with none _and_ the field still holds one
+pristine `DEFAULT_MIXTURE`. `DEFAULT_MIXTURE`'s `volume: 11.1` is the `"11.1 L (S80)"` preset — an
+aluminium 80 of air, the most common recreational cylinder there is. A guard keyed on value-equality
+with it makes exactly that cylinder unsavable: leave the row alone and it is dropped, type 11.2 and
+back to 11.1 and it is still dropped. It would also put a page-specific question back into
+`buildDiveUpdate` in the same change that took one out, and its natural unit test compares
+`DEFAULT_MIXTURE` against `DEFAULT_MIXTURE`, so it cannot detect the drift that would break it.
+
+**Two things this needed were already here.** `MixtureFields` renders `mixtures: []` cleanly and
+says "No cylinders recorded for this dive." over it, and its per-tank Trash button has no
+`index > 0` gate, so the last cylinder is removable and zero is reachable by hand. Both arrived with
+"The create form proposes no cylinder, and the last one is removable", which needed exactly the same
+two changes for its own reasons and landed first. Had it not, this change would have had to make
+them: a diver who clicks "Add Mixture" on a cylinder-less dive and cannot get back to zero
+reintroduces the phantom cylinder by hand.
+
+**Create and edit reach the same place by different arguments, which is worth keeping straight.**
+The create form starts empty because a form must not write gas the diver never entered, and because
+`diveModWarning` would raise a depth-safety warning derived from it. The edit form starts empty
+because it represents a stored record, and a row invented here is written back to the dive on the
+first save. Neither argument implies the other - the original design expected the create form to go
+on proposing a cylinder, and it would have been coherent for it to.
+
+### If `dirtyFields` ever comes back, it has to be read during render
+
+Nothing in the app reads it any more, and the trap is a property of the library rather than of this
+app, so it is recorded here rather than demonstrated by a test.
+
+`formState` is a Proxy. React Hook Form only starts maintaining a key once something has read it
+**during render**, and `useFieldArray`'s `replace` checks that flag before recomputing dirty state
+at all. Read from inside a submit handler, `dirtyFields` is still `{}` after a file import has
+replaced every cylinder — so a filter keyed on it drops `mixtures`, and the import is discarded by a
+save that reports success. Scalars set through `setValue(..., { shouldDirty: true })` are marked
+either way, which is what made it so easy to miss: the notes field, the depths and the trip picker
+all behaved, and only the one path through the field array silently didn't. The subscription is
+`useFormState({ control })` **plus the destructuring**, in the render body; calling the hook alone
+is not it.
+
+`useSuggestedDiveNumber`, `dives/new/page.tsx` and `dive-form-fields.tsx` read react-hook-form's own
+`isDirty` for unrelated UX ("don't overwrite what the diver typed") and are untouched by any of
+this.
+
+### What this closed that the filter could not
+
+The filter left a residue, recorded here at the time: a dive linked to sites A (live) and B
+(soft-deleted) seeded the form with `["A"]`, and a diver who added C sent `["A", "C"]` —
+legitimately dirty, and the only list the browser had — destroying B's link on an edit where B was
+never on screen. "There is no client-side fix" was correct: the browser cannot preserve a reference
+it was never handed.
+
+It is gone, and not by being fixed. There is no hidden reference left to lose, because a deleted
+site is deleted and its join row went with it. The same applies to `gear_item_uuids`, which had the
+same shape and was reachable only as a 422 from `resolve_gear_item_ids_for_user`.
+
+The generalization that survives all of it belongs to the API and is stated there: **a read filter
+is not a local change.** Hiding rows from a read reshaped two client repos, cost a form-level filter
+and a shared `isDirty` helper, and still did not close the case it was introduced against.
+
+## A deleted trip or dive site can hand its dives to another one on the way out
+
+Deleting either used to leave its dives behind. The API soft-deletes the row, and every dive that
+pointed at it now reads back with the reference simply gone — so the diver who noticed they had
+logged the same reef under two names, or split one trip into two, got a confirmation dialog that
+would strand every dive attached to the loser. Re-attaching them meant opening each dive's edit form
+in turn. The confirmation now offers to move them, and the whole feature lives in that offer: same
+button, same dialog, one dropdown that is always on screen.
+
+**Moving and deleting are one request.** `DELETE /trip/{uuid}?move_dives_to={uuid}` re-points the
+dives and deletes the trip in a single transaction: either the log ends up on the replacement and
+this trip is gone, or nothing happened. There is no ordering for the browser to get right and no
+half-done state for it to report.
+
+That is worth stating because the browser-side version of this feature was written first, and it
+could not offer either. It paged `GET /dives?trip_uuid=`, sent one `PATCH` per dive, then deleted —
+which meant a failure partway left some dives moved and the trip standing, forty round trips for a
+liveaboard, and a race against any dive added between the last page fetch and the delete. All three
+are gone, along with the ~320 lines that implemented them. The lesson worth keeping is the
+sequencing one: the client-side version was complete, reviewed and verified against a live stack
+before it was deleted unmerged, because the API change it should have waited for was already
+written. Check what the other repo is holding before building the compensating half.
+
+### The dialog says what deleting does, and stopped asking whether to count
+
+The first version of the offer was a checkbox — "Move 2 dives to another trip first" — that revealed
+the picker when ticked. Getting that "2" on screen cost a request
+(`GET /dives?trip_uuid=X&items_per_page=1`, read for `total_count`), a five-second timeout race
+against a hang that `apiClient` sets no axios timeout for, a "couldn't check" failure state, and a
+rule holding the Delete button shut until one of the three landed. Roughly 200 lines and one async
+subsystem, in a dialog whose only decision was whether to show a dropdown.
+
+All of it existed because the consequence of deleting was ambiguous, and it no longer is. The API
+hides soft-deleted trips, dive sites and gear from every dive read — `get_trip_uuids_by_ids` and
+`get_dive_sites_for_dive(s)` both filter `is_deleted` — so "deleting removes this trip from every
+dive logged on it, and the dives themselves are not touched" is plainly true at any number of dives,
+**including zero**. Once the dialog says that, the count has no job left: it was only ever there to
+phrase the checkbox and to suppress a zero-dive offer, and both went with the checkbox.
+
+So the picker is unconditional and its empty state is the "just delete it" option — no synthetic
+"None" row, the same shape `TripCombobox` already uses for a dive with no trip.
+`divesAPI.countDives` went with the rest; nothing else was calling it.
+
+The general form, worth keeping: **a confirmation that has to ask the API a question before it can
+word itself is a sign the wording is wrong.** A sentence that is true unconditionally needs no
+request, no loading state, no failure state, and no disabled button — and the diver reads it a beat
+sooner than the old dialog could even render.
+
+### The toast names the destination, and the call site is where both halves are known
+
+"Trip deleted successfully. Its dives moved to Cebu 2026." is assembled at the four `onConfirm` call
+sites, from the name the dialog hands back beside the uuid. `useDeleteResource.confirmDelete` takes
+an optional `successOverride` for exactly this — a message only the caller can write, for the one
+call it is written for.
+
+It used to be harder, and the shape it used to have is instructive. The sentence was "12 dives moved
+to Cebu 2026", and its two halves came from opposite sides of a round trip: the count from the API's
+`moved_dives`, which only `useDeleteResource` saw, and the name from the picker, which only the
+diver's click saw. A whole hook — `useDeleteWithReassign`, 82 lines plus 166 of tests — existed to
+smuggle the name across in a map keyed by the id being deleted, keyed rather than held singly
+because two rows of a list can be deleted at once and their responses need not come back in order.
+
+Dropping the number from the sentence dissolved all of that: the name is known synchronously at
+confirm time, so there is nothing to carry and nothing to key. The concurrency hazard the map
+existed to avoid cannot arise, because no state outlives the call.
+
+Three things went with it, in the same change rather than left as follow-ups. `moved_dives` and its
+`DeletedWithMovedDives` type are gone from `lib/api/client.ts`, and both deletes are typed
+`{ message: string }` like every other delete on the API. Nothing here reads a delete response any
+more, so whatever the API puts in one, this side is indifferent to it. Its test in
+`delete-with-move.test.ts` went too, and that one had to be removed deliberately: it asserted
+against a _mocked_ axios response, so it would have kept passing long after the field stopped
+existing, which is the failure mode of every test that mocks the thing it is checking. And
+`successMessage`'s function form — `(result, id) => string`, whose only caller was the deleted hook
+— is gone from `useDeleteResource`, along with the `TResult` generic that existed to type its first
+argument. A response nobody reads does not need a shape, and a hook that reads no response does not
+need to be generic over one.
+
+### The confirm button reports only its own delete
+
+`isDeleting` was briefly wired to `deletingId !== null`, which is true while _any_ row is being
+deleted - so deleting one trip and then opening the dialog for another showed the second one
+disabled, spinner and all, for a request that had nothing to do with it. `deletingId === pendingId`
+is the scoped version. The dialog is closed for the duration of its own delete anyway, since
+`confirmDelete` clears `pendingId` before it starts.
+
+`deletingId` in `useDeleteResource` is still a single value across all seven call sites: starting a
+second delete overwrites it, so the first row's spinner stops and its trash button comes back while
+its request is still out. Left alone deliberately. The cost is cosmetic and the worst case is
+bounded — firing the same delete twice gets two success toasts, because both routes are idempotent.
+The fix is a `Set<string>` and an `isDeleting(id)` helper across every caller, which is a wider
+change than the symptom justifies. Written down rather than left for the next person to rediscover.
+
+### The picker, and what it deliberately does not do
+
+It excludes the resource being deleted, which is the one choice that cannot work — and the API
+answers that choice with a 422 rather than a silent no-op, so leaving it in the list would be
+offering an error.
+
+It is a bare `CreatableCombobox` rather than `TripCombobox`/`DiveSiteMultiSelect`: those carry
+name-lookup machinery for a uuid handed to them by a form, and this field only ever holds something
+the diver just picked out of its own menu. It offers no "Add new..." either — a brand-new empty trip
+is not what "move these somewhere" means, and the create dialogs are one page away.
+
+`ConfirmDialog`'s `children` slot is what keeps this a single dialog instead of a second one layered
+on top, and its `confirmDisabled` — separate from `isLoading` on purpose, because an unfinished
+choice must still be cancellable — is what blocks Delete while the field holds something that is not
+yet an answer. Which is the next section.
+
+The title and description live in the component's own `COPY` table beside the placeholders and the
+search functions, rather than arriving as props. They are kind-specific wording, the four pages had
+no say in them, and passing them in meant `useDeleteResource`'s `confirmMessage` was being threaded
+through two files to reach a `DialogDescription`. `confirmMessage` is optional on the hook now, and
+these two callers omit it.
+
+### An empty picker is an answer; a half-typed one is not
+
+Dropping the checkbox took `confirmDisabled` with it, and that was one step too far. The offer is a
+`CreatableCombobox`, and it has three states, not two: nothing typed, something _chosen_, and text
+in the field that has not resolved to either. The third one is where the diver is while they type.
+
+`handleInputChange` clears the selection on every keystroke and re-fills it only on an **exact**
+match, so "Ceb" with "Cebu 2026" sitting in the open menu leaves the dialog's `replacement`
+`undefined`. Clicking Delete from there blurs the field first, and the blur commit (`commitAction`)
+resolves a prefix to `{ type: "clear" }` — it only ever selects on an exact match, and this caller
+passes no `onCreate` for it to fall through to. So the confirm fired the plain `onConfirm()`: the
+trip deleted, the move silently dropped, and the only tell was a toast missing its second sentence.
+Neither half is undoable from the UI.
+
+It is blocked rather than guessed at. A prefix can match several trips, and resolving it on the
+diver's behalf would move a log somewhere they did not choose — a worse failure than the one being
+fixed, and a silent one too. An _empty_ field stays a valid answer, because that is the plain delete
+this dialog replaced; a disabled Delete gets a line saying which of the two to do, since a disabled
+button with no explanation reads as broken rather than as waiting.
+
+Knowing about the third state costs the shared component one optional prop: `onTextChange`, reported
+from an effect on `inputValue` rather than beside each of the six places that write it. `value`
+cannot answer this from outside — typing clears it, so a diver mid-word and a diver who chose
+nothing are indistinguishable. Tracking the query through this dialog's own `onSearch` wrapper
+looked like the way to avoid the prop and is not: that call is debounced by 250 ms, so a fast click
+lands while the tracked text is still the previous one, and the guard is off exactly when the diver
+is quickest.
+
+**A disabled button is not a guard on its own, and this one nearly wasn't.** Disabling it is
+`disabled:pointer-events-none` in the shared `Button`, so a press over it never reaches the button —
+it lands on the `DialogFooter` behind, and the _default action_ of that press moves focus, blurring
+the picker. The blur clears the unresolved text, `onTextChange("")` flips `unresolved` to `false`,
+and the button is enabled again — while the same gesture is still in progress. `disabled` is re-read
+at each event's own dispatch rather than latched at `mousedown`, so the `click` that follows lands
+on a button that was blocked when the press began. One gesture, erasing the text and confirming on
+the way past: the exact bug the guard was added for, now reachable _through_ the guard.
+
+The fix is one `onMouseDown={(event) => event.preventDefault()}` on `DialogFooter` in
+`ConfirmDialog` — the same thing `CreatableCombobox` does on its own menu rows, and for the same
+reason. It suppresses only the focus change and text selection; clicks are untouched. A press can no
+longer quietly re-qualify itself.
+
+Verified with a real mouse in a real browser rather than in jsdom, because jsdom does not perform
+that default focus change at all — the bug is invisible there, and so is the fix.
+`confirm-dialog.render.test.tsx` pins the only part that _is_ observable in jsdom: that the footer
+calls `preventDefault` on a press.
+
+The general form, twice over: **removing a disabled-button rule is safe only when the states it
+covered are gone** — the count went, the checkbox went, and "asked for a move without finishing it"
+quietly stayed, wearing different clothes. And **a guard whose input the guarded gesture can change
+is not a guard.** Ask what the click itself does on its way in.
+
+### The confirmation focuses Cancel, because its `children` may open a menu
+
+Radix focuses the first tabbable descendant of `DialogContent` on open. That was harmless while a
+`ConfirmDialog` held only prose and two buttons — focus landed on Cancel, which is where it belongs
+for a destructive confirmation. Putting an always-rendered field in the `children` slot changed it:
+the field is now first, `CreatableCombobox` opens its menu `onFocus`, and the menu is
+`absolute z-50`, so it does not push the footer down — it paints over it.
+
+Every trip and dive-site delete confirmation therefore opened with a list of trips covering its own
+Cancel and Delete buttons. A click aimed at Delete hit an option, which filled in a destination the
+diver never chose and closed the menu — so the _next_ click deleted and moved every dive onto it. It
+also fired a `getTrips`/`getDiveSites` search on every confirmation, including the plain deletes
+that never wanted one.
+
+`onOpenAutoFocus` with a `preventDefault` and an explicit `cancelRef.current?.focus()` puts it back.
+Cancel is both where focus used to go and the right answer on its own terms: Enter should not be the
+destructive key.
+
+Worth generalising, because the trap is in the composition rather than in either piece. **A slot
+component inherits the focus behaviour of whatever it is given**, and a control that reacts to focus
+by opening an overlay turns "first tabbable" into "covers the buttons". `ConfirmDialog` now names
+its own focus target instead of letting the tallest thing in the room take it.
+
+### `excludeIds` hides a row; it does not make the item unpickable
+
+The replacement picker has to keep the trip being deleted out of its own options, and
+`CreatableCombobox` has a prop that looks like exactly that. It isn't. `excludeIds` is applied in
+`visibleItems`, which builds the _rendered menu_ - while the exact-match paths (`findExactMatch` on
+every keystroke, `commitAction` on blur or Enter) read the unfiltered result list.
+
+So the row was gone and the item was still pickable by name. Typing "Blue Hole" while deleting one
+of two dive sites called "Blue Hole" resolved to the one being deleted, lit up Delete, and sent
+`move_dives_to` equal to the uuid in the path - which the API answers with "A dive site cannot be
+moved onto itself." Two sites sharing a name is not a corner case here; it is the duplicate-merge
+this feature exists for.
+
+The fix is to filter in this dialog's own `search` wrapper, so the target never enters the result
+list, the exact-match lookup, or the map of seen options. `excludeIds` then has nothing left to do
+and is gone from the call.
+
+The other repair - teaching `CreatableCombobox`'s exact-match paths about `excludeIds` - would cover
+every future single-select consumer, and was not done. Its only two existing consumers are
+append-only multi-selects whose `keepOpenOnSelect` branch never reaches the blur commit, so the
+change would be all risk and no current benefit. If a second single-select ever passes `excludeIds`,
+that is the moment to move the fix down into the component; the test here
+(`will not resolve a typed name to the target itself`) is what will catch it if nobody does.
+
+### Per-target state resets during render, not in an effect
+
+The chosen replacement belongs to the trip it was picked for, and has to be gone when the dialog
+opens on another — otherwise confirming would send the old trip's destination for the new one's
+dives. Doing that in an effect means the dialog paints one frame of the previous answer first; doing
+it in a `useLayoutEffect` avoids the frame but trips `react-hooks/set-state-in-effect`, which is an
+error here and is right to be.
+
+The fix is React's own
+[adjusting state when a prop changes](https://react.dev/learn/you-might-not-need-an-effect): compare
+the target against the one the last render was for, and reset during render when they differ. React
+re-runs the component immediately, before anything reaches the screen.
+
+One thing had to go to make that legal: the map of options the picker has seen is a ref, and
+touching a ref during render is its own lint error — correctly. It is no longer cleared at all,
+which turns out to be safe rather than merely tolerable. An entry is only ever read for an id the
+_current_ menu just offered, and offering it means the search that produced it has already written a
+fresh entry under that id, so the leftovers are unreachable rather than stale.
+
+## A gear set's members are sent on every save, like a trip's locations
+
+`PATCH /gear-set` treats an absent `gear_item_uuids` as "leave the members alone" and any present
+one — `[]` included — as a wholesale replace: `replace_gear_items_for_set` deletes every
+`gear_set_item` row and reinserts the submitted list. `GearSetDialog` sends the key on all three of
+its flows, so that guard is once again never exercised from this client.
+
+It was briefly filtered, and the reason is the gear half of "The edit form submits the whole dive,
+because the read is the whole dive". While the API soft-deleted gear items and hid them from a set
+read, a set holding a deleted item seeded the picker one entry short, and pressing Save on a
+_rename_ — or a weight change, or nothing at all — replaced the membership with the shortened list
+and destroyed the hidden row. The dialog subscribed to `dirtyFields` and omitted `gear_item_uuids`
+unless the picker had been touched.
+
+Gear items are hard-deleted now, `gear_set_item.gear_item_id` is `ON DELETE CASCADE`, and a set read
+carries every member the set has. The picker shows the whole set, so echoing it back replaces the
+membership with itself — and the filter, its shared `isDirty` helper (`lib/form-dirty.ts`, deleted
+along with `buildDiveUpdate`'s use of it) and the three-way `replacesItems` expression all go with
+it.
+
+### Why `TripDialog`'s argument now applies here too
+
+"Locations are always sent on edit, never omitted" reached the opposite conclusion about a field the
+API replaces the same way, and while gear was being hidden the two genuinely differed: that argument
+rests on the form knowing the whole set, and the gear dialog did not — that was the entire bug.
+
+Both halves hold now. The form knows the whole set, and `[]` is expressible and means what it says:
+the diver emptied the picker. There is no state left in which an empty or short list means "the API
+hid the rest", which is the property `TripDialog` always had for free by having nothing hidden from
+it. Two fields, one rule.
+
+### The three flows no longer need telling apart
+
+`replacesItems` was `!gearSet || isDirty(dirtyFields.gear_item_uuids)` because `dirtyFields` was the
+right question for exactly one of the dialog's three flows, and would have quietly turned the other
+two into renames. Editing a set on the gear page, creating a set, and saving a dive's gear over an
+existing set now all send the list; the two that arrive via `reset` rather than the picker
+(`initialItemUuids`, and the set's own read) are no longer distinguishable from a diver's edit, and
+no longer need to be. `gear-set-dialog.render.test.tsx` still covers all three, asserting what each
+one sends rather than which one omits.
+
+### What this closed that the filter could not
+
+The same residue the dive form had, and gone for the same reason. A set holding a live item and a
+soft-deleted one seeded the picker with just the live one; a diver who added a third sent two uuids
+and destroyed the hidden row on an edit where they never saw it. The browser could not send back a
+uuid it was never handed. There is no hidden membership row left to lose.
+
+### The API's docstring was true, then wasn't, and is true again
+
+`get_gear_items_for_set` documents that a rename or weight change leaves the membership rows alone.
+It describes the API accurately and has never described the system: no client exercised the
+absent-key path before the filter, and none does after it. Worth saying on the API side — a guard
+that reads as load-bearing while nothing reaches it is the same shape as the 422 from
+`resolve_trip_id_for_user` that was quietly holding a class of client bug up until it wasn't.
+
+## The create form proposes no cylinder, and the last one is removable
+
+`dives/new/page.tsx` seeded `mixtures: [{ ...DEFAULT_MIXTURE }]` in `defaultValues` and again in
+`prefillFromLastDive`'s fallback, `mixture-fields.tsx` gated its remove button on `index > 0`, and
+`onSubmit` sends `normalizeMixtures(data.mixtures ?? [])` unconditionally. Each is defensible alone.
+Together they made "this dive records no gas" unreachable: a diver who never opened the gas card
+still logged an 11.1 L cylinder of air, tank 1 had no way off the form, and the next dive's prefill
+carried the phantom forward.
+
+The state they made unreachable is one the API supports outright - `DiveCreate.mixtures` is
+`default_factory=list` - and one this app's own code already expected to meet:
+`dive-mixtures-card.tsx` says it "renders nothing when the dive has none, which is the common case
+for a dive logged by hand", describing something the web app could not produce.
+
+**Why a proposal is not the same as a default elsewhere on this form.** A create form proposing
+sensible starting values is ordinary, and the line was drawn at the edit form for exactly that
+reason. Gas is the exception, on one ground: `diveModWarning` computes a MOD from whatever cylinders
+the form holds, so a hand-logged dive past ~56.7 m raised an oxygen-exposure warning about air the
+diver never entered. A safety warning derived from invented data is the worst kind of wrong - it is
+either believed, or it trains the diver to ignore the real ones. Nothing else this form pre-fills
+carries a consequence like that.
+
+`DEFAULT_MIXTURE` itself stays. It is the right proposal for the "Add Mixture" button and for the
+pressure/role placeholders; the only question was whether one is present before the diver asks for
+one. The convenience argument for the seed survives too, in the place it was actually doing work:
+`prefillFromLastDive` still copies the previous dive's cylinders, so a diver who logs gas gets it
+back. What it no longer does is invent one when the previous dive had none.
+
+**The remove button lost its `index > 0` gate**, which is required rather than cosmetic: without it
+a diver who clicks "Add Mixture" on an empty form can never get back to zero and reintroduces the
+fabrication by hand. It also fixes the same thing on the edit form, where no dive's cylinders could
+be cleared at all even though `DiveUpdate.mixtures` accepts an empty list. The hard-delete work
+carries the same change - whichever lands first, the other should not redo it. The button gained an
+`aria-label` naming its tank while it was being touched: the icon is the whole button, and one per
+tank with no accessible name reads as a row of identical "button"s.
+
+**`[]` on the wire, not an omitted key.** The submit path already sent whatever the field held, so
+`mixtures: []` reaches the body as a real value rather than an absent one. On create the two amount
+to the same thing - `DiveCreate.mixtures` is `default_factory=list`, so an omitted key is also an
+empty list - but the explicit one is what the form sends and what was checked against a live
+`POST /dive`: 201, and the dive reads back with `mixtures: []` at 60 m, the depth that used to raise
+the phantom warning. The distinction only bites on the edit form's `PATCH`, where present-and-empty
+replaces and absent leaves alone; that is the hard-delete work's territory.
+
+**Tested at the page, not just at the component.** The seeding lives in `defaultValues` and in the
+prefill's `form.reset`, and neither is reachable from a unit test - so
+`app/dives/new/page.render.test.tsx` renders the real page with the API stubbed and asserts what
+`createDive` is called with: `[]` for an untouched gas card, `[]` again after adding and removing a
+cylinder, and the cylinder itself when the diver enters one. Six of its eight cases fail against the
+old seed, which is the property that makes it worth its weight.
+
+## A dive-level select carries the same three states, and the two submit paths disagree about the third
+
+`water_type` is the first `<select>` on the dive form that is not inside a mixture row, and it
+inherits the whole `""`/`null`/`undefined` tri-state the cylinder `role` field already carries - see
+"The 'cleared field resets to default' React Hook Form quirk" and "The API sends `null`, the form
+schema only understood `""`". Restated for a dive-level field, because the boundaries it crosses are
+different ones:
+
+- **`""` is the live cleared state**, the value of the "Not recorded" option, and it is what
+  `diveToFormValues` seeds from an unrecorded `null`. Never `undefined`: react-hook-form re-displays
+  a field's default whenever the value resolves to that, so clearing an imported water type would
+  snap it straight back.
+- **`undefined` means "the diver never touched this"** and is dropped from a PATCH.
+- **`null` means "the diver cleared it"** and must be sent.
+
+The part that is genuinely new, and the reason this is a section rather than a line: **the two
+submit paths convert `""` differently, and both are right.** `buildDiveUpdate` turns it into an
+explicit `null`, because on the edit form the dive may already hold a water type and dropping the
+key would leave it there while the toast says otherwise - the `trip_uuid` bug, one field over. The
+create page omits the field instead, because there is nothing to clear on a dive that does not exist
+yet; `trip_uuid` makes the same collapse in the same place for the same reason. What neither may do
+is send the `""` itself: the API's `WaterType` is a `StrEnum` and `DiveCreate` is `extra="forbid"`,
+so an empty string is a 422 rather than a no-op.
+
+Two smaller things worth not re-deriving:
+
+- **The altitude box is not a copy of the Visibility box**, though it is styled as one. Visibility
+  is `min="0"`; altitude is `min="-450" max="6500"`, mirroring the API's `ck_dive_altitude_range`.
+  Copying the `min="0"` would fight the negative values the bound exists to admit - the Dead Sea is
+  ~430 m below sea level and is a real dive site.
+- **Both fields carry over from the last dive**, decided rather than inherited by omission. The
+  create page's prefill is an explicit per-field policy, and the argument the weight carry-over
+  already makes - consecutive dives, same configuration - holds at least as strongly for "the same
+  water at the same elevation". `bottom_temperature` sits right beside them on the form and
+  deliberately does not carry: it is a reading taken on the day, not a property of the place.
+
+## A start pressure of 0 is not a low reading, it is a missing one
+
+`diveMixtureSchema` has always rejected a non-positive `start_pressure` and always accepted a
+`end_pressure` of 0, and the inconsistency between two adjacent boxes reads as an oversight until it
+is written down. It isn't one, and the reason is a single sentence of diving: **you cannot start a
+dive on an empty cylinder, but you can finish one on an empty cylinder.** A regulator's first stage
+needs supply above ambient and ambient at the shallowest point of any dive is already 1 bar, so
+there is no dive whose first breath came from a cylinder reading 0. An out-of-gas ascent, a drained
+stage or bailout and an SPG pegged at zero are, by contrast, all things that happen and are worth
+logging honestly. So the domains are `start_pressure ∈ (0, 350]` and
+`end_pressure ∈ [0, start_pressure]`, each also admitting the blank box.
+
+What changed here is not the rule but the **message**, which is where the user-visible half of this
+lives. _"Start pressure must be positive"_ was accurate and useless: it named the constraint and
+left the diver to guess the way out. The one thing a diver will not guess is that **blank means
+unknown** - so the message says it, and it is the escape hatch for anyone who ever does meet a
+stored 0.
+
+The `max(350)` is new, and mirrors the API's `gt=0, le=350` and the `ck_dive_mixture_*_range` checks
+that ship alongside it. Framed like `po2_limit`'s band: it exists to catch a **unit error**, not to
+have an opinion about how hard someone fills a cylinder. 350 sits above any real 300 bar DIN fill,
+so what it can reject is a psi reading typed into a bar box, the millibar-for-bar error the DM5 XML
+parser once shipped (`start_pressure ~ 205203`), and a sidemount pair whose two pressures were
+summed as if they were one cylinder - the last of which is the interesting one, because every
+individual number in it was positive, correctly ordered, and inside every other constraint the table
+had. Only an upper bound could catch it.
+
+**The ceiling sits on both fields, and the `end <= start` rule is not a substitute for the end
+one.** That refinement returns early when the start box is blank, so a lone `end_pressure` would
+otherwise be bounded only from below - and a psi reading typed into an end box with no start beside
+it is exactly the shape this band exists to catch. Left off, it would reach the API and come back a
+422 toast rather than a message under the field, which is the failure this change was written to
+remove.
+
+**`toDiveMixtureInput`'s `??` stays a `??`.** Coercing a stored `0` to `""` on the way into the form
+was considered and rejected: it would silently repair exactly the data the API-side bound makes
+impossible, and on the day a 0 did arrive - from a database an `ALTER` never reached - it would hide
+it rather than show the diver a field with a message telling them what to do. The API's read schema
+stays unbounded for the same reason: the fallback has to be a legible form error, not a 500 that
+makes the dive unviewable.
+
+**The tests assert the message string, not `success: false`.** The message is the deliverable, and a
+`toBe(false)` would stay green through a rewrite that made it useless again. `dive.render.test.tsx`
+grows a second harness for this: unlike the round-trip one it renders the real `MixtureFields`, so a
+rejected value reaches its own `<FormMessage />` the way it does on the page. They are deliberately
+separate - with every cylinder input mounted, a `replace()` of a partial row leaves the omitted
+fields' old values in place, which is the page's real behaviour but not what the round-trip tests
+are pinning.
+
+## Units convert at the edges: metric state, one formatter module
+
+Every measurement the app stores, sends, caches and exports is metric, and stays metric. What the
+`units` preference on the user row changes is _display and entry only_, at exactly two places: the
+formatters in `lib/units.ts` and the `UnitNumberInput` built on them. The rest of the app never
+learns which system the diver picked.
+
+**Form state is metric, whatever the box says.** `UnitNumberInput` renders feet and commits metres.
+That single choice is what keeps the rest unit-blind: the live MOD/END/EAD maths in
+`lib/dive-mixtures.ts` reads form values directly and its `METERS_PER_BAR = 10` is a fact about
+water rather than a display choice; `prefillFromLastDive` copies numbers between dives; the
+import-apply path writes parsed file values straight in. None of them changed. Neither did any
+validation logic - `lib/validations/dive.ts` validates the same metres it always did, and the only
+Zod edits in this work are message strings.
+
+The rejected alternative was form state in display units. It would have pushed unit-awareness
+through safety-adjacent gas maths, required per-system Zod schema factories (the bounds mirror DB
+`CHECK`s written in metres), and multiplied the places a conversion can be forgotten. A conversion
+can only be forgotten somewhere that has to remember it, and this design leaves two such places.
+
+**Whole imperial units are what makes entry stable.** 98 ft is 29.8704 m, committed as 29.87 and
+re-rendered as 98 ft, because `toCommittedMetric` inverts the conversion _before_ it rounds. A 2 dp
+metric commit is off by at most 0.005 of a unit, which is far under half an imperial display unit
+for every dimension here - 75 °F round-trips through 23.89, 3000 psi through 206.84. `units.test.ts`
+walks every whole imperial value across each dimension's plausible range rather than spot-checking,
+because the guarantee is the design and a counterexample is a bug in it.
+
+**Metric entry now rounds to two decimals, and that is the one deliberate metric-side change.** It
+generalizes what the temperature box already did (`Math.round(val * 100) / 100`) to its float
+siblings, and it is invisible for anything typed at the field's own `step`.
+
+**`visibility` and `altitude` lose something, on purpose.** Both are `Integer` columns, so imperial
+entry commits whole metres: 50 ft becomes 15 m and reads back as 49 ft. Widening them to `Float` was
+considered and rejected - whole-metre resolution is the recorded entry convention (`.int()`,
+`step=1`), visibility is an estimate, and altitude is bucketed into 300 m bands by the computers
+that care about it. Common values survive anyway (1,220 ft ↔ 372 m), and the loss is pinned by a
+test in both `units.test.ts` and `unit-number-input.render.test.tsx` so it cannot quietly become
+something worse.
+
+**The box keeps a draft of what is being typed, and the reason is not the obvious one.** A
+`<input type="number">` sanitizes its own value - a lone `-` or a trailing `.` arrives as `""`
+whatever state we keep - so the draft is not what makes those typeable. What it prevents is the
+_committed_ value being written back under the cursor on every keystroke: 50 ft commits 15 m, and 15
+m is 49 ft, so the "0" of "50" would turn into a "9" as it was typed. The same happens in metric the
+moment entry rounding bites. The correction belongs on blur.
+
+**Native `min`/`max` are declared in metres and converted inward.** The schema and the DB `CHECK`
+behind it are written in metric, so callers keep declaring them that way and `displayBound` rounds a
+minimum up and a maximum down: -450 m becomes -1476 ft (which is -449.9 m back), never the -1477 ft
+that would be -450.2 m. The spinner must never offer a value the schema rejects.
+
+**Bounded messages name both systems, computed rather than typed.** An imperial diver who enters
+5,500 psi has it stored as ~379 bar and would otherwise be told about a bar ceiling they never
+typed, so the pressure and altitude bound messages carry both figures. They are one static string
+each, not a per-system factory - the schema stays unaware of the preference, and the rare violation
+reads correctly in either mode. The imperial figures are derived from `PSI_PER_BAR` and
+`displayBound` at module load rather than written out, because a hand-typed 5,076 is a second place
+for the number to be wrong. Two adjacent metric-worded layers stay deliberately: altitude's
+`.int("…whole number of meters")`, which imperial entry cannot reach because the box commits whole
+metres itself, and the API's own constraint messages, which only direct API callers see and which
+speak metric by contract.
+
+**Deliberately not converted.** ppO₂ (`po2_limit`) and `surface_pressure_bar` are bar in both
+systems, as they are on every dive computer. O₂/He percentages, CNS/OTU, coordinates and duration
+have no imperial counterpart. **Tank volume is the interesting one**: litres is a cylinder's _water
+capacity_ while cubic feet is the _gas it holds at a rated pressure_ - converting between them needs
+a rated-working-pressure column the mixture does not have (cuft = litres × rated bar × expansion),
+so a conversion factor here would be fake maths. Imperial mode only relabels the presets, leading
+with the cu-ft name a diver already uses: "11.1 L (S80)" becomes "S80 (11.1 L)". Adding that column
+is the revisit point.
+
+**Spacing and precision were unified as a side effect, and both were previously inconsistent.**
+Display sites split between `{v}m` and `{v} m` - the Environment sidebar rendered both, two cards
+apart - and max depth appeared at three different precisions on three screens. Everything now goes
+through `formatDepth` and its siblings: value, separator, unit, with the separator a property of the
+dimension so degrees attach (`24°C`) and nothing else does. The profile chart's crosshair was the
+app's one _spaced_ degree symbol and now matches. Metric renders at up to two decimals with trailing
+zeros trimmed, which leaves every API-recorded value untouched and changes exactly two things:
+imported values carrying more decimals (`18.288` → `18.29 m`) and the corpus's float noise
+(`28.000000000000004` → `28 m`). Both align display with the API's recorded precision. Sites that
+genuinely want a coarser metric figure - the Recent Dives row's whole metres, the MOD/END/EAD
+strings' one decimal, the gas card's period-average RMV - pass `{ decimals }`, which tunes the
+**metric** side only: a whole foot is already finer than a tenth of a metre, and a hundredth of a
+cubic foot finer than a tenth of a litre, so there is nothing left to coarsen on the imperial side.
+
+**The charts convert once, where the wire scale is divided out.** `PROFILE_CHANNELS[*].scale` is a
+pair with `schemas/dive_profile.py` and describes how the API encodes an integer, not how a diver
+reads one - folding a unit conversion into it would make this app's idea of a centimetre disagree
+with the API's. So `toChannelSeries`/`toPressureSeries` divide by `scale` and _then_ convert, and
+everything downstream - `niceDomain`, `axisTicks`, the crosshair, the accessible extremes - is
+already in display units. That is what makes the axis land on round feet rather than round metres
+rescaled, and it leaves no per-use conversion to forget. `GasUseChart` does the same with its one
+RMV axis. **Depth and the deco ceiling share a dimension** in `CHANNEL_DIMENSION`, exactly as they
+already share a `scale` and a domain: a shaded deco region converted by any other factor would drift
+off the curve it bounds. The remembered-selection localStorage key does **not** bump - the channel
+set is unchanged and only its labels moved.
+
+**The accessible descriptions spell the units out.** "ft" read aloud is a word and "°C" is skipped
+entirely, so `unitWord` carries a second vocabulary for them - "feet", "degrees Fahrenheit", "psi",
+"cubic feet per minute" - and the chart summaries use it while the visible legend keeps the short
+labels.
+
+**Every component that renders a measurement now needs an `AuthProvider`.** `useUnits` reads
+`useAuth`, which throws outside one. In the app that is always true (`AppShell` wraps everything),
+but it made several render tests fail with an error about auth in a file that has nothing to do with
+auth. They each mock `@/contexts/AuthContext` now; where a test wants to switch systems the mock
+closes over a `vi.hoisted` box, since `vi.mock`'s factory is hoisted above the file and cannot see
+an ordinary `let`.
+
+**Metric is the default everywhere.** `useUnits` falls back to it when `user` has not loaded, which
+is also the column's server default and so the right answer for every existing row.
+
+## The trip form's map is always on screen, and its fields are asked in a different order
+
+**Superseded on 2026-08-30 in its last mechanism paragraph only.** `showWhenEmpty`, the field order
+and the label reasoning are all untouched. What moved is where the empty view comes from:
+`lib/map-tiles.ts` is gone, so `WORLD_CENTER` and `MIN_ZOOM` are `lib/basemap.ts`'s, `MIN_ZOOM` is
+**0** rather than 1, and there is no `fitBounds` left to have disagreed with `MapPicker`'s
+`DEFAULT_VIEW` in the first place. The constant is still hoisted and both maps still read it, so
+"like the dive site form" is still true by construction rather than by two matching literals.
+
+`TripDialog` used to gate the confirmation map on `mappedLocations.length > 0`, which also kept the
+map's chunk unfetched until there was something in it to see. It now renders unconditionally, with
+`showWhenEmpty` - a new opt-in prop on `LocationsMap` - drawing the whole world until the first
+place is picked. Two reasons, and the second is the one that decided it: a frame that appears with
+the first place shoves everything below it down the dialog while the diver is mid-edit, and an empty
+map makes it obvious that the field above it is asking for somewhere on a map at all, rather than
+for free text. The dive site form has always worked this way (`DiveSiteMapField` renders `MapPicker`
+whether or not the site has a pin), so this is the two forms agreeing rather than a new idea.
+
+`showWhenEmpty` is **opt-in, not the new default**. Everywhere else the map answers "where is
+this?", and there an empty world is a worse answer than no map at all - the trips list, a trip's own
+page and a dive's sidebar all still gate on having something to draw, which is also what keeps them
+from fetching the chunk. What changes for the empty frame is the label:
+`Map of the trip's locations` over a blank world is wrong in exactly the place nobody looking at the
+screen can see it, so the aria-label becomes `Map of the world, awaiting ${subject}`. That is a
+third reading of `subject`, which until now was only the fallback for places with no usable names
+between them; the phrasing works for all three subjects in use because each is already a definite
+noun phrase ("the trip's locations", "the dive site", "the dive's location").
+
+The empty view itself is `WORLD_CENTER` at `MIN_ZOOM`, and `WORLD_CENTER` is new only in the sense
+that it was already there twice: `MapPicker`'s `DEFAULT_VIEW` and `fitBounds`'s answer to an empty
+box list. Those two disagreed - the picker opened at 20°N, "where the land and most of the world's
+diving is", while `fitBounds` returned the equator - and nothing noticed, because until now the only
+caller of `fitBounds` with no boxes rendered `null` and threw the view away. Hoisting the constant
+into `lib/map-tiles.ts` and having both read it is what makes "like the dive site form" true by
+construction rather than by two matching literals.
+
+**The field order changed with it**: name, then the dates, then the place and its map, then notes.
+The dates are what a diver knows without thinking; the place is picked from a search whose answer is
+the map, so the two belong together, and putting them last-but-one keeps the block that grows -
+twenty location rows and a map frame - away from the fields above it.
+
+One consequence outside the component: `/privacy` said that apart from the dive site form, "a page
+with nothing to show loads no map and contacts nobody". The trip form now loads one too, so that
+paragraph names both forms. A privacy page that is stale is worse than one that is vague.
+
+## A location's full label is trimmed of the name it sits beside, at render time
+
+Nominatim's `display_name` opens with the name it matched, and every surface that has room for the
+label shows the name first and the label after it. So the picker's rows, its menu hints and a trip
+page's location list all read "Dahab, Dahab, South Sinai, 45214, Egypt" and "Ko Tao, Ko Tao, Ko
+Pha-ngan District, Surat Thani Province, Thailand". `formatLocationContext` in
+`lib/trip-locations.ts` drops the leading parts of the label that the name itself repeats, and
+returns `undefined` when that leaves nothing - so a caller drops the element with `&&` rather than
+rendering an empty one.
+
+**Aligned part by part, never as a substring.** "Dahab" is a duplicate at the front of "Dahab, South
+Sinai" and a genuine piece of context in "Blue Hole, Dahab, South Sinai" - a `startsWith` on the
+whole string gets the first right and the second wrong, and a "does the label contain the name"
+check gets both wrong. Comparing whole comma-separated parts also stops "Ko Tao" from eating the
+front of "Ko Tao Island".
+
+**At render, not in `geocodeResultToLocation`.** Trimming on the way in would have been one line and
+is wrong twice over. `display_name` is stored on the trip's location rows, so every already-saved
+trip would keep its untrimmed label and only new picks would look right - the surfaces would
+disagree with each other by age of data. Worse, `locationKey` derives a row's identity from the
+position plus that label: a location saved before the change and the same place picked again after
+it would key differently, and the picker's "already in the list" check would let the duplicate
+through. Trimming at the point of display leaves identity, storage and the API contract untouched,
+and fixes old rows and new ones in the same breath.
+
+The trim is deliberately not applied to the `title` attribute's _shape_ - the row's `title` is still
+"name, context", because what an ellipsis hides is exactly the context that tells two places of the
+same name apart. It is the same trimmed context, just with the name back in front of it, which is
+what the row would read if it had the width.
+
+## The geocoder's attribution is a wire format, not display copy
+
+`GeocodeResult.attribution` used to arrive as prose with a bare URL on the end -
+`Data © OpenStreetMap contributors, ODbL 1.0. http://osm.org/copyright` - and both places that show
+it printed it. The API now folds that trailing URL into the one markdown shape `parseAttribution`
+reads, `[label](href)`, which is the same shape `DEFAULT_TILE_ATTRIBUTION` has always used. So the
+string is part of the contract rather than free text, and the client parses it: printed raw, a diver
+reads `[Data © OpenStreetMap contributors, ODbL 1.0.](https://osm.org/copyright)` under the place
+picker and again under the dive site map.
+
+**The client change is safe in either merge order**, which is the only reason it could be made
+without coordinating two repos in one sitting. `parseAttribution` on a string with no markdown in it
+returns a single text run, so an unmigrated API renders exactly as it did before, and a migrated one
+renders a link. Nothing has to land first.
+
+Two measurements drove the fold, both taken in the browser at the 10px the credit is drawn at. The
+old string needed **341px** and a 375px phone leaves the dialog **325px**, so it wrapped to two
+lines, and the literal URL was **118px** of that; the linked label needs **223px** and fits with
+room to spare. The second reason is better than the first: a URL printed as characters cannot be
+followed, and the OSMF guidelines ask that there be a way to reach the origin and licence
+information, "for example by making the text a clickable link".
+
+`Attribution` (`components/attribution.tsx`) was extracted at the **fourth** copy of the same
+render-the-parts loop, not the second. Both maps had written it out by hand and neither was wrong
+to; what tipped it was the two geocoder credits needing the identical thing, plus the fact that the
+loop is the enforcement point for `react/no-danger` - the value comes from an environment variable
+or from whatever `GEOCODER_URL` answers, and a credit line is exactly the sort of "it's only markup"
+HTML that gets waved through. It renders inline elements and no styling: the four frames around it
+(a chip over a map corner, a line of fine print under a field) agree on nothing but what the string
+means.
+
+## The place-search credit holds its line open, and does not chase the dropdown
+
+The picker's credit is rendered from the first search that returns results, and the menu -
+`absolute z-50`, up to `max-h-60` - covers it. Measured with a one-row menu open: the credit at y
+335-367, the listbox at 331-369, and `document.elementFromPoint` at the credit's own midpoint
+returning the menu option. It therefore looks like it appears only after a place is added, which is
+when the menu finally closes.
+
+**That is not a licence problem, and a footer inside the dropdown was the wrong fix.** The OSMF
+attribution guidelines say, under _Geocoding (search)_: "Geocoders that use OpenStreetMap data must
+credit OpenStreetMap. Applications that incorporate such a geocoder must credit OpenStreetMap. A
+group of geocoding results need not maintain attribution attached to the results, as long as it does
+not form a Derivative Database." The obligation is on the application, once; the carve-out is about
+not having to glue a credit to each result as it flows through. So the menu rows never needed one,
+and putting a sticky footer in `CreatableCombobox` would have bought compliance we already had, at
+the price of: `scrollIntoView({ block: "nearest" })` parking the last option under an overlay it
+knows nothing about, an anchor inside `role="listbox"` - the mistake `locations-map.tsx` documents
+avoiding for `role="img"` - a link racing the blur that closes the menu, and a new prop on a
+component with six other consumers for a concern exactly one of them has.
+
+What _was_ wrong is that the credit materialised. It grew the field and shoved the map, and the
+Notes field under it, down the dialog mid-edit - reintroducing 16px lower the exact defect that
+making the map unconditional had just removed. Its line is held open with `min-h-4` instead, so the
+field never changes height. The cost is a blank 16px above the map when a saved trip is opened
+without searching, which is the honest price of a field that does not move under the diver.
+
+It is also sized to match the tile credit drawn over the map 8px below it, and lost its
+`Place search:` label. The label was most of what made it wrap, and it was never load-bearing - each
+credit names its own provider. **The two credits stay separate** rather than being merged into one
+OSM line: tiles are configured by `NEXT_PUBLIC_MAP_TILE_URL`/`_ATTRIBUTION` and place names by the
+API's `GEOCODER_URL`, so a self-hoster can be running two different providers, and one merged credit
+would then be a false statement about one of them.
+
+## Three roads to a position, so the geocoding moved above the map
+
+The dive site form used to place a position one way, on the map, and `DiveSiteMapField` owned both
+the map and the reverse geocode that named what it placed. There are three ways now — the pin, the
+place search above it, and a coordinate pair pasted into the latitude/longitude inputs — and the
+paste one never passes through the map at all. Only `DiveSiteDialog` can see all three, so the
+lookup and every guard around it moved into `hooks/useGeocodedLocation.ts` and the field went back
+to rendering: search, map, credit.
+
+Nothing about the guards changed, and they are the reason the hook is 200 lines for what looks like
+one `await`: newest-request-wins, the reply re-checked against the fields as they stand when it
+arrives rather than as they stood when it was sent, `unknown` never clearing a field while
+`nameless` does, and a nameless answer staying silent when there was nothing to clear. Their
+reasoning is in "The map writes into the coordinate fields" above and has not moved with the code.
+
+**Pasting a pair is placing the site**, which is the actual behaviour change and not merely a
+refactor. A diver who copies `27.8506, 34.3136` off another map has done exactly what a diver
+clicking the map has done, and until now was the only one of the two left to type the location out
+by hand. Typing the coordinates in by digit still asks nothing — `useWatch` fires per keystroke, and
+a lookup per keystroke is both useless and a fast way through an instance-wide rate limit of one
+request a second.
+
+**One thing the lift broke and had to be said out loud.** This state used to unmount with
+`DialogContent`, so it was clean on every open; the dialog component itself is always mounted, so a
+credit earned on the last site the dialog showed would sit waiting for the next site that happened
+to share its coordinates. The hook takes `open` and resets on it, in an effect with the same
+`react-hooks/set-state-in-effect` disable and for the same reason `useDialogApiError` carries one:
+synchronising state to an external prop flipping is the case the rule's escape hatch is for. It also
+bumps the request counter there, since a reply still in the air was asked about a form that no
+longer exists.
+
+## The dive site form searches for a place too, and the map shrank to make room
+
+`PlaceSearch` is the trip picker's field with everything a trip needs taken out: no list, no
+reordering, no free-text creation, and no value of its own. What is left is a search that hands back
+one `GeocodeResult` whole, because the caller has three fields to fill from it rather than one — the
+pair, and the name.
+
+**Three is now the geocoder's number rather than the field's**, since the catalog was added below —
+see "The site search has two sources, and only one of them names the dive site" further down. A
+geocoded place still fills exactly those three and never the Name; a catalog dive site fills the
+Name as well, which is why the field hands back a tagged pick rather than one shape. Everything else
+in this section is unchanged by that.
+
+**It is the second way in, not the only one**, which is the whole difference from the trip form. A
+trip location is a _name_ — a country, an island, a sea — so searching is all that form does. A dive
+site is its exact point, and the geocoder knows where Dahab is, not where the Blue Hole's north
+entry is. So the search drops the pin in the right bay and the map does the last hundred metres,
+which is also why the search sits above the map rather than beside the Location field.
+
+**It holds no value.** After a pick the box goes back to empty, because what was found is on the map
+and in the Location field a moment later, both on screen — and a search box still naming a place
+after the pin has been dragged off it would be the one thing on the form claiming something untrue.
+Nothing is creatable either: the trip picker's Enter-to-add-as-text hatch exists because a trip
+location that the geocoder cannot answer has nowhere else to go, whereas here the map is the hatch
+and the Location field beside it is ordinary text.
+
+**Holding no value is exactly why it needs `keepOpenOnSelect`, and that is not what the prop's name
+says.** A `CreatableCombobox` without it is a single-select, and a single-select does two things
+this field must not: `handleInputChange` picks on an exactly-typed name as you key it in, and
+`commit()` picks the same match again on blur. Both are right where the input _is_ the value —
+typing a trip's name into the trip picker is how you choose it without a mouse, and dropping the
+text on blur would lose the edit. Neither holds here, where a pick writes two coordinate fields, a
+Location — and, for a catalog dive site, the Name as well — and moves the map, and where the field
+is explicitly not the value.
+
+It was caught in review and settled in the browser, because the two readings — "an unconsidered gap"
+and "the documented single-select behaviour every other consumer inherits" — are indistinguishable
+from the code. On a fresh form, with "Ko Tao" typed into the search and no row ever clicked,
+blurring left the site at 10.0921822, 99.8395362 with a Location of "Ko Pha-ngan District,
+Thailand". Clicking Save is a blur. So the next click would have filed a dive site at a place nobody
+chose, and the general rule about single-selects is true and does not reach this field.
+
+The prop costs one thing: the menu stays up after a pick, over the top of the map, until the next
+click anywhere closes it. That is the cheaper end of the trade — a dropdown briefly covering the pin
+is visible and one click from gone, and an unchosen position is neither. A deliberate Enter still
+commits an exactly-typed name, so the keyboard route in survives; what goes is only the two ways it
+happened by itself. Both are pinned by tests that fail with the prop removed.
+
+**A searched place is not rounded, and the map's own picks are.** `MapPicker` rounds to five
+decimals in `emit`, and has to: the value that comes back through the form must be identical to the
+one that went out, or the echo arrives unrecognised. A searched place is an outside change either
+way, so rounding would buy nothing there — and the trip form stores what the geocoder said, so
+leaving it alone is what "like the trip form" means. It does mean the latitude field can read
+`28.4963633` after a search and `28.49636` after a click, which is the honest price of two different
+questions being answered.
+
+**The credit line is `PlaceSearch`'s own, and does not merge with the one under the map.** They say
+different things: this one credits the results that were _shown_, the other credits the name that
+was _written into the field_. Both are the same provider today and need not be tomorrow, which is
+the same argument the tile credit and the place credit already settle between them. Its line is held
+open with `min-h-4` for the reason the trip picker's is — a credit that materialises with the first
+search grows the field and shoves the map down the dialog mid-edit.
+
+**The map is `h-40 sm:h-48` now, the same as `LocationsMap`.** Two maps in two forms disagreeing
+about their height by 64px reads as an accident rather than a decision, and the search field plus
+its credit had to come from somewhere. The picker's skeleton in `dive-site-map-field.tsx` duplicates
+the new height and has to keep agreeing with it — a placeholder of a different size makes the dialog
+jump when the chunk lands, which is the same duplication `locations-map-lazy.tsx` documents.
+
+**`/privacy` said two things that stopped being true.** "Type or paste coordinates instead of using
+the map and nothing is sent" — the paste half of that is exactly what changed. And a search sends
+_what the diver types_, which is a different kind of data leaving than a coordinate pair and was
+undisclosed for the trip form too, so §4.5 now covers both forms rather than describing half of one.
+A privacy page that is stale is worse than one that is vague.
+
+## The species picker resolves a pick into a catalog row before form state sees it
+
+The species catalog is global — a species is a fact about the ocean, not about a diver — and it is
+filled one pick at a time rather than bulk-imported (the licensing findings are in the API's
+`DECISIONS.md`). So a search returns two kinds of row: species the catalog already holds, which
+carry a `uuid`, and species that exist only upstream at WoRMS or Wikidata, which carry an `aphia_id`
+and nothing else. Only the first kind is addable to a dive.
+
+`SpeciesMultiSelect` closes that gap at **pick time**, not at save time. Picking an upstream row
+calls `POST /species/resolve`, and the uuid that comes back is what goes into form state. The
+alternative — putting a synthetic `aphia:278400` in `value` and resolving on submit — was rejected
+for two reasons. It puts a value in the form that is not a uuid, which the submit path would have to
+know about and every future reader of `species_uuids` would have to be told about; and it makes
+saving a dive depend on a third party being reachable, which is exactly the property the dive write
+path does not have anywhere else. Resolving at pick time means that by the time a dive is saved,
+every uuid on it already exists locally.
+
+What that costs is a moment where the diver has picked something the form does not yet hold, and the
+**pending rows** are that moment made visible: local state, not form state, rendered with a spinner
+and no drag handle, with their `aphia:` ids added to the combobox's `excludeIds` so the same species
+can't be picked twice while its resolve is in flight. On success the row is dropped and the real
+uuid appended; on failure it is dropped and a toast says so, leaving form state untouched. A diver
+who never looks at the field sees an ordinary picker.
+
+**A save has to wait for a pending resolve, and that is the one thing the pending rows could not
+express on their own.** They are local state by design, so a diver who picks a species and hits Save
+inside the second or two a cold resolve takes would have written the dive without the sighting — no
+error, no toast, the pending row vanishing with the navigation and the late `appendUuid` landing on
+a form that no longer exists. `SpeciesMultiSelect` therefore reports the state through
+`onPendingChange`, `DiveFormCard` holds it, and `DiveFormActions` disables submit and says "Adding
+species..." while it is set. Kept apart from `isSubmitting` because the save has not started, so the
+button names what it is waiting for rather than claiming to be saving; a disabled submit button is
+also what stops implicit submission (Enter in a text field), which is the other way a save could
+outrun a resolve.
+
+**Two resolves can be in flight at once**, and that is why `appendUuid` reads a ref rather than the
+`value` prop. The combobox has `keepOpenOnSelect`, so a diver picks the second species while the
+first is still resolving; `value` captured in the first pick's closure is the list as it stood
+_before_ either, so whichever resolve landed second would append to it and drop the first. The ref
+is claimed eagerly on append — not merely mirrored in an effect — because both can land before React
+has re-rendered either. There is a test that fails if it reads the prop.
+
+**No free-text hatch, unlike the trip location picker.** A global table has no owner to attribute a
+made-up row to, and a per-user overlay is a different feature with a different ownership model. The
+consequence is real and accepted: with both providers down and the species not yet in the catalog,
+the picker comes up dry, and the diver logs the dive and adds the species later. The dive's own
+`notes` field is where "weird translucent blob, 10 cm" goes meanwhile.
+
+**Species are deliberately excluded from prefill-from-last-dive.** `app/dives/new/page.tsx` carries
+the previous dive's gear, weight, water type and cylinders over, because those are properties of how
+the diver is configured and where they are. Sightings are not: they are observations, and copying
+yesterday's turtle into today's dive would fabricate a record of having seen it. The field is still
+listed in the prefill's `form.reset` — that call enumerates every field, so one left out of it comes
+back `undefined` rather than `[]`.
+
+**The attribution line is a wire-format consumer**, the same as the geocoder's (see "The geocoder's
+attribution is a wire format, not display copy"): the API sends the credit per result, the picker
+dedupes what it has seen this session and renders it through `Attribution`. Its line is held open
+with `min-h-4` for the reason the trip picker's is — a credit that materialises with the first
+search would grow the field and shove Notes down the form mid-edit.
+
+**Display names are English-only while the search index is multilingual.** `common_name` is a single
+English name and is often `null`; `speciesDisplayName` falls back to the scientific name, which is
+the normal case rather than an error path — WoRMS carries one vernacular for _Amphiprion ocellaris_
+and it is Japanese. The API's search index keeps every vernacular it gets in every language,
+so カクレクマノミ finds the clownfish. That asymmetry is deliberate and lasts until the app has an
+i18n story.
+
+**The English-only rule governs the display name, not the explanation.** This paragraph used to end
+"nothing in the UI ever shows it", and that stopped being true when the API's match hint dropped its
+English filter: `matched_name` now carries whatever name the match actually happened on, in whatever
+language it happened in, and `hintFor` renders it verbatim — `matched "kaneeltaling"` is a Dutch
+vernacular explaining a row a Dutch word found. Deliberate rather than a leak, and the two slots are
+not the same slot: a foreign word in the _name_ would be a Dutch label on an English dive card,
+while the same word in the _hint_ is the only thing on screen accounting for a row the diver cannot
+otherwise place. Nothing here should filter it back out — a suppressed hint leaves the row with no
+account of itself at all. Worth knowing that a busy query still cuts such rows before they are seen,
+since the feed is capped at 25; the payoff is a diver who types a name in their own language and is
+told that is what matched.
+
+**A rank of `"unknown"` is not shown at all.** Most of the rank vocabulary is WoRMS's, passed
+straight through, but `"unknown"` is not a rank — it is the API's placeholder for "no rank to
+report", and it has **two** writers. `_wikidata_result` writes it for a Wikidata-only hit whose
+entity carries no taxon-rank statement, or one naming a rank the API's map does not cover (it used
+to write it for _every_ such hit — see the proportion paragraph below, which is where that change is
+recorded); `_worms_taxon` writes it for a WoRMS record that arrived without the field, because
+`rank` is `NOT NULL` and the API would rather store the sentinel than refuse an otherwise good
+record. Rendered as-is, the picker read "Manta americana, unknown", which sounds like a statement
+about the animal rather than about how much is known. `speciesRankLabel` drops it alongside the
+blank, and both the picker hint and the detail card's suffix go through it — a row with nothing else
+to add simply gets no hint.
+
+**The second writer is the load-bearing half.** It is tempting to reason that resolve refuses to
+invent a row without the authoritative record — which is true, it 503s — and conclude that anything
+reaching the catalog therefore has a real rank, making the detail card's guard unreachable. It does
+not follow: the authoritative record itself may omit `rank`, and the API stores `"unknown"` rather
+than refusing. A catalog row can carry the sentinel, the detail card's `speciesNameWithRank` is a
+live guard, and anyone who deletes it as dead code will be wrong. This paragraph exists because that
+inference was written down here first and had to be corrected against `species_service.py` — a
+Wikidata-only framing of the sentinel also misdirects anyone troubleshooting a rank-less row that
+really did come from WoRMS. The first writer shrinking, below, makes this half _more_ load-bearing
+rather than less: a sentinel met today is likelier than ever to be a WoRMS row.
+
+**How much of a page carries it deliberately gets no number, and the honest answer moved.** This
+paragraph used to say the sentinel was most of a typical page rather than a rare edge case, and
+quoted two sessions measuring 7-in-10 and 9-in-10 on the same query hours apart. That claim is
+**struck rather than annotated around**, because it described a Wikidata side that reported no rank
+at all. The API now reads the taxon rank off the entity it was already fetching and translates it
+into WoRMS's spelling, so a Wikidata-only row arrives with a real rank — "Genus" for _Amphiprion_,
+"Subfamily" for _Amphiprioninae_, "Parvorder" for _Mysticeti_ — and the sentinel is a tail case: an
+entity with no rank statement, one naming a rank the map does not carry, or the WoRMS-side omission
+the paragraph above describes. It is not gone, and code written as though it were is wrong.
+
+**Still no number, for the reason there never was one — plus a second reason.** The proportion is
+not a property of the data: search answers with whatever arrived inside its fan-out budget, so a
+slow minute at WoRMS leaves more of the page Wikidata-only, and two consecutive searches for the
+same word legitimately disagree. What is new is that the rank _string_ moves too, which catches
+anyone who reads a displayed rank as a fact about the taxon. The two registers can hold **different
+real ranks for the same taxon**, and the merge is first-writer-wins: _Mysticeti_ is "Superfamily" to
+WoRMS and "Parvorder" to Wikidata, so the same query can return either depending on which side
+answered inside the budget. Nothing on this side should assert a rank string against live data or
+key behaviour on one. Both of those particular strings sit above genus, which is the level the API's
+ordering sorts on, so what such a disagreement moves is the caption rather than the row's place on
+the page.
+
+**Bare upstream rows started captioning themselves, and no web change was involved.** `hintFor`
+builds a menu row's hint from whichever fact the name does not carry: a row shown by its common name
+gets its binomial, and a row shown by its binomial gets `speciesRankLabel(result.rank)` instead.
+While every Wikidata-only row carried the sentinel, that second branch produced nothing on precisely
+the rows it was written for, and a bare genus reached the page with no caption at all. It now
+renders "Genus", "Subfamily", "Parvorder" — the labelling the branch always intended, arriving
+entirely from the other side of the wire.
+
+**Two more consequences of the same API work landed here untouched**, recorded because each looks
+like somewhere a client-side fix belongs. The picker renders the API's order verbatim:
+`visibleItems` is one order-preserving `filter` whose predicate short-circuits on `alreadyFiltered`,
+which is set in remote mode, and there is no `sort`, `localeCompare` or `toSorted` anywhere in the
+species render path — so the API ranking species above genus reaches the screen with nothing here
+helping, and anything added here to re-order would fight it. And the API now nulls a hint wherever a
+visible name already accounts for the _query_, which covers most of what `hintFor`'s own redundancy
+check was catching; the check stays because the two tests are not the same test — the API's is
+relative to the query and this one to the row — and they coincide only while every `matched_name` is
+a name that matched.
+
+**Sightings are not restricted to species rank.** "A moray eel" is an honest log entry and resolves
+to the family _Muraenidae_, so `speciesNameWithRank` appends the rank whenever it isn't "Species" —
+a binomial is self-evidently a species, and "Muraenidae" alone would read as one.
+
+### The Species Seen tile is back, because the number is real now
+
+"The dashboard shows only what the app actually tracks" above records deleting this tile: the API
+had the column and the wire field but never derived either, so it read "0" for every diver forever.
+The API now derives `species_seen` as the distinct species over a diver's live dives, recomputed on
+every dive write, so the figure returns to the dashboard.
+
+**Adding the fourth is what collapsed the four cards into one.** Three cards in a row worked; a
+fourth either strands itself on its own row at `md:grid-cols-3` or forces a breakpoint shuffle, and
+either way four separate cards spend four headers and four borders on four numbers that are read
+together as one answer — "what my logbook amounts to". They are now one `Card` with no header
+holding a four-cell grid, exactly as the dive page holds duration and both depths (see "the three
+numbers that describe the shape of the dive"): each figure is already labelled, so a title above
+them would only restate the labels underneath.
+
+`grid-cols-2 lg:grid-cols-4` — one row wherever four fit, a 2×2 below that rather than a single
+column, since four short figures stacked would run the card down the page for no gain. The icons
+moved from opposite the label to in front of it: in a quarter-width column there is nothing for a
+right-aligned icon to push against, so it just floats away from the words it belongs to. The
+per-width measurements are in the component's own comment rather than repeated here.
+
+`StatCard` became `Stat` in the process, because it renders a cell and no longer a card — a name
+that still said "Card" would be the next reader's first wrong assumption.
+
+## What actually keeps a species search from leaving is the cache, not the catalog
+
+`/privacy` §4.6 discloses the species picker's two upstream providers, and the obvious way to write
+its reassurance is wrong. The catalog is global — a species is a fact about the ocean, shared by
+every account on the instance — so the natural sentence is "once any diver has picked a species,
+later searches for it are answered locally and nothing leaves". `search_species` does not work that
+way: it runs `_local_search` and `_remote_search` _both_, every time, and merges them. A catalog hit
+changes what the diver is offered (a row with a `uuid`, attachable without a resolve) and never
+whether the providers are asked.
+
+Two separate mechanisms, and the policy names both rather than blurring them into one:
+
+- **The shared cache** is what stops a search leaving. `_cache_key("search", query)` is keyed on the
+  normalized query and nothing else, so it is instance-wide rather than per-diver, and a complete
+  answer is held for thirty days (`_HIT_TTL_SECONDS`). A partial fan-out gets an hour instead, which
+  is why the claim is "a month" and not "a month, always".
+- **The shared catalog** is what stops a _resolve_ leaving. `resolve_species` returns early on
+  `_species_by_aphia_id`, so the second diver to pick a clownfish sends nothing at all.
+
+Getting this backwards would have put a false statement in a privacy policy — the one document where
+a plausible-sounding simplification is worse than no sentence.
+
+**Resolving a species contacts both providers, not just WoRMS.** The paragraph reads like a single
+fetch of a taxonomic record, and `resolve_species` does begin with `AphiaRecordByAphiaID` — but its
+enrichment fan-out also runs `_wikidata_by_aphia_id`, which searches Wikidata for
+`haswbstatement:P850=<aphia_id>` and then fetches the entity, and that is where `wikidata_qid` and
+the common name come from. So Wikidata is contacted at pick time too, and the section says so;
+naming only "the marine register" there would have let a reader who had just read the search
+paragraph conclude Wikidata is asked only while typing. The AphiaID itself leaves _only_ at pick
+time — `_wikidata_search` sends the typed query plus the bare `haswbstatement:P850`, a "has some
+value" filter with no id in it, and the follow-up fetch is keyed on QIDs — which is exactly the
+split the two policy paragraphs draw.
+
+Two more traps the same section walks past. **Self-hosting does not buy the escape hatch it does for
+map tiles**: §4.4 can say "point it at your own tile server and none of this leaves your machine",
+but emptying `WORMS_API_URL`/`WIKIDATA_API_URL` degrades search to the local catalog and makes
+resolving a new species fail outright — a diver can type a place name by hand, and cannot invent an
+AphiaID. And **WoRMS is the taxonomy, Wikidata is the common names**, not the other way round;
+saying it backwards would misdescribe what each provider receives and why there are two.
+
+The section is a sibling of §4.5 by design — same three points in the same order (what is sent, that
+our servers send it so the provider never sees the diver, and that it only happens while a form is
+being filled in) — because a reader who has just read the geocoder paragraph should recognize the
+shape. Adding it renumbered Legal Requirements from 4.6 to 4.7; nothing links to these by number
+except this file.
+
+## Web config is read at runtime, and the browser is handed it
+
+**Superseded on 2026-08-30 wherever this section names the map's plumbing.** The mechanism it is
+actually about — runtime reads, the computed-key fallback, `generateMetadata()`, the lazy memo — is
+unchanged, but four particulars below are not. `lib/map-tiles.ts` is deleted; the module making the
+same fail-open trade for a malformed value is `lib/basemap.ts`. `tileOrigins` is `basemapOrigins`,
+and it warns on the same terms. `tileSource()` is gone with the raster-only resolver;
+`resolveBasemap()` is the one that takes what was configured and applies the defaults, and it is
+where the light-set-means-both rule now lives — with one deliberate exception, since a style URL set
+without an attribution is refused rather than defaulted. And the last bullet's closing clause, "the
+only third-party origins left in `img-src` are the map tile hosts", is **false**: `img-src` names no
+third-party host in any configuration — `'self' data: blob:`, plus this instance's own API origin on
+a split-origin build — and the basemap reaches `connect-src` instead. The opening paragraph's "three
+map-tile variables" is left as written, because it is a statement about what was build-time before
+the proxy route rather than about what exists now.
+
+`NEXT_PUBLIC_*` values are inlined by the compiler wherever they appear as a literal, so every one
+of them is frozen at build time. That is the same trap the API address was in before the proxy route
+(previous sections), one layer down: `SITE_URL`, `CONTACT_EMAIL`, `GOOGLE_CLIENT_ID` and the three
+map-tile variables were all build-time, so a published image could only ever carry whatever the
+build machine happened to have. `lib/runtime-config.ts` reads them on the server instead, and
+`contexts/ConfigContext.tsx` carries the browser's share down as an ordinary prop from the root
+layout. Build once, configure per instance.
+
+Things that are load-bearing:
+
+- **The `NEXT_PUBLIC_` fallback is read through a computed key**, `env["NEXT_PUBLIC_" + name]`,
+  never as a literal. Written as `process.env.NEXT_PUBLIC_SITE_URL` the compiler substitutes the
+  build machine's value, and the published image is built with none of these set — so the fallback
+  would be frozen to `undefined` while still reading like a fallback. It exists so a deployment that
+  already sets the old names keeps working; the unprefixed name wins where both are present, and a
+  blank value counts as unset at both levels (`GOOGLE_CLIENT_ID=` in a compose file has configured
+  nothing, and reading that as "explicitly empty" would suppress the fallback instead of falling
+  through to it).
+- **The root layout's metadata is a `generateMetadata()` function, not an exported `metadata`
+  object.** A module-level constant is evaluated while the page is being built, which is exactly the
+  thing being avoided; the function runs per request. Every route already renders dynamically
+  (`headers()` in the layout, see the CSP section), so this costs nothing that was not already
+  spent.
+- **`metadataBase` is a `new URL(...)` in the request path**, so a malformed `SITE_URL` would throw
+  on every page. It is validated where it is read and falls back to `http://localhost:3000` with a
+  named warning — the same fail-closed trade `lib/api-base.ts` and `lib/map-tiles.ts` make for the
+  CSP, and for the same reason: an optional feature must not be able to take the site down.
+- **`runtimeConfig()` memoizes, and reads lazily rather than at module load.** Lazily because a
+  module-scope read is a read at whatever time the module is first evaluated, and the point is that
+  it happens in the container; memoized because the environment cannot change while the process
+  lives and the diagnostics above should be said once rather than on every request. `src/proxy.ts`
+  memoizes its derived CSP sources on top of that for the same reason — `tileOrigins` warns on a
+  malformed template, and that warning is worth one line, not one per request.
+- **`tileSource()` no longer reads the environment**; it takes what was configured and applies the
+  defaults. It is called from client components, where a non-`NEXT_PUBLIC_` variable does not exist
+  at all, so the values have to arrive as data. Its light-set-means-both rule is unchanged.
+- **`useConfig()` has a real default rather than throwing on a missing provider**, unlike
+  `useAuth()`. The provider is mounted in the root layout so every render in the app has one; the
+  default matters for component tests, which render one component with no layout around it — and
+  what they should see is exactly what an instance that configures nothing shows, which is what the
+  default is. There is no meaningful default session for `useAuth()` to return, which is why the two
+  differ.
+- **The CSP follows the configuration.** **Superseded for Google:** those three entries are gone
+  from every directive in both configurations, because no Google code runs in the browser any more -
+  see _""Continue with Google" is a redirect, and Google's code never reaches the browser"_ below.
+  The policy therefore no longer discloses whether an instance has Google sign-in turned on, which
+  is a stronger version of what this bullet wanted. As written: the three `accounts.google.com`
+  entries (`style-src`, `connect-src`, `frame-src`) are named only where a Google client ID is set,
+  so an instance that does not use it does not advertise it. `www.gravatar.com` was in `img-src` on
+  the same terms until avatars stopped coming from anywhere but this instance, so the only
+  third-party origins left in `img-src` are the map tile hosts.
+
+## Gravatar is off unless an instance turns it on, and the privacy page stops inventing analytics
+
+**Superseded in its first half.** The gate is gone because the thing it gated is gone - see
+_"Avatars are this instance's own, and Gravatar left rather than becoming a fallback"_ below. The
+second half, about the analytics the privacy page described and never had, stands.
+
+`UserAvatar` fired a `new Image()` at `https://www.gravatar.com/avatar/<md5(email)>?d=404` on every
+mount for every signed-in user — the account menu is in the header, so that is every page — which
+made it the app's only unconditional third-party call from the browser, disclosing a hash of the
+user's email address along with their IP to Automattic. `GRAVATAR_ENABLED` now gates it and defaults
+to **off**: nothing leaves the browser until somebody asks for it to. The weaker reading of the bar
+— disclosed, default-on, switchable — would also have passed; this is the owner's call, and the cost
+of it is one environment variable on the instances that want avatars.
+
+The gate is not just the request. The URLs are `null` when it is off, so nothing downstream can
+reach for one and the hash is never computed; the settings copy switches from "your avatar comes
+from Gravatar" to what actually happens; and the privacy page's Gravatar section renders only where
+there is something to disclose. That section sits **last in §4**, after Legal Requirements, rather
+than next to Map Tiles where it belongs topically: it is the one heading that appears on some
+instances and not others, and anywhere earlier it would leave a gap in the numbering of the headings
+that are always there.
+
+Separately, and not a taste call: the page described analytics that have never existed. "Usage Data:
+pages visited, features used, time spent", "Improvement: analyze usage patterns", "Analyze usage
+data" among the service providers, "some anonymized data may be retained for analytics", and an
+"Analytics Cookies" bullet — five claims, no implementation, and a CSP that structurally forbids one
+(`connect-src` names the API and nothing else). They are gone. A privacy policy that overstates what
+is collected is not the safe direction to be wrong in: it is the document a reader uses to decide
+whether to trust the rest.
+
+## HSTS is decided per request, and no longer asks for `preload`
+
+`Strict-Transport-Security` used to be a static entry in `next.config.js`'s `headers()`, with the
+value `max-age=63072000; includeSubDomains; preload`. Both halves of that were wrong once the image
+became something other people run.
+
+`headers()` is evaluated during the build. In a repo that deploys its own build that is invisible;
+in a published image it means the build machine decides a security header for somebody else's
+domain, and no environment variable can move it. So the header moved into `src/proxy.ts`, which
+already runs per request for the CSP nonce and already reads `lib/runtime-config.ts`.
+
+What being per-request buys is the condition: it is sent only when the request arrived over HTTPS. A
+LAN instance on `http://192.168.1.4:3000` was previously handed a two-year pin it has no way to
+honour, and a browser that recorded one stops being able to reach the instance at all — the failure
+is total, delayed, and looks like the network. `x-forwarded-proto` is the evidence, read at its
+_first_ entry because a proxy chain appends and the client-facing hop is the one that matters; with
+no forwarded header at all the request's own scheme decides. `WEB_HSTS=off` is the escape hatch for
+an instance that wants the header owned by the proxy in front, or not at all.
+
+`preload` is gone regardless of any of that. Submitting a domain to the browsers' preload list
+commits every host under it to HTTPS for years and is deliberately slow to undo — a reasonable thing
+for an operator to choose for their own domain, and not a thing an application should quietly choose
+on their behalf by shipping the token. `includeSubDomains` stays: it is scoped to the host actually
+serving the app, and it is undone by letting the max-age lapse rather than by a form submission and
+a browser release cycle.
+
+Two consequences worth knowing. The header now only rides responses the middleware matcher covers —
+documents and their data requests, not `_next/static` — which is enough, because HSTS is recorded
+per host and the first navigation is a document. And `next.config.js` keeps the headers that
+genuinely are the same for every request of every deployment (`nosniff`, `X-Frame-Options`,
+`Referrer-Policy`, `Permissions-Policy`); the split is "static fact" versus "instance decision", not
+an accident of where each one was first written.
+
+## `WEB_NOINDEX` is two mechanisms, because `Disallow` is not `noindex`
+
+`app/robots.ts` answers `Disallow: /` when the flag is set, and `src/proxy.ts` adds
+`X-Robots-Tag: noindex, nofollow` to every page. Doing only the first is the common mistake:
+`robots.txt` asks a crawler not to _fetch_, which is not a promise not to _list_. A URL a crawler
+learned about somewhere else can be indexed without ever being fetched — and a page it never fetches
+is a page whose `noindex` it never sees, so the two directives are not redundant, they cover
+disjoint cases.
+
+`robots.ts` needs `export const dynamic = "force-dynamic"`. It is a route handler like any other,
+and Next prerenders one that reads nothing request-scoped — which would resolve `WEB_NOINDEX` on the
+build machine and freeze the answer into the published image. That is the same trap
+`lib/runtime-config.ts` exists to avoid, arriving through a file convention rather than through a
+variable, which is exactly why it is easy to miss.
+
+The default is "allow", which is what the app did before this existed: no `robots.txt` at all is
+read as no restriction.
+
+## `/healthz` is shallow on purpose
+
+The container healthcheck (`Dockerfile`) asks this route and nothing else, and the route reports
+only that this process is serving HTTP. It deliberately does not check Postgres or Redis: the web
+container does not talk to either, and a healthcheck that failed because a database it never uses
+was slow would have Docker restart a container that was perfectly able to render its sign-in page.
+The API owns that question and has its own readiness probe.
+
+Two smaller choices. `force-dynamic`, because a route handler with no request-time API is
+prerendered and served from disk — still evidence the process is up, but a health endpoint that
+answers without running any of the app's own code is a strange thing to trust, and the cost of
+running it is a string. And the matcher in `src/proxy.ts` excludes it, for the same reason it
+excludes `api/`: a policy about scripts and styles has nothing to say about two words of plain text,
+and the exclusion keeps a fresh nonce off a path that is hit every thirty seconds for the life of
+the container.
+
+The check itself is a `node -e` one-liner rather than `curl`, because `node:24-alpine` ships neither
+`curl` nor `wget` and adding one to ask a question the runtime can already ask is a package and a
+CVE surface for nothing. It is written in exec form, so no shell is involved and the builder
+performs no substitution — `process.env.PORT` is read by node at run time, which keeps the check
+correct for an instance that moved the port.
+
+## The image builds once per architecture, and a `v*` tag is checked against `package.json`
+
+`.github/workflows/publish-image.yml` publishes `ghcr.io/opendiving/opendiving-web`. Its shape is
+decided by four things.
+
+- **Native runners, not QEMU.** `linux/amd64` and `linux/arm64` build on `ubuntu-latest` and
+  `ubuntu-24.04-arm` respectively, each pushing an untagged image and reporting its digest; a
+  `merge` job turns the pair into one manifest list. Emulating arm64 is the one-job alternative and
+  it is not close here — `npm ci` plus `next build` under QEMU turns a three-minute build into a
+  twenty-minute one, on every release. arm64 is not optional: "low-powered device" is a top-two
+  hardware answer among self-hosters, and a missing arm64 image is a bounce rather than an
+  inconvenience.
+- **Every tag created in one call.** `docker buildx imagetools create` receives the whole tag list
+  at once, so `X.Y.Z`, `X.Y`, `X` and `latest` cannot end up on different digests. That is what
+  makes the CVE-rebuild story work: rebuilding a released version means recomputing its _full_ alias
+  set, and a hand-typed subset would leave everyone following `X.Y` on the vulnerable image. The
+  major alias starts at `1.0.0` — a bare `0` invites pinning to "any 0.x", which is precisely the
+  range whose minors are allowed to break.
+- **The tag is guarded against the manifest.** Every `v*` tag push fails the build, before anything
+  is pushed to the registry, unless the tag is a plain `vX.Y.Z` equal to `v` + `package.json`'s
+  version. A two-repo release ritual will eventually tag the wrong commit, and the failure is
+  otherwise silent — images published under a version whose manifest says something else. Recovery
+  is cheap precisely because the guard fires first: nothing was pushed, so delete the tag, fix,
+  re-tag. The two halves of that condition matter separately. `vX.Y.Z` is the only shape this
+  pipeline knows how to alias, so `vnext` or a pre-release has to be refused rather than sail past
+  the version check and publish as a bare `sha-` image — which is what an "is this a version?" test
+  written as `^v[0-9]` quietly does, since the trigger glob is `v*` and not every `v*` starts with a
+  digit. The tag-push path therefore enters the guard unconditionally; only a dispatch, where a
+  human is naming an arbitrary ref, uses a heuristic to decide whether they meant a version at all.
+- **A version typed into the extra-tag input is refused, with or without the `v`.** That input
+  exists for names like `staging`, and a version put there never reaches the guard above at all:
+  `-f ref=main -f tag=0.4.0` publishes `:0.4.0` off whatever commit `ref` names, unchecked against
+  `package.json` and without any of the other aliases that version is supposed to carry. The two
+  spellings fail differently and the bare one is the worse of them — `0.4.0` and `0.4` are exactly
+  what a release publishes, so it _overwrites_ a real alias, where `v0.4.0` only invents a name
+  nothing else in the repository uses. Hence `^v?[0-9]`: the whole leading-digit namespace belongs
+  to the release path, and reserving it costs a `staging`-shaped input nothing. The error names the
+  fix rather than just the refusal — point `ref` at the tag, which is the path that computes the
+  whole alias set and checks it.
+
+Labels go on the per-architecture images and the same values go on the index as annotations — an
+index carries no labels, and `org.opencontainers.image.source` is what GHCR reads to decide which
+repository a package belongs to and inherits access from. One of them is conditional:
+`org.opencontainers.image.version` is stamped only when there is a version to state, because on a
+branch or `sha-` build it would carry the empty string, and a label reading `version=` is a claim
+about the version rather than the absence of one.
+
+**The api repo's workflow of the same name is this same policy said twice.** The two repos release
+in lockstep on one version, so an alias rule or a guard added to one has to be added to the other,
+and both are written in one idiom — tags assembled by hand rather than by `docker/metadata-action` —
+so that making the change twice reads as a diff rather than an archaeology session. What differs
+between them is only what has to: the manifest is `package.json` read by `node` rather than
+`pyproject.toml` read by `tomllib`, the title and description name this image, and the cost of QEMU
+is `next build` rather than compiling wheels without an aarch64 build. Anything else that differs is
+a port owed in one direction or the other, and worth resolving as one.
+
+Alongside it, `.github/release.yml` and a labelling job in `pr-title.yml` are the release-notes
+plumbing. The job reads the same conventional title the check above it validated, applies one of
+`breaking`/`feat`/`fix`, and — the half that is easy to forget — removes the other two, so a PR
+retitled from `feat!:` to `fix:` does not stay in the Breaking section forever. It is gated to
+same-repo PRs: on a fork PR the token is read-only whatever the workflow asks for, and an ungated
+step would turn a _required_ check red on every external contribution, which is exactly the wrong
+week for it when the repos go public.
+
+## The install lives in the product repository, and this README points at it
+
+An install is one compose file, and that file belongs to neither component: it names the `web`
+service _and_ the `api` service, so either repository holding it means the other holds a second copy
+of the same thing. It lives in `opendiving/opendiving` along with everything downstream of it — the
+configuration reference, the bring-your-own-proxy instructions, backup, restore, upgrade and
+troubleshooting, written once — and this README links there rather than paraphrasing. Two copies of
+install instructions do not stay in agreement, and the one that is wrong is always the one the
+reader found first.
+
+**That reasoning is why this section's own quickstart was deleted rather than repointed.** This
+README used to carry the four `curl` commands itself, against the API repository's releases; the
+bundle has since moved to the product repository, and swapping the URLs would have kept exactly the
+second copy the paragraph above refuses — the wrong one being, as ever, whichever the reader found
+first. What is left is a link. The still-open gap those commands described travelled with them: no
+`v*` tag has been cut in any of the three repositories, so `releases/latest/download/...` resolves
+to nothing and neither image is on GHCR yet.
+
+**The section heading used to say `opendiving-api`, and the docs did live there first.** They were
+written in `opendiving-api/docs/self-hosting/` because the compose file was, which was the same
+argument reaching a smaller conclusion — the API repository was the only one of the two that could
+hold the bundle without duplication, and it took a third repository to make "neither component" an
+available answer. The reasoning survived the move intact; only its subject changed.
+
+**Both front-facing links out of this app point at the product repository's front page, not at its
+`docs/`.** `README.md`'s _Full self-hosting docs_ is the exception, and goes to
+`.../opendiving/tree/main/docs` because that is what it says it is. But `landing-page.tsx`'s
+`SELF_HOSTING_URL` — the hero's "run your own instance" and the button under _Run your own_ — and
+the contact page's _Self-hosting quickstart_ all land on `https://github.com/opendiving/opendiving`
+itself: that page carries the pitch and the four commands, so a visitor who clicked because they
+were shopping for something to deploy gets the install rather than a file listing. The contact one
+was `opendiving-api#quickstart`, an anchor that never existed under any casing — so it had been
+landing at the top of a component's README since the day it was written.
+
+What stays here is what the product repository has no reason to know: building this image yourself,
+and `NEXT_PUBLIC_API_URL` as a build arg for a split-origin deployment. Both are properties of
+_this_ Dockerfile, and neither appears in the bundle at all — the bundle pulls a published image,
+and the browser talks to the origin that served it.
+
+**The README was written ahead of what it describes, and has since been checked back.** When this
+section first landed none of it could be run: no deploy bundle, no `docs/self-hosting/`, no
+published images, and the API's own README still filing the whole thing under "Planned". That was
+the owner's call, taken with the state named — this web docs pass was deliberately sequenced ahead
+of the API-side bundle, and nothing is public yet. The API side has since shipped, and the re-check
+is the point: the quickstart was corrected against the bundle that actually exists rather than the
+draft that predicted it, which is how its asset names came right. The environment template ships as
+`example.env`, not `.env.example`; `Caddyfile` is a third download the first draft omitted entirely;
+and a verbatim copy of that draft would have produced a broken install the day the first release was
+cut.
+
+The "One-command self-hosting" roadmap bullet was removed rather than reworded, on the same
+forward-dated basis: it and the new section describe one feature, and keeping both would leave the
+file promising in one place what it documents in another.
+
+## The landing page can only claim what the instance can back up
+
+The page shipped with four headline figures — "1,000+ Active Divers", "5,000+ Logged Dives", "50+
+Countries", "100% Open Source" — App Store and Google Play badges wired to `href="#"`, a Community
+feature card promising dive-photo sharing and buddy-finding, and a closing "Join thousands of divers
+who are already using OpenDiving". Exactly one of those eight things was true.
+
+What makes them worse than ordinary placeholder copy is who ends up saying them. This is not a
+marketing site for a hosted product; it is the unauthenticated view of _somebody's server_, rendered
+by whatever image they pulled. A visitor count is not merely unverified, it is uncountable — there
+is no central service to count, and the number would have to be a per-instance figure that says
+"1,000+" on a household Raspberry Pi with one diver on it. The store badges were worse still: two
+prominent, correctly-branded buttons that did nothing, on a project whose iOS repo is explicitly
+parked. Every one of them makes a liar of the self-hoster, not of the project.
+
+So the constraint the rewrite works under is narrower than "don't exaggerate": **each claim has to
+be checkable against this repository or the running instance.** That is what decided the
+replacements, and the shape of the page follows from it:
+
+- **The band that held the fake stats now carries the argument they were standing in for.** It is
+  the same coloured section, and the vendor-shutdown case (Movescount, Deepblu, Diveboard; AGPL; the
+  original dive-computer file kept behind every import) is what the numbers were there to imply. The
+  three facts under it — the licence, no trackers, the three export formats — are the only figures
+  left, and each one is a `grep` away. Note the contrast constraint documented under `--coral-solid`
+  still applies to this band: full `text-primary-foreground`, never `/70`, which is 4.90:1 on
+  `bg-primary` in dark mode against 3.4:1 for the faded version.
+- **The store badges became a line of prose that answers for them** — there are no mobile apps, the
+  iOS companion is parked, and this web app is built for a phone in the meantime — with the source
+  and the way to run your own as inline links. The absence needed stating outright rather than being
+  left as a silence, because the badges had already advertised it. `icons/apple-logo.tsx` and
+  `icons/google-play-logo.tsx` went with them; they had no other caller.
+- **The Community card became Computer Import**, which is a thing the app does. Sharing is on the
+  roadmap and the "Run your own" section says so by name, alongside Subsurface/UDDF import and
+  statistics. A landing page that lists what is _not_ built is a strange artifact until you remember
+  the reader may be about to run this on their own hardware.
+- **The hero sells the log, not the deployment.** The subheading carries the mixes, the imported
+  profile, the gear and c-cards, and the export button. The `<h1>` above it is the one exception to
+  everything in this section, and the next two paragraphs are about that.
+
+That last one is a correction, and the mistake behind it is worth keeping. The first rewrite led
+with "A Dive Log You Own" and "Every instance runs on hardware its owner controls — this page is
+served by one of them", and put two large buttons — _Browse the source_, _Run your own instance_ —
+directly under the sign-in form. Every word of that was true, which is exactly why it slipped
+through: the honesty constraint above says nothing about **which** true thing goes at the top.
+Self-hosters are a small part of the audience, and most people reaching this page are divers signing
+in to a log someone else already runs. Leading with the deployment story pitched the hero at the
+minority, and a visitor who does not intend to run anything reads "hardware its owner controls" as a
+caveat about someone else's server rather than a promise about their data.
+
+**"The Ultimate Diving App" stays, and stays on purpose.** The replacement headline was "Log Every
+Dive / In Full"; the owner's call was to keep the original for now, and it is recorded here rather
+than left to look like something the rewrite missed. It is a superlative on a page whose whole
+argument is that every other claim on it can be checked, so it is the one line that a future reader
+should assume is deliberate before "fixing" it — hence the comment on the `<h1>` pointing back here.
+`app/page.tsx`'s `title` was moved to match it, on the narrower point that a search result promising
+one headline and delivering another is a mismatch nothing downstream can paper over; the two now
+change together or not at all. Nothing else was reverted with it — the subheading, the band, and the
+cards stay as above.
+
+The data-ownership argument did not get weaker, it got moved to where it lands: the `#features` card
+("Yours To Keep"), the coloured band, and the "Run your own" section, which is where the one
+prominent self-hosting button now lives. The band's own phrasing moved with it — it used to say the
+data sits "in a Postgres database you back up yourself", which is only true for the person running
+the instance. The diver-facing form of the same guarantee is the export: if the instance goes away,
+the export still opens in something else.
+
+The header's unauthenticated nav had to move with it. `/#community` pointed at the section that is
+now `#self-hosting`, and `/#about` had been pointing at an `#about` that never existed on any
+version of this page — a dead anchor that scrolled nowhere. They are now Features, Self-hosting and
+a `Source` link out to the repository, which is three destinations that exist.
+
+The footer's "Open source diving platform for the global diving community" stays, and it is worth
+saying why it is _not_ another instance of the above — an earlier draft of this section filed it as
+"the same species of claim", which was pattern-matching on the word "community" rather than reading
+what the sentence asserts. It is a statement of **audience**, not of traction. The global diving
+community does exist; the software is for it; being AGPL and self-hostable by anyone, that is true
+in the only sense the sentence means. What this section removed were claims of a different kind:
+"1,000+ Active Divers" is countable and about _this instance_, "Join thousands of divers who are
+already using OpenDiving" is about existing users, and "Find dive buddies" is about features. Each
+of those asserts something checkable and false. An audience does not.
+
+The reason it ever looked guilty is that it used to sit beside a Community nav item and a Community
+feature card that really did promise sharing and buddy-finding, and in that company it read as part
+of the same promise. Deleting those is what changed it. So this is a note against finishing a job
+that does not need finishing: the line is fine, and the mislabel is the thing that was wrong.
+(Nearest real target in it is "platform" for what is a web app plus an API — a question of register,
+not of honesty.)
+
+## `scroll-padding-top` on `html`, because the sticky header eats anchor targets
+
+The header is `sticky top-0 z-50`, so it paints over the top of whatever an in-page anchor scrolls
+to. Clicking **Features** in the nav put `#features` at `top: 0` and hid its first 69px — exactly
+the header's height — behind it, which on that section is the top edge of all three cards. The fix
+is one declaration in `globals.css`:
+
+```css
+:root {
+  --header-height: calc(4.25rem + 1px);
+}
+html {
+  scroll-padding-top: var(--header-height);
+}
+```
+
+Three things about it are deliberate.
+
+**`scroll-padding-top` on the container, not `scroll-mt-*` on each target.** The property belongs to
+the scroll container and moves the line the browser aligns to, so it applies to every anchor at once
+— `#features`, `#self-hosting`, `#get-started`, and anything added later — instead of being a
+utility that has to be remembered on each new `id`. It also covers the scroll that happens when
+focus moves to an element near the top of the page, which had the same defect and no anchor to hang
+a utility on. It goes on `html` rather than `body` because `html` is the element that scrolls.
+
+**Exactly the header's height — and the first attempt got the safe direction backwards.** It shipped
+as a flat `5rem` against a 69px header, on the reasoning that spare clearance is harmless and reads
+as deliberate spacing above the heading. It is not harmless. The extra 11px is not blank page, it is
+a strip of whatever sits immediately _above_ the target, and above `#self-hosting` is the full-bleed
+`bg-primary` band — so jumping there rendered an 11px black bar (grey in dark mode) welded under the
+header, which looks exactly like a rendering fault. Overshooting is the bad direction.
+
+Undershooting is the harmless one, which is the useful half of this to remember: a value a pixel or
+two short only ever hides empty padding. If this number is ever wrong, wrong-low is the way to be
+wrong.
+
+**But header-height alone is only enough where the section has top padding, and one does not.**
+`#features` is `pb-20` with no `pt-` — the hero's `py-20` above it already spaces the cards on a
+normal scroll through, so none was ever needed. Landing on it from the nav is the case that was
+never considered: the cards' top edge came to rest flush against the header with nothing between
+them. It carries `scroll-mt-20` for that, which stacks on top of the container's
+`scroll-padding-top` and buys the same 5rem the other two sections give their own content — all
+three anchors now settle with 80px between the header and the first thing the eye lands on.
+
+That is safe **here specifically** because what sits above `#features` is the hero, on the same
+`bg-background`, so the band the offset exposes is invisible — verified by pixel-comparing a slice
+of the band against a slice of the section interior in both themes; the two are byte-identical. The
+same utility on `#self-hosting` would re-create the black strip, because what sits above that one is
+the `bg-primary` band. The rule is not "add scroll-mt where it looks tight" but "an anchored section
+needs top padding of its own, and where it has none, only borrow the offset if the section above
+shares its background".
+
+That makes exactness worth having, so the value is derived from the header's own construction rather
+than measured off a screenshot: `py-4` twice, the `size="sm"` action button at `h-9`, and the 1px
+`border-b` — `calc(4.25rem + 1px)`. Being rem-based, it tracks the root font size the way the header
+itself does; a `69px` literal would not. Verified: at a 20px root the header measures 86px and
+`scroll-padding-top` computes to 86px with it. This is the same lesson as `CUT_BELOW` in
+`scripts/screenshots.mjs`, where written-down heights went stale twice in an afternoon — except the
+fix there was to measure at runtime and the fix here is to derive from the same inputs, because CSS
+can do that and a screenshot script cannot.
+
+**The comboboxes are not affected, and the reason is worth knowing before "simplifying" this.**
+`volume-combobox.tsx` and `creatable-combobox.tsx` call `scrollIntoView({ block: "nearest" })` on
+their active option. That scrolls the listbox's own `overflow-y-auto` element, which is a different
+scroll container with its own unset `scroll-padding` — so a rule on `html` cannot reach it and
+cannot push a highlighted option out of view. Moving this to `*` or to a shared utility would.
+
+The header height is 69px at every breakpoint; the mobile menu expands the header downward when
+open, but it is closed at the moment a nav link is followed, so the collapsed height is the one that
+matters. `header.tsx` caps that menu at `calc(100dvh-4.5rem)`, which is a _different_ number on
+purpose and was left alone: it is slack on a max-height, where a few px either way is invisible, so
+unifying it with `--header-height` would tie together two quantities that only look alike.
+
+Worth being clear that this was a pre-existing bug and not a regression from the landing-page
+rewrite: `#features` was already there and already clipped. What changed is that the nav now points
+at two sections that exist instead of one that existed and two dead anchors, so it is exercised
+enough to notice.
+
+## `ci.yml` and `code-quality.yml` run on a read-only token, with nothing left in `.git/config`
+
+Neither workflow had a `permissions:` block, and the absence of one is not "no permissions" — the
+run inherits whatever the repository default grants, which is read _and_ write across every scope
+unless somebody has narrowed it in the Actions settings. Neither workflow has ever needed any of it:
+between their jobs they check out, `npm ci`, lint, type-check, test, build, and upload reports as
+artifacts. Nothing writes to the repository, comments on a PR, or touches a package. Both now
+declare `contents: read` at workflow level, which is what `publish-image.yml` and `pr-title.yml`
+were already doing.
+
+(This said "the four jobs" and listed `npm audit` among them until `security-audit` was removed from
+`ci.yml` — see "A pin is a promise to renew" below for where that job's two steps went. Nothing
+about the argument changes: three jobs across the two files, still all reads.)
+
+Narrowing the scope is only half of it. `actions/checkout` writes the `GITHUB_TOKEN` into
+`.git/config` in the workspace unless told not to, and every job here then spends its time executing
+third-party code in that same workspace: linting, testing and building all run whatever the
+dependency tree ships. A compromised transitive dependency therefore finds a credential on disk
+without having to go looking for one, and the scope above is all that decides what it is worth.
+`code-quality.yml` has the sharpest version of this — four of its steps are `npx --yes` fetching a
+tool at run time (`depcheck`, `@next/bundle-analyzer`, `madge`, `@axe-core/cli`), so the code
+running next to that credential is resolved fresh on each run rather than pinned by the lockfile.
+`persist-credentials: false` on every checkout is the other half, and it costs nothing here: none of
+these jobs push, fetch a second ref, or use git at all after the checkout step.
+
+`fetch-depth: 0` on the `code-quality` checkout stays. The two inputs are independent — the full
+history is still fetched, just without the credential kept afterwards.
+
+One step here would want more than read, and it is commented out: "Comment PR with quality report"
+calls `issues.createComment` and needs `pull-requests: write`. Reviving it means a block on that job
+rather than a wider workflow-level one — and the job would have to re-state `contents: read`
+alongside, because a job-level `permissions:` block _replaces_ the workflow's rather than adding to
+it. `pr-title.yml` is the worked example: `permissions: {}` at the top, and the labelling job asking
+for exactly the two scopes it uses. The commented-out `dependency-review` job needs nothing extra;
+`contents: read` is what that action reads the PR's dependency diff with.
+
+The api repo's `linting.yml`, `tests.yml` and `type-checking.yml` had the same gap, and have since
+been given the same two lines — the same way its `publish-image.yml` and `pr-title.yml` already
+mirror this repo's. Every CI workflow across both repos now starts from `contents: read` and a
+checkout that persists nothing, so a new one has a shape to copy rather than a repository default to
+inherit. A workflow that genuinely needs to write asks on the job, which is what `pr-title.yml` does
+in both repos.
+
+## `SECURITY.md` has two channels, and both of them exist
+
+The repo had a `CODE_OF_CONDUCT.md` and a `CONTRIBUTING.md` and no way to report a vulnerability
+privately, so a finder's only option was a public issue — on a project that invites strangers to
+self-host it. `SECURITY.md` closes that. What is worth recording is which channel is primary, why
+the other one is safe to publish when a near-identical address was deleted from this repo once
+already, and which parts of the boilerplate a template would have supplied are missing on purpose.
+
+**The primary channel is GitHub's private vulnerability reporting** — `security/advisories/new` on
+this repository — because it is private by construction, keeps the thread and the eventual advisory
+in one place, and credits the reporter without anyone having to remember to. It is a repository
+setting rather than a file (Settings → Code security), and it gets switched on when these repos go
+public. That ordering is fine and not a gap: while the repo is private, nobody who would read
+`SECURITY.md` can reach it either.
+
+**`security@opendiving.app` is the second channel, and it is a real inbox.** It has to be, which is
+the whole point of writing this down. `security@` was literally one of the three invented addresses
+deleted in the contact-form rebuild (see "The contact form posts to the API, and the page it lives
+on claims only what exists"), and `lib/runtime-config.ts` leaves `CONTACT_EMAIL` unset by default
+for the same reason: an address nobody reads routes someone's report to a stranger, which is worse
+than no address at all. So the test an address has to pass here is not "does it look plausible" but
+"has a maintainer created it and agreed to read it" — this one has, which is exactly what separates
+it from the deleted one. Don't add a third by pattern-matching on this one; `conduct@opendiving.app`
+in `CODE_OF_CONDUCT.md` carries conduct reports and nothing else.
+
+Two near misses, for anyone tempted to revisit them. The app's own contact form has a `security`
+category in `CONTACT_CATEGORIES`, but it only exists on a _running instance_ and there is no hosted
+instance of this project — `SECURITY.md` mentions it only as the thing a self-hoster's own users
+would use to reach _that_ operator. And the file briefly had no mailbox at all, offering "open an
+issue saying only that you have a security report" as the fallback for a reporter without a GitHub
+account: that was incoherent, since filing an issue needs an account just as much. A second channel
+that shares the first one's precondition is not a second channel.
+
+**No supported-versions table and no SLA.** The boilerplate template wants a matrix of version
+ranges with ticks and crosses, and this project has one release line: `publish-image.yml` publishes
+`X.Y.Z`, `X.Y`, `X` and `latest` off one tag, nothing is backported, and the version moves in
+lockstep with the API. "The latest release" is the entire honest answer, so it is one sentence
+rather than a table that would be wrong the moment it was written. The same reasoning kills the
+48-hour acknowledgement and the 90-day disclosure clock: there is no rota to keep either, and a
+published promise nobody can meet is worse for a reporter than being told plainly what to expect.
+What the file does instead is tell them to nudge the thread after a couple of weeks — a suggestion
+to the reporter costs nothing to honour — and to name their own deadline in the first message if
+they have one.
+
+## Gravatar hashes with SHA-256, and the `d=404` probe still works
+
+**Superseded.** No address is hashed for anything now, and `crypto-js` left with the last line that
+imported it - see _"Avatars are this instance's own, and Gravatar left rather than becoming a
+fallback"_ below. The measurement recorded here is kept because it is the sort of thing that is
+expensive to redo and cheap to keep, not because anything still depends on it.
+
+`lib/utils.ts` hashed the address with `crypto-js/md5`. It now uses `crypto-js/sha256`. Gravatar has
+accepted both at the same `/avatar/{hash}` endpoint since 2022 and documents SHA-256 as the
+preferred one, so this is a one-import change with no call-site consequences — `getGravatarUrl` and
+`getGravatarUrlStrict` stay synchronous, and `UserAvatar` builds both URLs during render exactly as
+before.
+
+**This closes nothing, and the write-up should not pretend otherwise.** An email address has far too
+little entropy for any digest of it to be more than an identifier — that is precisely why
+`GRAVATAR_ENABLED` defaults to off and `.env.example` spells out the disclosure, and none of that
+reasoning changes with the algorithm. The change is about not shipping MD5 in 2026.
+
+The one thing that genuinely needed checking first was the `d=404` probe. `UserAvatar` decides
+between the avatar and the initials by firing a `new Image()` at `?d=404` and reading load vs.
+error, so an endpoint that quietly failed to resolve SHA-256 lookups would not error — it would
+silently show initials to every user who has an avatar. Measured against gravatar.com rather than
+assumed, using no real person's address:
+
+- `?s=80&d=404` on the SHA-256 of a synthetic address 404s, exactly as the MD5 of the same address
+  does, and `?s=80&d=mp&r=g` returns the same 1262-byte fallback for both forms.
+- The endpoint is permissive about the hash it is given — a 40-hex, 65-hex or plainly non-hex string
+  all 404 under `d=404` and all render an identicon under `d=identicon` — so "a SHA-256 hash does
+  not 400" proves nothing on its own, and the miss case above is therefore not evidence either.
+- What settles it is a **hit**. `https://api.gravatar.com/v3/profiles/{username}` publishes an
+  account's canonical `hash` as 64 hex characters and its `avatar_url` as `/avatar/<that hash>`;
+  `?d=404` against the hashes it returns for the public `gravatar` and `automattic` profiles answers
+  `200` with an image. SHA-256 lookups resolve, and SHA-256 is the form Gravatar itself hands out.
+
+**The `crypto-js` dependency was deliberately kept.** `lib/utils.ts:3` is the only import of it in
+the repo, so a Web Crypto `crypto.subtle.digest` implementation would drop both `crypto-js` and
+`@types/crypto-js` from `package.json`. `subtle.digest` is async, though, and both helpers are
+called during `UserAvatar`'s render — so that version means moving URL construction into state, in a
+component whose existing effect already carries a `react-hooks/set-state-in-effect` disable. Trading
+a one-line change for a state refactor of the avatar component is not a trade this change had any
+business making; the dependency removal is a separate decision, on its own merits.
+
+`lib/utils.test.ts` pins the digest in two URL assertions. The length is the algorithm — 64 hex
+characters is SHA-256, 32 was the MD5 — which is what the comment above them says, so the constant
+does not read as arbitrary.
+
+## The CSP nonce is 16 random bytes, not a stringified UUID
+
+`src/proxy.ts` built the nonce as `Buffer.from(crypto.randomUUID()).toString("base64")` — the UTF-8
+bytes of a 36-character UUID string, base64'd. It is now
+`Buffer.from(crypto.getRandomValues(new Uint8Array(16))).toString("base64")`.
+
+**Not a fix for a weakness.** A v4 UUID carries 122 bits of entropy and nothing was ever going to
+guess one. CSP Level 3 asks for at least 128, so the old form sat 6 bits under a spec floor that is
+already orders of magnitude past practical — the reason to change it is that "why 122?" is a
+question sitting in the middle of this app's most security-critical file, and the spec-exact form is
+no longer code. It is also shorter on the wire: 24 base64 characters against 48, on a header that
+names the nonce twice per response.
+
+Two things that make the form safe to pick without hedging. `crypto.getRandomValues` and `Buffer`
+are both available in either runtime, so nothing here depends on where Proxy runs — and it runs on
+Node: Next 16 defaults Proxy to the Node.js runtime and _forbids_ the `runtime` export in a proxy
+file outright (`node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/proxy.md`),
+so there is no switch that could move it. And base64 padding is legal in a nonce — the grammar's
+`base64-value` ends in up to two `=` — which matters because 16 bytes always produces one `==`,
+where the old 36-byte input never produced any.
+
+`src/proxy.test.ts` reads the nonce back out with `/'nonce-([^']+)'/` and asserts two requests
+differ; base64's alphabet contains no `'`, so that regex is unaffected by the shorter value.
+
+## A pin is a promise to renew, and nothing here was renewing anything
+
+This repository had no `.github/renovate.json5`, no `.github/dependabot.yml`, and no image scan of
+any kind. What stood in for all of it was two steps in `ci.yml`'s `security-audit` job:
+`npm audit --audit-level=moderate`, and `npm outdated || true`.
+
+**The second of those is the one worth dwelling on, because it looked like coverage and was not.**
+`npm outdated` printed a table of every package behind its latest release into a job log, and the
+`|| true` meant it could not fail, could not be seen without opening the run, and could not produce
+anything a person would act on. Nobody reads a green step. So the repository had a workflow named
+"security audit" containing a dependency-freshness report that was structurally incapable of telling
+anyone anything — the same shape of problem as a digest pin that nothing renews, arrived at from the
+other direction. Rot that reads as rigour is the failure mode in both cases, and the fix in both
+cases is the same: something has to open a pull request.
+
+The pin-rot argument that drives the api repo's version of this section does not transfer whole, and
+it is worth saying where it stops. The install bundle pins three third-party images to digests that
+nothing was renewing, which is strictly worse than not pinning at all — an unpinned `postgres:18`
+drifts _towards_ the patched build while a stale digest drifts away from it, both invisibly. That
+bundle was the api repository's when this section was written and is the product repository's now;
+either way it is not here (see "The install lives in the product repository"), so this repository
+has exactly two kinds of pin: the `Dockerfile`'s floating `node:24-alpine`, which is not a pin and
+must not become one, and the SHA-pinned third-party actions in the workflows. Both are fine. What is
+_not_ fine, and is this repository's own version of the frozen digest, is the four
+`npx --yes <tool>@<version>` invocations in `code-quality.yml`: `depcheck@1.4.7`,
+`@next/bundle-analyzer@16.3.0`, `madge@8.0.0`, `@axe-core/cli@4.12.1`. They are not in
+`package.json`, so no npm manager sees them; they are in `run:` rather than `uses:`, so no actions
+manager sees them. They are versions somebody typed once, in steps that end in `|| true`, and left
+alone they would still be those versions in five years. The regex `customManagers` entry in
+`renovate.json5` exists for them and nothing else, and it is the one piece of that file with no
+counterpart in the api's.
+
+**Renovate over Dependabot — and the api's reason for it does not apply here.** There the decider is
+that Dependabot has no `uv` ecosystem, so `uv.lock` would go entirely unwatched. Dependabot reads
+`package-lock.json`, this `Dockerfile` and these workflows perfectly well, so that argument is spent
+and three smaller ones carry it:
+
+- It cannot read `.nvmrc` — there is no ecosystem for it — and its groups are scoped to a single
+  ecosystem, which together make the Node-runtime rule below inexpressible under it.
+- It has no equivalent of `customManagers`, so the four `npx` pins above would stay frozen under it
+  too. That is not a tie-breaker; it is most of the problem this file was added to solve.
+- The api repo already runs Renovate. Two bots across two repositories that release as a matched
+  pair means two dashboards, two PR-title conventions and two settings pages for one product.
+
+Verified rather than assumed, by running `renovate --platform=local --dry-run=extract` against this
+repository before committing to the config — via `ghcr.io/renovatebot/renovate`, because Renovate 44
+declares `node ^24.11.0` and refuses to start on a newer local Node. It extracts 96 dependencies
+across 9 files: `npm` 46 (the 45 in `package.json` plus `engines.node`, with `package-lock.json`
+correctly picked up as its lock file), `github-actions` 43, `dockerfile` 2, `nvm` 1, and the regex
+manager's 4. `renovate-config-validator` is the cheaper half of the same check and catches a
+misspelled option without a container; both commands are written down in CONTRIBUTING.md so the next
+person changing that file does not have to rediscover them.
+
+**`pinDigests` is `false`, and that is load-bearing rather than a default.** The `Dockerfile` floats
+on `node:24-alpine` twice, and the float is the only reason the CVE rebuild works: re-running
+Publish Image at an old `v` tag collects patched Alpine packages precisely because the base resolves
+at build time. Digest-pin it and that rebuild reproduces the vulnerable base byte for byte, moves
+every alias, and reports success while fixing nothing. The workflows meanwhile pin first-party
+actions on a major tag and third-party ones by SHA with a trailing version comment, which Renovate
+renews together. `pinDigests: true`, or the `helpers:pinGitHubActionDigests` preset, would flatten
+both styles into one and break the first outright.
+
+**A Node version is held back rather than automated**, on the same reasoning as the api's Python
+group. `.nvmrc`, `engines.node` and the two `Dockerfile` tags are reachable to Renovate; the six
+occurrences of `24.x` in `ci.yml` and `code-quality.yml` are not, because the `github-actions`
+manager reads `uses:` and not arbitrary `with:` strings. An auto-opened PR would therefore move the
+runtime the image is built and shipped on while leaving CI testing the old one — the single
+configuration in which a green check means least. `dependencyDashboardApproval` on a group of the
+three reachable managers is the honest handling. There is a second reason not to automate it that
+has no api counterpart: Node's even majors are the LTS lines and the odd ones are not, which is what
+`engines.node` says by being `>=24 <25` rather than `>=24`, and stepping onto an odd major is a
+decision rather than a version bump.
+
+**One rule in that file exists because the extractor was actually run**, and it is the best argument
+for running it. `aquasecurity/setup-trivy` takes a `version:` input, and Renovate's `github-actions`
+manager extracts that input as a dependency in its own right — `aquasecurity/trivy`, datasource
+`github-releases`, `currentValue: latest`. The one plausible PR it could open is the single thing
+`vulnerability-scan.yml` says must never happen: replacing `latest` with a number freezes the
+scanner's advisory knowledge while it goes on reporting zero findings, which is a security check
+that has become indistinguishable from good news. Renovate almost certainly skips a `currentValue`
+of `latest` on its own, and "almost certainly" is the wrong standard for a failure that is silent
+and arrives as an ordinary green dependency PR — so the rule disables that one dep by name. The
+action's own SHA pin is a different dep (`aquasecurity/setup-trivy`) and stays renewed. This is a
+port owed to the api repository, which has the same action and the same input and no such rule.
+
+## The scan that matters runs on a schedule, and it replaced the audit that ran on every PR
+
+`.github/workflows/vulnerability-scan.yml` has two jobs and they are not two configurations of one
+idea. The PR job answers "is the change I am proposing vulnerable"; the scheduled job answers "is
+what people are already running vulnerable". Only the second closes the loop with the rebuild
+CONTRIBUTING.md documents, because the event that triggers a rebuild is a release that passed every
+check the day it shipped and grew a CVE three weeks later — no PR in flight, no diff, nothing in the
+repository changed. A PR-blocking scan cannot see that however strict it is, and a repository that
+has one is easy to mistake for a repository that is covered. This one had exactly that.
+
+**Trivy replaced `npm audit`, and the swap costs something real.** It is written down here and in
+CONTRIBUTING.md rather than left for someone to notice from a diff.
+`npm audit --audit-level=moderate` covered the whole tree at moderate and above; `trivy fs` at
+`HIGH,CRITICAL --ignore-unfixed` covers production dependencies at high and above, with a fix
+available. Both narrowings are the api repo's thresholds adopted deliberately:
+
+- **Dev dependencies out of scope** is Trivy's default for `package-lock.json` — it reads the `dev`
+  flag npm writes there — and it matches what ships: the runner stage copies `.next/standalone`,
+  whose pruned `node_modules` is the production set. The dev tree does execute in CI, on a token,
+  and the answer to that is the one "`ci.yml` and `code-quality.yml` run on a read-only token" above
+  already chose: `contents: read` and `persist-credentials: false`, not a scanner.
+- **`--ignore-unfixed`** is what makes failing the check reasonable at all. A finding with no
+  published fix cannot be actioned by a version bump, so failing a PR over one is a red X with no
+  move attached — and a check like that gets ignored rather than acted on, which costs more than the
+  coverage was worth.
+
+What decides it in favour of one tool rather than keeping both is not tidiness. Half of what ships
+in this image is the Alpine package set of `node:24-alpine`, which `npm audit` cannot see at all, so
+it could never be the thing that tells you a rebuild is due. And running one scanner across both
+jobs means the PR gate and the image scan share a vulnerability database: a green PR check becomes a
+real prediction about the npm half of the image that change will become, rather than a second
+opinion from a different corpus. Two gates asking almost the same question with different answers is
+the worse outcome — a contributor seeing one red and one green has no way to know which to believe.
+
+**The report is written in node where the api's copy uses `python3`, and that is the only deliberate
+divergence between the two files.** Everything else about them is kept as close to identical as the
+ecosystems allow, on the same reasoning as the two `publish-image.yml` files: a fix to one should
+port as a readable diff rather than an archaeology session. The report is the exception because it
+is the part most likely to be edited — wording, the row cap, the remedy text — and it should be
+editable by whoever contributes to _this_ repository. `node` reads a script from stdin exactly as
+`python3 -` does, so the heredoc shape is unchanged; both interpreters are preinstalled on
+`ubuntu-latest`.
+
+The rest of the design is the api's, and is repeated here only where this repository changes the
+answer:
+
+- **The alert is an issue, not a code-scanning alert**, because SARIF upload needs GitHub Advanced
+  Security on a private repository and this one is private until it isn't. A detection mechanism
+  that only starts working after a settings change nobody has made is not detection. When the
+  repository goes public, `upload-sarif` is what to replace that step with.
+- **One issue, edited in place, keyed on a fingerprint** of the sorted set of fixable CVE ids and
+  deliberately not the digests: a rebuild that fails to clear a CVE changes every digest without
+  changing the problem. The clean-scan close rewrites the body _before_ closing, which is what keeps
+  the "same CVE set, leave it closed" suppression honest — closing without it would leave the issue
+  carrying the last vulnerable fingerprint, making this workflow's own close indistinguishable from
+  a human dismissal, so a recurrence would match and never alert again. The empty set hashes to
+  `e3b0c442…`, which no real finding collides with.
+- **Findings fail the PR job and never the scheduled one.** The scheduled job's output is an issue,
+  so a red X would add nothing and would train someone to ignore a red X on a security workflow. It
+  does fail loudly in the one case that would otherwise look like good news: release tags exist but
+  no image alias resolves, which is a broken login or a missing package rather than an absence of
+  releases.
+- **It skips cleanly when nothing has been published**, which is not hypothetical here — `v0.2.0` is
+  still ahead of both repositories, so on the day this merges the scheduled job logs a skip and goes
+  green. A check that is red from the day it lands is a check somebody turns off.
+- **Only the newest release is scanned.** `SECURITY.md` is what settles this rather than a judgement
+  call in a workflow: nothing is backported and the supported version is the latest release, so the
+  scan set _is_ the supported surface, and the four aliases it covers (`X.Y.Z`, `X.Y`, the bare
+  major from 1.0.0, `latest` — one image under four names) are every form in which someone can be
+  pinned to it. Widening it is one line shorter and strictly worse: a dispatch only ever repoints
+  the aliases of the version it names, so a finding on an older minor would survive every rebuild,
+  return on the next morning's scan, and — because a never-rebuilt image keeps accruing _new_
+  advisories — open a fresh issue each time the previous was closed. Widening the scan means first
+  widening the support policy, and that is a decision in `SECURITY.md`.
+
+**The tracking issue is public, and `SECURITY.md` says not to open public issues for
+vulnerabilities. Both are right**, and `SECURITY.md` now says where the line is so that the next
+person to notice does not either delete the workflow or quietly loosen the policy. That rule
+protects an _undisclosed defect in code this project ships_: opening an issue for one starts the
+exposure clock before a fix exists. A base-image finding is the other thing entirely — it carries a
+CVE id because Alpine and NVD published it first, since matching an installed version against a
+public advisory database is the whole of what Trivy does, so the issue discloses nothing a reader
+could not get by running `trivy image` against the same public tag. What it adds is _notification_,
+not disclosure. Routing that through private vulnerability reporting instead would put a daily cron
+job into the one inbox that must not be noisy. The distinction to preserve: already-public advisory
+about shipped bytes → issue; undisclosed defect in our own code → the private channel. A scan that
+ever starts reporting the second kind — a `--scanners secret` pass finding a committed credential —
+has crossed the line and needs a different destination, which is why `--scanners vuln` is explicit
+on both jobs rather than left to the default.
+
+**One bug was found by running the steps rather than reading them, and it is the kind that hides.**
+`declare -A TAGS_FOR` followed by `if [ "${#TAGS_FOR[@]}" -eq 0 ]` looks correct and is not: a bare
+`declare -A` leaves the variable _unset_ rather than empty, so under the step's `set -euo pipefail`
+that test aborts with `TAGS_FOR: unbound variable`. Verified on bash 5.2 and 5.3. The step still
+exits non-zero, which is exactly why this survives a reading — the branch it breaks is the one that
+fires when release tags exist but not one image alias resolves, so the maintainer gets a bash
+diagnostic where the `::error::` naming the GHCR login, `docker buildx` and the package should be. A
+failure whose message is about the script rather than the cause is barely better than the silent
+success this branch was written to prevent. `declare -A TAGS_FOR=()` is the whole fix. The api
+repository's copy of this workflow has the same line and the same bug; it is a port owed in that
+direction.
+
+**The permissions are the narrowest that work, which required knowing why one of them is there at
+all.** Both jobs declare their own block, because a job-level block replaces the workflow-level one
+rather than adding to it — so the PR job's token cannot write anything even though the scheduled job
+in the same file needs `issues: write`. The non-obvious scope is `packages: read` on the PR job,
+which scans no image: Trivy's vulnerability database is itself an OCI artifact pulled from ghcr.io,
+and anonymous pulls of it are rate-limited per IP across every runner GitHub owns. The
+`docker login` step is what makes that pull authenticated, and without it the check fails
+intermittently for reasons that look nothing like their cause. Neither job asks for
+`packages: write`: the rebuild that answers a finding is a human dispatching Publish Image, which
+already has it.
+
+## The sign-in email carries a code as well as a link, and the code is keyed on the request, not the address
+
+`POST /auth/email/request` now answers with a `request_id` beside its (unchanged, deliberately
+generic) message, and the "check your email" card can verify the six-digit code printed in the same
+email against that id. Both are backed by one `authentication_request` row on the API side, so
+whichever arrives first consumes it.
+
+**Why a code at all, when the explicit-click precheck already fixed the link-scanner problem.** A
+link fundamentally signs in _the device that opens it_. Someone who types their address on a desktop
+and reads mail on their phone ends up signed in inside the phone's mail-app browser, on the wrong
+device, and this app's audience — dive computers plugged into a laptop, bulk imports — hits that
+constantly. A code crosses the gap by hand.
+
+**The `request_id` is the security-relevant part, not the code.** Six digits are brute-forceable
+offline in milliseconds; what contains them is a five-attempt cap on the row. Had verification been
+keyed on the _email address_, anyone who knew a diver's address could burn those five attempts on
+demand — sign-in denial aimed squarely at the accounts (email-only self-hosters) for which email
+_is_ the recovery path. Keying on an id handed only to the browser that asked makes the row
+unreachable to anyone else, and it also removes an ambiguity: two tabs can each request a link, and
+each then verifies precisely the row it minted rather than whichever one an unordered lookup
+happened to return.
+
+That is why `AuthForm` holds the address and the id as **one** `SentLink` value rather than two
+pieces of state. They must never disagree: a resend supersedes the previous row, so a code typed
+against the old id would fail for a reason the diver cannot see. Everything follows from keeping
+them together — the resend replaces both, and `CheckEmailCard` clears whatever was half-typed at the
+same moment.
+
+**Two small traps in the input itself:**
+
+- **No `maxLength`.** The email prints the code as `481 052`, so the obvious gesture is to select
+  and paste it — and `maxLength={6}` truncates that paste to `481 05` _before_ any `onChange`
+  normalizer sees it, silently losing the last digit. The normalizer alone (strip non-digits, slice
+  to six) does the whole job.
+- **_Verify_ stays disabled until all six digits are in.** Not tidiness: the API allows five wrong
+  attempts before it nulls the code, and a half-typed submission would spend one of them on nothing.
+
+**Routing is by the `redirectTo` prop — not through `localStorage`.** The mechanisms in "The
+destination round-trips through `lib/auth-redirect.ts`" above split on whether the flow leaves the
+tab. The link does and reads the stored path on `/auth/verify`; the code does not, so the prop is
+authoritative and `sanitizeRedirectPath` still guards it. One consequence applies here as it does to
+every in-tab method: signing in with the code leaves the stored destination behind for the day it
+lives, cleared by the next request or by signing out.
+
+**This entry originally said "like Google's", and that comparison has inverted.** Google now leaves
+the tab and stores its destination — in its own per-attempt record, not the key this paragraph is
+about. The passkey ceremony is the in-tab sibling to point at instead.
+
+`authAPI`'s three hand-rolled "capture the access token if this outcome carries one" blocks became
+one `captureSession` helper on the way past, since the code path would have been a fourth identical
+copy.
+
+### A 401 from a sign-in endpoint must not go down the refresh path
+
+Found by typing a wrong code at the local stack rather than by reading the diff: the card showed
+**"Refresh token missing."** — a message about a token refresh nobody asked for — where the API had
+answered `401 {"detail": "This code is invalid or has expired."}`.
+
+The response interceptor in `lib/api/client.ts` treats every 401 as "the access token aged out",
+refreshes, and retries. For a signed-out visitor there is no refresh cookie, so the refresh throws
+and _its_ error is what reaches the caller; the API's own explanation is gone, `clearAccessToken()`
+has run, and an `AUTH_SESSION_EXPIRED_EVENT` has been dispatched at a visitor who never had a
+session. `/auth/refresh` was already excluded, for the narrower reason that retrying it recurses.
+
+The exclusion is now a set, `SESSION_MINTING_PATHS`: `/auth/refresh`, `/auth/email/verify`,
+`/auth/email/verify-code`, `/auth/google`, `/auth/complete`. What they have in common is that a 401
+from them means _the credential in the request body was refused_ — an expired link, a wrong code, a
+rejected Google assertion, a stale onboarding token — which no amount of fresh access token fixes.
+`/auth/logout` is deliberately not in the set: it needs a live access token to blacklist the pair,
+so refreshing and retrying it is exactly right.
+
+The bug predates the code and applied equally to `/auth/email/verify` and the other two, but only
+the code makes it routine: mistyping six digits is an ordinary thing to do, while the magic-link
+page pre-checks its token with `GET .../verify/check` and so rarely reaches a 401 at all.
+
+Two things about testing it are worth keeping. The interceptor hangs off a module singleton, so the
+way in is to swap `apiClient.defaults.adapter` — and `axios.defaults.adapter` alongside it, because
+the regression's whole signature is `refreshAccessToken`'s own bare `axios.post` being reached. And
+the pair of tests has to include the _negative_ case (an ordinary request still refreshes once), or
+the set could quietly grow until nothing refreshes at all.
+
+## Passkeys sign in twice over, and the browser's own capability is the only switch
+
+`@simplewebauthn/browser` (v13) is a new dependency, and passkeys are now a third way into the app
+beside the magic link and Google. Two API calls back the whole thing — `POST /auth/passkey/options`
+mints a challenge and hands back the `flow_id` it was filed under, `POST /auth/passkey/verify` takes
+`{flow_id, credential}` and returns the same `AuthOutcome` the other two entry points return. Those
+key names are worth writing down rather than paraphrasing: the API's request model is
+`extra="forbid"`, and this client first shipped posting `assertion` — the word the ceremony's own
+prose uses for the signature _inside_ the credential — which the API rejects as an unknown field
+with `credential` reported missing beside it. Review caught it before it ran; the module's own test
+now pins the body shape rather than the implementation's choice of word. They live in
+`lib/api/passkeys.ts`; `AuthContext` grew `signInWithPasskey(flowId, credential)`, which is
+`signInWithGoogle` with a different payload and the same `applyOutcome` behind it. `verifySignIn`
+captures the session through `authAPI`'s own `captureSession`, now exported for it rather than
+copied — a second module speaking `AuthOutcome` has exactly the same thing to do with one.
+
+`/auth/passkey/verify` also joins `SESSION_MINTING_PATHS` in `lib/api/client.ts` (see "A 401 from a
+sign-in endpoint must not go down the refresh path" above). It is the same failure in a third
+costume: a 401 there means the _credential in the body_ was refused, a signed-out visitor has no
+refresh cookie to retry with, and without the entry the diver is told "Refresh token missing." while
+the API's own explanation is discarded and an `AUTH_SESSION_EXPIRED_EVENT` fires at someone who
+never had a session. That set is opt-in and silent about omissions, which is why the entry arrived
+with a test beside the existing pair. Registering a passkey is a separate, authenticated pair of
+endpoints and is not here yet — this is sign-in only.
+
+Nothing about it is configurable. `browserSupportsWebAuthn()` is `false` in exactly the deployments
+where the feature cannot work — a plain-HTTP LAN instance gets no `PublicKeyCredential` from the
+browser at all — so the UI hides itself on the capability rather than on a server flag, which
+extends `GoogleAuthButton`'s returns-`null`-when-unconfigured precedent from config-gating to
+capability-gating. A `PASSKEYS_ENABLED` knob would only be a second way for the answer to be wrong.
+
+That capability is read through `useSyncExternalStore` (`false` on the server, the real answer on
+the client) rather than an effect that calls `setState`. An effect is the obvious way to write it
+and `react-hooks/set-state-in-effect` rejects it outright — correctly, since this is a value that
+differs between the two renders rather than one that changes over time. The subscribe callback never
+fires: nothing turns WebAuthn on mid-session.
+
+### The form arms a ceremony nobody asked for, and that is the feature
+
+`hooks/usePasskeySignIn.ts` runs the same three steps twice in two very different registers.
+
+The **explicit** one is the "Sign in with a passkey" button: a click, the browser's own modal sheet,
+and a real error message if it fails. It exists even where conditional UI works, because the
+cross-device QR flow only ever appears behind a deliberate ceremony and a brand-new laptop has no
+autofill entry to tap.
+
+The **conditional** one arms on mount whenever `browserSupportsWebAuthnAutofill()` resolves true: it
+fetches options, calls `startAuthentication({useBrowserAutofill: true})`, and waits for the diver to
+pick a passkey out of the browser's ordinary autofill dropdown on the email field. Nobody asked for
+it, so nothing it does is ever reported — a failed options call (an instance whose API predates
+passkeys 404s on every page view), a declined ceremony, a dead challenge all pass in silence, and
+the form behaves exactly as it did before. The one concession is a single silent re-arm after a
+failed verify, which covers the ordinary case of a diver leaving the login page open past the
+challenge's ten-minute life; a second failure is left alone rather than looped on.
+
+It arms on the landing page too, because `AuthForm` mounts in the hero there. That is deliberate:
+the hero _is_ the sign-in surface for a returning visitor, and one tap from it beats a round trip
+through an inbox. The cost is one POST per supporting signed-out page view, which the API's per-IP
+limit on that route is sized for. If it ever needs cutting, the lever is arming on first focus of
+the email input rather than on mount — not a lower ceiling.
+
+The email input carries `autoComplete="username webauthn"`. The `webauthn` half is load-bearing: v13
+refuses to arm a conditional ceremony at all without an input that has it, and the `username` half
+is a plain-autofill fix this field had always wanted.
+
+### Three things about the ceremony that are easy to get wrong
+
+**Cancelling.** The ceremony is anchored to an input, so it has to be stood down when that input
+leaves — on unmount, and when the form swaps to the "check your email" card, which replaces the
+whole form. `WebAuthnAbortService.cancelCeremony()` in the effect's cleanup does it;
+`autofill: !sentTo` is what makes the effect re-run at the swap.
+
+**Recognising an abort.** v13 raises a `WebAuthnError` with `code === "ERROR_CEREMONY_ABORTED"`.
+Matching on `code` is the documented contract. v13 also copies the wrapped `DOMException`'s `name`
+onto the wrapper, so `err.name === "AbortError"` happens to work as well — but that is incidental,
+undocumented, and not what to write. The same copied `name` is the only thing distinguishing a
+dismissed sheet, since every spec error v13 declines to reinterpret shares one code
+(`ERROR_PASSTHROUGH_SEE_CAUSE_PROPERTY`); `cause` is unreachable from here anyway, because this
+project's `lib` is `es2020` and `Error.cause` is ES2022. A dismissed sheet says nothing to the
+visitor: `NotAllowedError` collapses "cancelled", "timed out" and "nothing matched" into one error
+on purpose — so that a page cannot ask whether an account has a passkey — and every reading of it is
+someone who chose to stop.
+
+**Not touching the magic link's storage.** `signInWithPasskey` routes by the `redirectTo` prop and
+never calls `rememberPostAuthRedirect`. That `localStorage` slot exists because the email flow
+leaves the tab and comes back on `/auth/verify` with no other way to know where it was headed (see
+"`/signin` is back, and carries where the visitor was headed" above); this ceremony never leaves the
+tab. Writing it here would leave a destination behind for a _later_ magic-link sign-in to honour.
+
+**"Exactly like Google's" is how that sentence originally ended, and it no longer holds.** Google
+leaves the tab now. It still does not write _this_ key — it carries its destination in its own
+per-attempt record — so the conclusion here is unchanged; only the comparison is. There is a test
+that pins it, trivially true today and a regression guard the day someone adds the call.
+
+One consequence, named and accepted: starting the explicit ceremony cancels the armed conditional
+one, because v13's abort service allows only one ceremony at a time. So a diver who clicks the
+button and then backs out of the sheet no longer has a passkey in their autofill dropdown until the
+page is reloaded. Re-arming after the modal ceremony settles would fix it and is not built.
+
+### The divider moved up, and the header that has to keep quiet
+
+The "Or" divider used to be drawn inside `GoogleAuthButton`. With two optional methods below the
+email field, whichever of them an instance actually has needs exactly one divider above the pair,
+and neither button can own that decision — so `AuthForm` draws it, gated on
+`googleClientId || passkey.supported`, and the whole block disappears when an instance has neither.
+
+`next.config.js`'s `Permissions-Policy` restricts camera, microphone and geolocation and
+deliberately does not name `publickey-credentials-get`/`-create`, which stay at their default
+`self`. That is correct as it stands, and it is a trap for the next person to tighten that header:
+naming features there is opt-in, so an added directive that omits these two kills passkey sign-in
+with a browser-side error pointing nowhere near the header.
+
+## Signing is enforced locally, because GitHub cannot do it yet
+
+**Superseded in four particulars** — three by _"Signing stopped being a demand on contributors, and
+the hook learned to check"_ and one by _"The skills are repo content; what wires up the hook is
+not"_, both later in this file. (i) The opening claim below, that every commit here is meant to be
+signed — the commits in an outside contributor's pull request are exempt, and `CONTRIBUTING.md` no
+longer asks for them. (ii) The instruction below to target _every_ branch with the
+`required_signatures` ruleset the day these repos go public — it is every branch _except_ `main`,
+because with required signatures on `main` GitHub refuses to squash-merge a pull request you did not
+author, and squash is the only merge method enabled here, so every outside PR would be unmergeable
+on day one. (iii) The description below of the Claude hook as rejecting the command before it runs —
+it now asks git first and rejects only where the key that command would disable is reported on. (iv)
+The claim below that the hook's _registration_ is committed: `.claude/settings.json` is gone and the
+`PreToolUse` entry lives in the untracked `.claude/settings.local.json`. Both hook scripts are still
+committed. The premise under the claim — that agents only ever see committed files — did not change;
+it still holds, which is exactly why the registration no longer reaches those sessions. Everything
+else here stands, which is why the section is kept whole: that no git setting can prevent an inline
+override, the push hook's mechanics and its `%G?`-of-`N` reasoning, the
+`.claude/*`-versus-`.claude/` re-inclusion mechanic, the Python-version fail-open note, and the
+bare-command-substitution post-mortem.
+
+Every commit here is meant to be signed, and for a while about half of them were not — this repo was
+the worse of the two. The commits that came out _Unverified_ were not the victims of an expired key
+or a stale agent cache: they were made with signing switched off inline, the shape an agent reaches
+for when it expects a commit to hang on a passphrase prompt that this machine does not have.
+
+No git setting can prevent that. A `-c key=value` on the command line outranks every config file by
+design, and `commit.gpgsign` is a _default_, not a constraint — there is no "refuse to make an
+unsigned commit" switch for the config to hold. So enforcement lives outside config resolution
+entirely, in two hooks:
+
+- `.claude/hooks/no-unsigned-commits.py`, a `PreToolUse` hook on Bash, rejects the command before it
+  runs. It strips heredoc bodies first, so a doc or a commit message that _writes about_ the flag —
+  as `AGENTS.md`, `CONTRIBUTING.md` and this section all must — is not mistaken for using it.
+- `.githooks/pre-push` rejects the push. It keys on "no signature at all" (`%G?` of `N`) rather than
+  "not verified": commits GitHub signed on our behalf report `E`, unverifiable without GitHub's key,
+  and one of those sits at the head of every branch that contains `main`. It needs one
+  `git config core.hooksPath .githooks` per clone; linked worktrees read the same config.
+
+Both are committed even though `.claude/` is ignored, because agents work in fresh checkouts under
+`.claude/worktrees/` and only ever see committed files. Re-including them meant rewriting the ignore
+pattern to `.claude/*` — git will not re-include a path whose parent directory is excluded, so a
+`!.claude/settings.json` under a plain `.claude/` matches nothing, silently.
+
+The hook script catches a single `ValueError` rather than naming `json.JSONDecodeError` and
+`UnicodeDecodeError` separately, and that is not tidiness — both are `ValueError` subclasses, and
+the pair would have to be written as a tuple or as PEP 758's parenthesis-free form, which only
+parses on Python 3.14. Nothing here pins a Python: the file runs under whatever `python3` a
+contributor's shell resolves, which on macOS is often the system 3.9. A hook that cannot parse exits
+1, and Claude Code treats any exit that is not 2 as a non-blocking error, so the command would run
+and the guard would vanish silently — failing open, in the one file whose whole job is to fail
+closed. The sibling api repo, where `except A, B:` _is_ house style because its code runs on a
+pinned 3.14, carries the longer version of this note.
+
+The push hook resolves the sha the remote advertised before differencing against it, and falls back
+to "everything not already on a remote-tracking ref" when it cannot. That sha arrives in the ref
+advertisement rather than from local state, so it can name a commit this clone has never fetched —
+someone advancing the branch in the GitHub UI is enough, and a `--force` push gets past the
+non-fast-forward refusal that would otherwise stop it first. `git rev-list <unknown>..<local>` then
+prints nothing and exits 128, and a bare `revs=$(...)` keeps only the empty stdout, which the next
+line reads as an empty range and skips the check. Reproduced end to end before it was fixed: an
+unsigned commit landed on a remote with the hook installed and `git push` exiting 0. In a guard, a
+command substitution whose exit status nobody reads is a pass waiting to happen.
+
+The enforcement that would actually hold is a GitHub ruleset requiring signatures, and it is
+unavailable while these repos are private under a free organisation — the rulesets and
+branch-protection endpoints both answer `403 Upgrade to GitHub Pro or make this repository public`.
+When the repos go public, turn it on and target _every_ branch: pull requests are squash-merged and
+GitHub signs that commit itself, so a `main`-only rule would pass on a branch of entirely unsigned
+work, which is the exact state this section exists to describe. The sibling
+[opendiving-api](https://github.com/opendiving/opendiving-api) repo carries the long-form version of
+this reasoning in its own `DECISIONS.md`.
+
+## Passkeys come from two places, and the enrollment nudge is the one that matters
+
+A passkey is worth nothing to a diver who never finds it, and the settings card only reaches people
+already looking for one. So enrollment lives in two places with different jobs: a "Passkeys" card in
+settings (`components/settings/passkeys-card.tsx`) for someone who went looking, and a dismissible
+card on the dashboard (`components/dashboard/passkey-nudge-card.tsx`) for everyone who did not. Both
+run the same ceremony through `hooks/usePasskeyRegistration.ts`, which is `usePasskeySignIn`'s
+explicit half with two differences that follow from happening inside a session: no `flow_id`,
+because the bearer token already names whose challenge it is, and a name the client picks.
+
+**Both put a button in front of `credentials.create()`.** The click is the user gesture Safari
+requires, which is why nothing anywhere fires a ceremony on its own — an unprompted biometric sheet
+on a dashboard would be alarming rather than convenient.
+
+**The nudge's three conditions are ordered by what they cost**: the browser supports WebAuthn, this
+browser has not said "not now", and only then does the account get asked whether it has any
+passkeys. So the steady state — a diver who dismissed it, or who has one — is no request at all, on
+a card that would otherwise fire one on every dashboard view. Dismissal is per-browser
+(`lib/passkey-nudge.ts`), and that is the point rather than a compromise: a new browser is exactly
+where the offer is relevant again, where a server-side flag would suppress it precisely where it
+earns its place, for a column, an endpoint and a migration.
+
+**The dismissal is now reversible, which it was not for its first several releases.**
+`restorePasskeyNudge` removes the key and the settings passkeys card offers it, shown only where a
+dismissal is actually stored, so a browser that never saw the offer is offered nothing to undo. It
+arrived with the device-memory switch, whose §10.3 copy had been carrying the admission that this
+one key "cannot even be changed: there is no way to un-dismiss the offer", but it is owed on plain
+UX grounds independently of that: "not now" meant "never" on this browser, and a diver who changed
+their mind had no move but clearing site data. With the switch on nothing records the dismissal at
+all, so the affordance has nothing to show — consistent rather than a special case.
+
+**What the undo promises is conditional, and the first version of it lied to most of the people who
+see it.** The nudge shows itself only to an account with no passkeys, so the stored dismissal
+routinely outlives the state that made it relevant: a diver dismisses the offer while they have
+none, adds one, and is left holding a dismissal whose removal cannot bring anything back. The
+affordance was first labelled "Show it again" and told everyone the offer would return on their next
+dashboard visit — false for exactly the population reading a card with a passkey listed on it, and
+the test covering it used the two-passkey fixture, so it asserted the false string without noticing.
+The copy is now conditional on the loaded list and the button says "Undo". Gating the affordance
+away from that population was the other option and was rejected: the entry is a stored preference,
+§10.2 says it can be un-stored from here, and the removal is worth having on its own where the offer
+cannot return.
+
+**Which makes the shape of the gate the whole point, and the first attempt at it got that wrong
+too.** It is held back only while the list request is _in flight_, so neither string renders against
+a passkey count that is `[]` only because nothing has landed. A **failed** load is not a reason to
+withhold it: the dismissal is in this browser and removing it needs no API at all, so gating on
+`status === "ready"` took the removal away from the one diver who cannot retry their way back into
+it, on a card that still renders in that state. The count is genuinely unknown there, so
+`nudgeWouldReturn` is false rather than optimistic and the conservative sentence — true whatever the
+count turns out to be — is what shows. §10.2's row was trimmed to match: it names where the undo
+lives and no longer claims the card offers it "whenever this entry exists", because that is an
+absolute the card cannot keep for an instance whose API has no passkey routes at all.
+
+**The nudge is pinned out of the README screenshots.** `scripts/screenshots.mjs` runs a fresh
+browser profile every time, so the card would land in the dashboard hero whenever the demo account
+happened to have no passkey. It is the same class of nondeterminism as the greeting's clock and the
+charts' year, and it is pinned the same way — an `addInitScript` writing the dismissal key before
+any page script runs.
+
+### The list is not gated on the browser's capability, only the Add button is
+
+Everything else passkey-shaped hides itself behind `browserSupportsWebAuthn()` (see "Passkeys sign
+in twice over" above), and the settings card deliberately breaks that symmetry: a diver whose
+passkeys live on their phone must still be able to revoke one from a laptop that cannot create any.
+A passkey nobody can see is a passkey nobody can revoke — the same reasoning the API uses for
+reading up to `_LIST_LIMIT` rows rather than stopping at the configured cap. The card removes itself
+only when there is genuinely nothing to do: no passkeys _and_ no way to add one.
+
+It also removes itself when `GET /user/passkeys` 404s. That is an instance whose API predates
+passkeys, and on a settings page it is not an error worth reporting — it is a feature this copy of
+OpenDiving does not have. Any other failure gets the API's own wording and a Try again, because it
+is a real one.
+
+### `onRegistered` runs outside the ceremony's own error handling
+
+`usePasskeyRegistration` awaits its caller's callback _after_ the try/catch around the three
+requests, not inside it. The passkey is stored by then, and a list refresh that throws must not come
+back as "couldn't add that passkey" — the diver would run the ceremony again and meet the
+duplicate-credential 409, having been told the first one failed when it did not. A failure from the
+callback is logged instead.
+
+### The client names the passkey, and the server only caps it
+
+`lib/passkey-name.ts` reads the User-Agent for a coarse "Chrome on macOS", because only the browser
+knows what it is running on and asking the diver to type a name before the biometric prompt puts a
+form in front of a one-tap gesture. Two orderings in it are load-bearing and are what its tests pin:
+every Chromium browser also says "Chrome" (so Edge, Opera and Samsung Internet have to be looked for
+first), and every browser on iOS is the same WebKit — "Chrome on iPhone" and "Safari on iPhone"
+describe one authenticator, so the device alone is the name. A UA it cannot read falls back to
+"Passkey" rather than to nothing: the API's `name` is `min_length=1`, so an empty suggestion would
+fail a ceremony the diver has already completed.
+
+### The sign-in form says which method this browser used last
+
+**Superseded: the affordance and its key are both gone.** `lib/last-auth-method.ts` no longer
+exists, no entry point records anything, `AuthForm` renders no such line, and
+`opendiving:last-auth-method` is off the privacy page — see _"The sign-in form no longer remembers
+which method this browser used"_ at the end of this file for the product call that deleted it and
+the ground it was made on. Kept because it records what the affordance was _for_, which is the
+argument anyone proposing to build it again has to answer.
+
+`lib/last-auth-method.ts` is written by each of `AuthContext`'s entry points and read by `AuthForm`,
+which renders one muted line above the methods. It answers the one question a screen with three ways
+in creates, and does nothing else — no method is hidden, reordered or preselected, and an unknown
+stored value reads as absent rather than being rendered.
+
+Three details. It is written where the identity was _proved_ rather than inside `applyOutcome`,
+which is the one place that cannot tell the methods apart; the link and the code in the same email
+are one method, because they claim the same request row and arrive in the same message; and it
+survives `signOut`, unlike the remembered post-auth destination that is cleared there. That
+asymmetry is deliberate: a destination is a `/dives/<uuid>` legible on a shared machine, where this
+names a button.
+
+Read through `useSyncExternalStore` with a `null` server snapshot, for the same reason the WebAuthn
+capability is (see "Passkeys sign in twice over"): a value that differs between the server render
+and the client, rather than one that changes over time — and `react-hooks/set-state-in-effect`
+rejects the effect-and-`setState` spelling of it outright.
+
+## Deleting an account is a request with a date on it, and the date only exists once
+
+`settings/page.tsx`'s Danger Zone rendered a `<Button variant="destructive">` with no `onClick` — a
+picture of a danger zone. It is now `components/settings/delete-account-card.tsx`, calling
+`DELETE /user` through the new `lib/api/users.ts`, and the shape of the whole thing follows from one
+property of that endpoint: **the purge date is composed server-side and handed back exactly once.**
+
+The grace window is `ACCOUNT_DELETION_GRACE_DAYS`, an operator knob the API exposes on no config
+route, so the browser cannot work the date out in advance — the dialog can say a grace period exists
+but not name a day. And the account is dark the moment the call returns (`get_current_user` filters
+`is_deleted`, and `/auth/refresh` re-resolves the row), so there is no signed-in screen left to read
+the date off afterwards and nothing to poll. It arrives on one response body and has to be carried
+from there to the screen that shows it.
+
+### `/goodbye` takes the date on the URL, because nothing else survives the trip
+
+Deleting ends in `hardNavigate`, for the reasons `signOut` uses one: the session is over, so the
+fetched dives and the `blob:` URLs for private card scans should go with the document rather than
+linger in a tab that is no longer signed in, and a full page load settles where the diver lands
+instead of racing `useAuthGuard`'s bounce to `/signin`. That rules out React state, and the access
+token and refresh cookie are both gone by then, so `sessionStorage` would be the only alternative to
+a query parameter — a value to clean up, invisible on a reload, and no less readable. The parameter
+is a date, not an identity; the page it is on is the disclosure, not the value.
+
+`/goodbye` therefore treats its own input as untrusted: an absent, unparseable or already-past
+`purge_after` each get their own copy. Rendering `new Date("whenever")` would put "Invalid Date" on
+the one screen somebody is reading for one fact.
+
+"Already past" is not a corner case, and it is reached two ways — an instance running
+`ACCOUNT_DELETION_GRACE_DAYS=0`, whose deadline is behind us the moment the response is composed,
+and anyone reloading, bookmarking or going Back to this URL after their own window ran out. An
+elapsed timestamp cannot tell those apart, so that branch says the date has passed and stops there.
+Copy naming the instance's configuration — the first draft's "this instance keeps no grace period" —
+states a fact about somebody else's install to a reader for whom it is false.
+
+### The copy offers the way back, in the same words in three places
+
+The card, `/goodbye` and the API's own confirmation email all say that signing in again before the
+date brings the account back, because they all describe one behaviour — and they carry a comment
+each saying so, since the failure mode is rewording one of the three. This copy was the other way
+round until the restore path landed (it pointed at whoever runs the instance), which is what those
+comments were for.
+
+The old copy promised to "remove all associations with projects and teams", which OpenDiving has
+none of. What replaced it is what actually happens, in order: locked out now, everything erased
+later, the date by email.
+
+### "Download my data first" is the archive, and it leaves the dialog open
+
+`ConfirmDialog`'s `secondaryAction` slot — grown for the gear dialog's "Archive instead" — carries
+the GDPR Art. 20 nudge here, and it calls `exportAPI.download("archive", …)` rather than reinventing
+a download or bouncing the diver up to the Your Data card. The archive specifically: it is the only
+export carrying the dive-computer files and the certification scans, so it is the one to offer
+somebody who is leaving. The dialog stays open behind it, unlike the gear dialog's diversion —
+someone who asked for their data mid-decision has not changed their mind, and closing the thing they
+were reading to hand them a file loses them. The busy state is in the button's own label, since
+`secondaryAction.label` is a string and this is not worth a spinner.
+
+**The confirm is blocked while that export is being saved**, which is the part that is not obvious.
+A successful delete ends in a document navigation, and that takes two things with it: every request
+the old document had open, and every object URL it created. So confirming mid-export destroys the
+export, on an account that is dark by then and cannot be asked for it again — the one gesture
+offering the diver their logbook would be the gesture that took it away.
+
+The window is longer than the fetch, which is the half that is easy to miss. `downloadBlob` returns
+as soon as it has dispatched a synthetic click at an object URL; Firefox and Safari read that blob
+asynchronously afterwards and cancel the save if the URL disappears underneath them, which is the
+whole reason `lib/download.ts` holds one for a minute. The card therefore stays busy for a short
+settle after handing the file over — two seconds rather than that minute, because only the _start_
+of the read has to survive it, and this timer is in front of a diver where `download.ts`'s is behind
+one.
+
+The type-your-username gate is `confirmDisabled`, and it compares case- and
+whitespace-insensitively. It is friction, not a password: someone who has read the dialog and typed
+their own name back has made the decision it exists to ask for, and a keyboard's capital letter is
+not evidence that they have not.
+
+### The token is dropped on success only
+
+`usersAPI.deleteAccount` calls `clearAccessToken()` after the request resolves, never in a
+`finally`. The server has blacklisted both tokens and cleared the refresh cookie by then, so keeping
+the in-memory one would be a client pretending to hold a session the API has already ended — but a
+rejected call (rate limited, offline) changed nothing server-side, and clearing it there would sign
+a diver out of an account they still have. Same asymmetry as `signOut`'s refusal to clear anything
+after a failed `POST /auth/logout`, and for the same reason.
+
+## Signing in offers a deleted account back, and four entry points had to learn a third answer
+
+`AuthOutcome.status` grew a third value, `deletion_pending`: the identity was verified, an account
+exists, it is inside its deletion grace period, and **nothing was written and no session was
+issued**. The web app's problem was not rendering that — it was that every entry point branched on a
+boolean.
+
+`AuthContext.applyOutcome` had two branches, `authenticated` and _otherwise assume onboarding_, and
+the second one non-null-asserted `outcome.onboarding_token`. A `deletion_pending` outcome carries no
+onboarding token, so it fell there and stashed an onboarding session with an `undefined` token,
+which `/auth/complete` would then be handed. And each of the four callers — the magic-link page, the
+six-digit code card, the Google button and `usePasskeySignIn` — turned that boolean back into a
+destination with its own `signedIn ? next : "/onboarding"` ternary. One shared bug in five places.
+
+### One function decides where an outcome lands
+
+`destinationForOutcome` in `lib/auth-redirect.ts` maps a status to a path, and the four call sites
+pass the status they were given. The `switch` is exhaustive on `AuthStatus`, so a fourth status is a
+type error in one file rather than a silent mis-route in four — which is the actual property worth
+buying here, given that the last new status arrived as exactly that mis-route.
+
+It sanitizes `next` itself rather than trusting the caller to. Three of the four take that value
+from a prop fed by `?next=`, and the fourth reads it from `localStorage`; making each remember
+`sanitizeRedirectPath` is how one of them eventually forgets. `next` is honoured only for
+`authenticated` — onboarding dropped it already (a brand-new account has nothing to return to), and
+a restore drops it for the same reason, since the account is not back yet at the point the
+destination is chosen.
+
+### The entry points resolve with the whole outcome, not a status
+
+`verifyEmailLink`, `verifyEmailCode`, `signInWithGoogle` and `signInWithPasskey` used to resolve
+with a boolean and now resolve with the applied `AuthOutcome`. A status alone would be enough for
+three of them; the magic-link page is why it is not. It chains verify-then-restore inside one
+handler, so it needs the `restore_token` from that very call — a render before the stashed
+`RestoreSession` exists. `restoreAccount(restoreToken)` therefore takes the token rather than
+reading the stash, and `/restore` passes the one it was handed.
+
+### `/auth/verify` chains both halves; the other three cannot
+
+Only the magic link has a side-effect-free precheck, and `GET /auth/email/verify/check` now answers
+`deletion_pending` (as `valid: true` plus a flag — the link _works_, it just leads somewhere else,
+so the page's existing "not valid" branch stays in front). That is what lets the button read
+_Restore my account_ before anything is spent, and a click on a button that says that _is_ the
+decision — so the page posts the verify and then the restore, and lands on the dashboard.
+
+The chain is gated on the precheck's answer **and** the outcome's status, not on either alone. A
+deletion requested between the precheck and the click arrives at a button that said _Sign in_, and
+that click must never quietly cancel a deletion; it falls through to `/restore`, where the offer is
+made properly. The reverse gate matters less but is free: the status check is what makes the whole
+branch inert on an ordinary sign-in.
+
+The other three paths get no such warning. A typed code, a Google dialog and a biometric gesture are
+all commitments already made, so the offer can only be shown after the POST — which is what
+`/restore` is.
+
+### `/restore` is `/onboarding`'s counterpart, down to what it cannot survive
+
+Same shape: a verified identity that is not yet a session, an in-memory `RestoreSession` that is
+never persisted, a redirect to `/` when the page is opened without one, chrome-free because there is
+no user menu to draw, and `isAuthenticated` sending an already-restored diver to the dashboard.
+
+The one thing it says that `/onboarding` does not is that a reload loses the offer, and that is not
+generic caution. `POST /auth/email/verify-code` claims its request row _before_ resolving the
+identity, so a code spent on reaching this screen is spent — someone who closes the tab needs a
+fresh email, and nothing else on the screen would tell them that. (The magic link is the opposite:
+its token stays unconsumed until the POST, which is what makes the precheck free.)
+
+`/auth/restore` joins `SESSION_MINTING_PATHS` in `lib/api/client.ts`. A 401 there is the endpoint
+refusing the token in the body, not an expired access token, and sending it down the refresh path
+would replace the API's own explanation with "Refresh token missing." That explanation is the point:
+"already permanently deleted" and "this restore link has already been used" are different failures,
+and only the first is a dead end. It is shown verbatim on both screens.
+
+### The purge date is parsed in one place, because it arrives from two directions
+
+`lib/purge-date.ts` — `DELETE /user` hands the date to `/goodbye` on the URL, and a
+`deletion_pending` outcome hands the same date to the restore screens from the other end of the
+window. Both are read for that one fact, and both can be handed something unusable: an edited query
+string, or the `null` the API sends for a row flagged with no clock to count from. A screen that
+renders "Invalid Date" to somebody reading it for a date is the failure both are avoiding, so the
+parse guard and the day format live together rather than being written twice.
+
+## Avatars are this instance's own, and Gravatar left rather than becoming a fallback
+
+Three sections above record the Gravatar era and all three are now history: the `/settings`
+attribution line, the `GRAVATAR_ENABLED` gate, and the SHA-256 hashing change. The feature they
+describe is gone outright — not kept as a fallback behind a flag, which is the shape a "replace
+Gravatar" change usually takes and would have been the wrong one here. A fallback would have kept
+every cost the gate was written to bound: the third-party host in the CSP, the disclosure on the
+privacy page, the `crypto-js` dependency, the `d=404` probe on every mount, and an environment
+variable that a released artifact would then have to keep documenting. Nothing is deployed anywhere
+yet, so there is no window in which somebody depends on it.
+
+What went with it, in one list, because the pieces were spread further than anyone expects: two
+helpers and the hashing import in `lib/utils.ts`; `checkImageExists` beside them, whose only
+consumer had become its own test; `crypto-js` and `@types/crypto-js` from `package.json`;
+`gravatarEnabled` from `PublicConfig`, `runtimeConfig()` and `publicConfig()`; the CSP source and
+its `img-src` slot in `src/proxy.ts`; the copy block on `/settings`; and §4.8 of the privacy page,
+which existed only to disclose the request nobody makes now. `getUserInitials` stays — the initials
+were always the fallback and still are.
+
+**§4.8 has since been re-used, so read that number as historical.** The privacy-page rewrite gave it
+to the Google sign-in disclosure, on this section's own
+renders-only-where-there-is-something-to-disclose precedent — see _"The privacy page describes this
+app, and there is still no cookie banner"_. "§4.8" above means the **removed Gravatar** section; a
+reader who follows it to today's page lands on a different disclosure entirely.
+
+### The digest is the whole client contract
+
+`UserRead` carries `avatar_sha256`, and that one nullable string answers three questions: whether
+there is a picture, which version it is, and what to append as `?v=`. There is deliberately no URL
+on it. The bytes are owner-only and need an `Authorization` header, and the access token lives in
+memory (`lib/api/client.ts`), so an `<img src>` pointed at the API could never have loaded them —
+`UserAvatar` fetches through the API client and renders from an object URL, the path
+`hooks/useAuthedBlobUrl.ts` already existed for. That hook was written for certification card
+images; avatars are its second caller and needed nothing added to it.
+
+`UserAvatar`'s props are now `{ name, avatarSha, size, className }` — **the `email` prop is gone**,
+which is the satisfying end of this: the component that used to hash the signed-in user's address
+for a third party no longer receives the address at all.
+
+Three pieces of local state went with it. The old component tracked `imageLoaded`, `imageError` and
+`hasCustomGravatar`, fired a `d=404` probe in an effect to decide between the picture and the
+initials, and carried a `react-hooks/set-state-in-effect` disable for the reset that started it.
+Radix already does that job: `AvatarFallback` renders until an `AvatarImage` has actually loaded, so
+"in flight", "failed" and "no picture at all" are one state, drawn as initials, with no layout shift
+between them and no broken-image glyph reachable at any point.
+
+Staleness is handled by the URL rather than by refetching. `?v={sha}` changes when the picture does,
+so a replacement lands on a URL the browser has never cached and the old entry ages out of the
+five-minute `max-age` on its own. After an upload or a remove the card calls `refreshUser()`, which
+re-reads `avatar_sha256` — and every mounted `UserAvatar` follows, including the header's, in the
+same paint.
+
+### The crop dialog's three traps
+
+**Export PNG, never JPEG.** `canvas.toBlob("image/jpeg")` has no alpha channel to put transparency
+in and the spec says it composites onto **black**, so a picture with a transparent corner comes back
+with a black wedge in it. The server re-encodes everything to WebP regardless, so the client has no
+reason to be in the compression business at all: it hands over lossless pixels and lets the API
+decide the bytes.
+
+**`react-easy-crop` injects its own `<style>` element by default, and this app's CSP is
+nonce-based.** Left on, that element carries no nonce, is dropped by the browser, and the cropper
+renders unstyled — in production only, because the dev CSP allows `'unsafe-inline'` for styles.
+`disableAutomaticStylesInjection` plus a plain `import "react-easy-crop/react-easy-crop.css"` puts
+the same rules in the app's own stylesheet, which `style-src 'self'` already allows. The library
+does take a `nonce` prop, and that would have worked too; the import needs nothing threaded through
+a client component and cannot go stale if the nonce plumbing ever changes. Related to
+`NonceProvider`, but not solved by it — that sets `get-nonce`'s value for `react-remove-scroll`, and
+`react-easy-crop` reads a prop instead.
+
+**The dialog must not scale on the way in, or the mask and the saved picture disagree.**
+`react-easy-crop` sizes itself from `getBoundingClientRect()`, which reports the box **after**
+ancestor transforms — and the shared `DialogContent` opens with `zoom-in-95`, so the cropper
+measured a container 95% of its real size and wrote that into both `cropSize` and its idea of how
+large the media is rendered. Two things then follow. The circle is drawn at 243 px inside a 256 px
+image, which is the few-pixel margin all round that gave this away; and the exported crop is
+computed as `cropSize / mediaSize`, in which the 0.95 cancels — so at rest the mask promised 95% of
+the photo while `croppedAreaPixels` came back as 100% of it, edge to edge. A crop-and-save with the
+slider untouched returned the whole picture with the mask's margin nowhere in it.
+
+Nothing re-measures afterwards. The library's recompute hangs off a `ResizeObserver` on its own
+container, and that watches the layout box: an ancestor's transform finishing its 200 ms animation
+never fires it, and no window `resize` listener exists to poke either (it registers one only where
+`ResizeObserver` is undefined). So the wrong numbers are the ones the dialog keeps.
+
+The fix is `data-[state=open]:zoom-in-100 data-[state=closed]:zoom-out-100` on this one
+`DialogContent`. Fade and slide stay — a translation moves the box without changing the width and
+height that are read from it. Passing an explicit `cropSize` looks like the more surgical fix and is
+not one: `computeSizes` still derives the media's rendered size from the same scaled rect, so the
+percentages stay wrong and merely clamp at 100 instead. Deferring the mount until the animation ends
+would also work, at the price of an event that has to fire or the cropper never appears.
+
+The dependency was worth taking. It is MIT, has one runtime dependency (`normalize-wheel`), gives
+pinch and touch for free, and its peer range has been an open `react >= 16.4.0` since 2019, so React
+19 was never a question. Zoom is a native `<input type="range">` rather than a Radix slider — one
+value, no empty state, keyboard- and touch-reachable without another package. It is nothing like the
+MapLibre question weighed under _"The map picker is hand-rolled, and `img-src` is the whole bill"_:
+no worker, no remote assets, nothing the CSP notices beyond the stylesheet above. **That comparison
+now reads the other way round, and the point of it still holds (2026-08-30).** MapLibre was adopted,
+and it costs the three things this cropper does not: a same-origin worker copied into `public/` by a
+build step, a `worker-src` directive that exists to make the blob path fail audibly, and basemap
+hosts in `connect-src`. A dependency that needs none of that is still the cheap kind; the map turned
+out to be worth the expensive kind.
+
+### The `accept` list is load-bearing, not decoration
+
+`accept="image/jpeg,image/png,image/webp,image/gif"` looks like the mirror-the-API convention the
+card picker follows, and it is also the thing that makes iPhone photos work. Since WebKit's 2024-03
+change (bug 267277), iOS Safari transcodes a HEIC pick to JPEG **only when** the `accept` list
+restricts image types and excludes HEIC. `accept="image/*"` hands over raw HEIC, which no browser
+decodes into a canvas. Adding `image/heic` is worse than either: Safari 17+ then delivers the
+original, and has a documented bug converting picked PNGs _to_ HEIC. So nobody may "simplify" this
+attribute, which is why the constant lives in `lib/api/auth.ts` with the reasoning attached rather
+than inline in the card. A Files-app pick bypasses `accept` entirely, which is what the next
+paragraph is about; the API sniffs the bytes regardless, so none of this is a security surface.
+
+### The card decodes the file before the cropper ever sees it
+
+`react-easy-crop` has **no failure callback**. Its `CropperProps` carry `onMediaLoaded` and
+`onCropComplete` and nothing for the other outcome, and internally `onCropComplete` is reached only
+from the image's `load` handler — so a source that never decodes produces no event of any kind. The
+dialog would sit there with an empty frame, `croppedAreaPixels` never arriving, the Save button
+disabled forever, and nothing on screen saying why: a dead end whose only exit is Cancel. The
+`accept` list above is exactly why this is reachable rather than theoretical — a Files-app pick
+walks straight past it with a HEIC.
+
+So `AvatarCard.handlePick` decodes the object URL itself and only mounts the dialog on success,
+toasting the failure otherwise. Passing `mediaProps={{ onError }}` into the cropper would also have
+caught it, but one frame later and with a half-open dialog to unwind; refusing the file up front is
+both simpler and the better thing to show. It costs nothing at runtime — the second decode inside
+`cropToPngBlob` hits the browser's cache for the same object URL.
+
+The messages come back through a named error type, and that is not decoration. `getApiErrorMessage`
+reads an axios response's `detail` and returns its `fallback` for everything else — it never looks
+at a plain `Error`'s own `message` (its own test pins that). So the first version of this threw
+plain `Error`s with careful wording that could not reach anyone: every canvas failure read "Failed
+to save your picture". `AvatarImageError` in `lib/avatar-crop.ts` marks the ones raised in this
+browser, and the card shows `message` for those and `getApiErrorMessage` for the rest.
+
+### Onboarding gained nothing
+
+The profile-completion form is still two fields. A Google sign-up arrives with their Google picture
+already imported by the API, an email sign-up arrives with initials and finds the editor in
+Settings, and an upload-and-crop step at the door would be friction exactly where the funnel is most
+fragile. The form's `UserAvatar` passes no digest — there is no account yet to fetch one from.
+
+### `flag()` outlived its example
+
+The helper stays (`WEB_HSTS`, `WEB_NOINDEX`), but its doc comment used `GRAVATAR_ENABLED=enabled` to
+explain why an unrecognized value warns instead of guessing, and `runtime-config.test.ts` proved
+that behaviour through the same variable. Both moved to `WEB_NOINDEX`, tests included — the warning
+path is the only interesting thing `flag()` does, and deleting the variable it was demonstrated on
+would have deleted the coverage with it.
+
+## Signing stopped being a demand on contributors, and the hook learned to check
+
+The demand was aimed at the wrong population, and **none of the enforcement could reach that
+population anyway.** The Claude hook fires only on commands that _disable_ signing, so a stranger
+with nothing configured commits unsigned and is never stopped; `.githooks/pre-push` is opt-in per
+clone, so it is not running in their checkout either. Prose was the only thing that ever crossed the
+machine boundary — and the prose was hostile: somebody who followed `CONTRIBUTING.md`'s setup
+verbatim enabled the push hook, was refused their own first push ("Sign them, then push again"), and
+was sent off to configure GPG for a typo fix. So the demand went. The _Pull requests_ bullet says PR
+commits do not need to be signed, the `git config core.hooksPath .githooks` line moved out of
+_Getting set up_ into a new _For maintainers_ section, and `AGENTS.md` went conditional on what git
+actually reports. Signing itself is unchanged: these machines still sign, both hooks are still
+committed, and the ruleset above still lands the day these repos are public.
+
+**Squash-only is load-bearing now, and it is a repo setting nobody should tidy later.** `main`'s
+provenance never came from the branch — pull requests are squash-merged, GitHub creates that commit
+and signs it with its own web-flow key, and every squash on `main` reports `E` whatever the branch
+carried. Rebase-merge would copy branch commits up "without commit signature verification", in
+GitHub's own words, so flipping the merge-method toggles is what would quietly end this.
+
+**The hook's message is the sharper half of the change.** It asserted to whoever tripped it that
+`commit.gpgsign` is on globally and that signing works here without a passphrase prompt — true on
+these machines, an invention on anyone else's, and a guard that tells its reader a false thing about
+their own environment is worse than one that says nothing. So the hook asks git first —
+`git config --type=bool --get <key>`, which canonicalises `1`/`yes`/`on` — and blocks only when that
+prints `true`. The subprocess inherits the hook's working directory rather than being pointed at
+`$CLAUDE_PROJECT_DIR`, which stays at the session root while a session working in a worktree does
+not; it has to read the config the blocked command would itself have read. The message then names
+the one key git answered about and claims nothing else. It does not say signing is configured _in
+this clone_: both `true`s live at **global** scope and repo scope is unset in both repos, so the
+gate learns nothing about the clone, and saying so would be the same defect one size smaller.
+
+**The gate is key-aware, and that was a reversal worth recording.** Enforce-if-either-key-is-true
+was chosen first, on the argument that it buys the message its truth back. It does the opposite in
+the one population where the two keys differ: a clone with `tag.gpgsign` on and `commit.gpgsign`
+unset, running `git -c commit.gpgsign=false commit`, gets its commit blocked on the strength of a
+_tag_ setting and is told commit signing is on when it is not — the exact defect the gate exists to
+remove. So the commit pattern asks about `commit.gpgsign`, the tag pattern asks about `tag.gpgsign`,
+and a command matching both asks both. `--no-gpg-sign` belongs to the commit side: it is
+`git commit`/`rebase`/`cherry-pick` spelling, and `git tag`'s equivalent is `--no-sign`. The cost is
+one more pattern to keep in step; what it buys is that the key named in the message is by
+construction the key the command was about.
+
+**Gating opened a hazard that did not exist before it, and this is the transferable half: a guard
+that consults configuration can be silenced by whatever silences that configuration.** Before the
+gate, a command that _removed_ `commit.gpgsign` was merely unmatched. After it, an unmatched removal
+is a single command that stops signing **and** leaves the hook permanently inert, because from then
+on the hook consults a config that command deleted. git 2.55 spells that removal five ways, all of
+them run against a scratch config file:
+
+| Shape                                 | Example                                              | Names           |
+| ------------------------------------- | ---------------------------------------------------- | --------------- |
+| `--unset`                             | `git config --global --unset commit.gpgsign`         | the key         |
+| `--unset-all`                         | `git config --unset-all tag.gpgsign`                 | the key         |
+| `unset` subcommand                    | `git config unset --all --value=true commit.gpgsign` | the key         |
+| `--remove-section` / `remove-section` | `git config --global --remove-section commit`        | the **section** |
+| `--rename-section` / `rename-section` | `git config --global --rename-section tag oldtag`    | the **section** |
+
+The last two are the ones a regex anchored on `commit.gpgsign` cannot see, so each key carries a
+key-named removal alternative and a section-named one, with any run of non-newline characters
+allowed between the verb and the name to absorb scope flags, `--file <path>` and the subcommand's
+`--value=` filter. Over-blocking a command the reader can split in two is the safe direction here;
+under-blocking is the one that disarms the hook.
+
+**Quoting is where the pattern kept losing, and the rule that covers every case is that the shell
+strips quotes before git sees the argument.** This hook matches command _text_, so one value reaches
+git through several spellings that are one command to it and several strings here — `=false`,
+`="false"` and `"commit.gpgsign=false"` for the word, and `=`, `=""` and `"commit.gpgsign="` for the
+empty one, which git reads as `false` for a bool just as the spelled-out word is. The
+space-separated write needs its own alternative with an explicit quote pair, because
+`git config --global commit.gpgsign ""` _persists_ an empty value and disarms the guard from then on
+— the disarm hazard arriving through a set rather than an unset — and it cannot be written as "the
+key, whitespace, then nothing", since a `(?!\S)` lookahead is satisfied by more whitespace and would
+fire on any command that merely mentions the key and then breaks a line. Nor is "the word ends here"
+`(?!\S)` at all: a shell word can end on a metacharacter written flush against it, so
+`git config --global commit.gpgsign ""; git commit -m x` — ordinary chaining, not evasion — read the
+`;` as more value and walked straight through, while the same command with a space before the `;`
+blocked. The lookahead is written against the complement, `(?![^\s;&|()<>])`. Fitting the pattern to
+one example at a time is what produced three rounds of this.
+
+**Where the line is, deliberately.** The patterns match _git command_ shapes. They do not match
+`sed` on `~/.gitconfig`, and they do not match `GIT_CONFIG_GLOBAL=/dev/null git commit`, which hides
+the config rather than removing it and sails past the pattern and the gate alike.
+`git tag --no-sign` is unmatched too, and was before this change. The section above already says
+none of this survives someone determined and that these are speed bumps against a habit; that
+framing still governs, and the table is not exhaustive protection.
+
+**Every way the gate can fail allows the command, and each one is safe** (exit codes re-run on git
+2.55). The key unset exits 1 with no output. git missing entirely raises `FileNotFoundError`, caught
+as `OSError`. A bad boolean value — `commit.gpgsign = yess` — is `fatal: bad boolean config value`
+and exit **128**; that fail-open is safe rather than a silent disarm, because `git commit` fatals on
+the same value, so there is no unsigned commit to miss. "Not a repository" is not a failure case at
+all: global config is still read and the exit is 0. This list has to be exhaustive because of the
+fail-open trap the section above records — any exception escaping `main()` exits 1, and the hook
+system treats any exit but 2 as non-blocking, so a raise inside the gate would delete the guard
+without a word.
+
+**The gate, not the gitignore, is what scopes enforcement.** ~~The temptation, once the hook is
+conditional, is to make it "local" by moving its registration to `.claude/settings.local.json`. That
+would break the committed-hook property the section above establishes: agent sessions run in fresh
+checkouts under `.claude/worktrees/`, and only committed files reach them.~~ **Overridden** — the
+registration moved there anyway, not because the argument is wrong (it holds exactly as written for
+a `web-N-*` worktree) but because `settings.json` had to go. The script stays committed. See _"The
+skills are repo content; what wires up the hook is not"_ at the end of this file; the heading here
+holds either way.
+
+**And the verification, because this file has none.** ESLint ignores `.claude/**` and no CI job
+reads it, so the only check the hook gets is running it by hand against a set of JSON payloads — one
+per shape the patterns claim to cover — in three environments: this machine's config, then
+`GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null` for a stranger's clone, then a scratch
+config carrying `tag.gpgsign` alone, which is the only thing that exercises the key-aware dispatch.
+Write the payloads through heredocs — their bodies carry the very flags the live hook rejects, and
+heredoc bodies are what `strip_heredoc_bodies` ignores, so piping the same JSON inline gets the
+verifying command blocked by the hook it is testing. Capture the status on its own statement:
+`echo "... exit $?"` reports the status of the command substitution in that same line, not the
+hook's, so the loop prints a clean pass no matter what the hook did. And run a set of commands that
+must _not_ block — a plain `git commit`, a `git config --get` of either key, `=true` — because every
+fix here widens a pattern, and nothing else would notice it widening too far.
+
+Both hook files are byte-identical with the sibling
+[opendiving-api](https://github.com/opendiving/opendiving-api) repo's copies and are meant to stay
+that way; that repo's `DECISIONS.md` carries the long-form version of this reasoning.
+
+## The PR template restates CONTRIBUTING, at the moment those asks are answerable
+
+`.github/PULL_REQUEST_TEMPLATE.md` adds no new demand. What changed and why, the pair of links that
+ties a cross-repo change to its [opendiving-api](https://github.com/opendiving/opendiving-api) PR, a
+`DECISIONS.md` section when something bit you, screenshots when anything visual moved — all of it is
+already in CONTRIBUTING's _Pull requests_ and _Two things that will bite you_ sections. The
+template's only job is to put those questions in the textarea, where they are being answered, rather
+than in a file the author read once before their first PR. Its wording tracks CONTRIBUTING's
+deliberately: two phrasings of one ask read as two asks. That is a standing obligation rather than a
+one-off — the cross-repo ask grew from "link the corresponding api PR" into an ordering and a link
+from each side while this template was being written, and the template was rewritten to match. When
+one of them moves, move the other in the same PR.
+
+**Prompts, not checkboxes.** A checklist trains contributors to tick rather than write, and a solo
+maintainer gains nothing from a ticked box nobody verifies. Bold questions that are simply deleted
+when they do not apply cost an honest PR nothing, and still catch the omission that actually recurs
+here — a web change that quietly needs an API change, landing with the sibling PR unlinked.
+
+**It is Prettier-managed like the rest of the markdown.** `npm run format`'s `**/*.md` glob reaches
+into `.github/`, so the template is wrapped at 100 columns along with the docs; hand-wrapping it to
+sit prettily in the textarea is undone by the next format run, and `format:check` in
+`code-quality.yml` is where that shows up.
+
+## The issue forms are structured, short, and point at the other repository twice
+
+`.github/ISSUE_TEMPLATE/` holds a bug form, a feature form and a `config.yml`. They are YAML issue
+forms rather than markdown templates for one reason: the two questions a self-hosted bug report is
+useless without — which version, and how it is being run — are the ones a prose template gets
+deleted along with. As form fields they are required and the answers arrive in the same shape every
+time, which is worth the schema.
+
+Everything else was cut. Four required fields on the bug form (version, install method, what
+happened, what you expected) and one required field on the feature form; no acceptance-criteria
+section, no "have you searched existing issues" checkbox, no reproduction-rate dropdown. A form long
+enough to be abandoned collects nothing at all, and this is a project whose CONTRIBUTING invites
+typo fixes. That is the section above's _prompts, not checkboxes_ reaching the one place it inverts:
+a box nobody verifies only teaches ticking, whereas the version and the install method are facts
+nobody but the reporter has and the report cannot be acted on without them.
+
+The install-method options mirror README's three ways in — the published image via the compose
+bundle, an image built from this repository, and `npm run dev` — because those three run genuinely
+different code. The published image is same-origin through `app/api/v1/[...path]/route.ts`, a
+self-built one may carry a `NEXT_PUBLIC_API_URL` baked in at build time, and the dev server is
+neither. **Browser and device** is optional but present, and it is the field this form has where the
+API's has a container question: a rendering, layout or input bug here is frequently one engine's
+behaviour and nothing else's.
+
+**There is no dive-computer or format-support form in this repository.** Parsing lives in
+opendiving-api and so does that funnel, sample files and privacy warning included.
+
+`config.yml` sends questions to **opendiving-api's Discussions**, not to a Discussions space of this
+repository's own. One space covers the product; a diver with a question has no reason to know which
+half of it their question is about, and one space is searchable where two are a coin toss. Half of
+that reasoning has since been overtaken: it also said the self-hosting and troubleshooting docs the
+asker had been reading lived over there, and they do not any more — they are in
+`opendiving/opendiving` (see "The install lives in the product repository"). Which repository should
+host the one Discussions space is now an open question and an owner's, not a thing to settle by
+editing a contact link. The third contact link is the mirror of the one-space reasoning for bugs:
+authentication, stored data, imports and the worker are all the API's, so a reporter who already
+knows that skips a round-trip, and one who does not is told to file here anyway rather than being
+made to choose correctly.
+
+Two of those URLs 404 today, deliberately. Private vulnerability reporting and Discussions are both
+switches that only exist on a public repository, and they get flipped in the same sitting as the
+flip to public. Writing the links now means the forms are correct on the day it happens rather than
+a to-do that surfaces from a stranger's confusion; the alternative — links added later — is the one
+that gets forgotten. The security link's wording tracks [SECURITY.md](SECURITY.md), which names that
+same URL as the primary channel.
+
+`blank_issues_enabled` stays `true`. Forcing every report through a form buys triage a solo
+maintainer does not need, and the things it would wall out — a typo, a question that turned out to
+be a bug, a maintainer filing a note to self — are all things this project wants. The forms are the
+paved path, not a gate. Nothing here affects the `image-cve` issues `vulnerability-scan.yml` opens
+either: those are created through the API, which does not apply templates.
+
+## Two checks could not have been _required_, and a passing run said nothing about it
+
+Requiring a status check is the moment CI stops being advice, and `ci.yml` and `pr-title.yml` each
+carried a defect that is invisible until that moment: both were green on every PR and both would
+have left a PR pending forever the day a branch ruleset named them. The transferable half is that a
+ruleset binds to two properties of a check — its **name** and the **events it runs on** — and a
+passing run displays neither. Neither was found by reading the workflows; they turned up by taking
+the list of check names a ruleset would require and checking it against what the workflows actually
+produce.
+
+**A one-value matrix renames the check run, and the name is the whole of what a ruleset matches.**
+`lint-and-build` carried `strategy.matrix.node-version: [24.x]` with a single entry, and an
+`if: matrix.node-version == '24.x'` guard on the artifact upload that could never be false. GitHub
+appends the matrix values to a matrix job's check-run name, so this reported as
+`lint-and-build (24.x)` and never as `lint-and-build` — a ruleset requiring the bare name would have
+matched no check at all, and a required check that matches nothing does not fail loudly, it sits at
+"Expected — waiting for status" indefinitely, which on the PR page is indistinguishable from a queue
+that has not drained. The matrix is gone and the version goes straight to `setup-node`. Nothing is
+wrong with matrices; what was wrong was a matrix expressing a variation this repo does not have —
+one Node major, as `.nvmrc`, `engines.node` and the `Dockerfile` all say.
+
+**`synchronize` on a title check reads as redundant, and is precisely what makes the check
+requireable.** A push cannot change a PR's title, so re-running a title check on one looks like
+waste — but a required check must have passed **on the PR's head SHA**, and the run from `opened`
+belongs to the commit that opened it. Push a second commit and the check is stale rather than
+failing, so requiring it would hang the PR with no red mark to explain why. The title is re-read
+from the event payload on every run, so the extra run cannot disagree with the previous one; it
+costs a few seconds and buys the check its enforceability. `edited` stays the one that matters for
+humans — it is what lets a corrected title go green without an empty commit.
+
+**The `label` job re-running on every push is harmless, and deliberately so.** It recomputes the
+label set from the title and builds its `gh pr edit` arguments only where they differ, so an
+unchanged title makes no API write at all. Its fork gate is unchanged and load-bearing: `label` is
+skipped on PRs from forks, because the token is read-only there whatever its `permissions:` block
+asks for. That is also why only `semantic-title` belongs in a required-checks list and `label` does
+not — a skipped job counts as passing, so requiring it would work, but listing a job that
+deliberately does nothing on exactly the PRs that matter most is noise.
+
+**One count moved and one did not, which is the sort of thing that goes stale unwatched.**
+`.github/renovate.json5` and the Renovate section above both state that `ci.yml` and
+`code-quality.yml` hold six occurrences of `24.x` between them, none of them reachable by the
+`github-actions` manager. It is still six: the matrix entry and the comparison went, and `ci.yml`'s
+step name and `node-version:` input became literal `24.x` in their place. Only the enumeration
+inside the config comment needed correcting — from "a matrix entry, a comparison, two step names and
+two `node-version:` inputs" to "three step names and three `node-version:` inputs". The bare number
+in this file needed no edit, which is the argument for having written the breakdown down next to the
+rule that depends on it.
+
+## The Prettier check fails the build now, and it is the only advisory step that should
+
+`code-quality.yml`'s Prettier step dropped `continue-on-error: true`, which puts it with ESLint,
+`tsc --strict` and the `npm run build` inside the bundle-size step - the ones that already gated -
+and leaves depcheck and madge as the whole of what stays advisory. It was permissive on the
+reasoning recorded in "`npm run format` covers the docs at the repo root" above - the check tells
+you what drifted, `npm run format` before pushing is what keeps it from drifting - and that held
+right up until the second half stopped being a thing anyone had to remember. Every file the globs
+reach is formatted today, and has been for long enough that the advisory step had nothing left to
+advise. An enforced check that is already green costs nothing and never goes green again by
+accident; an advisory one that is already green is a step nobody reads.
+
+**The other permissive steps stayed permissive, on their own merits.** `depcheck` is red today and
+wrongly so: it reports `postcss` and `@tailwindcss/postcss` unused, because they are named in
+`postcss.config.mjs` rather than imported, so enforcing it would mean maintaining an ignore list of
+false positives. The bundle-analyzer invocation is a library with no CLI and does nothing on its
+own; the `npm run build` above it in that same step is what actually gates. The axe scan hits one
+URL of a signed-out app and would fail on findings nobody has triaged. `madge --circular` is the one
+genuine candidate - it passes cleanly on 349 files right now - and it was left alone anyway, because
+a cycle is a design problem to think about rather than a keystroke to undo, and discovering one
+should not also block the build. Formatting has none of those properties: the tool that reports the
+problem also fixes it, `npm run format` is the entire remedy, and no finding is ever arguable.
+
+**The ordering cost is real and accepted.** The Prettier step runs before ESLint, `tsc --strict` and
+the build, so a stray blank line now stops the job there and the checks below it do not report at
+all until a formatting push lands. Reordering it to last, or putting `if: always()` on everything
+after it, would buy back that feedback - both were rejected as more workflow than the problem
+deserves, given the fix is one command and CI re-runs in a couple of minutes.
+
+**What made this safe is the `AGENTS.md` override, not the current state of the tree.** Before
+`.prettierrc.json` gave that file `proseWrap: "preserve"`, `next dev` and Prettier each undid the
+other's wrapping of the managed agent-rules block, so `format:check` failed on a file the
+contributor never touched - see "The Prettier override is load-bearing" above. Enforcing the check
+on top of that would have turned an intermittent local annoyance into an intermittent red build with
+no obvious cause. The override is what makes formatting deterministic enough to gate on; if it is
+ever removed, this step has to go back to advisory in the same change.
+
+**`npm run ci` deliberately still does not run it.** That script mirrors `ci.yml` - lint,
+type-check, test, build - and `format:check` lives in `code-quality.yml`, a different workflow.
+Adding it locally would make the script pass or fail on something `ci.yml` never checks, which is a
+worse kind of confusion than the one it would fix. `CONTRIBUTING.md` names the Prettier check
+separately, in the paragraph that describes that second workflow, and now says it is blocking.
+
+## Entry units are a per-device override; the account preference stays the display authority
+
+The dive form's number boxes gained a per-dimension unit switch. A diver who thinks in metres but
+rents an SPG reading psi flips pressure to psi and leaves depth alone. Nothing else moves: the
+account's `units` preference still decides how every saved dive, chart, stat and detail page
+renders, form state is still metric, and the wire, the export and every Zod rule are untouched by
+construction — the override only changes what a box displays and parses, which is the one thing
+"Units convert at the edges" already isolated to two files.
+
+**The model is `override ?? account`, and setting a dimension to the account's own system removes
+its key.** No-override is the natural state, so an account-level flip in settings carries every
+unoverridden dimension with it. What an override records is the absolute system ("my SPG reads
+psi"), not "flipped" — that fact does not change when the diver re-themes their account, and an
+override left equal to the account is merely redundant rather than inverted. Parsing is
+filter-don't-reject on the `parseSeriesVisibility` model: keys checked against `ENTRY_DIMENSIONS`,
+values against `UNIT_SYSTEMS`, a non-object entry read as no overrides at all.
+
+**`ENTRY_DIMENSIONS` is the one addition to `lib/units.ts`.** `EntryDimension` was a type-only
+`Extract<>` and the `DIMENSIONS` table is module-private, so nothing could enumerate the six at
+runtime — and both the storage parser and the form need to. It is
+`as const satisfies readonly Dimension[]` with the type read back off it, so a dimension in one and
+not the other is a type error rather than a silently unreachable toggle.
+
+**`localStorage`, not the user row.** Server-side per-dimension columns would be five or six new
+`NOT NULL` columns on the hottest record, an API PR and export coverage, all for an entry
+convenience. The api tree already sanctions that shape as additive if multi-device demand ever
+appears (`schemas/user.py`), which is the revisit point. Transient-per-form was rejected the other
+way: a rented psi SPG lasts a whole trip, and re-flipping every dive is the annoyance the feature
+exists to remove.
+
+**This key subscribes for real, unlike the chart keys next to it.** `chart-series-view.ts` and its
+siblings read `subscribeToNothing` because each is read by exactly one component, so nothing can
+disagree with anything. This one has concurrent readers that share a dimension: the gear-set dialog
+opens from _inside_ the dive form and both render a weight box. Two unsubscribed hook instances
+would show different units for the same dimension and last-writer-wins each other's flips.
+`entry-units.ts` therefore keeps a module-level listener set, and
+`writeEntryUnits`/`clearEntryUnits` notify.
+
+**The raw snapshot is cached in module state, keyed on the identity of the `Storage` it was primed
+from.** `getSnapshot` runs on every render of every consumer and two of those sit on the form's
+hottest path — `MixtureSetWarning` re-renders per keystroke — so a `getItem` per call is a real
+cost. In production the `Storage` object never changes; under Vitest, swapping it is exactly what
+`useStorage(memoryStorage())` does in each `beforeEach`, so a fresh store re-primes and one test's
+write cannot serve as the next one's stale read. That is what makes per-file module state safe
+without a test-only reset export.
+
+**Writes happen only in the toggle handler, and derive from a fresh store read.** Two bugs this
+forecloses. A `useState`-plus-write-through-effect copy would fire an unguarded write of the empty
+initial record on mount and **erase the diver's stored overrides on every page load** — the chart
+precedent it would imitate guards exactly this with `dive-profile-chart.tsx`'s `if (chosen)`. And
+computing the next record from the render's own memoized parse would have two toggles pressed inside
+one React batch both start from the same pre-click record, with the second silently undoing the
+first — the bug "Remembered selections use `useSyncExternalStore`" records as having been real once,
+solved there with an updater, which needs the local state this deliberately does not keep.
+Read-then-write is safe here because the write refreshes the cache synchronously. Both are pinned.
+
+**There is no hydration snap here, and none to record as an accepted trade.** The `() => null`
+server snapshot is never reached: all three pages that can mount a toggle return `<PageSpinner />`
+while auth loads, so no consumer renders during prerender or hydration and every first render
+already reads `getSnapshot`. It stays as the defensive third argument. **This matches the chart keys
+rather than contrasting with them** — `DiveProfileChart` and `GasUseCard` sit behind the same kind
+of spinner gate on their own pages, so that section's `() => null` is the same defensive posture,
+not an accepted snap this key escapes. Do not write a distinction between them into this file.
+
+**The key is cleared on sign-out, and not for the reason that decides the one next to it.**
+`signOut` already clears `opendiving:post-auth-redirect` because it "names a person or a
+destination" and deliberately keeps `opendiving:last-auth-method` because it "names a button, not a
+person". (Half of that contrast has since been deleted: `opendiving:last-auth-method` no longer
+exists at all — see _"The sign-in form no longer remembers which method this browser used"_ — so
+`signOut` now decides about two keys rather than three, and the lead above is amended to match. What
+decides _this_ key is unaffected, since it never rested on the comparison, and the sentence after
+this one still contrasts it with both of the reasons named above.) Entry units name neither, so what
+decides it is a consequence neither sibling has: an inherited override changes what a box _parses_.
+A second diver at a shared browser who never touched a toggle would meet a psi-labelled pressure
+field, type 200 meaning bar, and commit 13.79 bar — inside `ck_dive_mixture_start_pressure_range`
+and indistinguishable from real data afterwards. A chart key's worst inherited outcome is a hidden
+series.
+
+Two alternatives were rejected. **Stamping the record with the signed-in user's id** closes the same
+hazard and would survive a sign-out cycle, but it turns a view-state key into an account-linked one,
+which the privacy page then has to describe as an identifier rather than as a preference.
+**Documenting the asymmetry and keeping the key** is free, and has the honest defence that the wrong
+state is visible — but it trades a silent wrong-by-14× pressure against nothing. The cost of the
+chosen option is narrow and lands on the right person: an explicit sign-out forgets the psi choice,
+and sign-out is rare. A page reload is not one of them, since the access token is re-derived from
+the cookie.
+
+The call goes **after** the `authAPI.signOut()` try/catch, with the rest of the local teardown,
+because that file's standing invariant is that a _failed_ sign-out clears nothing locally — a server
+that did not end the session must not leave the diver with their entry units wiped. Both halves are
+pinned. The `hardNavigate("/")` that follows resets the module cache for free.
+
+**No `-vN` in the key, for a different reason than the chart keys'.** That bump exists because a
+filtered key set makes a newly-added chart channel read as deliberately switched off. Here absence
+already carries a correct meaning on its own — a dimension missing from the record has no override
+and follows the account — so a dimension added later starts in exactly the right state under the old
+key. It must not be restated as the chart section's reason.
+
+**One toggle per dimension, not per input, and the label keeps its unit text.** Flipping any depth
+toggle flips both depth fields; start pressure in psi with end pressure in bar is a state nobody
+wants. So `max_depth` carries depth's only toggle and `avg_depth` follows it two fields down, and
+pressure's single toggle sits in the Gas Mixtures section header rather than on the boxes — the
+pressure fields repeat per tank card, and a toggle per field would put eight identical controls with
+eight identical accessible names on a four-cylinder dive. That is screen-reader noise, and any
+`getByLabelText` on the control would throw on multiple matches. Moving pressure's toggle onto the
+Tank 1 card so it has a field to sit beside was rejected by the same rule: on a four-cylinder dive
+it is four identical controls again. The `FormLabel` keeps its `(bar)`/`(psi)` parenthetical, per
+USWDS's rule that the accessible label carries the unit — which is also what keeps the existing
+`getByLabelText("Start pressure (bar)")`-style queries meaningful.
+
+**That header toggle renders only while `fields.length > 0`.** The create form seeds `mixtures: []`
+and the header row renders above the "No cylinders recorded for this dive." empty state, so an
+ungated toggle would open every fresh create form with a "bar | psi" control governing no visible
+field — and would vanish and reappear as the diver added and removed the last cylinder either way.
+The stored override is untouched by the gate, so it comes back exactly as the diver left it: a
+metric-account diver who has flipped pressure to psi sees psi on the first tank card they add,
+without touching anything. Pinned in both directions.
+
+**Weight is the carved-out exception, and Radix is why it is safe.** The gear-set dialog opens from
+inside the dive form and both render a weight input, so two identically-named toggles can be in the
+DOM at once. The dialog keeps its own, because standalone on `/gear` it is the only place a gear
+weight is ever entered — and the duplicate name never reaches assistive tech, since `ui/dialog.tsx`
+is `@radix-ui/react-dialog` and neither it nor `GearSetDialog` passes `modal`, so Radix's default
+applies `aria-hidden` to everything outside the open dialog. The store subscription keeps the two in
+step, so the form behind the dialog is already consistent when it closes. **One test consequence:**
+Testing Library's `getByLabelText` does _not_ filter `aria-hidden` elements, so the dialog-plus-form
+test scopes its queries with `within()` rather than relying on document-wide uniqueness.
+
+**The toggle is one `<button>` styled as two segments, and its accessible name contains its visible
+text.** Two systems means pressing it can only mean "the other one", so a radiogroup or a pair of
+buttons would add tab stops for nothing. The `aria-label` is "m | ft — switch depth entry to feet":
+visible text first, then the action, per WCAG 2.5.3 (Label in Name, for speech-input users) and this
+repo's own convention for an `aria-label` that overrides visible text. **The button is laid out
+inline with the separator carrying its own spaces**, rather than as a flex row with a `gap`, so its
+text content really is the `m | ft` the label quotes — a gap drawn in CSS would leave the two
+disagreeing about what is visible, and a render test caught exactly that. It is `type="button"` (it
+renders inside the dive `<form>`, where the default submits), a _sibling_ of `FormLabel` and never
+inside it (interactive content in a `<label>` misroutes clicks), and outside `FormControl`, so the
+labelable-element rule is untouched and it reads as the secondary control of a composite field. No
+pre-load gate is needed: every page that mounts a toggle returns a spinner while auth loads and
+`null` when unauthenticated, so no toggle can render — let alone be clicked — with `user === null`.
+
+**In-form hint strings follow the entry units of the dimension they render.** `MixtureGasHint` and
+`MixtureSetWarning` display MOD/END/EAD _depths_, so they take the depth entry units: a diver
+entering depths in feet must not be warned about a MOD in metres mid-entry. Everything outside the
+form stays on account units. **`/gear` is where that line is visible side by side:** the dialog's
+weight toggle governs entry only, while the list right below it renders
+`formatWeight(set.weight, units)` off a plain `useUnits()` (`gear-sets-card.tsx`) — so a
+metric-account diver who flips the dialog to lb and saves 12 sees "5.4 kg" in the table underneath.
+That is the scope decision working as specified, not a defect.
+
+**A units flip discards the input's draft, inside `UnitNumberInput`.** The tempting free lunch —
+"clicking the toggle blurs the input, and blur already resets the draft" — is false on macOS Safari
+and Firefox, where clicking a `<button>` moves no focus: the draft would survive the flip and show a
+psi number under a bar label, with the next keystroke committing through the new units. And jsdom's
+`userEvent.click` _does_ focus, so a test that clicked a toggle would have passed while the bug
+shipped — hence a test that moves the `units` prop directly and never blurs. It is implemented as an
+**adjust-state-during-render previous-prop comparison, not an effect**: that is the shape React
+documents for this case, it re-renders before anything is painted, and the effect form is a lint
+error here (`react-hooks/set-state-in-effect` under `eslint-config-next/core-web-vitals`). It is
+also the only reset that does not watch `value`, which is what keeps the box's original rationale —
+no effect may reformat under the cursor — intact.
+
+**The known integer-dimension loss extends, unchanged.** 50 ft → 15 m → 49 ft becomes reachable for
+metric-account divers who flip visibility or altitude to feet. Same accepted loss, same reasoning,
+no new decision.
+
+**One existing test needed anchoring, and it is worth knowing why.** The toggle's accessible name
+contains the dimension word, so `getByLabelText(/altitude/i)` on the create page began matching both
+the field and its toggle. The fix is `/^altitude/i` — the label is the one that _starts_ with the
+word. Loose single-word label regexes over a form field are now ambiguous by construction; anchor
+them or query the full `"Altitude (m)"` string.
+
+**Every test that touches this key installs `useStorage(memoryStorage())` in a `beforeEach.`** Under
+Vitest `window.localStorage` reads back as `undefined`, and the module's try/catch turns that into
+"no override" — so a test written without the helper passes vacuously with the whole feature
+deleted.
+
+### The toggle sits in the label row without being laid out in it, and both halves of that were bugs
+
+The first attempt wrapped `FormLabel` and the toggle in `flex items-center justify-between`, which
+is the obvious markup and was wrong twice over. Toggle-bearing fields ended up with their input 2px
+lower and their label text 2px higher than the field beside them in the same grid row — visible on
+`Water type` / `Altitude`, which are side by side, and identical on all five toggles in the dive
+form. `EntryUnitLabelRow` exists to hold the fix in one place.
+
+**`<label>` is `display: inline`, and any flex or grid parent blockifies its children.** That
+changed the label's box from the 17px inline content area its font metrics give it to the 14px line
+box its `leading-none` declares, and handed the row's height to the 18px toggle instead. So the row
+grew, the label shrank, and `items-center` re-centred the smaller label inside the bigger row. The
+fix is to leave the label inline in an ordinary block and take the toggle out of flow — absolutely
+positioned, centred on whatever the row turns out to be. Nothing then needs to know the toggle's
+height, which is what stops this drifting the next time its padding moves.
+
+**And `space-y-2` never applied between a `FormLabel` and its input in the first place.** This is
+the half that only measuring finds. `FormItem`'s `space-y-2` is a _margin-bottom_ on every child but
+the last, and **vertical margins have no effect on an inline box** — so a bare `FormLabel` silently
+drops it, and every form in this app has a 3px gap under its label rather than the 11px the utility
+reads as. Wrapping the label in anything block-level collects the 8px it was never given. That is
+why the wrapper carries `mb-0`, and why that class is load-bearing rather than a no-op: without it
+the fix for the first bug re-creates the misalignment at 8px instead of 2px, in the opposite
+direction. Both were measured in a real browser, before and after.
+
+**The Gas Mixtures header toggle is deliberately not this component.** Flex alignment is right there
+because the only other child of that row is the `<h3>`, and a heading is block-level already — so
+the blockification that shrinks a `<label>` has nothing to do to it. The row is the h3's 20px line
+box and the 18px toggle centres on it. Measured; it never had the problem.
+
+That reason is _not_ the one this paragraph used to give. It said the row's height came from the
+36px "Add Mixture" button beside the toggle, which was true until that button moved out from under
+the heading (see "Add Mixture sits under the tanks" below) — and would have read as a still-standing
+justification for markup whose stated support had been deleted. A recorded reason that names a
+neighbouring element is only as durable as that element's position.
+
+**None of this is testable in jsdom, and the test file says so.** jsdom does no layout, so every
+rect is zeroes and a geometry assertion would pass against any markup at all — the same vacuous pass
+`memory-storage.ts` exists to prevent. What the render tests pin is the three structural properties
+the alignment rests on: the label is not a flex or grid item, the toggle is out of flow, and the row
+cancels the margin an inline label would never have received.
+
+## The privacy page describes this app, and there is still no cookie banner
+
+The question that started this was whether OpenDiving needs a GDPR cookie banner. It does not. What
+it needed instead was a privacy page that was true, and the page that had been shipping was stock
+boilerplate describing a different product: password login, public profiles, community forums, dive
+photos, ratings, "our servers … various countries", regular security audits, a Data Protection
+Officer, and a `privacy@opendiving.app` address that every self-hoster served to their own divers.
+None of those exist. The standing rule recorded above — _"A privacy policy that overstates what is
+collected is not the safe direction to be wrong in"_ — is what condemned all of it rather than only
+the storage section: it is the document a reader uses to decide whether to trust the rest, and every
+false sentence on it spends that credit.
+
+This entry records the legal reading behind the "no banner" half, and the honesty rules behind the
+rest.
+
+### "We" is the operator, and §1 now says so before anything else
+
+The page's "we" used to mean OpenDiving-the-project, which made every commitment on it one the
+project cannot keep and the operator never made. §4.4–4.6 had already found the truthful voice —
+"we"/"our servers" is _this copy_ of OpenDiving — and §1 now states it outright: the software is
+something anyone can run, this page describes this copy, and under GDPR Art. 4(7) the operator of
+this copy determines purposes and means and is therefore the controller. The project runs no
+servers, receives nothing, and has nothing it could be asked to hand over.
+
+The consequence that is easy to miss: **a section nobody rewrote still changed meaning.** Under the
+new §1, §4.7's "protect our rights, property, or safety" became a commitment made on the operator's
+behalf, which is why §4.7 and §9 were re-read as claims rather than skipped as untouched. Nextcloud
+reasons about itself the same way (<https://nextcloud.com/gdpr/>) and Mastodon ships a per-instance
+policy the operator owns (<https://docs.joinmastodon.org/entities/PrivacyPolicy/>).
+
+### Two jurisdictions, and they have stopped construing one law
+
+Earlier thinking here cited the ICO and CNIL side by side as though they read the same rule. Since 5
+February 2026 they do not, and the difference decides two findings below.
+
+**EU**: ePrivacy Art. 5(3) has exactly two exemption limbs, stated at WP194 §1 — Criterion A,
+storage for the sole purpose of carrying out a transmission; Criterion B, storage strictly necessary
+for a service the user explicitly requested.
+
+**UK**: PECR **Schedule A1** now has five, at ¶¶3–7, inserted by the Data (Use and Access) Act 2025
+(<https://www.legislation.gov.uk/uksi/2003/2426/schedule/A1>). Only ¶3 and ¶4 map onto Criteria A
+and B. **¶5 (statistical purposes), ¶6 (appearance/functionality) and ¶7 (emergency assistance) have
+no EU counterpart at all**, and ¶6 carries a condition the EU limbs do not: ¶6(1)(d), "a simple
+means of objecting, free of charge, to the storage or access and does not object".
+
+A self-hoster can be in either jurisdiction, so the page is written to the union of both duties.
+
+### `localStorage` is in scope, and the write is the part that counts
+
+EDPB Guidelines 2/2023 on the technical scope of Art. 5(3) (v2.0, adopted 2024-10-07,
+<https://www.edpb.europa.eu/system/files/2024-10/edpb_guidelines_202302_technical_scope_art_53_eprivacydirective_v2_en_0.pdf>)
+establish at ¶¶35–39 that storage is storage whatever the medium, so none of this is outside 5(3)
+for being local storage rather than a cookie. Two precision points from the same document, both
+worth keeping because they bound what it can be cited for: **¶40 says the guidelines do not analyse
+the exemptions** — the reading below comes from WP29 and the DPAs, not the EDPB — and **¶44
+addresses only the _access_ limb**, holding that reading local data which "does not leave the
+device" is not a "gaining of access". That is true of every key here, and it does not help: the
+_write_ is still storage under 5(3).
+
+### The exemptions, key by key
+
+From WP29 Opinion 04/2012
+(<https://ec.europa.eu/justice/article-29/documentation/opinion-recommendation/files/2012/wp194_en.pdf>).
+Criterion B is a **conjunctive two-part test** (§2.2) — a positive action requesting a service with
+a clearly defined perimeter, **and** the functionality being unavailable without the storage — and
+it does most of the work.
+
+- **`refresh_token`.** First-party session authentication is the canonical strictly-necessary case
+  (WP194 §3.2), echoed by the ICO and by CNIL, whose exempt list covers "les traceurs destinés à
+  l'authentification auprès d'un service"
+  (<https://www.cnil.fr/fr/cookies-et-autres-traceurs/regles/cookies/que-dit-la-loi>). But §3.2 is
+  explicit that **persistent** login storage is not exempt as such: "Persistent login cookies which
+  store an authentication token across browser sessions are not exempted under CRITERION B". WP194's
+  answer is consent gained at the sign-in form through a visible "remember me (uses cookies)"
+  affordance — the tick _is_ the consent in that pattern. **This app is passwordless and offers no
+  tick.** The owner's call is to ship the prominent note instead (the muted line on `AuthForm`) and
+  to treat disclosure-first as the accepted posture. Recorded as the owner's adaptation, not as
+  something WP29 endorses.
+
+- **`opendiving:post-auth-redirect` is the best-exempted key here**, and the page says so rather
+  than apologising for it. It fails Criterion A decisively — WP194 §2.1 requires that the
+  transmission be impossible without it, and a redirect destination is not routing — but it fits
+  Criterion B squarely: the diver clicked "send me a sign-in link", a positive action with a clearly
+  defined perimeter, and landing back on the deep link is part of the service requested. WP194
+  §3.1's "user-input cookies" names the pattern, and UK Sch. A1 ¶4(2)(e)(ii) names it again,
+  "maintaining a record of selections made on a website". The 24-hour lifetime is defensible under
+  §2.3's reasonable-expectations rule precisely because the flow crosses a mail client. Note that
+  ¶4(2)(e) is gated on "where necessary for the provision of the service requested" — which this
+  meets and the other keys do not, since sign-in and the charts all work without them.
+
+- **`opendiving:last-auth-method` gets its own sentence, and a narrower claim than it first
+  invited.** _Superseded: there is no such key any more, and §10.2 has no row for it — see "The
+  sign-in form no longer remembers which method this browser used" at the end of this file. The
+  reading below is kept because the owner's call was made on it: the §3.6 failure it identifies is
+  the ground the deletion rests on._ It is written automatically on every sign-in
+  (`contexts/AuthContext.tsx`) and deliberately survives sign-out. Nobody asked for it, so it fails
+  WP194 §3.6's "the user has explicitly requested the service to remember" premise outright — that
+  much is exactly right. What would be overstated is "no named exemption fits it": true of EU law,
+  but **post-DUAA UK law has one that is arguable**, Sch. A1 ¶6(1)(b)(ii), "otherwise enable an
+  enhancement of the appearance or functionality". The counter-argument belongs here too — the ICO
+  says the appearance exception "is not about adapting the content … based on known or inferred
+  interests or behaviours", and this key is derived from behaviour rather than stated. It ships with
+  plain disclosure rather than dressed in an exemption it does not have, and it is deliberately
+  **not** lumped in with the user-chosen preferences.
+
+- **The user-chosen preferences** (`theme`, the two chart-series keys, the two chart-period keys,
+  `opendiving:entry-units`, and the passkey nudge) sit on WP194 §3.6, which exempts UI customization
+  outright only for session or short-term storage and only where the user explicitly asked for the
+  choice to be remembered; remembering longer takes "additional information in a prominent
+  location". **Say what that note actually is**: WP194 frames it as a route to valid _consent_ — it
+  "would constitute sufficient information for valid consent … negating the requirement to apply an
+  exemption" — not as a wider exemption. §10 is that note. _Superseded in what it rests on: these
+  are exactly the keys the device-memory switch covers, so the answer to §3.6's duration problem is
+  no longer a note alone but a control — the diver who did not ask for any of this can now say so,
+  and §10.3 is where. The note stays because it is still what informs the choice; it has simply
+  stopped being the whole answer. See "One switch against every remembered preference on this
+  device" at the end of this file._ CNIL exempts UI personalisation with no lifetime condition but
+  attaches a different one: only "lorsqu'une telle personnalisation constitue un élément intrinsèque
+  et attendu du service" (Lignes directrices, del. 2020-091, Art. 5 ¶49,
+  <https://www.cnil.fr/sites/cnil/files/atoms/files/lignes_directrices_de_la_cnil_sur_les_cookies_et_autres_traceurs.pdf>).
+  CNIL LD ¶48 adds that a tracker serving several purposes, any one non-exempt, needs consent for
+  the whole.
+
+- **`opendiving:entry-units` is described as a preference, not as an identifier, and that is a
+  constraint rather than a stylistic choice.** The rejected alternative of stamping the record with
+  the signed-in user's id was rejected partly because it "turns a view-state key into an
+  account-linked one, which the privacy page then has to describe as an identifier rather than as a
+  preference" (see _"Entry units are a per-device override; the account preference stays the display
+  authority"_). The shipped design earned the softer description; §10 must not give it away by
+  drifting into identifier language.
+
+- **The two `-view` keys hold an anchor timestamp derived from the diver's own dive dates.** Their
+  source comments' "no dive data" claim is _almost_ true and §10 does not repeat it as absolute —
+  this is the one row where the stored value is personal data in its own right. CNIL Reco ¶49 draws
+  exactly that line, contrasting a pure language cookie which "ne constitue pas un traitement de
+  données à caractère personnel soumis au RGPD".
+
+### No banner is required, and "not required" is the phrasing that is citable
+
+The DPAs say outright that exempt storage needs no consent — the ICO: "No. You can store or access
+information in five circumstances without the subscriber's or user's consent"; CNIL lists trackers
+"non soumis au consentement". What survives is the **transparency** duty under GDPR Arts. 12–13,
+since a session token is personal data, and the ICO is explicit that those duties "apply whenever
+you are processing personal data, even if you are making use of a PECR exception".
+
+Phrase the conclusion as **"not required"**, never as "prohibited". The second is not citable and
+would be the same kind of overclaim this whole change is deleting.
+
+And a regulator recommends precisely what shipped: CNIL Recommandation del. 2020-092 Art. 5 ¶49 says
+French law "n'impose pas d'informer les utilisateurs" about exempt operations, but that CNIL
+nonetheless "recommande que les utilisateurs soient également informés de l'existence de ces
+traceurs et de leur finalités", "en intégrant … une mention les concernant dans la politique de
+confidentialité"
+(<https://www.cnil.fr/sites/cnil/files/atoms/files/recommandation-cookies-et-autres-traceurs.pdf>).
+That upgrades disclosure-first from a preference to a cited recommendation.
+
+### The objection-condition gap, and the control that closed it
+
+**Superseded in its conclusion, and rewritten rather than left under a correction note.** This
+section recorded a gap that is now shut: §10.3 ships a control, and _"One switch against every
+remembered preference on this device"_ at the end of this file is how. What is kept below is the
+legal reading, because that is what the control was built to satisfy and the argument did not stop
+being true when the software caught up with it. What is gone is the accounting that went with it —
+its "seven keys", "seven of the nine keys have `setItem` and no `removeItem`" and "six modules" were
+each one lower after `last-auth-method` was deleted, were then carried under a note reading them out
+corrected, and are now simply wrong in a third way, since the question they answered was how many
+keys lacked a control. None do. A count nothing tests, restated twice at one remove from what it
+counts, is exactly the shape this file keeps having to correct: the figures live on the page, where
+`app/privacy/page.test.tsx` pins them in both Google configurations.
+
+UK Sch. A1 ¶6(1)(d) requires "a simple means of objecting, free of charge, to the storage or
+access". The right is to object **to the storage**, not to the value, and the ICO draws the
+consequence: "if someone does object, you must stop storing or accessing information on their
+device". Most of these keys had `setItem` and no `removeItem` anywhere, so **rewriting a preference
+is not objecting to it** and none of them offered a way to stop. `opendiving:entry-units` genuinely
+removed itself (clearing every override deletes the key) and `opendiving:post-auth-redirect` was
+read-once and expiring; everything else failed the condition outright.
+
+**"Clear your site data" is not the means**, and §10 still refuses to call it one: the ICO says an
+operator "must not solely rely on browser settings as an indication" that a person does not object;
+¶6(1)(d) requires a means the _service_ gives; site-data clearing cannot single one key out; and
+here it also destroys the `refresh_token` cookie and signs the diver out. The condition is UK-only —
+¶4 (strictly necessary) carries no objection limb, and the EU has no counterpart at all. That is
+still the reason the paragraph about site-data clearing survives on the page beside the switch, as
+contrast rather than as an offer.
+
+Relief worth having banked: ¶6(2) means the means need only be offered "in respect of the initial
+use", so one switch does not have to be re-offered per key or per visit.
+
+Two alternatives were rejected **at the time**, and both have since been overtaken. **Prose alone**
+is what had already failed. And **reducing the surface instead** — dropping `last-auth-method` and
+adding an un-dismiss path for the passkey nudge — was rejected on the ground that deleting a shipped
+affordance over a legal argument is a product call rather than something to settle inside a copy
+sweep. That reasoning was right about the copy sweep, and wrong about nothing else: the owner made
+both halves of it deliberately afterwards, `last-auth-method` under _"The sign-in form no longer
+remembers which method this browser used"_ and the un-dismiss alongside the switch. What is worth
+keeping from the rejection is its actual shape — the objection was to the venue, not to the change,
+and the two got separated rather than conflated.
+
+### Why §10 names keys rather than categories
+
+The old §10 had two bullets, "Essential Cookies" and "Preference Cookies", and they were both
+category labels doing no work: a reader could not tell from them what was stored, for how long, or
+whether they could stop it, and neither could a maintainer checking whether the page was still true.
+Named keys make the page **checkable** — against the browser's own storage inspector, against the
+source, and by a test. That is the same reason §4.4–4.6 enumerate flows rather than saying "third
+party services". A category cannot go stale visibly; a list of named keys can, and does, which is
+the point. (This sentence used to say "a list of nine keys", and went stale itself the moment a key
+was deleted — the count belongs on the page, where a test pins it, and this argument never needed
+it.)
+
+### The landing page's "No trackers and no analytics" is still true, and here is the reading
+
+`components/layout/landing-page.tsx` claims it, and the claim stands: the software ships no tracking
+or analytics technology at all — not disabled, not configurable, absent, with no such dependency in
+the build. Sign-in and map functionality that contacts a third party is **function, not tracking**,
+and each one is disclosed on the page rather than denied. The one genuinely uncomfortable case is
+Google's sign-in script loading at mount on a Google-enabled instance before anyone clicks anything;
+that is disclosed in §4.8 as today's behaviour and is being narrowed to a click by a separate change
+already in hand.
+
+Note also what §10 does **not** claim: not "no third-party cookies", full stop. The app itself sets
+none, but the operator picks the tile provider through `MAP_TILE_URL` and that provider's servers
+answer the image requests §4.4 discloses and may set cookies of their own. So §10 cross-references
+§4.4 instead of making an absolute claim the software cannot keep on every instance.
+
+### The rule this project holds itself to, stricter than the law's floor
+
+The legal floor is **not uniform**, and the honest thing is to name the exceptions this project is
+declining to use rather than to imply they do not exist: CNIL exempts certain audience-measurement
+trackers under conditions, UK Sch. A1 ¶5 now carries a statistical-purposes exception, and WP194
+itself called first-party analytics low-risk and asked the legislator for an exemption it never got
+EU-wide. This project does not navigate that patchwork. Its rule is simpler, is its own, and has two
+clauses:
+
+1. **The day any analytics, A/B testing, or advertising storage is added, a real prior-consent flow
+   ships with it, and §10 changes in the same PR.**
+2. **Any new browser-storage key owes §10 a row in the same PR** — enforced by
+   `src/lib/storage-keys.test.ts`, not by prose.
+
+Clause 2 is enforced because the prose version is exactly what failed: `opendiving:entry-units` was
+added as a ninth key while §10 still described a world of eight, and nobody read the standing rule
+on the way past. Had the test existed it would have failed on that change.
+
+The test enforces the rule in **four checks**, and the second exists only because the first has an
+obvious escape. (1) Every `opendiving:`-prefixed string literal in production code under `src/`
+appears verbatim in `app/privacy/page.tsx`. (2) The set of production modules that write browser
+storage equals a literal list of eight paths — because a key named without the prefix would never
+enter sweep (1) at all, and the disclosure check would pass while the key shipped undisclosed.
+Nothing else in this repo requires the prefix: no lint rule, nothing in `AGENTS.md`. All nine
+current keys follow it by habit, which is exactly the kind of convention that holds until it
+doesn't. (3) The two mechanisms §10.4 names that check (2) cannot see — IndexedDB and service
+workers — are in fact unused; §10.4's third, session storage, is covered by check (2) instead, for
+the reason below. (4) Every key check (1) finds is classified by `lib/device-memory.ts` as either
+covered by the device-memory switch or deliberately excluded from it, with `theme` — which spells no
+literal for check (1) to find — asserted covered by hand.
+
+Check (4) arrived with the switch, and it is the same rule as clause 2 pointed one section further
+on: a key nobody classified is a key the objection control quietly does not reach, which is the
+disclosure failure with the disclosure swapped for a promise. It carries its own bite test, because
+a classifier that answered for everything would pass every case while enforcing nothing.
+
+Note what check (2) is and is not: it is a tripwire on _where_ storage is written, and it says
+nothing about what any key inside those eight modules is called.
+
+**That it is a list of filenames at all was the most useful thing this change learned.** It went
+through two richer designs first and both were wrong, in a way worth recording because the pull
+toward them is strong.
+
+Version one matched `setItem("literal")`. That misses the house style: **every key in this tree is a
+module-level constant passed by name**, so the one shape a new key actually arrives in —
+`const DIVE_UNITS_KEY = "dive-units"` plus `setItem(DIVE_UNITS_KEY, …)` — walked straight past it. A
+guard blind to the house style is decoration.
+
+Version two therefore collected every `const NAME = "string"` tree-wide and resolved each `setItem`
+argument through that map. It caught all three planted shapes — and review then found **four**
+separate defects in it: a flat, unscoped, last-write-wins map **masks a real undisclosed key** when
+any other module declares the same const name with a prefixed value (and duplicate const names
+already exist in this tree); the same map **falsely accuses** a correct file when a tree-wide name
+collides with a local one, so an unrelated `const storageKey = …` anywhere makes
+`chart-series-view.ts` report a key it never writes; a template literal with a substitution is read
+as an offender rather than skipped, the opposite of what its comment promised; and if either regex
+ever stopped matching, every argument resolved to `undefined`, every one was skipped, and the check
+**went green while enforcing nothing**.
+
+The lesson is not "write a better regex". Resolving an identifier to its value is type-graph work,
+and three rounds of review found a new hole each time because regexes cannot do it. So check (2) was
+**cut back to a tripwire**: the set of production modules that write browser storage must equal a
+literal list of eight filenames. It is none of the four things above wrong — it never masks a key
+behind a name collision, never accuses a file over one, and cannot pass vacuously, since the
+expected list is non-empty so a broken walk fails rather than skips (verified by pointing the walk
+at an empty directory). What it protects is that a module which did not write browser storage before
+cannot start without somebody being sent to §10.
+
+It targets three write forms — `setItem`, the index form (`localStorage[key] = …`) and
+`document.cookie =`. Neither of the latter two appears in production code today; they are matched
+anyway so that reaching for one is not a way around the list. Both insist on a real assignment,
+which took a second pass to get right: a bare `localStorage[` also matches a _read_, and a bare `=`
+after `document.cookie` also matches `===`, so the first version would have reported a module that
+only reads as a writer. It claims no completeness past those three, and the phrasing here matters —
+two successive review rounds read an earlier "every way this app could plausibly write" as an
+exhaustiveness claim, which is a fair reading of a sentence that should not have invited it.
+
+**Check (3) exists because §10.4 makes an affirmative negative claim**, which is a stronger thing to
+say than "undisclosed" and therefore worth holding to: the page states this app has "no IndexedDB
+database and no service worker". Neither spells a `setItem`, so check (2) would not notice one
+arriving. Check (3) asserts that no production module mentions `indexedDB`, `serviceWorker` or
+`cookieStore` at all — the last of those is not named on the page, but it is a storage write that
+evades every other pattern here and now is the cheapest moment to catch it.
+
+`sessionStorage` is deliberately **not** in check (3), even though §10.4 names it too. Four
+production modules mention it in comments — `lib/auth-redirect.ts` and `lib/gas-use-view.ts`
+explaining why they chose `localStorage` over it, `lib/api/client.ts` explaining why the access
+token is in neither, and `lib/device-memory.ts` explaining why its interposition guards on the
+receiver — so a raw text match would fail on all four for saying nothing at all. Its writes are
+caught by check (2), which is the half that matters. That asymmetry is the whole lesson of this file
+in miniature — what a text match can assert depends on what the codebase happens to talk about, and
+pretending otherwise is how the earlier versions went wrong.
+
+Storage set by the **server** is a different mechanism and deliberately outside this. The
+`refresh_token` cookie arrives as a `Set-Cookie` header forwarded by `lib/api-proxy.ts` and is
+`HttpOnly`, so client code could not write it even in principle; it is disclosed by hand in §10.1. A
+reviewer read the earlier "every way this app could plausibly write" as a claim about that too,
+which is fair — the sentence is now scoped to client code explicitly.
+
+**What it gives up, all of it written into the test's header rather than left to be discovered.** A
+_second_, unprefixed key added inside one of the eight files; check (1) covers that whenever the
+prefix is used, which is the style in all eight. `theme`, and a key assembled at run time. And one
+genuine false positive: it reads raw source, so a production file that merely _mentions_ one of
+those write forms in a comment counts as a writer and fails the equality. Stripping comments
+correctly is parsing, which is precisely the work this check was cut back to avoid, so the trade is
+deliberate — the answer when it fires is to add the file to the list or reword the comment. An
+earlier draft of this entry and of the test header both claimed "no false positives" flatly, which
+was the same overclaiming reflex the page itself exists to correct, caught in review twice. A guard
+trusted past its reach is worse than one nobody trusts, which is exactly how the prose version of
+this rule failed in the first place.
+
+Three scope decisions inside that. It covers **all of `src/`**, not `src/lib/`: every key lives
+there today, but nothing requires it to, and a key added under `hooks/`, `contexts/` or a component
+would slip a narrower guard silently. It **excludes the privacy page from the definition sweep**, so
+a key cannot satisfy the invariant by appearing only on the page — and so the failure message names
+the module that really defines it. And the literal pattern requires **at least one character after
+the colon**: allowing zero also matches a bare `` `opendiving:` `` written in a comment, and since
+every real key starts with that string, the resulting assertion passes against any page at all. A
+test case that cannot fail is worse than no test case, because it reads as coverage while diluting
+the cases that can.
+
+**What it still cannot see, written down rather than left implicit.** `theme` is next-themes' own
+default key, configured without a `storageKey` override, so there is no literal in this tree to find
+— §10 lists that one by hand. And a key assembled at run time (`PREFIX + name`) is spelled by no
+single literal, so neither half can prove it. Check (2) closes the cheapest dodge; it does not close
+a determined one. The privacy page's own sentence about this was corrected during review for the
+same reason: it said storage keys were "enforced by a test, not by good intentions", which claims
+more than the test delivers, and now says "a rule with a test behind it". Overclaiming a guard on
+the page whose purpose is not overclaiming was the wrong direction to be wrong in twice over.
+
+### §6.3 enumerates every email, and the enumeration is exhaustive on purpose
+
+The first draft of this rewrite got §6.3 wrong in the same shape as the boilerplate it was
+replacing, which is worth recording because the mistake is so easy to repeat. It said "almost every
+email … is one you asked for" and then "one email arrives on its own, and only under one condition"
+— naming the gear-service digest as the sole automatic one. The api sends **eight** kinds of mail,
+and three of them fit neither half of that: `send_passkey_added_email` and
+`send_passkey_removed_email` (`api/v1/passkeys.py`), and `send_email_changed_notification`
+(`api/v1/users.py`), which goes to the **old** address naming the new one.
+
+That third one is the one a closed list must never lose, and it is the reason §6.3 now has a
+three-part structure rather than a two-part one. Its whole purpose is to reach someone who did
+**not** act — the api's own docstring says it exists "so its owner finds out even if they weren't
+the one who changed it" — so it directly falsifies any sentence of the form "these arrive because
+you acted". It also cannot be switched off, and §6.3 says why in the page's own voice: an alert you
+can silence is not an alert.
+
+**"Because you acted" was still wrong after that restructure, and for a second, separate reason.**
+The first group was headed "emails you asked for a moment earlier" and closed "those arrive because
+you acted" — and two of its three members can land on someone who did nothing.
+`POST /auth/email/request` is **unauthenticated by necessity**, since it is the entry point of
+sign-in, so anyone who types your address causes a sign-in message to reach you; the mail's own body
+already concedes this with "If you didn't request this, you can safely ignore this email". And
+`send_email_change_confirmation_email` goes to whatever new address a signed-in diver typed,
+_precisely_ to prove they can read it — which means by construction the recipient may not be the
+actor. Only the deletion confirmation is bound to the account's own existing address.
+
+So the group is now headed by the neutral "emails that follow an action on this site", and the page
+spends a paragraph on why only one of the three goes to the account's own address. Note the exact
+claim, because a first attempt at this correction overshot into a second falsehood: the deletion
+confirmation is **bound to the account's address**, which is not the same as being _certain to reach
+the person who acted_. `DELETE /user` acts on a bearer token alone, with no step-up, so a stolen
+session deletes the account and the owner gets the mail without having done anything — the identical
+case the security-notice group concedes for passkeys. §6.3 therefore separates the two ideas
+explicitly rather than letting "your address" quietly stand in for "you". The general lesson, since
+this is the second time the same sentence shape was wrong here: **on this page, "you" in a claim
+about who receives mail is an assumption about identity, and every such assumption has to be checked
+against whether the endpoint authenticates the actor _and_ verifies they control the target
+address.** Authenticating the actor is not enough; neither of these two endpoints does the second
+thing, and neither can.
+
+So §6.3 is written as a complete list of what a **diver** receives, in three groups — action-driven,
+security notices, and the one scheduled digest — and the contact-form mail is parenthesised as mail
+_about_ you rather than _to_ you, since it goes to `CONTACT_FORM_EMAIL` rather than to the account.
+Anyone adding a `send_*` function to the api owes this section a line, on the same reasoning as the
+storage-key rule above; unlike that one it has no test behind it, because the truth it would have to
+check lives in the other repo.
+
+### What the CSP actually buys, and the sentence above that oversold it
+
+**Correction to this file, appended rather than rewritten.** The section _"Gravatar is off unless an
+instance turns it on, and the privacy page stops inventing analytics"_ says the analytics claims
+were deleted against "a CSP that structurally forbids one (`connect-src` names the API and nothing
+else)". That overstates it, and the same overstatement went into the API's self-hosting docs.
+Precisely:
+
+- `connect-src` lists `'self'`, the API origin and (when enabled) Google (`src/proxy.ts`), so a
+  **cross-origin** beacon is blocked and a **same-origin** one is not;
+- `script-src` carries `'strict-dynamic'`, so a carelessly **bundled** analytics script loads with
+  no violation at all;
+- `img-src` admits `data:`, `blob:` and the tile origins, so a tracking pixel passes.
+
+The rule above is the guard. The CSP only narrows the quiet ways to break it, and a sentence that
+says otherwise invites the next person to rely on the wrong thing.
+
+**Two of those three bullets have moved, and the conclusion is unchanged (2026-08-30).**
+`connect-src` no longer names Google in any configuration — no Google code runs in the browser — and
+it does now name the basemap's hosts, so it lists `'self'`, the API origin and the basemap.
+`img-src` is `'self' data: blob:` — plus the API's own origin on a split-origin build — with no
+third-party host at all, the raster tile origins having left with the hand-rolled `<img>` grid. So a
+same-origin beacon is still not blocked, a bundled script still loads under `'strict-dynamic'`, and
+a `data:`/`blob:` pixel still passes. The list got shorter without the guarantee getting stronger,
+which is exactly the misreading this correction exists to prevent.
+
+### The numbering in §4 is load-bearing, and §4.8 has changed hands
+
+Nothing outside this file links privacy-page sections by number — the §4.7 pin below says so
+explicitly — but **this file links a lot of them**, and the list is not derivable from a single
+grep: `grep -n '§' DECISIONS.md` returns seven lines and misses the §4.7 pin entirely, because that
+one spells the number out in prose. The full set:
+
+| Pins                 | Section                                                                                                   |
+| -------------------- | --------------------------------------------------------------------------------------------------------- |
+| Map-tile host entry  | §4.4 by number                                                                                            |
+| Geocoder entry       | §4.5 by number                                                                                            |
+| Species-cache entry  | §4.6 by number                                                                                            |
+| Species-picker entry | §4.4 and §4.5 by number, and **§4.7's number in prose** — "renumbered Legal Requirements from 4.6 to 4.7" |
+| Gravatar entry       | §4 as a whole — the Gravatar section "sits last in §4"                                                    |
+| Gravatar removal     | §4.8, meaning the **removed Gravatar** section                                                            |
+
+So **§4.4–4.6 were not touched and nothing before §4.8 was renumbered.** Two of those entries pin
+_content_ rather than a number and would be silently falsified by a reword at the right number: one
+quotes §4.4's "a page with nothing to show loads no map and contacts nobody" verbatim, and one
+quotes §4.5's coordinate sentence. Both survived this change unaltered. Both entries end on the same
+maxim, which is worth restating here because this change is the third time it has been the operative
+one: **a privacy page that is stale is worse than one that is vague.**
+
+**§4.8 is now the Google sign-in disclosure.** It inherits Gravatar's old number and Gravatar's
+precedent for _why_ — it is the one heading that appears on some instances and not others, so it
+sits last in §4 and its absence leaves no gap in the numbering of the headings that are always
+there. An unset `GOOGLE_CLIENT_ID` means no section and no hole. The Gravatar-removal entry has been
+annotated in place so its "§4.8" does not send a reader to the wrong disclosure.
+
+### The ICO's `localStorage` suggestion, read and answered rather than passed over
+
+The ICO's compliance guidance addresses `localStorage` by name — "if you are storing objects in
+localStorage, there may be no expiry date" — and asks operators to consider "automatically removing
+objects in localStorage where appropriate"
+(<https://ico.org.uk/for-organisations/direct-marketing-and-privacy-and-electronic-communications/guidance-on-the-use-of-storage-and-access-technologies/how-do-we-comply-with-the-pecr-rules/>).
+That is a _should_, and the binding duty on the same page is only to "justify their duration in
+relation to the purpose(s) you use them for". §10 does that per key: a preference lasts until you
+change it, which is what a preference is for. **No TTL code was added to chart-view state**, and
+this is recorded so the next reader knows the suggestion was read and answered rather than missed.
+
+_Superseded in the answer, not in the reading._ "Until you change it" is no longer the whole of what
+§10.2 says about those rows: the device-memory switch removes them and stops them coming back, so
+the honest duration is "until you change it, or until you tell this browser to stop remembering",
+and the framing sentence above the §10.2 list now says exactly that rather than each row repeating
+it. That is closer to what the ICO actually asked for than a TTL would have been — the suggestion
+was "automatically removing objects in `localStorage` where appropriate", and a preference removed
+on request rather than on a timer is the version of that which does not throw away a choice the
+diver still wants. Still no TTL. See _"One switch against every remembered preference on this
+device"_ at the end of this file.
+
+### What was deliberately left alone
+
+Two things on the page's edges stayed as they were, and both are worth naming so a later sweep does
+not "fix" them. §7's "Personal information is permanently deleted within 30 days" is
+**byte-identical** to what shipped, because three documents in the API repo are written against that
+number, including a config default chosen specifically to keep the sentence true. And §13 promises
+nothing about _delivery_: `CONTACT_EMAIL` in this repo is display-only while the API's
+`CONTACT_FORM_EMAIL` decides where a submission actually goes, and the two can disagree in both
+directions. §13 therefore links the contact page as "how to reach whoever runs this copy" without
+asserting that a form works, and it renders neither a project-owned address nor the public issue
+tracker — `/contact`'s own fallback does point at the tracker, and a diver filing an erasure request
+in public, to people who are not the controller, is exactly the outcome §13 must not inherit.
+
+## The terms page has two speakers, and the headings are the mechanism
+
+`/terms` shipped the same stock boilerplate `/privacy` did, and most of it described a product that
+does not exist: a community to connect with, experiences and photos to share, a password to keep
+secure, a platform "for logging and sharing", information shared by other users, a conduct list
+about posting things where other people can read them, forums to ask questions in, and
+`legal@opendiving.app` — a project address every self-hoster served to their own divers. The worst
+single sentence was §5's: "you grant OpenDiving a non-exclusive, worldwide, royalty-free license to
+use, modify, and display your content", which told a diver that their private dive log was licensed
+to a third party that in fact never receives it. All of that is gone.
+
+The sweep found more than the nine falsehoods it set out with, which is the usual result here:
+
+- **"Discover dive sites"** was in §2's feature list. Every dive site row is scoped to one account
+  (`lib/api/dive-sites.ts`'s `user_uuid`), so there is no directory to discover — you keep your own
+  list. §2 says that instead.
+- **§8's "Update these Terms of Service with reasonable notice"** promised a notification mechanism
+  that does not exist, exactly as `/privacy` §11's "notify users via email" did. The page is part of
+  the software and changes when the software changes; §8 now says so and points at the public
+  history rather than at a mailing that never happens.
+- **§3's password bullet became the real sign-in methods, and the list has to be complete.** The
+  sentence that replaces it draws a security consequence from its own enumeration — whoever can
+  reach any of these can sign in as you — so a method left out of the list is a false reassurance
+  rather than a mere omission. Google is the one that is easy to drop, because it is gated on
+  `GOOGLE_CLIENT_ID` and absent from most instances; the page states it unconditionally and hedges
+  in prose — "where this copy offers it" — the way `/privacy` §5's passwordless bullet hedges the
+  same fact in its own voice ("where an instance offers it"), rather than branching on config the
+  way `/privacy` §4.8's full disclosure has to.
+- **§13's "GitHub Issues in our repository"** was offered as a channel for questions about the
+  Terms. The project cannot answer for an operator's service, so §13 splits: the operator for
+  anything about this copy, the project for a defect in the software.
+- **§7 described the project's licence and stopped there.** For a diver on a _modified_ instance the
+  interesting right is AGPLv3 §13's: the operator who modified the software owes them the source of
+  their version. That offer is the operator's to make, and §7 now says so — the project's published
+  source is not necessarily what is running.
+
+### Why this page speaks with two voices when no comparable project ships one that does
+
+`/privacy` could take a single voice, because everything on it is the operator's: they are the
+controller, they hold the data, they answer for it. `/terms` cannot, and applying the same rule
+mechanically would have done real damage — it would have converted the project's own liability
+disclaimer and indemnity into promises made by and about an operator who never agreed to them, and
+deleted the project's warranty disclaimer from the only page carrying it.
+
+The comparators were checked, and none of them has this problem, for one reason: in all three the
+**operator writes the page** and the project appears only to be excluded.
+
+- **Mastodon** ships `config/templates/terms-of-service.md`, which speaks as the "Server Operator's
+  ('Administrator', 'we', or 'us')" and names Mastodon GmbH only to disclaim affiliation.
+- **Discourse**'s `tos_topic` in `config/locales/server.en.yml` speaks as `%{company_name}`, and the
+  word _Discourse_ never appears in it at all.
+- **Gitea**'s `contrib/sample-page/tos.html.sample` is a sample with the placeholder "Your Gitea
+  Instance" in it.
+
+OpenDiving _ships_ the page rather than templating one for an operator to fill in, so the project
+has a speaking part the comparators do not. The alternative — one operator voice, with the project
+named only to be excluded — was rejected because of the AGPL finding below.
+
+**The mechanism is the section heading.** §1 defines two terms, "the OpenDiving project" and "the
+operator of this copy", states that every section is the operator's unless its heading says
+otherwise, and names the three that do: 7, 9 and 10. Bare "OpenDiving" never acts again anywhere on
+the page — every occurrence is one of the two defined parties or the name of the software. That is
+also what hands a self-hoster an unambiguous search target for the sentences that are theirs, which
+is the job Mastodon's `%{domain}` and Discourse's `%{company_name}` do by templating. §12's
+governing-law sentence keeps its substance untouched — it already deferred to wherever the Service
+is operated, which is the one clause that was right before this change — and only names its speaker,
+so that the search target reaches it too. §1 claims no more for that search than it can keep: the
+phrase marks the sentences that turn on something only the operator can answer for, and the rule in
+§1 is what settles a section it does not appear in.
+
+**The operator's as-is paragraph sits at the end of §8, not in §9.** It is the operator's
+counterpart to §9 and reads as though it belongs there, but §9's heading claims the project as its
+speaker, and an operator paragraph underneath it would undo the one mechanism this page has. §8 is
+already the operator's, already about what running the Service does and does not promise, and §9
+ends by pointing at it. The paragraph carries **no monetary cap, no arbitration clause and no
+jurisdiction** — those are precisely the parts an operator would object to having invented for them,
+and it says outright that the operator may replace it with their own terms.
+
+### AGPLv3 §§15–16 do not reach the diver, which is what makes §9 load-bearing
+
+This is the finding that decided the shape, and it is worth stating in full because "the AGPL
+already disclaims warranty, so terms §9 is spare boilerplate" is the obvious and wrong conclusion.
+
+The AGPL's disclaimers run to _licensees_. §0 says "Each licensee is addressed as 'you'", and that
+"Mere interaction with a user … is not conveying". §16 limits liability only "TO YOU", for "USE OR
+INABILITY TO USE THE PROGRAM". A diver using someone else's instance received an HTTP response, not
+a copy: not a recipient, not a licensee. §13's source offer binds operators who modify, and an offer
+is not a transfer — the diver becomes a licensee only if they actually take the source. §17's
+"absolute waiver of all civil liability" is an interpretive rescue for §§15–16 where they already
+apply, not an extension to strangers. (<https://www.gnu.org/licenses/agpl-3.0.en.html>)
+
+So the AGPL covers the project against the _self-hoster_ and leaves the downstream _diver_ uncovered
+— and terms §9, if the diver assents, is the only instrument closing that gap. Converting it to
+operator voice would have deleted the project's sole protection against the people most likely to
+sue over a dive. §9 therefore carries its speaker in the heading, a third-party-beneficiary
+sentence, and an explicit "adds to, and does not narrow, sections 15 to 17 of the AGPLv3".
+
+### Four things here are judgement, not settled law
+
+This project has no lawyer, and the entry says which parts are reasoning rather than authority:
+
+1. **The AGPL reach conclusion above is a textual reading.** No court has squarely decided whether
+   §§15–16 protect an upstream project against a stranger on a third party's instance. Treat it as
+   "probably does not reach", not as established.
+2. **§9's "diving accidents or injuries" bullet is the least likely to be enforceable anywhere.**
+   Many jurisdictions void exclusions for death or personal injury outright — UK UCTA 1977 s.2(1) is
+   the clearest. It is kept because it costs nothing and evidences no assumed duty, but nothing
+   should be built on it.
+3. **Third-party-beneficiary enforcement varies by jurisdiction**, and works at all only if the
+   diver assented and the operator shipped the page unedited — neither of which the project
+   controls. §9 is an improvement over nothing rather than a shield.
+4. **§5's narrow grant was a real fork.** The alternative was "no licence is granted to anyone",
+   which is strictly more honest about today. It was rejected because it makes a future social
+   feature introduce licensing from scratch instead of widening a clause that already exists, and
+   the wording was chosen on that argument rather than on a legal one.
+
+### The standing rule: a feature that shows one diver's content to anyone else brings its own grant
+
+The same shape as the browser-storage rule recorded above, and written down here for the same
+reason. **Any feature that makes one diver's content visible to anyone else ships its own §5 grant
+and its own privacy-page section in the same PR.** The grant on the page today is deliberately no
+wider than running the Service takes — store your entries, show them back to you, include them in an
+export you ask for — and widening it now, for features that do not exist, is the identical mistake
+this change is deleting — the same direction the Gravatar entry above calls out, that overstating
+what a legal page covers "is not the safe direction to be wrong in".
+
+Worth knowing before reaching for that rule: the three plausible futures need three different
+things, and only one of them is a copyright question at all.
+
+- **Shared dives** need an operator display grant, probably per act of sharing rather than blanket.
+- **A dive-centre view of someone's certifications** is a lawful-basis question under GDPR Art. 6,
+  and possibly Art. 9 if anything health-adjacent rides along — not a licence question.
+- **Genuinely aggregate statistics** need no content licence at all.
+
+### Correction: `--warning` is no longer the safety notice's private token
+
+The token entry above says `--warning` has "one use, the terms page's safety notice". That was true
+when it was written and is not any more: `dive-exposure-card.tsx` colours an alert exposure figure
+with `text-warning`, `dive-mixtures-card.tsx` and `mixture-fields.tsx` both use it on mixture
+warnings, `ui/badge.tsx` has a `warning` variant built on `bg-warning`, and `lib/gear-service.ts`
+borrows it for overdue service. The safety notice is therefore **not** load-bearing for the token,
+and the reason to keep it is its own: it is the one part of the page that was unambiguously true
+before this change, and a dive log disclaiming safety advice should not look like a footnote. It
+survives this sweep on its merits, with only "a platform for logging and sharing diving experiences"
+corrected to "software for logging dives".
+
+## The footer's column labels were headings, and the footer is shared chrome
+
+`layout/footer.tsx` rendered "Platform", "Resources" and "Support" as `<h4>`. It renders below every
+page in the app, and on every page whose last heading was an `<h2>` - `/`, `/privacy`, `/terms`, and
+every authenticated page - that is an h2 -> h4 jump, which axe reports as `heading-order`
+(moderate). One shared component, one violation on each of thirteen pages.
+
+**No fixed level is correct for chrome.** The level a footer heading would need depends on the tree
+of whatever page it lands under, and that tree changes when a page does. `<h2>` happens to be legal
+everywhere today - a _decrease_ never trips the rule - but it puts three chrome labels in the
+document outline as siblings of the page's own sections, and it is one page edit away from being
+wrong again. The columns are group labels over link lists rather than sections of the document, so
+they are not headings at all now: each column is a `<nav aria-labelledby>` whose label is a `<p>`.
+They stay reachable by landmark navigation - reliably named, unlike `aria-labelledby` on a bare
+`<ul>` - and they are out of the heading outline, where nothing the footer picks could stay correct.
+`footer.render.test.tsx` pins exactly that: the component contributes zero headings. Tailwind's
+preflight strips heading font sizing, so `font-semibold mb-4` was already carrying the whole look
+and nothing moved on screen.
+
+**`CardTitle` is an `<h3>`, which is its own copy of the same bug.** On `/contact` the cards _are_
+the page's top-level sections, so the tree ran h1 -> h3 and axe flagged the first card rather than
+the footer. `ui/card.tsx` now takes `as` (`"h2" | "h3" | "h4"`, default `h3`) - the tag only, since
+the size lives in the classes - and `contact/page.tsx` passes `as="h2"`. **The same jump is still on
+every authenticated page** (`/dashboard`, `/dives`, `/trips`, `/sites`, `/gear`, `/certifications`,
+`/settings`), which reach an h1 and then go straight to card titles; they were not swept here, and
+each also carries unrelated `button-name`, `link-name` and `color-contrast` failures on its table
+rows.
+
+**What the unrestricted sweep says now.** `/`, `/contact`, `/privacy` and `/terms` are clean in both
+themes. `/signin` was not, and this change did not touch it: it is chrome-free (see
+`NO_CHROME_ROUTES` in `app-shell.tsx`), so it had no `<main>`, and axe reported `landmark-one-main`
+and `region` there - a different defect from the heading one, shared with the five other chrome-free
+routes, and left for its own change. That change has since landed and `/signin` is clean in both
+themes too; see "The chrome-free routes had no `<main>`" below.
+
+**Neither CI nor the recorded hand-check could have caught this.** `code-quality.yml` passes
+`--include="main"`, and the footer is a sibling of `<main>`, not inside it - the workflow has never
+looked at the footer at all. And `heading-order` carries the `best-practice` tag, not a `wcag*` one,
+so it is outside the `--tags` the workflow (and the hand-check recorded above) restricts axe to. A
+sweep scoped to WCAG tags is clean on all five public pages and always was; the default,
+unrestricted sweep is what surfaces this.
+
+**`@axe-core/cli` is unusable on a machine whose Chrome has moved on** - its bundled ChromeDriver
+pins a major version and fails with "session not created". Driving the vendored `axe-core`
+(`node_modules`, the same 4.12.1 the workflow pins) through `playwright-core` against the machine's
+own Chrome is the same engine and the same rules: launch as `scripts/screenshots.mjs` does
+(`CHROME_PATH`, then the usual install paths), inject `require.resolve("axe-core/axe.min.js")` with
+`addScriptTag`, and call `window.axe.run(document, {})` - an empty options object, because `runOnly`
+is what drops the best-practice rules. `page.emulateMedia({ colorScheme })` covers both themes
+without a second context, which matters when the sign-in it took is a single-use magic link.
+
+**Scanning a worktree costs one `.env` line.** `.env` is gitignored, so a worktree has none, and the
+copy taken from the main checkout sets `NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1` - the
+split-origin topology. A worktree dev server on any port but 3000 is then an origin the API's CORS
+allowlist does not know, and every call fails, including the magic link's own verify. Dropping that
+one variable puts the app back on the same-origin proxy route, which has no allowlist to be outside
+of. The magic link still arrives pointing at `:3000` (the API builds it from its own
+`FRONTEND_URL`); rewriting the port in the URL is enough, since the token is in the query string and
+nothing is consumed until the click.
+
+## The chrome-free routes had no `<main>`, and now share the layout that carries one
+
+`AppShell` is the only place in the app that renders a `<main>`, and six routes deliberately never
+reach it - `/signin`, `/onboarding`, `/restore`, `/auth/verify`, `/settings/confirm-email` and
+`/goodbye`, the `NO_CHROME_ROUTES` list. Every one of them was therefore a document with no main
+landmark and no landmark around any of its content: two axe violations each, `landmark-one-main`
+("Document does not have a main landmark", target `html`) and `region` ("All page content should be
+contained by landmarks"), both moderate. On `/signin` `region` named six nodes - the wordmark link's
+span, the heading block, the form's field group, the "keeps you signed in" hint, the Or divider and
+the terms line - which is to say the entire page.
+
+**One component, not six elements.** All six had hand-rolled the same wrapper: a full-height
+centered flex container, a `w-full max-w-md` column (`text-center` on the three status screens), and
+a copy of the wordmark linking home. `components/layout/standalone-shell.tsx` is that wrapper with
+the `<main>` inside it, and `className` is merged onto the element - in practice always
+`text-center`. Adding six `<main>` tags would have fixed the same violations; what it would not have
+fixed is the reason they were missing, which is that the sixth copy of the wrapper went in without
+anyone noticing the element was absent from the first five. The seventh would go in the same way.
+
+**The `<main>` wraps the wordmark too.** `region` wants every scrap of content inside a landmark,
+and on these screens the wordmark is the only thing outside the card. A single link back to the
+landing page is not worth a `<nav>` of its own, so it sits inside `main` with everything else.
+`standalone-shell.test.tsx` pins exactly that - the document's text and the landmark's text are the
+same string - because that is the assertion a future hand-rolled wrapper would fail.
+
+**Loading frames still have no landmark, deliberately.** `/signin` and `/goodbye` render a bare
+`PageSpinner` behind their Suspense boundaries, and `/onboarding`/`/restore` render `null` until
+their in-memory session resolves. Those frames carry no text, and the obvious fix - a `<main>` in
+`PageSpinner` - is wrong: the same component renders _inside_ `AppShell` as `variant="inset"`, where
+its own `<main>` would be a second one.
+
+**What the unrestricted sweep says now.** `/signin` is clean in both themes. `/goodbye`,
+`/auth/verify`, `/settings/confirm-email` and `/onboarding` report one `<main>` each and no landmark
+violation. Two things were found and left, neither of them landmark-related and neither introduced
+here: `/auth/verify`, `/settings/confirm-email` and `/onboarding` have no `<h1>` at all
+(`page-has-heading-one`, moderate - their titles are `<p class="font-medium">`), and `/goodbye`'s
+"Back to the home page" link is `text-primary hover:underline` inside a paragraph, which is
+`link-in-text-block` in both themes (1.67:1 against the surrounding text, and no non-colour
+distinction until hover) plus `color-contrast` in dark, where `text-primary` resolves to `#707075`
+on `#161618` for 3.66:1. That is a regression of the same class the earlier colour sweep fixed
+across ten links; `/goodbye` was written afterwards.
+
+**Only four of the six can be scanned by URL.** `/onboarding` and `/restore` bounce to `/` without
+the in-memory session that is their only entry point. `/onboarding` is reachable for real by
+requesting a magic link for an email with **no account** and clicking through `/auth/verify` - the
+verify call answers `onboarding_required` and lands there, and no `User` row is created until the
+profile form is submitted, so this costs nothing but a link. `/restore` needs an account inside its
+deletion grace period reached by one of the three paths with no precheck, so it was not swept in a
+browser; it renders the same component, and the component's own test covers the element.
+
+**Let the page settle before believing a `color-contrast` result.** Scanning `/onboarding`
+immediately after the `router.replace` that lands on it reported five serious `color-contrast`
+failures, including on text that is clean everywhere else. A second later they were all gone. This
+is the same phantom-failure trap already recorded for a scan run against a recompiling dev server,
+reached from the other direction - a route transition rather than a stylesheet reload.
+
+**Two things to add to the harness above.** Scanning a worktree needs its own `npm install` and a
+port other than 3000, and `API_INTERNAL_URL=http://localhost:8000` on `npm start` - the shipped
+default is the compose service name, which does not resolve on the host, and a production build has
+no `next dev` fallback to save it. And on a production build the `NEXT_PUBLIC_API_URL` trap
+described above is not a trap at all: the variable is baked in at build time, so a worktree that
+never had a `.env` is already on the same-origin proxy route.
+
+## Finishing the `CardTitle` sweep the footer change scoped out
+
+"The footer's column labels were headings" above ends by naming what it did not do: `as="h2"`
+reached `/contact` only, and "the same jump is still on every authenticated page". This is that
+sweep - 43 card titles across the pages, the settings cards, the dive detail cards, the gear cards
+and the dashboard.
+
+**The rule for which titles move is "is this card a section of the page", not "is this card on a
+page that failed".** The landing page's three feature cards keep the `h3` default and are the
+clearest case for why: they sit under `<h2 class="sr-only">What OpenDiving does</h2>`, so they are
+genuinely nested and were always correct. `/onboarding` and `/restore` keep it too, for the opposite
+reason - neither page has an `<h1>`, so their card title is the page's own heading and `h2` would be
+no better than `h3`. Main's chrome-free-routes section records the real defect there
+(`page-has-heading-one`), which is a different change.
+
+**One title moving down, not up.** `delete-account-card.tsx`'s inner "Delete Account" was an `<h4>`
+under an `<h3>` card title. Promoting the title to `h2` would have made that an h2 -> h4 jump, so it
+is an `<h3>` now. Worth knowing before the next sweep: a card that promotes its title has to be read
+all the way down, because any heading nested inside it was levelled against the old one.
+
+### Two things to add to the harness, both about reading the report rather than running it
+
+- **axe reports only the first offending heading on a page.** A count of one per page is the top of
+  a stack, not one problem per page - eleven pages here went quiet after the first fix and the
+  twelfth kept failing, which was the only sign that `service-due-card.tsx` had been missed. Dumping
+  the whole outline (`document.querySelectorAll("h1,h2,h3,h4,h5,h6")`) beside the violations is what
+  turns "clean" into evidence, and it is what caught it.
+- **Scan the public pages signed _out_.** Signed in, `/` and `/signin` both redirect to
+  `/dashboard`, so a single-pass authenticated run reports the dashboard three times under three
+  route names and never renders the landing page or the sign-in form at all. The first pass of this
+  work "found" a dashboard-only failure on three separate routes that way.
+
+## Ten rows of "Edit" name nothing
+
+The dive, trip and dive-site tables each carry three icon-only controls per row. Two of the three
+had no accessible name at all - axe reported `button-name` (critical) on the delete buttons and
+`link-name` (serious) on the view links, ten of each per page - and the third had
+`aria-label="Edit"` ten times over, which passes every rule and still tells a screen reader's
+controls list nothing about which trip it would edit.
+
+All three now name their row: `View dive #412`, `Edit Palau 2025`, `Delete Pescador Island`. Same
+reasoning as the export card's three Downloads recorded above - a name that is unique among the
+page's controls is the point, not merely a name that exists. The dive rows key off
+`dive.dive_number` rather than the date, because the number is what the row leads with and what a
+diver would say out loud.
+
+**That sweep was table-by-table, and it missed three tables.** The certifications list and both gear
+lists (items and sets) kept their bare `Edit`/`Delete`/`Card images`/`Archive`, and the courses list
+added later was written to the convention rather than swept into it - so "the row actions are named"
+was true of the three tables someone had walked and of nothing else. Nothing catches this: every one
+of these labels passes `button-name`, because axe checks that a name exists and not that it says
+anything. The only signal is reading the page's controls list, which is why it took a live walk over
+`/certifications` to notice. All seven tables now carry the row's identity, and every one of their
+row-action blocks carries a comment saying why, so the next table copied from one of them starts
+named.
+
+**The certification rows name the agency as well as the level, and the level alone would not do.**
+Certifications carry no unique-name constraint, deliberately - a diver who holds Advanced Nitrox
+from PADI and from TDI has two cards, both correctly called "Advanced Nitrox", and the API is right
+to store them. Naming the controls by level alone would give that diver two `Edit Advanced Nitrox`
+buttons, which is the same failure as ten `Edit`s in a smaller font. `certificationLabel` in
+`lib/api/certifications.ts` is what builds the name, mirroring `gearItemLabel`'s brand-then-name
+shape: `PADI Advanced Nitrox`. The gear rows get the same treatment from `gearItemLabel`, which was
+already built for this - a model name says far less on its own than a brand and a model together.
+
+**The chips subsection below declines to add a qualifier, and that is not a contradiction** - it is
+the same two tests landing the other way. A diver says "my PADI Advanced Nitrox" and does not say a
+species' binomial, and the collision here is structural rather than incidental: crossover and
+renewal across agencies are ordinary, which is why the API carries no unique-name constraint on
+certifications in the first place. Where those two tests fail, a qualifier is a second sentence in a
+button name; where they pass, it is the name.
+
+The row-name assertions live in `app/certifications/page.render.test.tsx` and
+`app/gear/page.render.test.tsx`, and both render two rows rather than one, for the reason the
+service-card subsection below develops at length.
+
+### The gear detail page's service card, where the row is not the unit
+
+`GearServiceCard` on `/gear/[id]` had the same six repeated names - `Log service`, `Pause`/`Resume`,
+`Edit`, `Delete` on every schedule, `Edit`/`Delete` on every logged service - and could not be fixed
+the way the list tables were. It is a detail page rather than a list page, so a sweep over the list
+tables reaches it only by hand - and four things about it are not true of a table.
+
+**Two lists sit on one card, and their rows describe the same thing.** A schedule and the service
+that satisfied it are both "Service (First stage)": name each row after its own identity and the
+page carries two `Edit Service` buttons, which is where it started. So the name has to say which
+list as well as which row. Schedules carry the noun - `Edit Service schedule`, matching the
+`ConfirmDialog` that opens - and history entries carry the date.
+
+**The identity is a pair, not a column.** A schedule is `serviceKindLabel(kind)` plus its optional
+free-text `label`, and that pair is not merely what the row renders: it is what the API keys on,
+matching a logged service with no `gear_service_schedule_uuid` to "the one schedule matching (item,
+kind, label)". Two schedules of one kind therefore differ by label or not at all - and where they
+don't, they are indistinguishable on screen and to the API too, so there is nothing for the name to
+recover.
+
+**A history row's kind repeats by design.** The point of a schedule is that the same work happens
+again, so `Service` names every entry in the list and only `serviced_on` separates them -
+`Edit Service on Mar 12, 2025`. Same reasoning as `dive.dive_number` above, landing on a different
+field because a different one is what a diver would say out loud ("the visual inspection in March").
+
+**One name was already variable.** The pause control reads `Pause` or `Resume` depending on the
+schedule, and the row name had to be added to that rather than replacing it - the same prefix-don't-
+replace point as the chart pickers' `aria-labelledby` below.
+
+**And axe cannot see any of this.** The rule the tables originally failed reports a _missing_ name;
+`aria-label="Edit"` ten times over passes it, and passed it here for as long as this card has
+existed. The regression cover is `gear-service-card.render.test.tsx` instead, and it renders **two**
+rows in each list deliberately: a name built from a constant satisfies a one-row test exactly as
+well as one built from the record, so a one-row test would have passed against the code this
+replaced.
+
+### The same rule holds for chips in a form field
+
+`DiveSiteMultiSelect`, `SpeciesMultiSelect` and `GearItemMultiSelect` each render the current
+selection as a list of rows carrying an icon-only remove button, and all three said `Remove` and
+nothing else. It is worth saying why that is the same failure rather than a milder one, because
+these look like they have an excuse the tables don't: the chips sit inside a labelled form field, so
+a screen reader reaching one in reading order has just heard "Dive sites". That context is real but
+it is not carried anywhere the announcement needs it. A controls list is flat and page-wide, and the
+announcement on focus is the button's name alone - so four sites and three species produce seven
+buttons called "Remove", in one list, with the field they belong to nowhere in it.
+
+All three are `Remove <label>` now, off the same `label` the row already renders.
+`TripLocationMultiSelect`, the fourth of the family, had been named per row from the start and
+carried a comment saying so _in contrast to_ its siblings; that comment is now the odd one out and
+has been reworded, which is the small cost of fixing three of four and the reason to check for it.
+
+Two things about the shape are deliberate. The name is the display label alone and not the muted
+suffix beside it - a site's location, a species' binomial, a gear item's type and its
+Rented/Archived badges. That is the label a diver would say out loud, which is the test the section
+above applies and the one `dive.dive_number` passes above that; the suffix is a second sentence in a
+button name. It is not a claim that the label is unique. All three pickers exclude an
+already-selected row by uuid, so no record repeats - but two _different_ records can share a label,
+and a diver with two matching first stages is the ordinary case, not a contrived one. Where that
+happens the suffix does not rescue it either: identical items carry an identical type, so the two
+rows are indistinguishable on screen, and a name cannot recover what the screen does not show. The
+same paragraph one section up settles the schedule case the same way. Species are the one place a
+suffix would genuinely disambiguate, since two catalog entries can share a common name while their
+binomials differ - but a binomial is precisely what a diver does not say, and the collision is
+incidental rather than structural, which is what separates it from a service kind that repeats by
+design.
+
+And the **drag handles were already named per row** in all three
+(`Reorder Blue Hole, position 1 of 2 (primary site). ...`), which is worth recording as the thing
+that settled the question: the argument that the field's own label supplies enough context was
+already rejected here, one button to the left, by whoever wrote the handles. Leaving the remove
+buttons bare was an oversight, not a position.
+
+The handles were left alone, with one asymmetry left standing and flagged rather than swept: the
+site and species handles announce `position N of M`, and the gear handle does not. All three lists
+are drag-sortable, so the distinction is not that gear has no order. Whether it is deliberate - a
+dive's site order picks out a primary, and `SpeciesMultiSelect`'s prop comment says its order is
+preserved end to end so the diver's first choice shows first, while `GearItemMultiSelect`'s claims
+only "the order they were added" - or simply the third one written, is not recorded anywhere and was
+not resolved here. Naming the remove buttons did not depend on it.
+
+The render tests assert both buttons of both rows, two rows deep, for the reason the section above
+gives - `Remove` and `Remove Blue Hole` are equally unambiguous with one chip on screen, so a
+one-row test passes against the bug. `GearItemMultiSelect` had no render test at all and now has
+one.
+
+## `role="combobox"` is not allowed on a number input, and fixing that needs a draft string
+
+`VolumeCombobox` was an `<input type="number">` carrying `role="combobox"`. A number input's
+implicit role is `spinbutton`, and ARIA permits `combobox` only on text, search, tel, url and email,
+so axe reported `aria-allowed-role` twice per dive form. `CreatableCombobox` next to it was already
+conforming, on `type="text"`.
+
+**The swap to `type="text"` + `inputMode="decimal"` is not free, and the cost is not obvious.** The
+committed value is a `number`, so every keystroke round-trips through `parseFloat` and back through
+`String`. On a text input that eats the keystroke that is mid-decimal: typing the "." of "11.1"
+parses to `11`, renders as `"11"`, and deletes the "." that was just pressed - a decimal volume
+becomes unenterable, which is most of the preset list. `type="number"` was hiding this, because a
+browser reports `value === ""` for a half-typed `"11."` while still _displaying_ it, and that was
+the one behaviour of the type this field was relying on.
+
+So a `draft` string now sits between the keystrokes and the value: the input renders `draft` while
+typing and the committed number otherwise, and the draft is dropped on blur, on Escape, on Enter and
+on picking a preset - so `"11."` settles back to `"11"` and a picked preset is not left hidden
+behind whatever query opened the menu. `step`/`min` went with the type and are not missed: the arrow
+keys were already taken over for the menu, and the real constraint is `z.number().positive()` in the
+dive schema.
+
+**jsdom does not prove this one.** It does not sanitize input values the way a browser does, so the
+render tests pin the component's logic and not that a decimal can actually be typed - that has to be
+checked in Chrome. When you do, clear the field first: the first mixture arrives with a volume
+already in it, and typing "11.1" into it reads back as "22.211.1", which looks exactly like the bug
+this paragraph is about and is not.
+
+## `aria-describedby` never reaches the accessible name
+
+Both dashboard chart cards named their period picker with an `sr-only` span wired as
+`aria-describedby`. A description does not contribute to the accessible name, so the trigger's only
+name was whatever `SelectValue` had rendered - and on the period with no registered item (the case
+the note beside it already warned about) that is nothing, which axe reports as `button-name`,
+critical. The dashboard was the only page still failing it after the row-action sweep.
+
+Now `aria-labelledby`, listing the hint's id and the trigger's own id **in that order**, so the name
+is "Gas consumption period" _followed by_ the period showing. Naming it any other way - an
+`aria-label`, or `aria-labelledby` pointing at the hint alone - replaces the trigger's text rather
+than prefixing it, and takes the current period out of the announcement to fix the missing name.
+
+## The unit toggle's off half was `text-muted-foreground/60`
+
+`EntryUnitToggle` dimmed the system that is _not_ selected to 60% of `--muted-foreground`. That
+token is chosen to clear AA on both surfaces it lands on (see `globals.css`), and 60% of it is 12px
+text at roughly half that - axe reported `color-contrast` once per toggle, six per dive form, in
+both themes.
+
+It is full-strength `text-muted-foreground` now: 6.1:1 in light and 5.5:1 in dark, measured in the
+browser rather than computed. Nothing was lost, because the opacity was adding to a distinction that
+already carried on its own - the on half is `font-medium text-foreground`, so the two are separated
+by weight _and_ by the foreground/muted split, which is the same pair the rest of the app uses for
+primary against secondary text.
+
+## "Continue with Google" is a redirect, and Google's code never reaches the browser
+
+`GoogleAuthButton` used to inject `https://accounts.google.com/gsi/client?hl=en` at component mount.
+The sign-in form renders on `/` and `/signin`, so **every signed-out visitor's browser contacted
+Google before any choice was made** - five requests to two Google-controlled origins on a single
+page load, measured against the live GIS client:
+
+```
+script      accounts.google.com/gsi/client?hl=en
+stylesheet  accounts.google.com/gsi/style
+document    accounts.google.com/gsi/button?...      (a 0x0 iframe)
+stylesheet  ssl.gstatic.com/_/gsi/_/ss/k=gsi.gsi...
+script      ssl.gstatic.com/_/gsi/_/js/k=gsi.gsi...
+```
+
+No Google cookie was set on load in a fresh profile, but the IP and user-agent disclosure was
+unconditional, and a cookie-free load is a fact about one GIS build rather than a promise anyone
+made. WP29 Opinion 04/2012 §3.7, on the analogous social plug-in shape, is the standard this fell
+short of: consent from logged-out visitors is needed before a third party can use cookies, and every
+visitor to `/` and `/signin` is by definition signed out. Disclosure does not cure it. It is the
+same instinct as this project's Gravatar removal - the unconditional third-party browser call goes
+away rather than being disclosed.
+
+**The fix is that clicking the button _is_ the consent.** Nothing reaches Google until the visitor
+asks for Google, and then what happens is that they go there.
+
+### Why a hand-built URL rather than any of Google's own mechanisms
+
+Four options were considered and three rejected, all for the same reason: they still load
+`gsi/client`.
+
+- **A two-click facade, or a one-click facade forwarding into GSI's own button.** Both defer the
+  script rather than removing it, so both leave a "Google's code runs in your browser" paragraph on
+  `/privacy`. The one-click variant additionally depends on GSI rendering its clickable button as
+  light DOM, which is measurably true today - `div[role="button"]`, class `nsm7Bb-HzV7m-LgbsSe`,
+  with the `gsi/button` iframe at 0x0 - and documented nowhere. Google's display-button guide
+  describes neither shape and the release notes do not record the change, so it is not a contract.
+- **One Tap** (`google.accounts.id.prompt()`) is not a mechanism at all: it is suppressed for two
+  hours after a first dismissal and escalating thereafter, shows nothing without a live Google
+  session, and under FedCM the display-moment methods that would let a caller detect the no-show are
+  gone. A button that undetectably does nothing is worse than what it replaced.
+- **GIS's own code flow** (`google.accounts.oauth2.initCodeClient()`) ships inside the same
+  `gsi/client` bundle, so it buys no privacy either. It is not the "code flow" this app adopted.
+
+What this app does instead is build the authorization URL itself and perform a **top-level
+navigation** to it (`lib/google-oauth.ts`). Not a popup - subject to blockers and the
+transient-activation budget - and not a form submission, which `form-action 'self'` governs.
+
+### PKCE, which the chosen direction is what made possible
+
+The authorization request carries `code_challenge` and `code_challenge_method=S256`; the verifier
+travels to this app's API in the request body and on to Google in the exchange. `initCodeClient`
+**cannot do PKCE at all** - its `CodeClientConfig` has no `code_challenge` field - so every rejected
+option above would have shipped without it. Building the URL by hand is what unlocked it, which is
+worth recording as a benefit rather than leaving it looking like incidental complexity.
+
+Support for it is real but undocumented in Google's guides. What establishes it is the OpenID
+discovery document at <https://accounts.google.com/.well-known/openid-configuration>, which
+advertises `"code_challenge_methods_supported": ["plain", "S256"]`; cite that rather than a guide.
+`crypto.subtle`, which hashes the verifier, needs a secure context - not a constraint here, since
+every redirect URI Google will accept is HTTPS or localhost, and both are secure contexts. An
+earlier draft rejected PKCE on the grounds that it would break plain-HTTP LAN deployments; that was
+wrong, because such a deployment cannot register a redirect URI and so cannot use Google sign-in
+under any design.
+
+### No `nonce`, and that was measured rather than assumed
+
+A nonce binds an ID token to the request that asked for it, and its threat model is replay of a
+token that travelled through the browser. Here the ID token never touches the browser: it goes from
+Google's token endpoint to this app's API over TLS, in exchange for a single-use code that cannot be
+redeemed without both the client secret and the PKCE verifier. Adding one would mean a third value
+marshalled through browser storage and the request body for no threat that is open.
+
+The doubt was worth having, because Google's OpenID Connect page marks `nonce` "(Required)" in its
+parameter table while the prose beside it says it "enables replay protection when present". Four
+authorization requests settled it: `response_type=code` was accepted without a nonce, with and
+without a challenge, and `response_type=id_token` without one came back
+`invalid_request: "Nonce required for response_type id_token."` That is OIDC Core exactly - optional
+for the authorization code flow (§3.1.2.1), required for the implicit flow (§3.2.2.1). **The
+contradiction on Google's page is one parameter table serving both flows**, so the citation to
+prefer is the flow-specific _OAuth 2.0 for Web Server Applications_ page, which lists `nonce` on
+none of its parameter lists. That page does contain the word twenty-seven times - once inside the
+`state` description and the rest throughout the DPoP proof section - and none of those is the OIDC
+authentication nonce, so a grep for it is a red herring.
+
+### `localStorage`, keyed by `state`, and why the obvious technical choice was the wrong one
+
+`sessionStorage` is the better fit on its merits: per-tab, dies with the tab, and the redirect
+returns to the same tab. It is not what this uses, because `/privacy` §10.4 states outright that
+"There is no session storage, no IndexedDB database and no service worker" - an affirmative negative
+claim on the page this whole change exists to keep truthful - and nothing in the suite would catch
+its falsification, since `storage-keys.test.ts` deliberately leaves `sessionStorage` out of its
+`ABSENT_MECHANISMS` text match (three production files mention it in comments). The choice was
+between rewriting a true negative into a qualified one and using the mechanism the page already
+documents. `opendiving:google-sign-in-attempts` is TTL-bounded and consumed on read, exactly as
+`lib/auth-redirect.ts` already does for the magic-link destination.
+
+**Keyed by `state` rather than a single current-attempt record**, and that is not tidiness.
+`localStorage` is shared across tabs, so one slot means the second of two concurrent sign-ins
+overwrites the first; whichever callback returns first then fails its `state` check and reports a
+failure over a sign-in Google actually approved. A map of pending attempts, each removed when its
+own callback consumes it, is what makes two tabs independent. Expired entries are dropped on every
+write, so it cannot grow without bound.
+
+**The destination rides inside that record too**, and an earlier draft had it in the existing
+`rememberPostAuthRedirect`/`consumePostAuthRedirect` pair on the grounds that a second mechanism
+should not be introduced. Right instinct, wrong call: that pair is a _single_ read-once key over one
+`{ path, expiresAt }`, so leaving the destination there reintroduces the same cross-tab bug one
+field lower down and in a quieter form - tab B's `next` overwrites tab A's, tab A then signs in
+perfectly and lands on tab B's page, and nothing anywhere reports a problem.
+
+**30 minutes, and "minutes" was the first draft of that.** An expired entry means no exchange at all
+and an error over a sign-in Google approved, and the round trip is not instant for the visitor who
+most needs it to work: a first sign-in walks an account chooser, a password, a second factor and a
+consent screen, any of which can stall on a phone being found. So the bound clears a slow first
+attempt with room to spare - an order of magnitude under the day `auth-redirect.ts` allows itself,
+and an order of magnitude over the fast path.
+
+### The once-guard on the callback is not the state consumption
+
+Google's authorization codes are single-use and React Strict Mode invokes effects twice in
+development. Consuming the stored attempt before the POST looks like it solves this and does not:
+the second mount then finds no entry and shows the "no attempt" error over a sign-in that actually
+succeeded - trading a double POST for a spurious failure screen, in the environment developers use,
+**while a "confirm exactly one POST" check still passes**. It has to be a separate `useRef` latch
+that survives the remount, the same shape `/auth/verify` uses. Both tests for this assert the
+absence of the error rather than the request count, because the count cannot tell the two designs
+apart.
+
+`/auth/google/callback` also exchanges on load rather than waiting for a click, and the reason
+`/auth/verify` does the opposite does not apply: that page's URL arrives by email, where a mail
+client's link-preview scanner can load it in a real browser. An OAuth callback URL is never emailed,
+is reached only by a redirect from Google, and carries a code worthless without the API's client
+secret and the verifier.
+
+`?error=` is deliberately not an error state. A visitor who cancels at Google's account chooser
+comes back with `error=access_denied`, and lands at `/signin` with every method available and
+nothing phrased as a failure - carrying their abandoned destination with them, so a second try still
+goes where the first was headed.
+
+### What went away with it
+
+The injected script, the `initialize` and `renderButton` effects, the `ResizeObserver` that measured
+a pixel width for GSI's fixed 200-400 range, the `Window` type augmentation, and the invisible
+overlay - a decorative `aria-hidden` visual with GSI's real button stacked on it at `opacity: 0`,
+whose accepted trade-off rested on an assumption about GSI's internals rather than a documented
+contract with Google. The control is now one ordinary `Button`: one accessible name, one tab stop,
+Enter and Space for free.
+
+`?hl=en` went too, and its problem with it. That parameter existed because GIS bakes button language
+into the script response and `renderButton`'s `locale` option alone does not work; a button this app
+renders itself has no such constraint.
+
+`accounts.google.com` now appears in **no CSP directive, in either configuration** - it was in
+`style-src`, `connect-src` and `frame-src` wherever a client ID was set. A top-level navigation is
+governed by none of the fetch directives, so nothing replaced it, and no
+`Cross-Origin-Opener-Policy` is needed either: Google documents `same-origin-allow-popups` as a
+requirement for its _popup_ flows, and this one opens no popup. One side effect worth having: the
+policy no longer discloses whether an instance has Google sign-in turned on.
+
+Google's branding guidelines are **not** newly engaged by any of this. The visible button was
+already fully custom and Google's own rendered pixels were already never shown, so whatever
+compliance posture this app has, it is unchanged - recorded so it is not raised as a new finding.
+
+## The sign-in form no longer remembers which method this browser used
+
+`lib/last-auth-method.ts`, the four writes at `AuthContext`'s entry points, the read and the muted
+"Last time you signed in with …" line in `components/auth/auth-form.tsx`, and the
+`opendiving:last-auth-method` row in §10.2 of the privacy page are all gone. This is a deliberate
+product call on the key's legal posture, not a cleanup of something nobody wanted — the affordance
+was designed and argued for, and _"The sign-in form says which method this browser used last"_ above
+is kept in place so that whoever proposes rebuilding it starts from what it was for.
+
+**The ground is WP194 §3.6's threshold condition, which this key fails outright.** UI-customization
+storage is exempt there only where "the user has explicitly requested the service to remember" the
+choice. Nobody requested this one: it was written automatically on every sign-in, at each of the
+four places an identity is proved, and deliberately survived sign-out. The key-by-key reading of the
+exemptions in _"The exemptions, key by key"_ already said so — it called the §3.6 failure "exactly
+right" and then shipped the key with plain disclosure instead, because dressing it in an exemption
+it does not have was the one thing that page refuses to do. Disclosure is honest, and it is what
+CNIL recommends, but it does not make the storage exempt.
+
+**Writing without being asked is not on its own what singles it out**, and saying so is what keeps
+this from proving too much. The two dashboard view keys are written unrequested too: a mount effect
+persists the default scope on a first visit, with no interaction at all
+(`components/dives/gas-use-card.tsx`). What separates them is what the write buys. Those hold up a
+rendered view the diver is looking at and would otherwise lose on every reload; this one bought one
+cosmetic sentence. It never preselected a method, never hid one, never reordered them — a browser
+with the key and a browser without it offered exactly the same three ways in. A screen with three
+methods does create the "which of these did I use?" confusion the hint answered, and that cost is
+accepted: one line of copy is not worth a stored key that cannot be justified under the rules §10
+holds this app to.
+
+**The rejected alternative was to keep the key and fold it into a device-memory control**, so that a
+diver who objected could switch it off along with the display preferences. That preserves the
+affordance and would satisfy the objection condition, at the price of carrying the hardest paragraph
+in the privacy page's legal reading for as long as the key lives — a key that is written without
+being asked, survives sign-out, and buys one sentence. The owner's judgement is that the paragraph
+costs more than the sentence is worth.
+
+**The counts moved with it**, in the three places that carry one: §10.2's "entries in your browser's
+local storage" sentence, §10.3's split between what you can and cannot switch off, and
+`STORAGE_WRITERS` in `lib/storage-keys.test.ts` together with the writer counts in its header prose.
+Each has a test beside it — `app/privacy/page.test.tsx` pins the first two in both Google
+configurations, and the writer list is pinned by its own equality — which is why none of the figures
+is restated here. (The second of those three has since stopped being a split between what you can
+and cannot switch off at all, because a control now reaches every covered key — see _"One switch
+against every remembered preference on this device"_ below. The count is still pinned, and it is now
+counting something else.)
+
+**The count sentences in _this_ file have no test behind them, and they did not all move the same
+way.** "All eight current keys follow it by habit" was a key low before this change and right after
+it — and wrong again one change later, when the objection switch added its own key; it now reads
+nine. _"Why §10 names keys rather than categories"_ went the other way: it said "a list of nine
+keys", which was correct until this change and wrong the moment it landed, so it now names no figure
+at all rather than a fresh one to go stale — and that is why the next change had nothing to fix
+there. The three counts in _"The objection-condition gap"_ were left standing here under a
+correction note, and the switch removed them along with the gap: that section is rewritten, so there
+is no correction note left for this sentence to describe. Nothing generalises from any of those to
+the rest, and the pattern across all four is the lesson rather than any one of them: the figures
+here are prose, they go stale in both directions, **and a change that edits this file makes work for
+the change after it** — every sentence above was written by an earlier change and falsified by a
+later one, twice running.
+
+## One switch against every remembered preference on this device
+
+`/privacy` §10.3 and a `/settings` device card now render one control — "Don't remember display
+preferences on this device" — that clears the preferences already stored in this browser and stops
+the next write of any of them. `lib/device-memory.ts` is the whole of the logic;
+`components/device-memory-switch.tsx` is the only thing that reads it, and both surfaces render that
+one component, so the read path exists once and the two cannot drift apart.
+
+What this closes is UK PECR Sch. A1 ¶6(1)(d), which conditions the appearance/functionality
+exception on the service giving "a simple means of objecting, free of charge, to the storage or
+access" — a condition the EU limbs do not carry, six months old at the time this shipped, and one a
+preference you can rewrite but never un-store does not satisfy. The reading is in _"The
+objection-condition gap, and the control that closed it"_ above; this entry is about the mechanism
+and the calls made building it.
+
+**Suppression is an interposition on `setItem`, not a guard in each writer.** The interposition
+wraps the method on the object that _defines_ it along `window.localStorage`'s prototype chain, and
+drops a write whose key is covered while the flag is present. Two things forced it and neither is
+about elegance. `theme` belongs to next-themes and has no write site in this tree at all — there is
+nothing to add a guard to, which `storage-keys.test.ts` had already recorded as its own blind spot.
+And **wrapping the single `setTheme` call site is defeated by next-themes' own `storage` listener**:
+0.4.6 reacts to another tab removing the key by calling `setTheme(defaultTheme)` and writing it
+straight back (`r.newValue?n(r.newValue):f(l)` in its `dist/index.mjs`), so with a second tab open a
+call-site wrap is a remove-then-rewrite livelock. An interposition catches that rewrite because it
+catches every write, whoever started it. Vendoring the provider was the third option and buys full
+control at the price of owning the CSP-nonce'd pre-hydration script forever — `src/proxy.ts` records
+next-themes' as the only nonce'd inline script here — and of losing upstream fixes.
+
+Three properties the interposition has to have, each of which cost something to get right:
+
+- **It wraps the definition site, not `Storage.prototype` by name.** In a browser those are the same
+  object; under this repo's test harness they are not, because `test/memory-storage.ts` installs a
+  plain object whose methods are own properties. A hard-coded `Storage.prototype` patch would have
+  been invisible to every test in the repo, and the whole suppression suite would have passed
+  against an implementation that did nothing.
+- **It guards on the receiver.** `sessionStorage` shares `Storage.prototype` in a browser, so
+  without that guard the objection would silently reach storage it was never about. Everything else
+  — non-covered keys, `removeItem`, `getItem`, a detached call with no receiver at all — passes
+  through byte-identical.
+- **It reads the flag live, per write, rather than caching a boolean at install time.** The tab that
+  has to honour an objection is usually not the tab that made it: tab A's flag reaches tab B through
+  storage, and tab B's suppressed write is next-themes' rewrite above. A cached boolean is the one
+  mutation of this code that still passes most of the suite, which is why there is a test whose only
+  job is to plant a flag the module never wrote.
+
+**Where it is installed is the load-bearing part, and it is a rendered component rather than an
+import.** `components/device-memory-installer.tsx` is `"use client"`, renders `null`, and calls the
+install from its module scope; `app/layout.tsx` renders it. Module _evaluation_ is what arms it, so
+it lands when the route's client bundle loads rather than when anything renders — which matters
+because `components/dives/gas-use-card.tsx` and `dive-activity-card.tsx` write their view keys from
+a mount effect with no interaction at all, and React runs child effects before parent effects, so an
+install from a provider's own effect would run after those writes. The rejected shapes are worth
+naming because both look smaller. A **side-effect-only import from `app/layout.tsx`** guarantees
+nothing: that file is an async Server Component, a module without `"use client"` compiles into the
+server graph alone, and even one that has it can have a bare no-used-export import dropped from the
+route's client entry — and since `/privacy` and `/settings` pull the module in through the switch
+anyway, the failure would have appeared on `/dashboard` alone, which is precisely where those two
+mount-effect writers are. A **side-effect import bolted onto `components/theme-provider.tsx`** was
+the smallest possible diff and hides a global storage interposition inside a component that reads as
+theme-only, so a later contributor reordering or replacing the theme wrapper disarms the switch
+silently. A **nonce'd inline script** would install ahead of all React, and the guarantee is not
+needed: suppression only has to stop writes, and the pre-hydration script's read of an absent key
+correctly falls back to the OS scheme.
+
+**That one line of JSX has its own test, because nothing else in the suite would miss it.**
+`/privacy` and `/settings` pull the module in through the control itself, so deleting
+`<DeviceMemoryInstaller />` from the layout leaves every other test green while `/dashboard` quietly
+starts storing view keys again for a diver who objected — the failure this whole arrangement exists
+to prevent, reachable by tidying away a component that renders `null`.
+`components/device-memory-installer.test.ts` holds both halves: that importing the module arms the
+suppression with nothing rendered and nothing called, which is the invariant a `useEffect` would
+break; and a source-text tripwire on the layout, in the same spirit as `storage-keys.test.ts`'s
+writer list. The tripwire's reach is worth stating rather than assuming — it shows the layout still
+names the component, not that Next puts the module in every route's client bundle. Nothing under
+jsdom can show the latter, since the bundling decision belongs to the build.
+
+**Clearing goes by prefix; suppression goes by list, and the asymmetry is deliberate.**
+`setOptOut(true)` writes the flag and then walks live storage, removing `theme` plus every
+`opendiving:`-prefixed key present except the named exclusions. What forced that: orphaned keys sit
+in any browser that ran an older build and have no literal left in this tree — the two superseded
+dive-profile series keys from the `-v2` and `-v3` bumps, and the last-auth-method key deleted with
+the sign-in hint. A census cannot see them, and **naming one as a literal would oblige §10 to give a
+row to a key this app no longer writes**, since `storage-keys.test.ts` check (1) sweeps every
+`opendiving:` literal in `src/`. Prefix clearing removes those and any future one by construction.
+Suppression cannot work the same way — a key has to be classified before a write of it can be
+dropped — so the covered set is a list, and check (4) of `storage-keys.test.ts` is what stops a new
+key sitting in neither list.
+
+The flag goes in **before** the removals, not after. A second tab reacting to `theme` disappearing
+has to see the objection already recorded, or its next-themes rewrite lands and the key comes back.
+
+**The promise is honest only within the `opendiving:` namespace, and `access_token` is the one key
+outside it.** `lib/api/client.ts` and `lib/api/auth.ts` wrote it to `localStorage` until the change
+recorded under _"Access token lives in memory only, never in `localStorage`"_, and it carries no
+prefix, so prefix clearing cannot reach it. **The ground for leaving it is population, not harm**:
+this app has never been public and has never been deployed anywhere, so the only browser that ever
+held one is the maintainer's own, and no self-hoster can acquire one because that change predates
+every release. The maintainer clears theirs by hand, once. The rejected alternative — a named legacy
+list alongside the prefix — is technically cheap and would not have tripped check (1), whose pattern
+only matches prefixed strings, but it reopens the enumeration the prefix rule exists to close and
+carries a list forever to serve a population of one. Recorded rather than left implicit because
+anyone re-deriving the orphan set from git history finds this key and will otherwise raise it every
+time.
+
+**Turning the switch on settles the initiating tab's theme.** The control calls `setTheme` back to
+the default after clearing, and the write inside that call is dropped by the interposition. Without
+it the tab the diver flipped the switch in would keep its in-memory theme until reload while every
+_other_ open tab reverted at once, because a same-document `removeItem` fires no `storage` event and
+next-themes has no other change detection. That is one deliberate reset at toggle time, and is not
+the ongoing call-site wrap rejected above. The alternative — keep the in-memory theme until the next
+load, consistent with how the chart and unit preferences keep their in-session state — was cheaper
+but makes the switch's most visible effect invisible in the one tab where it was flipped.
+
+**`opendiving:entry-units` is covered although it already passed the objection test on its own.**
+Emptying every override deletes the key, so it never needed the switch. But a control that says
+"don't remember display preferences" and silently skipped the unit overrides would not do what it
+says, and the page has one rule above all others about not claiming more than it delivers. Its
+sign-out clearing is untouched and is a different concern — data integrity, not privacy: a stale
+override changes what a dive-form box _parses_.
+
+**The exclusions, each named on the page with its ground.** `opendiving:post-auth-redirect` and
+`opendiving:google-sign-in-attempts` are functional storage carrying a sign-in across the
+mail-client or Google hop, both self-removing, and squarely exempt. The flag itself is the
+consent-mechanism-storage case — an objection this browser forgot on tab close would not be one —
+and Sch. A1 ¶6(2) means the means need only be offered "in respect of the initial use", so it does
+not have to be re-offered per key or per visit.
+
+**Off clears nothing and restores nothing.** ¶6(1)(d) is about the storage rather than the value, so
+the stored preferences were the thing objected to and there is nothing to bring back; turning the
+switch off simply lets later interactions store again. Both halves are said in the control's own
+copy rather than left to be discovered.
+
+**What the suite cannot pin, said plainly rather than papered over with a test that cannot fail.**
+jsdom runs neither the pre-hydration script nor cross-document `storage` events, so any assertion
+here about first-paint fallback or about tab B's rewrite being dropped would pass against an
+implementation that does nothing at all. Those are browser checks. What the suite does pin is the
+pure logic — which keys are dropped, when, and on which receiver — plus the one theme assertion that
+is real under jsdom, since `vitest.setup.ts` stubs `matchMedia` and next-themes therefore resolves
+and applies `system` exactly as it does in a browser.
+
+**Two consequences that are the semantics of the choice rather than bugs**, recorded so no review
+round re-files them. With the switch on, "Not now" on the passkey nudge hides the card for the
+session only and it returns on the next dashboard visit. And a diver who chose dark on a light-OS
+machine gets a light first paint on every visit — that is what "not persisted" means, and no flash
+is introduced, because with the key absent the pre-hydration script resolves `system` through
+`matchMedia` before first paint exactly as it does for a first-time visitor.
+
+## `TANK_USAGE` is a fourth hand-kept vocabulary mirror, and the first with no parser behind it
+
+`GAS_ROLES`, `WATER_TYPES` and `GEAR_TYPES` are all copies of a Pydantic `StrEnum` maintained by
+hand, and `TANK_USAGE` in `lib/api/dives.ts` is the fourth, mirroring `TankUsage` in the API's
+`schemas/dive_mixture.py`. Same rules as the other three: declaration order is the picker's order,
+the API is `extra="forbid"` so an invented member is rejected on save rather than caught here, and
+the narrow union — not `string` — is what makes `TANK_USAGE_LABELS[usage]` and
+`toDiveMixtureInput`'s return type check at all.
+
+What makes this one different is that **nothing but the diver can ever set it**. `role` is rarely
+present on an import; `usage` is _never_ present, because no format this app parses records whether
+two cylinders were breathed alternately or one was staged — not Suunto XML or JSON, not FIT, and not
+UDDF, which has no representation for it either. Three consequences follow, and all three are
+choices rather than accidents:
+
+- **`ParsedDiveMixture` does not gain the field.** There is no parser to produce it, so it would be
+  dead weight on the parse schema.
+- **`mergeMixture` (`lib/dive-import.ts`) still has to name it**, and this is the trap. That
+  function builds its result field by field, so a field absent from the constructed object is
+  silently _dropped_ rather than preserved — the form-value-lost-on-import failure its own JSDoc
+  records, and the reason `role` needed an explicit line. `usage` is the field where losing it is
+  worst: with no file tier to restore it, the flag would simply be gone, and the dive's gas figure
+  with it. The line is form-then-nothing, with no file source at all.
+- **The new-dive form carries it over from the last dive**, alongside `role` and the gas fractions.
+  A sidemount diver's next dive is sidemount, and re-flagging both cylinders by hand every time is
+  exactly the friction that stops a flag being used. This is also what makes
+  all-parallel-with-nothing-else-filled-in the _opening_ state of that diver's every subsequent
+  dive, which is the premise of the combined ask recorded in the next section.
+
+`TANK_USAGE_LABELS` sits beside `GAS_ROLE_LABELS` in `lib/dive-mixtures.ts` for the same reason that
+map lives there — the form's picker and the dive page have to name a flag identically — and is one
+word each because there it is a _name_ rather than a description. The form's own `<select>` options
+are a separate, longer set (`TANK_USAGE_OPTION_LABELS` in `mixture-fields.tsx`): "Parallel
+(sidemount / independent)" and "Staged (own depth)". That is not duplication for its own sake. The
+dive page quotes the one-word label back inside a sentence that carries the meaning alongside it
+(`tankUsageSentences`, and see "The usage badge left the table, and the flag is stated under it"
+below); an option row has no sentence around it and has to carry both at once — and this flag
+changes what the API computes, so a diver choosing it by guessing at the bare word is the outcome
+worth spending option width to prevent.
+
+## `gasUseUnavailableReason` gained a nudge, and where it sits is the whole design
+
+Two changes to the multi-mixture branch of `lib/dive-gas.ts`, and neither is a new sentence bolted
+to the end of the list.
+
+**The branch no longer claims attribution is always required.** It used to open with "which cylinder
+was breathed when is unknown" as an unconditional fact about several cylinders. It is not one any
+more: a set whose every cylinder is flagged `parallel` is summed by the API's
+`compute_parallel_gas_use` against the dive's own duration and average depth, reading no profile and
+no attribution at all. So the flagged-parallel reasons come _first_, as a block, ahead of everything
+else — because every sentence below them is false of that derivation, and the no-profile branch that
+used to fire first would tell a diver who needs to type an average depth to go and import a
+dive-computer file.
+
+**That block makes `avg_depth` a multi-cylinder input for the first time.** The comment on the
+plural pressures ask says, in as many words, that asking a multi-cylinder dive for an average depth
+sends the diver to a field that changes nothing — true of the attribution path, which takes depth
+per cylinder from the profile, and now false of the dive as a whole. Both the reason and that
+comment moved in the same edit. Without the new reason, a flagged pair with full pressures and no
+average depth falls through to "import a dive-computer file", which would compute nothing for it.
+
+**The first ask is combined, and that is not tidiness.** A flagged set missing both the depth and
+its pressures gets one sentence naming both, the same shape the single-cylinder branch has used all
+along. The reason is the prefill carry-over recorded above: all-parallel-with-nothing-else-yet is
+the opening state of a sidemount diver's every next dive, so asking for the depth and then, once it
+is typed, for the pressures would make the commonest state of this form a run of refusals.
+
+**The nudge outranks the no-profile reason, and carries two gates.** An unflagged multi-cylinder
+dive whose cylinders all record pressures is told, in condition-stating terms, that marking them
+Parallel would add their gas up. It has to precede the no-profile branch: that branch fires before
+any pressure test and covers **18 of the 19 multi-gas dives in the corpus** — hand-logged, no
+profile, no source file — which is exactly where hand-logged sidemount pairs live. Placed after it,
+the nudge would never render for the population it exists for.
+
+Placed before it _ungated_, it would capture that whole population, whose commonest shape is back
+gas plus a staged deco bottle with no bottle pressures, and re-create the
+tell-them-one-thing-then-refuse-again pattern the no-profile branch was put first to stop. Hence:
+
+1. **Every cylinder carries both pressures, and the total drop is positive.** This screens for the
+   staged-bottle _shape_ — a bottle with no pressures is that population's tell — and deliberately
+   **not** for full rescuability. The additive branch also wants an average depth, and leaving that
+   out of the gate is a decision, not an oversight: a missing depth says nothing about whether a
+   pair was breathed in parallel, so widening the gate with it would only drop that diver onto the
+   no-profile message — wrong advice, and no discovery of the flag. A pair with pressures and no
+   depth is therefore nudged, flags Parallel, and meets the missing-depth ask as one follow-up. That
+   two-step is accepted as progressive disclosure rather than tell-then-refuse: the recorded
+   anti-pattern ends in a refusal, while both steps here are actionable and the second ends in the
+   figure.
+2. **No cylinder flagged `staged`.** A parallel pair plus an explicitly staged bottle is refused by
+   design, and a diver who used the control exactly right must not be nudged on every render — the
+   same pattern from the other side. The gate keys on `staged` **and nothing wider**. Suppressing on
+   _any_ explicit `usage` was considered and rejected: it also silences the half-flagged pair — one
+   row Parallel, one still Not recorded — which is the likeliest path into the feature, and drops
+   that diver onto "import a dive-computer file". Under the `staged`-only gate the half-flagged pair
+   keeps the nudge, whose condition-stating wording already covers it. A dedicated partially-flagged
+   sentence was also considered and rejected as a second string doing the nudge's job for a subset
+   of its own population.
+
+This also places the nudge ahead of the attribution-shortfall sentence, so an imported dive with
+pressures on every cylinder and no flags gets the nudge rather than "needs an import whose gas
+switches account for every cylinder". Deliberate: both are true there, the nudge names the action
+available in the app right now, and gate 1 makes the case unreachable in the current corpus anyway —
+all 19 multi-gas dives lack a second-cylinder pressure.
+
+**The wording states the condition rather than issuing an instruction**, and that is a safety
+property. A diver with a genuinely staged pair that _does_ carry both pressures would otherwise be
+walked into a flag whose figure divides the bottle's litres by the whole dive's average depth — the
+exact misattribution the API's multi-cylinder refusal exists to prevent.
+
+**One existing test reverses here, and it is a trap worth naming.** `dive-gas.test.ts`'s "names
+multi-tank as a limitation, not a missing field" used a bare two-row fixture, and the helper
+defaults every row to 200/50 with no profile — which is precisely the nudge's gate-1 shape. Both of
+its assertions go red. **The test is what changes, not the ordering**: those assertions were written
+when the no-profile branch was the only reachable answer for that fixture and were never a
+specification of where the nudge sits. It is split the way the API split its own equivalent — a pair
+with a missing pressure keeps the multi-tank sentence, an unflagged pair with pressures gets the
+nudge.
+
+## `diveModWarning` judges a flagged parallel set of one gas as that one gas
+
+The `length === 1` split in `lib/dive-mixtures.ts` gains a third case. A sidemount pair or
+independent doubles, flagged `parallel` throughout and holding a single `(oxygen, helium)`, is one
+gas plan rather than a switch plan: there is one mix on board and it was breathed throughout, so the
+dive's maximum depth is a depth that gas genuinely saw and the single-cylinder reasoning applies
+unchanged — **including the 1.4 working limit**, which the multi-cylinder case deliberately drops.
+Dropping it there is right because a deco gas exceeding 1.4 somewhere on the dive is the normal
+intended state of affairs; with one gas on board it is not.
+
+Both halves of the predicate are load-bearing. The flag alone is not enough — a flagged pair holding
+_different_ gases is a switch plan again and falls to the dive-wide rule. The shared gas alone is
+not enough either: two identical cylinders with no flag could as easily be a spare that was switched
+to, and it is the diver's own answer that makes the single-mix reading sound. A half-flagged pair —
+one row Parallel, one unset — says nothing about how they were breathed together and stays on the
+dive-wide rule.
+
+**The per-tank-attribution rejection recorded above does not reach this case, and the difference is
+the point.** That rejection is about `DiveGasUse.tanks` offering a _mean_ depth per cylinder, which
+is the right input for a consumption rate and the wrong one for a MOD — a gas averaging 6 m may
+still have seen 20 m for a minute. Nothing is being inferred from a profile here. What the flag
+supplies is the diver's statement that every cylinder saw the same depths, which is exactly the
+missing premise, and no attribution is involved at all.
+
+The gas comparison uses the recorded fractions rather than `gasName`, which rounds: two rows at
+31.6% and 32.4% are both "EAN32" and are not the same fill. `helium` is normalized to `0` because
+`OxygenFractions` allows it absent while the form and every parser write a flat zero, so a pair
+mixing the two spellings is one gas and must be judged as one.
+
+`DiveMixturesCard`'s amber MOD cell follows the same predicate. It used to be
+`mixtures.length === 1` on the reasoning that a multi-cylinder sentence is about the dive and
+marking a row would point at the wrong thing. On a single-gas parallel set the sentence _is_ about
+that mix and every row holds it, so every row is marked — leaving it at `length === 1` would render
+the warning with nothing on screen connecting it to the gas it names.
+
+## The falsified doc comments were a superset of the ones anyone listed
+
+`DiveGasUse`'s web-side comments in `lib/api/dives.ts` are hand-kept mirrors of the
+`schemas/dive.py` docstrings **in claim, not in wording** — the API says "multi-cylinder" where this
+file says "multi-tank", and its `tanks` comment is the `[]`-sentinel rationale rather than the API's
+sentence. The API rewrote three of those docstrings for the additive path; the claims moved here in
+the same change, each in this file's own idiom:
+
+- `sac_bar_per_min` is no longer null on _every_ multi-tank dive. A set flagged `parallel`
+  throughout whose volumes are **exactly equal** carries their pooled figure. Unequal volumes leave
+  it null while `rmv` and `gas_used` still compute, so **a present `rmv` is no longer a promise of a
+  SAC**.
+- `tanks: []` is no longer synonymous with single-tank. It also arrives on the additive path. The
+  non-empty test still selects the right layout — an additive dive genuinely has one set of
+  whole-dive figures — but anything reading `[]` as "one cylinder" is now wrong.
+- `attributed_seconds`/`duration_seconds` are null "wherever the whole dive is accounted for", not
+  "outside the multi-tank path".
+
+**The list of sites was short, and that is the durable lesson.** The API side of this change found
+four falsified strings its own plan never named, on a list that had survived eight review rounds.
+Sweeping for the claim rather than working a list is what found the rest here, with
+`git grep -n -i -E 'multi-tank|multi-cylinder|per-tank|per cylinder|empty array' -- src`. The
+`per cylinder` alternative earns its place: the eight-line comment in
+`dive-gas-consumption-card.tsx` justifying the very `sac_bar_per_min != null` clause this change
+deletes says "per cylinder", so the narrower pattern sails straight past the one comment guaranteed
+to be wrong. Sites the sweep turned up that no list named: that comment, the SAC tile's own guard
+("the API pairs a null SAC with a non-empty `tanks` and so never reaches this branch today" — it
+does now), `gas-use-chart.tsx`'s binary framing of per-tank versus whole-dive, the
+`resolve_gas_use`-mirror comment that tracked two API functions and now tracks three,
+`tankGasUseRows`' presumption that `compute_multi_tank_gas_use` is the only producer of a
+multi-cylinder `gas_use`, `Dive.gas_use`'s own "additionally needs a profile", and a test comment in
+`dive-gas.test.ts` reading "Null on every multi-tank dive".
+
+**The average-depth sentence on the consumption card lost its SAC gate entirely, and did not get a
+new one.** That sentence names `avg_depth` as the denominator, so on a per-cylinder figure it would
+assert a depth the rate was never divided by — and a null SAC used to be the marker for that
+derivation. It no longer is: an unequal-volume parallel set has a null SAC and a whole-dive RMV that
+genuinely _was_ divided by `dive.avg_depth`, so the clause would now hide a true sentence. What
+guarantees the claim is **position**: the sentence lives inside the headline arm, which renders only
+where `tanks` came back empty, and that is precisely the set of derivations taken against the dive's
+own average depth. A re-gate on empty `tanks` was drafted and dropped as a condition that cannot be
+false where the sentence sits. The `dive.avg_depth != null` half stays, and is unrelated — it is
+what stops "an average depth of m" rendering for a null.
+
+`gas-use-chart.tsx` needed **no code change**: an additive point already takes the non-per-tank arm,
+and its `avg_depth` and `gas_used` really are whole-dive figures. Only the comment's binary framing
+was wrong. That is the second-consumer class recorded elsewhere in this file — a file the change had
+no other reason to open, rendering the old meaning for a new figure.
+
+## The usage badge left the table, and the flag is stated under it
+
+The usage badge shipped in the Gas cell beside the role badge, on a **projection** rather than a
+measurement, and the projection was wrong. It is recorded here because the way it was wrong is
+reusable: the estimate reasoned from this repo's own per-badge cost — the role badge's 73 px being a
+6 px `gap-1.5` plus a `px-2.5` pill around a 12 px semibold label — added ~12 px for "Parallel"
+being two characters longer than "Oxygen", and put the table at **~556 px against its 582 px slot**.
+The per-badge increment was close to right. **The base was not**, and the base is what the whole
+projection rested on: it took the 471 px this file records under "Both gas tables finally fit their
+slot" as the current width of a badged row, when that figure is dive #493 as it sits in the corpus,
+carrying no role badge at all.
+
+Measured on the running app afterwards, at a 1024 px viewport — the pinch width, since one pixel
+below `lg` the grid collapses and the card jumps to ~925 px:
+
+| Row shape                                | Table  | Slot   | MOD clipped |
+| ---------------------------------------- | ------ | ------ | ----------- |
+| #493 + role + usage, as shipped          | 655 px | 582 px | 73 px       |
+| usage badge moved to the Volume cell     | 641 px | 582 px | 59 px       |
+| usage badge in the Volume cell, stacked  | 599 px | 582 px | 17 px       |
+| #493 + role, no usage badge              | 584 px | 582 px | 2 px        |
+| #493 as it sits in the corpus, no badges | 515 px | 582 px | none        |
+
+So the badge turned a 2 px clip into a 73 px one, and the MOD column — the last one, and the reason
+a multi-gas dive opens this card — was off screen without scrolling on exactly the dives the feature
+is for. That is the same failure "The role badge costs the mixtures table 73 px it did not have"
+records, at almost exactly the same cost, in the same cell, five weeks later.
+
+**Read `scrollWidth` correctly or the numbers above cannot be reproduced.** This table is full
+width, so `table.scrollWidth` returns the _container's_ width whenever the table fits and reveals
+min-content only when it overflows. Every "fits" measurement therefore answers 582 px regardless of
+how much slack is really there, and a fitting table cannot be compared with an overflowing one on
+that number at all. Set `table.style.width = 'min-content'`, read `getBoundingClientRect().width`,
+put it back. The 471 px recorded in the earlier campaign is a min-content figure; a naive
+`scrollWidth` on that same row today answers 582, and reconciling the two is what this paragraph
+exists to prevent. (Its 471 px against today's 515 px is 44 px of drift from changes since —
+per-field entry units among them — not from this work.)
+
+**The badge is gone, and the flag is stated in prose beneath the table**: "Cylinders 1 and 2 are
+flagged Parallel — breathed alternately at the same depth, as a sidemount pair or independent
+doubles. Cylinder 3 is flagged Staged — breathed at a separate depth." `tankUsageSentences` in
+`lib/dive-mixtures.ts` builds them. The invariant it has to keep is the one the badge kept for free
+— every flag a diver recorded is visible on the dive page without opening the edit form, **and** a
+reader can tell which cylinder each one belongs to — and it keeps the second half by naming
+cylinders with the `#` the table's first column already shows. That is what makes a mixed set still
+expressible in the display, which matters because the control that records it is deliberately
+per-row. Prose under this table is also this component's own precedent: "Breathing-gas maths lives
+in `lib/dive-mixtures.ts`, client-side, and is only ever a label" records that the MOD warning is
+spelled out underneath rather than hidden in a `title` tooltip, and this is the second application
+of the same resolution to the same table.
+
+**This reverses the closing line of "The role badge costs the mixtures table 73 px it did not
+have"**, which is "if this is revisited, the thing to reconsider is the column set, not the badge".
+That instruction was right when it was written and the argument against it is narrow. The column set
+is load-bearing on every dive in the log: `Volume`/`Start`/`End` are the gas-consumption inputs and
+`Gas`/`O₂`/`He`/`MOD` the planning facts, and it was settled by a measured campaign that cut 177 px
+out of this table. The usage badge was a five-week-old at-a-glance convenience whose information
+survives in four other places — the edit form, the gas figures it changes, the reasons on the
+consumption card, and now a sentence six inches below where it used to sit. Reopening the column set
+to keep it would spend the expensive thing to save the cheap one. What changed since that line was
+written is that a third badge exists at all; it did not when the line was written.
+
+**Three alternatives were specified and dropped on evidence**, recorded so they are not proposed
+again:
+
+- **The Volume cell**, which this file previously named as the sanctioned fallback. Measured: 14 px
+  inline and 56 px stacked, reaching neither bar. `Badge` is `inline-flex`, the body row is
+  `whitespace-nowrap`, and a table that overflows is already at its minimum width — so moving an
+  inline badge between two columns of one such sum is close to width-neutral by construction.
+- **Icons instead of words.** Touch has no hover, and the MOD-warning decision in the same component
+  already refuses to put the only copy of a meaning behind one.
+- **Icons only in the 1024–1280 band, words elsewhere.** It fits — 579 px against 582 — and it costs
+  a glyph vocabulary, an `sr-only` mechanism, a visible key, a responsive swap in two components and
+  a rewritten test census. It also contradicts "Three glyph families, not five", which records for
+  this same app that at this size a shape is worth about one bit and that the readout says which in
+  words.
+
+**The residual 2 px is pre-existing and is not being fixed here.** Without the usage badge #493 with
+role badges measures 584 px and a trimix row about 588 px, which is the 6 px overflow "Both gas
+tables finally fit their slot" already records as the worst case — independent confirmation that
+removing the badge restores the documented state rather than inventing a new one. A row carrying a
+role badge was 2 px over before `usage` existed, and demanding zero here would be demanding a
+regression fix this change never caused.
+
+**The suite cannot settle any of this**, which is why the numbers are all live ones. jsdom does no
+layout and returns zero-sized rects, so a geometry assertion passes against any markup at all. What
+the tests pin is text presence — the sentences, their numbers, and their absence on an unflagged
+dive.
+
+## Adding a resource means sweeping the prose that enumerates the resources
+
+Adding a resource kind is mostly mechanical - a `lib/api/` module, a list page, a detail page, the
+nav and quick-create registries. What is not mechanical is the prose that _enumerates_ the kinds,
+because nothing type-checks a sentence and nothing fails when one goes stale. There are two classes
+of it and they want opposite treatments.
+
+**The user-facing copy has to be swept kind by kind, every time.** These sentences are promises to
+the diver about which of their records get exported, erased or restored, so a missing kind is a
+false statement about their data rather than an untidy comment. The surfaces:
+
+- `app/privacy/page.tsx` - several separate enumerations, not one: what is collected, what is
+  processed, what the ownership paragraph covers, and what deletion destroys.
+- `app/terms/page.tsx` - what the service is for, and the "your content is yours" clause.
+- `components/settings/delete-account-card.tsx` - the card's own warning _and_ the `ConfirmDialog`
+  `description`, which lists the kinds a second time in a different register.
+- `components/auth/restore-account-card.tsx` - the same list in the "erased for good" framing, once
+  in prose and once in a dialog string.
+- `app/goodbye/page.tsx` - both arms, the already-erased one and the still-restorable one.
+- `app/auth/verify/page.tsx` - what restoring brings back, in both the `purgeOn` branch and the
+  dateless one.
+- `components/settings/data-export-card.tsx` - what each export format contains, including the UDDF
+  row's list of what has no slot in that format and rides in the archive instead.
+- `README.md`'s feature list.
+- `components/layout/landing-page.tsx`'s closing feature sentence, which enumerates what the app
+  organizes. Added after the `certifications` probe below missed it - see "Courses nest a dialog
+  inside a dialog" for why.
+
+**They had already drifted, which is the argument for doing this by sweep rather than from memory.**
+`goodbye` and `auth/verify` promised back only "dives, dive sites, certifications and gear", while
+`delete-account-card` and `restore-account-card` named trips in the same breath. Trips cascade with
+the rest of the account, so the shorter pair understated what was at stake on the two screens where
+a diver is actually deciding whether to act - and those are the two furthest from any code that
+could contradict them. Four strings, corrected in the change that added this section. Nothing had
+failed in the meantime: no test asserts on this copy, and there is nothing for a type to disagree
+with.
+
+**The docstrings and comments went the other way: the counts came out.** A doc comment that names
+`dives/[id]`, `sites/[id]`, `trips/[id]` and `gear/[id]` and then says "all four of which" is
+carrying a number no reader needs and the next resource falsifies. Those now read "a detail page",
+"the list pages", "the detail pages and the dive edit page" - true before that change, true after
+it, and true after the next one. Where a list earns its place it stays a list _without_ a number:
+`RecentDivesCard` says it is used on the dashboard and on "the detail pages that scope dives to one
+record - a trip, a dive site, a gear item", because the two modes are the thing worth knowing and
+nothing in the props says so.
+
+**Every count in them was already wrong, and adding a resource is only one of the ways that
+happens.** `recent-dives-card.tsx` claimed it was used on "the dashboard and profile pages". There
+was a profile page once, and it was deleted in `e49846f` - a commit that edited this very file,
+correcting "dashboard/profile" to "dashboard's" in the `limit` prop comment fifteen lines above and
+leaving the sentence below it naming a route that had just stopped existing. The same sentence also
+omitted the site and gear detail pages that really do use the card. `useDeleteResource`'s docstring
+listed the list pages and "the four detail pages" and missed
+`components/settings/passkeys-card.tsx`, which is neither; its "the other five call sites" was
+seven. `dashboard/page.tsx` described "the three cards that can have nothing to say" next to four of
+them, the fourth being the passkey nudge, which the JSX comment beside it describes as rendering
+nothing once taken or dismissed.
+
+That is the durable half. A hand-kept census goes stale on removal as readily as on addition, and it
+survives the very commits that should catch it - reading a file closely enough to fix one sentence
+is not enough to notice the second one twenty lines away. The fix is to stop keeping a census rather
+than to keep correcting it.
+
+**Regenerating the copy list** instead of trusting the one above to have stayed current - probe with
+a kind that exists everywhere:
+
+```bash
+git grep -lni certifications -- src/ README.md
+```
+
+Subtract the certification-_specific_ code (`components/certifications/`, `app/certifications/`,
+`lib/certification.ts`, `lib/api/certifications.ts`, `lib/validations/certification.ts`, their
+tests) and what is left is either enumeration-bearing prose or one of the registries a new kind has
+to extend anyway - `layout/header.tsx`'s nav and quick-create arrays, `layout/quick-create.tsx`'s
+`QuickCreateKind`, `lib/return-to.ts`'s section labels, `dashboard/setup-checklist-card.tsx`.
+`certifications` is the right probe precisely because it was added late: a list that names it is a
+list somebody has maintained recently.
+
+**The docstring figures need a second grep, because they do not mention any kind by name:**
+
+```bash
+git grep -nEi 'list pages?|detail pages?' -- src/
+```
+
+**That second pattern has a hole, and this repo demonstrated it.** Until the de-counting above,
+`hooks/usePaginatedResource.ts` read "for the dives/trips/sites list" / "pages" across a line break,
+and the grep never matched the one file whose whole job is list-page pagination. The rewording
+happens to have pulled "the list pages" back onto a single line, so it matches today - but nothing
+holds it there, and the next edit that lengthens that sentence reopens the hole silently. Any
+multi-word pattern over comment prose has this exposure, and comment prose is wrapped by definition.
+So a clean second sweep is suggestive, never conclusive; the first sweep is the one to lean on for
+coverage, because a single word cannot straddle a line break.
+
+**What is deliberately _not_ swept: this file.** Its own counts - "the four `[id]` detail pages",
+"all eight modules", "seven create/edit dialogs" - record what a particular change faced at the time
+it was made, and are meant to read as history. Updating them to today's numbers would destroy the
+thing they exist for. Only prose claiming to describe the code _as it stands_ is in scope here.
+
+## Courses nest a dialog inside a dialog, and sit in the user menu rather than the nav
+
+A course is the training a diver did: a group of dives, and the cards it issued. It arrived as a
+whole section - `/courses`, `/courses/[id]`, `CourseDialog`, `CourseCombobox` - built out of the
+patterns already recorded above, so what follows is only the places it could not simply follow them.
+
+**The course picker in the certification dialog puts a dialog on top of a dialog, and that holds.**
+`CourseCombobox` mounts its own `CourseDialog` so "Add course..." can hand the created record back
+and select it - the same reason every other picker keeps its own dialog instead of using the
+app-wide quick-create one. In the dive form that is a dialog over a page. In the _certification_
+dialog it is a dialog over a dialog, which is new here, and the fear was the one "A dialog's submit
+event bubbles into the form that opened it" records: the inner form's submit landing in the outer
+one, saving the course and then running the certification's own validation over a half-filled form.
+It does not, and the reason is that the mechanism is already handled - `dialogFormSubmit` stops
+propagation at the inner form, and it is on `CourseDialog` from the first line it was written.
+Radix's own nesting needed nothing: the inner content portals out to `document.body` like the outer
+one, Escape and the overlay click reach the topmost dialog only, and dismissing the inner one leaves
+the outer open and unsubmitted. The recorded fallback - drop "Add course..." in this one host - was
+never needed and is not being kept as an option; **the decision to record is that a picker's
+create-dialog is safe inside another dialog, so the next one needn't re-litigate it.**
+
+**Courses are in the user dropdown beside Certifications, deliberately not in the main nav.** The
+main nav's five slots (Dashboard, Trips, Dives, Sites, Gear) are the destinations a diver goes to on
+an ordinary visit; a course is entered once and read rarely afterwards, which is exactly what
+Certifications already is. So the placement rule was **give Courses whatever treatment
+Certifications has, wherever it has it** - derived with
+`git grep -n '/certifications' src/components/layout/`, which today means a `NAV_SECTIONS` entry (so
+`/courses/{uuid}` still highlights something) and the dropdown item, and pointedly _not_ the desktop
+nav, the mobile menu or the footer. Sweeping `/trips` instead would have been the easy mistake:
+trips are a main-nav entry, and mirroring them would have reintroduced the placement this rejects.
+
+**The dashboard gets no courses card, and the setup checklist gets no fourth step.** Both are the
+dashboard-filler rule from "The dashboard shows only what the app actually tracks": a course that is
+`completed` has nothing to say on a dashboard, and the checklist is a first-run panel that removes
+itself once its three steps are done - a fourth would keep it on screen for every established
+logbook until a course was entered. Worth revisiting only when an `in_progress` course has something
+to surface.
+
+**The courses list is the first list page with a search box**, because the API's `GET /courses` is
+the first list endpoint the app calls that takes a `search`. The wiring is two states, not one: the
+input's own value, and the debounced term the fetcher closes over. That matters because the fetcher
+is `usePaginatedResource`'s `fetchFn`, so changing the term changes the callback's identity and the
+hook re-fetches from page 1 - which is the behaviour wanted (page 3 of the unfiltered list is not a
+page of the filtered one) and is why the term must not change on every keystroke. The empty state
+splits too: "no courses match that name" is a different statement from "no courses yet", and only
+the second one offers a create button.
+
+**A dive's course is not inherited from the last dive, unlike its trip.** `/dives/new` prefills the
+trip from the most recent dive because a second dive is usually on the same trip. A course ends,
+though, and silently tagging the first fun dive after it as training is a worse default than one
+extra pick - it would write a claim the diver never made. The mid-course streak is covered by the
+course page's own "Log a Dive for this Course", which arrives as `?course_uuid=`.
+
+**The dive page's course link is its own Training card, not a row in Location.** A course is not a
+place, and the Location card renders on the strength of the dive having a trip, a site or a GPS fix,
+so a course row folded into it would be invisible on precisely the training dives it is for. The
+invariant the render test pins is that the sidebar without a course looks exactly as it did before
+courses existed: no empty card, no placeholder row.
+
+**`getDives`' course filter is appended last, where it does not belong by meaning.** Its parameters
+are positional (`userUuid, page, items_per_page, tripUuid, diveSiteUuid, gearItemUuid`), and
+`courseUuid` reads as belonging beside `tripUuid` - but inserting it there would silently re-point
+every existing caller's site and gear arguments one place along, and nothing about the types would
+object, since all three are `string | undefined`. Appending is the safe half of that trade.
+`getCertifications` gained its `courseUuid` the same way and had no such choice to make.
+
+**The enumeration sweep needs the `c-card` probe as well as `certifications`.** The inventory in
+"Adding a resource means sweeping the prose that enumerates the resources" says to regenerate the
+copy list with `git grep -lni certifications -- src/ README.md`, and that grep does not return
+`components/layout/landing-page.tsx`, whose closing feature sentence enumerates what the app
+organizes and spells the kind "c-cards". `git grep -ni c-card -- src/ README.md` is what finds it -
+the same trap that section already records for `usePaginatedResource.ts`, arriving through a synonym
+rather than a line break. Run both.
+
+## The skills are repo content; what wires up the hook is not
+
+`.claude/skills/` was ignored along with the rest of `.claude/`, and `CLAUDE.md` said so in the
+preamble to its browser-verification notes: read the skill mentions as _if you have it_, because a
+clone has none of them. True of the setup, wrong about the skills. Both of them describe how to work
+on _this_ repo and nothing else — the local magic-link flow and its rate limits, and
+`scripts/screenshots.mjs` with the framing constants it owns. They are the same kind of artifact as
+`AGENTS.md`, and a clone has the same use for them. So they are committed now, and
+`!.claude/skills/` is the single exception the ignore file carries.
+
+**`.claude/settings.json` went the other way.** It held exactly one thing, the `PreToolUse` entry
+pointing Claude Code at `.claude/hooks/no-unsigned-commits.py`, and it was committed on a premise
+the ignore file stated outright: agents work in fresh checkouts under `.claude/worktrees/` and only
+ever see committed files, so a rule left uncommitted never reaches the sessions it is meant to
+constrain. It is gone, and the registration lives in the untracked `settings.local.json` beside it.
+The script itself stays committed — it is about working on this repo, the same argument the skills
+won on.
+
+**The premise is correct, and giving it up costs something real — so be clear what.** It is tempting
+to think an untracked `.claude/` file reaches a session anyway, because `settings.local.json` and
+`.claude/skills/` both turn up in the worktrees Claude Code creates for itself, written at session
+start rather than checked out. That is real but it is not general: the `web-N-*` worktrees this
+repo's feature branches are actually built in come from a plain `git worktree add`, which copies
+nothing untracked, and not one of them has a `settings.local.json`. `.claude/hooks/` is present in
+all of them only because it is tracked. So a `web-N-*` session now gets the script with nothing
+wired to it, and the `PreToolUse` guard does not fire there.
+
+What holds the line instead is `.githooks/pre-push`, which linked worktrees inherit through
+`core.hooksPath` on the parent clone, so it still refuses the push. The trade is a guard that
+stopped a bad commit being written for one that stops it leaving the machine — and for a clone the
+arithmetic never mattered: the hook fires only on a command that _disables_ signing, so it did
+nothing in a checkout where signing is not configured, and `CONTRIBUTING.md` stopped asking
+contributors to configure it.
+
+This overrides a paragraph that saw it coming and ruled it out — _"The gate, not the gitignore, is
+what scopes enforcement"_, under _"Signing stopped being a demand on contributors"_, which named
+moving the registration to `settings.local.json` as the temptation to resist. Its objection was
+correct on the facts, as the paragraph above concedes; it is overridden by a decision about what
+this repository should carry, not defeated by an argument. Its heading survives and so does its
+reasoning.
+
+**Ignoring the script as well was tried, and reverted before it landed — the reason is worth
+keeping.** Untracking a tracked file does not preserve it. The first `git pull` after such a change
+deletes it from the working tree, because the path is tracked in the merge base and ignored in the
+branch, and since it is ignored afterwards `git status` reports nothing. `settings.local.json` would
+have kept pointing at a file that no longer existed, and a missing command exits non-zero-but-not-2
+— non-blocking, per the fail-open note above. The guard would have gone quiet in the primary
+checkout, not just the worktrees, with nothing to show for it.
+
+The rename that occasioned all this is the smallest part. `od-login` and `dashboard-screenshot`
+became `opendiving-web-login` and `opendiving-web-dashboard-screenshot`, because sibling repos sit
+under one umbrella and skills load by bare name: `dashboard-screenshot` gave no clue whose dashboard
+it shot, and `od-login` no clue that the magic-link flow it drives is this app's.
+
+## "Add Mixture" sits under the tanks
+
+The button now renders after the tank cards, at the bottom of the Gas Mixtures section, rather than
+in the section header opposite the heading. It sits where the tank it adds will appear, so the
+control and its effect are in reading order and adjacent on screen; from the header it was the one
+control in the section pointing backwards, and a diver on a four-cylinder dive had to scroll back up
+past every card to add the fifth.
+
+The empty state is where the old placement read worst. On a create form with no mixtures the section
+was a heading, a button, and then "No cylinders recorded for this dive." underneath both — the line
+answering a question the button above it had already offered to resolve. In the new order the
+sentence describes the state and the button follows as the way out of it.
+
+**The button is left in normal flow, not wrapped to blockify it.** It is `inline-flex`
+(`ui/button.tsx`), so as an atomic inline in the section's `space-y-4` block it takes a baseline,
+and the neighbouring `EntryUnitLabelRow` sections above record what inline boxes cost in this
+codebase — a wrapper looked like the safe move. Measured in Chrome, bare and wrapped in `flex`, the
+container is 36px either way: an `h-9` inline-flex box is tall enough that the strut's descent fits
+inside it, so no leading escapes below. `space-y-4`'s `margin-top` applies either way, vertical
+margins being live on atomic inlines. The wrapper would have been an unexplained div carrying
+nothing.
+
+**What this cost elsewhere:** the alignment reason recorded for the pressure toggle named this
+button as the source of its row height, and had to be re-derived from the `<h3>` — see the
+correction under "The Gas Mixtures header toggle is deliberately not this component".
+
+## Retina tiles are plumbed and switched off, because Carto's `@2x` is a watermark
+
+**Superseded on 2026-08-29.** `{r}`, `tileUrl` and `tileSrcSet` went with the hand-rolled renderer;
+the density question is MapLibre's `{ratio}` now, and only in raster mode — see "The basemap is a
+MapLibre style, and raster is the escape hatch". The provider finding below is still the reason the
+default is not Carto.
+
+Tiles were drawn at 256 CSS px (`lib/map-tiles.ts`), so on a 2× display every one was a 256 px
+bitmap stretched over 512 device pixels, and the labels — the part of a basemap that is text —
+carried the cost. The picker makes it worse than the display alone: `tileScale` already blows the
+layer up by as much as ~1.41× to fill in fractional zoom, so the effective demand there is nearer
+2.8×. Asking for the provider's double-density variant is the standard answer, and it was
+implemented before it was checked properly.
+
+**Carto serves `@2x` for both default styles and stamps every one of them "API KEY REQUIRED",
+diagonally across the map.** Verified on 2026-08-28 by decoding the PNG, which is the only step that
+settles it.
+
+**The measurement that missed it** was `curl -o /dev/null -w "%{http_code} %{size_download}"`:
+`light_all/4/8/5.png` is 18,422 bytes and `light_all/4/8/5@2x.png` is 45,507, a 200 apiece. That
+ratio is exactly what a real double-density tile looks like — ~2.5× rather than the pixel count's
+4×, because the same map at a higher density compresses well — so the numbers corroborated the plan
+instead of testing it. A watermarked tile is a valid PNG of the right dimensions and a plausible
+size. **A tile provider is verified by looking at the image, not by its status code and byte
+count.**
+
+The stamp is not something a better-shaped request avoids. Sampled at z2, z6, z10 and z14, in
+`light_all` and `dark_all`, at both densities: all watermarked. Fetched again with a Chrome UA,
+`Referer: http://localhost:3000/`, `Origin`, `Accept: image/avif,…` and the `Sec-Fetch-*` trio:
+byte-identical to the bare `curl`. So the keyless tier is watermarked outright, and **the plain
+tiles this app has always used are watermarked too** — a provider-side change, not a consequence of
+anything here. What the `@2x` work did was render that watermark at twice the resolution, which is
+how it got noticed.
+
+**So the mechanism ships and the default templates do not use it.** `tileUrl` fills a `{r}`
+placeholder — Leaflet's and OpenLayers' spelling, `@2x` at the providers that serve one — and
+`tileSrcSet` emits `… .png 1x, … @2x.png 2x` for a template that has one. `DEFAULT_TILE_URL`
+deliberately has none, so the default instance asks for exactly what it asked for before. (It was a
+pair when this was written; the dark default is a CSS filter now — see the section below.) A
+self-hoster pointing `MAP_TILE_URL` at their own tile server, or at a provider they hold a key for,
+opts in by spelling `{r}`.
+
+Two alternatives were considered for the selection itself, and both are worse independently of the
+watermark:
+
+- **Leaflet's `detectRetina`** — request one zoom level deeper and draw those tiles at half size. It
+  quadruples the request count, renders every label at half its intended physical size, and here it
+  would have to compose with the fractional-zoom scaling already dividing the grid's coordinate
+  space. The `{r}` route changes the pixels in a tile and nothing else about the geometry.
+- **Reading `devicePixelRatio` and picking one `src`** — that value exists only in the browser, so
+  the server's render and the client's first one disagree, and a hydration mismatch is a poor price
+  for something the platform does declaratively. It also freezes at mount, where `srcSet` is
+  re-evaluated when a window moves between displays of different densities.
+
+**A template without `{r}` gets no `srcSet` at all** — `undefined`, not a lone `1x` candidate.
+Naming the plain 256 px file as its own `2x` declares an intrinsic size of 128 CSS px; the explicit
+`width`/`height` on the `<img>` pin the layout back to 256 either way, but the declaration is false
+and nothing should rest on the attribute that rescues it. Both candidates would be the same file
+regardless.
+
+The CSP is untouched by any of this: `{r}` sits in the path, so `tileOrigins` parses the same origin
+out of a template that has one, and `img-src` is unchanged.
+
+What that left open turned out to be bigger than the retina question, and it is answered in the next
+section: the plain tiles were watermarked too.
+
+## The default basemap is OpenStreetMap's own, and the dark theme is a CSS filter
+
+**Superseded on 2026-08-29 in both halves.** The default is OpenFreeMap's Liberty and Dark,
+vendored, and dark is a style rather than a filter — the last `invert(1) hue-rotate(180deg)` went
+with the picker's tile layer, along with `tileSource` and `needsDarkFilter`. See "The basemap is a
+MapLibre style, and raster is the escape hatch". The provider survey below is what ruled Carto out,
+and it is why the raster escape hatch still documents a key.
+
+Carto's watermark applies to the keyless tier, not to a style or a density — `rastertiles/voyager`
+carries it as well — so an unconfigured instance was showing "API KEY REQUIRED" across every map it
+drew. Six candidate providers were tested on 2026-08-28 to replace it, at one tile (z10/608/432, the
+coast at Safaga: sea, coastline, a labelled town), **decoding every image** rather than trusting a
+status code, and fetching each from three `Referer` values, because that is what separates "works in
+local development" from "works for a self-hoster".
+
+| provider                                 | any domain | clean  | labels | dark | `@2x`       |
+| ---------------------------------------- | ---------- | ------ | ------ | ---- | ----------- |
+| Carto (light_all, dark_all, voyager)     | 200        | **no** | yes    | yes  | watermarked |
+| OpenStreetMap standard                   | 200        | yes    | yes    | no   | none        |
+| OSM DE, OSM France, CyclOSM, OpenTopoMap | 200        | yes    | yes    | no   | none        |
+| Esri Canvas light + dark                 | 200        | yes    | **no** | yes  | none        |
+| Stadia `alidade_smooth` + `_dark`        | **401**    | yes    | yes    | yes  | clean       |
+| Wikimedia `osm-intl`                     | **403**    | yes    | yes    | no   | clean       |
+
+Three of those rows are traps rather than results:
+
+- **Stadia answers from `localhost` and nowhere else.** 200 with `Referer: http://localhost:3000/`;
+  401 with no referer and 401 from `https://dives.example.org/`. It is the closest match to what the
+  app used to look like — a Positron/Dark Matter lineage, a real dark variant, a clean `@2x` — and
+  every one of those virtues would have been visible in local development while every self-hosted
+  instance served 401s.
+- **Esri's Canvas basemaps have no place names.** The base layers are clean and there is a genuine
+  dark one, but the Reference layer that carries the labels returns an identical 872-byte blank tile
+  at z6 and at z10 — no "Safaga" where every other provider has it.
+- **Wikimedia enforces its policy in code**, 403 from a domain that is not theirs.
+
+**So the default is `tile.openstreetmap.org`**, the only keyless-from-anywhere basemap left that
+still carries labels, and the attribution default drops the CARTO half. The OSMF tile policy was
+read rather than recalled, and this app already satisfies it: attribution is rendered over the map
+and not behind a toggle, only visible tiles are fetched (no prefetch, no bulk),
+`Referrer-Policy: strict-origin-when-cross-origin` still sends an origin, and the policy's own
+recommendation against hard-coding a tile URL is what `MAP_TILE_URL` has always been. The residual
+risk is that their capacity is donation-funded and enforcement is discretionary — which lands per
+self-hosted instance, each of them small.
+
+**OSM has no dark tiles, so the dark theme's are made here**, with `invert(1) hue-rotate(180deg)`
+over the tile layer. Both treatments were rendered before choosing: a
+`brightness(.65) saturate(.75)` dim leaves a light map looking washed out rather than dark, while
+the inversion reads as a night map — darker land, dark water, and roads that come out orange-red. It
+is worse than a provider's own dark tiles and better than a bright map in a dark UI, which is the
+whole of the argument.
+
+`needsDarkFilter` is the switch, and it is true exactly when `source.dark === source.light` — the
+state `tileSource` leaves behind for a provider that offers one set of tiles. Configuring
+`MAP_TILE_URL_DARK` therefore turns the filter off by construction rather than by a second setting
+that could disagree with the first.
+
+**The filter's scope is the part to get right, and it is not the obvious element.** It has to cover
+the tiles and nothing else: the markers are `bg-coral`, the one accent held constant across both
+themes, and inverting them turns them teal. In the picker the tile layer already existed —
+`data-testid="tile-layer"`, carrying the fractional-zoom scale — so the classes go there. In
+`LocationsMap` the tiles and the pins were siblings in one container, and the layer had to be
+created. That layer needs an explicit `absolute inset-0` rather than being a bare wrapper: **an
+element with a `filter` becomes the containing block for its absolutely positioned descendants**, so
+the tiles stop resolving against the surface and start resolving against the wrapper, and a wrapper
+with no box of its own is a silent way to move every tile.
+
+**Carto stays as a documented option, keyed.** A key is free — 5 million tiles a month, no account,
+emailed straight back — and `.env.example` carries the whole configuration for it, `{r}` included,
+because a keyed Carto is exactly where the retina work pays off. The key is substituted into both
+templates from `MAP_TILE_API_KEY` through a `{key}` placeholder, so the credential is written once
+rather than pasted into two URLs, and every provider's own spelling of the parameter (`?key=` for
+Carto, `?api_key=` for Stadia) stays in the operator's template where it belongs. It reaches the
+browser, because the browser is what fetches tiles; that is true of every client-side map and the
+documentation says so rather than implying a secret is being kept.
+
+## Stadia is documented beside Carto, because Carto's raster endpoint is legacy
+
+**Superseded on 2026-08-30 in its premise, which was inverted rather than merely dated.** "This map
+speaks only raster by construction" was true when this was written and is the opposite of true now:
+the default is a vector style and raster is the escape hatch. So Carto's own recommendation to move
+to vector basemaps is a road this app has taken, and the raster block's slowly-staling place names
+are a risk only for an operator who chooses a raster template anyway. The conclusion survives on a
+narrower footing — a self-hoster who wants keyed raster is better served by a provider that
+maintains it — and both blocks stay in `.env.example` for exactly those operators. See "The basemap
+is a MapLibre style, and raster is the escape hatch" below.
+
+The provider table above ruled Stadia out as a _default_ — the cleanest tiles of the sweep, a real
+dark variant, and a 401 from every domain except `localhost` — but a key is precisely what fixes
+that trap, and `.env.example` now carries the full keyed configuration the way it does for Carto.
+What earns the second block is not style preference. Carto's own basemaps FAQ (read 2026-08-28)
+recommends the vector basemaps and says data updates to the raster ones may stop, with no timeline
+given; this map speaks only raster by construction — the MapLibre decision, much earlier in this
+file — so that road is closed here, and the failure mode is not an outage but a basemap whose place
+names slowly go stale. Stadia maintains raster as a first-class product, which is what makes it the
+hedge worth writing down.
+
+The terms differ enough that the block spells them out rather than letting a self-hoster discover
+them at the 429: Stadia's free tier is 200k tiles a month against Carto's 5M, non-commercial use
+only against Carto's fair-use-and-we'll-get-in-touch, and it hard-limits for the rest of the month
+once spent, with paid plans from $20/month. The attribution example grows an OpenMapTiles credit,
+because Alidade is built on it — the attribution being an operator-set variable that travels with
+the URLs is exactly for provider differences like this one.
+
+## The new-dive render test was in a loop with itself, and the cost was only time
+
+`src/app/dives/new/page.render.test.tsx` was flaky in a way that named nothing: tests failed on
+vitest's default 5s timeout rather than on an assertion, and which of the fourteen failed varied
+from run to run — worse under `npm run ci`, where ten workers compete for the machine. The tempting
+reading is "these tests are just slow, raise `testTimeout`". They were slow, but not for the reason
+the timings suggested.
+
+The page's last-dive prefill is an effect that ends in `form.reset`, and it lists `user` in its
+dependencies. In the app that is fine: `AuthContext` keeps its value referentially stable, so the
+effect runs once. The test's mock did not — `useAuth: () => ({ user: { uuid: "user-1" }, ... })`
+built a fresh `user` on every call, so every render gave the effect a new dependency, and the effect
+ended by causing the next render. On any test whose `getDives` returns a dive, reset and effect
+drove each other round with nothing to stop them.
+
+Measured: `getDives`/`getDive` were called **100 times in the 1.3 seconds** after the prefill landed
+and were still climbing when the component unmounted — about 75 full page re-renders a second,
+running underneath every `waitFor` and every `userEvent` call in the test. Nothing fails; the loop
+only competes. That is what makes it worse under load rather than merely slower: a busier machine
+means longer awaits, longer awaits mean more iterations, and more iterations mean a busier machine.
+
+This is the `useRouter` trap recorded under "Component and hook tests are possible now" one hook
+further along, and worth restating because the shape generalises. **A mock that rebuilds its return
+value per call is only safe while nothing depends on its identity.** `useRouter` was caught because
+`useResource` refetched forever and looked like an infinite loop in the hook. This one was not
+caught, because a loop whose only symptom is elapsed time reads as "the page is heavy".
+
+The fix is `vi.hoisted` objects returned by identity, for `useAuth`, `useRouter`, `useSearchParams`
+and `useToast` alike. It is pinned by "reads the last dive once, not once per render", which asserts
+the call count rather than any rendered output — the only place the defect shows up as a failure.
+
+**Two other things the same investigation turned up, both in the same file:**
+
+- **A real HTTP request.** The gear picker resolves a carried-over uuid it has no name for through
+  `gearAPI.getGearItem`, and only the plural `getGearItems` was mocked. Left real, axios' relative
+  `/api/v1` base resolves against jsdom's `localhost:3000`, so the test answered from whatever dev
+  server happened to be up — at whatever speed it happened to be compiling at, with no axios timeout
+  behind it. A test's timing should not depend on what else is running on the machine.
+- **`userEvent.type` costs ~60ms for five characters here**, against ~3ms for the `fireEvent.change`
+  that sets the same value: the box is a controlled `FormField`, so each keystroke re-renders the
+  page. `userEvent.setup({ delay: null })` does _not_ help — the cost is the re-render, not the
+  inter-key delay, which is worth knowing before reaching for it. Typing is right where the
+  keystrokes are the point (the depth warning) and wrong where a field just needs a value.
+
+What is left is inherent: a full `NewDivePage` render is ~50ms in jsdom under React's dev build,
+diffusely spread across `jsx()`, `ReactElement` and Radix's `SelectItem`, and each test needs its
+own. Fifteen tests now run in ~2.4s where fourteen took ~2.6s with an unbounded loop inside them.
+
+## A shared mock response object hides a render loop
+
+The defect above was not confined to the new-dive page. The same mock shape —
+`useAuth: () => ({ user: { uuid: "user-1" }, ... })`, a fresh object per call — sat in the gear,
+certifications and dashboard page tests, and all three pages depend on `user`'s identity: gear and
+certifications close over it in the `useCallback` they hand `usePaginatedResource`, whose
+fetch-on-mount effect is keyed on that callback, and the dashboard's stats effect lists it outright.
+Every one of them was looping.
+
+None of them looked like it. The detection recipe from the entry above — render the page, wait a
+second, count the calls to its main API mock — was run against all five candidate files and reported
+6 calls for gear, 4 for certifications, 2 for the dashboard, against the 100-and-climbing that gave
+the new-dive page away. Read at face value that says "settles, slightly wasteful", and it is wrong.
+
+**What flattens the count is `mockResolvedValue`.** It stores one resolved value and hands that same
+object to every call, so the loop's second pass reaches `setItems(response.data)` with the array
+React already holds. Same reference, so React bails out of the re-render, and the loop stalls — not
+because the dependency stopped churning, but because the state stopped changing. Swap the mock to
+`mockImplementation(async () => page([gearItem()]))`, which is what a real API client does — a fresh
+object per response — and the same mount over the same second goes:
+
+| page           | `mockResolvedValue` | `mockImplementation` |
+| -------------- | ------------------: | -------------------: |
+| gear           |                 4–6 |              355–396 |
+| certifications |                   4 |                  288 |
+| dashboard      |                   2 |                  431 |
+
+So the probe has a false-negative mode, and it is the common case: nearly every test in this repo
+stubs with `mockResolvedValue`. A count in the low single digits is not an all-clear — it means
+either "stable" or "looping against a frozen response", and only re-running with a per-call object
+tells the two apart. The new-dive page was caught at all because its loop turns on `form.reset`
+rather than on a list state, and a reset re-renders whatever it is handed.
+
+Two consequences for the pins. Each of the three now has one (`reads the gear list once`,
+`reads the certification list once`, `reads the stats once`), and each **must** use
+`mockImplementation` — written with `mockResolvedValue` the assertion passes with the bug in place,
+which is a test that exists and proves nothing. Verified the only way that means anything: the mock
+was reverted to a per-call object in each file and each pin was watched to fail. The dashboard's
+also needs a beat to settle — the loop turns on effects, which React schedules on a task rather than
+a microtask, so `findByText` returns before the second pass and the count is still 1 when the
+assertion runs.
+
+Two smaller findings from the same sweep:
+
+- **Only the guard's `user` matters on the dashboard.** The page pins `useAuthGuard` and `useAuth`
+  both, but it reads the context for `units` alone, and a string has no identity to churn.
+  Rebuilding the context's object per call leaves the fetch count at 1; rebuilding the guard's takes
+  it to 4 in 50ms.
+- **`avatar-card` and `units-card` do not loop and never did** — one reads a digest that reaches
+  `UserAvatar` as a string, the other one enum off `user`, and neither has an effect keyed on the
+  object. Their mocks were made identity-stable anyway, so that the whole set reads one way. That is
+  the actual guard against recurrence: these files are written by copying a neighbour, and a
+  neighbour that is right is worth more than a rule nobody reads.
+
+A shared `src/test/` helper for these mocks was considered and rejected. `vi.mock` factories are
+hoisted above every import, so a helper can only be reached through `await import()` inside the
+factory, and the thing it would export — an object returned by identity — is exactly what
+`vi.hoisted` already gives with less ceremony. It would also have to cover shapes with nothing in
+common: the auth mocks across this repo return `{user, isAuthenticated, isLoading}`,
+`{verifyEmailLink, restoreAccount}`, `{signInWithGoogle}` and `{restore, restoreAccount}`, among
+others. A module that has to be told its own contents each time is a re-export of `vi.hoisted`.
+
+## One User-Agent reading, two fallbacks
+
+The settings page now names a browser in two places: the label a new passkey is filed under, and the
+device hint on a signed-in session's row. They are the same question, so they are one function —
+`lib/passkey-name.ts` — and a session row and a passkey row on that one page can never disagree
+about what to call the same browser.
+
+That is also why the label is derived here rather than stored. The API keeps the **raw** header on a
+session row, because a security record wants the string it actually saw, and hands it back on the
+diver's own rows; what it deliberately does not do is parse it. The file's own header has said so
+since it was written — _the server sees a User-Agent header it has no business parsing_ — and the
+alternative on the table was a second regex table on the server, diverging from this one release by
+release.
+
+**The generalization is one line wide, and that is the whole design.** Everything a UA string is
+actually recognised by is shared; the exported pair differ on nothing but the last resort. A passkey
+falls back to `"Passkey"`, because that string becomes a _name_ the diver can then rename. A session
+falls back to `"Unknown device"`, because a row describing a `curl` client is not a passkey and
+cannot be renamed, so the passkey word there is simply false.
+
+**The pin that matters is the one for the fallback, and it is not obvious why.** Every other case in
+`passkey-name.test.ts` — Edge over Chrome, iOS collapsing to the device, ChromeOS over Linux —
+passes whether or not the parameterization ever happened, because every one of them is recognised by
+the tables and never reaches a fallback at all. A generalization that silently did nothing would
+have shipped green. So there is a case per unreadable input, asserting both halves at once: the
+device name is not `"Passkey"` and the passkey name still is. Verified by reverting
+`deviceNameForUserAgent` to the passkey fallback and watching exactly those cases fail.
+
+The empty string is in that set beside `curl/8.7.1` for a reason rather than for symmetry: it is
+what `user_agent` holds when the client sent no header at all, which is a state the API produces
+rather than a hypothetical.
+
+## The current session's row carries nothing, not a disabled control
+
+`SessionsCard` marks the row you are reading it on and gives it **no** revoke button — not a
+greyed-out one. Ending your own session is what signing out is: it has to clear the refresh cookie
+and spend the token pair as well as mark the row, so a revoke here would be a worse logout than the
+one already in the menu, and `AuthContext`'s documented care that a failed logout must not leave
+"signed out" as a display state over a live session is exactly the thing it would walk into.
+
+The API answers 409 for it, and that is a backstop rather than the design. A disabled button would
+have been the other reading of the same rule and is worse: a control that exists and refuses reads
+as broken, where an absent one reads as "this is not a thing you do here", which is true.
+
+Two smaller calls in the same card:
+
+- **"Sign out other sessions" is gated on `sessions.some((one) => !one.current)`, not on
+  `sessions.length > 1`.** An access token minted before server-side sessions existed carries no
+  session id, so nothing on the list comes back marked current — and the count test would then hide
+  the button from the one caller whose single listed row genuinely _is_ another device.
+- **The toast reports the count out of the response body and can do it no other way.** The
+  confirmation fires before the request, so the dialog never knew how many rows there were to end;
+  the API returns the number it actually revoked, and that is the only honest source for the
+  sentence.
+
+## The privacy page's other closed lists have pins now
+
+`app/privacy/page.test.tsx` used to pin §10's counts and nothing else, and §10 was the only section
+whose prose counted itself in numerals a sweep could find. The rest of the page is full of the same
+shape written so that no sweep finds it: §2.2 opens "Five things are recorded without you asking for
+them", §3 ends its list with "And nothing else.", §6.2 splits six rights into "The first four" and
+"The last two". Adding the session and account-event records moved **all three at once**, which is
+what it took to notice that not one of them would have failed a test.
+
+Each now has one, and they are deliberately different shapes because the sentences are:
+
+- **§2.2 counts itself twice in one sentence** ("Five things … and all five are"), so the pin reads
+  the list length and requires the word in both places. Same technique as §10.2's.
+- **§3 has no number to count**, so the pin is on what makes its closure false rather than on
+  arithmetic: something §2.2 says is collected with no purpose listed in §3. Both new records are
+  named in the §3 list, and "And nothing else." has to still be there. That pin is weaker than a
+  count and is the strongest thing available — a closure claim over a list of purposes cannot be
+  checked mechanically against the software, only against the page's own other section.
+- **§6.2's two ordinals have to add up to its list**, which is checkable arithmetic, and the pin
+  also holds the carve-out that made the amendment necessary: the export is not a copy of everything
+  this copy holds about you any more, and the sentence has to keep saying so.
+- **§6.1 carries no count at all**, so its pin is simply the entry: signing a device out is one of
+  the things Settings does without asking anyone, and the list saying so is what §5 and §6.2 both
+  now point at.
+- **§7's two retention periods are pinned as figures**, because unlike the refresh window and the
+  access-token lifetime they are fixed constants in the API rather than operator settings — so the
+  page is entitled to state them, and a diver has nowhere else to read them. Pinned with them: the
+  one thing the erasure cannot reach, which is an entry left under an address the account later
+  moved off.
+
+Every one of them was verified by breaking the page one claim at a time and watching the matching
+pin fail. A pin written against a page you just edited passes by construction; the bite test is the
+only thing that distinguishes it from a comment.
+
+**One claim on this page has no pin available and had to be caught by review instead.** §2.2's
+account-security-events entry enumerates what the audit trail records, and the authority for that
+list is an enum in the API — another repository, which nothing here can read at build time or test
+time. The first draft named twelve of its eighteen members and omitted the stored sign-in-provider
+column outright, which is precisely the understatement the surrounding sections are written to
+avoid, and every test on the page passed. So the entry says "and this is the whole list" and is
+complete as of this change, the API's `AuthEventType` is the thing to re-read when it looks wrong,
+and this paragraph is the only warning that exists that the two can drift. A pin would need the
+sibling checkout, which a clone of this repository does not have.
+
+**And the counterpart rule: a figure that is an operator setting does not go on this page as a
+fact.** §10.1 had already got this right for the refresh window — "About a week" is the standard
+setting, and the operator of this copy can change it — and the first draft of the sessions copy got
+it wrong twice in the other direction, promising that a signed-out device stops working within half
+an hour and that the session cap is a hundred. The first is an operator setting outright; the second
+is a constant in the API's own module. Neither is visible from this repository, and nothing here
+would ever have swept either when it moved. They ship as "a little longer, on the short-lived token
+described below" and "an improbable number of devices" instead. The claim survives; the number that
+could go stale silently does not.
+
+## The basemap is a MapLibre style, and raster is the escape hatch
+
+The map was a hand-rolled grid of `<img>` tiles and about ninety lines of Web-Mercator arithmetic,
+for a reason recorded above under "The map picker is hand-rolled, and `img-src` is the whole bill":
+MapLibre boots its renderer in a worker created from a `blob:` URL, and `worker-src blob:` in a
+nonce-based policy is what upstream itself calls equivalent to `unsafe-eval`. That objection was
+correct and is now answerable — see the next section — and three compromises had stopped being
+cosmetic:
+
+- **Labels were whatever script the tile baker chose.** `tile.openstreetmap.org` renders each
+  place's local `name` only, so Egypt is Arabic-only: سفاجا, never "Safaga". For a dive log that is
+  a functional gap rather than a preference, because dive destinations skew hard toward non-Latin
+  scripts — Egypt, Thailand, Japan, Greece, the Maldives. No keyless raster basemap fixes it: OSM's
+  German mirror is the only other keyless Latin option and it renders "Ägypten".
+- **Dark was `invert(1) hue-rotate(180deg)`** over light tiles, which is better than a bright map in
+  a dark UI and worse than any real dark basemap.
+- **Retina was plumbed and switched off**, because OSM serves no `@2x`.
+
+Vector tiles dissolve all three at once. Names ship as data and the _style_ — which this app now
+owns — decides what to draw; dark is a style rather than a filter; and a vector map is crisp at any
+density, so the `{r}` question evaporates for the default. The bundled styles are OpenFreeMap's
+Liberty and Dark, whose labels are bilingual by default: Safaga renders as "Safaga" over "سفاجا" on
+two lines, with no expression rewriting, no dependency and no style mutation step.
+
+**Liberty rather than Positron**, which is smaller and closer to what the app shipped with: Positron
+renders the sea grey, and on a dive log the water has to read as water. Bright was rejected as
+near-identical cartography to Liberty and busier under a coral marker. Dark ships as-is despite
+being low-contrast, because it is strictly better than the filter it replaces and, being vendored,
+adjusting it later is a JSON edit in this repository.
+
+**Style JSON and sprites are vendored; glyphs are hotlinked.** That split is arithmetic rather than
+taste. The two styles are 43 KB and 21 KB, and a vendored copy is what keeps the map looking the
+same after an upstream restyle — a basemap that changes appearance under the app is a regression
+nobody committed. The sprite set is shared by all five OpenFreeMap styles and totals 219 KB, so it
+travels too. Glyphs cannot: `glyphs` is a _single_ URL template per style, so it cannot be split
+between vendored and remote ranges without standing a proxy route in front of it, and the payload is
+617 KB for Latin alone, 1.25 MB adding Cyrillic and Arabic, and **89.9 MB across 486 files** once
+CJK is included — for a bilingual map of Japan and Thailand, which is precisely the audience this
+exists for.
+
+**Raster survives as configuration, not as a second renderer.** `MAP_TILE_URL` and friends are
+wrapped into a minimal one-source style by `rasterStyle`, so the escape hatch runs through MapLibre
+like everything else. Two details make that work rather than merely typecheck. `tileSize` is stated
+as 256 instead of taking the style spec's default of 512, or every tile would be drawn over four
+tiles' worth of ground. And `{r}` — this app's spelling of the density placeholder, and what both
+keyed blocks in `.env.example` still use — is renamed to MapLibre's `{ratio}`, which resolves from
+`map.getPixelRatio()` to exactly the same `@2x`/empty pair. Without that rename a keyed template
+requests a literal `{r}` and 404s, which would break precisely the two configurations the escape
+hatch exists to preserve. One behavioural change worth recording: `srcSet` offered both densities
+and let the browser choose, while MapLibre picks one from `devicePixelRatio`.
+
+**Attribution belongs to neither mode**, which is why `MAP_TILE_ATTRIBUTION` became
+`MAP_ATTRIBUTION`. Left inside the raster group, an operator who configured a style would have had
+no way to credit it, and the app would have rendered the bundled pair's OpenMapTiles credit over
+somebody else's tiles — false, and a licence breach for any style that is not OpenFreeMap's.
+
+**A style URL set without an attribution is a configuration error, and the app refuses to serve.**
+It cannot default to "whatever the active basemap requires", because both ways of learning that are
+shut: the derivation runs in the request path and may not fetch and parse a remote style, and the
+credit is rendered as parsed `[label](url)` text rather than as the style's own HTML (see
+"Attribution is parsed into parts, not injected as HTML" — an argument written specifically against
+mapping libraries, which `attributionControl: false` honours). Of the three answers available,
+defaulting to this app's own credit ships a false statement, and rendering nothing breaches the
+licence of essentially every OSM-derived source. Refusing is the only one that is neither wrong nor
+silent.
+
+Two constraints on how that refusal is built, and the second is the one with a scar behind it. It
+fires **once, at config resolution**, not per map — though "at config resolution" is later than it
+sounds, and worth knowing before you go looking for it. `runtimeConfig()` is lazy and memoized, so
+the process starts normally and the throw arrives on the first request that renders a layout or
+passes through middleware. Every page then 500s while `/healthz` — outside the middleware matcher,
+reading no configuration — goes on answering 200, so the `HEALTHCHECK` in the `Dockerfile` reports
+the container healthy. It refuses to _serve_, not to _start_, and only somebody opening a page finds
+out. And it fires on **exactly** that combination: the all-unset default and raster mode both stay
+silent. A cross-field validator that also tripped the default path would take the whole app down on
+a stock configuration at the first request, since `runtimeConfig()` is what every page and the
+middleware read — which is how the API repo once killed `pytest` collection and `docker compose` at
+the same time. `runtime-config.test.ts` carries a case for each of the three states for that reason.
+
+## The worker is same-origin, and `worker-src 'self'` is what makes the blob path fail loudly
+
+`setWorkerUrl()` pointed at a copy of `maplibre-gl-worker.mjs` on this app's own origin is what
+retires the `blob:` objection. It is settled in MapLibre's source rather than by documentation:
+`workerFactory()` takes `createWorker(url)` — a direct `new Worker(url)` — when `isCrossOrigin(url)`
+is false, and only falls through to `fetchAsBlobUrl`/`importAsBlobUrl` when it is true.
+
+The copy is made by `scripts/copy-maplibre-worker.mjs`, and **both files have to travel**:
+`maplibre-gl-worker.mjs` imports `./maplibre-gl-shared.mjs` on its first line. MapLibre's own
+Next.js note exists because Turbopack turns
+`new URL('maplibre-gl/dist/maplibre-gl-worker.mjs', import.meta.url)` into a hashed asset _without_
+emitting that sibling — and the resulting failure is silent. Upstream's maplibre-gl-js#8074 is the
+same shape: a worker chunk that never starts fires no error event and writes no console line. The
+map simply never reaches `load`.
+
+Two consequences follow, and both are easy to get wrong.
+
+**The copy runs before tests, not only before builds.** npm resolves a pre-hook against the exact
+script name, so `pretest` does not run for `npm run test:coverage` — which is what CI runs. All of
+`predev`, `prebuild`, `pretest`, `pretest:watch` and `pretest:coverage` call it. A browser test
+executing against a missing worker is the silent failure above, dressed as a slow network.
+
+**`worker-src 'self'` is load-bearing rather than declarative**, and the reasoning that makes it so
+runs the opposite way to the obvious one. `worker-src` falls back to `child-src`, then `script-src`,
+then `default-src`, and this policy emits no `child-src` — so the directive governing a worker today
+would be `script-src 'nonce-…' 'strict-dynamic' https: 'unsafe-inline'`. `'strict-dynamic'`
+short-circuits the source-list check entirely for any script-like destination that is not
+parser-inserted, and a `new Worker(url)` never is. **The policy as it stood would therefore have
+permitted a `blob:` worker with no violation at all.** `worker-src`'s own pre-request check has no
+such carve-out, so naming it is the only thing that makes the blob path fail audibly if MapLibre
+ever falls through to `importAsBlobUrl`.
+
+**The basemap is a `connect-src` source in both modes**, and that is not a statement about vector
+tiles. MapLibre's image decoder takes an `ArrayBuffer` and goes `Blob` → `createImageBitmap`, so
+even raster tile bytes arrive by `fetch`. It holds because `refreshExpiredTiles` defaults to `true`
+— reading the cache header requires the fetch path — which is why nothing sets that option. Treat it
+as part of the CSP contract rather than as a tuning knob: setting it to `false` sends raster tiles
+back through `new Image()` and `img-src`, silently splitting the policy this app derives.
+
+While the site picker still draws raster `<img>` tiles, `img-src` **keeps** the tile origins as
+well. Reading "the basemap host is a `connect-src` source" as a move rather than an addition would
+leave the picker blank with nothing failing anywhere, because until now nothing asserted that a tile
+origin reached the header. `proxy.test.ts` now does.
+
+**That paragraph expired on 2026-08-29 and is kept because the trap it describes is general.** The
+picker draws through MapLibre, so `img-src` names no third-party host — `'self' data: blob:`, and
+the API's own origin on a split-origin build — and the two `proxy.test.ts` cases pinning the
+retention were replaced by one asserting the directive in all three basemap configurations. The
+retention was planted so that dropping it would be a decision rather than an accident, and that is
+what it bought — see "What `lib/map-tiles.ts` actually left behind". Everything above this paragraph
+is current.
+
+## MapLibre's zoom is one number below the slippy convention
+
+MapLibre's transform measures against a **512 px** tile — `worldSize` is
+`this._tileSize * this._scale` with `_tileSize = 512` — while `lib/map-tiles.ts` (deleted since, see
+the end of this section), Leaflet and the whole slippy convention measure against 256. The same view
+is therefore one number lower in MapLibre's units, and `coveringZoomLevel` agrees from the other
+end: for a 256 px raster source it asks for `zoom + log2(512/256)`, so MapLibre zoom 9 requests z10
+tiles.
+
+Carried across as the same integers, this app's three zoom constants would each have opened one
+level too deep, and nothing about the rendered map would have said so. `MIN_ZOOM` 1 becomes 0,
+`MAX_ZOOM` 18 becomes 17, and `MAX_FIT_ZOOM` 10 becomes 9. `basemap.test.ts` asserts the
+relationship against the originals rather than restating the numbers, so moving one without the
+other fails instead of merely looking odd.
+
+Two related notes. The vector source's own maxzoom is 14, so anything past it is overzoomed tiles;
+that is expected and wanted, not something to clamp. And `MAX_FIT_ZOOM` is still what keeps a lone
+place from opening at street level, where a single marker on a grid of house numbers says nothing —
+and, for the half of dive sites that are offshore, on nothing but open water.
+
+**`fitBounds` is not absorbed, and two places will not show you that.** Ours unwraps every box
+against the first before unioning, so a trip to Fiji and Samoa spans about six degrees rather than
+the 354 going the other way round the planet. MapLibre's `LngLatBounds.extend()` unions with plain
+`Math.min`/`Math.max` on raw longitude, and `Map.fitBounds` documents that the caller owns the
+ordering. What rescues a _two_-place check is `cameraForBounds` calling `adjustAntiMeridian()` on
+the finished box — which cannot see that the union was built the long way round on the way there. So
+the union survives as `unionBounds`, MapLibre does the camera arithmetic from its result, and both
+its unit test and its browser test use **three** places. The browser one asserts the left-to-right
+order of the markers, which is the thing that actually differs: unwrapped it reads Suva, Taveuni,
+Apia; unioned raw it reads Apia, Suva, Taveuni.
+
+`unionBounds` therefore lives in `lib/basemap.ts`, and the hand-rolled `fitBounds` was **deleted**
+rather than kept. That is the asymmetric call going the other way: MapLibre genuinely does supply
+the half that walked candidate zoom levels until the union fitted, so keeping ours would have left
+dead code with nothing but its own tests to justify it — the picker never called it, and the
+read-only map was its only caller. Its two antimeridian tests moved with the function and got
+stronger on the way, to three places from two; the rest, which pinned the zoom walk and the
+projected-midpoint centring, went with the arithmetic MapLibre replaced.
+
+What that left in `lib/map-tiles.ts` was the picker's own arithmetic plus what `lib/basemap.ts`
+imported from it, and **that list was written short twice before anyone walked the module's
+exports** — once here and once in "`PublicConfig` carries a basemap and a raster tile source" below.
+See "What `lib/map-tiles.ts` actually left behind", which is the sweep that was finally done. The
+module went with the picker on 2026-08-29.
+
+## The contract tests run in a real browser, and two things do not carry over into it
+
+MapLibre needs a WebGL2 context. jsdom has not got one, and the obvious way out is a trap:
+`vitest-webgl-canvas-mock` is WebGL1-only and was last published in 2023, and MapLibre's own suite
+constructs `Map` instances under jsdom only because `beforeMapTest()` installs a 355-line
+`NullWebGL2RenderingContext` that the package's `exports` map puts out of reach. Adopting it means
+reimplementing that, not adding a dependency.
+
+So `vitest.config.mts` grew a second project: Vitest 4's browser mode with the Playwright provider,
+driving real Chromium. The tests, the coverage gate and `npm run ci` all stay where they were; the
+cost is two dependencies, one CI step installing Chromium, and the pre-hooks above. Files ending
+`.browser.test.tsx` belong to it. Playwright component testing was the other candidate and is dead —
+`@playwright/experimental-ct-react` was deleted from Playwright in August 2026.
+
+**Adopting the full `playwright` package does not reverse "playwright-core, not playwright".** That
+section's rationale — that the full package "downloads ~130MB of browsers on every `npm install`" —
+is stale: `playwright@1.62.1` publishes no install script at all. Browsers arrive only from an
+explicit `npx playwright install`, so `CONTRIBUTING.md`'s promise that `npm install` never downloads
+one stays true.
+
+Two scoping traps, both of which cost time to find:
+
+- **`resolve.alias` is not inherited by inline projects.** It has to be repeated in each, or `@/…`
+  resolves nowhere and the failure reads as a missing module rather than as a missing alias.
+- **Root `setupFiles` _are_ inherited.** `vitest.setup.ts` is a jsdom patch kit — a no-op
+  `ResizeObserver`, a `matchMedia` that always answers false, pointer-capture no-ops. Left at the
+  root it would load into real Chromium and override working implementations with stubs, breaking
+  exactly the behaviour a real browser was brought in to test. `setupFiles` is therefore per
+  project, and `vitest.setup.browser.ts` carries only jest-dom's matchers and cleanup.
+
+`@vitest/browser-playwright` peer-pins `vitest` to the exact version, so those two move in lockstep
+from here.
+
+## The map is built in a callback ref, and `load` must not fire against a placeholder
+
+`MapCanvas` owns the MapLibre instance, and several details of how are worth keeping.
+
+**A callback ref rather than a mount effect**, for the same reason the read-only map already
+measured itself that way: the element is not always there at mount. A caller with nothing to draw
+renders `null`, and the component renders its unsupported fallback instead when WebGL2 is missing,
+so an effect that found no element on mount would never look again. React 19 runs the cleanup a ref
+callback returns, which is what lets the teardown live beside the construction. It also keeps the
+instance out of an effect: calling `setState` with it there is a cascading render, which this repo's
+React lint rules reject outright.
+
+**The style is resolved before the map is constructed, not swapped in afterwards.** Building with an
+empty placeholder and applying the real style once it arrives is simpler, and it is what this did
+first. It is wrong for one specific reason: `load` then fires against the _placeholder_, before the
+real style has been asked for. That event is the only signal separating a working renderer from a
+worker that never started — which produces no error and no console line — so making it fire early
+turns the one check for that failure into a check for nothing. The test that catches this was
+written first and failed, which is how the placeholder was found.
+
+`map-canvas.browser.test.tsx` therefore waits for `load` against a style carrying a GeoJSON source,
+because GeoJSON is parsed and indexed worker-side: a source that reports itself loaded is a worker
+that ran. The wait carries an explicit timeout, since the failure it guards against is silence and
+an unbounded wait would hang the suite rather than fail it. Deleting
+`public/maplibre/ maplibre-gl-shared.mjs` and re-running is the negative control, and it reproduces
+the upstream symptom exactly: no error, no log, three tests timing out.
+
+**A theme swap is guarded against what the map is showing, not against what it was built with**, and
+the difference is not academic. `basemapStyle` returns a fresh object for the bundled pair and for
+raster mode, but for a configured `MAP_STYLE_URL` it returns the style _URL string_ — so the same
+theme resolves to the same value every time. A guard written against the built-with style therefore
+lets light → dark through and silently drops dark → light, because the second resolves to exactly
+the string the map was constructed with, and the map stays dark for good. Only the one configuration
+that returns a primitive shows it, and only on the return trip, which is why the test that pins it
+changes the theme twice. Four rounds of review over the whole change missed this; the round that
+re-read the finished diff caught it.
+
+**WebGL2 is detected by this app.** MapLibre v6 dropped WebGL1 and removed `isSupported()` in
+3.0.0-pre.6, and 6.6.0's constructor does not throw on a missing context — it fires an `ErrorEvent`
+that upstream acknowledges cannot be caught, because it is emitted before the caller has an instance
+to listen on. So `lib/webgl.ts` creates a canvas and asks for `webgl2`, and the surfaces render a
+message instead of an empty box. Nothing is lost when it comes back false: a dive site's coordinates
+remain typeable, which was the picker's design premise before there was a map.
+
+## `PublicConfig` carries a basemap and a raster tile source, for one change only
+
+They overlap, knowingly. `components/sites/map-picker.tsx` still draws `<img>` tiles, and it needs a
+raster pair in _every_ configuration — including the default one, where the basemap is a vector
+style and offers it none. Dropping `tiles` in the same change that added `basemap` would have
+blanked the picker with nothing failing, because no test asserts that a tile URL reaches it.
+
+The two can disagree, and that is the accepted cost rather than an oversight: an operator who sets
+`MAP_STYLE_URL` gets their style on the read-only maps and the keyless OpenStreetMap default under
+the picker until it moves.
+
+**One consequence lands on the privacy page, and it is worth naming because nothing catches it.**
+While both renderers exist, an unconfigured instance contacts _two_ third parties rather than one —
+`tiles.openfreemap.org` for the vector maps and `tile.openstreetmap.org` for the picker's raster
+tiles — and §10.4 still says "One outside party acts on its own account". That sentence was true
+before this change and is true again the moment the picker moves, so it is deliberately **not**
+being rewritten twice: the page is corrected once, when the renderer split is over, along with
+§4.4's "image requests" and the rest of that sweep. The sentence is pinned by a test added alongside
+the active-sessions work, which asserts the wording rather than the count, so nothing fails in the
+meantime — which is exactly why it is written down here instead. `MAP_ATTRIBUTION` feeds both, so
+the credit is at least the same string on both surfaces.
+
+**All of that ended on 2026-08-29.** `PublicConfig` carries one basemap again, `lib/map-tiles.ts` is
+gone, and the two renderers no longer disagree about what an operator configured. The list this
+section gave of what moves into `lib/basemap.ts` was short — see "What `lib/map-tiles.ts` actually
+left behind" below. What the section was holding open was the privacy page: §10.4's "One outside
+party acts on its own account" is true again now that only `tiles.openfreemap.org` is contacted, and
+§4.4's "loads its images directly from a third-party tile provider" became false in the same change.
+
+**Closed on 2026-08-30.** Both were judged rather than assumed: §4.4's sentence was rewritten to
+"fetches its tiles directly from a third-party basemap provider", §10.4 needed no edit and its test
+is green, and the rest of the page was swept in the same pass — see "The documentation caught up
+with the renderer, and where the sweep for it was blind" at the end of this file. Nothing on the
+page is now waiting on the renderer split.
+
+## The install bundle's map variables are a separate job, in a repository this one cannot reach
+
+The rename to `MAP_ATTRIBUTION` and the two new `MAP_STYLE_URL*` variables land here, but the
+shipped install bundle lives in the product repository, and its `docker-compose.yml` deliberately
+enumerates each variable it passes into the web container rather than using `env_file` — so that a
+compromised Node process cannot read the database credentials out of its own environment. That is
+the right call and it has a consequence: **a variable absent from that list is unsettable by a
+self-hoster, whatever this repository's `.env.example` says.** Until it is updated, the bundle
+passes a name nothing reads any more and passes none of the new ones.
+
+Recorded here rather than fixed here because a change spanning two repositories is two changes, and
+this one cannot open a pull request against the other. It is tracked as follow-up work alongside the
+same file's pre-existing omission of `MAP_TILE_API_KEY`. The names to copy across are the ones in
+`lib/runtime-config.ts`, which is the only authority on what this app actually reads.
+
+This section exists because the gap is invisible from inside this repository — every check here
+passes — and because an independent review of the change found it four times running, which is four
+times the same true finding cost a round.
+
+## The picker's contract outlived its renderer
+
+`components/sites/map-picker.tsx` draws through MapLibre now, and the port's rule was deliberately
+the whole file: read it end to end and carry over every behaviour that is not tile arithmetic. Three
+earlier attempts at a _list_ of what MapLibre absorbs were each wrong in a different place, so what
+follows is the answer per behaviour rather than a summary of the library.
+
+**Four of the gesture rules are one option.** `cooperativeGestures: true` is what makes a lone
+finger scroll the page instead of panning the map, two fingers drive it, the wheel zoom require
+ctrl/⌘, and `touchmove` be prevented from two touches up — the last of which is the half
+`touch-action` cannot express and which `useMultiTouchScrollLock` existed for. It also sets
+`touch-action: pan-x pan-y` on the canvas, where the surface used to carry `pan-y`. The one thing it
+does _not_ do the app's way is say so: it draws a 40%-black screen of its own for **every** blocked
+gesture, including a plain wheel, and a plain wheel over this map is the diver scrolling down the
+dialog towards Save. So the screen is hidden in `globals.css`, MapLibre's three strings for it are
+set to empty in the `locale` option, and the picker listens for `cooperativegestureprevented` and
+shows its own hint on `gestureType === "touch_pan"` alone. Emptying the strings is not
+belt-and-braces: MapLibre's default mobile wording is _character for character_ the sentence this
+app already used, so leaving it would put two copies of that sentence in the document for anything
+reading the page to find twice.
+
+**The tail of a pinch still does not nag**, and by MapLibre's own mechanism rather than ours.
+`TouchPanHandler.touchend` resets itself the moment the remaining touch count is one under
+cooperative gestures, so the single finger left after a pinch finds `_active` false and never
+reaches `notifyGestureBlocked`. That is the same rule the hand-rolled handler spelled as
+`maxPointers === 1`, arrived at from the other end.
+
+**A pan ends when the pointer lifts.** MapLibre's drag handler adds inertia and this app's never had
+any. On a placement control that is worse than a preference — the frame is 160 px tall inside a
+scrolling dialog, and a map still gliding when the next click lands puts the pin somewhere nobody
+aimed at. There is no `inertia: false`, so it is said in the units the handler has:
+`dragPan: { maxSpeed: 0 }` caps the fling at no speed, which eases for no time and travels no
+distance. Pinch-zoom inertia is not overridable the same way and is left alone; it moves the scale
+rather than the ground and does not move a pin out from under a click.
+
+**`clickTolerance` is 5, not MapLibre's 3**, because 5 px is the slop the hand-rolled tap detector
+used and what "click to place the dive site" was tuned against on a phone. Both directions are
+pinned: a 4 px wobble is still a placement, a 6 px drag is a pan. `doubleClickZoom` is off — a
+double click here is two placements, and MapLibre's default would fire a zoom through the middle of
+them.
+
+**Anchored zoom is the one most likely to be lost, and `around` is the whole of it.** `easeTo` zooms
+about the centre unless `around` is passed, and the picker zooms about _the pin while it is on
+screen_ and about the crosshair otherwise — for the `+`/`−` buttons and the keyboard, which have no
+pointer. Anchoring on a pin the diver has panned away from does the opposite of what the rule is
+for, which is why `anchorFor` measures before it decides. It folds the pin's longitude to the copy
+of the repeating world nearest the view before projecting, because `Map.project` does no folding: a
+site at 179°E under a view centred on 179°W projects a whole world away and would read as off screen
+while plainly visible. That is `nearestWrappedX` in degrees, and it is the only piece of the old
+wrapping arithmetic the picker still needs — the _marker_ is a MapLibre `Marker`, which does its own
+via `smartWrap`.
+
+**The keyboard is the app's, `keyboard: false` on the map.** MapLibre has a keyboard handler and it
+pans and zooms about the centre, which is precisely the behaviour above; it also has nothing to say
+about Enter placing a site. Its bindings would have collided rather than helped.
+
+**`role="application"` sits on this component's own element, not on MapLibre's container.** The
+renderer owns and rebuilds its container, and the crosshair, the hint and the credit are siblings of
+it — which is why the tests still select through `[role="application"] >`. Two consequences follow.
+The credit is rendered _outside_ `MapCanvas` rather than as its child, so it survives a browser with
+no WebGL2, where that component renders its fallback and nothing else. And MapLibre's canvas is set
+to `tabindex="-1"` after construction: it ships `tabindex="0"` for the keyboard handler that is now
+switched off, and left there it is a second tab stop inside the surface and a click target that
+takes focus off the element whose `:focus-visible` decides whether the crosshair is drawn.
+
+**The camera is MapLibre's; the decision about where to point it is still React's.** The
+render-phase block that tells an echo from a diver typing is unchanged, but it can no longer move
+the view itself — a camera call is a side effect. So it sets a `recentre` state during render and a
+`useLayoutEffect` applies it, which is the same commit and the same frame. Three layout effects run
+in a fixed order on the commit where the map first exists: attach the listeners, jump to the world
+view, then apply whatever position the dialog opened with. Attaching first is load-bearing — the
+zoom mirrored into React for the two buttons' disabled state arrives through MapLibre's `zoom`
+event, and a listener attached after the opening jump would miss it. It cannot be caught up in the
+effect either, because `setState` called synchronously in one is a cascading render
+`react-hooks/set-state-in-effect` rejects outright, so the state is _seeded_ with the value those
+effects will produce.
+
+**`clampCenter` is absorbed and has no replacement here.** MapLibre's transform constrains the
+viewport inside the world vertically, and centres it when the world is shorter — which is exactly
+what that function did. The property it protected on the _output_ side is not absorbed: `unproject`
+bounds nothing, so `emit` still folds through `clampLatitude` and `wrapLongitude`, and a browser
+test asserts that every position the picker emits round-trips through the form's own parser.
+
+## What `lib/map-tiles.ts` actually left behind
+
+The module is deleted. Two earlier notes in this file said what would move out of it and both said
+it short, so this is the sweep of every exported symbol rather than another summary.
+
+| symbol                                           | where it went                                           |
+| ------------------------------------------------ | ------------------------------------------------------- |
+| `clampLatitude`, `wrapLongitude`, `MAX_LATITUDE` | `lib/basemap.ts` — they bound what the picker _emits_   |
+| `LatLon`, `LatLonBounds`, `WORLD_CENTER`         | `lib/basemap.ts`                                        |
+| `DEFAULT_TILE_ATTRIBUTION`                       | `lib/basemap.ts`, as the raster hatch's fallback credit |
+| `parseAttribution`, `AttributionPart`            | `components/attribution.tsx`, beside its one consumer   |
+| `project`, `unproject`, `nearestWrappedX`        | absorbed by MapLibre                                    |
+| `clampCenter`                                    | absorbed by MapLibre's transform                        |
+| `TILE_SIZE`, `MIN_ZOOM`, `MAX_ZOOM`              | deleted; the MapLibre figures are in `lib/basemap.ts`   |
+| `visibleTiles`, `VisibleTile`, `Point`           | deleted with the `<img>` grid                           |
+| `tileUrl`, `tileSrcSet`                          | deleted; `{ratio}` is MapLibre's, and only in raster    |
+| `tileSource`, `TileSource`, `TileConfig`         | deleted; `resolveBasemap` is the one resolver           |
+| `needsDarkFilter`, `DEFAULT_TILE_URL`            | deleted with the CSS filter and the raster default      |
+| `tileOrigins`                                    | deleted; `basemapOrigins` is what `proxy.ts` derives    |
+
+**`parseAttribution` went to the component rather than to `lib/basemap.ts`**, which is where both
+earlier notes assumed it would land. Nothing about parsing a credit line is basemap arithmetic, and
+half of what reaches `Attribution` is the geocoder's credit rather than a map's — it only ever lived
+in the tile module because the basemap credit was the first string that needed it.
+
+**`img-src` now names no third party at all.** `proxy.ts` had two derivations, one per directive;
+the raster tile hosts fed `img-src` for exactly as long as the picker drew `<img>` tiles, and
+`proxy.test.ts` pinned that retention on purpose so that dropping it would be a decision rather than
+an accident. Those two cases are replaced by one asserting the directive is `'self' data: blob:` in
+all three basemap configurations. Every tile the app fetches goes through `connect-src` now, in both
+of MapLibre's modes — see "The basemap is a MapLibre style, and raster is the escape hatch" for why
+that is not a choice.
+
+**What was swept here and what was not, because the line between them is a rule rather than a
+list.** Anything a _reader outside this file_ would be misled by was corrected in this change: three
+passages in `.env.example` that told a self-hoster their picker still contacted
+`tile.openstreetmap.org` whatever they configured (each of which dated itself, "until the picker
+moves too"), and the privacy page's §4.4 and §10.4 sentences about the browser loading map _images_.
+Operator-facing configuration and a privacy disclosure are not prose about the codebase; a wrong one
+costs somebody a second provider or a false statement about where their divers' IP addresses go.
+That is the same call PR #133 made about `.env.example` for its own rename, and the same reason.
+
+What is left is this file's own history. The sections above that this change falsifies carry a dated
+one-line pointer and nothing more - rewriting their prose, and `README.md`'s stale `connect-src`
+sentence, is a documentation pass of its own. The rule used for the pointer was narrow and worth
+stating so that sweep can tell what was already done: a section got one when its _subject_ is code
+this change deleted.
+
+## A course fills a certification's fields in once, and never touches what the diver typed
+
+Course and certification each carry their own `training_center`, `instructor_name` and
+`instructor_number` — plus their own `agency`/`agency_other` pair — and that duplication stays. The
+API's own comment says why: imported history arrives certification-first, with no course to hang
+those fields on, so a certification has to stand alone. What was worth removing is the double
+_entry_: every card that came out of a logged course made the diver type all three twice.
+
+So the fix is a **one-time copy into the form**, client-side. Never a server-side inheritance, never
+a read-time fallback. The rejected shapes are worth keeping because each looks reasonable until you
+name what it costs:
+
+- **Splitting field ownership** (the course owns the training centre, the card owns the instructor)
+  loses the data outright for a standalone card, and cannot express a referral, where the certifying
+  instructor and centre legitimately differ from the course's.
+- **A read-time fallback** — show the course's value where the card has none — makes editing
+  confusing (which record does this box belong to?) and leaves the export semantics ambiguous.
+- **Fill only if empty** breaks on `agency`, whose create default is `padi` and so is never empty,
+  and it leaves course A's values stranded on the form after switching to course B.
+- **Always replace** clobbers what the diver typed, which is the data loss the whole thing was meant
+  to avoid.
+
+What survives is **create-only, and replaces exactly the fields the dialog itself put there**.
+Picking a course fills in the agency, training centre and instructor; anything the diver typed stays
+put. Switching course A → B replaces the fields still holding A's copy and empties the ones B has
+nothing for — keeping A's instructor number under B's name would attribute it to the wrong course.
+
+**Clearing the course unlinks and touches nothing.** Clearing asserts "no logged course", not "those
+facts are wrong", and the card is designed to stand alone.
+
+**The edit dialog gets no prefill at all**, and that is mechanics as much as taste: it seeds itself
+from the stored card through `reset(...)`, which makes every settled value the baseline — so any
+"untouched" test would call the whole card untouched and hand it over to whichever course was
+picked. Relinking an existing card corrects the link, not the card. Its values stay a pure function
+of the certification being edited.
+
+**`name` and `notes` are not copied.** A course name ("TDI Advanced Nitrox + Decompression
+Procedures") is not the level printed on a card, and one course can issue two differently-named
+cards; a course's notes describe the training, a card's notes describe the card. Both are
+plausible-but-wrong values that would be saved without being read, and `name` is the required,
+identity-bearing field — an empty box is what makes the diver look at their card. Five fields are
+copied, two are excluded on purpose, and the agency pair counts as one of the five because the API
+validates `agency` and `agency_other` together.
+
+**This is not the inheritance "A dive's course is not inherited from the last dive" rejects**, and
+the distinction is the diver's own act. That one would write a claim nobody made, by guessing from a
+previous record. This one only runs when the diver picks a course, fills in fields that are visible
+and editable on the form in front of them, and writes nothing on save that they cannot see. It is
+the same framing as "Per-gear-type service presets are prefills, not safety advice". The comment in
+`lib/api/certifications.ts` saying the instructor and training-centre fields are deliberately _not_
+derived from the course stays true as written: nothing derives them at read time, and the stored
+copy is the diver's, not the course's.
+
+## A silently prefilled field is not a clean field
+
+React Hook Form's `dirtyFields` is the obvious way to ask "has the diver touched this?", and it does
+not survive contact with the prefill above. `setValue(field, value, { shouldDirty: false })` leaves
+the field out of `dirtyFields` at the time — but that map is not append-only bookkeeping. In
+react-hook-form 7.84, whenever a field is edited back to a value equal to its default, the change
+handler recomputes `dirtyFields` for the **whole form** from `_defaultValues` against `_formValues`
+and replaces it wholesale (`updateTouchAndDirty` → `getDirtyFields` → `updateDirtyFields`).
+
+A prefilled field differs from its default by construction. So clearing _any unrelated box_ back to
+empty — typing a certification name and deleting it again is enough — marks every prefilled field
+dirty, and from then on the prefill treats them as the diver's and silently stops replacing them.
+Switching course A → B does nothing, with no error and nothing on screen to explain it.
+
+Measured before relying on it, in a throwaway test:
+`setValue("a", "prefilled", { shouldDirty: false })`, type into `b`, clear `b`. `dirtyFields` goes
+from `{b: true}` to `{a: true}`.
+
+`CertificationDialog` therefore keeps its own record — `autofilledRef`, the values it last wrote
+into those five fields itself, starting from the ones the dialog opened with. A field still holding
+that value is one nobody has typed into; anything else is the diver's and is left alone. That is
+also a more direct statement of the rule than dirtiness is, because it is the rule: _a field the
+diver has edited away from the value it opened with is never overwritten._
+
+One consequence is accepted rather than worked around: a field typed back to exactly the value it
+opened with reads as untouched again and takes the next course's value. Neither mechanism can tell
+that apart — it would need keystroke history — and the outcome is arguably the right one anyway.
+`certification-dialog.render.test.tsx` pins the failure mode above directly, so a later
+simplification to `dirtyFields` fails a test rather than shipping.
+
+## "Add certification" lives in the card that lists them, and the card owns the create flow
+
+The course page listed a course's certifications and offered no way to add one; its description said
+to "Link one from its own form", which was the only route there was. The button belongs in that card
+rather than in the page header — the action sits next to the list it changes — and it appears twice,
+in the header and in the empty state, named differently in each ("Add certification", "Add the first
+certification") for the reason "Ten rows of 'Edit' name nothing" gives: a screen reader's controls
+list is flat.
+
+**The card owns the dialog, not the page.** The card fetches its own list in an effect and had no
+refetch seam, so a certification created anywhere else would not appear until a reload. Handing the
+card a `refreshKey` prop to bump, or lifting the fetch to the page, would both work; putting the
+create flow _in_ the card makes the refresh a function call and leaves nothing to keep in step. That
+is also why the card now takes the whole `Course` rather than a `courseUuid`: the dialog it opens
+wants the course's agency, training centre and instructor, and the page has already loaded them, so
+passing the uuid would mean fetching a record that is two components away in memory.
+
+Creating from here chains into the card-photo upload step exactly as the certifications page does,
+because photographing the card is the point of the feature — the same `CertificationCardFiles`
+dialog and the same refresh-and-re-point handoff after a file changes, reused rather than
+reimplemented.
+
+## The documentation caught up with the renderer, and where the sweep for it was blind
+
+The move to MapLibre landed over three changes, and the first two corrected only the prose their own
+diff falsified — operator-facing text and a privacy disclosure, on the rule that a wrong one costs
+somebody a second provider or a false statement about where their divers' IP addresses go. This is
+the pass that took the rest: this file's own history, `README.md`'s `connect-src` sentence, and the
+passages that were merely imprecise rather than false.
+
+**What changed outside this file.** `README.md` said `connect-src` was derived from
+`NEXT_PUBLIC_API_URL` alone; it names the basemap as the second source now. `SECURITY.md`'s
+out-of-scope list said "map tiles" where the app now fetches a style's tiles, glyphs and sprite, so
+it says "the basemap". `.env.example`'s closing privacy note opened "before you leave the default in
+place" and described the picker fetching raster tiles — true of a raster default that no longer
+exists — and now states the trade for whichever basemap is configured, bundled one included. On the
+privacy page, §2 said "map tile provider" where §4.4 and §10.4 both say "basemap provider", and
+§4.4's self-hosting sentence offered "your own tile server" when the setting a self-hoster reaches
+for first is a whole style.
+
+**What was deliberately left, because a sweep needs to be able to tell.** The heading "4.4 Map
+Tiles" stays. Vector tiles are tiles, it is the word a reader scans for, and the section's body was
+already corrected to "basemap provider" — renaming the heading would buy consistency in the one
+place a stale heading costs nothing and would move a heading that several entries in this file pin
+by number. Nothing in `CONTRIBUTING.md` or `AGENTS.md` needed touching: both were corrected as the
+change went in.
+
+**The sweep that found all of this had a blind spot worth recording, because it is a property of the
+method rather than of this change.** The obvious derivation is to grep the repository for the
+mechanism and its aliases — `raster`, `maplibre`, `img-src`, `connect-src`, `tile`, `jsdom`,
+`fitBounds` and so on. Run over this file that returns hundreds of rows and still returned **zero**
+inside three whole sections that were stale: "`fitBounds` unwraps longitudes before it unions them",
+"A dive site's map opens further out than the picker that placed its pin", and "The drift between
+entry and exit is a line of text, not a line on the map". Not one term matched, `tile` included.
+They discuss what the map _does_ — how far it opens, what a pixel is worth on it — rather than what
+it is built from, and a mechanism sweep cannot see a section written in behavioural vocabulary. The
+terms that reach them are the constants (`MAX_FIT_ZOOM`, `PLACED_ZOOM`) and the function names
+(`unionBounds`, `nearestWrappedX`), which is to say: **sweep for the identifiers a change deleted or
+renumbered, not only for the subsystem it changed.** The same rule found the transitional last
+paragraph of "The worker is same-origin, and `worker-src 'self'` is what makes the blob path fail
+loudly", which no earlier list had named because the section's subject — the worker — is code that
+survived; only its final paragraph was about code that did not.
+
+## jsdom answers no layout question, and the browser lane only answers one with the stylesheet loaded
+
+The second Vitest project was built to give MapLibre a WebGL2 context. How it is wired, what it
+costs and the two ways it is easy to misconfigure are in "The contract tests run in a real browser,
+and two things do not carry over into it" above, and none of that is restated here. What that
+section does not say, because it is not why the project was added, is that the lane is the first
+mechanism in this repo able to answer a question about **layout** — and that reaching for it takes
+more than renaming a file.
+
+**jsdom performs no layout at all.** It parses HTML and builds a tree; nothing is ever laid out, so
+every `getBoundingClientRect()` comes back zeroed and `offsetWidth`/`offsetHeight` are `0`. The
+damage is not that geometry is untestable there. It is that a geometry assertion **passes**:
+`expect(box.left).toBeGreaterThanOrEqual(frame.left - 1)` is `0 >= -1` for every element on the
+page, against any markup whatsoever, and it prints a green tick indistinguishable from a real one.
+That is the same vacuous pass `memory-storage.ts` exists to prevent, in a place where nothing warns.
+
+This file already said so twice, both times as an aside about the component in hand — under "The
+toggle sits in the label row without being laid out in it" and under "The usage badge left the
+table, and the flag is stated under it". Neither is where somebody arrives holding a geometry
+question, which is why it is stated here as a property of the suite rather than of a component.
+
+**The case for wanting the lane.** A change once wrapped a `FormLabel` and a toggle in
+`flex items-center justify-between` — the obvious markup, and the one this file records as wrong
+twice over under the first of those headings: a flex parent blockifies an inline `<label>`, which
+shrank the label to its `leading-none` line box, handed the row's height to the toggle, and left
+every toggle-bearing field 2px out of line with the field beside it in the same grid row. It
+survived eight rounds of clean-context review before it was built, then the implementer that built
+it and the reviewer that read the diff, and was found by the owner looking at the running app.
+Nobody reads a `<label>`'s used display value off a diff, and no jsdom test could have been written
+that would have failed. A browser test could.
+
+**But not the browser test somebody would write first.** The browser project loads no stylesheet of
+this app's. `map-canvas.tsx` imports `maplibre-gl/dist/maplibre-gl.css`, so that one arrives with
+the component under test; `src/app/globals.css` — Tailwind, and so every class this app's layout is
+actually made of — is imported by `app/layout.tsx`, which no test renders. Measured in the browser
+project as it stands: `h-40` is 0px tall, `flex items-center justify-between` computes to
+`display: block`, and the `<label>` inside it stays `inline` at its correct 18px. **The markup that
+caused the misalignment and the markup that fixed it measure identically.** That is a second vacuous
+pass, inside the lane brought in to escape the first, and it is the quieter of the two because the
+environment is real and the numbers are not zeroes.
+
+`import "@/app/globals.css"` at the top of the test file is the whole fix. With it the same probe
+reports 160px, `display: flex`, and a `<label>` blockified to `block` at 24px — the bug, reproduced.
+Put that import in any browser test that asserts geometry, and treat its absence as the first thing
+to check when such a test passes against markup you expected it to reject.
+
+**Two tests in the browser project are already in that state, and finding them is what this section
+is for.** The map tests mostly measure marker positions against the canvas box, which MapLibre sets
+from inline transforms of its own and no stylesheet affects. But `locations-map.browser.test.tsx`'s
+"draws the dark style, and filters nothing" and `map-picker.browser.test.tsx`'s "filters nothing, in
+either theme" both walk an element and all its descendants asserting `getComputedStyle(el).filter`
+is `none`. They are regression guards against the discarded dark theme, which was `invert` and
+`hue-rotate-180` applied as **Tailwind classes** — so with no stylesheet loaded, the class coming
+back would compute to `filter: none` and both would go on passing. An assertion of an absence is the
+shape most exposed to this: there is no arrangement of the markup under which it fails, so nothing
+ever draws attention to it. They are left as they are here, deliberately — this change is one
+section of prose and touches no test — but they are the worked example of the paragraph above rather
+than a counterexample to it.
+
+**"Left as they are" lasted one change, and both guards have now been watched failing
+(2026-08-30).** Each of the two files carries `import "@/app/globals.css"` at the top, under a
+comment saying why, because it reads as a stray import and deleting it fails nothing. The line is
+the smaller half. The half worth copying is the negative control: `invert hue-rotate-180` was put
+back on the two elements the guards walk — the `role="img"` frame in `locations-map.tsx` and the
+`role="application"` surface in `map-picker.tsx` — and the suite run twice against it. Without the
+import both guards **passed** with the regression sitting in the markup. With it both **failed**.
+The classes then came out and the project went green again, 51 of 51. Do that for any guard written
+as an absence before believing it: there is no arrangement of the markup under which such a test
+complains, so the only evidence it works is having seen it fail on purpose.
+
+**The rest of the lane was swept rather than assumed, and it splits three ways.** Ten lines in the
+browser project read a computed style or a measured box — `getComputedStyle`,
+`getBoundingClientRect`, `offsetWidth`/`offsetHeight`, `clientWidth`/`clientHeight` — across three
+of the four `*.browser.test.tsx` files; `map-canvas.browser.test.tsx` has none, and one of the ten
+is prose rather than code, in the JSDoc over `map-picker.browser.test.tsx`'s `canvas()`. Of the nine
+that run: six now **load the stylesheet** (five in `locations-map.browser.test.tsx`, one the
+picker's theme guard). Two **demonstrably do not depend on one** —
+`locations-map-resize.browser.test.tsx` gives itself a `<div>` with an inline `width`, narrows it,
+and asserts a containment and a `< 300`; measured both ways the figures shift by the app border's
+2px and every assertion holds either way, which is why that file is left without the import. The
+ninth is a **third** case the bar above did not name: _a harness stylesheet that deliberately
+overrides the app's_. `map-picker.browser.test.tsx` injects
+`[role="application"] { width: 512px; height: 256px }` in `beforeAll`, unlayered, and Tailwind's
+output sits inside `@layer utilities` — so the harness still wins after the import, which is the
+point of it. Every client coordinate in that file is written against 512x256 and would otherwise
+follow the runner's viewport.
+
+**And the stylesheet exposed a live layout defect that is not fixed here (2026-08-30).**
+`map-canvas.tsx` renders the map's container as `absolute inset-0`, and that class never applies —
+not in the tests, and not in the app. `maplibre-gl.css` sets
+`.maplibregl-map { position: relative; overflow: hidden }` and MapLibre stamps that class on the
+container as the `Map` is constructed; the rule is **unlayered**, Tailwind's `.absolute` sits in
+`@layer utilities`, and an unlayered declaration outranks every layer whatever the specificity or
+the source order. So the container keeps `position: relative`, has no in-flow children — MapLibre's
+canvas is absolutely positioned — collapses to zero height, and clips its own canvas with its own
+`overflow: hidden`. Measured against the CSS a real `next build` emits, loaded into a real Chromium
+over the markup `locations-map.tsx` produces: the `role="img"` frame is 412x158, the container
+inside it is 412x0, and `document.elementFromPoint` at the middle of the frame returns the frame
+rather than the canvas. The same probe inside the browser project agrees.
+`map-picker.browser.test.tsx` never saw it because its harness sheet sets `position: absolute` on
+that element, unlayered, and so wins — the comment there used to blame the collapse on Tailwind
+being absent, which was the wrong cause for a real symptom.
+
+Two things follow for whoever takes the fix. The collapse is height-only — the container keeps its
+width — and MapLibre's fallback is per-axis (`clientWidth || 400`, `clientHeight || 300`), so
+`locations-map.browser.test.tsx`'s spans are measured on a canvas as wide as the frame — which
+follows the runner's window — and a flat 300 tall, taller than the frame it is clipped by. Repairing
+the collapse moves every one of those figures, and they have to be re-read rather than assumed to
+carry over. And the trap generalises past this component: **a vendored stylesheet this app does not
+control can outrank any Tailwind utility, because Tailwind layers its output and vendor CSS does
+not.** That is the same hazard the cooperative-gesture rule in `globals.css` is written two class
+names deep to survive, stated there as a worry about arrival order; layering makes it unconditional.
+
+**Fixed, and the fix is the next section (2026-08-30).** `MapCanvas` now keeps the app's layout on a
+wrapper MapLibre never sees and hands it a bare element inside that one, so the two paragraphs above
+describe a defect that is gone rather than one to work around. What they still describe correctly is
+the cascade rule and the trap that generalises from it. Three consequences for this section's own
+subject: the browser project can now be asked "does this fill its frame", and is — `MapCanvas`,
+`LocationsMap` and `MapPicker` each carry a case that measures the container against the frame and
+hit-tests its centre; `map-picker.browser.test.tsx`'s harness lost the second of its two rules,
+because that rule was supplying the layout the app could not and its pointer tests were pressing on
+the harness's geometry rather than the component's; and the figures promised above did move —
+`locations-map.browser.test.tsx` now measures a canvas that is exactly the frame (412x158 at the
+runner's 414px window) rather than 412x300, while every comparison in the file carried over
+untouched, which is what writing them as comparisons bought.
+
+**The bar is two conditions and both have to hold.** The invariant has to be **genuinely geometric**
+— a height, a baseline, an alignment, one box's position relative to another — _and_ the jsdom
+assertion of it has to be one that would **pass vacuously**. Either alone lets in tests that belong
+in the unit project, because plenty of visual-feeling questions are structural: which classes an
+element carries, whether a variant renders, what sits where in the tree. jsdom answers those at
+jsdom's speed and with jsdom's isolation. The alignment fix above is the model in both directions —
+its geometry was settled in a real browser, and what its jsdom tests pin is the three structural
+properties the alignment rests on.
+
+**`CONTRIBUTING.md` is deliberately not changed.** It says to reach for the browser "only when jsdom
+genuinely cannot answer the question — today that means the map, which needs a WebGL2 context".
+Layout is now a second such thing, and naming it there would invite browser tests for questions
+jsdom handles perfectly well, against a lane that is slower and whose isolation is weaker. The steer
+stays narrow on purpose, and this section is the second answer — for somebody who already has a
+geometry question and needs to know it is answerable, and at what price.
+
+**One clause was added after all, and the steer was not (2026-08-30).** `CONTRIBUTING.md` now names
+this section where it introduces the browser lane, so somebody holding a geometry question can find
+their way here instead of never learning the answer exists. What it still does not do is put layout
+beside WebGL2 as a reason to reach for the lane: that sentence is unchanged, and the two-condition
+bar above is unchanged with it. A pointer is discoverability; a second named reason would be an
+invitation, and the paragraph above is why that was refused.
+
+## The element MapLibre owns carries none of this app's styling
+
+`MapCanvas` renders two divs where one would do. The outer one is the app's — `absolute inset-0`,
+plus whatever `className` a caller passes — and the inner one, the element handed to the `Map`
+constructor, carries no class and no inline style at all. It fills the outer one because the outer
+one is a `grid` and it is the only item in it.
+
+The reason is the whole of the section above: MapLibre stamps
+`.maplibregl-map { position: relative; overflow: hidden }` onto whatever element it is given, from a
+stylesheet with no `@layer` in it, and an unlayered declaration outranks every layer at any
+specificity and in any source order. So for as long as this component put `absolute inset-0` on that
+same element, `relative` won, `inset-0` had nothing to anchor to, the container sat at its parent's
+width and zero height, and `overflow: hidden` clipped the absolutely positioned canvas out of sight.
+The map did not render anywhere in the app, from the change that introduced MapLibre through the
+four that followed it. It did not read as a crash, because the zoom controls and the attribution are
+not inside the container and went on drawing, and no test could see it: jsdom performs no layout,
+and the browser project loaded no stylesheet of this app's until the change recorded above. Reading
+the markup is not enough to catch this, which is why five rounds of review did not — the answer is
+in which of two stylesheets wins, and only a browser computes that.
+
+**What makes the two-element shape different from a stronger selector is that it has no opponent.**
+The inner element declares nothing, so there is nothing for a vendor rule to outrank; its size comes
+from its parent's layout. `min-height: auto` on a grid item resolves to zero for a scroll container,
+which `overflow: hidden` makes it, so nothing MapLibre puts inside can push it out of the frame
+either. `position: relative` still wins on that element and is now simply correct — it is what the
+canvas needs as a containing block.
+
+_Rejected:_ an inline style on the same single element, which cannot be outranked but takes the
+map's box out of the vocabulary the rest of the app's layout is written in, and would silently beat
+a caller's `className` for the same properties. An unlayered rule in `globals.css`, which is what
+the cooperative-gesture rule at the end of that file does — but that rule survives on specificity
+because the comment beside it says arrival order cannot be relied on, and here the competing
+selector is `.maplibregl-map` itself, so winning would mean out-specifying it and leaving the next
+person's Tailwind class to lose to _our_ unlayered rule instead. Both are the same race with today's
+winner reversed, which is the shape of the bug rather than a fix for it.
+
+`className` moved to the wrapper in the same change. Nobody passes it today, and on the container it
+was a promise this component could not keep for anything MapLibre sets.
+
+**One consequence for tests.** `map-picker.browser.test.tsx` used to inject
+`[role="application"] > div:first-child { position: absolute; inset: 0 }` in `beforeAll`, and that
+rule was standing in for the missing layout: the map under every coordinate its pointer tests press
+was there because the harness put it there, not because the component did. It is gone, and the file
+keeps only the rule that fixes the surface at 512x256 so client coordinates do not follow the
+runner's window. Most of those tests go on passing without it even with the collapse restored —
+`fireEvent` hands MapLibre coordinates directly, and a canvas of the wrong size still projects
+consistently — so the file was made to notice in its own right, with a case that measures the
+container against the surface and hit-tests the middle of it. A stand-in like that is worth
+suspecting wherever a harness stylesheet declares something the component ought to be declaring
+itself.
+
+## The site search has two sources, and only one of them names the dive site
+
+`PlaceSearch` now fans out to two places: the geocoder it has always used, and
+`GET /api/v1/dive-sites/suggest`, a read-only catalog of real dive sites extracted from
+OpenStreetMap and Wikidata and vendored inside the API image. Catalog hits are listed first, flat,
+with no section headings — the primitive preserves the order the caller returns and has no grouping
+concept, so ordering _is_ the decision, and a named dive site beats a town.
+
+**No prop was added to `CreatableCombobox`, and that is the same answer this file already gave
+once** — see "The place-search credit holds its line open" above, which rejects a footer prop "for a
+concern exactly one of them has". Eight files render that primitive now, this one included, and one
+more imports its index helper without rendering it — so a change to its keyboard model reaches
+further again than a change to how it draws a row. The species picker is the precedent that settles
+it: it merges two heterogeneous sources into one flat list, shows no section labels, and has never
+touched the primitive. The `hint` slot carries the distinction between a dive site and a town for a
+fraction of the cost, and sectioning stays available later as a strictly additive change.
+
+**A catalog pick fills the Name field. A geocoded pick still does not**, and the difference is what
+each source knows. The geocoder knows where Dahab is, not that there is a Blue Hole in it; the
+catalog's whole content is dive site names. So the search hands back a tagged pick —
+`{ kind: "catalog", site }` or `{ kind: "geocode", result }` — rather than one shape, and the
+handler in `DiveSiteDialog` forks on the tag. **Deliberately not on the menu-row id**, although
+those are namespaced (`catalog:osm:node/255316037` against the geocoder's `lat:lon:display_name`):
+the prefix is there to keep two sources' rows from colliding in one results map, and classifying a
+pick by picking a string apart is how that prefix quietly becomes load-bearing in a second place.
+
+Name is filled **always**, not only when empty. A diver who wants something else types over it,
+exactly as they already do with the Location the geocoder writes. Filling it conditionally never
+clobbers typed text, at the price of a rule nobody can predict by looking at the form — the diver
+cannot tell whether the next pick will write the field.
+
+**Location is `region, country`, and never an ISO code.** The catalog resolved both when it was
+built, so a pick spends no request beyond the search that produced it — in particular no reverse
+geocode, which is what a dropped pin fires. Where a record resolved to only one of the two, that one
+stands alone; **where it resolved to neither, the Location field is left exactly as the diver left
+it.** A few dozen records sit further than 50 km from any administrative boundary and ship anyway,
+so this is a live path rather than a corner, and it is the same distinction `useGeocodedLocation`
+already draws between a `nameless` reverse geocode and an `unknown` one: only a definite "there is
+no name here" is grounds to empty a field somebody typed into. That is why `adopt` now takes
+`AdoptedPlace | null` rather than a `GeocodeResult` — it wrote `onUseLocation(result.location)`
+unconditionally, so routing an unresolved record through it unchanged would have cleared the field.
+The credit line follows the same rule: it names whichever source supplied the value now in the
+field, so a pick that wrote no Location credits nobody for one.
+
+**Two sites sharing a name _and_ a resolved location will collide, and v1 accepts it.** The per-user
+unique index on `(lower(name), lower(location))` refuses the second `POST /dive-site`, and the API's
+own message — "A dive site with this name already exists at this location" — surfaces on the
+dialog's existing form-level error line, where `useDialogApiError` already puts every other failure.
+Nothing was built for this: mapping it onto the Name field would need `form.setError` field-mapping
+that exists nowhere in this repo, against a 422 whose shape is indistinguishable from any other, and
+it would change duplicate-name presentation for every hand-typed save in a dialog four surfaces
+share. `region, country` is what keeps the collision rare rather than routine — it separates the two
+Malaysian `Shark Point` records, which a country-only Location would have collided. It does not save
+the seven `Diving Spot` records that share a bay, and nothing in the record shape can.
+
+**One source failing must not blank the other**, which is why the two requests are settled with
+`Promise.allSettled` rather than awaited together. The combobox reads any throw from `onSearch` as
+total failure — it empties the menu and renders `searchErrorLabel` — so a single `await` of both
+would let the geocoder's per-user rate limit, or any network blip, delete catalog rows that arrived
+perfectly well, and let a catalog failure regress the box that worked before this change. Whatever
+answered is rendered; the error appears only when neither could. Pinned in the suite rather than
+left to a live walk, because both clients are mockable and staging a real geocoder outage in a
+browser is not.
+
+**The catalog client carries its own length guard, and does not inherit one.** `PlaceSearch` hands
+`minSearchLength`/`maxSearchLength` to the combobox, but those feed the empty menu's _wording_ only:
+the primitive's search effect calls `onSearch` with no length gate at all, including once with `""`
+the moment the menu opens. `geocodingAPI.searchPlaces` has always guarded itself for exactly this
+reason and `suggestDiveSites` does the same. Without it, every open of the dive site dialog would
+fire `q=`, take a 422, and show "couldn't reach the search" before a diver typed a character.
+
+**`has_more` had to be wired here.** The "keep typing to narrow" footer has been in the primitive
+since web #18 and `SpeciesMultiSelect` feeds it, but `PlaceSearch`'s `search` ended
+`return { items }` and never set it — so the footer could not render however the endpoint answered.
+Only the catalog has a cap to report; the geocoder returns a bare array and says nothing about what
+it held back.
+
+**No distance rides on the wire, by design on the API side.** The endpoint ranks by distance when
+the form has a position but returns none, because `haversineMeters` and `formatDistance` are already
+here and already wired to the diver's unit preference. A pre-formatted or metric-only distance from
+the API would have silently ignored that preference in a way no reviewer reading one diff would
+catch.
+
+**The map's credit is untouched, and the two stay separate.** The catalog's per-result `attribution`
+joins the search's own credit line through the existing accumulator, which collapses repeats by
+string — and the API serves the catalog's OSM credit byte-identical to the geocoder's, so a menu
+showing both sources shows one OpenStreetMap credit with no deduplication of ours. A Wikidata row
+adds its own, CC0 rather than ODbL. Merging that line with the map's would be worse than it was when
+this file first rejected it: the map's default credit now names three providers (OpenFreeMap,
+OpenMapTiles and OpenStreetMap as the data source) and is configured independently of the geocoder,
+so one merged line would be a false statement about at least one of them. The variables that
+configure it were also renamed — read them from `lib/basemap.ts` and `lib/runtime-config.ts` rather
+than from the `NEXT_PUBLIC_MAP_TILE_URL`/`_ATTRIBUTION` spellings the older section above still
+quotes.
+
+**The form's position goes down to the search when it has one.** `DiveSiteMapField` already parses
+it out of the two coordinate strings for the map, so this costs one prop and no second parse. Sent,
+the endpoint ranks nearest first — the only thing that separates a same-name cluster — and the hint
+carries the distance. Absent, which is the ordinary case for a brand-new site, the request carries
+no position and the endpoint ranks by match quality. Half a pair is unrepresentable on the way in:
+the client takes a whole position or none, because the endpoint answers 422 to one coordinate
+without the other.
+
+## A refused save has to be announced, and `role="alert"` alone does not do it
+
+Ten forms rendered the form-level API error as a bare
+`{apiError && <p className="text-sm text-destructive">{apiError}</p>}` - the eight dialogs on
+`useDialogApiError` plus `UnitsCard` and `NotificationsCard`, which own the same state by hand. The
+message reached the DOM, the dialog stayed open and editable, and nothing in the ancestor chain up
+to the `<form>` carried live-region semantics, so a screen reader announced nothing and the submit
+read as silently doing nothing.
+
+The dive-site catalog is what moved this from rare to routine. It carries seven records all named
+"Diving Spot" resolving to the same "Banten, Indonesia", so a diver adding two of them in turn meets
+the API's duplicate refusal as designed behaviour, and the accepted recovery - edit the name - needs
+them to know the save was refused.
+
+**Adding `role="alert"` to that conditional `<p>` would not have fixed it.** A live region that
+mounts _together with_ its text is typically not announced at all: screen readers register the
+region on insertion and read only _subsequent_ changes. This file already learned that once, under
+"The live region is rendered unconditionally, `sr-only` until there is something to say" in the
+dive-import section, where conditionally rendering the region reintroduced the silence it had been
+added to fix. The attribute is the obvious half of this fix and the half that does nothing on its
+own.
+
+So `FormApiError` renders the region unconditionally and `sr-only` until there is something to say,
+taking on `text-sm text-destructive` only once it has a message. `sr-only` is `position: absolute`,
+so the silent region is out of flow and the spacing around the visible message is unchanged from the
+conditional markup it replaced.
+
+**How much `sr-only` is doing there depends on the container, and less than it first appears.** In
+`space-y-4`, which is what every dialog form here uses, an empty _visible_ `<p>` would have been
+free as well: its zero height lets the margins either side collapse through it, so the
+field-to-footer gap measures 16px whether the node is absent, `sr-only` or a plain empty paragraph.
+The claim first written here - that a visible empty node would add a gap above every dialog footer -
+was wrong, and measuring is what caught it. Where the choice does show up is a `gap`-based flex
+column, which has no margin collapsing and charges a full extra 16px for an in-flow empty node. Both
+kinds are in use (`UnitsCard` and `NotificationsCard` space their message with `mt-3` inside a
+`CardContent` rather than by `space-y`), so `sr-only` is what makes the component safe to drop into
+either - and `form-api-error.browser.test.tsx` pins the out-of-flow half in the flex column, because
+that is the only harness where the test can fail.
+
+**`role="alert"` rather than the `role="status"`** used by the import note and the MOD warning:
+those are advisory and polite is right for them, while this one blocks what the diver was trying to
+do. That matches `StatusMessage`, which is the same choice for the same reason - and `StatusMessage`
+itself is not the answer here, because its icon, border and tint are presentation these ten call
+sites do not have.
+
+A component rather than ten copies for the same reason `useDialogApiError` owns the state half: the
+correct markup is subtle enough that ten hand-written copies would drift back to the conditional
+version, which is exactly the shape that looks right and announces nothing.
+
+**The `accessibility-check` job cannot catch this class, and no amount of configuring it will.** axe
+is a static snapshot analyzer - it has no rule for "this content appeared later and was not
+announced", because from a snapshot it cannot know the content appeared later at all. Three further
+things would have to change before it even got the chance: the job scans one unauthenticated URL
+while these forms are behind sign-in, opening a dialog and driving a failing submit is beyond
+`@axe-core/cli`, and the step ends in `|| true`, so it is advisory and cannot fail a build whatever
+it finds. The guard that does work is a render test asserting the region exists _before_ the message
+does - the shape `dive-file-import.render.test.tsx` established - and the jsdom suites were
+confirmed to fail against the old conditional markup with "Unable to find an accessible element with
+the role alert" before being kept.
+
+Every assertion added here was run against the markup it replaces, and the ones that could not fail
+were rewritten rather than kept for the count. That is how the margin-collapsing correction above
+was found: the first version of the layout test passed against a deliberately broken component,
+which made it worthless as written.
+
+## Species photos are a plain `<img>` at the API, which is why the base URL had to be exported
+
+Every other stored image in this app is private, so the pattern was settled before this one arrived:
+fetch the bytes through the API client with an `Authorization` header and render them from an object
+URL (`hooks/useAuthedBlobUrl.ts`). Species photos deliberately do not take that path, and the reason
+is the life list. That hook re-fetches on every mount - this file already said so under "Avatars are
+this instance's own", naming gallery scale as the thing it "would need real thought" for - and a
+grid of two dozen thumbnails, each a separate authenticated round trip on every render, is exactly
+the case it was warning about.
+
+So the API serves these bytes without a token and the client points an `<img>` straight at them. The
+bytes disclose nothing that makes that a concession: the species catalog is global and ownerless, a
+species uuid is not an existence oracle for anything private, and the files are Commons images
+anybody can fetch from Commons directly. What is served is a copy this instance fetched once and
+stored, which is the whole point - hotlinking would have put a third-party host back in the CSP and
+told Wikimedia which species each viewer is looking at, both of which the Gravatar removal refused
+to keep.
+
+**The consequence for this repo is one exported constant, and it is not cosmetic.**
+`lib/api/client.ts` held `process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_BASE_URL` privately,
+because axios was the only thing that needed it - every call site hands the client a route-relative
+path and the client prepends the base. An `<img src>` has no client to prepend anything, so the URL
+is composed by hand, and composing it against a literal `/api/v1` is the failure mode worth naming:
+it **works** in the shipped same-origin topology and resolves to the wrong origin in a split-origin
+build. Local dev is a split-origin build - `.env` sets `NEXT_PUBLIC_API_URL` to
+`http://localhost:8000/api/v1` - so a correct photo URL there points at `:8000`, not `:3000`, and
+reading "same origin" literally when checking it would score a correct implementation as broken. The
+composed base therefore moved down into `lib/api-base.ts` beside `apiCspSource`, which is already
+the module that knows what an absolute base means, and `client.ts` imports it rather than keeping a
+second copy of the `||`.
+
+`img-src` needed no change for any of this: it lists `'self'` unconditionally and already
+contributed `apiOrigin` for a split-origin build. But the _comment_ above it did, in `src/proxy.ts`
+and again in `src/proxy.test.ts`, because both said no `<img>` in this app points anywhere but at
+its own origin. That was true when the raster tile grid went and is not true now. The claim that
+replaces it is that every `<img>` points at this instance, which covers both topologies - and the
+same wording trap applies as last time: the `proxy.ts` copy wraps mid-sentence, so a one-line grep
+for the phrase finds only the test.
+
+## `next/link` needs a `process` global in the browser test project
+
+The second Vitest project runs real Chromium, and until species photos arrived every tenant of it
+was a map component. None of those renders a link. Then the species card's row-height guard became
+the first browser test over an ordinary app component, and it failed before a single assertion ran,
+with `ReferenceError: process is not defined` thrown out of `next/dist/client/has-base-path.js`.
+
+It is the inverse of everything else in `vitest.setup.ts`. That file exists to stand in for browser
+APIs jsdom lacks; this is a **Node** global that Next's client code reads at module scope
+(`process.env.__NEXT_ROUTER_BASEPATH`), which a real Next build inlines to a literal so that nothing
+survives to be read at runtime. Vite bundles the module as written, so the read is still there and
+there is nothing to answer it.
+
+`globalThis.process ??= { env: {} }` in `vitest.setup.browser.ts` is the whole fix, and an empty
+`env` is correct rather than lazy - every value Next looks for there is optional, and supplying real
+ones would be inventing build configuration a test has no business deciding. It is worth recognising
+by its shape: it surfaces as a failed _import_ of the test file rather than as a failed assertion,
+so it looks like a broken module resolution and not like a missing polyfill. The jsdom project is
+unaffected, which is why this never came up in a render test.
+
+## The row-height guard was watched failing, and the stylesheet is what decides whether it can
+
+"jsdom answers no layout question, and the browser lane only answers one with the stylesheet loaded"
+records the trap; this is the second worked example of it, and the first one written from scratch
+rather than found in place.
+
+The claim is that a species with no photo leaves an empty cell that still reserves the thumbnail's
+box, so rows stay level down the dive card's table. Nothing about that is checkable in jsdom - the
+DOM-side half, an `<img>` being present or absent, is pinned in the render test instead. In
+`dive-detail-main.browser.test.tsx` it is, and the procedure that file follows is the one worth
+copying rather than the assertion:
+
+- The regression was put back - `SpeciesThumbnail` returning `null` instead of an empty div - and
+  the suite run **twice** against it. With `import "@/app/globals.css"` both guards failed. Without
+  it both **passed**, with the collapse sitting in the markup. That is the vacuous pass the
+  DECISIONS section describes, reproduced on purpose.
+- A third assertion was then added specifically so the import cannot be deleted quietly: it requires
+  the row to be taller than a bare line of text, which is only true once Tailwind has loaded. It is
+  the one test in the file that fails when the stylesheet is missing, and it exists to convert a
+  silent hollowing-out into a red build.
+
+Two smaller things the measuring turned up. Rows are compared to within a pixel rather than for
+equality, because the table's own last-row border makes them 81 and 80.5 - a tolerance far below the
+thirty-odd pixel collapse the test is looking for. And the "all rows photo-less" case needs two
+_distinct_ uuids: React keys a table of two identically-keyed rows as one row, and the duplicate-key
+warning in the console was the only thing that said so.
+
+## The author and the operator are two roles, and one party may hold both
+
+`/privacy` and `/terms` both stated as plain fact that the OpenDiving project never runs anything:
+"The project operates nothing: it runs no servers for this copy, receives no data from it, and never
+sees what you log here", "holds none of your data and so has nothing it could be asked for", "it
+does not run this copy and could not keep it up if it wanted to". Every one of those is a claim
+about the world rather than about the software, and a project-operated instance is planned.
+Self-hosters are the audience these pages were written for; they are not the whole of it. The day
+that instance exists those sentences are false on the copy most people would be reading them on, and
+the standing rule the privacy sweep quotes — _"A privacy policy that overstates what is collected is
+not the safe direction to be wrong in"_ — condemns a page that is wrong in _either_ direction about
+who holds the data.
+
+**The per-copy framing was right and is kept.** "This copy" and "the operator of this copy" resolve
+correctly on a self-hosted instance and on a project-run one alike, so the mechanism recorded in
+"The terms page has two speakers, and the headings are the mechanism" is untouched. What was wrong
+sits one step below it: the pages treated _author_ and _operator_ as two parties, when they are two
+**roles** that one party may hold at once.
+
+So the claims are conditioned rather than deleted. Authorship on its own still grants the project
+nothing — for a copy it does not run, it runs no servers for that copy, receives no data from it and
+never sees what is logged there — but that is now scoped by "where the project is not the one
+running this copy" instead of asserted universally. Where the project _is_ the operator, it is
+answerable in that role like anyone else, and the operator's sections speak for it.
+
+**What this deliberately does not say.** It does not claim a project-operated instance exists; there
+is none today, and announcing one would be the same class of error in the opposite direction. It
+adds nothing about aggregation, telemetry or contribution features either: none of that follows from
+the project running an instance, and all of it would be new collection owing its own disclosure
+under the standing rule about a feature that shows one diver's content to anyone else.
+
+**The project-only sections survive as they were, and are now separated explicitly by role.** What
+terms §9 limits is the _author's_ liability and what §10 indemnifies is the _writing_ of the
+software; neither is collected by an operator who happens to be the same party. The AGPL finding
+recorded above is unaffected — a diver on a project-run instance is no more a licensee than one on
+anybody else's, so §9 stays load-bearing.
+
+**One contact rule needed a new reason rather than a rewrite.** Both pages refuse to print a project
+address, and the old justification — a request sent there reaches people who cannot act on it —
+stops being true the moment the project runs the copy. The refusal survives on a different footing:
+the address that can act on such a request is the _operator's_, and the contact page is already how
+this copy offers to reach them, which on a project-run copy reaches the project in the role that can
+answer.
+
+**Grepping for the absolutes undercounts, as it always does.** Several spots were outside the
+obvious set, and none of them contains any of the phrases that found the others: terms §7's "That
+offer is theirs to make and not the project's" (on a _modified_ project-run copy the AGPLv3 §13
+source offer is the project's, as operator), §9's "The operator of this copy is a different party",
+§10's scope sentence, and — caught only by a reviewer reading §9 whole, after the first three were
+already fixed — §9's third-party-beneficiary sentence, "the OpenDiving project and its contributors,
+who are not parties to these Terms". All of them assert that the parties differ rather than
+describing two roles, which is the shape to grep for next time: a claim about identity, not a claim
+about servers.
+
+That last one is the one worth remembering, and it is why this paragraph no longer opens with a
+count. It survived a sweep written by someone who knew exactly what they were hunting: _party_ also
+appears there in its innocent, technical sense, the sentence reads as boilerplate about contributors
+until you notice it names the project too, and it sits three lines above the new sentence conceding
+that the project may be running this copy — so the section contradicted itself within one screen.
+Reading each affected section end to end is what finds this class; grepping for the phrasing of the
+last one is what misses it.
+
+## Self-hosting is a capability, not the product's identity
+
+The section above corrected the legal pages: the author and the operator are two roles, and one
+party may hold both. The positioning copy needed the same correction one layer up, and for the same
+reason. `README.md` opened with "**A self-hosted dive log**", the root layout's `<title>`, OpenGraph
+and Twitter cards all said "OpenDiving - a self-hosted dive log", and the `#features` card promised
+"Open source, self-hosted, and exportable in one click". Every one of those defines the product as
+_self-hosted_ rather than as _self-hostable_, which is a claim about the reader's deployment made by
+a page the reader did not deploy.
+
+**Who is reading is the whole of it.** "The landing page can only claim what the instance can back
+up" already established that most people arriving are divers signing in to a log somebody else runs,
+and that leading with the deployment story pitches the hero at the minority. This is the sharper
+version of the same finding: "a self-hosted dive log" does not merely _lead_ with the deployment, it
+tells a diver who set nothing up that they are self-hosting. The register is what fixes it —
+_self-hostable_, _yours to self-host_, _run it yourself_ describe what the software affords, and
+stay true regardless of who is running the copy in front of you.
+
+**The guarantee framing survives, because it was never the problem.** "Self-hosting isn't a feature
+here; it's the guarantee that…" is doing real work — it is the answer to Movescount, Deepblu and
+Diveboard — so it is kept and re-pointed: the guarantee is that anyone can run this software and
+that one click hands the whole log back, not that _you_ are the one running it. AGPL's "run it,
+change it, self-host it freely" was already in the capability register and is untouched, as is the
+`Self-hosting` nav item, which points at a how-to and reads as one.
+
+**The universal spatial claims went with them.** "on your own server", "the data lives in your own
+Postgres database", "a modern web UI on your own box", "one instance, every browser and family
+member, one backup" — each of those says where the bytes physically sit, which is only knowable to
+whoever runs the copy. The durable form of the same promise is the one the export already carries:
+the original dive-computer file is kept, the whole log comes back out in open formats on demand, and
+that holds on anybody's hardware. Where the deployment genuinely is the subject — the _Self-hosting_
+README section, the _Run your own_ landing section, the install links — nothing changed.
+
+**`SECURITY.md` was the one outside the marketing files, and the one that mattered most.** It opened
+"OpenDiving is self-hosted software" and told a reporter that "this project's maintainers have no
+access to any instance and no way to reach its users". That is not positioning, it is _routing_: a
+vulnerability report is sent somewhere on the strength of it, and a maintainer who does operate an
+instance is reachable about it. It now opens "OpenDiving is yours to self-host, and every instance
+run from this repository is somebody's own server", and conditions the no-access sentence on the
+operator not being this project — the same conditioning the legal pages took. The rest of the file
+survives untouched, because the rest of it addresses self-hosters as an _audience_ ("for
+self-hosters the fix arrives as `docker compose pull`") rather than asserting that every reader is
+one, and that is the line to judge by: who the sentence is talking _to_ is never the problem, what
+it claims the reader _is_ always was.
+
+**The metadata is where the sweep would have stopped short.** Grepping the obvious marketing surface
+— `README.md` and `landing-page.tsx` — finds the headline and the card and misses `app/layout.tsx`
+and `app/page.tsx` entirely, because nobody thinks of `generateMetadata()` as copy. It is the copy
+with the widest reach in the repository: it is the tab title, the search result and the link unfurl
+for every instance that ever runs the image, and it repeated the identity claim four times over
+across the `title`, the description, the OpenGraph card and the Twitter card. Any future pass over
+what this project says about itself has to read the metadata exports as prose, because that is what
+they are.
+
+## Errors are coral, and the recolour fixed a contrast bug it did not set out to fix
+
+`--destructive` was shadcn's default `0 84.2% 60.2%` — a saturated hue-0 red, the one colour in the
+app that belonged to no other token. Every other accent here is warm-or-cool by design: `--coral` at
+16, `--teal` at 187 across the wheel from it, `--pressure` at 265 opposite the pair. A fire-engine
+red beside them reads as imported rather than chosen, which is what "bare red fights the palette"
+means in practice.
+
+Both tokens moved into the coral family: `--destructive` is `10 88% 42%` light and `10 100% 68%`
+dark, `--destructive-solid` is `10 88% 40%` in both. **Hue 10, not 16** — six degrees off the brand
+coral, close enough to sit in the same family and far enough to stay a distinguishable pigment where
+the two land near each other. They do land near each other: the sign-in button is `bg-coral-solid`
+and a delete button is now `bg-destructive-solid`, and those are visibly the same kind of colour.
+That collision was raised and accepted deliberately — the alternative was keeping a red that
+belonged to nothing. Anything that needs the destructive control to be unmistakable has to carry it
+in the label or a confirm step, not in the hue, and `ConfirmDialog` already does.
+
+**The lightness change is the load-bearing half, and it was not the point of the exercise.**
+`text-destructive` is real body text in `FormMessage` — every per-field validation message in the
+app — and at 60.2% it was 3.76:1 on `--background`. That is an AA failure, and it survived the
+colour sweep documented under _Theme tokens_ above because that sweep was hunting raw Tailwind
+classes, not auditing the tokens it was moving things onto. Hue 10 at 42% is 5.5:1 there and 4.6:1
+over its own `/10` tint, which supersedes the 3.3:1 figure quoted in _Theme tokens_ and the comment
+in `status-message.tsx` that carried it. `StatusMessage`'s body text still stays on `foreground` at
+~17:1: the token passing on its own is not a reason to spend the contrast.
+
+### Two points apart is a real gap, and the toast was leaning on eighteen
+
+The `--destructive` / `--destructive-solid` split exists because a colour tuned to sit behind white
+text cannot also be read as text. In the light theme that tension has now mostly dissolved — 42%
+already carries white at 5.4:1 — and the split survives for the **dark** theme, where
+`--destructive` has to be light enough (68%) to read on a near-black background and so cannot sit
+under a white label. The two are eighteen points apart no longer; in light mode they are two.
+
+`ToastAction` was quietly depending on that old gap. On the destructive toast it hovered to
+`bg-destructive` over a `bg-destructive-solid` fill, and the hover was legible only because the
+former was much lighter. On the coral pair it became invisible. Both controls on that toast are now
+drawn in `--destructive-foreground` at varying opacity — a white wash for the action's hover, `/80`
+for the close button — which lifts in both themes and depends on no relationship between the two
+destructive tokens.
+
+That is the general shape of the risk here: **a token pair whose two halves are tuned independently
+for contrast will drift in relative lightness, so nothing may encode the distance between them.**
+`bg-x/10` over `bg-x` is the pattern to look for.
+
+### The last raw red in the app was on the close button nobody looks at
+
+`ToastClose` still carried
+`text-red-300 hover:text-red-50 focus:ring-red-400 focus:ring-offset-red-600` from shadcn, four
+hardcoded palette classes on the one control small enough and faint enough to be missed by both the
+token sweep and every contrast scan since. It is tokens now. `--ceiling` (`0 80% 55%`, the dive
+profile's deco ceiling) is consequently the only true red left in the app, and stays that way on
+purpose: it is the convention every dive computer uses for a limit, it is a chart stroke rather than
+UI chrome, and the two never share a surface.
+
+### Measured, and the colour-parsing trap that made the first pass wrong
+
+Every figure above is read off the rendered page, per _Verifying colour work_ — both themes, on
+`--background` and on `--card`:
+
+| Surface                                           | Light  | Dark   | Bar   |
+| ------------------------------------------------- | ------ | ------ | ----- |
+| `FormMessage` validation text on page             | 5.5:1  | 6.9:1  | 4.5:1 |
+| Same on `--card`                                  | 5.5:1  | 6.2:1  | 4.5:1 |
+| `StatusMessage` / danger-panel icon on `/10` tint | 4.6:1  | 6.0:1  | 3:1   |
+| `StatusMessage` body copy on the tint             | 17.0:1 | 13.3:1 | 4.5:1 |
+| Destructive button label on the fill              | 5.6:1  | 5.9:1  | 4.5:1 |
+| Destructive fill against the page                 | 5.9:1  | 3.1:1  | 3:1   |
+| `ToastClose` glyph on the fill                    | 4.1:1  | 4.2:1  | 3:1   |
+
+`ToastClose` is at `/80` rather than the `/70` that would mirror the default variant's
+`text-foreground/50` dimming: `/70` measured 3.4:1, which clears the 3:1 a glyph is held to but
+leaves nothing in hand, and the affordance survives the extra ten points intact.
+
+**The first measuring pass produced two wrong numbers, and both failure modes are worth knowing.**
+The probe parsed colours with `c.match(/[\d.]+/g)` and read the first three numbers as RGB. Tailwind
+v4 emits an opacity modifier as `color-mix(in oklab, hsl(var(--destructive)) 10%, transparent)`, and
+`getComputedStyle` hands that back as `oklab(0.725 0.144 0.093 / 0.1)` — so the parser read
+lightness-chroma-hue as if it were red-green-blue, turned a coral tint into near-black at 10%, and
+reported a plausible 4.35:1 that was measuring grey. The fix is to stop parsing: paint the ancestor
+background stack onto a `<canvas>` in order and read the pixel back, letting the browser do the
+colour-space conversion and the alpha compositing exactly as it does on screen.
+
+The second was subtler. The probe injected class strings that _were not in any source file_ —
+`bg-destructive-foreground/15` rather than the
+`group-[.destructive]:hover:bg-destructive-foreground/15` the component actually carries. Tailwind
+generates from a scan of the source, so those classes did not exist, the elements rendered unstyled,
+and the measurement silently described inherited colours. **A runtime probe can only measure class
+strings copied verbatim out of the component**, and a variant-prefixed class is a different string
+from its bare form. Where the state cannot be forced — a `:hover` colour — read the generated rule
+out of the served stylesheet instead, which is also the only way to confirm a class compiled at all.
+
+## The brand mark is original now, and marketplace artwork cannot ship here
+
+`components/logo.tsx` and `app/icon.svg` used to draw lucide's `waves-horizontal` icon
+path-for-path. Two things were wrong with that, and only one of them was the licence.
+
+The licence half was straightforward. Lucide is ISC, whose single condition is that its copyright
+notice appears in copies, and the hand-copied paths were not carrying it: nothing in the tree named
+lucide outside `package.json` and `node_modules/`. That was fixable with a notice, and briefly was.
+
+**The half that mattered more is that a stock icon cannot be a mark.** It is not distinctive, so it
+is not registrable; it cannot be exclusive, because every other dive app reaching for a water icon
+lands on the same three wavy lines; and it smears at favicon size, three 2.5px strokes at 16px
+resolving to a grey blur. None of that is a licence problem and no notice fixes any of it. The mark
+is now three bubbles rising left to right, growing as they climb, drawn for this project — which
+costs a `NOTICE.md` entry, gains something ownable, and stays legible at 16px because the smallest
+bubble goes solid rather than mushy at the favicon's heavier stroke.
+
+**Marketplace artwork cannot ship in this repository, and the reason generalises past the one asset
+that proved it.** `icons/coral-reef-background.tsx` was 14 KB of reef line art on the landing hero,
+and `public/coral.png` a neon-glow rendering of the same drawing, unreferenced but still served out
+of `public/`. A third, `public/octo.png`, an octopus in the same glow treatment, landed in that same
+commit and was deleted again in `056c34c` — so it is out of the tree but still in history, and it
+belongs on any purge list the other two are on. Neither PNG was ever referenced from source:
+`git log -S` over `src/` returns nothing for either, so both were dead weight from the day they
+arrived. Both came from a paid Etsy listing whose terms permit "personal projects and small-business
+physical products" and forbid "sharing, reselling or redistributing the digital files themselves". A
+hosted web app is not a physical product, and this repository — AGPL-3.0, and public at launch —
+publishes the vector source in editable form to anyone who clones it, which is the redistribution
+the licence names. Buying it did not buy either of those. Both files are gone, and the hero renders
+without a background accent.
+
+**The screenshots are clean, and the check is worth recording so nobody repeats it.** Nine images
+had ever been committed here when this was written, across all of history: `docs/screenshots/`'s
+`dashboard.png`, `dive-detail.png` and `gear-item.png`; the two basemap sprite sheets
+`public/basemap/sprite/ofm.png` and `ofm@2x.png`; `public/coral.png` and `public/octo.png`; and the
+brand mark's own `src/app/icon.svg` and `src/app/favicon.ico`. All three screenshots are of
+authenticated pages — `scripts/screenshots.mjs` shoots dashboard, dive-detail and gear-item and
+nothing else. The reef rendered on the _landing_ hero, which no screenshot captures, and the two
+glow PNGs rendered nowhere at all. The older screenshots do carry the previous waves mark, but that
+was lucide under ISC, which permits redistribution.
+
+**Seven of those nine remain.** `coral.png` and `octo.png` went out of the history itself in the
+purge below, so a clone now reaches the three screenshots, the two basemap sprite sheets, `icon.svg`
+and `favicon.ico`, and nothing else.
+
+**Getting that list right took three tries, and each wrong answer came from the tool rather than the
+tree.** A first sweep globbed `png|jpe?g|webp|gif` and so silently dropped `favicon.ico` and
+`icon.svg` — an extension list is a completeness claim, and that one was short by two formats. A
+second counted "three basemap sprites" from a directory holding four files, only two of them images;
+the rest are JSON manifests. And `git log --all` walks `refs/stash`, so a local stash on one machine
+contributed five `docs/screenshots/*.png` that were never committed to any branch —
+`--branches --tags --remotes` is the spelling that answers "what would a clone see". A completeness
+claim inside a licensing audit is the one kind of prose here that gets relied on instead of
+re-derived, so it is worth the third try.
+
+The general rule the trio leaves behind: **artwork that arrives under someone else's terms cannot
+live in this tree at all.** Not with a notice, not with attribution, not behind a comment recording
+where it came from — the tree itself is what gets published, so anything in it is redistributed by
+definition, and a stock licence that allows use in a product almost never allows that. Two of the
+three entries left in `NOTICE.md` survive precisely because their terms do allow it: MapLibre's
+3-Clause BSD, and a trademark used under Google's own branding guidelines. The third, the
+OpenFreeMap styles, is the one still open — the vendored copies carry no licence metadata at all, so
+nobody here has read the terms they travel under, and that is worth settling before the repository
+goes public.
+
+**Provenance has to be recorded when the artwork lands, because it cannot be recovered later.** The
+reef component's docstring said "Path data unmodified from the source artwork" and named no source;
+its only commit was `feat: Authentication flow update (#6)` — then `98c72af`, a hash the purge below
+has since made unreachable; the same change is `06c19b1` on `main` today and no longer carries the
+artwork at all — which is about something else entirely. Nothing in the repository could answer
+where it came from, and the licence question was only settleable by asking the person who made the
+purchase. A file that says it came from somewhere without saying where is worse than one that says
+nothing, because it establishes the obligation while withholding what would let anyone discharge it.
+
+**`NOTICE.md` covers the tree, not the dependency graph**, and the boundary is load-bearing rather
+than lazy. Listed: artwork redrawn into source (`icons/google-icon.tsx`) and vendored build output
+and assets under `public/` (MapLibre's two `.mjs` files, the OpenFreeMap style JSON and sprite).
+Excluded: everything in `node_modules/`, which is installed rather than redistributed from here and
+ships its own licence text. A file that tried to be a full dependency inventory would be a generated
+artefact pretending to be a hand-written one, and would be wrong within a release.
+
+Two of its entries needed narrowing before they were true, and both traps are the same shape — a
+claim that reads fine until you check the code. Google's "G" is _not_ unmodified: the mark's own
+pixels are, but the pill background from the same download was dropped and the ids are namespaced
+per instance. And the basemap does not "refuse to start without an attribution" flatly —
+`lib/basemap.ts` ships `DEFAULT_BASEMAP_ATTRIBUTION` for the bundled styles and throws only when
+`MAP_STYLE_URL` is set without `MAP_ATTRIBUTION`. An attribution file that overstates its own
+accuracy is worse than none.
+
+**The image had to be taught to carry the notices.** The runner stage copies `public/` and the two
+`.next/` directories and nothing else, so `LICENSE` never reached it either — an operator who only
+ever pulls the image received the software with no notice attached, which is the case AGPL-3.0 §4
+and 3-Clause BSD are both written about. One `COPY --from=builder` in the runner stage fixes both.
+
+## The licensed artwork came out of the history, and the history paid for it
+
+On 2026-09-02 the three purchased files above were removed from every commit with
+`git filter-repo --invert-paths`, and `main` was force-pushed. Deleting them from the tip had
+settled nothing: publishing the repository publishes its history, so `git log -p` or a checkout of
+the commit that added them still handed anyone the vector source. That is the redistribution the
+licence forbids, and the tip-only deletion only made it less obvious.
+
+They entered in one commit and were never modified after: 1.4 MB of `coral.png`, 1.4 MB of
+`octo.png`, and 14 KB of `coral-reef-background.tsx`, all in the squash-merge of `#6`. No sibling
+repository carried them. That made the surgery narrow - three paths, one commit - but the commit
+sits fifth of 138, so every hash after it moved.
+
+**Three rewrites happened where one was planned, and the extra two paid for something nobody
+costed.** A GPG signature covers the commit object, so rewriting a commit destroys its signature and
+no tool can carry one across. Every commit on `main` had been signed by GitHub's own key at
+squash-merge, reporting `E` - signed, unverifiable locally - which is exactly what
+`.githooks/pre-push` is written to allow. After the purge all 138 reported `N`, and the hook refused
+the push it exists to refuse.
+
+Re-signing them locally was the second pass, and it made the display _worse_: the commits were then
+signed with the maintainer's key while their committer was still `GitHub <noreply@github.com>`, and
+GitHub verifies a signature against the committer's identity. It returned `unknown_key`, which
+renders as an Unverified badge - louder than the absence of a badge an unsigned commit gets. The
+third pass set committer to author before re-signing. Every commit is authored by the same person
+and always has been, so committer-equals-author is true here rather than convenient, and all 230
+commits across every branch now verify.
+
+**What is permanently gone is GitHub's attestation**, not the history. Those signatures said GitHub
+performed those merges; only GitHub can make them, and they cannot be reconstructed. `main` is now
+signed by the maintainer instead. New PRs squash-merge and are GitHub-signed again as normal, so
+only the past is affected.
+
+**The purge broke `main`, and the branch that motivated it was the fix.** Removing a path from every
+commit leaves the commits that legitimately used it importing a module that no longer exists:
+`landing-page.tsx` on `main` still imported `coral-reef-background`, and `main` stopped compiling
+the moment it was pushed. Nothing caught it because the branch doing the removal had already dropped
+that import, so its CI stayed green while `main`'s went red. **After rewriting history, type-check
+the branches you did not rewrite it on.**
+
+**A bundle of all 28 pre-purge refs was taken before any of it** and is the only complete copy of
+the original history - `refs/original/*` is not, having been overwritten by the re-signing passes.
+It also contains the licensed artwork, so it is evidence with a shelf life rather than an archive to
+keep. GitHub keeps unreachable objects fetchable by hash until it garbage-collects on its own
+schedule; asking Support to run `gc` is what finally closes this, and until that happens the purge
+is complete locally and merely mostly complete upstream.
 
 ## Revisiting a page shows what it showed last time, and refetches behind it
 

@@ -40,11 +40,14 @@ export interface MixtureImportNotes {
    * this or did the form seed it": it is which branch of the merge ran, which
    * `mergeMixture` knows exactly.
    *
-   * Keyed off the file alone, and not off "no source had a value": both dive
-   * forms seed `mixtures` with a complete `DEFAULT_MIXTURE` cylinder before any
-   * import happens, so a rule that also consulted the carried-over cylinder was
-   * always empty on the ordinary one-cylinder import and the warning never
-   * appeared at all.
+   * Keyed off the file alone, and not off "no source had a value". Both forms
+   * once seeded a complete `DEFAULT_MIXTURE` cylinder before any import, so a
+   * rule that also consulted the carried-over cylinder was always empty and the
+   * warning was unreachable. Neither seeds one now - the create form starts
+   * empty, and the edit form holds whatever the dive records - but the rule
+   * stays keyed off the file, because a form the prefill filled in, an earlier
+   * import wrote to, or a dive with cylinders still has all three values, and
+   * those are the imports the warning exists for.
    */
   guessed: Partial<Record<DefaultedMixtureField, MixtureValueSource>>;
   /**
@@ -133,6 +136,14 @@ export function mergeMixture(
       // is the cleared state the `<select>` and `normalizeMixtures` agree on, so
       // the row this replaces reads the same whether it came from a file or a form.
       role: mixture.role ?? existing?.role ?? "",
+      // Form, then nothing - there is no file tier at all, because no format this
+      // app parses carries the flag and `ParsedDiveMixture` therefore has no
+      // `usage` to read. Listed anyway rather than left out: this object is
+      // constructed field by field, so a field missing from it is silently
+      // *dropped* rather than preserved, which is the exact failure the note above
+      // records. A diver who flagged a pair Parallel and then imported the dive's
+      // computer file would have watched both flags disappear.
+      usage: existing?.usage ?? "",
     },
     sources: {
       volume: volume.source,

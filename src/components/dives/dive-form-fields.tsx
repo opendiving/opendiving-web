@@ -6,10 +6,13 @@ import {
   ChevronsDownUp,
   Clock,
   Eye,
+  Mountain,
   Thermometer,
+  Waves,
   Weight,
 } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { Input, inputClassName } from "@/components/ui/input";
+import { UnitNumberInput } from "@/components/unit-number-input";
 import { Textarea } from "@/components/ui/textarea";
 import { DiveStartTimeField } from "@/components/dives/dive-start-time-field";
 import {
@@ -25,11 +28,23 @@ import {
   MixtureFields,
 } from "@/components/dives/mixture-fields";
 import { TripCombobox } from "@/components/dives/trip-combobox";
+import { CourseCombobox } from "@/components/courses/course-combobox";
 import { DiveSiteMultiSelect } from "@/components/dives/dive-site-multi-select";
 import { DiveGearField } from "@/components/gear/dive-gear-field";
+import { SpeciesMultiSelect } from "@/components/dives/species-multi-select";
+import { cn } from "@/lib/utils";
 import { DiveMixtureInput } from "@/lib/validations/dive";
-import { DiveSiteSummary } from "@/lib/api/dives";
+import {
+  DiveSiteSummary,
+  WATER_TYPES,
+  WATER_TYPE_LABELS,
+  type WaterType,
+} from "@/lib/api/dives";
 import { GearItemSummary } from "@/lib/api/gear";
+import { SpeciesSummary } from "@/lib/api/species";
+import { useEntryUnits } from "@/hooks/useEntryUnits";
+import { EntryUnitLabelRow } from "@/components/entry-unit-toggle";
+import { unitLabel } from "@/lib/units";
 
 // The field shape shared by both `DiveCreateInput` and `DiveUpdateInput`
 // (see `lib/validations/dive.ts`): the create schema's fields, all optional
@@ -51,12 +66,21 @@ export interface DiveFormValues extends FieldValues {
   avg_depth?: number | null;
   bottom_temperature?: number | null;
   visibility?: number | null;
+  // `""` is the "Not recorded" option, and the live cleared state - never
+  // `undefined`, which react-hook-form re-displays the field's default for.
+  // `null` is what the submit path converts it to; both are in the union
+  // because `diveToFormValues` seeds one and `buildDiveUpdate` reads the other.
+  water_type?: WaterType | "" | null;
+  altitude?: number | null;
   weight?: number | null;
   // `null` means "no trip", and is distinct from `undefined` ("field not
   // touched") on the edit form - see `DiveUpdate.trip_uuid`.
   trip_uuid?: string | null;
+  // Same three states, same reason, for the training course this dive was on.
+  course_uuid?: string | null;
   dive_site_uuids?: string[];
   gear_item_uuids?: string[];
+  species_uuids?: string[];
   notes?: string;
   mixtures?: DiveMixtureInput[];
 }
@@ -83,6 +107,13 @@ export interface DiveFormFieldsProps<TFieldValues extends DiveFormValues> {
   // Same idea for gear: `Dive.gear_items` already carries what a picked row
   // renders, so the picker needn't fetch each item back by uuid.
   knownGearItems?: GearItemSummary[];
+  // And for species: `Dive.species` carries the names the picker's rows need,
+  // so an edit form starts out labelled without a lookup per row.
+  knownSpecies?: SpeciesSummary[];
+  // Raised by the species picker while a pick is still being resolved into a
+  // catalog row - see `SpeciesMultiSelect.onPendingChange`. Owned by
+  // `DiveFormCard`, which is where the submit button that must wait for it is.
+  onSpeciesPendingChange?: (isPending: boolean) => void;
   // A note shown under the dive number, but only while the field still holds
   // `forValue`. Carried as a value rather than a ready-made string so the
   // "still showing it?" check can happen inside the field's own render, where
@@ -104,14 +135,24 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
   mixtureFieldArray,
   knownDiveSites,
   knownGearItems,
+  knownSpecies,
+  onSpeciesPendingChange,
   diveNumberNotice,
 }: DiveFormFieldsProps<TFieldValues>) {
   const required = mode === "create";
   const requiredMark = required ? " *" : "";
+  // Read once here and handed to the labels and the number boxes below, per
+  // dimension: the account preference unless the diver has flipped that dimension
+  // with the toggle in its label row. Form state itself stays metric whatever
+  // this says - see `UnitNumberInput`.
+  const { entryUnits, toggleEntryUnits } = useEntryUnits();
 
   return (
     <>
-      {/* Basic Information & Trip */}
+      {/* Basic Information, Trip & Course. Three fields in a two-column grid, so
+          the Course row keeps the same column width, gap and label rhythm as
+          every other row in this form - a third column here would make this the
+          one row shaped differently from the rest. */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <FormField
           control={control}
@@ -156,6 +197,24 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
               <FormLabel>Trip</FormLabel>
               <FormControl>
                 <TripCombobox
+                  userId={userId}
+                  value={field.value}
+                  onChange={field.onChange}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={control}
+          name={"course_uuid" as Path<TFieldValues>}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Course</FormLabel>
+              <FormControl>
+                <CourseCombobox
                   userId={userId}
                   value={field.value}
                   onChange={field.onChange}
@@ -234,22 +293,31 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
           name={"max_depth" as Path<TFieldValues>}
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Maximum depth (m)</FormLabel>
+              {/* Depth's one toggle. `avg_depth` two fields down follows the same
+                  state without a control of its own - a second one would be a
+                  duplicate accessible name governing the same dimension. */}
+              <EntryUnitLabelRow
+                dimension="depth"
+                entryUnits={entryUnits("depth")}
+                onToggle={() => toggleEntryUnits("depth")}
+              >
+                <FormLabel>
+                  Maximum depth ({unitLabel("depth", entryUnits("depth"))})
+                </FormLabel>
+              </EntryUnitLabelRow>
               <div className="relative">
                 <ArrowDownToLine className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
                 <FormControl>
-                  <Input
-                    type="number"
+                  <UnitNumberInput
+                    dimension="depth"
+                    units={entryUnits("depth")}
                     step="0.01"
-                    min="0"
-                    placeholder="e.g. 30.52"
+                    min={0}
+                    placeholderValue={30.52}
                     className="pl-9"
                     {...field}
-                    value={field.value ?? ""}
-                    onChange={(e) => {
-                      const val = parseFloat(e.target.value);
-                      field.onChange(Number.isNaN(val) ? null : val);
-                    }}
+                    value={field.value}
+                    onChange={field.onChange}
                   />
                 </FormControl>
               </div>
@@ -263,22 +331,22 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
           name={"avg_depth" as Path<TFieldValues>}
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Average depth (m)</FormLabel>
+              <FormLabel>
+                Average depth ({unitLabel("depth", entryUnits("depth"))})
+              </FormLabel>
               <div className="relative">
                 <ChevronsDownUp className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
                 <FormControl>
-                  <Input
-                    type="number"
+                  <UnitNumberInput
+                    dimension="depth"
+                    units={entryUnits("depth")}
                     step="0.01"
-                    min="0"
-                    placeholder="e.g. 18.24"
+                    min={0}
+                    placeholderValue={18.24}
                     className="pl-9"
                     {...field}
-                    value={field.value ?? ""}
-                    onChange={(e) => {
-                      const val = parseFloat(e.target.value);
-                      field.onChange(Number.isNaN(val) ? null : val);
-                    }}
+                    value={field.value}
+                    onChange={field.onChange}
                   />
                 </FormControl>
               </div>
@@ -295,25 +363,33 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
           name={"bottom_temperature" as Path<TFieldValues>}
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Bottom temperature (°C)</FormLabel>
+              <EntryUnitLabelRow
+                dimension="temperature"
+                entryUnits={entryUnits("temperature")}
+                onToggle={() => toggleEntryUnits("temperature")}
+              >
+                <FormLabel>
+                  Bottom temperature (
+                  {unitLabel("temperature", entryUnits("temperature"))})
+                </FormLabel>
+              </EntryUnitLabelRow>
               <div className="relative">
                 <Thermometer className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
                 <FormControl>
-                  <Input
-                    type="number"
+                  {/* The 2-decimal entry rounding this field has always done is
+                      now the component's, and every float sibling above and
+                      below gets it too. */}
+                  <UnitNumberInput
+                    dimension="temperature"
+                    units={entryUnits("temperature")}
                     step="0.01"
-                    min="-50"
-                    max="50"
-                    placeholder="e.g. 22.50"
+                    min={-50}
+                    max={50}
+                    placeholderValue={22.5}
                     className="pl-9"
                     {...field}
-                    value={field.value ?? ""}
-                    onChange={(e) => {
-                      const val = parseFloat(e.target.value);
-                      field.onChange(
-                        Number.isNaN(val) ? null : Math.round(val * 100) / 100,
-                      );
-                    }}
+                    value={field.value}
+                    onChange={field.onChange}
                   />
                 </FormControl>
               </div>
@@ -327,22 +403,120 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
           name={"visibility" as Path<TFieldValues>}
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Visibility (m)</FormLabel>
+              <EntryUnitLabelRow
+                dimension="visibility"
+                entryUnits={entryUnits("visibility")}
+                onToggle={() => toggleEntryUnits("visibility")}
+              >
+                <FormLabel>
+                  Visibility (
+                  {unitLabel("visibility", entryUnits("visibility"))})
+                </FormLabel>
+              </EntryUnitLabelRow>
               <div className="relative">
                 <Eye className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
                 <FormControl>
-                  <Input
-                    type="number"
+                  {/* An `Integer` column, so feet commit whole metres: 50 ft is
+                      stored as 15 m and reads back as 49 ft. Accepted - see
+                      DECISIONS.md - because visibility is an estimate and
+                      whole-metre resolution is finer than anyone judges it to. */}
+                  <UnitNumberInput
+                    dimension="visibility"
+                    units={entryUnits("visibility")}
                     step="1"
-                    min="0"
-                    placeholder="e.g. 15"
+                    min={0}
+                    placeholderValue={15}
                     className="pl-9"
                     {...field}
+                    value={field.value}
+                    onChange={field.onChange}
+                  />
+                </FormControl>
+              </div>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
+
+      {/* Water & Altitude - what the water was and where it was, which the
+          computer treats as calibration settings and the log treats as facts
+          about the dive. They sit under the readings above rather than with the
+          gear because they are observations, not choices carried in. */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <FormField
+          control={control}
+          name={"water_type" as Path<TFieldValues>}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Water type</FormLabel>
+              {/* A plain `<select>` rather than the shadcn `Select` used
+                  elsewhere, for the same reason as the cylinder Role picker in
+                  `mixture-fields.tsx`: this one needs "unset" as a real,
+                  selectable option, and Radix reserves `""` for clearing. */}
+              <div className="relative">
+                <Waves className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                <FormControl>
+                  <select
+                    className={cn(inputClassName, "pl-9")}
+                    {...field}
                     value={field.value ?? ""}
-                    onChange={(e) => {
-                      const val = parseInt(e.target.value);
-                      field.onChange(Number.isNaN(val) ? null : val);
-                    }}
+                    // `""` straight through, not `|| undefined`: react-hook-form
+                    // re-displays a field's default whenever its value resolves
+                    // to `undefined`, so mapping "Not recorded" to it would snap
+                    // an imported water type back the moment it was cleared. The
+                    // submit paths convert the sentinel away.
+                    onChange={(e) => field.onChange(e.target.value)}
+                  >
+                    <option value="">Not recorded</option>
+                    {WATER_TYPES.map((waterType) => (
+                      <option key={waterType} value={waterType}>
+                        {WATER_TYPE_LABELS[waterType]}
+                      </option>
+                    ))}
+                  </select>
+                </FormControl>
+              </div>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={control}
+          name={"altitude" as Path<TFieldValues>}
+          render={({ field }) => (
+            <FormItem>
+              <EntryUnitLabelRow
+                dimension="altitude"
+                entryUnits={entryUnits("altitude")}
+                onToggle={() => toggleEntryUnits("altitude")}
+              >
+                <FormLabel>
+                  Altitude ({unitLabel("altitude", entryUnits("altitude"))})
+                </FormLabel>
+              </EntryUnitLabelRow>
+              <div className="relative">
+                <Mountain className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                <FormControl>
+                  {/* Bounds declared in metres, which is what the Zod schema and
+                      the DB `CHECK` behind it are written in; the component
+                      converts them inward for the spinner, so what the arrows
+                      offer is always something the schema will accept. */}
+                  <UnitNumberInput
+                    dimension="altitude"
+                    units={entryUnits("altitude")}
+                    step="1"
+                    // Not Visibility's `min={0}`, which this box otherwise
+                    // copies: the Dead Sea is below sea level and admitting it
+                    // is the whole reason the API's bound is -450 rather than 0.
+                    min={-450}
+                    max={6500}
+                    placeholderValue={372}
+                    className="pl-9"
+                    {...field}
+                    value={field.value}
+                    onChange={field.onChange}
                   />
                 </FormControl>
               </div>
@@ -395,22 +569,33 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormItem>
-                <FormLabel>Weight (kg)</FormLabel>
+                {/* Weight is the one dimension with a second toggle elsewhere:
+                    the gear-set dialog opens from inside this form and enters a
+                    weight of its own. Both read the same store, so the two never
+                    disagree, and Radix's modal `aria-hidden` keeps only one of
+                    them exposed at a time. */}
+                <EntryUnitLabelRow
+                  dimension="weight"
+                  entryUnits={entryUnits("weight")}
+                  onToggle={() => toggleEntryUnits("weight")}
+                >
+                  <FormLabel>
+                    Weight ({unitLabel("weight", entryUnits("weight"))})
+                  </FormLabel>
+                </EntryUnitLabelRow>
                 <div className="relative">
                   <Weight className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
                   <FormControl>
-                    <Input
-                      type="number"
+                    <UnitNumberInput
+                      dimension="weight"
+                      units={entryUnits("weight")}
                       step="0.5"
-                      min="0"
-                      placeholder="e.g. 6"
+                      min={0}
+                      placeholderValue={6}
                       className="pl-9"
                       {...weightField}
-                      value={weightField.value ?? ""}
-                      onChange={(e) => {
-                        const val = parseFloat(e.target.value);
-                        weightField.onChange(Number.isNaN(val) ? null : val);
-                      }}
+                      value={weightField.value}
+                      onChange={weightField.onChange}
                     />
                   </FormControl>
                 </div>
@@ -418,6 +603,29 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
               </FormItem>
             </div>
           </div>
+        )}
+      />
+
+      {/* Species spotted - after the kit and before the notes, which is where
+          the dive page's own card sits: what was seen is an observation about
+          the dive, and the notes underneath are where anything this picker
+          can't name ends up. */}
+      <FormField
+        control={control}
+        name={"species_uuids" as Path<TFieldValues>}
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Species spotted</FormLabel>
+            <FormControl>
+              <SpeciesMultiSelect
+                value={field.value ?? []}
+                knownSpecies={knownSpecies}
+                onChange={field.onChange}
+                onPendingChange={onSpeciesPendingChange}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
         )}
       />
 

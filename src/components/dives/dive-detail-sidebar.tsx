@@ -1,11 +1,32 @@
+"use client";
+
 import Link from "next/link";
-import { Dive } from "@/lib/api/dives";
+import { Dive, WATER_TYPE_LABELS } from "@/lib/api/dives";
 import { Trip } from "@/lib/api/trips";
+import { Course } from "@/lib/api/courses";
 import { formatDateTime } from "@/lib/date-time";
+import { formatDistance, GeoPoint, haversineMeters } from "@/lib/geo-distance";
+import { formatCoordinates } from "@/lib/validations/dive-site";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DiveSitesLabel } from "@/components/dives/dive-sites-label";
 import { DiveSourceFileCard } from "@/components/dives/dive-source-file-card";
-import { Eye, Luggage, MapPin, Thermometer } from "lucide-react";
+import { LocationsMap } from "@/components/map/locations-map-lazy";
+import type { MappableLocation } from "@/components/map/locations-map";
+import {
+  Eye,
+  GraduationCap,
+  Luggage,
+  MapPin,
+  Mountain,
+  Thermometer,
+  Waves,
+} from "lucide-react";
+import { useUnits } from "@/hooks/useUnits";
+import {
+  formatAltitude,
+  formatTemperature,
+  formatVisibility,
+} from "@/lib/units";
 
 interface DiveDetailSidebarProps {
   dive: Dive;
@@ -13,8 +34,23 @@ interface DiveDetailSidebarProps {
    * loading, when the dive has no trip, or when that lookup failed — all three are
    * non-fatal and simply hide the trip link. */
   trip: Trip | null;
+  /** The training course this dive was part of, resolved the same way and with the
+   * same three meanings for null. */
+  course: Course | null;
   /** Called after the source file is deleted, so the dive can be re-read. */
   onSourceFileChanged: () => void;
+}
+
+// A recorded pair as a point, or null when the dive has no fix on that side.
+//
+// `== null`, not falsiness: a dive off West Africa exits at longitude 0 and one
+// in the Galápagos at latitude 0, and both are positions rather than absences.
+function fixPoint(
+  latitude?: number | null,
+  longitude?: number | null,
+): GeoPoint | null {
+  if (latitude == null || longitude == null) return null;
+  return { latitude, longitude };
 }
 
 /**
@@ -27,17 +63,62 @@ interface DiveDetailSidebarProps {
 export function DiveDetailSidebar({
   dive,
   trip,
+  course,
   onSourceFileChanged,
 }: DiveDetailSidebarProps) {
+  const units = useUnits();
   const hasEnvironmentInfo =
-    dive.bottom_temperature != null || dive.visibility != null;
+    dive.bottom_temperature != null ||
+    dive.visibility != null ||
+    dive.water_type != null ||
+    dive.altitude != null;
+
+  // Where the dive computer put the diver, which is a different claim from where
+  // the site is pinned - so both are drawn, and the ring/dot pair is what tells
+  // them apart. Exit-only is the ordinary case, not half a reading: every
+  // GPS-carrying export in the API's corpus takes its first fix after surfacing.
+  const entry = fixPoint(dive.entry_latitude, dive.entry_longitude);
+  const exit = fixPoint(dive.exit_latitude, dive.exit_longitude);
+  const entryCoordinates =
+    entry && formatCoordinates(entry.latitude, entry.longitude);
+  const exitCoordinates =
+    exit && formatCoordinates(exit.latitude, exit.longitude);
+
+  // The map is capped at zoom 10, where a surface swim is well under a pixel, so
+  // the drift between the two fixes is a line of text or it is nothing.
+  const drift =
+    entry && exit ? formatDistance(haversineMeters(entry, exit), units) : null;
+
+  const mapLocations: MappableLocation[] = [
+    ...dive.dive_sites.map((site) => ({
+      name: site.name,
+      latitude: site.latitude,
+      longitude: site.longitude,
+    })),
+    ...(entry ? [{ name: "Entry", ...entry, variant: "fix" as const }] : []),
+    ...(exit ? [{ name: "Exit", ...exit, variant: "fix" as const }] : []),
+  ];
+  // The map draws nothing without a position anyway; this gate is what keeps a
+  // dive with no positions at all from fetching its chunk (same as the site
+  // page). Linked sites are the reason it is not simply `entry || exit`: a dive
+  // may have a pinned site and no fixes of its own.
+  const hasMappableLocation = mapLocations.some(
+    (location) => location.latitude != null && location.longitude != null,
+  );
 
   return (
     <div className="space-y-6">
-      {(trip || dive.dive_sites.length > 0) && (
+      {(trip ||
+        dive.dive_sites.length > 0 ||
+        entryCoordinates ||
+        exitCoordinates) && (
         <Card>
           <CardHeader>
-            <CardTitle>Trip & Dive Site</CardTitle>
+            {/* "Location", not the "Trip & Dive Site" this card was called
+                while those were the only two things in it: a dive with GPS but
+                no trip and no site is now one of the cases it renders for, and
+                the blocks inside are each labelled anyway. */}
+            <CardTitle as="h2">Location</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {trip && (
@@ -65,6 +146,62 @@ export function DiveDetailSidebar({
                 </div>
               </div>
             )}
+
+            {hasMappableLocation && (
+              <LocationsMap
+                locations={mapLocations}
+                subject="the dive's location"
+              />
+            )}
+
+            {entryCoordinates && (
+              <div>
+                <div className="text-sm font-medium text-muted-foreground mb-1">
+                  Entry
+                </div>
+                <div className="text-sm tabular-nums">{entryCoordinates}</div>
+              </div>
+            )}
+            {exitCoordinates && (
+              <div>
+                <div className="text-sm font-medium text-muted-foreground mb-1">
+                  Exit
+                </div>
+                <div className="text-sm tabular-nums">{exitCoordinates}</div>
+              </div>
+            )}
+            {drift && (
+              <div>
+                <div className="text-sm font-medium text-muted-foreground mb-1">
+                  Entry → exit
+                </div>
+                <div className="text-sm tabular-nums">{drift}</div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Its own card rather than a row in "Location" above: a course is not a
+          place, and the card it would otherwise join renders on the strength of
+          the dive having one. A dive with no course looks exactly as it did
+          before courses existed. */}
+      {course && (
+        <Card>
+          <CardHeader>
+            <CardTitle as="h2">Training</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-sm font-medium text-muted-foreground mb-1">
+              Course
+            </div>
+            <Link
+              href={`/courses/${course.uuid}`}
+              className="flex items-center gap-2 text-sm font-medium hover:underline"
+            >
+              <GraduationCap className="h-4 w-4 text-muted-foreground" />
+              {course.name}
+            </Link>
           </CardContent>
         </Card>
       )}
@@ -72,7 +209,7 @@ export function DiveDetailSidebar({
       {hasEnvironmentInfo && (
         <Card>
           <CardHeader>
-            <CardTitle>Environment</CardTitle>
+            <CardTitle as="h2">Environment</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {dive.bottom_temperature != null && (
@@ -82,7 +219,7 @@ export function DiveDetailSidebar({
                 </div>
                 <div className="flex items-center gap-2 text-xl font-semibold">
                   <Thermometer className="h-4 w-4 text-muted-foreground" />
-                  {dive.bottom_temperature}°C
+                  {formatTemperature(dive.bottom_temperature, units)}
                 </div>
               </div>
             )}
@@ -93,7 +230,33 @@ export function DiveDetailSidebar({
                 </div>
                 <div className="flex items-center gap-2 text-xl font-semibold">
                   <Eye className="h-4 w-4 text-muted-foreground" />
-                  {dive.visibility}m
+                  {formatVisibility(dive.visibility, units)}
+                </div>
+              </div>
+            )}
+            {dive.water_type != null && (
+              <div>
+                <div className="text-sm font-medium text-muted-foreground mb-1">
+                  Water Type
+                </div>
+                <div className="flex items-center gap-2 text-xl font-semibold">
+                  <Waves className="h-4 w-4 text-muted-foreground" />
+                  {/* Falls back to the wire value, like `gearTypeLabel` and the
+                      mixtures table's role badge: the API can grow a member
+                      before this build ships a label for it, and rendering the
+                      slug beats rendering a blank row. */}
+                  {WATER_TYPE_LABELS[dive.water_type] ?? dive.water_type}
+                </div>
+              </div>
+            )}
+            {dive.altitude != null && (
+              <div>
+                <div className="text-sm font-medium text-muted-foreground mb-1">
+                  Altitude
+                </div>
+                <div className="flex items-center gap-2 text-xl font-semibold">
+                  <Mountain className="h-4 w-4 text-muted-foreground" />
+                  {formatAltitude(dive.altitude, units)}
                 </div>
               </div>
             )}
@@ -106,7 +269,7 @@ export function DiveDetailSidebar({
 
       <Card>
         <CardHeader>
-          <CardTitle>Dive Information</CardTitle>
+          <CardTitle as="h2">Dive Information</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
           <div>

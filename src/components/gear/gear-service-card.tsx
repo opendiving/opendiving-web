@@ -41,6 +41,22 @@ interface GearServiceCardProps {
   onChanged: () => void;
 }
 
+// The kind, plus the free-text label when there is one. This is the pair the API itself
+// keys a schedule by - a logged service with no schedule attached is matched to "the one
+// schedule matching (item, kind, label)" - and it is what both lists lead with on screen,
+// so it is what a diver would use to say which row they mean.
+function kindAndLabel(entry: { kind: string; label?: string | null }): string {
+  const kind = serviceKindLabel(entry.kind) ?? entry.kind;
+  return entry.label ? `${kind} (${entry.label})` : kind;
+}
+
+// A history entry repeats its kind every time the work is redone, so the date is the half
+// that separates one from the next - "the visual inspection in March". It is also what
+// keeps a record's controls apart from the schedule's, both lists sitting on one card.
+function recordName(record: GearServiceRecord): string {
+  return `${kindAndLabel(record)} on ${formatDateOnly(record.serviced_on)}`;
+}
+
 // Service schedules and history for one gear item. Sits above the dive list on the gear
 // detail page: service is the thing you can act on here, the dive list is reference.
 export function GearServiceCard({
@@ -158,7 +174,10 @@ export function GearServiceCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex flex-wrap items-center justify-between gap-3">
+        <CardTitle
+          as="h2"
+          className="flex flex-wrap items-center justify-between gap-3"
+        >
           <span className="flex items-center gap-2">
             <Wrench className="h-5 w-5" />
             Service
@@ -235,7 +254,7 @@ export function GearServiceCard({
                         <Button
                           variant="ghost"
                           size="sm"
-                          aria-label="Log service"
+                          aria-label={`Log service for ${kindAndLabel(schedule)}`}
                           onClick={() => setLoggingFor(schedule)}
                         >
                           <ClipboardCheck className="h-4 w-4" />
@@ -243,7 +262,9 @@ export function GearServiceCard({
                         <Button
                           variant="ghost"
                           size="sm"
-                          aria-label={schedule.is_active ? "Pause" : "Resume"}
+                          aria-label={`${
+                            schedule.is_active ? "Pause" : "Resume"
+                          } ${kindAndLabel(schedule)} schedule`}
                           disabled={isBusy}
                           onClick={() => toggleActive(schedule)}
                         >
@@ -256,7 +277,7 @@ export function GearServiceCard({
                         <Button
                           variant="ghost"
                           size="sm"
-                          aria-label="Edit"
+                          aria-label={`Edit ${kindAndLabel(schedule)} schedule`}
                           onClick={() => setEditingSchedule(schedule)}
                         >
                           <Edit className="h-4 w-4" />
@@ -264,7 +285,7 @@ export function GearServiceCard({
                         <Button
                           variant="ghost"
                           size="sm"
-                          aria-label="Delete"
+                          aria-label={`Delete ${kindAndLabel(schedule)} schedule`}
                           disabled={isBusy}
                           onClick={() => setDeletingSchedule(schedule)}
                         >
@@ -338,7 +359,7 @@ export function GearServiceCard({
                         <Button
                           variant="ghost"
                           size="sm"
-                          aria-label="Edit"
+                          aria-label={`Edit ${recordName(record)}`}
                           onClick={() => setEditingRecord(record)}
                         >
                           <Edit className="h-4 w-4" />
@@ -346,7 +367,7 @@ export function GearServiceCard({
                         <Button
                           variant="ghost"
                           size="sm"
-                          aria-label="Delete"
+                          aria-label={`Delete ${recordName(record)}`}
                           disabled={busyUuid === record.uuid}
                           onClick={() => setDeletingRecord(record)}
                         >

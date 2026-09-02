@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useDialogApiError } from "@/hooks/useDialogApiError";
+import { FormApiError } from "@/components/ui/form-api-error";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Plus, Save } from "lucide-react";
@@ -302,7 +303,7 @@ export function GearServiceScheduleDialog({
               advice: check what your kit and your local rules actually require.
             </p>
 
-            {apiError && <p className="text-sm text-destructive">{apiError}</p>}
+            <FormApiError error={apiError} />
 
             <DialogFooter>
               <Button

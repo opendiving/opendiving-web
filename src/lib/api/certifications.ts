@@ -30,6 +30,14 @@ export const CERTIFICATION_AGENCIES = [
 
 export type CertificationAgency = (typeof CERTIFICATION_AGENCIES)[number];
 
+/**
+ * What the certification form opens on, mirroring the order above: PADI is the
+ * agency most divers hold a card from, so it is the pick that needs changing
+ * least often. Named rather than repeated because the create form, its
+ * reset-on-open and the course prefill all have to agree on it.
+ */
+export const DEFAULT_CERTIFICATION_AGENCY: CertificationAgency = "padi";
+
 // Display labels. These are acronyms rather than words, so none of them can be
 // derived by capitalizing the value.
 const CERTIFICATION_AGENCY_LABELS: Record<CertificationAgency, string> = {
@@ -61,6 +69,25 @@ export function certificationAgencyLabel(
   if (!agency) return null;
   if (agency === "other") return agencyOther?.trim() || "Other";
   return CERTIFICATION_AGENCY_LABELS[agency as CertificationAgency] ?? agency;
+}
+
+/**
+ * Names one certification for a screen reader: the agency and the level, e.g.
+ * "PADI Advanced Nitrox". Certifications carry no unique-name constraint - a
+ * diver can hold the same level from two agencies, and often does - so the name
+ * alone would leave two rows' controls indistinguishable. Falls back to the bare
+ * name when the agency is missing.
+ */
+export function certificationLabel(certification: {
+  name: string;
+  agency?: string | null;
+  agency_other?: string | null;
+}): string {
+  const agency = certificationAgencyLabel(
+    certification.agency,
+    certification.agency_other,
+  );
+  return agency ? `${agency} ${certification.name}` : certification.name;
 }
 
 /**
@@ -112,6 +139,11 @@ export interface Certification {
   instructor_number?: string | null;
   training_center?: string | null;
   notes?: string;
+  // The training course this card came out of, if the diver recorded one. The
+  // instructor/training-center fields above are deliberately *not* derived from
+  // it: imported history arrives certification-first, with no course to hang
+  // them on, so a certification has to stand alone.
+  course_uuid?: string | null;
   // Stored card images, embedded by the API so the list can show which cards have
   // photos without a request per row. Optional so a client built against an older
   // API (or a cached response predating the field) still type-checks.
@@ -132,8 +164,13 @@ export interface CertificationCreate {
   instructor_number?: string | null;
   training_center?: string | null;
   notes?: string;
+  course_uuid?: string | null;
 }
 
+// `null` on `course_uuid` detaches the certification from its course; omitting
+// the key leaves whatever course it already has alone. The API takes this shape
+// as its own `CertificationUpdateRequest`, kept apart from the schema its admin
+// panel writes through - `course_uuid` is not a column there.
 export type CertificationUpdate = Partial<
   Omit<CertificationCreate, "user_uuid">
 >;
@@ -183,14 +220,23 @@ export const certificationsAPI = {
     return response.data;
   },
 
-  // Get a user's certifications (paginated), newest first.
+  // Get a user's certifications (paginated), newest first. `courseUuid` narrows
+  // the list to the cards one training course issued, which is what a course's
+  // own page reads; one naming a course that doesn't exist or isn't the caller's
+  // returns an empty page rather than an error.
   async getCertifications(
     userUuid: string,
     page: number = 1,
     items_per_page: number = 10,
+    courseUuid?: string,
   ): Promise<PaginatedCertificationsResponse> {
     const response = await apiClient.get(`/certifications`, {
-      params: { user_uuid: userUuid, page, items_per_page },
+      params: {
+        user_uuid: userUuid,
+        page,
+        items_per_page,
+        ...(courseUuid !== undefined ? { course_uuid: courseUuid } : {}),
+      },
     });
     return response.data;
   },

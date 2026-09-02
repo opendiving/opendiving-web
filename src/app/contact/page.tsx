@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/card";
 import { ContactForm } from "@/components/contact/contact-form";
 import { ISSUE_TRACKERS } from "@/lib/contact";
+import { runtimeConfig } from "@/lib/runtime-config";
 import Link from "next/link";
 import { Metadata } from "next";
 import { AlertCircle, Anchor, Bug, Heart, Mail, Shield } from "lucide-react";
@@ -19,14 +20,14 @@ export const metadata: Metadata = {
     "Get in touch with the people who build OpenDiving - report a bug, request a feature, or send a message that reaches a real inbox.",
 };
 
-// Display-only, and deliberately without a default: this can't route mail on its own -
-// the API's `CONTACT_FORM_EMAIL` decides where a submission actually goes - so
-// defaulting it to the project's own address would hand a self-hosted instance's
-// visitors an address that reaches people who can't help them. Left unset, a failed
-// submission points at the issue tracker instead, which is right for every deployment.
-const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL;
-
 export default function ContactPage() {
+  // Display-only, and deliberately without a default: this can't route mail on its own -
+  // the API's `CONTACT_FORM_EMAIL` decides where a submission actually goes - so
+  // defaulting it to the project's own address would hand a self-hosted instance's
+  // visitors an address that reaches people who can't help them. Left unset, a failed
+  // submission points at the issue tracker instead, which is right for every deployment.
+  const { contactEmail } = runtimeConfig();
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="mb-12 text-center">
@@ -48,7 +49,7 @@ export default function ContactPage() {
                   used to be on the other three, and is a mid-grey in dark mode
                   (see DECISIONS.md) - dimmer there than the description under
                   it, and indistinguishable from the title in light mode. */}
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle as="h2" className="flex items-center gap-2">
                 <Bug className="h-5 w-5" />
                 Bugs & feature requests
               </CardTitle>
@@ -75,7 +76,7 @@ export default function ContactPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle as="h2" className="flex items-center gap-2">
                 <Shield className="h-5 w-5 text-success" />
                 Security
               </CardTitle>
@@ -92,7 +93,7 @@ export default function ContactPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle as="h2" className="flex items-center gap-2">
                 <Heart className="h-5 w-5 text-destructive" />
                 Contributing
               </CardTitle>
@@ -118,7 +119,7 @@ export default function ContactPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle as="h2" className="flex items-center gap-2">
                 <Anchor className="h-5 w-5" />
                 Self-hosted instances
               </CardTitle>
@@ -130,9 +131,14 @@ export default function ContactPage() {
                 we cannot see them, restore them, or reset an account on it.
                 Whoever operates that server is the one who can.
               </p>
+              {/* The product repository. This used to be an `#quickstart`
+                  anchor on the API repo's README, which has no heading of that
+                  name and never had one - so the button landed at the top of a
+                  component's README either way. The install is a product-level
+                  thing and now lives where it is written. */}
               <Button asChild variant="outline" className="w-full">
                 <a
-                  href="https://github.com/opendiving/opendiving-api#quickstart"
+                  href="https://github.com/opendiving/opendiving"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -146,7 +152,7 @@ export default function ContactPage() {
         <div className="lg:col-span-2">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle as="h2" className="flex items-center gap-2">
                 <Mail className="h-5 w-5" />
                 Send us a message
               </CardTitle>
@@ -156,7 +162,7 @@ export default function ContactPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <ContactForm fallbackEmail={CONTACT_EMAIL} />
+              <ContactForm fallbackEmail={contactEmail} />
 
               <div className="rounded-md border bg-muted p-4">
                 <div className="flex items-start gap-2">

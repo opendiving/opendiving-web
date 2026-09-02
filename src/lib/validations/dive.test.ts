@@ -3,11 +3,12 @@ import {
   buildDiveUpdate,
   diveCreateSchema,
   diveMixtureSchema,
+  diveToFormValues,
   diveUpdateSchema,
   normalizeMixtures,
   toDiveMixtureInput,
 } from "./dive";
-import type { DiveMixture } from "@/lib/api/dives";
+import { WATER_TYPES, type Dive, type DiveMixture } from "@/lib/api/dives";
 
 const validDive = {
   dive_number: 1,
@@ -142,6 +143,91 @@ describe("diveCreateSchema numeric fields", () => {
   });
 });
 
+describe("diveCreateSchema water_type", () => {
+  it("accepts every member of the API's vocabulary", () => {
+    for (const waterType of WATER_TYPES) {
+      const result = diveCreateSchema.safeParse({
+        ...validDive,
+        water_type: waterType,
+      });
+      expect(result.success).toBe(true);
+    }
+  });
+
+  // The picker's "Not recorded" option. A live form state rather than something
+  // sent to the API, so the schema has to admit it or the resolver silently
+  // refuses the submit - the failure mode the mixture `role` field already hit.
+  it("accepts the cleared select's empty string", () => {
+    const result = diveCreateSchema.safeParse({ ...validDive, water_type: "" });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a value outside the vocabulary", () => {
+    const result = diveCreateSchema.safeParse({
+      ...validDive,
+      water_type: "soda",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("accepts an explicit null, which is how the field is cleared", () => {
+    expect(diveUpdateSchema.safeParse({ water_type: null }).success).toBe(true);
+  });
+});
+
+describe("diveCreateSchema altitude", () => {
+  // The band mirrors the API's `ck_dive_altitude_range`, so the form says no
+  // before the database does - and both ends are real places rather than round
+  // numbers: the Dead Sea below, the Ojos del Salado pool above.
+  it("accepts a lake at altitude", () => {
+    expect(
+      diveCreateSchema.safeParse({ ...validDive, altitude: 372 }).success,
+    ).toBe(true);
+  });
+
+  it("accepts sea level and both bounds", () => {
+    for (const altitude of [0, -450, 6500]) {
+      expect(
+        diveCreateSchema.safeParse({ ...validDive, altitude }).success,
+      ).toBe(true);
+    }
+  });
+
+  it("rejects an altitude below the Dead Sea", () => {
+    expect(
+      diveCreateSchema.safeParse({ ...validDive, altitude: -451 }).success,
+    ).toBe(false);
+  });
+
+  it("rejects an altitude above the highest attested dive", () => {
+    // The typo/unit case this exists for: 9000 is feet mistaken for metres.
+    expect(
+      diveCreateSchema.safeParse({ ...validDive, altitude: 9000 }).success,
+    ).toBe(false);
+  });
+
+  // The bound messages name both systems, because form state is metric whichever
+  // way the diver types: an imperial diver enters 22,000 ft and would otherwise be
+  // told about a 6500 m ceiling they never typed.
+  it("states the altitude range in both systems", () => {
+    const result = diveCreateSchema.safeParse({ ...validDive, altitude: 9000 });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues.map((issue) => issue.message)).toContain(
+      "Altitude must be between -450 and 6500 m (-1,476 and 21,325 ft)",
+    );
+  });
+
+  it("rejects a fractional altitude", () => {
+    expect(
+      diveCreateSchema.safeParse({ ...validDive, altitude: 372.5 }).success,
+    ).toBe(false);
+  });
+
+  it("allows both fields to be omitted", () => {
+    expect(diveCreateSchema.safeParse(validDive).success).toBe(true);
+  });
+});
+
 describe("diveMixtureSchema", () => {
   const validMixture = {
     volume: 12,
@@ -158,6 +244,72 @@ describe("diveMixtureSchema", () => {
       ...validMixture,
       start_pressure: "",
       end_pressure: "",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  // The pressure band, both ends and both fields. The message is the deliverable
+  // as much as the rejection is - "Start pressure must be positive" was accurate
+  // and useless, because it never said what to type instead - so these assert the
+  // string, not just `success: false`. Zod flattens the union to the failing
+  // branch's own message; the empty-string branch contributes nothing here.
+  const messagesFor = (mixture: Record<string, unknown>) => {
+    const result = diveMixtureSchema.safeParse({ ...validMixture, ...mixture });
+    expect(result.success).toBe(false);
+    return result.error!.issues.map((issue) => issue.message);
+  };
+
+  it("tells a diver what to do about a start_pressure of 0", () => {
+    expect(messagesFor({ start_pressure: 0 })).toContain(
+      "A cylinder can't start a dive empty — enter the fill pressure, or leave this blank if it wasn't recorded.",
+    );
+  });
+
+  it("rejects a negative start_pressure", () => {
+    expect(messagesFor({ start_pressure: -1 })).toContain(
+      "A cylinder can't start a dive empty — enter the fill pressure, or leave this blank if it wasn't recorded.",
+    );
+  });
+
+  it("reads a start_pressure above 350 as a unit error", () => {
+    // 205203 is what the DM5 XML parser stored when it read millibar as bar, and
+    // 3000 is a psi fill typed into a bar box. Both fail on the ceiling.
+    expect(messagesFor({ start_pressure: 351 })).toContain(
+      "Start pressure must be at most 350 bar (5,076 psi) — check the units on that reading.",
+    );
+  });
+
+  it("accepts the highest real fill there is", () => {
+    // A 300 bar DIN fill must not be collateral of the ceiling, and neither must
+    // 350 itself.
+    for (const start_pressure of [0.1, 200, 300, 350]) {
+      const result = diveMixtureSchema.safeParse({
+        ...validMixture,
+        start_pressure,
+      });
+      expect(result.success).toBe(true);
+    }
+  });
+
+  it("reads a lone end_pressure above 350 as a unit error", () => {
+    // The ceiling has to sit on `end_pressure` in its own right. The
+    // `end <= start` rule below would otherwise be the only thing bounding it
+    // from above, and that rule returns early when the start box is blank - so a
+    // psi reading typed into a lone end box would reach the API unbounded and come
+    // back a 422 toast instead of a message under the field.
+    expect(messagesFor({ end_pressure: 3000 })).toContain(
+      "End pressure must be at most 350 bar (5,076 psi) — check the units on that reading.",
+    );
+  });
+
+  it("accepts an end_pressure of 0", () => {
+    // The asymmetry, pinned deliberately: this is the one most likely to be
+    // "tidied up" into matching the start rule. An out-of-gas ascent, a drained
+    // stage and an SPG reading zero are all dives worth logging honestly.
+    const result = diveMixtureSchema.safeParse({
+      ...validMixture,
+      start_pressure: 200,
+      end_pressure: 0,
     });
     expect(result.success).toBe(true);
   });
@@ -321,6 +473,7 @@ describe("toDiveMixtureInput", () => {
     po2_limit: null,
     gas_number: null,
     role: null,
+    usage: null,
   };
 
   it("converts a mixture the API recorded nothing optional for into a valid row", () => {
@@ -340,6 +493,7 @@ describe("toDiveMixtureInput", () => {
       // The exception: no input writes it, so it has no cleared state to spell.
       gas_number: undefined,
       role: "",
+      usage: "",
     });
   });
 
@@ -351,6 +505,7 @@ describe("toDiveMixtureInput", () => {
       po2_limit: 1.6,
       gas_number: 0,
       role: "deco",
+      usage: "parallel",
     };
 
     expect(toDiveMixtureInput(recorded)).toEqual({
@@ -365,6 +520,7 @@ describe("toDiveMixtureInput", () => {
       // rather than `||` is load-bearing here.
       gas_number: 0,
       role: "deco",
+      usage: "parallel",
     });
     expect(
       diveMixtureSchema.safeParse(toDiveMixtureInput(recorded)).success,
@@ -385,8 +541,20 @@ describe("toDiveMixtureInput", () => {
         po2_limit: undefined,
         gas_number: undefined,
         role: undefined,
+        usage: undefined,
       },
     ]);
+  });
+
+  it("round-trips a flagged parallel cylinder back to the wire value", () => {
+    // The flag is the one mixture field that changes what the API can derive, so a
+    // save that quietly dropped it would take the dive's gas figure with it.
+    const flagged: DiveMixture = { ...fromApi, usage: "parallel" };
+
+    expect(toDiveMixtureInput(flagged).usage).toBe("parallel");
+    expect(normalizeMixtures([toDiveMixtureInput(flagged)])[0].usage).toBe(
+      "parallel",
+    );
   });
 });
 
@@ -489,6 +657,28 @@ describe("buildDiveUpdate", () => {
     );
   });
 
+  // The course link has the same three states as the trip, and the same trap:
+  // without a branch of its own here, clearing the course picker would omit the
+  // key and the dive would keep the course it was just detached from.
+  it("sends an explicit null when the course is cleared", () => {
+    const update = buildDiveUpdate({ course_uuid: null });
+
+    expect(update).toHaveProperty("course_uuid");
+    expect(update.course_uuid).toBeNull();
+  });
+
+  it("leaves the course alone when the field was untouched", () => {
+    expect(buildDiveUpdate({ course_uuid: undefined })).not.toHaveProperty(
+      "course_uuid",
+    );
+  });
+
+  it("sends a selected course through unchanged", () => {
+    expect(buildDiveUpdate({ course_uuid: "course-uuid" }).course_uuid).toBe(
+      "course-uuid",
+    );
+  });
+
   // Same distinction, for the nullable measurements.
   it("distinguishes a cleared measurement from an untouched one", () => {
     const cleared = buildDiveUpdate({ max_depth: null, weight: null });
@@ -496,6 +686,45 @@ describe("buildDiveUpdate", () => {
     expect(cleared.weight).toBeNull();
 
     expect(buildDiveUpdate({})).not.toHaveProperty("max_depth");
+  });
+
+  // The select's cleared state has to reach the API as an explicit null: `""`
+  // is not a member of the API's enum, and dropping the field would leave the
+  // dive's old water type in place while the form and the toast both claim it
+  // was cleared - the `trip_uuid` bug, one field over.
+  it("sends an explicit null when the water type is cleared", () => {
+    const update = buildDiveUpdate({ water_type: "" });
+
+    expect(update).toHaveProperty("water_type");
+    expect(update.water_type).toBeNull();
+  });
+
+  it("leaves the water type alone when the field was untouched", () => {
+    expect(buildDiveUpdate({})).not.toHaveProperty("water_type");
+    expect(buildDiveUpdate({ water_type: undefined })).not.toHaveProperty(
+      "water_type",
+    );
+  });
+
+  it("sends a chosen water type through unchanged", () => {
+    expect(buildDiveUpdate({ water_type: "brackish" }).water_type).toBe(
+      "brackish",
+    );
+  });
+
+  it("distinguishes a cleared altitude from an untouched one", () => {
+    expect(buildDiveUpdate({ altitude: null }).altitude).toBeNull();
+    expect(buildDiveUpdate({ altitude: 372 }).altitude).toBe(372);
+    expect(buildDiveUpdate({})).not.toHaveProperty("altitude");
+  });
+
+  // Sea level is a recorded answer, not an absent one - the same distinction
+  // `weight: 0` carries, and the one a truthiness check would collapse.
+  it("sends an altitude of zero", () => {
+    const update = buildDiveUpdate({ altitude: 0 });
+
+    expect(update).toHaveProperty("altitude");
+    expect(update.altitude).toBe(0);
   });
 
   it("converts the MM:SS duration to seconds", () => {
@@ -522,5 +751,257 @@ describe("buildDiveUpdate", () => {
   it("accepts a null trip through the update schema", () => {
     const parsed = diveUpdateSchema.safeParse({ trip_uuid: null });
     expect(parsed.success).toBe(true);
+  });
+
+  it("accepts a null course through the update schema", () => {
+    const parsed = diveUpdateSchema.safeParse({ course_uuid: null });
+    expect(parsed.success).toBe(true);
+  });
+
+  // What the edit form now submits on every save: everything it holds. It used
+  // to be filtered down to the fields react-hook-form marked dirty, because a
+  // read that hid soft-deleted trips and sites made the form's own seed a lie.
+  // Nothing is hidden from a read any more, so the echo is the truth.
+  it("sends every field the form holds, not just the edited one", () => {
+    const update = buildDiveUpdate({
+      dive_number: 42,
+      duration: "45:30",
+      trip_uuid: "trip-7",
+      dive_site_uuids: ["site-1", "site-2"],
+      notes: "Thermocline at 18m",
+    });
+
+    expect(update).toEqual({
+      dive_number: 42,
+      duration: 2730,
+      trip_uuid: "trip-7",
+      dive_site_uuids: ["site-1", "site-2"],
+      notes: "Thermocline at 18m",
+    });
+  });
+
+  it("sends an empty cylinder list as an empty list", () => {
+    // Not the same as omitting it: `[]` is how a dive's cylinders are cleared,
+    // and it is what a dive that never had any seeds the form with.
+    const update = buildDiveUpdate({ mixtures: [] });
+
+    expect(update).toHaveProperty("mixtures");
+    expect(update.mixtures).toEqual([]);
+  });
+});
+
+// The other half of the round trip: what the edit form is seeded with. It is
+// faithful to the dive, which is the whole specification now that the form
+// submits everything it holds - a value invented here is a value written to the
+// dive on the first save.
+describe("diveToFormValues", () => {
+  const DIVE: Dive = {
+    uuid: "dive-1",
+    dive_number: 42,
+    start_time: "2026-04-04T10:04:47+02:00",
+    duration: 2730,
+    max_depth: 31.4,
+    trip_uuid: "trip-7",
+    course_uuid: "course-3",
+    dive_sites: [
+      { uuid: "site-1", name: "Pescador Island" } as Dive["dive_sites"][number],
+    ],
+    gear_items: [
+      { uuid: "item-1", name: "MK25 EVO" } as Dive["gear_items"][number],
+    ],
+    notes: "Thermocline at 18m",
+    user_uuid: "user-1",
+    created_at: "2026-04-04T12:00:00+00:00",
+    mixtures: [],
+  };
+
+  it("seeds no cylinders for a dive that has none", () => {
+    // The regression this guards: seeding a `DEFAULT_MIXTURE` here used to be
+    // harmless because the untouched row was filtered out of the PATCH. With
+    // the whole form submitted, it would write an 11.1 L air cylinder to a dive
+    // whose only edit was to the notes.
+    expect(diveToFormValues(DIVE).mixtures).toEqual([]);
+  });
+
+  it("carries the scalars over, converting the duration to MM:SS", () => {
+    expect(diveToFormValues(DIVE)).toMatchObject({
+      dive_number: 42,
+      start_time: "2026-04-04T10:04:47+02:00",
+      duration: "45:30",
+      max_depth: 31.4,
+      trip_uuid: "trip-7",
+      course_uuid: "course-3",
+      dive_site_uuids: ["site-1"],
+      gear_item_uuids: ["item-1"],
+      notes: "Thermocline at 18m",
+    });
+  });
+
+  it("round-trips a cylinder's carried fields back out unchanged", () => {
+    // `po2_limit`, `role` and `gas_number` are the three the form holds without
+    // the diver ever being asked about them - `gas_number` has no input at all -
+    // so an untouched save is the only thing keeping them on the dive. A
+    // `gas_number` of 0 is a real value (a Suunto Ocean numbers from 0) and the
+    // one a truthiness check would drop.
+    const dive: Dive = {
+      ...DIVE,
+      mixtures: [
+        {
+          id: 9,
+          volume: 11.1,
+          start_pressure: 205,
+          end_pressure: 90,
+          oxygen: 32,
+          helium: 0,
+          po2_limit: 1.4,
+          gas_number: 0,
+          role: "bottom",
+          usage: "parallel",
+        } as Dive["mixtures"][number],
+      ],
+    };
+
+    const seeded = diveToFormValues(dive);
+    expect(seeded.mixtures).toEqual([
+      {
+        id: 9,
+        volume: 11.1,
+        start_pressure: 205,
+        end_pressure: 90,
+        oxygen: 32,
+        helium: 0,
+        po2_limit: 1.4,
+        gas_number: 0,
+        role: "bottom",
+        usage: "parallel",
+      },
+    ]);
+
+    // ...and back out through the submit path, with the client-side `id` gone.
+    expect(buildDiveUpdate(seeded).mixtures).toEqual([
+      {
+        volume: 11.1,
+        start_pressure: 205,
+        end_pressure: 90,
+        oxygen: 32,
+        helium: 0,
+        po2_limit: 1.4,
+        usage: "parallel",
+        gas_number: 0,
+        role: "bottom",
+      },
+    ]);
+  });
+
+  it("seeds the water type as the select's cleared option when unrecorded", () => {
+    // `null` on the wire, `""` on the form: the option the picker actually has.
+    // Seeding the null straight through fails `diveCreateSchema`... and would do
+    // it silently, since a rejected resolver never calls the submit handler.
+    expect(diveToFormValues(DIVE).water_type).toBe("");
+    expect(diveToFormValues(DIVE).altitude).toBeUndefined();
+  });
+
+  it("carries a recorded water type and altitude through, and back out", () => {
+    const dive: Dive = { ...DIVE, water_type: "brackish", altitude: 0 };
+    const seeded = diveToFormValues(dive);
+
+    expect(seeded.water_type).toBe("brackish");
+    expect(seeded.altitude).toBe(0);
+
+    // The round trip an untouched save makes: what the dive holds is what goes
+    // back, sea level included.
+    const update = buildDiveUpdate(seeded);
+    expect(update.water_type).toBe("brackish");
+    expect(update.altitude).toBe(0);
+  });
+
+  it("turns a mixture's unrecorded fields into the form's cleared state", () => {
+    // Every optional field arrives as an explicit `null`, which satisfies none
+    // of `diveMixtureSchema`'s unions - `toDiveMixtureInput` is what stops the
+    // resolver rejecting values the diver never entered.
+    const dive: Dive = {
+      ...DIVE,
+      mixtures: [
+        {
+          id: 9,
+          volume: 12,
+          start_pressure: null,
+          end_pressure: null,
+          oxygen: 21,
+          helium: 0,
+          po2_limit: null,
+          gas_number: null,
+          role: null,
+        } as Dive["mixtures"][number],
+      ],
+    };
+
+    expect(diveToFormValues(dive).mixtures?.[0]).toMatchObject({
+      start_pressure: "",
+      end_pressure: "",
+      po2_limit: "",
+      role: "",
+      gas_number: undefined,
+    });
+  });
+});
+
+// A dive as the detail endpoint sends one, for the seeding direction. Local to
+// this block because the fixture the edit-form tests share lives inside theirs.
+const DIVE_FOR_SPECIES: Dive = {
+  uuid: "dive-1",
+  dive_number: 42,
+  start_time: "2026-04-04T10:04:47+02:00",
+  duration: 2730,
+  dive_sites: [],
+  gear_items: [],
+  notes: "",
+  user_uuid: "user-1",
+  created_at: "2026-04-04T12:00:00+00:00",
+  mixtures: [],
+};
+
+describe("species_uuids", () => {
+  it("defaults to an empty list on create", () => {
+    const parsed = diveCreateSchema.safeParse(validDive);
+
+    expect(parsed.success).toBe(true);
+    expect(parsed.success && parsed.data.species_uuids).toEqual([]);
+  });
+
+  it("maps a dive's embedded species onto the form in order", () => {
+    const dive: Dive = {
+      ...DIVE_FOR_SPECIES,
+      species: [
+        { uuid: "species-2" } as NonNullable<Dive["species"]>[number],
+        { uuid: "species-1" } as NonNullable<Dive["species"]>[number],
+      ],
+    };
+
+    expect(diveToFormValues(dive).species_uuids).toEqual([
+      "species-2",
+      "species-1",
+    ]);
+  });
+
+  it("seeds an empty list for a dive payload that predates species", () => {
+    // The API caches a dive read for an hour, so a payload written before
+    // species existed has no key at all - and `undefined` here would make the
+    // field reset to its default after the form is seeded.
+    expect(diveToFormValues(DIVE_FOR_SPECIES).species_uuids).toEqual([]);
+  });
+
+  it("sends the list on update, including the empty one that clears it", () => {
+    // `[]` and "untouched" are different requests: an omitted key leaves the
+    // dive's species alone, so collapsing the two would make "remove them all"
+    // inexpressible. See "Locations are always sent on edit" in DECISIONS.md.
+    expect(
+      buildDiveUpdate({ species_uuids: ["a", "b"] }).species_uuids,
+    ).toEqual(["a", "b"]);
+    expect(buildDiveUpdate({ species_uuids: [] }).species_uuids).toEqual([]);
+  });
+
+  it("omits the key entirely when the form never had the field", () => {
+    expect("species_uuids" in buildDiveUpdate({})).toBe(false);
   });
 });

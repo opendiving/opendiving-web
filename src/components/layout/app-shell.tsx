@@ -5,12 +5,26 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { QuickCreateProvider } from "@/components/layout/quick-create";
 
-// Routes that render their own standalone, chrome-free layout.
+// Routes that render their own standalone, chrome-free layout. They share
+// `StandaloneShell`, which carries the `<main>` element this component would
+// otherwise be the app's only source of.
 const NO_CHROME_ROUTES = [
   "/signin",
   "/onboarding",
+  // The offer to undo a deletion, and `/onboarding`'s counterpart in every way that
+  // matters here: a verified identity with no session yet, so there is no user menu
+  // to draw and nowhere in the app to go until the account is back.
+  "/restore",
   "/auth/verify",
+  // Where Google returns a visitor mid-sign-in. Same state as `/auth/verify`: a
+  // round trip that has left and come back, with no session yet to draw a user
+  // menu from.
+  "/auth/google/callback",
   "/settings/confirm-email",
+  // The screen after an account deletion. The header's user menu belongs to a
+  // session that has just been blacklisted, and offering a signed-out visitor
+  // "Dashboard" and "Log a dive" on the way out is an invitation to a 401.
+  "/goodbye",
 ];
 
 function isChromeFree(pathname: string | null): boolean {

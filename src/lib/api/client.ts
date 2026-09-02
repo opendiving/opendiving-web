@@ -1,6 +1,8 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
 import { clearResourceCache } from "@/lib/resource-cache";
 
+import { API_BASE_URL } from "@/lib/api-base";
+
 /**
  * Dispatched when a token refresh fails so `AuthContext` can clear the stale
  * user; existing per-page "redirect to the landing page when unauthenticated"
@@ -10,8 +12,16 @@ export const AUTH_SESSION_EXPIRED_EVENT = "auth:session-expired";
 
 // The full base every request is appended to, `/api/v1` prefix included - the API
 // mounts nothing at the bare origin, so a value without it 404s on every call.
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+//
+// Unset, this is the *relative* `/api/v1`, served by this app's own proxy route and
+// resolved by the browser against whatever origin loaded the page. `NEXT_PUBLIC_API_URL`
+// overrides it at build time for a split-origin deployment, and local dev sets it in
+// `.env` so the browser keeps talking to `localhost:8000` directly.
+//
+// Declared in `lib/api-base.ts` rather than here because axios is no longer its only
+// consumer: a species photo is an unauthenticated `<img src>` that never goes through
+// this client and still has to resolve to the same base. Two copies of the `||` would be
+// two places for the split-origin build to break.
 
 // The access token is intentionally kept in memory only, never in
 // localStorage/sessionStorage: those are readable by any JS running on the
@@ -179,6 +189,19 @@ export async function unwrapBlobErrorBody(error: unknown): Promise<void> {
   }
 }
 
+// The endpoints whose job is to *establish* a session rather than to use one.
+// `/auth/logout` is deliberately absent: it needs a live access token to blacklist
+// the pair, so refreshing and retrying it is exactly right.
+const SESSION_MINTING_PATHS = new Set([
+  "/auth/refresh",
+  "/auth/email/verify",
+  "/auth/email/verify-code",
+  "/auth/google",
+  "/auth/passkey/verify",
+  "/auth/complete",
+  "/auth/restore",
+]);
+
 // Response interceptor to handle token refresh
 apiClient.interceptors.response.use(
   (response) => {
@@ -211,10 +234,16 @@ apiClient.interceptors.response.use(
     // drive the refresh path) pay nothing for it.
     await unwrapBlobErrorBody(error);
 
-    // A 401 from this endpoint reflects a missing/invalid refresh token itself,
-    // not an expired access token - retrying it via a token refresh would just
-    // recurse into the same failure.
-    const isAuthEndpoint = originalRequest?.url === "/auth/refresh";
+    // A 401 from any of these is the endpoint refusing the credential in the
+    // *body* - an expired magic link, a wrong sign-in code, a rejected Google
+    // assertion, a stale onboarding token, a missing refresh cookie. None of them
+    // can be fixed by minting a fresh access token, and sending them down the
+    // refresh path below actively makes things worse: the caller ends up holding
+    // whatever the *refresh* failed with instead of the API's own explanation, so
+    // a signed-out visitor who mistypes their sign-in code is told "Refresh token
+    // missing." `/auth/refresh` itself is here for the older reason - retrying it
+    // through a refresh recurses into the same failure.
+    const isAuthEndpoint = SESSION_MINTING_PATHS.has(originalRequest?.url);
 
     if (
       error.response?.status === 401 &&

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { GearItem, gearTypeLabel } from "@/lib/api/gear";
+import { GearItem, gearItemLabel, gearTypeLabel } from "@/lib/api/gear";
 import { worstServiceStatus } from "@/lib/gear-service";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -74,7 +74,10 @@ export function GearItemsCard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex flex-wrap items-center justify-between gap-3">
+        <CardTitle
+          as="h2"
+          className="flex flex-wrap items-center justify-between gap-3"
+        >
           <span>Your Gear</span>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
@@ -159,11 +162,15 @@ export function GearItemsCard({
                     />
                   </TableCell>
                   <TableCell className="text-right">
+                    {/* Named per row, not per action: ten identical "Edit"s tell
+                        a screen reader's controls list nothing about which piece
+                        of gear. See DECISIONS.md, "Ten rows of 'Edit' name
+                        nothing". */}
                     <div className="flex justify-end gap-2">
                       <Button
                         variant="ghost"
                         size="sm"
-                        aria-label="Edit"
+                        aria-label={`Edit ${gearItemLabel(item)}`}
                         onClick={() => onEdit(item)}
                       >
                         <Edit className="h-4 w-4" />
@@ -171,7 +178,9 @@ export function GearItemsCard({
                       <Button
                         variant="ghost"
                         size="sm"
-                        aria-label={item.is_archived ? "Unarchive" : "Archive"}
+                        aria-label={`${
+                          item.is_archived ? "Unarchive" : "Archive"
+                        } ${gearItemLabel(item)}`}
                         disabled={isArchiving}
                         onClick={() => onArchiveToggle(item)}
                       >
@@ -184,7 +193,7 @@ export function GearItemsCard({
                       <Button
                         variant="ghost"
                         size="sm"
-                        aria-label="Delete"
+                        aria-label={`Delete ${gearItemLabel(item)}`}
                         onClick={() => onDelete(item.uuid)}
                         disabled={deletingId === item.uuid}
                       >

@@ -1,18 +1,21 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
+import { useConfig } from "@/contexts/ConfigContext";
+import { usePasskeySignIn } from "@/hooks/usePasskeySignIn";
 import { emailAuthSchema, EmailAuthFormData } from "@/lib/validations/auth";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { rememberPostAuthRedirect } from "@/lib/auth-redirect";
 import { cn } from "@/lib/utils";
+import { CheckEmailCard } from "./check-email-card";
 import { GoogleAuthButton } from "./google-auth-button";
-import { ArrowRight, CheckCircle2, MailCheck } from "lucide-react";
+import { ArrowRight, KeyRound } from "lucide-react";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { StatusMessage } from "@/components/ui/status-message";
 
@@ -24,23 +27,39 @@ interface AuthFormProps {
   redirectTo?: string | null;
 }
 
-// Client-side throttle on the "Resend link" button, purely for UX (so a signed-out
-// visitor gets clear, immediate feedback instead of silently hammering the button).
-// The real limit is enforced server-side (see `MagicLinkSettings` in the API's
-// `core/config.py`) regardless of anything done here.
-const RESEND_COOLDOWN_SECONDS = 30;
+// What the "check your email" card needs, and the reason it is one value rather
+// than two pieces of state: the code in the email can only be verified against the
+// request that produced it (see `CheckEmailCard`), so the address on screen and the
+// id being verified must never disagree. A resend replaces both together; closing
+// the tab loses them, and asking for another link is the way back.
+interface SentLink {
+  email: string;
+  requestId: string;
+}
 
-// The single entry point into the app: an email address, or "Continue with
-// Google" - no password field anywhere. Used both directly on the landing page
-// (see `app/page.tsx`) and wherever else a signed-out visitor needs to sign in.
+// The single entry point into the app: an email address, "Continue with Google",
+// or a passkey - no password field anywhere. Used both directly on the landing
+// page (see `app/page.tsx`) and wherever else a signed-out visitor needs to sign
+// in.
+//
+// Passkeys reach this form twice over. The explicit button below is the visible
+// half; the invisible one is a ceremony armed on mount, which puts the diver's
+// passkey in the browser's own autofill dropdown on the email field. That arms on
+// the landing page as well, deliberately: the hero *is* the sign-in surface for a
+// returning visitor, and one tap from there beats a round trip through an inbox.
 export function AuthForm({ className, redirectTo }: AuthFormProps) {
   const [error, setError] = useState<string | null>(null);
-  const [sentTo, setSentTo] = useState<string | null>(null);
-  const [cooldown, setCooldown] = useState(0);
-  const [isResending, setIsResending] = useState(false);
-  const [resendMessage, setResendMessage] = useState<string | null>(null);
-  const [resendError, setResendError] = useState<string | null>(null);
+  const [sent, setSent] = useState<SentLink | null>(null);
   const { requestEmailLink } = useAuth();
+  const { googleClientId } = useConfig();
+  // Armed only while the email input is on screen: the browser anchors its
+  // autofill dropdown to that field, and `CheckEmailCard` replaces this whole
+  // form once a link has been sent.
+  const passkey = usePasskeySignIn({
+    autofill: !sent,
+    redirectTo,
+    onError: setError,
+  });
 
   const {
     register,
@@ -50,19 +69,9 @@ export function AuthForm({ className, redirectTo }: AuthFormProps) {
     resolver: zodResolver(emailAuthSchema),
   });
 
-  // Ticks `cooldown` down to zero, one second at a time. Scheduling the next tick
-  // from inside the timeout callback (rather than an interval tied to mount) means
-  // this cleanly stops itself once `cooldown` hits zero, and restarts correctly if
-  // `cooldown` is bumped back up by a resend.
-  useEffect(() => {
-    if (cooldown <= 0) return;
-    const timer = setTimeout(() => setCooldown((seconds) => seconds - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [cooldown]);
-
-  const onSubmit = async (data: EmailAuthFormData) => {
-    try {
-      setError(null);
+  // The one place a link is minted, for the first request and every resend alike.
+  const sendLink = useCallback(
+    async (email: string) => {
       // The magic link comes back on `/auth/verify`, which knows nothing about
       // this form - stash the destination for it to pick up. Before the request,
       // not after, so it really is unconditional: with no `redirectTo` this
@@ -71,10 +80,23 @@ export function AuthForm({ className, redirectTo }: AuthFormProps) {
       // resurfaces at an unrelated later sign-in. Storing one for a link that
       // then fails to send costs nothing - the next request overwrites it, and
       // it expires on its own.
+      //
+      // Re-stamped on a resend too. The stored expiry is deliberately blind to
+      // how long the backend actually makes links live (see
+      // `rememberPostAuthRedirect`), so restamping whenever a new link is minted
+      // is the only thing keeping the destination alive for exactly as long as
+      // the link the diver is holding.
       rememberPostAuthRedirect(redirectTo);
-      await requestEmailLink(data.email);
-      setSentTo(data.email);
-      setCooldown(RESEND_COOLDOWN_SECONDS);
+      const { request_id } = await requestEmailLink(email);
+      setSent({ email, requestId: request_id });
+    },
+    [redirectTo, requestEmailLink],
+  );
+
+  const onSubmit = async (data: EmailAuthFormData) => {
+    try {
+      setError(null);
+      await sendLink(data.email);
     } catch (err) {
       setError(
         getApiErrorMessage(err, "Something went wrong. Please try again."),
@@ -82,87 +104,16 @@ export function AuthForm({ className, redirectTo }: AuthFormProps) {
     }
   };
 
-  const handleUseDifferentEmail = () => {
-    setSentTo(null);
-    setCooldown(0);
-    setResendMessage(null);
-    setResendError(null);
-  };
-
-  const handleResend = async () => {
-    if (!sentTo || cooldown > 0 || isResending) return;
-
-    try {
-      setIsResending(true);
-      setResendError(null);
-      setResendMessage(null);
-      // Re-stamped, and for the same reason placed before the request rather
-      // than after it. The stored expiry is deliberately blind to how long the
-      // backend actually makes links live (see `rememberPostAuthRedirect`), so
-      // restamping whenever a new link is minted is the only thing keeping the
-      // destination alive for exactly as long as the link the diver is holding.
-      rememberPostAuthRedirect(redirectTo);
-      await requestEmailLink(sentTo);
-      setResendMessage("Link resent - check your email.");
-      setCooldown(RESEND_COOLDOWN_SECONDS);
-    } catch (err) {
-      setResendError(
-        getApiErrorMessage(err, "Couldn't resend the link. Please try again."),
-      );
-    } finally {
-      setIsResending(false);
-    }
-  };
-
-  if (sentTo) {
+  if (sent) {
     return (
-      <div
-        className={cn(
-          "w-full max-w-md rounded-lg border bg-card p-6 text-center shadow-sm",
-          className,
-        )}
-      >
-        <MailCheck className="mx-auto mb-3 h-10 w-10 text-primary" />
-        <h3 className="text-lg font-semibold text-foreground">
-          Check your email
-        </h3>
-        <p className="mt-1 text-sm text-muted-foreground">
-          We sent a sign-in link to{" "}
-          <span className="font-medium text-foreground">{sentTo}</span>. Click
-          it to continue - it expires in 30 minutes and can only be used once.
-        </p>
-
-        {resendMessage && (
-          <StatusMessage variant="success" className="mt-4">
-            {resendMessage}
-          </StatusMessage>
-        )}
-        {resendError && (
-          <StatusMessage variant="error">{resendError}</StatusMessage>
-        )}
-
-        <div className="mt-4 flex flex-col items-center gap-2">
-          <button
-            type="button"
-            onClick={handleResend}
-            disabled={cooldown > 0 || isResending}
-            className="text-sm font-medium underline hover:text-foreground disabled:cursor-not-allowed disabled:text-muted-foreground disabled:hover:text-muted-foreground"
-          >
-            {isResending
-              ? "Resending..."
-              : cooldown > 0
-                ? `Resend link in ${cooldown}s`
-                : "Resend link"}
-          </button>
-          <button
-            type="button"
-            onClick={handleUseDifferentEmail}
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
-            Use a different email
-          </button>
-        </div>
-      </div>
+      <CheckEmailCard
+        className={className}
+        email={sent.email}
+        requestId={sent.requestId}
+        redirectTo={redirectTo}
+        onResend={() => sendLink(sent.email)}
+        onUseDifferentEmail={() => setSent(null)}
+      />
     );
   }
 
@@ -182,6 +133,11 @@ export function AuthForm({ className, redirectTo }: AuthFormProps) {
             id="email"
             type="email"
             placeholder="you@example.com"
+            // `username` is the plain autofill hint this field always wanted;
+            // `webauthn` is what lets the browser offer a passkey in the same
+            // dropdown, and what `startAuthentication({useBrowserAutofill})`
+            // looks for before it will arm a conditional ceremony at all.
+            autoComplete="username webauthn"
             {...register("email")}
             className={errors.email ? "border-destructive" : ""}
           />
@@ -207,11 +163,68 @@ export function AuthForm({ className, redirectTo }: AuthFormProps) {
             </div>
           )}
         </Button>
+
+        {/* The rolling-window phrasing is load-bearing, not padding: the refresh
+            cookie is re-issued on every use, so "for a week" would be false for
+            anyone who keeps using the app. This is where a diver is told that
+            signing in persists past the tab; `/privacy` §10.1 has the long
+            version.
+
+            "About a week" is hardcoded prose for a number the API configures
+            (`REFRESH_TOKEN_EXPIRE_DAYS`, default 7), so an instance that changes
+            it makes this line and §10.1 drift. That coupling is accepted rather
+            than guarded - the same trade as the privacy page's "within 30 days"
+            against the deletion grace period, which the API docs do warn about.
+            Nothing warns about this one yet. */}
+        <p className="text-xs text-muted-foreground">
+          Signing in keeps you signed in on this browser until about a week goes
+          by without you using OpenDiving.
+        </p>
       </form>
 
-      <div className="mt-6">
-        <GoogleAuthButton onError={setError} redirectTo={redirectTo} />
-      </div>
+      {/* The divider lives here rather than inside `GoogleAuthButton`, because
+          there is more than one alternative method now and it has to be drawn
+          once above whichever of them this instance actually has. Google hides
+          itself when unconfigured and the passkey button when the browser has no
+          WebAuthn, so with neither present this whole block goes with them. */}
+      {(googleClientId || passkey.supported) && (
+        <div className="mt-6 space-y-4">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-muted-foreground">Or</span>
+            </div>
+          </div>
+
+          <GoogleAuthButton onError={setError} redirectTo={redirectTo} />
+
+          {passkey.supported && (
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={passkey.signIn}
+              disabled={passkey.isSigningIn}
+            >
+              {passkey.isSigningIn ? (
+                <div className="flex items-center space-x-2">
+                  <ButtonSpinner />
+                  <span>Signing in...</span>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2">
+                  <KeyRound size={16} />
+                  {/* "Sign in", not "Continue": a passkey can only ever sign in
+                      an account that already exists. */}
+                  <span>Sign in with a passkey</span>
+                </div>
+              )}
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

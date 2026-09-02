@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { FormApiError } from "@/components/ui/form-api-error";
 
 // Email preferences. Currently just the gear-service reminder, which is opt-*out*: a
 // reminder nobody switched on is a reminder that never arrives, and the point of it is
@@ -46,7 +47,7 @@ export function NotificationsCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle as="h2" className="flex items-center gap-2">
           <Bell className="h-5 w-5" />
           Notifications
         </CardTitle>
@@ -76,7 +77,7 @@ export function NotificationsCard() {
           </div>
         </div>
 
-        {error && <p className="text-sm text-destructive mt-3">{error}</p>}
+        <FormApiError error={error} className="mt-3" />
       </CardContent>
     </Card>
   );

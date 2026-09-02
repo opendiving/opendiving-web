@@ -1,6 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
+  // Off, or Next sends `X-Powered-By: Next.js` on every response by default.
+  // It names the framework and nothing else, which is free reconnaissance for
+  // anyone scanning a self-hosted instance for a version worth an exploit, and
+  // it is bought with nothing: no code here, in the API, or in the browser ever
+  // reads it.
+  poweredByHeader: false,
   // No `images.remotePatterns` on purpose. Nothing in the app uses
   // `next/image` - private card images go through `useAuthedBlobUrl` and a
   // plain `<img>` (see `certification-card-image.tsx`), because they need an
@@ -13,29 +19,27 @@ const nextConfig = {
     ignoreBuildErrors: false,
   },
   async headers() {
-    // Content-Security-Policy is set per-request by src/proxy.ts instead of
-    // here, since it needs a fresh, unpredictable nonce on every response.
-    // Everything below is static and safe to apply route-wide.
+    // Content-Security-Policy and Strict-Transport-Security are set per-request
+    // by src/proxy.ts instead of here - the first needs a fresh, unpredictable
+    // nonce on every response, and the second depends on whether the request
+    // arrived over HTTPS and on a variable read at runtime. What is left below
+    // is static: the same value for every request of every deployment, which is
+    // what this build-time hook can honestly express.
     return [
       {
         source: "/:path*",
         headers: [
           { key: "X-Content-Type-Options", value: "nosniff" },
-          // `upgrade-insecure-requests` in the CSP rewrites subresource URLs,
-          // but it can't protect the *first* navigation to http://... - the
-          // browser has no memory of the origin yet, which is exactly the
-          // window an on-path attacker needs. HSTS closes it. Harmless if the
-          // TLS-terminating proxy in front already sets one; the proxy's value
-          // wins where both are present.
-          {
-            key: "Strict-Transport-Security",
-            value: "max-age=63072000; includeSubDomains; preload",
-          },
           // Legacy fallback for browsers that don't support the CSP
           // `frame-ancestors` directive set in proxy.ts.
           { key: "X-Frame-Options", value: "DENY" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           {
+            // Only the three features this app has no use for. Notably absent:
+            // `publickey-credentials-get`/`-create`, which stay at their default
+            // `self` so passkey ceremonies work (see `hooks/usePasskeySignIn.ts`).
+            // Tightening this header later has to name them explicitly, or it
+            // kills passkey sign-in with a browser-side error and no clue why.
             key: "Permissions-Policy",
             value: "camera=(), microphone=(), geolocation=()",
           },

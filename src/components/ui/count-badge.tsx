@@ -7,6 +7,11 @@ interface CountBadgeProps {
   isLoading: boolean;
   /** Singular noun for the thing counted, e.g. "total dive", "certification". */
   label: string;
+  /**
+   * The plural, where adding an "s" does not produce it. "species" is its own
+   * plural, and the default would render "24 speciess".
+   */
+  plural?: string;
 }
 
 /**
@@ -20,7 +25,12 @@ interface CountBadgeProps {
  * The placeholder is `h-4` to match the badge's `text-xs` line box, so the badge
  * is the same height counting nothing as it is counting something.
  */
-export function CountBadge({ count, isLoading, label }: CountBadgeProps) {
+export function CountBadge({
+  count,
+  isLoading,
+  label,
+  plural = `${label}s`,
+}: CountBadgeProps) {
   // `count === 0` as well as `isLoading`, so paging through a loaded list keeps
   // showing the total it already knows instead of blinking it away and back.
   // A genuinely empty list is never loading by the time it renders as empty.
@@ -31,7 +41,7 @@ export function CountBadge({ count, isLoading, label }: CountBadgeProps) {
       {isUnknown ? (
         <Skeleton className="h-4 w-16" />
       ) : (
-        `${count} ${label}${count !== 1 ? "s" : ""}`
+        `${count} ${count === 1 ? label : plural}`
       )}
     </Badge>
   );

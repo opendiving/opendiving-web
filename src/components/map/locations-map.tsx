@@ -1,19 +1,21 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTheme } from "next-themes";
+import { Marker, type Map as MapLibreMap } from "maplibre-gl";
+
 import {
-  fitBounds,
-  LatLonBounds,
-  nearestWrappedX,
-  parseAttribution,
-  project,
-  TILE_SIZE,
-  tileSource,
-  tileUrl,
-  visibleTiles,
-} from "@/lib/map-tiles";
+  MAX_FIT_ZOOM,
+  MIN_ZOOM,
+  unionBounds,
+  WORLD_CENTER,
+  type LatLonBounds,
+} from "@/lib/basemap";
+import { useConfig } from "@/contexts/ConfigContext";
 import { formatTripLocationNames } from "@/lib/trip-locations";
+import { Attribution } from "@/components/attribution";
+import { MapCanvas } from "@/components/map/map-canvas";
+import { cn } from "@/lib/utils";
 
 // Breathing room between the outermost place and the edge of the frame, so a
 // pin never sits on the border where half of its context is cropped away.
@@ -33,12 +35,25 @@ export interface MappableLocation {
   bbox_north?: number | null;
   bbox_west?: number | null;
   bbox_east?: number | null;
+  /**
+   * How the marker is drawn: the default solid dot for a place somebody chose,
+   * or a hollow ring for a `"fix"` - a position a device recorded, which is not
+   * the same claim at all. A dive's entry and exit fixes are the only ones so
+   * far, and a mis-pinned site or a fix a kilometre off the site is the thing
+   * the two shapes make visible at a glance.
+   *
+   * Deliberately not `kind: "site" | "gps"` or anything else domain-shaped:
+   * this component knows about positions and names, and one optional styling
+   * field is what keeps it that way.
+   */
+  variant?: "pin" | "fix";
 }
 
 interface PlacedLocation {
   name: string;
   latitude: number;
   longitude: number;
+  variant: "pin" | "fix";
   bounds: LatLonBounds;
 }
 
@@ -70,6 +85,7 @@ function placedLocations(locations: MappableLocation[]): PlacedLocation[] {
       name: location.name,
       latitude,
       longitude,
+      variant: location.variant ?? "pin",
       bounds: hasBox
         ? {
             south: bbox_south,
@@ -100,6 +116,17 @@ export interface LocationsMapProps {
    * wrong label that no screenshot and no test of theirs would catch.
    */
   subject: string;
+  /**
+   * Draw the frame even when nothing given has a position, showing the whole
+   * world - the same view `MapPicker` opens on for a site with no pin yet.
+   *
+   * For a form that shows this map beside the field that fills it, where a
+   * frame appearing only once the first place is picked shoves everything below
+   * it down the dialog mid-edit. Off by default, because everywhere else the
+   * map answers "where is this?", and an empty world is a worse answer than no
+   * map at all.
+   */
+  showWhenEmpty?: boolean;
 }
 
 /**
@@ -109,164 +136,183 @@ export interface LocationsMapProps {
  * Deliberately not `MapPicker`: nearly all of that component's size is the
  * write-back problem - telling a position it emitted apart from one the diver
  * typed - and gesture handling for placing a pin. This map emits nothing, so
- * none of that exists here by construction. What is left is a tile grid, a pin
- * per place, and the fit, and the fit is `lib/map-tiles.ts`'s job.
- *
- * Whole zoom levels only, for the same reason: fractional zoom exists so a
- * pinch glides, and there is nothing to pinch. Tiles are drawn at their own
- * level and never scaled, which is also the sharpest they can be.
+ * none of that exists here by construction, and it is built `interactive: false`
+ * to say so to the renderer as well.
  */
-export function LocationsMap({ locations, subject }: LocationsMapProps) {
+export function LocationsMap({
+  locations,
+  subject,
+  showWhenEmpty,
+}: LocationsMapProps) {
   const { resolvedTheme } = useTheme();
-  const source = useMemo(() => tileSource(), []);
-  const attribution = useMemo(
-    () => parseAttribution(source.attribution),
-    [source.attribution],
-  );
-  const template = resolvedTheme === "dark" ? source.dark : source.light;
+  // From the instance's runtime configuration, so a published image can be
+  // pointed at another basemap without a rebuild (`lib/runtime-config.ts`).
+  const { basemap } = useConfig();
 
-  const [size, setSize] = useState({ width: 0, height: 0 });
-  const observerRef = useRef<ResizeObserver | null>(null);
+  const [map, setMap] = useState<MapLibreMap | null>(null);
 
-  // Measured rather than assumed: the width is whatever column this sits in,
-  // and the height comes from the classes below, which would otherwise have to
-  // be kept in step with a number here.
+  // What the places actually are, held stable across renders that did not change
+  // them. Every effect below either moves the camera or rebuilds the markers, and
+  // most callers hand this component a freshly built array on each of their own
+  // renders - so depending on that array's identity would refit the map every
+  // time the page around it re-rendered, which is a visible jump rather than a
+  // wasted cycle.
   //
-  // A callback ref rather than a ref plus a mount-only effect, because the
-  // surface is not always there at mount: a map rendered with nothing to draw
-  // returns null, and an effect that found no element then would never look
-  // again - so locations arriving later would render an empty frame, measured
-  // at 0x0 forever. This runs whenever the element itself appears or goes.
-  const measureSurface = useCallback((surface: HTMLDivElement | null) => {
-    observerRef.current?.disconnect();
-    if (!surface) {
-      observerRef.current = null;
-      return;
-    }
-    const observer = new ResizeObserver(([entry]) => {
-      const { width, height } = entry.contentRect;
-      setSize({ width, height });
-    });
-    observer.observe(surface);
-    observerRef.current = observer;
-  }, []);
-
-  const placed = placedLocations(locations);
-  const view = fitBounds(
-    placed.map((location) => location.bounds),
-    size.width,
-    size.height,
-    FIT_PADDING,
+  // The dependency is the serialized *values* rather than the array, and the
+  // round trip through JSON is what makes that honest: the memo really does
+  // depend on nothing but `signature`, so there is no rule to suppress here.
+  const signature = JSON.stringify(
+    locations.map((location) => ({
+      name: location.name,
+      latitude: location.latitude,
+      longitude: location.longitude,
+      variant: location.variant,
+      bbox_south: location.bbox_south,
+      bbox_north: location.bbox_north,
+      bbox_west: location.bbox_west,
+      bbox_east: location.bbox_east,
+    })),
+  );
+  const placed = useMemo(
+    () => placedLocations(JSON.parse(signature) as MappableLocation[]),
+    [signature],
   );
 
-  const center = project(view.center, view.zoom);
-  const origin = {
-    x: center.x - size.width / 2,
-    y: center.y - size.height / 2,
-  };
-  const measured = size.width > 0 && size.height > 0;
+  // The fit. `unionBounds` is what keeps a trip to Fiji and Samoa six degrees
+  // wide rather than 354 - MapLibre's own `LngLatBounds.extend()` unions raw
+  // longitudes with `Math.min`/`Math.max`, and its repair of a finished box
+  // cannot undo a union built the long way round. The camera arithmetic from
+  // there is MapLibre's, including the `maxZoom` cap that opens a lone place
+  // where the surrounding coast is recognisable rather than at street level.
+  useEffect(() => {
+    if (!map) return;
+    const bounds = unionBounds(placed.map((location) => location.bounds));
 
-  const tiles = measured
-    ? visibleTiles(center, size.width, size.height, view.zoom)
-    : [];
+    const fit = () => {
+      if (!bounds) {
+        // Nothing placed, which only happens under `showWhenEmpty`: the whole
+        // world, centred a little north of the equator because that is where
+        // the land - and most of the world's diving - is.
+        map.jumpTo({
+          center: [WORLD_CENTER.longitude, WORLD_CENTER.latitude],
+          zoom: MIN_ZOOM,
+        });
+        return;
+      }
+      map.fitBounds(
+        [
+          [bounds.west, bounds.south],
+          [bounds.east, bounds.north],
+        ],
+        {
+          padding: FIT_PADDING,
+          maxZoom: MAX_FIT_ZOOM,
+          // This map is drawn once and not touched again; an animation on first
+          // paint is a map that arrives already moving.
+          animate: false,
+        },
+      );
+    };
 
-  // `nearestWrappedX` is what keeps a place at 178°E on screen when the view
-  // has been fitted across the antimeridian to reach one at 172°W.
-  const markers = measured
-    ? placed.map((location) => {
-        const point = project(location, view.zoom);
-        return {
-          name: location.name,
-          left: nearestWrappedX(point.x, center.x, view.zoom) - origin.x,
-          top: point.y - origin.y,
-        };
-      })
-    : [];
+    fit();
+
+    // **And again whenever the frame changes size**, which is not something
+    // MapLibre does for us. Its `trackResize` calls `Map.resize()`, and that
+    // recomputes the projection for the new box while keeping centre and zoom
+    // exactly where they were - so a frame that *narrows* after the first fit,
+    // on a rotation to portrait or a `sm:` breakpoint or a dialog re-laying
+    // out, keeps a camera fitted to the wider one and pushes the outermost pins
+    // outside it. Refitting is what the hand-rolled version did implicitly, by
+    // recomputing from a measured size on every render; this is the same
+    // behaviour hung on the event MapLibre does emit.
+    map.on("resize", fit);
+    return () => {
+      map.off("resize", fit);
+    };
+  }, [map, placed]);
+
+  // Markers are MapLibre's rather than absolutely positioned children, which is
+  // what hands it the job of drawing a place at 178E in the copy of the world
+  // the view is actually showing when it has been fitted across the antimeridian
+  // to reach one at 172W.
+  useEffect(() => {
+    if (!map) return;
+    const markers = placed.map((location) => {
+      const element = document.createElement("div");
+      // `bg-coral`, not `bg-primary`: primary is near-black in light and
+      // mid-grey in dark, which is invisible against a dark basemap. Coral is
+      // the one accent held constant across both themes.
+      //
+      // A fix inverts the same two colours rather than changing size or hue:
+      // same coral, same 12px, so the pair reads as one legend where a second
+      // colour would read as a second meaning. The tinted rather than
+      // transparent centre is what keeps the ring a ring over a busy coastline
+      // in either theme.
+      element.className = cn(
+        "h-3 w-3 rounded-full border-2 shadow",
+        location.variant === "fix"
+          ? "border-coral bg-background/80"
+          : "border-background bg-coral",
+      );
+      // Which marker is which, on hover. Two same-shaped rings a few hundred
+      // metres apart are one blob at this zoom, so "Entry" or "Exit" is worth an
+      // attribute even though the names are also in the surface's own
+      // aria-label.
+      if (location.name.trim()) element.title = location.name;
+      // How the tests count and tell them apart, now that the placement is a
+      // transform MapLibre writes rather than one this component does.
+      element.dataset.marker = location.variant;
+      return new Marker({ element })
+        .setLngLat([location.longitude, location.latitude])
+        .addTo(map);
+    });
+    return () => markers.forEach((marker) => marker.remove());
+  }, [map, placed]);
 
   // Nothing with a position is nothing to draw, and an empty grey box is worse
-  // than no map at all. Callers may still gate on the same thing to avoid the
-  // dynamic import; this is so they do not have to.
-  if (placed.length === 0) return null;
+  // than no map at all - unless the caller asked for one anyway. Callers may
+  // still gate on the same thing to avoid the dynamic import; this is so they
+  // do not have to.
+  if (placed.length === 0 && !showWhenEmpty) return null;
 
   // Every location has a name, but nothing stops one being blank, and "Map of
   // " reads as a bug to anyone hearing it - hence the caller's `subject` as the
   // fallback. `formatTripLocationNames` is the same joining rule the trip's own
   // header uses, and it drops the blanks.
   const names = formatTripLocationNames(placed);
+  // The empty frame says what it is rather than borrowing the label of the
+  // places it doesn't have: "Map of the trip's locations" over a blank world is
+  // wrong in exactly the place nobody looking at the screen can see it.
+  const label =
+    placed.length > 0
+      ? `Map of ${names ?? subject}`
+      : `Map of the world, awaiting ${subject}`;
 
   return (
     <div className="relative h-40 w-full overflow-hidden rounded-md border bg-muted sm:h-48">
-      {/* The label sits on the grid rather than on the frame around it, so the
+      {/* The label sits on the map rather than on the frame around it, so the
           attribution's links stay outside the image and reachable: a link
           inside `role="img"` is dropped from the accessibility tree, and a
           licence credit nobody can follow is not much of a credit. */}
-      <div
-        ref={measureSurface}
-        role="img"
-        aria-label={`Map of ${names ?? subject}`}
-        className="absolute inset-0"
-      >
-        <div aria-hidden className="pointer-events-none absolute inset-0">
-          {tiles.map((tile) => (
-            /* Plain `<img>`, not `next/image`: third-party tiles addressed by
-               z/x/y, so there is nothing for the optimizer to do but proxy
-               them. */
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              key={tile.key}
-              src={tileUrl(template, tile.x, tile.y, tile.zoom)}
-              alt=""
-              width={TILE_SIZE}
-              height={TILE_SIZE}
-              draggable={false}
-              className="absolute left-0 top-0 max-w-none"
-              style={{
-                transform: `translate3d(${tile.left}px, ${tile.top}px, 0)`,
-              }}
-            />
-          ))}
-
-          {markers.map((marker, index) => (
-            <div
-              key={`${marker.name}-${index}`}
-              className="absolute left-0 top-0"
-              style={{
-                transform: `translate3d(${marker.left}px, ${marker.top}px, 0)`,
-              }}
-            >
-              {/* Pulled back by half its own size so the dot is centred on the
-                  place rather than hanging below and to the right of it.
-
-                  `bg-coral`, not `bg-primary`: primary is near-black in light
-                  and mid-grey in dark, which is invisible against Dark Matter's
-                  near-black tiles. Coral is the one accent held constant across
-                  both themes. */}
-              <div className="h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-background bg-coral shadow" />
-            </div>
-          ))}
-        </div>
+      <div role="img" aria-label={label} className="absolute inset-0">
+        <MapCanvas
+          basemap={basemap}
+          theme={resolvedTheme === "dark" ? "dark" : "light"}
+          onMap={setMap}
+          unsupported={
+            <p className="flex h-full items-center justify-center px-4 text-center text-xs text-muted-foreground">
+              This browser cannot display the map.
+            </p>
+          }
+        />
       </div>
 
-      {/* A licence condition of the tiles, so it is rendered over them.
+      {/* A licence condition of the basemap, so it is rendered over it.
           `target="_blank"` is not decoration: this map appears inside dialogs
           holding a half-filled form, and navigating away in the same tab would
           throw it away. */}
-      <div className="absolute bottom-0 right-0 bg-background/80 px-1 text-[10px] leading-4 text-muted-foreground">
-        {attribution.map((part, index) =>
-          part.href ? (
-            <a
-              key={index}
-              href={part.href}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="underline underline-offset-2 hover:text-foreground"
-            >
-              {part.text}
-            </a>
-          ) : (
-            <span key={index}>{part.text}</span>
-          ),
-        )}
+      <div className="absolute bottom-0 right-0 z-10 bg-background/80 px-1 text-[10px] leading-4 text-muted-foreground">
+        <Attribution value={basemap.attribution} />
       </div>
     </div>
   );

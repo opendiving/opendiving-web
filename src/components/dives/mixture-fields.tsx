@@ -27,8 +27,12 @@ import {
   diveModWarning,
   gasHintParts,
 } from "@/lib/dive-mixtures";
-import { GAS_ROLES } from "@/lib/api/dives";
+import { GAS_ROLES, TANK_USAGE } from "@/lib/api/dives";
 import { VolumeCombobox } from "@/components/dives/volume-combobox";
+import { UnitNumberInput } from "@/components/unit-number-input";
+import { EntryUnitToggle } from "@/components/entry-unit-toggle";
+import { useEntryUnits } from "@/hooks/useEntryUnits";
+import { unitLabel } from "@/lib/units";
 
 export { DEFAULT_MIXTURE };
 
@@ -109,6 +113,11 @@ function MixtureGasHint({
   const helium = useWatch({ control, name: `mixtures.${index}.helium` });
   const po2Limit = useWatch({ control, name: `mixtures.${index}.po2_limit` });
   const maxDepth = useWatch({ control, name: "max_depth" });
+  // The hint's MOD/END/EAD are *depths*, so they follow the depth entry units
+  // rather than the account's: a diver typing depths in feet must not be warned
+  // about a MOD in metres mid-entry. Everything outside this form still renders
+  // in account units.
+  const units = useEntryUnits().entryUnits("depth");
 
   // `depth` is null unless this is the only cylinder, which is what keeps END/EAD
   // off a staged deco bottle - `gasHintParts` documents the rule.
@@ -120,6 +129,9 @@ function MixtureGasHint({
     // `gasHintParts` deals only in numbers and nulls, the way every other caller
     // hands it values.
     ppO2: po2Limit === "" ? null : po2Limit,
+    // The depths in the hint are converted; `maxDepth` itself is metric form
+    // state and stays that way.
+    units,
   });
   if (parts.length === 0) return null;
 
@@ -172,13 +184,28 @@ function ppO2LimitChoices(value: number | "" | undefined): string[] {
   );
 }
 
+// The usage options as the form spells them, which is not how the dive page does.
+// `TANK_USAGE_LABELS` is one word each because there it is a name being quoted back
+// inside a sentence that carries the meaning separately; here there is no sentence to
+// carry it, and "Parallel" alone does not say what it claims about the dive. The
+// parenthetical is the definition the diver is being asked to agree to - the flag
+// changes what the API computes, so choosing it by guessing at the word is the one
+// outcome worth spending width to prevent.
+const TANK_USAGE_OPTION_LABELS: Record<(typeof TANK_USAGE)[number], string> = {
+  parallel: "Parallel (sidemount / independent)",
+  staged: "Staged (own depth)",
+};
+
 // How long the gas warning has to hold still before it is announced. Long enough to
 // cover typing a two-digit depth without a pause being mistaken for a finished edit.
 const ANNOUNCE_SETTLE_MS = 700;
 
 // The one oxygen-exposure warning the form can honestly make, under the whole set of
 // cylinders rather than under any one of them. `diveModWarning` carries the reasoning
-// for why a multi-cylinder dive gets a claim about the dive and not about a tank.
+// for why a multi-cylinder dive usually gets a claim about the dive and not about a
+// tank - and for the one set that doesn't, a parallel pair holding a single gas, where
+// the sentence is about that gas because there is only one and it was breathed
+// throughout. Both readings arrive here as one string either way.
 //
 // Unlike `MixtureGasHint` above, this deliberately watches the whole `mixtures`
 // array: its answer depends on every cylinder, so there is no narrower subscription
@@ -192,8 +219,10 @@ function MixtureSetWarning({
 }) {
   const mixtures = useWatch({ control, name: "mixtures" });
   const maxDepth = useWatch({ control, name: "max_depth" });
+  // A depth again, for the same reason as `MixtureGasHint` above.
+  const units = useEntryUnits().entryUnits("depth");
 
-  const warning = diveModWarning(mixtures ?? [], maxDepth);
+  const warning = diveModWarning(mixtures ?? [], maxDepth, units);
 
   // Announced from a region that is always mounted and `sr-only` when there is
   // nothing to say. A `role="status"` that mounts together with its text is
@@ -244,20 +273,27 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
   fieldArray,
 }: MixtureFieldsProps<TFieldValues>) {
   const { fields, append, remove } = fieldArray;
+  const { entryUnits, toggleEntryUnits } = useEntryUnits();
+  const pressureUnits = entryUnits("pressure");
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-medium">Gas Mixtures</h3>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => append({ ...DEFAULT_MIXTURE })}
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add Mixture
-        </Button>
+        {/* One toggle for the section rather than one per box: the two pressure
+            fields repeat per tank card, so a four-cylinder dive would carry
+            eight identical controls with eight identical accessible names.
+            Gated on there being a cylinder, because the create form seeds no
+            mixtures and an ungated control would govern no visible field. The
+            stored override is untouched by the gate, so it comes back exactly
+            as the diver left it with the first "Add Mixture". */}
+        {fields.length > 0 && (
+          <EntryUnitToggle
+            dimension="pressure"
+            entryUnits={pressureUnits}
+            onToggle={() => toggleEntryUnits("pressure")}
+          />
+        )}
       </div>
 
       {fields.map((field, index) => (
@@ -266,16 +302,25 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
             <span className="text-sm font-medium text-muted-foreground">
               Tank {index + 1}
             </span>
-            {index > 0 && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => remove(index)}
-              >
-                <Trash2 className="h-4 w-4 text-destructive" />
-              </Button>
-            )}
+            {/* On every row, tank 1 included. The gate here was `index > 0`, which
+                made "this dive records no gas" unreachable from either dive form -
+                a state the API supports outright (`DiveCreate.mixtures` is
+                `default_factory=list`) and that `dive-mixtures-card.tsx` already
+                describes as "the common case for a dive logged by hand". A
+                cylinder the diver cannot take off is one they may never have
+                entered. */}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              // Named per row, because the icon is the whole button and a form can
+              // hold several: an unlabelled one reads as "button" to a screen
+              // reader, and a constant "Remove tank" would name every row the same.
+              aria-label={`Remove tank ${index + 1}`}
+              onClick={() => remove(index)}
+            >
+              <Trash2 className="h-4 w-4 text-destructive" />
+            </Button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -283,12 +328,19 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
               control={control}
               name={`mixtures.${index}.volume` as Path<TFieldValues>}
               render={({ field }) => (
-                // Full width, so the six fields under it keep their pairs on one
-                // row each: O₂ beside He, start beside end, ppO₂ beside role.
-                // With seven boxes in a two-column grid, an odd one out is
-                // unavoidable - volume is the one with no partner to be split
-                // from, and it used to sit beside the name.
-                <FormItem className="md:col-span-2">
+                // Half width, paired with the ppO₂ limit beside it. Volume spent
+                // two earlier layouts at `md:col-span-2`, first because the field
+                // it used to sit beside (the cylinder's name) was removed and
+                // widening it was what kept every remaining pair on a row of its
+                // own, then because a full-width combobox was pleasant to type
+                // into. Eight boxes divide into four rows either way; what the
+                // span cost was the last row, where Usage sat alone.
+                //
+                // Volume | ppO₂, O₂ | He, start | end, Role | Usage: four full
+                // rows, and each pair is two facts about the same thing - what
+                // the cylinder holds and what it was planned to, the mix, the
+                // gauge readings, what it was for and how it was carried.
+                <FormItem>
                   <FormLabel>Volume (L)</FormLabel>
                   <FormControl>
                     <VolumeCombobox
@@ -299,6 +351,66 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                   <FormMessage />
                 </FormItem>
               )}
+            />
+
+            <FormField
+              control={control}
+              name={`mixtures.${index}.po2_limit` as Path<TFieldValues>}
+              render={({ field }) => {
+                const choices = ppO2LimitChoices(field.value);
+
+                return (
+                  <FormItem>
+                    <FormLabel>ppO₂ limit (bar)</FormLabel>
+                    {/* A plain `<select>` for the same two reasons as `role`
+                        below: it needs "unset" as a real selectable option,
+                        which Radix reserves `""` for, and `""` has to reach
+                        react-hook-form as the live cleared value rather than
+                        `undefined`, which it re-displays the default over.
+
+                        A picker rather than the number box this started as
+                        because the field has an actual vocabulary. Every value
+                        it could usefully hold is one of seven, while the box
+                        accepted any two decimals in a 0.4-2.0 band - so the
+                        only things free entry bought were typos and a 422 on
+                        save. */}
+                    <FormControl>
+                      <select
+                        className={inputClassName}
+                        {...field}
+                        // From the offered list rather than from the raw value,
+                        // so the two can't disagree about formatting: `1.0` on
+                        // the form has to find the `"1.0"` option, and
+                        // `String(1.0)` is `"1"`.
+                        value={
+                          choices.find(
+                            (option) => Number(option) === field.value,
+                          ) ?? ""
+                        }
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          field.onChange(raw === "" ? "" : parseFloat(raw));
+                        }}
+                      >
+                        {/* The fallback is named rather than pre-selected, so a
+                            cylinder with no recorded limit still says what the
+                            MOD beneath it was worked out from. Selecting 1.4
+                            here would make it claim a limit the diver never
+                            chose - see `DEFAULT_MIXTURE`. */}
+                        <option value="">
+                          Not recorded ({PPO2_WORKING} default)
+                        </option>
+                        {choices.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
 
             <FormField
@@ -374,18 +486,23 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
               name={`mixtures.${index}.start_pressure` as Path<TFieldValues>}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Start pressure (bar)</FormLabel>
+                  <FormLabel>
+                    Start pressure ({unitLabel("pressure", pressureUnits)})
+                  </FormLabel>
                   <FormControl>
-                    <Input
-                      type="number"
+                    {/* `emptyValue=""`, unlike every other number box in the
+                        dive form: these two pressures are the fields
+                        DECISIONS.md names as spelling cleared that way, and the
+                        submit path converts the sentinel at the edge. */}
+                    <UnitNumberInput
+                      dimension="pressure"
+                      units={pressureUnits}
                       step="0.01"
-                      min="0"
+                      min={0}
+                      emptyValue=""
                       {...field}
-                      value={field.value ?? ""}
-                      onChange={(e) => {
-                        const raw = e.target.value;
-                        field.onChange(raw === "" ? "" : parseFloat(raw));
-                      }}
+                      value={field.value}
+                      onChange={field.onChange}
                     />
                   </FormControl>
                   <FormMessage />
@@ -398,83 +515,24 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
               name={`mixtures.${index}.end_pressure` as Path<TFieldValues>}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>End pressure (bar)</FormLabel>
+                  <FormLabel>
+                    End pressure ({unitLabel("pressure", pressureUnits)})
+                  </FormLabel>
                   <FormControl>
-                    <Input
-                      type="number"
+                    <UnitNumberInput
+                      dimension="pressure"
+                      units={pressureUnits}
                       step="0.01"
-                      min="0"
+                      min={0}
+                      emptyValue=""
                       {...field}
-                      value={field.value ?? ""}
-                      onChange={(e) => {
-                        const raw = e.target.value;
-                        field.onChange(raw === "" ? "" : parseFloat(raw));
-                      }}
+                      value={field.value}
+                      onChange={field.onChange}
                     />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
-            />
-
-            <FormField
-              control={control}
-              name={`mixtures.${index}.po2_limit` as Path<TFieldValues>}
-              render={({ field }) => {
-                const choices = ppO2LimitChoices(field.value);
-
-                return (
-                  <FormItem>
-                    <FormLabel>ppO₂ limit (bar)</FormLabel>
-                    {/* A plain `<select>` for the same two reasons as `role`
-                        below: it needs "unset" as a real selectable option,
-                        which Radix reserves `""` for, and `""` has to reach
-                        react-hook-form as the live cleared value rather than
-                        `undefined`, which it re-displays the default over.
-
-                        A picker rather than the number box this started as
-                        because the field has an actual vocabulary. Every value
-                        it could usefully hold is one of seven, while the box
-                        accepted any two decimals in a 0.4-2.0 band - so the
-                        only things free entry bought were typos and a 422 on
-                        save. */}
-                    <FormControl>
-                      <select
-                        className={inputClassName}
-                        {...field}
-                        // From the offered list rather than from the raw value,
-                        // so the two can't disagree about formatting: `1.0` on
-                        // the form has to find the `"1.0"` option, and
-                        // `String(1.0)` is `"1"`.
-                        value={
-                          choices.find(
-                            (option) => Number(option) === field.value,
-                          ) ?? ""
-                        }
-                        onChange={(e) => {
-                          const raw = e.target.value;
-                          field.onChange(raw === "" ? "" : parseFloat(raw));
-                        }}
-                      >
-                        {/* The fallback is named rather than pre-selected, so a
-                            cylinder with no recorded limit still says what the
-                            MOD beneath it was worked out from. Selecting 1.4
-                            here would make it claim a limit the diver never
-                            chose - see `DEFAULT_MIXTURE`. */}
-                        <option value="">
-                          Not recorded ({PPO2_WORKING} default)
-                        </option>
-                        {choices.map((option) => (
-                          <option key={option} value={option}>
-                            {option}
-                          </option>
-                        ))}
-                      </select>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
             />
 
             <FormField
@@ -494,9 +552,9 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                   <FormControl>
                     <select
                       // `Input`'s own classes rather than a copy of them: this
-                      // sits in the same grid row as the ppO₂ box, and the copy
-                      // it started as had drifted to a shorter, differently-ringed
-                      // control beside it.
+                      // sits in a grid row beside other boxes, and the copy it
+                      // started as had drifted to a shorter, differently-ringed
+                      // control beside them.
                       className={inputClassName}
                       {...field}
                       value={field.value ?? ""}
@@ -520,6 +578,42 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                 </FormItem>
               )}
             />
+
+            <FormField
+              control={control}
+              name={`mixtures.${index}.usage` as Path<TFieldValues>}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Usage</FormLabel>
+                  {/* A plain `<select>` for the same reason as Role above, and
+                      following it deliberately: the two are the cylinder's
+                      answers to "what for" and "how", and a diver setting one
+                      is usually about to consider the other. Per row rather
+                      than once for the dive, so a mixed set - a parallel pair
+                      plus a staged bottle - stays expressible, which is the
+                      shape the API refuses by design and can only refuse if
+                      the form can say it. */}
+                  <FormControl>
+                    <select
+                      className={inputClassName}
+                      {...field}
+                      value={field.value ?? ""}
+                      // `""` straight through, same sentinel and same
+                      // react-hook-form trap as Role above.
+                      onChange={(e) => field.onChange(e.target.value)}
+                    >
+                      <option value="">Not recorded</option>
+                      {TANK_USAGE.map((usage) => (
+                        <option key={usage} value={usage}>
+                          {TANK_USAGE_OPTION_LABELS[usage]}
+                        </option>
+                      ))}
+                    </select>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           </div>
 
           {/* Narrowing to `MixtureFieldsValues` is sound for the same reason it is in
@@ -532,6 +626,30 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
           />
         </div>
       ))}
+
+      {/* Not an error, and worded so it doesn't read as one: a dive with no
+          cylinders is a complete record, and most hand-logged dives are exactly
+          that. The line exists so the card says something rather than showing a
+          heading over nothing. */}
+      {fields.length === 0 && (
+        <p className="text-sm text-muted-foreground">
+          No cylinders recorded for this dive.
+        </p>
+      )}
+
+      {/* Under the tank cards rather than in the section header, so it sits where
+          the next tank will appear: the button and the card it adds are then in
+          reading order, and on a multi-cylinder dive the diver is already
+          scrolled to it after filling in the last one. */}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => append({ ...DEFAULT_MIXTURE })}
+      >
+        <Plus className="h-4 w-4 mr-2" />
+        Add Mixture
+      </Button>
 
       <MixtureSetWarning
         control={control as unknown as Control<MixtureFieldsValues>}

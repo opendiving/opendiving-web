@@ -5,27 +5,37 @@ import { AuthProvider, useAuth } from "./AuthContext";
 import { usePaginatedResource } from "@/hooks/usePaginatedResource";
 import { AUTH_SESSION_EXPIRED_EVENT } from "@/lib/api/client";
 import {
+  ENTRY_UNITS_KEY,
+  readStoredEntryUnits,
+  writeEntryUnits,
+} from "@/lib/entry-units";
+import {
   clearResourceCache,
   resourceCacheGeneration,
   resourceCacheSize,
   writeResourceCache,
 } from "@/lib/resource-cache";
+import { memoryStorage, useStorage } from "@/test/memory-storage";
 
 // `vi.hoisted` because `vi.mock` is lifted above every other statement in the file,
 // so a plain `const` declared here would not exist yet when the factory runs.
 const {
   authAPI,
+  passkeysAPI,
   refreshAccessToken,
   clearAccessToken,
   hardNavigate,
   rememberPostAuthRedirect,
 } = vi.hoisted(() => ({
+  passkeysAPI: { verifySignIn: vi.fn() },
   authAPI: {
     getCurrentUser: vi.fn(),
     requestEmailLink: vi.fn(),
     verifyEmailLink: vi.fn(),
+    verifyEmailCode: vi.fn(),
     signInWithGoogle: vi.fn(),
     completeProfile: vi.fn(),
+    restoreAccount: vi.fn(),
     signOut: vi.fn(),
     isAuthenticated: vi.fn(),
   },
@@ -36,6 +46,7 @@ const {
 }));
 
 vi.mock("@/lib/api/auth", () => ({ authAPI }));
+vi.mock("@/lib/api/passkeys", () => ({ passkeysAPI }));
 // Real storage would work through Node's shadowed `localStorage` and warn; what
 // matters here is only whether sign-out asks for the destination to be cleared.
 vi.mock("@/lib/auth-redirect", () => ({ rememberPostAuthRedirect }));
@@ -57,6 +68,16 @@ const USER = {
   name: "Aleksei",
   username: "aleks",
   email: "a@example.com",
+};
+
+// What the Google callback hands the provider: an authorization code and the two
+// values needed to redeem it, not an identity. `authAPI` is mocked in this file,
+// so the shape is all these tests care about - `lib/google-oauth.test.ts` is where
+// the verifier's own RFC 7636 shape is pinned.
+const GOOGLE_GRANT = {
+  code: "auth-code",
+  codeVerifier: "v".repeat(43),
+  redirectUri: "http://localhost:3000/auth/google/callback",
 };
 
 const wrapper = ({ children }: { children: ReactNode }) => (
@@ -137,14 +158,35 @@ describe("AuthProvider outcomes", () => {
     authAPI.verifyEmailLink.mockResolvedValue({ status: "authenticated" });
     authAPI.getCurrentUser.mockResolvedValue(USER);
 
-    let signedIn: boolean | undefined;
+    let status: string | undefined;
     await act(async () => {
-      signedIn = await result.current.verifyEmailLink("tok");
+      status = (await result.current.verifyEmailLink("tok")).status;
     });
 
-    expect(signedIn).toBe(true);
+    expect(status).toBe("authenticated");
     expect(result.current.user).toEqual(USER);
     expect(result.current.onboarding).toBeNull();
+  });
+
+  // The code rides the same request row as the link and lands in the same funnel,
+  // so it has to produce a session the same way - not a second, parallel notion of
+  // being signed in.
+  it("signs the user in when a code from the email is accepted", async () => {
+    refreshAccessToken.mockRejectedValue(new Error("401"));
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    authAPI.verifyEmailCode.mockResolvedValue({ status: "authenticated" });
+    authAPI.getCurrentUser.mockResolvedValue(USER);
+
+    let status: string | undefined;
+    await act(async () => {
+      status = (await result.current.verifyEmailCode("req-1", "481052")).status;
+    });
+
+    expect(authAPI.verifyEmailCode).toHaveBeenCalledWith("req-1", "481052");
+    expect(status).toBe("authenticated");
+    expect(result.current.user).toEqual(USER);
   });
 
   it("stashes an onboarding session instead of signing in", async () => {
@@ -153,23 +195,161 @@ describe("AuthProvider outcomes", () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     authAPI.signInWithGoogle.mockResolvedValue({
-      status: "onboarding",
+      status: "onboarding_required",
       onboarding_token: "onb",
       email: "new@example.com",
       name: "New Diver",
     });
 
-    let signedIn: boolean | undefined;
+    let status: string | undefined;
     await act(async () => {
-      signedIn = await result.current.signInWithGoogle("credential");
+      status = (await result.current.signInWithGoogle(GOOGLE_GRANT)).status;
     });
 
-    expect(signedIn).toBe(false);
+    expect(status).toBe("onboarding_required");
     expect(result.current.user).toBeNull();
     expect(result.current.onboarding).toMatchObject({
       onboardingToken: "onb",
       email: "new@example.com",
     });
+    expect(result.current.restore).toBeNull();
+  });
+
+  // The third outcome, and the one that used to be mistaken for the second: it
+  // carries no `onboarding_token`, so the old two-branch `applyOutcome` stashed an
+  // onboarding session with an undefined token and carried it to `/auth/complete`.
+  // Asserting `onboarding` stays null is what pins that.
+  it("stashes a restore session for an account pending deletion", async () => {
+    refreshAccessToken.mockRejectedValue(new Error("401"));
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    authAPI.signInWithGoogle.mockResolvedValue({
+      status: "deletion_pending",
+      restore_token: "res",
+      email: "gone@example.com",
+      purge_after: "2026-09-04T12:00:00Z",
+    });
+
+    let status: string | undefined;
+    await act(async () => {
+      status = (await result.current.signInWithGoogle(GOOGLE_GRANT)).status;
+    });
+
+    expect(status).toBe("deletion_pending");
+    expect(result.current.user).toBeNull();
+    expect(result.current.onboarding).toBeNull();
+    expect(result.current.restore).toEqual({
+      restoreToken: "res",
+      email: "gone@example.com",
+      purgeAfter: "2026-09-04T12:00:00Z",
+    });
+    expect(authAPI.getCurrentUser).not.toHaveBeenCalled();
+  });
+
+  // A row the API flagged with no clock to count from - the offer stands, it just
+  // cannot name a day, and the screen has to be handed a null rather than an
+  // "undefined" that renders as one.
+  it("carries a null purge date rather than dropping the offer", async () => {
+    refreshAccessToken.mockRejectedValue(new Error("401"));
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    passkeysAPI.verifySignIn.mockResolvedValue({
+      status: "deletion_pending",
+      restore_token: "res",
+      email: "gone@example.com",
+    });
+
+    await act(async () => {
+      await result.current.signInWithPasskey("flow-1", { id: "c" } as never);
+    });
+
+    expect(result.current.restore).toEqual({
+      restoreToken: "res",
+      email: "gone@example.com",
+      purgeAfter: null,
+    });
+  });
+
+  // Restoring is a sign-in: it clears the offer it was reached from, so nothing
+  // left over can send a signed-in diver back to `/restore`.
+  it("signs the restored account in and clears the offer", async () => {
+    refreshAccessToken.mockRejectedValue(new Error("401"));
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    authAPI.verifyEmailCode.mockResolvedValue({
+      status: "deletion_pending",
+      restore_token: "res",
+      email: "gone@example.com",
+      purge_after: "2026-09-04T12:00:00Z",
+    });
+    await act(async () => {
+      await result.current.verifyEmailCode("req-1", "481052");
+    });
+
+    authAPI.restoreAccount.mockResolvedValue({ status: "authenticated" });
+    authAPI.getCurrentUser.mockResolvedValue(USER);
+    await act(async () => {
+      await result.current.restoreAccount("res");
+    });
+
+    expect(authAPI.restoreAccount).toHaveBeenCalledWith("res");
+    expect(result.current.user).toEqual(USER);
+    expect(result.current.restore).toBeNull();
+  });
+
+  // The account is still deleted when a restore fails, and the offer has to survive
+  // it: the token may simply have raced a second tab, and the screen is where the
+  // API's own explanation gets shown.
+  it("keeps the offer when the restore is refused", async () => {
+    refreshAccessToken.mockRejectedValue(new Error("401"));
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    authAPI.verifyEmailCode.mockResolvedValue({
+      status: "deletion_pending",
+      restore_token: "res",
+      email: "gone@example.com",
+      purge_after: "2026-09-04T12:00:00Z",
+    });
+    await act(async () => {
+      await result.current.verifyEmailCode("req-1", "481052");
+    });
+
+    authAPI.restoreAccount.mockRejectedValue(new Error("401"));
+    await expect(result.current.restoreAccount("res")).rejects.toThrow();
+
+    expect(result.current.user).toBeNull();
+    expect(result.current.restore).toMatchObject({ restoreToken: "res" });
+  });
+
+  // A passkey resolves straight to an existing account, so this is the one entry
+  // point that has no realistic onboarding branch - it still goes through the
+  // same `applyOutcome` as the other two rather than assuming a session.
+  it("signs the user in from a verified passkey assertion", async () => {
+    refreshAccessToken.mockRejectedValue(new Error("401"));
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    passkeysAPI.verifySignIn.mockResolvedValue({ status: "authenticated" });
+    authAPI.getCurrentUser.mockResolvedValue(USER);
+
+    let status: string | undefined;
+    await act(async () => {
+      status = (
+        await result.current.signInWithPasskey("flow-1", {
+          id: "credential-id",
+        } as never)
+      ).status;
+    });
+
+    expect(passkeysAPI.verifySignIn).toHaveBeenCalledWith("flow-1", {
+      id: "credential-id",
+    });
+    expect(status).toBe("authenticated");
+    expect(result.current.user).toEqual(USER);
   });
 
   it("refuses to complete a profile with no onboarding session in progress", async () => {
@@ -226,6 +406,118 @@ describe("AuthProvider outcomes", () => {
   });
 });
 
+// The second key sign-out has to decide about, and unlike the destination beside
+// it the module is deliberately *not* mocked away: what it does is the thing
+// being pinned here, so this asserts on the real storage rather than on a call
+// having been made.
+describe("AuthProvider sign-out and the entry units", () => {
+  beforeEach(() => {
+    useStorage(memoryStorage());
+    writeEntryUnits({ pressure: "imperial" });
+  });
+
+  async function signedIn() {
+    refreshAccessToken.mockResolvedValue("token");
+    authAPI.getCurrentUser.mockResolvedValue(USER);
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isAuthenticated).toBe(true));
+    return result;
+  }
+
+  // Unlike the destination beside it, this one is cleared for what it does
+  // rather than for what it names: an inherited override changes what a dive-form
+  // box *parses*, so the next diver at a shared browser could type 200 into a
+  // psi-labelled field and commit 13.79 bar - inside the API's range CHECK and
+  // indistinguishable from real data afterwards.
+  it("forgets them on the way out", async () => {
+    const result = await signedIn();
+
+    authAPI.signOut.mockResolvedValue(undefined);
+    await act(() => result.current.signOut());
+
+    expect(window.localStorage.getItem(ENTRY_UNITS_KEY)).toBeNull();
+    expect(readStoredEntryUnits()).toBeNull();
+  });
+
+  // The standing invariant in this file: a sign-out the server did not confirm
+  // clears nothing locally. The refresh cookie is still live, so the diver is
+  // still signed in - and must not find their entry units wiped for it.
+  it("keeps them when the server didn't confirm", async () => {
+    const result = await signedIn();
+
+    authAPI.signOut.mockRejectedValue(new Error("500"));
+    await expect(act(() => result.current.signOut())).rejects.toThrow("500");
+
+    expect(window.localStorage.getItem(ENTRY_UNITS_KEY)).not.toBeNull();
+  });
+});
+
+// Each of these entry points used to record which one it was, for a hint the
+// sign-in form showed a returning visitor. That affordance was dropped, so what
+// is pinned here now is the absence: proving an identity is not an occasion to
+// write anything to this browser, whichever of the four ways in was taken. The
+// assertion is on the store rather than on a spy, because a spy can only watch a
+// module somebody remembered to mock, and the point is that no such module is
+// meant to exist.
+describe("AuthProvider and how the diver signed in", () => {
+  beforeEach(() => {
+    useStorage(memoryStorage());
+  });
+
+  async function signedOutProvider() {
+    refreshAccessToken.mockRejectedValue(new Error("401"));
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    authAPI.getCurrentUser.mockResolvedValue(USER);
+    return result;
+  }
+
+  it("stores nothing about which of the four ways in was used", async () => {
+    const result = await signedOutProvider();
+    authAPI.verifyEmailLink.mockResolvedValue({ status: "authenticated" });
+    authAPI.verifyEmailCode.mockResolvedValue({ status: "authenticated" });
+    authAPI.signInWithGoogle.mockResolvedValue({ status: "authenticated" });
+    passkeysAPI.verifySignIn.mockResolvedValue({ status: "authenticated" });
+
+    await act(async () => {
+      await result.current.verifyEmailLink("tok");
+    });
+    await act(async () => {
+      await result.current.verifyEmailCode("req-1", "481052");
+    });
+    await act(async () => {
+      await result.current.signInWithGoogle(GOOGLE_GRANT);
+    });
+    await act(async () => {
+      await result.current.signInWithPasskey("flow-1", { id: "c" } as never);
+    });
+
+    expect(window.localStorage.length).toBe(0);
+  });
+
+  // Onboarding is a sign-in a moment later by the same means, and the step after
+  // it is not a method of its own - so neither half of that pair has anything to
+  // record either.
+  it("stores nothing on the way through onboarding", async () => {
+    const result = await signedOutProvider();
+    authAPI.signInWithGoogle.mockResolvedValue({
+      status: "onboarding",
+      onboarding_token: "onb",
+      email: "new@example.com",
+    });
+    authAPI.completeProfile.mockResolvedValue({ status: "authenticated" });
+
+    await act(async () => {
+      await result.current.signInWithGoogle(GOOGLE_GRANT);
+    });
+    await act(async () => {
+      await result.current.completeProfile("New Diver", "newdiver");
+    });
+
+    expect(window.localStorage.length).toBe(0);
+  });
+});
+
 describe("AuthProvider identity", () => {
   // The provider wraps the whole app, so a fresh context value on every render
   // re-renders every consumer - and its methods are dependencies of downstream
@@ -243,6 +535,7 @@ describe("AuthProvider identity", () => {
     expect(result.current).toBe(before);
     expect(result.current.signOut).toBe(before.signOut);
     expect(result.current.refreshUser).toBe(before.refreshUser);
+    expect(result.current.signInWithPasskey).toBe(before.signInWithPasskey);
   });
 
   it("throws when used outside the provider", () => {

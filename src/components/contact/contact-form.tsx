@@ -38,8 +38,8 @@ interface ContactFormProps {
   // Address offered when a send fails, so a broken API isn't a dead end. Optional
   // because it's display-only and can't be derived from anything here - the API owns
   // the real recipient (`CONTACT_FORM_EMAIL`). An instance that hasn't set
-  // `NEXT_PUBLIC_CONTACT_EMAIL` gets pointed at the issue tracker instead, which
-  // beats an address that reaches someone with no access to that instance.
+  // `CONTACT_EMAIL` gets pointed at the issue tracker instead, which beats an
+  // address that reaches someone with no access to that instance.
   fallbackEmail?: string;
 }
 

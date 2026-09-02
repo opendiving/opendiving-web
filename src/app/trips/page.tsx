@@ -19,12 +19,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PaginationFooter } from "@/components/ui/pagination-footer";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DeleteWithReassignDialog } from "@/components/dives/delete-with-reassign-dialog";
 import { TripDialog } from "@/components/trips/trip-dialog";
 import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
 import { Plus, Eye, Edit, Trash2, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { PageSpinner } from "@/components/ui/page-spinner";
+
+// The plain-delete toast, and the first half of the one a move gets - "moved to
+// Cebu 2026" is an addition to what happened, not a replacement for it.
+const DELETED_MESSAGE = "Trip deleted successfully.";
 
 export default function TripsPage() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
@@ -57,14 +61,11 @@ export default function TripsPage() {
   const {
     deletingId,
     pendingId,
-    confirmMessage,
     requestDelete: requestDeleteTrip,
     cancelDelete: cancelDeleteTrip,
     confirmDelete: confirmDeleteTrip,
   } = useDeleteResource(tripsAPI.deleteTrip, {
-    confirmMessage:
-      "Are you sure you want to delete this trip? This action cannot be undone.",
-    successMessage: "Trip deleted successfully.",
+    successMessage: DELETED_MESSAGE,
     errorMessage: "Failed to delete trip. Please try again.",
     onDeleted: refetch,
   });
@@ -94,7 +95,7 @@ export default function TripsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
+          <CardTitle as="h2" className="flex items-center justify-between">
             <span>Trip List</span>
             <CountBadge
               count={totalCount}
@@ -149,8 +150,16 @@ export default function TripsPage() {
                       />
                     </TableCell>
                     <TableCell className="text-right">
+                      {/* Named per row, not per action: ten identical "Edit"s tell a
+                          screen reader's controls list nothing about which trip.
+                          See DECISIONS.md on the export card's three Downloads. */}
                       <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="sm" asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label={`View ${trip.name}`}
+                          asChild
+                        >
                           <Link href={`/trips/${trip.uuid}`}>
                             <Eye className="h-4 w-4" />
                           </Link>
@@ -158,7 +167,7 @@ export default function TripsPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          aria-label="Edit"
+                          aria-label={`Edit ${trip.name}`}
                           onClick={() => setEditingTrip(trip)}
                         >
                           <Edit className="h-4 w-4" />
@@ -166,6 +175,7 @@ export default function TripsPage() {
                         <Button
                           variant="ghost"
                           size="sm"
+                          aria-label={`Delete ${trip.name}`}
                           onClick={() => requestDeleteTrip(trip.uuid)}
                           disabled={deletingId === trip.uuid}
                         >
@@ -203,14 +213,18 @@ export default function TripsPage() {
         onSaved={refetch}
       />
 
-      <ConfirmDialog
-        open={pendingId !== null}
-        onOpenChange={(open) => !open && cancelDeleteTrip()}
-        title="Delete trip"
-        description={confirmMessage}
-        confirmText="Delete"
-        isLoading={deletingId === pendingId}
-        onConfirm={confirmDeleteTrip}
+      <DeleteWithReassignDialog
+        kind="trip"
+        userId={user?.uuid ?? ""}
+        targetId={pendingId}
+        isDeleting={deletingId === pendingId}
+        onCancel={cancelDeleteTrip}
+        onConfirm={(moveDivesTo, name) =>
+          confirmDeleteTrip(
+            moveDivesTo,
+            name ? `${DELETED_MESSAGE} Its dives moved to ${name}.` : undefined,
+          )
+        }
       />
     </div>
   );

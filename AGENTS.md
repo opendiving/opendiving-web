@@ -15,13 +15,41 @@ instructions live in AGENTS.md" in `DECISIONS.md`.
 
 - Dev server: http://localhost:3000
 - Environment: `.env` (create from `.env.example`)
-- **API access**: the browser calls the API directly — axios `baseURL` in `lib/api/client.ts` — with
-  no server-side proxy in between. Set `NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1` in `.env`
-  — it is the full base, `/api/v1` prefix included, not just the origin, and without the prefix
-  every request 404s. Despite the name, `src/proxy.ts` is Next middleware that builds a nonce-based
-  CSP, not a proxy; it reads that same variable to derive `connect-src`, so repointing the app at
-  another API host is a one-variable change — and an API host hardcoded anywhere else will be
-  blocked by CSP rather than merely misconfigured.
+- **API access**: two topologies, and the default is same-origin. Unset, axios' `baseURL`
+  (`lib/api/client.ts`) is the relative `/api/v1`, and the catch-all route handler at
+  `app/api/v1/[...path]/route.ts` streams each request through to `API_INTERNAL_URL` — a variable
+  read per request, which is what lets one prebuilt image run on any domain. Setting
+  `NEXT_PUBLIC_API_URL` overrides that base at _build_ time and the browser talks to the API
+  directly instead; it is the full base, `/api/v1` prefix included, not just the origin, and
+  without the prefix every request 404s. `.env` sets it to `http://localhost:8000/api/v1`, so local
+  dev is the split-origin path. Despite the name, `src/proxy.ts` is Next middleware that builds a
+  nonce-based CSP, not a proxy; `connect-src` is derived from this variable **and** from the
+  basemap configuration (`lib/basemap.ts`), so a split-origin API is a one-variable change — and an
+  API or basemap host hardcoded anywhere else will be blocked by CSP rather than merely
+  misconfigured.
+- **Everything else configurable is read at runtime**, not through `NEXT_PUBLIC_*`. `SITE_URL`,
+  `CONTACT_EMAIL`, `GOOGLE_CLIENT_ID` and the basemap variables — `MAP_STYLE_URL`,
+  `MAP_STYLE_URL_DARK`, `MAP_ATTRIBUTION` and the `MAP_TILE_*` raster escape hatch — are read on
+  the server by `lib/runtime-config.ts` and reach client components through
+  `contexts/ConfigContext.tsx`'s `useConfig()`. `WEB_HSTS` and `WEB_NOINDEX` come from the same
+  module but stay server-side — `src/proxy.ts` and `app/robots.ts` are their only consumers, so
+  they sit on `RuntimeConfig` and not on `PublicConfig`. Add a new setting there, never as a new
+  `NEXT_PUBLIC_` variable: those are inlined by the compiler and would be frozen into the published
+  image. The prefixed spellings survive as fallbacks, read through a computed key so they are not
+  inlined either. `.env.example` documents each one.
+
+- **Never switch commit signing off on the git command line.** Where signing is on in the git
+  configuration you are running under, overriding it inline buys nothing — it is the move an agent
+  reaches for when it fears a hanging commit, and what it leaves behind is a PR whose every commit
+  reads _Unverified_ on GitHub. Two guards say so there: a `PreToolUse` hook
+  (`.claude/hooks/no-unsigned-commits.py`), which asks git first and only blocks when signing is
+  actually on, and `.githooks/pre-push`. Both scripts ship with the repository and both are switched
+  on per machine — the first from the untracked `.claude/settings.local.json`, the second from
+  `core.hooksPath` — so neither runs in a checkout that has not asked for it. Where signing is _not_
+  configured, commit normally and do not set it up — your commits do not need to be signed, because
+  PRs are squash-merged and GitHub signs the commit that lands on `main`. If signing is on and
+  genuinely fails, report the error instead of routing around it. See "Signing stopped being a
+  demand on contributors, and the hook learned to check" in `DECISIONS.md`.
 
 Test, lint, format and type-check commands are in `CONTRIBUTING.md`.
 

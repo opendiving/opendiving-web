@@ -28,6 +28,8 @@ import {
   Luggage,
   Backpack,
   BadgeCheck,
+  GraduationCap,
+  Fish,
   type LucideIcon,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -51,6 +53,7 @@ const CREATE_ACTIONS: CreateAction[] = [
   { label: "New Dive Site", icon: MapPin, kind: "site" },
   { label: "New Gear", icon: Backpack, kind: "gear" },
   { label: "New Certification", icon: BadgeCheck, kind: "certification" },
+  { label: "New Course", icon: GraduationCap, kind: "course" },
 ];
 
 // The create menu is reachable from every page, so the form it opens is told
@@ -70,6 +73,8 @@ const NAV_SECTIONS: { prefix: string; page: string }[] = [
   { prefix: "/sites", page: "sites" },
   { prefix: "/gear", page: "gear" },
   { prefix: "/certifications", page: "certifications" },
+  { prefix: "/courses", page: "courses" },
+  { prefix: "/species", page: "species" },
 ];
 
 function getCurrentPage(pathname: string | null): string | undefined {
@@ -217,17 +222,19 @@ export function Header() {
                     Features
                   </Link>
                   <Link
-                    href="/#community"
+                    href="/#self-hosting"
                     className="whitespace-nowrap text-sm font-medium text-foreground hover:text-primary"
                   >
-                    Community
+                    Self-hosting
                   </Link>
-                  <Link
-                    href="/#about"
+                  <a
+                    href="https://github.com/opendiving/opendiving-web"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="whitespace-nowrap text-sm font-medium text-foreground hover:text-primary"
                   >
-                    About
-                  </Link>
+                    Source
+                  </a>
                 </>
               )}
             </nav>
@@ -287,8 +294,8 @@ export function Header() {
                       aria-label="Account menu"
                     >
                       <UserAvatar
-                        email={user.email}
                         name={user.name}
+                        avatarSha={user.avatar_sha256}
                         size={36}
                         className="h-9 w-9"
                       />
@@ -309,6 +316,25 @@ export function Header() {
                       >
                         <BadgeCheck className="mr-2 h-4 w-4" />
                         Certifications
+                      </Link>
+                    </DropdownMenuItem>
+                    {/* Beside Certifications rather than in the main nav: both
+                        are training records, and the main nav's five slots are
+                        for the destinations a diver goes to on every visit. */}
+                    <DropdownMenuItem asChild>
+                      <Link href="/courses" className="flex items-center">
+                        <GraduationCap className="mr-2 h-4 w-4" />
+                        Courses
+                      </Link>
+                    </DropdownMenuItem>
+                    {/* Here for the same reason, by a different argument: the
+                        life list is a look-at-my-collection page rather than a
+                        working destination, so it does not earn one of those
+                        five slots either. */}
+                    <DropdownMenuItem asChild>
+                      <Link href="/species" className="flex items-center">
+                        <Fish className="mr-2 h-4 w-4" />
+                        Species
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
@@ -411,19 +437,21 @@ export function Header() {
                     Features
                   </Link>
                   <Link
-                    href="/#community"
+                    href="/#self-hosting"
                     className="text-sm font-medium text-foreground hover:text-primary py-2"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
-                    Community
+                    Self-hosting
                   </Link>
-                  <Link
-                    href="/#about"
+                  <a
+                    href="https://github.com/opendiving/opendiving-web"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="text-sm font-medium text-foreground hover:text-primary py-2"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
-                    About
-                  </Link>
+                    Source
+                  </a>
                 </>
               )}
             </nav>

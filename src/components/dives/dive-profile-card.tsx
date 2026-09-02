@@ -19,6 +19,8 @@ import {
   divesAPI,
 } from "@/lib/api/dives";
 import { getApiErrorMessage } from "@/lib/api/error";
+import { useUnits } from "@/hooks/useUnits";
+import { formatDepth, type UnitSystem } from "@/lib/units";
 
 // What the card knows about the profile right now. `null` is "in flight", derived
 // rather than stored - the same shape `useAuthedBlobUrl` uses, so nothing has to be
@@ -57,7 +59,10 @@ interface DiveProfileCardProps {
 // recorded; the chart describes what fits on the axis.** Reconciling them would
 // mean either the card waiting on the series it deliberately doesn't wait for, or
 // the chart drawing past its plot.
-function describeProfileContents(info: DiveProfileInfo): string {
+function describeProfileContents(
+  info: DiveProfileInfo,
+  units: UnitSystem,
+): string {
   const parts = [
     `${info.depth_sample_count.toLocaleString()} depth samples recorded by the dive computer`,
   ];
@@ -70,7 +75,9 @@ function describeProfileContents(info: DiveProfileInfo): string {
   // Stated here as well as drawn, because a deco obligation is the one thing in
   // this card worth knowing without reading a chart.
   if (info.max_ceiling != null) {
-    parts.push(`a deco ceiling to ${info.max_ceiling.toFixed(1)} m`);
+    parts.push(
+      `a deco ceiling to ${formatDepth(info.max_ceiling, units, { decimals: 1 })}`,
+    );
   }
 
   return `${parts.join(", ")}.`;
@@ -90,6 +97,7 @@ function describeProfileContents(info: DiveProfileInfo): string {
 // already drops `dive.profile` - which unmounts this card.
 
 export function DiveProfileCard({ dive }: DiveProfileCardProps) {
+  const units = useUnits();
   const [result, setResult] = useState<ProfileResult | null>(null);
   // Bumped by the retry button to re-run the effect below.
   const [attempt, setAttempt] = useState(0);
@@ -153,11 +161,13 @@ export function DiveProfileCard({ dive }: DiveProfileCardProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle as="h2" className="flex items-center gap-2">
           <LineChart className="h-5 w-5" />
           Dive Profile
         </CardTitle>
-        <CardDescription>{describeProfileContents(info)}</CardDescription>
+        <CardDescription>
+          {describeProfileContents(info, units)}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         {result === null ? (

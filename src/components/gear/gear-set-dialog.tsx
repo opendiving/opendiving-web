@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useDialogApiError } from "@/hooks/useDialogApiError";
+import { FormApiError } from "@/components/ui/form-api-error";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Plus, Save, Weight } from "lucide-react";
@@ -37,6 +38,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { GearItemMultiSelect } from "@/components/gear/gear-item-multi-select";
+import { UnitNumberInput } from "@/components/unit-number-input";
+import { EntryUnitLabelRow } from "@/components/entry-unit-toggle";
+import { useEntryUnits } from "@/hooks/useEntryUnits";
+import { unitLabel } from "@/lib/units";
 
 // Sentinel for the "Create a new set" option in the target picker. Radix's
 // `SelectItem` can't take an empty string value, so a real (uuid-shaped-free)
@@ -77,6 +82,11 @@ export function GearSetDialog({
 }: GearSetDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useDialogApiError(open);
+  // Entry units, shared with the dive form this dialog can open from: the two
+  // weight boxes are the same dimension and the store keeps them in step. What
+  // the gear list underneath renders stays on the account preference.
+  const { entryUnits, toggleEntryUnits } = useEntryUnits();
+  const weightUnits = entryUnits("weight");
   const [existingSets, setExistingSets] = useState<GearSet[]>([]);
   // uuid of the set being overwritten, or `undefined` while creating a new one.
   const [targetUuid, setTargetUuid] = useState<string | undefined>(undefined);
@@ -147,6 +157,13 @@ export function GearSetDialog({
       setIsSubmitting(true);
 
       if (saveToUuid) {
+        // The list goes on every save, including a bare rename. It used to be
+        // omitted unless the picker was dirty, because the API hid soft-deleted
+        // gear items from a set read and echoing that shortened list back
+        // destroyed the hidden membership rows. Gear items are hard-deleted now,
+        // so a set read carries every member it has and the picker shows the
+        // whole set - which also makes emptying it expressible, the property
+        // `TripDialog` has always had for locations.
         await gearAPI.updateGearSet(saveToUuid, {
           name: data.name,
           weight,
@@ -275,22 +292,33 @@ export function GearSetDialog({
               name="weight"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Weight (kg)</FormLabel>
+                  {/* This dialog keeps a weight toggle of its own even though
+                      the dive form has one: standalone on `/gear` it is the only
+                      place a gear weight is ever entered. Mounted together the
+                      two names collide, and Radix's modal `aria-hidden` is what
+                      keeps only one of them exposed to assistive tech. */}
+                  <EntryUnitLabelRow
+                    dimension="weight"
+                    entryUnits={weightUnits}
+                    onToggle={() => toggleEntryUnits("weight")}
+                  >
+                    <FormLabel>
+                      Weight ({unitLabel("weight", weightUnits)})
+                    </FormLabel>
+                  </EntryUnitLabelRow>
                   <div className="relative">
                     <Weight className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
                     <FormControl>
-                      <Input
-                        type="number"
+                      <UnitNumberInput
+                        dimension="weight"
+                        units={weightUnits}
                         step="0.5"
-                        min="0"
-                        placeholder="e.g. 6"
+                        min={0}
+                        placeholderValue={6}
                         className="pl-9"
                         {...field}
-                        value={field.value ?? ""}
-                        onChange={(e) => {
-                          const val = parseFloat(e.target.value);
-                          field.onChange(Number.isNaN(val) ? null : val);
-                        }}
+                        value={field.value}
+                        onChange={field.onChange}
                       />
                     </FormControl>
                   </div>
@@ -302,7 +330,7 @@ export function GearSetDialog({
               )}
             />
 
-            {apiError && <p className="text-sm text-destructive">{apiError}</p>}
+            <FormApiError error={apiError} />
 
             <DialogFooter>
               <Button

@@ -103,9 +103,30 @@ export const tripsAPI = {
     return response.data;
   },
 
-  // Delete a trip
-  async deleteTrip(tripUuid: string): Promise<{ message: string }> {
-    const response = await apiClient.delete(`/trip/${tripUuid}`);
+  /**
+   * Delete a trip, optionally moving its dives onto another one first.
+   *
+   * `moveDivesTo` re-points every one of the diver's live dives on this trip and
+   * deletes it **in one transaction**: either the log ends up on the replacement
+   * and this trip is gone, or nothing happened. The response says only that the
+   * trip is gone - the toast names the destination from the picker that chose
+   * it, since the API has no reason to know what it is called.
+   *
+   * Idempotent: deleting an already-deleted trip succeeds rather than 404ing,
+   * and `moveDivesTo` is still honoured on one, since those dives are still
+   * attached. A retry after a lost response is therefore safe.
+   *
+   * A `moveDivesTo` that isn't one of the diver's own live trips, or that is
+   * this trip, is a 422 - the same answer `PATCH /dive` gives for a `trip_uuid`
+   * it can't resolve.
+   */
+  async deleteTrip(
+    tripUuid: string,
+    moveDivesTo?: string,
+  ): Promise<{ message: string }> {
+    const response = await apiClient.delete(`/trip/${tripUuid}`, {
+      params: moveDivesTo ? { move_dives_to: moveDivesTo } : undefined,
+    });
     return response.data;
   },
 };

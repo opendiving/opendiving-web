@@ -1,6 +1,12 @@
 import { Logo } from "@/components/logo";
 import Link from "next/link";
 
+// The three column labels are deliberately not headings. This footer renders below
+// every page, and a heading here has to fit whatever tree the page above it happens to
+// have - the old `<h4>` followed pages whose last heading was an `<h2>`, which is the
+// jump axe reports as `heading-order`. They are group labels rather than sections of the
+// document, so each column is a named `nav` landmark instead: reachable by landmark
+// navigation, and out of the heading outline where no fixed level can be correct.
 export function Footer() {
   return (
     <footer className="bg-muted text-foreground py-12">
@@ -15,8 +21,10 @@ export function Footer() {
               Open source diving platform for the global diving community.
             </p>
           </div>
-          <div>
-            <h4 className="font-semibold mb-4">Platform</h4>
+          <nav aria-labelledby="footer-platform">
+            <p id="footer-platform" className="font-semibold mb-4">
+              Platform
+            </p>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
                 <Link href="/dives" className="hover:text-foreground">
@@ -39,9 +47,11 @@ export function Footer() {
                 </Link>
               </li>
             </ul>
-          </div>
-          <div>
-            <h4 className="font-semibold mb-4">Resources</h4>
+          </nav>
+          <nav aria-labelledby="footer-resources">
+            <p id="footer-resources" className="font-semibold mb-4">
+              Resources
+            </p>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
                 <a
@@ -84,9 +94,11 @@ export function Footer() {
                 </a>
               </li>
             </ul>
-          </div>
-          <div>
-            <h4 className="font-semibold mb-4">Support</h4>
+          </nav>
+          <nav aria-labelledby="footer-support">
+            <p id="footer-support" className="font-semibold mb-4">
+              Support
+            </p>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li>
                 <Link href="/contact" className="hover:text-foreground">
@@ -104,7 +116,7 @@ export function Footer() {
                 </Link>
               </li>
             </ul>
-          </div>
+          </nav>
         </div>
         <div className="border-t mt-12 pt-8 text-center text-sm text-muted-foreground">
           <p>&copy; 2026 OpenDiving. Open source diving platform.</p>

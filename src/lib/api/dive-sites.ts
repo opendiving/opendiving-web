@@ -87,9 +87,29 @@ export const diveSitesAPI = {
     return response.data;
   },
 
-  // Delete a dive site
-  async deleteDiveSite(diveSiteUuid: string): Promise<{ message: string }> {
-    const response = await apiClient.delete(`/dive-site/${diveSiteUuid}`);
+  /**
+   * Delete a dive site, optionally moving the dives logged at it to another one
+   * first.
+   *
+   * `moveDivesTo` swaps this site for that one across every live dive logged
+   * here and deletes it **in one transaction**. The replacement takes this
+   * site's place in each dive's ordered list - inheriting primary-site position
+   * where this one held it - and a dive already logged at both ends up holding
+   * the replacement once.
+   *
+   * Idempotent, with the same retry caveat as `deleteTrip`: a repeat call after
+   * a lost response succeeds, because there is nothing left to move.
+   *
+   * A `moveDivesTo` that isn't one of the diver's own live sites, or that is
+   * this site, is a 422.
+   */
+  async deleteDiveSite(
+    diveSiteUuid: string,
+    moveDivesTo?: string,
+  ): Promise<{ message: string }> {
+    const response = await apiClient.delete(`/dive-site/${diveSiteUuid}`, {
+      params: moveDivesTo ? { move_dives_to: moveDivesTo } : undefined,
+    });
     return response.data;
   },
 };

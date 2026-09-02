@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { applyParsedDiveToForm } from "./dive-file-import";
 import { describeMixtureImport } from "@/lib/dive-import";
 import { DEFAULT_MIXTURE } from "./mixture-fields";
-import type { ParsedDiveMixture } from "@/lib/api/dives";
+import type { ParsedDive, ParsedDiveMixture } from "@/lib/api/dives";
 import type { DiveMixtureInput } from "@/lib/validations/dive";
 
 // A mixture exactly as the API returns one, i.e. with every field explicitly
@@ -36,7 +36,10 @@ function formHolding(mixtures: DiveMixtureInput[]) {
   } as unknown as Parameters<typeof applyParsedDiveToForm>[0];
 }
 
-function parsedDive(mixtures: ParsedDiveMixture[]) {
+function parsedDive(
+  mixtures: ParsedDiveMixture[],
+  overrides: Partial<ParsedDive> = {},
+) {
   return {
     dive_number: null,
     start_time: null,
@@ -44,6 +47,9 @@ function parsedDive(mixtures: ParsedDiveMixture[]) {
     max_depth: null,
     avg_depth: null,
     bottom_temperature: null,
+    // Applied to the form like the scalars above, unlike the import-owned block
+    // below - null is the ordinary case, since only a FIT file records it at all.
+    water_type: null,
     mixtures,
     // Returned by the parse but never applied to the form - the API writes these
     // itself when the file is attached. Spelled out so this fixture stays a complete
@@ -54,14 +60,31 @@ function parsedDive(mixtures: ParsedDiveMixture[]) {
     otu_end: null,
     surface_pressure_bar: null,
     file_token: "token",
+    ...overrides,
   };
 }
 
+// Records what `applyParsedDiveToForm` wrote, for the scalar fields the mixture
+// tests above don't reach. `formHolding`'s stub swallows `setValue` entirely.
+function recordingForm(mixtures: DiveMixtureInput[] = []) {
+  const written: Record<string, unknown> = {};
+  const form = {
+    getValues: (name?: string) => (name === "mixtures" ? mixtures : undefined),
+    setValue: (name: string, value: unknown) => {
+      written[name] = value;
+    },
+  } as unknown as Parameters<typeof applyParsedDiveToForm>[0];
+  return { form, written };
+}
+
 describe("applyParsedDiveToForm", () => {
-  // Both dive forms seed `mixtures` with a complete cylinder before any import
-  // happens, so this is what an import actually meets - not the hand-picked
-  // `existing` the unit tests above pass in.
+  // What an import actually meets, rather than the hand-picked `existing` the unit
+  // tests above pass in. Two real starting states now, and the difference is the
+  // whole point: the create form starts empty (see `dives/new/page.tsx` - a form must
+  // not write gas the diver never entered), while a form the diver has added a
+  // cylinder to, or that the last-dive prefill filled in, holds one.
   const seededForm = () => formHolding([{ ...DEFAULT_MIXTURE }]);
+  const emptyForm = () => formHolding([]);
 
   it("flags a cylinder size the file didn't record, against a seeded form", () => {
     // The bug this pins: `defaulted` used to require that *no* source had the
@@ -94,6 +117,40 @@ describe("applyParsedDiveToForm", () => {
     const note = describeMixtureImport(notes);
     expect(note).toContain("cylinder size");
     expect(note).toContain("gas mix");
+  });
+
+  it("calls it a default, not the form's, when the form held nothing", () => {
+    // The create form's actual starting state. `existingMixtureFor` won't pair a
+    // one-cylinder file against a zero-cylinder form, so `DEFAULT_MIXTURE` supplies
+    // the volume - and "that is a default" is the more urgent sentence of the two:
+    // something is on screen that no dive ever recorded. While the form seeded a
+    // cylinder this read `"form"` and told the diver a number the page had invented
+    // was "already on this form".
+    const notes = applyParsedDiveToForm(
+      emptyForm(),
+      parsedDive([parsed({ oxygen: 32 })]),
+      () => {},
+    );
+
+    expect(notes.guessed.volume).toBe("default");
+    // Plural, because the file left helium to the default too - against a seeded
+    // form that 0 came from the cylinder already there and read `"form"`.
+    expect(describeMixtureImport(notes)).toContain("Those are defaults");
+  });
+
+  it("reports no lost pressures importing onto an empty form", () => {
+    // The counts differ (nought against one), which is what makes
+    // `existingMixtureFor` refuse to pair - and on the *seeded* form that refusal
+    // could cost real pressures. Here there was nothing to lose, so saying they were
+    // cleared would send the diver looking for data that never existed.
+    const notes = applyParsedDiveToForm(
+      emptyForm(),
+      parsedDive([parsed({ oxygen: 32, helium: 0, volume: 12 })]),
+      () => {},
+    );
+
+    expect(notes.discardedPressures).toBe(false);
+    expect(describeMixtureImport(notes)).toBeNull();
   });
 
   it("says nothing when the file recorded the lot", () => {
@@ -161,5 +218,30 @@ describe("applyParsedDiveToForm", () => {
       keptPressures: false,
       discardedPressures: false,
     });
+  });
+
+  it("applies the water type a FIT file recorded", () => {
+    const { form, written } = recordingForm();
+
+    applyParsedDiveToForm(
+      form,
+      parsedDive([], { water_type: "en13319" }),
+      () => {},
+    );
+
+    // `en13319` verbatim, not folded into "salt": it is what the computer was
+    // actually set to, and the parser refuses to substitute a plausible value
+    // for a recorded one. The diver corrects it on the form if it is wrong.
+    expect(written.water_type).toBe("en13319");
+  });
+
+  it("leaves the water type alone for a file that records none", () => {
+    // Every Suunto export, and any FIT file set to `custom`. Writing `""` here
+    // would clear a value the edit form was seeded with from the dive itself.
+    const { form, written } = recordingForm();
+
+    applyParsedDiveToForm(form, parsedDive([]), () => {});
+
+    expect(written).not.toHaveProperty("water_type");
   });
 });

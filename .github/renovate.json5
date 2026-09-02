@@ -1,0 +1,192 @@
+{
+  // What tells anyone a dependency has moved. The other half of the same story is
+  // `.github/workflows/vulnerability-scan.yml`, which watches the image that is *already
+  // published* - `node:24-alpine` grows a CVE weeks after a release shipped, with no PR in
+  // flight, and no bot that reads this repository's files can see that. The two are not
+  // substitutes.
+  //
+  // **This file is inert until Renovate is enabled on the repository**: it is configuration
+  // for a bot that has to be running somewhere. Install the Mend-hosted Renovate GitHub App
+  // on the `opendiving` org (the one-time step, and free), or run it self-hosted. Until then
+  // the versions below are frozen and nothing says so - which is the failure this file exists
+  // to end. CONTRIBUTING.md, "Staying on top of CVEs", is where that step is written down.
+  //
+  // This is the api repo's `.github/renovate.json5` ported, and the port is deliberate: the
+  // two repos release in lockstep on one version, so a dependency policy that differs between
+  // them is drift rather than tailoring. What differs below is only what has to, and each
+  // deviation says so where it sits.
+  //
+  // **Renovate over Dependabot - and the api's reason for it does not apply here.** There the
+  // decider is that Dependabot has no `uv` ecosystem, so `uv.lock` would go unwatched
+  // entirely. Dependabot reads `package-lock.json`, this `Dockerfile` and these workflows
+  // perfectly well, so that argument is spent and three smaller ones carry it instead:
+  //
+  //   - It cannot read `.nvmrc` at all - there is no ecosystem for it - and its groups are
+  //     scoped to one ecosystem, which together make the "Node runtime" rule below
+  //     inexpressible under it. That rule is not a nicety; its own comment says why an
+  //     ungrouped Node bump here is wrong by construction.
+  //   - It has no equivalent of `customManagers`, so the four `npx --yes <tool>@<version>`
+  //     pins in `code-quality.yml` would stay frozen forever. The regex manager at the bottom
+  //     of this file is the only thing in either repository that watches them.
+  //   - The api repo already runs Renovate. A second bot on the sibling repo means two
+  //     dashboards, two PR-title conventions and two settings pages for one product that
+  //     ships as a matched pair.
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+
+  "extends": [
+    "config:recommended",
+
+    // Every routine Renovate PR is titled `chore(deps): ...`, which `pr-title.yml` accepts
+    // and `.github/release.yml` files under "Other changes". `config:recommended` on its own
+    // titles production-dependency updates `fix(deps):`, which would file every version bump
+    // in the release notes' Fixes section beside real bug fixes. The deliberate exception is
+    // `vulnerabilityAlerts` below: a vulnerability-driven update *is* a fix, and says so.
+    ":semanticCommitTypeAll(chore)",
+  ],
+
+  // The surface the Node-runtime rule below reports to, so it is stated rather than
+  // inherited: an update held back for a human is only "detection" if there is somewhere it
+  // shows up.
+  "dependencyDashboard": true,
+
+  "labels": ["dependencies"],
+
+  // Routine updates arrive in one weekly batch rather than whenever an upstream publishes.
+  // Vulnerability-driven ones ignore this entirely - see `vulnerabilityAlerts`. Times are
+  // UTC; no `timezone` is set because nothing here cares which morning it is.
+  "schedule": ["before 9am on monday"],
+
+  // Load-bearing, and the default only by luck. This repository pins in two styles on
+  // purpose, and Renovate's job is to renew whichever it finds rather than to normalise:
+  //
+  //   - `Dockerfile` floats on `node:24-alpine`, twice, and that float is what makes the CVE
+  //     rebuild in CONTRIBUTING.md work at all: re-running Publish Image at an old `v` tag
+  //     picks up the patched Alpine packages precisely because the base is resolved at build
+  //     time. Digest-pin it and that rebuild reproduces the vulnerable base byte for byte,
+  //     republishes every alias, and fixes nothing while reporting success.
+  //   - `.github/workflows/*` pins first-party actions on a major tag (`actions/checkout@v7`)
+  //     and third-party ones by SHA with a trailing version comment
+  //     (`docker/login-action@dbcb8138... # v4.6.0`). Renovate updates the SHA *and* the
+  //     comment, and leaves the tags as tags.
+  //
+  // The product repo's third case - a `docker-compose.yml` whose third-party images are
+  // digest-pinned because an operator *pulls* them rather than building them - has no
+  // counterpart here. That install bundle lives in `opendiving/opendiving` and names this
+  // image by tag, so nothing in this repository is digest-pinned except the third-party
+  // actions above.
+  // `pinDigests: true`, or the `helpers:pinGitHubActionDigests` preset, would flatten both
+  // styles into one and break the first outright.
+  "pinDigests": false,
+
+  // The transitive half, and it is most of the tree. `package-lock.json` pins everything
+  // under the 45 direct dependencies `package.json` names, and a CVE is at least as likely
+  // three levels down as at the top. Nothing else here refreshes those: an ordinary Renovate
+  // PR bumps the package it is about and re-locks around it, leaving every unrelated
+  // transitive pin exactly where it was. Monthly, because it is a wide diff that wants
+  // reading rather than waving through.
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 9am on the first day of the month"],
+  },
+
+  // The one thing that must not wait for Monday. `semanticCommitType: "fix"` puts these in
+  // the Fixes section of the release notes, where someone deciding whether to upgrade reads.
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "schedule": ["at any time"],
+    "semanticCommitType": "fix",
+    "labels": ["dependencies", "security"],
+
+    // Because the instinct on a security bump is that merging it shipped it, and here it
+    // did not. Self-hosters run the published image, which installs from the
+    // `package-lock.json` committed at its `v` tag - so this fix reaches them when the next
+    // release is cut and not before. This is the same sentence the scan's issue body prints
+    // beside every npm-package row, said at the other end of the same loop.
+    "prBodyNotes": [
+      "Merging this does not reach any self-hosted install: the published image installs from the `package-lock.json` committed at its release tag, so this fix travels on the next `vX.Y.Z`. See CONTRIBUTING.md, \"Staying on top of CVEs\".",
+    ],
+  },
+
+  // GitHub's own alerts have to be switched on in repository settings to reach Renovate.
+  // OSV needs nothing switched on anywhere, so the alerting above works from the merge of
+  // this file rather than from whenever someone remembers the settings page.
+  "osvVulnerabilityAlerts": true,
+
+  // The four version-pinned tools in `code-quality.yml` are fetched at run time with
+  // `npx --yes <tool>@<version>` and belong to no manager: they are not in `package.json`, so
+  // the npm manager never sees them, and the `github-actions` manager reads `uses:` rather
+  // than `run:`. Left alone they are the most reliably stale thing in the repository - a
+  // version somebody typed once, in a step whose output nobody diffs.
+  //
+  // Deliberately narrow. It matches the exact `npx --yes name@version` spelling those four
+  // steps use, with the leading digit on the version so a bare `npx --yes prettier` is left
+  // alone rather than being handed a pin it never asked for.
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github/workflows/[^/]+\\.ya?ml$/"],
+      "matchStrings": ["npx --yes (?<depName>(?:@[^/\\s]+/)?[a-z0-9][^@\\s]*)@(?<currentValue>[0-9][^\\s\"'\\\\]*)"],
+      "datasourceTemplate": "npm",
+    },
+  ],
+
+  "packageRules": [
+    {
+      // A Node version is a coordinated change across five files, and a bot reaches three of
+      // them: `.nvmrc` (nvm manager), `package.json`'s `engines.node` (npm), and the one
+      // `Dockerfile`, whose two base tags it updates together (dockerfile manager). The other
+      // two are `ci.yml` and `code-quality.yml`, which hold six occurrences of `24.x` between
+      // them - three step names and three `node-version:` inputs -
+      // none of which the `github-actions` manager treats as a dependency, and none of which
+      // a custom manager should be pointed at either, because the point is that a human
+      // decides.
+      //
+      // So an auto-opened PR here would be *wrong by construction*: it would move the runtime
+      // the image is built and shipped on while leaving CI testing the old one, which is the
+      // single configuration in which a green check means least. `dependencyDashboardApproval`
+      // is the honest handling - the dashboard says a new Node is out, nobody gets a PR that
+      // is half a migration, and whoever ticks the box edits the two workflows by hand.
+      // Grouping the three reachable files keeps that one checkbox instead of three.
+      //
+      // There is a second reason to keep a person here, and it is why this is not just an
+      // ordering problem to be solved with a smarter manager: Node's even majors are the LTS
+      // lines and the odd ones are not, which is what `engines.node` says by being `>=24 <25`
+      // rather than `>=24`. Stepping onto an odd major is a decision, not a version bump.
+      //
+      // `@types/node` is deliberately outside this group. It tracks the runtime's major but
+      // is an ordinary devDependency with no say in which Node builds or runs the image, so
+      // holding its patches behind a checkbox would buy nothing.
+      "matchManagers": ["nvm", "dockerfile", "npm"],
+      "matchPackageNames": ["node"],
+      "groupName": "Node runtime",
+      "dependencyDashboardApproval": true,
+    },
+    {
+      // Not the action - `aquasecurity/setup-trivy` keeps its SHA pin renewed like every
+      // other third-party action here. This is its `version:` **input**, which Renovate's
+      // github-actions manager extracts as a dependency of its own
+      // (`aquasecurity/trivy`, `github-releases`, currently `latest`). Left enabled, the one
+      // plausible PR it can open is the one thing `vulnerability-scan.yml` says must never
+      // happen: replacing `latest` with a number freezes the scanner's advisory knowledge
+      // while it goes on reporting zero findings, which is a security check that has become
+      // indistinguishable from good news.
+      //
+      // In practice Renovate has nothing to do with a `currentValue` of `latest` and skips
+      // it. This rule is here because "in practice" is the wrong standard for that failure -
+      // it is silent, and it would arrive as an ordinary green dependency PR. Found by
+      // running `renovate --platform=local --dry-run=extract` against this repository, which
+      // is also the way to check anything else here before trusting it.
+      "matchManagers": ["github-actions"],
+      "matchPackageNames": ["aquasecurity/trivy"],
+      "enabled": false,
+    },
+    {
+      // Every step the regex manager above feeds ends in `|| true` - they are advisory
+      // reports, not gates - so no bump among them can turn a check red, and a PR per tool
+      // per release would be noise with nothing to read. One grouped PR, on the ordinary
+      // Monday schedule.
+      "matchManagers": ["custom.regex"],
+      "groupName": "code-quality tools",
+    },
+  ],
+}

@@ -1,6 +1,7 @@
 import { apiClient } from "./client";
 import type { PaginatedResponse } from "./client";
 import { GearItemSummary } from "./gear";
+import { SpeciesSummary } from "./species";
 
 // A single gas mixture / scuba tank used during a dive.
 // The ppO₂ vocabulary and the cylinder-role vocabulary the API accepts. Mirrors
@@ -8,6 +9,47 @@ import { GearItemSummary } from "./gear";
 // rejects anything outside it, so this list has to be kept in step by hand.
 export const GAS_ROLES = ["bottom", "deco", "diluent", "oxygen"] as const;
 export type GasRole = (typeof GAS_ROLES)[number];
+
+// How a cylinder was breathed, which is not what it was carried for - the two are
+// orthogonal, and a dive can carry a `parallel` pair and a `staged` bottle at once.
+// Mirrors `TankUsage` (`schemas/dive_mixture.py`), which is the single source of truth -
+// the same hand-kept mirroring as `GAS_ROLES` above.
+//
+// `parallel` is a sidemount pair or independent doubles, breathed alternately at the
+// same depth; `staged` is a bottle breathed at its own depth. Null is "not recorded",
+// which is what every imported cylinder says: no format this app parses carries the
+// distinction, so the flag only ever arrives from the diver's own answer on the form.
+//
+// Declaration order is the picker's order, and `parallel` leads for the reason the API's
+// enum gives: it is the answer that does something. A dive whose cylinders are *all*
+// `parallel` gets a consumption figure by summing their litres, which is otherwise
+// unavailable without per-cylinder gas switches; `staged` changes no arithmetic today.
+export const TANK_USAGE = ["parallel", "staged"] as const;
+export type TankUsage = (typeof TANK_USAGE)[number];
+
+// How the dive computer was calibrated for the water it was in, and what a logbook
+// records as a fact about the dive. Mirrors `WaterType` (`schemas/dive.py`), which is
+// the single source of truth - the same hand-kept mirroring as `GAS_ROLES` above and
+// `GEAR_TYPES` in `lib/api/gear.ts`.
+//
+// Declaration order is the picker's order, so the two real answers come first.
+// `en13319` is the European CE standard for depth instruments rather than a kind of
+// water, and it is here because it is what real files say: a computer left on the
+// EN13319 factory default exports exactly that, and the parser records what the file
+// recorded instead of folding it into "salt". The diver can correct it on the form.
+export const WATER_TYPES = ["salt", "fresh", "brackish", "en13319"] as const;
+export type WaterType = (typeof WATER_TYPES)[number];
+
+// Display labels, kept beside the vocabulary the way `GEAR_TYPE_LABELS` is. "Salt
+// water"/"Fresh water" rather than the bare adjective because the field's own label
+// is "Water type" and the option has to read as an answer to it; EN13319 keeps the
+// standard's own spelling, which is the only name it has.
+export const WATER_TYPE_LABELS: Record<WaterType, string> = {
+  salt: "Salt water",
+  fresh: "Fresh water",
+  brackish: "Brackish",
+  en13319: "EN13319",
+};
 
 // Every optional field is `| null` because that is what comes back on the wire, not
 // merely what could be missing: the API declares them `X | None` (`DiveMixtureBase`
@@ -37,6 +79,11 @@ export interface DiveMixture {
   // What the cylinder was carried for. Rarely present on an import - most exports
   // don't record it - so this is mostly the diver's own label.
   role?: GasRole | null;
+  // How the cylinder was breathed. *Never* present on an import - no format this app
+  // parses records it, so unlike `role` this is always the diver's own answer - and it
+  // is the one mixture field that changes what the API can derive: a dive whose
+  // cylinders are all `parallel` gets its consumption summed across them.
+  usage?: TankUsage | null;
 }
 
 // A dive site visited during a dive, as embedded in a `Dive`. Dives are
@@ -46,6 +93,18 @@ export interface DiveSiteSummary {
   uuid: string;
   name: string;
   location?: string;
+  // Where the site is, so a dive can be mapped from its own response instead of
+  // fetching every linked site separately. The API kept these off the embedded
+  // summary while no map view existed (see its DECISIONS.md); the dive page's
+  // map is what reversed that.
+  //
+  // Optional *and* nullable, and both halves are real: a site with no pin sends
+  // explicit `null`s, while a dive payload cached before the API started
+  // sending them at all has no keys - which is why nothing may read one without
+  // an `!= null` guard, and why they are a both-or-neither pair (the API's
+  // `WholeCoordinatePair` refuses to store half of one).
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 // One cylinder's share of a dive's consumption, on a dive where the API could tell
@@ -106,16 +165,31 @@ export interface DiveGasUse {
   // The same consumption as a pressure drop rate, meaningful only alongside
   // this dive's cylinder volume - but it's what a pressure gauge shows.
   //
-  // **Null on a multi-tank dive**, where there is no such thing: 10 bar out of an
-  // 11 L stage and 10 bar out of a 22 L twinset are different amounts of gas, so a
-  // sum across cylinders of different sizes is not a rate of anything. Each entry
-  // in `tanks` carries its own, which is meaningful because a tank has one volume.
+  // **Null on a multi-tank dive**, where there is generally no such thing: 10 bar
+  // out of an 11 L stage and 10 bar out of a 22 L twinset are different amounts of
+  // gas, so a sum across cylinders of different sizes is not a rate of anything.
+  // Each entry in `tanks` carries its own, which is meaningful because a tank has
+  // one volume.
+  //
+  // **One exception**, and it is the whole reason this comment no longer says
+  // "always": a dive whose cylinders are *all* flagged `parallel` **and are of
+  // exactly equal volume** gets their pooled figure - the mean drop across them per
+  // surface-minute, which is what the same pair logged as one manifolded cylinder
+  // would report. Unequal volumes on that path leave this null while `rmv` and
+  // `gas_used` still compute, so a present `rmv` is no longer a promise of a SAC.
   sac_bar_per_min: number | null;
   // Per-cylinder breakdown. The API sends `[]` - not null, not an absent key -
-  // on every dive it derived the single-tank way, so "is this array non-empty"
-  // is the whole test for which layout the consumption card should render.
-  // Typed optional and nullable anyway, because this field is younger than the
-  // interface and a response cached before it existed has neither.
+  // on every dive it derived without attributing time per cylinder, so "is this
+  // array non-empty" is the whole test for which layout the consumption card
+  // should render. Typed optional and nullable anyway, because this field is
+  // younger than the interface and a response cached before it existed has neither.
+  //
+  // **Empty is no longer synonymous with single-tank.** It also arrives on the
+  // additive parallel path, where a flagged sidemount pair is summed against the
+  // dive's own duration and average depth: that derivation needs no attribution and
+  // so has none to break down. The non-empty test still selects the right layout -
+  // an additive dive genuinely has one set of whole-dive figures to show - but
+  // anything reading `[]` as "one cylinder" is now wrong.
   //
   // **A one-entry array is the normal multi-cylinder shape, not a degenerate
   // one**: every multi-gas dive in the corpus is one entry, because a diver
@@ -130,7 +204,9 @@ export interface DiveGasUse {
   // switches but not the gas carried into the water, say - and figures covering
   // 38 of 42 minutes should say so rather than pass for the whole dive.
   //
-  // Both null outside the multi-tank path. Seconds, matching `Dive.duration` and
+  // Both null wherever the whole dive is accounted for and there is no fraction to
+  // report: a single-cylinder dive, and a flagged parallel set summed over the
+  // dive's own duration. Seconds, matching `Dive.duration` and
   // `DiveProfileInfo.duration_seconds`; `duration_seconds` is the profile's span,
   // not `Dive.duration`, because that is what the attribution actually ran over
   // and a hand-edited dive duration would make the fraction unfalsifiable.
@@ -156,6 +232,18 @@ export interface Dive {
   avg_depth?: number;
   bottom_temperature?: number;
   visibility?: number;
+  // What the water was and where it was, both hand-enterable and both settable on the
+  // form - unlike the import-owned readings below. `water_type` is seeded from a FIT
+  // file's own `dive_settings` through the parse prefill, then owned by the diver;
+  // `altitude` is metres above sea level of the water surface, and is the fact a diver
+  // can actually type where `surface_pressure_bar` below is the barometer's reading of
+  // it.
+  //
+  // `| null` for the same reason as `cns_start` below: the API declares them
+  // `X | None` on `DiveBase` with no `exclude_none`, so an unrecorded field arrives as
+  // an explicit `null` rather than an absent key.
+  water_type?: WaterType | null;
+  altitude?: number | null;
   // Oxygen exposure and surface pressure as the dive computer recorded them, written
   // by the import and **not settable through the form** - the API keeps these off its
   // create/update schemas entirely (see its DECISIONS.md), because nothing on a logged
@@ -181,10 +269,31 @@ export interface Dive {
   // Ambient pressure at the surface, in bar. Display only - the API's gas-use maths
   // deliberately assumes 1 bar.
   surface_pressure_bar?: number | null;
+  // Where the diver actually entered and left the water, as the dive computer's GPS
+  // recorded it. On `DiveTechScalars` alongside the exposure fields above, so they
+  // carry all of that block's properties: written by the import, **not settable
+  // through the form**, explicit `null` rather than an absent key on a dive that has
+  // none, and absent entirely on a payload cached before the API sent them.
+  //
+  // These are also **not the dive site's position** - they are where this dive
+  // happened, which is why both can be shown at once and why a wide gap between them
+  // is worth seeing.
+  //
+  // **Exit-only is the normal case, not a half-filled pair**: every GPS-carrying file
+  // in the API's corpus logs its first fix after surfacing, so a lone exit pair is a
+  // complete recording and must read as one. Each pair is both-or-neither.
+  entry_latitude?: number | null;
+  entry_longitude?: number | null;
+  exit_latitude?: number | null;
+  exit_longitude?: number | null;
   // Total ballast carried on the dive, in kilograms. A plain per-dive number
   // rather than a gear item - see the API's DECISIONS.md.
   weight?: number;
   trip_uuid?: string;
+  // The training course this dive was part of, if the diver recorded one. A
+  // separate grouping from the trip: a course is where a dive came from in the
+  // logbook's training sense, and a dive can have both.
+  course_uuid?: string;
   dive_sites: DiveSiteSummary[];
   // Gear used on the dive. A dive records the items themselves, never the gear
   // set they were loaded from - sets are only a form-filling shortcut.
@@ -201,9 +310,11 @@ export interface Dive {
   // "fix" a missing value in the list by adding it server-side.
   source_file?: DiveFileInfo | null;
   // Set only when the dive records everything needed to derive it. For one
-  // mixture that is an average depth plus both of its pressures; for several it
-  // additionally needs a profile the API could attribute per cylinder, and the
-  // result then carries `tanks`. Optional for the same reason as `source_file` -
+  // mixture that is an average depth plus both of its pressures. For several,
+  // either a profile the API could attribute per cylinder - the result then
+  // carries `tanks` - or every cylinder flagged `usage: "parallel"` with both
+  // pressures on each, which is summed against the dive's own average depth and
+  // needs no profile at all. Optional for the same reason as `source_file` -
   // it's a detail-response field, and it additionally derives from `mixtures`,
   // which the list response doesn't carry either. Use
   // `gasUseUnavailableReason()` (`lib/dive-gas.ts`) to explain a missing value
@@ -214,6 +325,14 @@ export interface Dive {
   // deliberately only sends it on the detail response. The curves themselves are
   // tens of KB and are fetched separately via `getDiveProfile`.
   profile?: DiveProfileInfo | null;
+  // What was spotted on the dive, in the order the diver listed them.
+  //
+  // Optional for the same reason as `source_file` and `gas_use` above: the API
+  // sends it on the detail response only, since embedding it on the list would
+  // cost the app's hottest query a lookup per row and nothing in the list draws
+  // it. It is also absent - rather than `[]` - on any detail payload the API
+  // cached before species existed, so read it through `?.` and default it.
+  species?: SpeciesSummary[];
 }
 
 // What the dive detail response says about a dive's profile without carrying it:
@@ -388,10 +507,19 @@ export interface DiveCreate {
   avg_depth?: number | null;
   bottom_temperature?: number | null;
   visibility?: number | null;
+  water_type?: WaterType | null;
+  // Metres above sea level of the water surface. Bounded by the API's
+  // `ck_dive_altitude_range` (-450 to 6500), which `diveCreateSchema` mirrors.
+  altitude?: number | null;
   weight?: number | null;
   trip_uuid?: string;
+  course_uuid?: string;
   dive_site_uuids?: string[];
   gear_item_uuids?: string[];
+  // Catalog uuids, in spotting order. Every uuid must already exist - the
+  // picker resolves an upstream pick into a catalog row before it reaches form
+  // state, so saving a dive never waits on WoRMS.
+  species_uuids?: string[];
   notes?: string;
   mixtures?: DiveMixture[];
 }
@@ -405,6 +533,11 @@ export interface DiveUpdate {
   avg_depth?: number | null;
   bottom_temperature?: number | null;
   visibility?: number | null;
+  // Same "explicit null clears, absent means no change" contract as the nullable
+  // measurements around them, and the reason the form's `<select>` normalizes its
+  // cleared `""` to `null` rather than dropping the field - see `buildDiveUpdate`.
+  water_type?: WaterType | null;
+  altitude?: number | null;
   weight?: number | null;
   // `null` detaches the dive from its trip; omitting the field leaves whatever
   // trip it already has alone. Same "explicit null clears, absent means no
@@ -412,8 +545,18 @@ export interface DiveUpdate {
   // `TripCombobox` normalizes its cleared value to `null` rather than
   // `undefined`, which the update payload builder drops from the request.
   trip_uuid?: string | null;
+  // Same contract as `trip_uuid` above: `null` detaches the dive from its
+  // training course, and omitting the key leaves whatever course it already has
+  // alone. `CourseCombobox` normalizes its cleared value to `null` for exactly
+  // this reason.
+  course_uuid?: string | null;
   dive_site_uuids?: string[];
   gear_item_uuids?: string[];
+  // Same wholesale-replace contract as the two lists above: an omitted key
+  // leaves the dive's species alone, and any list provided - `[]` included -
+  // replaces them. See "Locations are always sent on edit" in DECISIONS.md for
+  // why the form always sends it.
+  species_uuids?: string[];
   notes?: string;
   mixtures?: DiveMixture[];
 }
@@ -543,6 +686,12 @@ export interface ParsedDive {
   max_depth: number | null;
   avg_depth: number | null;
   bottom_temperature: number | null;
+  // Applied to the form like the fields above it, not held back like the block below:
+  // a FIT file records the computer's own salinity setting, and that is the diver's
+  // answer to "what water was this" until they say otherwise. Null for every Suunto
+  // export (neither format carries salinity) and for a FIT file set to `custom`, which
+  // is a density number rather than a type.
+  water_type: WaterType | null;
   mixtures: ParsedDiveMixture[];
   // Returned by the parse so a preview can show them, but deliberately **not** applied
   // to the form: the API writes these itself when the file is attached, from its own
@@ -564,8 +713,8 @@ export interface ParsedDive {
  * Dive CRUD, plus dive-computer file import, profile fetching and numbering.
  *
  * Two things differ from the other resources here. Updates replace the list-valued fields
- * (`mixtures`, `dive_site_uuids`, `gear_item_uuids`) wholesale rather than merging, so a
- * caller must send the full intended list. And importing a file is two steps - parse to
+ * (`mixtures`, `dive_site_uuids`, `gear_item_uuids`, `species_uuids`) wholesale rather than
+ * merging, so a caller must send the full intended list. And importing a file is two steps - parse to
  * pre-fill the form, then upload against the created dive - because the diver gets to
  * correct the parsed values before anything is stored.
  */
@@ -577,8 +726,16 @@ export const divesAPI = {
   },
 
   // Get all dives for a user (paginated). Pass `tripUuid`/`diveSiteUuid`/
-  // `gearItemUuid` to only return dives that belong to a given trip / were made
-  // at a given site / used a given piece of gear.
+  // `gearItemUuid`/`courseUuid`/`speciesUuid` to only return dives that belong to
+  // a given trip / were made at a given site / used a given piece of gear / were
+  // part of a given training course / recorded a given species. The filters are
+  // combinable, and one naming something that doesn't exist or isn't the
+  // caller's returns an empty page rather than an error.
+  //
+  // `courseUuid` and `speciesUuid` come last rather than beside `tripUuid`, where
+  // they belong by meaning: these are positional, and inserting a parameter would
+  // silently re-point every existing call's site and gear filters. Appending is
+  // the only safe direction, which is why each new filter joins the end.
   async getDives(
     userUuid: string,
     page: number = 1,
@@ -586,6 +743,8 @@ export const divesAPI = {
     tripUuid?: string,
     diveSiteUuid?: string,
     gearItemUuid?: string,
+    courseUuid?: string,
+    speciesUuid?: string,
   ): Promise<PaginatedDivesResponse> {
     const response = await apiClient.get(`/dives`, {
       params: {
@@ -595,6 +754,8 @@ export const divesAPI = {
         ...(tripUuid !== undefined ? { trip_uuid: tripUuid } : {}),
         ...(diveSiteUuid !== undefined ? { dive_site_uuid: diveSiteUuid } : {}),
         ...(gearItemUuid !== undefined ? { gear_item_uuid: gearItemUuid } : {}),
+        ...(courseUuid !== undefined ? { course_uuid: courseUuid } : {}),
+        ...(speciesUuid !== undefined ? { species_uuid: speciesUuid } : {}),
       },
     });
     return response.data;

@@ -6,22 +6,45 @@ on:
       - main
   pull_request:
 
+# This job only reads: it checks out, installs, and runs npm scripts. `contents: read` is
+# what checkout needs and the whole of what it needs, and saying so keeps the token off
+# whatever the repository default happens to grant. That matters more than it looks -
+# linting, testing and building all execute whatever the dependency tree ships, so
+# anything the token can do, a compromised transitive dependency can do too.
+# `persist-credentials: false` on the checkout is the other half: without it the token is
+# left behind in `.git/config`, in the same workspace all of that runs in.
+#
+# There was a second job here, `security-audit`, running `npm audit --audit-level=moderate`
+# and `npm outdated || true`. Both have somewhere better to be now: the audit is
+# `vulnerability-scan.yml`'s `dependencies` job, which asks the same question with the
+# scanner that also reads the published image, and `npm outdated` was a report nobody
+# diffed that `.github/renovate.json5` now answers with a pull request. That file and
+# CONTRIBUTING.md's "Staying on top of CVEs" carry the reasoning, including what the swap
+# stopped covering.
+permissions:
+  contents: read
+
 jobs:
+  # Deliberately no `strategy.matrix`, though this job carried a one-value one for a
+  # while. A matrix job's check run has the matrix value appended to its name, so this
+  # job reported as `lint-and-build (<version>)` and never as `lint-and-build` - and a
+  # branch ruleset requiring the bare name would match nothing, leaving every PR waiting
+  # on a status that is never going to arrive. One Node version is all this repo
+  # supports anyway (`.nvmrc`, `engines.node` and the `Dockerfile` agree on the major),
+  # so the matrix was expressing a variation that does not exist.
   lint-and-build:
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        node-version: [24.x]
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
-      - name: Use Node.js ${{ matrix.node-version }}
+      - name: Use Node.js 24.x
         uses: actions/setup-node@v7
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 24.x
           cache: "npm"
 
       - name: Install dependencies
@@ -32,6 +55,17 @@ jobs:
 
       - name: Run type checking
         run: npm run type-check
+
+      # Some tests run in real Chromium, through Vitest's browser project.
+      # jsdom has no WebGL2 context - and no maintained mock supplies one - and
+      # it performs no layout at all, so a question about a real renderer or
+      # about measured geometry belongs there. `npm ci` installs no browser
+      # (`playwright` has published no install script since somewhere between
+      # 1.30 and 1.40), so this step is what puts one there; without it the
+      # browser project fails to start rather than skipping, which is the right
+      # way round.
+      - name: Install Chromium for the browser tests
+        run: npx playwright install --with-deps chromium
 
       - name: Run tests with coverage
         id: tests
@@ -46,37 +80,12 @@ jobs:
 
       - name: Build application
         run: npm run build
-        env:
-          NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
-        if: matrix.node-version == '24.x'
         with:
           name: build-files
           path: |
             .next/
             !.next/cache/
           retention-days: 5
-
-  security-audit:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Use Node.js 24.x
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24.x
-          cache: "npm"
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run security audit
-        run: npm audit --audit-level=moderate
-
-      - name: Check for outdated packages
-        run: npm outdated || true

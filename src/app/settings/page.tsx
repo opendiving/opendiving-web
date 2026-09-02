@@ -14,9 +14,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AvatarCard } from "@/components/settings/avatar-card";
 import { DataExportCard } from "@/components/settings/data-export-card";
+import { DeleteAccountCard } from "@/components/settings/delete-account-card";
+import { DeviceMemoryCard } from "@/components/settings/device-memory-card";
 import { EmailChangeCard } from "@/components/settings/email-change-card";
 import { NotificationsCard } from "@/components/settings/notifications-card";
+import { PasskeysCard } from "@/components/settings/passkeys-card";
+import { SessionsCard } from "@/components/settings/sessions-card";
+import { UnitsCard } from "@/components/settings/units-card";
 import { User, Save } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -105,7 +111,7 @@ export default function SettingsPage() {
         {/* Profile Information */}
         <Card className="flex flex-col h-full">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle as="h2" className="flex items-center gap-2">
               <User className="h-5 w-5" />
               Profile Information
             </CardTitle>
@@ -155,30 +161,6 @@ export default function SettingsPage() {
                     Lowercase letters and numbers, unique across OpenDiving.
                   </p>
                 </div>
-
-                {/* The avatar itself is not on this page - it is drawn from the
-                    account email wherever it appears - so this is worded as where to
-                    change it rather than as attribution under a picture. The heading
-                    is a `<p>` styled like the `Label`s above it rather than a `Label`:
-                    there is no field here for it to point at. */}
-                <div className="space-y-2">
-                  <p className="text-sm font-medium leading-none">
-                    Profile Picture
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Your avatar comes from{" "}
-                    <a
-                      href="https://gravatar.com"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline hover:text-foreground"
-                    >
-                      Gravatar
-                    </a>
-                    , matched on your account email. Change it there and it
-                    changes here.
-                  </p>
-                </div>
               </div>
 
               <Button
@@ -202,45 +184,30 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
+        <AvatarCard />
+
         <EmailChangeCard currentEmail={user.email} />
 
         <NotificationsCard />
+
+        <UnitsCard />
+
+        <PasskeysCard />
+
+        <SessionsCard />
+
+        <DeviceMemoryCard />
       </div>
 
-      {/* Full width rather than a fourth cell in the grid above: the three rows each
+      {/* Full width rather than another cell in the grid above: the three rows each
           carry a sentence of prose, and at half the page every one of them wraps to
           four lines. */}
       <div className="mt-8">
         <DataExportCard username={user.username} />
       </div>
 
-      {/* Account Actions */}
       <div className="mt-8">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-destructive">Danger Zone</CardTitle>
-            <CardDescription>
-              Irreversible and destructive actions for your account.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="rounded-md border border-destructive/40 bg-destructive/10 p-4">
-                <h4 className="font-medium text-foreground mb-2">
-                  Delete Account
-                </h4>
-                <p className="text-sm text-muted-foreground mb-3">
-                  Once you delete your account, there is no going back. This
-                  will permanently delete your profile, dive logs, and remove
-                  all associations with projects and teams.
-                </p>
-                <Button variant="destructive" size="sm">
-                  Delete My Account
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <DeleteAccountCard username={user.username} />
       </div>
     </div>
   );

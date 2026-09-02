@@ -65,7 +65,7 @@ export function ServiceDueCard({ userId }: ServiceDueCardProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
+        <CardTitle as="h2" className="flex items-center gap-2 text-base">
           <Wrench className="h-4 w-4" />
           Service due
         </CardTitle>

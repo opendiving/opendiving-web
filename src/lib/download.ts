@@ -41,11 +41,13 @@ export function downloadBlob(blob: Blob, filename: string): void {
 // Pulls the filename out of a `Content-Disposition` header, or returns null when the
 // header is missing, unparseable, or names nothing usable.
 //
-// **This returns null far more often than the header being present suggests.** The API
-// is a different origin (`localhost:3000` -> `localhost:8000`), and `Content-Disposition`
-// is not one of the seven CORS-safelisted response headers, so unless the server sends
-// `Access-Control-Expose-Headers` the browser hands JS `null` for a header that is
-// plainly there in the network tab. Every caller therefore needs its own fallback name -
+// **On a split-origin deployment this returns null far more often than the header being
+// present suggests.** `Content-Disposition` is not one of the seven CORS-safelisted
+// response headers, so unless the server sends `Access-Control-Expose-Headers` the
+// browser hands JS `null` for a header that is plainly there in the network tab - and
+// local dev is exactly that shape (`localhost:3000` -> `localhost:8000`). A deployed
+// instance is same-origin behind `app/api/v1/[...path]/route.ts`, where CORS never
+// applies and the header arrives intact. Every caller still needs its own fallback name:
 // parsing is the improvement, not the mechanism.
 //
 // Both RFC 6266 forms are handled. A **UTF-8** `filename*=UTF-8''...` wins where

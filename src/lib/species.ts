@@ -1,0 +1,145 @@
+// How a species reads on screen. Composed once here because the surfaces that
+// show one - the dive form's picker, the dive page's card, the life list and the
+// species page - have to agree on the same two decisions: what to call a species
+// that has no common name, and how to say that a row is not a species at all.
+
+import { formatDiveDateTime } from "@/lib/date-time";
+
+interface NamedSpecies {
+  scientific_name: string;
+  common_name: string | null;
+}
+
+interface RankedSpecies extends NamedSpecies {
+  rank: string;
+}
+
+/**
+ * What to call this species, given that most of the ocean has no English name.
+ *
+ * The common name when there is one, the scientific name otherwise - never an
+ * empty string or a placeholder. `common_name` is genuinely often null (WoRMS
+ * carries a single Japanese vernacular for the clownfish, and Wikidata's English
+ * label for it *is* the binomial), so the fallback is the normal case for
+ * anything that isn't charismatic megafauna, not an error path.
+ */
+export function speciesDisplayName(species: NamedSpecies): string {
+  return species.common_name ?? species.scientific_name;
+}
+
+/**
+ * The scientific name to show *beside* the display name, or `undefined` when it
+ * would just repeat it.
+ *
+ * Exists so a caller can decide with `&&` whether to render the italic
+ * second half of a row at all: when the display name already is the scientific
+ * name, printing it twice is noise.
+ */
+export function speciesSecondaryName(
+  species: NamedSpecies,
+): string | undefined {
+  return species.common_name ? species.scientific_name : undefined;
+}
+
+/**
+ * The rank, when it is worth showing at all.
+ *
+ * `rank` is mostly WoRMS's open vocabulary passed through unmodified, but a
+ * literal `"unknown"` is not a rank - it is the API's placeholder for "no rank
+ * to report", and it has **two** writers (`species_service.py`'s
+ * `_wikidata_result` and `_worms_taxon`). A Wikidata-only search hit gets it when
+ * its entity carries no taxon-rank statement, or names a rank the API's map does
+ * not cover; and a WoRMS record that simply arrived without the field gets the
+ * same value, because `rank` is a NOT NULL column and the API would rather store
+ * the sentinel than refuse an otherwise good record. Printed as-is it renders
+ * "Manta americana, unknown", which reads as a statement about the animal rather
+ * than about how much is known, so it is dropped alongside the blank.
+ *
+ * That second writer is the one worth remembering, because it is the reason this
+ * is not a picker-only concern: resolve won't invent a row without the
+ * authoritative record, but the authoritative record itself may omit the rank -
+ * so a catalog row can carry the sentinel, and the dive detail card's
+ * `speciesNameWithRank` is a live guard rather than a defensive one.
+ *
+ * Nothing upstream to fix, and no better value to pass through: the API's merge
+ * treats the sentinel as a placeholder rather than a claim, so a real rank from
+ * either source displaces it, and making it nullable would mean a search hit and
+ * the catalog row it becomes disagreed about whether the field is optional.
+ * Dropping it here is the display half of that split.
+ *
+ * How much of a search page carries it is not a property of the data and gets no
+ * number here: search answers with whatever arrived inside its fan-out budget,
+ * so a slow minute at WoRMS leaves more of the page Wikidata-only, and two
+ * consecutive searches for the same word legitimately disagree. This used to say
+ * "most of a typical page, not a rare edge case"; it is a tail case now that the
+ * API reads a rank off the Wikidata entity too, which is what finally gave the
+ * picker's rank caption something to print on a bare upstream row.
+ *
+ * The string is not stable either, and for a reason that has nothing to do with
+ * the sentinel: the two registers can hold different real ranks for the same
+ * taxon and the merge is first-writer-wins, so *Mysticeti* comes back
+ * "Superfamily" or "Parvorder" depending on which side answered. Nothing here
+ * should assert a rank string against live data. `speciesNameWithRank`'s test
+ * for "Species" below survives it in the case that has been measured, where both
+ * spellings sit well above genus and only the caption moves - which is an
+ * observation about that case rather than a guarantee about every taxon.
+ *
+ * Case-insensitive because the vocabulary around it is WoRMS's to recapitalise,
+ * not ours to depend on.
+ */
+export function speciesRankLabel(rank: string): string | undefined {
+  const trimmed = rank?.trim();
+  if (!trimmed || trimmed.toLowerCase() === "unknown") return undefined;
+  return trimmed;
+}
+
+/**
+ * The scientific name, with the rank named when the row is not a species.
+ *
+ * Sightings are deliberately not restricted to species rank - "a moray eel" is
+ * an honest log entry and resolves to the family *Muraenidae* - so a row has to
+ * say when it is broader than it looks. A binomial is self-evidently a species
+ * and gets no suffix; "Muraenidae" alone would read as one, so it becomes
+ * "Muraenidae (Family)".
+ */
+export function speciesNameWithRank(species: RankedSpecies): string {
+  const rank = speciesRankLabel(species.rank);
+  if (!rank || rank.toLowerCase() === "species") return species.scientific_name;
+  return `${species.scientific_name} (${rank})`;
+}
+
+/**
+ * When a diver saw this species, as one line: a single date when every sighting
+ * falls on one day, and a range otherwise.
+ *
+ * **The two inputs are dive `start_time`s, so they carry the offset of the dive
+ * behind each end of the range rather than UTC** - the app-wide contract every
+ * dive-derived surface honours. That is why this goes through
+ * `formatDiveDateTime` and not `formatDateTime`: the latter would re-derive the
+ * *viewer's* local time and report a dive logged in Thailand at the reader's
+ * clock. The error is invisible against any dive logged at `+00:00`, which is
+ * most fixtures and almost no real log.
+ *
+ * **The collapse compares the formatted dates, not the timestamps behind them**,
+ * and that distinction is the whole reason this is a function rather than an
+ * inline ternary. The values are start times to the second, so two sightings on
+ * one day - the ordinary case, since a diver logs several dives at a site and
+ * sees the same fish on each - differ as strings while rendering as one date.
+ * Comparing the raw values prints "Aug 30, 2026 - Aug 30, 2026" for every one of
+ * them, and only a species seen exactly once ever collapses.
+ */
+export function speciesSeenRange(firstSeen: string, lastSeen: string): string {
+  const first = seenOn(firstSeen);
+  const last = seenOn(lastSeen);
+  return first === last ? first : `${first} – ${last}`;
+}
+
+// A dive start time as a bare date. Separate from the range above only so both
+// ends are formatted identically by construction.
+function seenOn(startTime: string): string {
+  return formatDiveDateTime(startTime, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}

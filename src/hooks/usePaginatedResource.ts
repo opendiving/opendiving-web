@@ -46,10 +46,10 @@ function pageCacheKey(cacheKey: string, page: number, perPage: number): string {
 }
 
 /**
- * Shared pagination + fetch-on-mount logic for the dives/trips/sites list
- * pages (and any other page listing a paginated resource). `fetchFn` should
- * be a stable (useCallback'd) function performing the actual API request for
- * a given page, typically closing over the current user.
+ * Shared pagination + fetch-on-mount logic for the list pages, and any other
+ * page listing a paginated resource. `fetchFn` should be a stable
+ * (useCallback'd) function performing the actual API request for a given page,
+ * typically closing over the current user.
  */
 export function usePaginatedResource<T>(
   fetchFn: (page: number, perPage: number) => Promise<PaginatedResponse<T>>,

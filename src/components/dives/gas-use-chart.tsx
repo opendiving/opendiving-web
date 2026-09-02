@@ -26,6 +26,16 @@ import {
 } from "@/lib/chart-series-view";
 import { diveWallClockTime, formatDiveDateTime } from "@/lib/date-time";
 import { cn } from "@/lib/utils";
+import { useUnits } from "@/hooks/useUnits";
+import {
+  displayNumber,
+  formatDepth,
+  formatGasVolume,
+  toDisplayUnits,
+  unitLabel,
+  unitWord,
+  type UnitSystem,
+} from "@/lib/units";
 
 // Hand-rolled SVG rather than a charting library, for two reasons. The app ships
 // a strict nonce-based CSP (`src/proxy.ts`): inline style *attributes* are
@@ -92,6 +102,7 @@ export interface GasUseChartProps {
 const readStoredMarks = () => readStoredSeries(GAS_USE_SERIES_KEY);
 
 export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
+  const units = useUnits();
   // Index into `points` of the dive under the cursor (or keyboard focus). One
   // piece of state for the whole chart, not a tooltip component per dot: at a
   // few hundred dives, per-dot tooltip instances are a lot of machinery for one
@@ -150,7 +161,11 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
   // A dive's own wall-clock time, never the viewer's - the same convention as
   // every other dive timestamp in the app. Read back with `getUTC*` only.
   const times = points.map((point) => diveWallClockTime(point.start_time));
-  const rmvs = points.map((point) => point.gas_use.rmv);
+  // Converted once, here, and everything below - the domain, the axis ticks, the
+  // trend, the spread band, the reference line - is then in the diver's own units,
+  // so `niceDomain` picks round cuft/min rather than round L/min rescaled.
+  const displayRmv = (rmv: number) => toDisplayUnits(rmv, "rmv", units);
+  const rmvs = points.map((point) => displayRmv(point.gas_use.rmv));
 
   // Both derived from the *whole* series, deliberately, and then windowed. The y
   // axis staying put while you page through years is what makes the periods
@@ -177,7 +192,17 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
   // without them having to page back through the previous years to find out.
   // Deliberately the whole series and not the visible window - a line at the
   // mean of what you're already looking at tells you nothing you can't see.
-  const allTimeMean = rmvs.reduce((sum, rmv) => sum + rmv, 0) / rmvs.length;
+  //
+  // Kept in both systems: metric because the accessible summary formats it through
+  // `displayNumber` exactly as the visible stat above the chart does - and a
+  // hardcoded decimal there would quantize an imperial average to ~5 buckets across
+  // the whole plausible RMV range, which is the collapse `rmv`'s two imperial
+  // decimals exist to prevent - and converted because that is the space the plot is
+  // drawn in. Derived rather than averaged twice: the conversion is a single
+  // multiplication, so the mean of the converted values *is* the converted mean.
+  const meanRmv =
+    points.reduce((sum, point) => sum + point.gas_use.rmv, 0) / points.length;
+  const allTimeMean = displayRmv(meanRmv);
 
   const range = scopeRange(times, anchor, scope);
 
@@ -269,6 +294,7 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
           windowSize={windowSize}
           withSpread={spreadInScope}
           onToggle={toggle}
+          units={units}
         />
       </div>
     );
@@ -300,7 +326,7 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
             viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
             className="w-full h-auto"
             role="group"
-            aria-label={describeSeries(visible.length, allTimeMean)}
+            aria-label={describeSeries(visible.length, meanRmv, units)}
           >
             {/* Alternating months (or years) behind the plot - the chart's
                 only vertical structure, and what lets a cluster of dots be
@@ -438,7 +464,7 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
                 <a
                   key={point.dive_uuid}
                   href={`/dives/${point.dive_uuid}`}
-                  aria-label={describePoint(point)}
+                  aria-label={describePoint(point, units)}
                   onMouseEnter={() => setHovered(index)}
                   onMouseLeave={() => setHovered(null)}
                   // Keyboard focus opens the tooltip too, so tabbing through the
@@ -450,7 +476,7 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
                 a solid band, and lit up when it's the one being described. */}
                   <circle
                     cx={x(times[index])}
-                    cy={y(point.gas_use.rmv)}
+                    cy={y(displayRmv(point.gas_use.rmv))}
                     r={hovered === index ? 5 : scope === "all" ? 2.5 : 3.5}
                     fill="currentColor"
                     className={cn(
@@ -464,7 +490,7 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
                 pointer events at all, which is the opposite of the point. */}
                   <circle
                     cx={x(times[index])}
-                    cy={y(point.gas_use.rmv)}
+                    cy={y(displayRmv(point.gas_use.rmv))}
                     r={7}
                     fill="transparent"
                   />
@@ -476,7 +502,8 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
             <GasUseTooltip
               point={hoveredPoint}
               cx={x(times[hoveredIndex])}
-              cy={y(hoveredPoint.gas_use.rmv)}
+              cy={y(displayRmv(hoveredPoint.gas_use.rmv))}
+              units={units}
             />
           )}
         </div>
@@ -487,6 +514,7 @@ export function GasUseChart({ points, scope, anchor }: GasUseChartProps) {
         windowSize={windowSize}
         withSpread={spreadInScope}
         onToggle={toggle}
+        units={units}
       />
     </div>
   );
@@ -506,6 +534,7 @@ function GasUseLegend({
   windowSize,
   withSpread,
   onToggle,
+  units,
 }: {
   marks: readonly GasUseMark[];
   windowSize: number;
@@ -514,6 +543,7 @@ function GasUseLegend({
   // has to keep saying "and spread" while the trend is off.
   withSpread: boolean;
   onToggle: (mark: GasUseMark) => void;
+  units: UnitSystem;
 }) {
   return (
     <div
@@ -529,7 +559,7 @@ function GasUseLegend({
             marks.includes("dives") && "text-teal",
           )}
         />
-        Dive (L/min)
+        Dive ({unitLabel("rmv", units)})
       </MarkToggle>
       <MarkToggle mark="trend" marks={marks} onToggle={onToggle}>
         {/* The trend and its band are one mark, so they get one swatch - and one
@@ -606,8 +636,20 @@ function MarkToggle({
 // The chart's accessible name. The dots carry their own labels and the visual
 // tooltip says nothing to a screen reader, so this only has to frame them: how
 // many dives are plotted, and the one figure the whole chart is read against.
-function describeSeries(dives: number, allTimeMean: number): string {
-  return `Gas consumption over ${dives} dives, against an all-time average of ${allTimeMean.toFixed(1)} liters per minute.`;
+function describeSeries(
+  dives: number,
+  meanRmv: number,
+  units: UnitSystem,
+): string {
+  // Metric in, and through the same formatter the visible "Average" stat uses, so
+  // the two cannot disagree: one decimal in L/min, two in cuft/min. Spelled out
+  // rather than abbreviated, because "cuft/min" read aloud is not a unit.
+  return `Gas consumption over ${dives} dives, against an all-time average of ${displayNumber(
+    meanRmv,
+    "rmv",
+    units,
+    { decimals: 1 },
+  )} ${unitWord("rmv", units)}.`;
 }
 
 // The hover card itself: HTML rather than SVG `<text>`, so it gets the app's
@@ -623,10 +665,12 @@ function GasUseTooltip({
   point,
   cx,
   cy,
+  units,
 }: {
   point: DiveGasUsePoint;
   cx: number;
   cy: number;
+  units: UnitSystem;
 }) {
   // Flipped and nudged so the card always lands inside the chart box. It has to:
   // the scroll container around it clips (setting `overflow-x` to `auto` makes
@@ -660,7 +704,8 @@ function GasUseTooltip({
       role="presentation"
     >
       <div className="text-sm font-semibold">
-        {point.gas_use.rmv} <span className="font-normal">L/min</span>
+        {displayNumber(point.gas_use.rmv, "rmv", units)}{" "}
+        <span className="font-normal">{unitLabel("rmv", units)}</span>
       </div>
       <div className="mt-0.5 text-xs text-tooltip-foreground/70">
         Dive #{point.dive_number} &middot;{" "}
@@ -671,7 +716,7 @@ function GasUseTooltip({
         })}
       </div>
       <div className="text-xs text-tooltip-foreground/70">
-        {describePointBasis(point)}
+        {describePointBasis(point, units)}
       </div>
     </div>
   );
@@ -680,26 +725,38 @@ function GasUseTooltip({
 // What the RMV above it was worked out from, which is not the same sentence for
 // every dot on this chart.
 //
-// A single-cylinder point is the dive's own average depth over its whole
-// duration, and saying so is what makes the figure checkable. **A multi-tank
-// point is not**: each cylinder is normalized against its own mean depth over
-// the stretch it was breathed for - that is the entire point of the split, see
-// `DiveTankGasUse` - so pairing this rate with `avg_depth` would name a
-// denominator it was never divided by. On dive #493 that reads as "12.4 L/min at
-// 20.87m" for a figure derived at 33.99 m.
+// The split is per-tank versus whole-dive, and it is **not** the same as one
+// cylinder versus several. A whole-dive point is the dive's own average depth
+// over its whole duration, and saying so is what makes the figure checkable -
+// that is every single-cylinder dive, and also a multi-cylinder dive whose
+// cylinders were all flagged as breathed in parallel, where the API summed their
+// litres against exactly that depth and duration. **An attributed point is not**:
+// each cylinder is normalized against its own mean depth over the stretch it was
+// breathed for - that is the entire point of the split, see `DiveTankGasUse` - so
+// pairing that rate with `avg_depth` would name a denominator it was never
+// divided by. On dive #493 that reads as "12.4 L/min at 20.87m" for a figure
+// derived at 33.99 m.
+//
+// So the predicate below asks `tanks`, which is the only thing that actually
+// distinguishes the two, and has always been what it asked. Nothing here changes
+// for the additive path: an additive point takes the whole-dive arm and its
+// `avg_depth` and `gas_used` really are the whole dive's.
 //
 // Its litres are understated in the same way, being the sum over attributed
 // tanks only, so the two are dropped together rather than one of them being
 // quietly wrong beside the other. What replaces them is the one thing a diver
 // needs to read the dot correctly: this rate is per cylinder, and the detail
 // page is where the cylinders are.
-function describePointBasis(point: DiveGasUsePoint): string {
+function describePointBasis(point: DiveGasUsePoint, units: UnitSystem): string {
   const tanks = point.gas_use.tanks?.length ?? 0;
   if (isPerTankPoint(point)) {
     return `Per tank across ${tanks} ${tanks === 1 ? "cylinder" : "cylinders"} - see the dive for the split`;
   }
 
-  return `${point.avg_depth}m average · ${point.gas_use.gas_used} L used`;
+  return `${formatDepth(point.avg_depth, units)} average · ${formatGasVolume(
+    point.gas_use.gas_used,
+    units,
+  )} used`;
 }
 
 // Whether this dot's RMV was derived per cylinder rather than against the dive's
@@ -716,7 +773,7 @@ function isPerTankPoint(point: DiveGasUsePoint): boolean {
 
 // The accessible name of a dot's link - what the `<title>` element used to say,
 // now that the visual tooltip is `aria-hidden` decoration.
-function describePoint(point: DiveGasUsePoint): string {
+function describePoint(point: DiveGasUsePoint, units: UnitSystem): string {
   const date = formatDiveDateTime(point.start_time, {
     year: "numeric",
     month: "short",
@@ -728,9 +785,13 @@ function describePoint(point: DiveGasUsePoint): string {
   // that names a depth the rate didn't come from.
   const basis = isPerTankPoint(point)
     ? "derived per cylinder"
-    : `at ${point.avg_depth}m average`;
+    : `at ${formatDepth(point.avg_depth, units)} average`;
 
-  return `Dive #${point.dive_number}, ${date} - ${point.gas_use.rmv} liters per minute ${basis}`;
+  return `Dive #${point.dive_number}, ${date} - ${displayNumber(
+    point.gas_use.rmv,
+    "rmv",
+    units,
+  )} ${unitWord("rmv", units)} ${basis}`;
 }
 
 // Axis labels at whatever granularity the window makes readable: years across a

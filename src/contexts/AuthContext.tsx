@@ -10,15 +10,24 @@ import React, {
   useState,
   ReactNode,
 } from "react";
-import { authAPI, AuthOutcome, User } from "@/lib/api/auth";
+import type { AuthenticationResponseJSON } from "@simplewebauthn/browser";
+import {
+  authAPI,
+  AuthOutcome,
+  EmailLinkRequestResult,
+  GoogleAuthorizationGrant,
+  User,
+} from "@/lib/api/auth";
+import { passkeysAPI } from "@/lib/api/passkeys";
 import {
   AUTH_SESSION_EXPIRED_EVENT,
   clearAccessToken,
   refreshAccessToken,
 } from "@/lib/api/client";
 import { rememberPostAuthRedirect } from "@/lib/auth-redirect";
-import { clearResourceCache } from "@/lib/resource-cache";
+import { clearEntryUnits } from "@/lib/entry-units";
 import { hardNavigate } from "@/lib/navigation";
+import { clearResourceCache } from "@/lib/resource-cache";
 
 // Carried from `/auth/verify` or the Google button to the profile-completion page
 // when no account exists yet for a verified identity - see `OnboardingRequired` on
@@ -29,7 +38,23 @@ export interface OnboardingSession {
   onboardingToken: string;
   email: string;
   name?: string;
-  avatar?: string;
+}
+
+// The same hop, for the account that already exists and is waiting to be purged -
+// see `DeletionPending` on the backend. Carried from whichever of the four entry
+// points verified the identity to `/restore`, which is the screen that offers the
+// account back and the only place `restoreAccount` is called from.
+//
+// In memory only, exactly like the onboarding session above, and here that has a
+// consequence worth stating on the screen: the six-digit code claims its request row
+// before the outcome is even resolved, so a code spent on reaching the offer is spent
+// and a reload leaves nothing to come back to.
+export interface RestoreSession {
+  restoreToken: string;
+  email: string;
+  // The date the account stops being recoverable. Null for a row the API flagged with
+  // no clock to count from - the offer still stands, it just cannot name a day.
+  purgeAfter: string | null;
 }
 
 interface AuthContextType {
@@ -37,14 +62,38 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   onboarding: OnboardingSession | null;
+  restore: RestoreSession | null;
   // Step 1 of the email flow - always resolves with the same generic message,
-  // regardless of whether `email` belongs to an existing account.
-  requestEmailLink: (email: string) => Promise<{ message: string }>;
-  // Step 2 of the email flow - returns `true` if the caller was signed in, `false`
-  // if onboarding started instead (see `onboarding` above).
-  verifyEmailLink: (token: string) => Promise<boolean>;
-  signInWithGoogle: (credential: string) => Promise<boolean>;
+  // regardless of whether `email` belongs to an existing account. The `request_id`
+  // it resolves with is what `verifyEmailCode` below needs.
+  requestEmailLink: (email: string) => Promise<EmailLinkRequestResult>;
+  // Step 2 of the email flow - resolves with the applied outcome, whose `status`
+  // says which of the three things happened (signed in, onboarding started, or an
+  // account offered back). Callers route on it: `destinationForOutcome` in
+  // `lib/auth-redirect.ts` is the one place that maps a status to a page.
+  verifyEmailLink: (token: string) => Promise<AuthOutcome>;
+  // Step 2 the other way round: the code printed in the same email, verified in the
+  // tab that requested it. Same three outcomes as `verifyEmailLink`, because it claims
+  // the same request row - whichever of the two arrives first wins.
+  verifyEmailCode: (requestId: string, code: string) => Promise<AuthOutcome>;
+  // The tail of the Google round trip, called from `/auth/google/callback` rather
+  // than from the button: this flow leaves the tab, so what reaches here is an
+  // authorization code the visitor's browser carried back, not an identity.
+  signInWithGoogle: (grant: GoogleAuthorizationGrant) => Promise<AuthOutcome>;
+  // The second half of a passkey ceremony: hand back the `flow_id` the options
+  // call returned along with the credential the authenticator produced. Resolves
+  // with the outcome, on the same contract as the three above.
+  signInWithPasskey: (
+    flowId: string,
+    credential: AuthenticationResponseJSON,
+  ) => Promise<AuthOutcome>;
   completeProfile: (name: string, username: string) => Promise<void>;
+  // Undoes a deletion and signs the restored account back in. Takes the token
+  // rather than reading `restore` above, because the magic-link path never sees that
+  // state: its precheck already labelled the button *Restore my account*, so it
+  // chains verify-then-restore inside one handler, a render before the stashed
+  // session exists. `/restore` passes the one it was handed.
+  restoreAccount: (restoreToken: string) => Promise<void>;
   clearOnboarding: () => void;
   // Ends the session and leaves for the landing page with a page load. Rejects,
   // and changes nothing, when the server didn't confirm - see the implementation
@@ -63,6 +112,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [onboarding, setOnboarding] = useState<OnboardingSession | null>(null);
+  const [restore, setRestore] = useState<RestoreSession | null>(null);
 
   // The access token lives in memory only (see lib/api/client.ts), so it's
   // never persisted across a page load - re-derive it here from the
@@ -127,26 +177,44 @@ export function AuthProvider({ children }: AuthProviderProps) {
       );
   }, []);
 
-  // Applies an `AuthOutcome` returned by any of the three entry points
-  // (email verify, Google, profile completion): either fetches and stores the
-  // now-signed-in user, or stashes the onboarding session for the profile
-  // completion page to pick up. Returns whether the caller was signed in.
+  // Applies an `AuthOutcome` returned by any of the six entry points (email link,
+  // email code, Google, passkey, profile completion, restore): fetches and stores the
+  // now-signed-in user, or stashes the short-lived session the next screen needs -
+  // onboarding for the profile-completion page, restore for `/restore`. Hands the
+  // outcome back so the caller can route on its status.
+  //
+  // Three branches, not two, and the third is why this is not `if authenticated else
+  // onboarding`: a `deletion_pending` outcome carries no `onboarding_token`, so
+  // falling through to that branch stashed an onboarding session with an undefined
+  // token and carried it to `/auth/complete`. Every entry point shares this function,
+  // which is what makes one branch here cover all four of them.
   const applyOutcome = useCallback(
-    async (outcome: AuthOutcome): Promise<boolean> => {
+    async (outcome: AuthOutcome): Promise<AuthOutcome> => {
       if (outcome.status === "authenticated") {
         const userData = await authAPI.getCurrentUser();
         setUser(userData);
         setOnboarding(null);
-        return true;
+        setRestore(null);
+        return outcome;
+      }
+
+      if (outcome.status === "deletion_pending") {
+        setRestore({
+          restoreToken: outcome.restore_token!,
+          email: outcome.email!,
+          purgeAfter: outcome.purge_after ?? null,
+        });
+        setOnboarding(null);
+        return outcome;
       }
 
       setOnboarding({
         onboardingToken: outcome.onboarding_token!,
         email: outcome.email!,
         name: outcome.name,
-        avatar: outcome.avatar,
       });
-      return false;
+      setRestore(null);
+      return outcome;
     },
     [],
   );
@@ -162,6 +230,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
     [],
   );
 
+  // The entry points below deliberately record nothing about which one was used.
+  // Each wrote a key the sign-in form read back as a hint; that was dropped on
+  // the owner's product call rather than by attrition, so re-adding it is a
+  // decision to make again - see "The sign-in form no longer remembers which
+  // method this browser used" in `DECISIONS.md`.
   const verifyEmailLink = useCallback(
     async (token: string) => {
       const outcome = await authAPI.verifyEmailLink(token);
@@ -170,9 +243,32 @@ export function AuthProvider({ children }: AuthProviderProps) {
     [applyOutcome],
   );
 
+  const verifyEmailCode = useCallback(
+    async (requestId: string, code: string) => {
+      const outcome = await authAPI.verifyEmailCode(requestId, code);
+      return applyOutcome(outcome);
+    },
+    [applyOutcome],
+  );
+
   const signInWithGoogle = useCallback(
-    async (credential: string) => {
-      const outcome = await authAPI.signInWithGoogle(credential);
+    async (grant: GoogleAuthorizationGrant) => {
+      const outcome = await authAPI.signInWithGoogle(grant);
+      return applyOutcome(outcome);
+    },
+    [applyOutcome],
+  );
+
+  // A passkey can never reach onboarding: credentials are born inside an already
+  // authenticated session, so the account always exists by the time one is
+  // asserted. It can still be an account inside its grace period, which is the one
+  // outcome besides `authenticated` this path has - and the reason it goes through
+  // `applyOutcome` rather than assuming a session came back. The funnel behind it
+  // is shared with the email and Google entry points, so an outcome handled there
+  // is one this doesn't have to learn about.
+  const signInWithPasskey = useCallback(
+    async (flowId: string, credential: AuthenticationResponseJSON) => {
+      const outcome = await passkeysAPI.verifySignIn(flowId, credential);
       return applyOutcome(outcome);
     },
     [applyOutcome],
@@ -191,6 +287,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
       await applyOutcome(outcome);
     },
     [onboarding, applyOutcome],
+  );
+
+  // The click that makes a restore a decision rather than a side effect of signing
+  // in. Everything before it was read-only - the account is still deleted when this
+  // is called, and still deleted if it throws.
+  const restoreAccount = useCallback(
+    async (restoreToken: string) => {
+      const outcome = await authAPI.restoreAccount(restoreToken);
+      await applyOutcome(outcome);
+    },
+    [applyOutcome],
   );
 
   const clearOnboarding = useCallback(() => setOnboarding(null), []);
@@ -241,6 +348,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
     // `localStorage` it would otherwise outlive both the sign-out and the
     // browser - leaving a `/dives/<uuid>` legible on a shared machine for a day.
     rememberPostAuthRedirect(undefined);
+    // Cleared for a third reason, which is neither of the two above: the entry
+    // unit override names nobody and reveals nothing, but what it changes is what
+    // a dive-form box *parses*. A second diver at this browser who never touched
+    // a toggle would meet a psi-labelled pressure field, type 200 meaning bar,
+    // and commit 13.79 bar - inside the API's range CHECK and indistinguishable
+    // from real data afterwards. The cost lands on the diver who asked to leave:
+    // an explicit sign-out forgets the psi choice. A reload is not one of these,
+    // since the access token is re-derived from the cookie.
+    clearEntryUnits();
     hardNavigate("/");
   }, []);
 
@@ -256,7 +372,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, []);
 
-  // Memoized because this object is the context value: rebuilding it (and all seven
+  // Memoized because this object is the context value: rebuilding it (and all ten
   // methods) on every render of the provider makes every `useAuth()` consumer
   // re-render too, which is ~15 pages plus the header. `user` is what actually
   // changes; the methods are stable.
@@ -270,10 +386,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
       isLoading,
       isAuthenticated: !!user,
       onboarding,
+      restore,
       requestEmailLink,
       verifyEmailLink,
+      verifyEmailCode,
       signInWithGoogle,
+      signInWithPasskey,
       completeProfile,
+      restoreAccount,
       clearOnboarding,
       signOut,
       refreshUser,
@@ -282,10 +402,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
       user,
       isLoading,
       onboarding,
+      restore,
       requestEmailLink,
       verifyEmailLink,
+      verifyEmailCode,
       signInWithGoogle,
+      signInWithPasskey,
       completeProfile,
+      restoreAccount,
       clearOnboarding,
       signOut,
       refreshUser,

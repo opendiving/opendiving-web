@@ -1,21 +1,60 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { defineConfig } from "vitest/config";
+import { playwright } from "@vitest/browser-playwright";
+import { configDefaults, defineConfig } from "vitest/config";
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Repeated into each project below, deliberately. `resolve.alias` is **not**
+// inherited by inline projects - a project that omits it resolves no `@/...`
+// import at all, and the failure reads as a missing module rather than as a
+// missing alias.
+const alias = { "@": path.resolve(dirname, "./src") };
+
+// Anything ending `.browser.test.ts(x)` belongs to the second project. The unit
+// project's own `src/**/*.test.{ts,tsx}` matches those files too - `*` spans
+// dots - so the two are separated by an exclude rather than by the include
+// patterns being disjoint. `configDefaults.exclude` is spread back in because
+// setting `exclude` replaces the defaults outright, and dropping them would
+// walk `node_modules` looking for tests.
+const BROWSER_TESTS = "src/**/*.browser.test.{ts,tsx}";
+
 export default defineConfig({
-  resolve: {
-    alias: {
-      "@": path.resolve(dirname, "./src"),
-    },
-  },
+  resolve: { alias },
   test: {
-    environment: "jsdom",
-    include: ["src/**/*.test.{ts,tsx}"],
-    // Registers jest-dom's matchers and the handful of browser APIs jsdom lacks
-    // that Radix needs - see the file for which and why.
-    setupFiles: ["./vitest.setup.ts"],
+    projects: [
+      {
+        resolve: { alias },
+        test: {
+          name: "unit",
+          environment: "jsdom",
+          include: ["src/**/*.test.{ts,tsx}"],
+          exclude: [...configDefaults.exclude, BROWSER_TESTS],
+          // Scoped to this project, and that is the point rather than tidiness.
+          // `vitest.setup.ts` is a jsdom patch kit - a no-op `ResizeObserver`, a
+          // `matchMedia` that always answers false, pointer-capture no-ops.
+          // Root `setupFiles` *are* inherited by projects, so left at the root
+          // it would load into the real browser below and override working
+          // implementations with stubs, breaking precisely the behaviour a real
+          // browser was brought in to test.
+          setupFiles: ["./vitest.setup.ts"],
+        },
+      },
+      {
+        resolve: { alias },
+        test: {
+          name: "browser",
+          include: [BROWSER_TESTS],
+          setupFiles: ["./vitest.setup.browser.ts"],
+          browser: {
+            enabled: true,
+            headless: true,
+            provider: playwright(),
+            instances: [{ browser: "chromium" }],
+          },
+        },
+      },
+    ],
     coverage: {
       provider: "v8",
       // "text"/"html" are for local/browsable reports; "json-summary" feeds

@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { DiveProfile, DiveProfileEvent } from "@/lib/api/dives";
 import {
   MIN_GAP_SECONDS,
+  channelWord,
   depthDomain,
+  displayChannel,
   describeEvent,
   drawnSampleIndexAt,
   elapsedTicks,
@@ -36,7 +38,7 @@ function event(overrides: Partial<DiveProfileEvent> = {}): DiveProfileEvent {
 
 describe("toChannelSeries", () => {
   it("divides by the channel's scale exactly", () => {
-    const series = toChannelSeries(profile(), "depth");
+    const series = toChannelSeries(profile(), "depth", "metric");
 
     // 139 cm is 1.39 m. `139 * 0.01` is 1.3900000000000001, which is why the
     // implementation divides.
@@ -47,6 +49,7 @@ describe("toChannelSeries", () => {
     const series = toChannelSeries(
       profile({ temperature: { t: [0], v: [206] } }),
       "temperature",
+      "metric",
     );
 
     expect(series?.values).toEqual([20.6]);
@@ -54,21 +57,23 @@ describe("toChannelSeries", () => {
 
   it("returns null for a channel the profile doesn't carry", () => {
     expect(
-      toChannelSeries(profile({ temperature: null }), "temperature"),
+      toChannelSeries(profile({ temperature: null }), "temperature", "metric"),
     ).toBeNull();
   });
 
   it("returns null for an empty channel rather than an empty series", () => {
     expect(
-      toChannelSeries(profile({ depth: { t: [], v: [] } }), "depth"),
+      toChannelSeries(profile({ depth: { t: [], v: [] } }), "depth", "metric"),
     ).toBeNull();
   });
 
   it("carries the channel definition through", () => {
-    expect(toChannelSeries(profile(), "depth")?.channel.inverted).toBe(true);
-    expect(toChannelSeries(profile(), "temperature")?.channel.inverted).toBe(
-      false,
-    );
+    expect(
+      toChannelSeries(profile(), "depth", "metric")?.channel.inverted,
+    ).toBe(true);
+    expect(
+      toChannelSeries(profile(), "temperature", "metric")?.channel.inverted,
+    ).toBe(false);
   });
 });
 
@@ -81,6 +86,7 @@ describe("toPressureSeries", () => {
           { gas_number: 3, t: [0], v: [1500] },
         ],
       }),
+      "metric",
     );
 
     expect(series.map((entry) => entry.gasNumber)).toEqual([0, 3]);
@@ -88,7 +94,7 @@ describe("toPressureSeries", () => {
   });
 
   it("is an empty list when no transmitter recorded anything", () => {
-    expect(toPressureSeries(profile({ pressure: [] }))).toEqual([]);
+    expect(toPressureSeries(profile({ pressure: [] }), "metric")).toEqual([]);
   });
 });
 
@@ -99,6 +105,7 @@ describe("toChannelSeries for the ceiling", () => {
     const ceiling = toChannelSeries(
       profile({ ceiling: { t: [730, 940], v: [300, 323] } }),
       "ceiling",
+      "metric",
     );
 
     expect(ceiling?.values).toEqual([3, 3.23]);
@@ -106,7 +113,7 @@ describe("toChannelSeries for the ceiling", () => {
   });
 
   it("is null on a dive that owed no decompression", () => {
-    expect(toChannelSeries(profile(), "ceiling")).toBeNull();
+    expect(toChannelSeries(profile(), "ceiling", "metric")).toBeNull();
   });
 
   it("shares depth's inverted axis", () => {
@@ -572,11 +579,71 @@ describe("tooltipVerticalAnchor", () => {
   });
 });
 
+describe("the imperial display layer", () => {
+  // Converted after the wire scale is divided out, never by editing `scale` -
+  // that number is a pair with `schemas/dive_profile.py` and describes the API's
+  // integer encoding, not the diver's units.
+  it("converts the series and relabels its channel", () => {
+    const series = toChannelSeries(profile(), "depth", "imperial");
+
+    expect(series?.channel.unit).toBe("ft");
+    expect(series?.channel.decimals).toBe(0);
+    expect(series?.values[0]).toBeCloseTo(139 / 100 / 0.3048, 10);
+  });
+
+  it("converts pressure into psi", () => {
+    const series = toPressureSeries(
+      profile({
+        pressure: [{ gas_number: 1, t: [0], v: [2000] }],
+      }),
+      "imperial",
+    );
+
+    expect(series[0].channel.unit).toBe("psi");
+    expect(series[0].values[0]).toBeCloseTo(200 * 14.503773773020923, 8);
+  });
+
+  // Depth and the ceiling share one conversion for the same reason they share one
+  // `scale` and one domain: a shaded deco region converted by any other factor
+  // would drift off the curve it bounds.
+  it("converts the ceiling exactly as it converts depth", () => {
+    const withCeiling = profile({
+      depth: { t: [0], v: [3048] },
+      ceiling: { t: [0], v: [3048] },
+    });
+
+    expect(toChannelSeries(withCeiling, "ceiling", "imperial")?.values).toEqual(
+      toChannelSeries(withCeiling, "depth", "imperial")?.values,
+    );
+  });
+
+  it("names the spoken unit for a screen reader", () => {
+    expect(channelWord("depth", "imperial")).toBe("feet");
+    expect(channelWord("ceiling", "imperial")).toBe("feet");
+    expect(channelWord("temperature", "imperial")).toBe("degrees Fahrenheit");
+    expect(channelWord("pressure", "imperial")).toBe("psi");
+  });
+
+  it("quotes a converted reading whole, with the unit attached where it belongs", () => {
+    const channel = displayChannel(PROFILE_CHANNELS.temperature, "imperial");
+
+    expect(formatChannelValue(75.2, channel)).toBe("75°F");
+    expect(
+      formatChannelValue(
+        100,
+        displayChannel(PROFILE_CHANNELS.depth, "imperial"),
+      ),
+    ).toBe("100 ft");
+  });
+});
+
 describe("formatChannelValue", () => {
   it("shows each channel at the resolution it was stored in", () => {
     expect(formatChannelValue(16.9, PROFILE_CHANNELS.depth)).toBe("16.9 m");
+    // Attached, not spaced. This was the app's one spaced degree symbol before
+    // `unitSeparator` became the single answer to that question.
     expect(formatChannelValue(21.62, PROFILE_CHANNELS.temperature)).toBe(
-      "21.6 °C",
+      "21.6°C",
     );
     expect(formatChannelValue(205.2, PROFILE_CHANNELS.pressure)).toBe(
       "205 bar",

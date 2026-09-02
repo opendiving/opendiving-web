@@ -16,10 +16,14 @@ import {
   diveModWarning,
   gasName,
   isNameableMix,
+  isSingleGasParallelSet,
   mod,
   ppO2Limit,
+  tankUsageSentences,
 } from "@/lib/dive-mixtures";
 import { AlertTriangle, Wind } from "lucide-react";
+import { useUnits } from "@/hooks/useUnits";
+import { formatDepth, formatPressure } from "@/lib/units";
 
 interface DiveMixturesCardProps {
   dive: Dive;
@@ -37,20 +41,32 @@ interface DiveMixturesCardProps {
  * MOD are derived rather than stored, so they are computed here from
  * `lib/dive-mixtures.ts` rather than asked of the API - see that module's header for
  * why the maths lives client-side.
+ *
+ * How the cylinders were breathed - the `usage` flag - is the one recorded fact that
+ * is *not* in the table: it is stated in prose underneath, naming cylinders by their
+ * `#`, because a third badge in the Gas cell costs more width than this table has.
  */
 export function DiveMixturesCard({ dive }: DiveMixturesCardProps) {
+  const units = useUnits();
+
   if (!dive.mixtures || dive.mixtures.length === 0) return null;
 
   // One warning for the dive, not one per cylinder - see `diveModWarning` for why a
-  // multi-cylinder dive cannot blame any single mix. Spelled out under the table
+  // multi-cylinder dive usually cannot blame any single mix, and for the parallel
+  // single-gas set that is the exception. Spelled out under the table
   // rather than hidden in a `title`, which would put a safety note behind a hover and
   // out of reach on touch entirely.
-  const warning = diveModWarning(dive.mixtures, dive.max_depth);
+  const warning = diveModWarning(dive.mixtures, dive.max_depth, units);
 
   // The amber MOD cell is only meaningful when the warning is actually about that
-  // row's gas, which is exactly the single-cylinder case. With several cylinders the
-  // sentence is about the dive, so marking a row would be pointing at the wrong thing.
-  const attributable = warning !== null && dive.mixtures.length === 1;
+  // row's gas. That is the single-cylinder case, and now also a parallel set holding
+  // one gas: `diveModWarning` judges that as the single mix it is, every row holds
+  // that mix, so marking every row points at exactly what the sentence is about.
+  // With any other multi-cylinder dive the sentence is about the dive, and marking a
+  // row would be pointing at the wrong thing.
+  const attributable =
+    warning !== null &&
+    (dive.mixtures.length === 1 || isSingleGasParallelSet(dive.mixtures));
 
   // Helium is the exception among the fractions: air and nitrox record a flat 0, and
   // a column of zeroes down every recreational dive is width spent saying nothing.
@@ -62,10 +78,16 @@ export function DiveMixturesCard({ dive }: DiveMixturesCardProps) {
   // would render as a bare "%" anyway. The two lines agree or neither is honest.
   const showHelium = dive.mixtures.some((mixture) => mixture.helium > 0);
 
+  // The tank-usage flags, stated under the table rather than badged in it: a third
+  // badge in the Gas cell pushed MOD off screen at the width this card is narrowest
+  // at. The sentences name each cylinder by the `#` the first column already shows,
+  // which is what keeps the per-row mapping the badge had.
+  const usageSentences = tankUsageSentences(dive.mixtures);
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle as="h2" className="flex items-center gap-2">
           <Wind className="h-5 w-5" />
           Gas Mixtures
         </CardTitle>
@@ -174,6 +196,10 @@ export function DiveMixturesCard({ dive }: DiveMixturesCardProps) {
                           {GAS_ROLE_LABELS[mixture.role] ?? mixture.role}
                         </Badge>
                       )}
+                      {/* No usage badge here, deliberately: a third badge in this
+                          cell cost the MOD column 73 px it does not have. The flag
+                          is stated in prose under the table instead - see
+                          `tankUsageSentences` and DECISIONS.md. */}
                     </div>
                   </TableCell>
                   <TableCell>{mixture.volume} L</TableCell>
@@ -189,7 +215,7 @@ export function DiveMixturesCard({ dive }: DiveMixturesCardProps) {
                     }
                   >
                     {mixture.start_pressure != null
-                      ? `${mixture.start_pressure} bar`
+                      ? formatPressure(mixture.start_pressure, units)
                       : "-"}
                   </TableCell>
                   <TableCell
@@ -200,7 +226,7 @@ export function DiveMixturesCard({ dive }: DiveMixturesCardProps) {
                     }
                   >
                     {mixture.end_pressure != null
-                      ? `${mixture.end_pressure} bar`
+                      ? formatPressure(mixture.end_pressure, units)
                       : "-"}
                   </TableCell>
                   {/* Deliberately unrounded, matching the API's 2-decimal precision -
@@ -226,7 +252,9 @@ export function DiveMixturesCard({ dive }: DiveMixturesCardProps) {
                             aria-hidden
                           />
                         )}
-                        <span>{workingMod.toFixed(1)} m</span>
+                        <span>
+                          {formatDepth(workingMod, units, { decimals: 1 })}
+                        </span>
                         {/* `@ 1.4`, not `@ ppO₂ 1.4`: "@" in a MOD column is not
                             ambiguous, and the long form cost 36 px on every row
                             of a table that has none to spare. Muted, and muted
@@ -252,6 +280,15 @@ export function DiveMixturesCard({ dive }: DiveMixturesCardProps) {
             })}
           </TableBody>
         </Table>
+
+        {/* Above the MOD warning rather than below it: this restates what the rows
+            say, the warning is the conclusion drawn from them, and the warning stays
+            the last and loudest thing in the card. */}
+        {usageSentences.length > 0 && (
+          <p className="mt-4 text-sm text-muted-foreground">
+            {usageSentences.join(" ")}
+          </p>
+        )}
 
         {warning && (
           <p className="mt-4 flex items-start gap-2 text-sm text-warning">

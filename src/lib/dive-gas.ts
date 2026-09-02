@@ -1,6 +1,7 @@
 import type {
   Dive,
   DiveGasUse,
+  DiveMixture,
   DiveTankGasUse,
   GasRole,
 } from "@/lib/api/dives";
@@ -11,7 +12,7 @@ import {
   stepPeriod,
 } from "@/lib/chart-period";
 import { formatDurationHoursMinutes } from "@/lib/date-time";
-import { gasName } from "@/lib/dive-mixtures";
+import { gasName, hasStagedCylinder, isParallelSet } from "@/lib/dive-mixtures";
 
 // `niceDomain` and `axisTicks` used to live here. They moved, unchanged, to
 // `lib/chart-scale.ts` once the dive profile chart needed them too - a depth
@@ -284,6 +285,29 @@ export function segmentByGap(times: number[], gapDays: number): number[][] {
   return segments;
 }
 
+// Total pressure drop across a set of cylinders, in bar, with a row that is missing
+// either pressure contributing nothing.
+//
+// **Both callers have already established that every cylinder has both pressures**
+// before they ask - the flagged-parallel block refuses the set outright above, and the
+// nudge tests for it in the `&&` that short-circuits this call - so the skip never
+// actually fires. It is here because the types cannot carry that narrowing across a
+// function boundary, and skipping beats `?? 0`, which would silently read a missing
+// pressure as a full cylinder if a third caller ever did ask.
+//
+// Mirrors `compute_parallel_gas_use`'s `sum(drops) <= 0` refusal, which is the one
+// guard where the *total* matters and a single zero-drop row does not: a carried-but-
+// untouched cylinder contributes zero litres and the dive still has a figure.
+function totalPressureDrop(mixtures: readonly DiveMixture[]): number {
+  return mixtures.reduce(
+    (sum, mixture) =>
+      mixture.start_pressure != null && mixture.end_pressure != null
+        ? sum + (mixture.start_pressure - mixture.end_pressure)
+        : sum,
+    0,
+  );
+}
+
 // Why a dive has no `gas_use`, phrased for the user, or `null` when there's
 // nothing worth saying (the figure is present, or the dive logs no tank at all
 // and so was never a candidate).
@@ -293,9 +317,12 @@ export function segmentByGap(times: number[], gapDays: number): number[][] {
 // all plainly visible in the dive itself. This is the counterpart that turns
 // that silence into something actionable: a diver who filled in pressures and
 // still sees no number needs to know it's the missing average depth, not a bug.
-// Deliberate mirror of the guard clauses in the API's `compute_gas_use()` *and*
-// `compute_multi_tank_gas_use()` - if either function's conditions change, this
-// list has to change with it (one `grep gas_use` finds the set).
+// Deliberate mirror of the guard clauses in the API's `compute_gas_use()`,
+// `compute_multi_tank_gas_use()` *and* `compute_parallel_gas_use()` - if any of
+// the three functions' conditions change, this list has to change with it (one
+// `grep gas_use` finds the set). It tracked two until the parallel flag existed,
+// and the third arrived with a guard none of the others had: `avg_depth` is now
+// an input to a *multi-cylinder* derivation, which it never was before.
 //
 // Only meaningful on a dive from the *detail* endpoint: the list response
 // carries neither `mixtures` nor `gas_use`, so every dive in it would look
@@ -308,6 +335,126 @@ export function gasUseUnavailableReason(dive: Dive): string | null {
   if (mixtures.length === 0) return null;
 
   if (mixtures.length > 1) {
+    // **The flagged-parallel block comes first, and its position is load-bearing.**
+    // A set the diver has flagged `parallel` throughout is summed by
+    // `compute_parallel_gas_use` against the dive's own duration and average
+    // depth, with no profile and no attribution anywhere in it - so every
+    // attribution sentence below is false of it, and the no-profile branch that
+    // fires before any of them would tell a diver who needs an average depth to
+    // go and import a dive-computer file. The reasons here are the additive
+    // branch's own guards, in its order, with the two-missing case asked first.
+    //
+    // That combined ask is not tidiness. The new-dive form carries `usage` over
+    // from the last dive, so all-parallel-with-nothing-else-filled-in is the
+    // *opening* state of a sidemount diver's every subsequent dive; asking for
+    // the depth and then, once it is typed, for the pressures would make the
+    // commonest state of this form a sequence of refusals. Same shape and same
+    // reason as the single-cylinder combined ask further down.
+    if (isParallelSet(mixtures)) {
+      const missingDepth = dive.avg_depth == null || dive.avg_depth <= 0;
+      const missingPressures = mixtures.some(
+        (mixture) =>
+          mixture.start_pressure == null || mixture.end_pressure == null,
+      );
+
+      if (missingDepth && missingPressures) {
+        return "Add an average depth and every cylinder's start and end pressure to see your gas consumption.";
+      }
+      // Singular and specifically not max depth, exactly as the one-cylinder
+      // branch has it: a dive spends a moment at its deepest point, so using it
+      // would overstate the ambient pressure the litres are normalized against.
+      // This is the first time `avg_depth` is asked for on a multi-cylinder dive
+      // at all - see the comment on the plural pressures ask below, which says
+      // why the attribution path must never ask for it.
+      if (missingDepth) {
+        return "Add an average depth to see your gas consumption.";
+      }
+      // *Every* cylinder, not "each": one missing pressure anywhere refuses the
+      // whole set. A pair whose second cylinder is bare cannot be summed
+      // honestly - its litres would be missing from the numerator while the
+      // whole dive stayed in the denominator, reporting an RMV that is too low.
+      if (missingPressures) {
+        return "Add every cylinder's start and end pressure to see your gas consumption.";
+      }
+
+      // Pressures on every cylinder, none of them showing a drop. A zero-drop row
+      // on its own is fine - a carried-but-untouched cylinder contributes zero
+      // litres and the API sums it happily - so this is only the case where the
+      // *total* is zero. "Add up", not "divide up": nothing is being apportioned
+      // on this path.
+      if (totalPressureDrop(mixtures) <= 0) {
+        return "No cylinder on this dive records a drop between its start and end pressure, so there is no gas used to add up.";
+      }
+
+      // Everything the additive branch needs is present, so the API has a figure
+      // and this function was not called for this dive. Nothing is left to
+      // explain, and a sentence written for a state the UI cannot produce would
+      // be untestable wording - the same rule this branch already applies to the
+      // duplicate-`gas_number` refusal below. Falling through instead would hand
+      // a flagged pair the no-profile message, which is the one thing this block
+      // exists to prevent.
+      return null;
+    }
+
+    // **The nudge**, and it precedes the no-profile branch deliberately. This is
+    // where a sidemount diver finds out the flag exists, and 18 of the 19
+    // multi-gas dives in the corpus are hand-logged with no profile and no source
+    // file at all - so ordered after that branch it would never render for the
+    // population it is for.
+    //
+    // Ordered before it *ungated* it would capture that whole population, whose
+    // commonest shape is back gas plus a staged deco bottle with no bottle
+    // pressures, and re-create the tell-them-one-thing-then-refuse-again pattern
+    // the no-profile branch was placed first to stop. So two gates:
+    //
+    // 1. **Every cylinder carries both pressures, and the total drop is
+    //    positive.** This screens for the staged-bottle *shape* - a bottle with
+    //    no pressures is that population's tell - and not for full
+    //    rescuability. The additive branch also wants an average depth, and that
+    //    is deliberately left out: a missing depth says nothing about whether a
+    //    pair was breathed in parallel, and widening the gate with it would drop
+    //    that diver onto the no-profile message instead, with no path to the
+    //    figure and no discovery of the flag. A pair with pressures and no depth
+    //    is therefore nudged, flags Parallel, and meets the missing-depth ask
+    //    above as one follow-up. Both steps are actionable and the second ends in
+    //    the figure, which is what separates it from the recorded anti-pattern -
+    //    that one ends in a refusal.
+    // 2. **No cylinder flagged `staged`.** A parallel pair plus an explicitly
+    //    staged bottle is refused by design, and a diver who used the control
+    //    exactly right must not be nudged on every render. The `staged` flag is
+    //    that set's tell, so the gate keys on it and nothing wider: suppressing
+    //    on *any* explicit `usage` would also silence the half-flagged pair - one
+    //    row Parallel, one still Not recorded - which is the likeliest path into
+    //    the feature, and drop that diver onto "import a dive-computer file". A
+    //    half-flagged pair keeps the nudge, whose condition-stating wording
+    //    already covers it.
+    //
+    // This also places the nudge ahead of the attribution-shortfall sentence, so
+    // an imported dive with pressures on every cylinder and no flags gets the
+    // nudge rather than "needs an import whose gas switches account for every
+    // cylinder". Deliberate: both are true there, the nudge names the action
+    // available in the app right now, and gate 1 makes the case unreachable in
+    // the current corpus anyway - all 19 multi-gas dives lack a second-cylinder
+    // pressure.
+    //
+    // **The wording states the condition rather than issuing an instruction**,
+    // and that is a safety property, not a style choice. A diver with a genuinely
+    // staged pair that does carry both pressures would otherwise be walked into a
+    // flag whose figure divides the bottle's litres by the whole dive's average
+    // depth - the exact misattribution the multi-cylinder refusal exists to
+    // prevent.
+    const everyCylinderHasPressures = mixtures.every(
+      (mixture) =>
+        mixture.start_pressure != null && mixture.end_pressure != null,
+    );
+    if (
+      everyCylinderHasPressures &&
+      totalPressureDrop(mixtures) > 0 &&
+      !hasStagedCylinder(mixtures)
+    ) {
+      return "If these cylinders were breathed alternately at the same depth - a sidemount pair or independent doubles - marking each of them Parallel adds their gas up into one figure. A cylinder breathed at its own depth is not that, and should be left alone.";
+    }
+
     // Several cylinders now *can* yield figures, from
     // `compute_multi_tank_gas_use`. It gives up for five distinct reasons, and
     // this is the browser's reading of which one applies. In the API's own
@@ -389,7 +536,11 @@ export function gasUseUnavailableReason(dive: Dive): string | null {
     // Plural, and no mention of average depth: the multi-tank path takes its
     // depth per cylinder from the profile, so `dive.avg_depth` is not one of its
     // inputs and asking for it would send a diver to fill in a field that
-    // changes nothing.
+    // changes nothing. That reasoning is about *this* path and does not
+    // generalize any more - the flagged-parallel block at the top of this branch
+    // asks for an average depth on a multi-cylinder dive, because the additive
+    // derivation genuinely divides by it. Which derivation is in play is what
+    // decides whether the field is worth asking for.
     return "Add each cylinder's start and end pressure to see your gas consumption.";
   }
 
@@ -459,9 +610,13 @@ export interface TankGasUseRow {
  * The join is `DiveMixture.gas_number` ↔ `DiveTankGasUse.gas_number`, and it
  * applies the same rule the API does rather than trusting that the API applied
  * it. `compute_multi_tank_gas_use` refuses a whole dive whose mixtures share a
- * gas number, so in practice a duplicate arrives here with `gas_use: null` and
- * this function is never reached - the guard below is belt-and-braces, and
- * deliberately so. It is the cheap half of a pair whose expensive half is a
+ * gas number, so a duplicate used to arrive here with `gas_use: null` and this
+ * function was never reached. It no longer is the only producer of a
+ * multi-cylinder `gas_use`: a flagged parallel set is summed without consulting
+ * `gas_number` at all, so a duplicate on one of those dives reaches this function
+ * with a real `gas_use` behind it - and lands in the arm below, harmlessly, since
+ * `tanks` is empty and every row comes back unattributed anyway. The guard is
+ * still belt-and-braces, and deliberately so. It is the cheap half of a pair whose expensive half is a
  * table showing one cylinder's litres twice under a total that counted them
  * once, and the two sides can drift: the form carries `gas_number` untouched
  * today, and the day it doesn't, or the day a response cached before that guard

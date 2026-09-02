@@ -56,7 +56,7 @@ export default function GearItemDetailPage() {
 
   const del = useDeleteResource(gearAPI.deleteGearItem, {
     confirmMessage:
-      "Are you sure you want to delete this gear? Dives you already logged it on keep showing it. To retire gear without touching your log, archive it instead.",
+      "Deleting removes this gear from your dives and gear sets. To keep it in your log and its service history, archive it instead. Either way, its service reminders stop.",
     successMessage: "Gear deleted successfully.",
     errorMessage: "Failed to delete gear. Please try again.",
     onDeleted: () => router.push("/gear"),
@@ -195,7 +195,7 @@ export default function GearItemDetailPage() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle as="h2" className="flex items-center gap-2">
                 <Backpack className="h-5 w-5" />
                 Gear Information
               </CardTitle>
@@ -293,6 +293,23 @@ export default function GearItemDetailPage() {
         description={del.confirmMessage}
         confirmText="Delete"
         isLoading={isDeleting}
+        // Offered only while the item isn't archived - `handleToggleArchived`
+        // would otherwise *un*archive it, which is the opposite of what the
+        // button says.
+        secondaryAction={
+          gearItem.is_archived
+            ? undefined
+            : {
+                label: "Archive instead",
+                onClick: () => {
+                  // Straight to the archive, skipping the separate archive
+                  // confirmation: the diver is already reading one, and it says
+                  // what this does.
+                  del.cancelDelete();
+                  handleToggleArchived();
+                },
+              }
+        }
         onConfirm={del.confirmDelete}
       />
     </div>

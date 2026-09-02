@@ -12,7 +12,7 @@ import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { LocationsMap } from "@/components/map/locations-map-lazy";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { DeleteWithReassignDialog } from "@/components/dives/delete-with-reassign-dialog";
 import { DiveSiteDialog } from "@/components/sites/dive-site-dialog";
 import { PageHeader } from "@/components/ui/page-header";
 import { DetailPageSkeleton } from "@/components/ui/page-skeleton";
@@ -20,6 +20,10 @@ import { NotFoundState } from "@/components/ui/not-found-state";
 import { Edit, Trash2, Plus, MapPin, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { PageSpinner } from "@/components/ui/page-spinner";
+
+// The plain-delete toast, and the first half of the one a move gets - "moved to
+// Blue Hole" is an addition to what happened, not a replacement for it.
+const DELETED_MESSAGE = "Dive site deleted successfully.";
 
 export default function DiveSiteDetailPage() {
   const router = useRouter();
@@ -38,9 +42,7 @@ export default function DiveSiteDetailPage() {
   });
 
   const del = useDeleteResource(diveSitesAPI.deleteDiveSite, {
-    confirmMessage:
-      "Are you sure you want to delete this dive site? This action cannot be undone.",
-    successMessage: "Dive site deleted successfully.",
+    successMessage: DELETED_MESSAGE,
     errorMessage: "Failed to delete dive site. Please try again.",
     onDeleted: () => router.push("/sites"),
   });
@@ -118,14 +120,18 @@ export default function DiveSiteDetailPage() {
         onSaved={setDiveSite}
       />
 
-      <ConfirmDialog
-        open={del.pendingId !== null}
-        onOpenChange={(open) => !open && del.cancelDelete()}
-        title="Delete dive site"
-        description={del.confirmMessage}
-        confirmText="Delete"
-        isLoading={isDeleting}
-        onConfirm={del.confirmDelete}
+      <DeleteWithReassignDialog
+        kind="dive-site"
+        userId={user?.uuid ?? ""}
+        targetId={del.pendingId}
+        isDeleting={isDeleting}
+        onCancel={del.cancelDelete}
+        onConfirm={(moveDivesTo, name) =>
+          del.confirmDelete(
+            moveDivesTo,
+            name ? `${DELETED_MESSAGE} Its dives moved to ${name}.` : undefined,
+          )
+        }
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -147,7 +153,7 @@ export default function DiveSiteDetailPage() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle as="h2" className="flex items-center gap-2">
                 <MapPin className="h-5 w-5" />
                 Dive Site Information
               </CardTitle>

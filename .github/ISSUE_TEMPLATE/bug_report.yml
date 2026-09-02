@@ -1,0 +1,63 @@
+name: Bug report
+description: Something in the web app is broken or behaves unexpectedly
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Something exploitable belongs in [private vulnerability reporting](https://github.com/opendiving/opendiving-web/security/advisories/new), not here — the fix and the disclosure should arrive together.
+
+        Authentication, stored data, imports and the worker are [opendiving-api](https://github.com/opendiving/opendiving-api/issues/new/choose). If you are not sure which side it is on, file it here and we will route it.
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: A release tag, or the commit if you are running `main`. A pulled image reports it as `org.opencontainers.image.revision` under `docker inspect`.
+      placeholder: 0.4.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install
+    attributes:
+      label: How you are running it
+      options:
+        - The compose bundle, published image
+        - An image I built from this repository
+        - Dev server, npm run dev
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you did, and what the app did. Screenshots are worth a lot for anything visual.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+    validations:
+      required: true
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and device
+      description: Fill this in if it might matter — a layout, rendering or input bug usually depends on it.
+      placeholder: Firefox 142, Android phone
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Errors
+      description: The browser console and the failed request from the network tab, or `docker compose logs web` for the server side. This box is formatted as code, so no backticks needed.
+      render: shell
+    validations:
+      required: false

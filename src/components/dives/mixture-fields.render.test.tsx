@@ -1,8 +1,30 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { beforeEach, describe, it, expect, vi, afterEach } from "vitest";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { FormProvider, useForm } from "react-hook-form";
 import { MixtureFields, useMixtureFieldArray } from "./mixture-fields";
 import type { DiveFormValues } from "./dive-form-fields";
+import type { UnitSystem } from "@/lib/units";
+import {
+  parseEntryUnits,
+  readStoredEntryUnits,
+  writeEntryUnits,
+} from "@/lib/entry-units";
+import { memoryStorage, useStorage } from "@/test/memory-storage";
+
+// The pressure boxes and their labels read the diver's units, so these renders need
+// an auth context. Held in a mutable box rather than a fixed literal so a test can
+// switch systems - `vi.mock`'s factory is hoisted above the file, and `vi.hoisted`
+// is what lets it close over something the tests can still reach.
+const auth = vi.hoisted(() => ({ units: "metric" as UnitSystem }));
+
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({ user: { uuid: "user-1", units: auth.units } }),
+}));
+
+afterEach(() => {
+  auth.units = "metric";
+});
 
 // The warning sentence is unit-tested in `lib/dive-mixtures.test.ts`. What only a
 // render reaches is the announcement wiring: that the `role="status"` region exists
@@ -69,6 +91,76 @@ describe("MixtureFields announcements", () => {
       ignore: '[role="status"]',
     });
     expect(visible.closest("[aria-hidden]")).not.toBeNull();
+  });
+});
+
+// Both dive forms can hold zero cylinders - a state the API supports outright and the
+// detail card calls the common case for a hand-logged dive - so the card has to say
+// something over an empty list, and the last row has to be removable to get there. A
+// gate of `index > 0` on the remove button made "no gas recorded" unreachable from
+// either form.
+describe("MixtureFields with no cylinders", () => {
+  it("says the dive records none, rather than showing a bare heading", () => {
+    render(<Harness mixtures={[]} maxDepth={30} />);
+
+    expect(
+      screen.getByText(/no cylinders recorded for this dive/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/^tank 1$/i)).not.toBeInTheDocument();
+  });
+
+  it("lets the last cylinder be removed", () => {
+    render(<Harness mixtures={[EAN54]} maxDepth={30} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /remove tank 1/i }));
+
+    expect(screen.queryByText(/^tank 1$/i)).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/no cylinders recorded for this dive/i),
+    ).toBeInTheDocument();
+  });
+
+  it("names each remove button after the tank it removes", () => {
+    // The button is an icon and nothing else, so without a label a screen reader
+    // reads "button" - once per tank, identically.
+    render(<Harness mixtures={[EAN54, EAN54]} maxDepth={30} />);
+
+    expect(
+      screen.getByRole("button", { name: /remove tank 1/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /remove tank 2/i }),
+    ).toBeInTheDocument();
+  });
+});
+
+// The add button sits under the tank cards rather than in the section header, so the
+// control and the card it appends are adjacent and in reading order. DOM order is the
+// half of that jsdom can actually check - the layout half is measured in a browser and
+// recorded in DECISIONS.md - and it is the half that a later edit to this component
+// would silently undo.
+describe("MixtureFields add button placement", () => {
+  it("follows the last tank rather than preceding the first", () => {
+    render(<Harness mixtures={[EAN54, EAN54]} maxDepth={30} />);
+
+    const add = screen.getByRole("button", { name: /add mixture/i });
+    const lastRemove = screen.getByRole("button", { name: /remove tank 2/i });
+
+    expect(
+      lastRemove.compareDocumentPosition(add) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("follows the empty-state line when there are no tanks", () => {
+    render(<Harness mixtures={[]} maxDepth={30} />);
+
+    const add = screen.getByRole("button", { name: /add mixture/i });
+    const empty = screen.getByText(/no cylinders recorded for this dive/i);
+
+    expect(
+      empty.compareDocumentPosition(add) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 });
 
@@ -171,9 +263,14 @@ describe("MixtureFields role input", () => {
 
     expect(screen.getByLabelText(/^role$/i)).toHaveValue("");
     expect(
-      // Anchored: the ppO₂ picker's own empty option reads "Not recorded (1.4
-      // default)", and a loose match now finds both.
-      screen.getByRole("option", { name: /^not recorded$/i }),
+      // Scoped to this `<select>`, not swept off the card. Anchoring alone used
+      // to be enough - the ppO₂ picker's own empty option reads "Not recorded
+      // (1.4 default)", so only a loose match found two - but Usage beside it now
+      // spells its empty option exactly the way Role does, and `getByRole` throws
+      // on the pair.
+      within(screen.getByLabelText(/^role$/i)).getByRole("option", {
+        name: /^not recorded$/i,
+      }),
     ).toBeInTheDocument();
   });
 
@@ -214,6 +311,75 @@ describe("MixtureFields role input", () => {
     expect(select).toHaveValue("");
   });
 
+  it("defaults usage to an explicit 'not recorded', which every import is", () => {
+    // No format this app parses carries the flag, so unlike Role this one is
+    // *always* unset until the diver answers it.
+    render(<Harness mixtures={[EAN54]} maxDepth={30} />);
+
+    expect(screen.getByLabelText(/^usage$/i)).toHaveValue("");
+  });
+
+  it("offers exactly the usages the API accepts", () => {
+    // `TANK_USAGE` mirrors the API's `TankUsage` enum, which is `extra="forbid"`
+    // on the way in - an option this list invented would be rejected on save.
+    // Scoped to this `<select>` for the same reason the role one is.
+    render(<Harness mixtures={[EAN54]} maxDepth={30} />);
+
+    expect(optionsOf(screen.getByLabelText(/^usage$/i))).toEqual([
+      "",
+      "parallel",
+      "staged",
+    ]);
+  });
+
+  it("spells out what each usage means, which the one-word labels do not", () => {
+    // The flag changes what the API computes, so choosing it by guessing at the
+    // word is the outcome worth spending option width to prevent.
+    render(<Harness mixtures={[EAN54]} maxDepth={30} />);
+    const select = screen.getByLabelText(/^usage$/i);
+
+    expect(
+      within(select).getByRole("option", { name: /sidemount \/ independent/i }),
+    ).toBeInTheDocument();
+    expect(
+      within(select).getByRole("option", { name: /own depth/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("lets a chosen usage be cleared back to not recorded", () => {
+    // Same react-hook-form trap as Role: writing `undefined` on clear re-displays
+    // the field's default, so "Not recorded" would snap back to Parallel.
+    render(
+      <Harness mixtures={[{ ...EAN54, usage: "parallel" }]} maxDepth={30} />,
+    );
+    const select = screen.getByLabelText(/^usage$/i);
+    expect(select).toHaveValue("parallel");
+
+    fireEvent.change(select, { target: { value: "" } });
+
+    expect(select).toHaveValue("");
+  });
+
+  it("lets each cylinder answer usage for itself", () => {
+    // Per row, not once for the dive: a parallel pair plus a staged bottle is a
+    // real set, and it is the one the API refuses by design - which it can only
+    // do if the form can express it.
+    render(
+      <Harness
+        mixtures={[
+          { ...EAN54, usage: "parallel" },
+          { ...EAN54, usage: "staged" },
+        ]}
+        maxDepth={30}
+      />,
+    );
+
+    const selects = screen.getAllByLabelText(/^usage$/i);
+    expect(selects).toHaveLength(2);
+    expect(selects[0]).toHaveValue("parallel");
+    expect(selects[1]).toHaveValue("staged");
+  });
+
   it("lets a recorded ppO₂ limit be cleared back to the default", () => {
     render(<Harness mixtures={[{ ...EAN54, po2_limit: 1.6 }]} maxDepth={30} />);
     const select = screen.getByLabelText(/ppO₂ limit/i);
@@ -224,5 +390,136 @@ describe("MixtureFields role input", () => {
     // And the hint falls back to naming the working default, rather than keeping the
     // limit the box no longer holds.
     expect(screen.getByText(/@ ppO₂ 1\.4/)).toBeInTheDocument();
+  });
+});
+
+// The per-dimension entry switch. Every test here installs its own storage - under
+// this runner `window.localStorage` reads back as `undefined` and the override
+// module's try/catch turns that into "no override", so a suite written without it
+// passes with the whole feature deleted.
+describe("MixtureFields entry units", () => {
+  beforeEach(() => {
+    useStorage(memoryStorage());
+  });
+
+  const pressureToggle = () =>
+    screen.getByLabelText("bar | psi — switch pressure entry to psi");
+
+  it("enters in the account's units until the toggle is pressed", () => {
+    render(<Harness mixtures={[EAN54]} maxDepth={30} />);
+
+    expect(screen.getByLabelText("Start pressure (bar)")).toBeInTheDocument();
+  });
+
+  it("relabels and reformats both pressures when flipped to psi", async () => {
+    render(
+      <Harness
+        mixtures={[{ ...EAN54, start_pressure: 206.84, end_pressure: 51.71 }]}
+        maxDepth={30}
+      />,
+    );
+
+    await userEvent.click(pressureToggle());
+
+    expect(screen.getByLabelText("Start pressure (psi)")).toHaveValue(3000);
+    expect(screen.getByLabelText("End pressure (psi)")).toHaveValue(750);
+  });
+
+  it("commits the bar behind a pressure typed in psi", async () => {
+    render(<Harness mixtures={[EAN54]} maxDepth={30} />);
+
+    await userEvent.click(pressureToggle());
+    await userEvent.type(screen.getByLabelText("Start pressure (psi)"), "3000");
+
+    // Flipping back is what shows what form state is actually holding: metric,
+    // whatever the box was labelled while the number went in. That invariant is
+    // what keeps the wire shape and every Zod rule untouched by this feature -
+    // had 3000 landed in state, this box would read 3000.
+    await userEvent.click(
+      screen.getByLabelText("bar | psi — switch pressure entry to bar"),
+    );
+
+    expect(screen.getByLabelText("Start pressure (bar)")).toHaveValue(206.84);
+  });
+
+  // One control for the section, not one per box: the pressure fields repeat per
+  // tank, so a per-field toggle would put eight identically-named controls on a
+  // four-cylinder dive - and `getByLabelText` would throw on all of them.
+  it("governs every tank from one uniquely-named control", async () => {
+    render(
+      <Harness
+        mixtures={[
+          { ...EAN54, start_pressure: 206.84 },
+          { ...EAN54, start_pressure: 206.84 },
+        ]}
+        maxDepth={30}
+      />,
+    );
+
+    await userEvent.click(pressureToggle());
+
+    expect(screen.getAllByLabelText("Start pressure (psi)")).toHaveLength(2);
+    expect(screen.getAllByLabelText("End pressure (psi)")).toHaveLength(2);
+  });
+
+  // The create form seeds `mixtures: []`, and the header renders above the empty
+  // state - so an ungated toggle would open every fresh form with a control
+  // governing no visible field.
+  it("shows no pressure toggle over an empty cylinder list", () => {
+    render(<Harness mixtures={[]} maxDepth={30} />);
+
+    expect(screen.getByText("Gas Mixtures")).toBeInTheDocument();
+    expect(
+      screen.queryByLabelText(/switch pressure entry/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("brings the toggle back with the first cylinder, already flipped", async () => {
+    // A diver who flipped pressure on a previous dive: the gate hides the control,
+    // never the stored choice.
+    writeEntryUnits({ pressure: "imperial" });
+    render(<Harness mixtures={[]} maxDepth={30} />);
+
+    await userEvent.click(screen.getByRole("button", { name: /add mixture/i }));
+
+    expect(
+      screen.getByLabelText("bar | psi — switch pressure entry to bar"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Start pressure (psi)")).toBeInTheDocument();
+  });
+
+  it("hides the toggle again without forgetting the choice", async () => {
+    writeEntryUnits({ pressure: "imperial" });
+    render(<Harness mixtures={[EAN54]} maxDepth={30} />);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /remove tank 1/i }),
+    );
+
+    expect(
+      screen.queryByLabelText(/switch pressure entry/),
+    ).not.toBeInTheDocument();
+    expect(parseEntryUnits(readStoredEntryUnits())).toEqual({
+      pressure: "imperial",
+    });
+  });
+
+  // The hint's MOD/END/EAD are depths, so they follow the depth entry units - a
+  // diver typing depths in feet must not be warned about a MOD in metres.
+  it("works the MOD hint out in the depth entry units", () => {
+    writeEntryUnits({ depth: "imperial" });
+    render(<Harness mixtures={[EAN54]} maxDepth={30} />);
+
+    expect(screen.getByText(/MOD \d+ ft @/)).toBeInTheDocument();
+    expect(screen.queryByText(/MOD [\d.]+ m @/)).not.toBeInTheDocument();
+  });
+
+  // The two dimensions are independent: flipping depth leaves the pressure boxes
+  // exactly where they were.
+  it("leaves the pressure boxes alone when depth is the one flipped", () => {
+    writeEntryUnits({ depth: "imperial" });
+    render(<Harness mixtures={[EAN54]} maxDepth={30} />);
+
+    expect(screen.getByLabelText("Start pressure (bar)")).toBeInTheDocument();
   });
 });

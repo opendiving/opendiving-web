@@ -35,6 +35,7 @@ function parsedDive(mixtures: ParsedDiveMixture[]): ParsedDive {
     max_depth: null,
     avg_depth: null,
     bottom_temperature: null,
+    water_type: null,
     mixtures,
     // Returned by the parse but never applied to the form - the API writes these
     // itself when the file is attached. Spelled out so this fixture stays a complete

@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useDialogApiError } from "@/hooks/useDialogApiError";
+import { FormApiError } from "@/components/ui/form-api-error";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, Plus, Save } from "lucide-react";
@@ -14,8 +15,10 @@ import {
   Certification,
   CertificationAgency,
   CERTIFICATION_AGENCIES,
+  DEFAULT_CERTIFICATION_AGENCY,
   certificationAgencyLabel,
 } from "@/lib/api/certifications";
+import type { Course } from "@/lib/api/courses";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { dialogFormSubmit } from "@/lib/dialog-form";
 import {
@@ -28,11 +31,13 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { CourseCombobox } from "@/components/courses/course-combobox";
 import {
   Select,
   SelectContent,
@@ -45,12 +50,51 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 
+// The certification fields a linked course can fill in, in the shape the form
+// holds them: `null` and absent both arrive as `""`, which is this form's "not
+// set" everywhere else.
+//
+// `name` and `notes` are deliberately not among them. A course name ("TDI
+// Advanced Nitrox + Decompression Procedures") is not the level printed on a
+// card, and one course can issue two differently-named cards; a course's notes
+// describe the training, a card's describe the card. Both would be
+// plausible-but-wrong values saved without being read - and `name` is the
+// required, identity-bearing field, so an empty box is what makes the diver
+// look at their card.
+interface CourseFieldValues {
+  agency: CertificationAgency;
+  agency_other: string;
+  training_center: string;
+  instructor_name: string;
+  instructor_number: string;
+}
+
+// What a course puts in those fields.
+function courseFieldValues(course: Course): CourseFieldValues {
+  return {
+    agency: course.agency,
+    agency_other: course.agency_other ?? "",
+    training_center: course.training_center ?? "",
+    instructor_name: course.instructor_name ?? "",
+    instructor_number: course.instructor_number ?? "",
+  };
+}
+
+// A prefill is not the diver's own edit, so it must not make the form read as
+// dirty - nothing here gates on that today, and an unsaved-changes guard added
+// later would otherwise fire on a form nobody typed into.
+const AUTOFILL = { shouldDirty: false } as const;
+
 interface CertificationDialogProps {
   userId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   // Pass an existing certification to edit it; omit to create a new one.
   certification?: Certification | null;
+  // Opens a *create* dialog already linked to this course and prefilled from
+  // it - how the course page's own "Add certification" hands the course over.
+  // Ignored alongside `certification`: editing a card is never a prefill.
+  initialCourse?: Course;
   onSaved: (certification: Certification) => void;
 }
 
@@ -66,6 +110,7 @@ export function CertificationDialog({
   open,
   onOpenChange,
   certification,
+  initialCourse,
   onSaved,
 }: CertificationDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -75,7 +120,7 @@ export function CertificationDialog({
   const form = useForm<CertificationInput>({
     resolver: zodResolver(certificationSchema),
     defaultValues: {
-      agency: "padi",
+      agency: DEFAULT_CERTIFICATION_AGENCY,
       agency_other: "",
       name: "",
       certification_number: "",
@@ -85,6 +130,7 @@ export function CertificationDialog({
       instructor_number: "",
       training_center: "",
       notes: "",
+      course_uuid: null,
     },
   });
 
@@ -93,27 +139,95 @@ export function CertificationDialog({
   // every render that can't be memoized, which the react-hooks lint rules reject.
   const agency = useWatch({ control: form.control, name: "agency" });
 
+  // What this dialog last put in the five prefillable fields itself: the values
+  // it opened with, and then whatever each course selection wrote. A field still
+  // holding that value is one nobody has typed into, so the next course may
+  // replace it; anything else is the diver's own and is never overwritten.
+  //
+  // Deliberately *not* react-hook-form's `dirtyFields`, which is the obvious
+  // mechanism and does not survive contact with this form - see DECISIONS.md,
+  // "A silently prefilled field is not a clean field".
+  const autofilledRef = useRef<CourseFieldValues>({
+    agency: DEFAULT_CERTIFICATION_AGENCY,
+    agency_other: "",
+    training_center: "",
+    instructor_name: "",
+    instructor_number: "",
+  });
+
   // Reload the form whenever the dialog opens, so it shows the certification
   // being edited rather than whatever the previous invocation left behind.
-  const { reset } = form;
+  const { reset, setValue, getValues } = form;
   useEffect(() => {
     if (!open) return;
+    // A create dialog opened from a course page starts on that course, with its
+    // fields already filled in. An edit dialog ignores it outright: its values
+    // are a pure function of the card being edited.
+    const seed = certification ? undefined : initialCourse;
+    const opening: CourseFieldValues = seed
+      ? courseFieldValues(seed)
+      : {
+          agency: certification?.agency ?? DEFAULT_CERTIFICATION_AGENCY,
+          agency_other: certification?.agency_other ?? "",
+          training_center: certification?.training_center ?? "",
+          instructor_name: certification?.instructor_name ?? "",
+          instructor_number: certification?.instructor_number ?? "",
+        };
+    autofilledRef.current = { ...opening };
+
     reset({
-      agency: certification?.agency ?? "padi",
-      agency_other: certification?.agency_other ?? "",
+      ...opening,
       name: certification?.name ?? "",
       certification_number: certification?.certification_number ?? "",
       certified_on: certification?.certified_on ?? "",
       expires_on: certification?.expires_on ?? "",
-      instructor_name: certification?.instructor_name ?? "",
-      instructor_number: certification?.instructor_number ?? "",
-      training_center: certification?.training_center ?? "",
       notes: certification?.notes ?? "",
+      course_uuid: certification?.course_uuid ?? seed?.uuid ?? null,
     });
     // Same deliberate reset-on-open pattern as `gear-item-dialog.tsx`; clearing a
     // stale error when the dialog reopens is exactly the "sync to a prop change"
     // case this rule can't distinguish from a cascading render.
-  }, [open, certification, reset]);
+  }, [open, certification, initialCourse, reset]);
+
+  // Picking a course copies its agency, training center and instructor across,
+  // so the diver types them once rather than twice. Create only: the edit dialog
+  // seeds itself from the stored card, which would make every settled field look
+  // untouched and hand the whole card over to whichever course was picked.
+  // Relinking on edit corrects the link, not the card.
+  const prefillFromCourse = useCallback(
+    (course: Course) => {
+      if (isEdit) return;
+      const autofilled = autofilledRef.current;
+      const next = courseFieldValues(course);
+
+      // The agency pair is considered together and written together: the API
+      // rejects a named agency carrying an `agency_other`, and "other" without
+      // one. A course always has an agency, so the pair is always copyable.
+      if (getValues("agency") === autofilled.agency) {
+        setValue("agency", next.agency, AUTOFILL);
+        autofilled.agency = next.agency;
+      }
+      if ((getValues("agency_other") ?? "") === autofilled.agency_other) {
+        setValue("agency_other", next.agency_other, AUTOFILL);
+        autofilled.agency_other = next.agency_other;
+      }
+      if ((getValues("training_center") ?? "") === autofilled.training_center) {
+        setValue("training_center", next.training_center, AUTOFILL);
+        autofilled.training_center = next.training_center;
+      }
+      if ((getValues("instructor_name") ?? "") === autofilled.instructor_name) {
+        setValue("instructor_name", next.instructor_name, AUTOFILL);
+        autofilled.instructor_name = next.instructor_name;
+      }
+      if (
+        (getValues("instructor_number") ?? "") === autofilled.instructor_number
+      ) {
+        setValue("instructor_number", next.instructor_number, AUTOFILL);
+        autofilled.instructor_number = next.instructor_number;
+      }
+    },
+    [isEdit, getValues, setValue],
+  );
 
   const handleOpenChange = (next: boolean) => {
     if (!next) setApiError(null);
@@ -144,6 +258,12 @@ export function CertificationDialog({
         instructor_number: data.instructor_number || null,
         training_center: data.training_center || null,
         notes: data.notes || "",
+        // The picker's own empty state is already `null` rather than `""`, so
+        // this needs no mapping - but it is sent on every save either way, which
+        // is what makes clearing it clear the link. There is no
+        // `buildCertificationUpdate` helper to hold that rule instead: this
+        // dialog shows every field and submits all of them.
+        course_uuid: data.course_uuid ?? null,
       };
 
       if (certification) {
@@ -184,6 +304,41 @@ export function CertificationDialog({
             onSubmit={dialogFormSubmit(form.handleSubmit(onSubmit))}
             className="space-y-4"
           >
+            {/* First field on the form, above everything it fills in: source
+                before targets, so the diver picks the course and watches the
+                boxes below populate rather than typing them and wondering why
+                they changed. It also means the inline "Add course..." flow
+                prefills a form that is still empty. */}
+            <FormField
+              control={form.control}
+              name="course_uuid"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Course</FormLabel>
+                  <FormControl>
+                    {/* Opens its own `CourseDialog` on "Add course...", which
+                        puts a dialog on top of this one. `dialogFormSubmit`
+                        keeps that inner submit out of this form - see
+                        DECISIONS.md. */}
+                    <CourseCombobox
+                      userId={userId}
+                      value={field.value}
+                      onChange={field.onChange}
+                      onCourseSelected={prefillFromCourse}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    The training this card came out of, if you logged it.
+                    {/* Only true of a create dialog - relinking an existing
+                        card changes the link and nothing else. */}
+                    {!isEdit &&
+                      " Picking one fills in the agency, training center and instructor below."}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="agency"
@@ -370,7 +525,7 @@ export function CertificationDialog({
               )}
             />
 
-            {apiError && <p className="text-sm text-destructive">{apiError}</p>}
+            <FormApiError error={apiError} />
 
             <DialogFooter>
               <Button

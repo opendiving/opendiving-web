@@ -206,7 +206,7 @@ export function DiveSiteMultiSelect({
                 </span>
                 <button
                   type="button"
-                  aria-label="Remove"
+                  aria-label={`Remove ${label}`}
                   disabled={disabled}
                   className="shrink-0 text-muted-foreground hover:text-foreground"
                   onClick={() => removeSite(id)}

@@ -13,10 +13,7 @@ import {
   DiveCreateInput,
   normalizeMixtures,
 } from "@/lib/validations/dive";
-import {
-  DEFAULT_MIXTURE,
-  useMixtureFieldArray,
-} from "@/components/dives/mixture-fields";
+import { useMixtureFieldArray } from "@/components/dives/mixture-fields";
 import { DiveFormCard } from "@/components/dives/dive-form-card";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageSpinner } from "@/components/ui/page-spinner";
@@ -45,10 +42,12 @@ function NewDivePageContent() {
     token: string;
   } | null>(null);
 
-  // Allow pre-selecting a trip/dive site via ?trip_uuid=... / ?dive_site_uuid=...,
-  // e.g. when logging a dive from a trip's or dive site's detail page.
+  // Allow pre-selecting a trip/dive site/course via ?trip_uuid=... /
+  // ?dive_site_uuid=... / ?course_uuid=..., e.g. when logging a dive from a
+  // trip's, dive site's or course's detail page.
   const initialTripId = searchParams.get("trip_uuid") ?? undefined;
   const initialDiveSiteId = searchParams.get("dive_site_uuid") ?? undefined;
+  const initialCourseId = searchParams.get("course_uuid") ?? undefined;
 
   // Back/Cancel return to wherever this form was opened from - the trip or dive
   // site being logged against, an explicit `?from=`, or the dive list.
@@ -64,13 +63,28 @@ function NewDivePageContent() {
       avg_depth: undefined,
       bottom_temperature: undefined,
       visibility: undefined,
+      // `""`, not `undefined`: it is the select's "Not recorded" option, and the
+      // default the field falls back to whenever its value resolves to
+      // `undefined` - so it has to be the empty state rather than a gap.
+      water_type: "",
+      altitude: undefined,
       weight: undefined,
       trip_uuid: initialTripId,
+      course_uuid: initialCourseId,
       dive_site_uuids:
         initialDiveSiteId !== undefined ? [initialDiveSiteId] : [],
       gear_item_uuids: [],
+      species_uuids: [],
       notes: "",
-      mixtures: [{ ...DEFAULT_MIXTURE }],
+      // Empty, not a seeded cylinder. A form must not write gas the diver never
+      // entered: `DEFAULT_MIXTURE`'s 11.1 L of air is a plausible enough cylinder
+      // (it is the "11.1 L (S80)" preset in `volume-combobox.tsx`) that a diver who
+      // never opened the gas card could not tell it from something they logged - and
+      // `diveModWarning` would then raise a depth-safety warning derived from it. The
+      // prefill below still carries the last dive's cylinders over, which is where
+      // the convenience actually lives; "Add Mixture" still starts from
+      // `DEFAULT_MIXTURE`.
+      mixtures: [],
     },
   });
   const mixtureFieldArray = useMixtureFieldArray(form.control);
@@ -128,12 +142,24 @@ function NewDivePageContent() {
           avg_depth: undefined,
           bottom_temperature: undefined,
           visibility: undefined,
+          // Carried over, unlike the temperature and visibility above: those are
+          // readings taken on the day, while the water and its elevation are
+          // properties of where the diver is - and a second dive is usually in
+          // the same water at the same place. Same argument as the weight below.
+          water_type: lastDive.water_type ?? "",
+          altitude: lastDive.altitude,
           // Carried over for the same reason as the gear below: weight is a
           // property of the kit and exposure suit, so it rarely changes between
           // consecutive dives.
           weight: lastDive.weight,
           // URL param takes precedence over the last dive's trip.
           trip_uuid: initialTripId ?? lastDive.trip_uuid,
+          // Deliberately *not* inherited from the last dive, unlike the trip
+          // above: a course ends, and silently tagging the first fun dive after
+          // it as training is a worse default than one extra pick. The mid-course
+          // streak is covered by the course page's own "Log a Dive for this
+          // Course", which arrives here as `initialCourseId`.
+          course_uuid: initialCourseId,
           dive_site_uuids:
             initialDiveSiteId !== undefined ? [initialDiveSiteId] : [],
           // Divers tend to use the same kit dive after dive, so carry it over.
@@ -142,23 +168,38 @@ function NewDivePageContent() {
           gear_item_uuids: (lastDive.gear_items ?? [])
             .filter((item) => !item.is_archived)
             .map((item) => item.uuid),
+          // Deliberately *not* carried over, unlike the gear above: gear is
+          // habitual, sightings are observations. Copying yesterday's turtle
+          // into today's dive would fabricate a record of seeing it. Listed
+          // rather than omitted because this `reset` enumerates every field, and
+          // a field left out of it comes back `undefined`.
+          species_uuids: [],
           notes: "",
-          mixtures: lastDive.mixtures?.length
-            ? lastDive.mixtures.map((m) => ({
-                volume: m.volume,
-                oxygen: m.oxygen,
-                helium: m.helium,
-                // Same reasoning as the gas fractions above - a diver on the same
-                // 32/1.4 back gas and EAN50/1.6 deco bottle plans them the same way
-                // dive after dive. `gas_number` is deliberately *not* carried: it
-                // identifies a cylinder inside the previous dive's export file, and
-                // this dive has no file for it to point into.
-                po2_limit: m.po2_limit ?? ("" as const),
-                role: m.role ?? ("" as const),
-                start_pressure: "" as const,
-                end_pressure: "" as const,
-              }))
-            : [{ ...DEFAULT_MIXTURE }],
+          // Whatever the last dive recorded, and nothing when it recorded nothing -
+          // a diver who logs gas gets it carried over, a diver who doesn't keeps an
+          // empty card rather than acquiring a cylinder on dive two. See
+          // `defaultValues` above.
+          mixtures:
+            lastDive.mixtures?.map((m) => ({
+              volume: m.volume,
+              oxygen: m.oxygen,
+              helium: m.helium,
+              // Same reasoning as the gas fractions above - a diver on the same
+              // 32/1.4 back gas and EAN50/1.6 deco bottle plans them the same way
+              // dive after dive. `gas_number` is deliberately *not* carried: it
+              // identifies a cylinder inside the previous dive's export file, and
+              // this dive has no file for it to point into.
+              po2_limit: m.po2_limit ?? ("" as const),
+              role: m.role ?? ("" as const),
+              // Carried for the same reason, and it is the field the carry-over
+              // helps most: a sidemount diver's next dive is sidemount, and no
+              // import will ever fill this in for them. Re-flagging both
+              // cylinders by hand every dive is exactly the friction that would
+              // stop the flag being used at all.
+              usage: m.usage ?? ("" as const),
+              start_pressure: "" as const,
+              end_pressure: "" as const,
+            })) ?? [],
         });
       } catch (error) {
         console.error("Failed to fetch last dive for pre-fill:", error);
@@ -170,7 +211,7 @@ function NewDivePageContent() {
     return () => {
       cancelled = true;
     };
-  }, [user, form, initialTripId, initialDiveSiteId]);
+  }, [user, form, initialTripId, initialDiveSiteId, initialCourseId]);
 
   if (isAuthLoading) {
     return <PageSpinner />;
@@ -197,6 +238,13 @@ function NewDivePageContent() {
         // `DiveUpdate.trip_uuid`). On create there is nothing to detach from,
         // so the two collapse back into one and the field is simply omitted.
         trip_uuid: data.trip_uuid ?? undefined,
+        // Same collapse, same reason - see `trip_uuid` directly above.
+        course_uuid: data.course_uuid ?? undefined,
+        // The select's "Not recorded" option is `""`, which the API's enum would
+        // reject. On the edit form it converts to an explicit `null` ("the diver
+        // cleared this"); on create there is nothing to clear, so - exactly like
+        // `trip_uuid` above - the field is simply omitted.
+        water_type: data.water_type === "" ? undefined : data.water_type,
         mixtures: normalizeMixtures(data.mixtures ?? []),
       };
 

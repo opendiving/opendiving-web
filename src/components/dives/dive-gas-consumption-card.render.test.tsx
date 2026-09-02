@@ -1,7 +1,22 @@
-import { describe, it, expect } from "vitest";
+import { afterEach, describe, it, expect, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import { DiveGasConsumptionCard } from "./dive-gas-consumption-card";
 import type { Dive, DiveMixture, DiveTankGasUse } from "@/lib/api/dives";
+import type { UnitSystem } from "@/lib/units";
+
+// These renders read the diver's units, so they need an auth context. Held in a
+// mutable box rather than a fixed literal so a test can switch systems - `vi.mock`'s
+// factory is hoisted above the file, and `vi.hoisted` is what lets it close over
+// something the tests can still reach.
+const auth = vi.hoisted(() => ({ units: "metric" as UnitSystem }));
+
+vi.mock("@/contexts/AuthContext", () => ({
+  useAuth: () => ({ user: { uuid: "user-1", units: auth.units } }),
+}));
+
+afterEach(() => {
+  auth.units = "metric";
+});
 
 // The join itself is specified in `dive-gas.test.ts`. What a render adds is the part
 // that only exists as markup: which of the card's three layouts appears, and whether an
@@ -158,20 +173,80 @@ describe("DiveGasConsumptionCard layouts", () => {
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 
+  it("writes the headline figures in imperial", () => {
+    // SAC gains a decimal in psi/min and RMV keeps both of its own in cuft/min -
+    // a cubic foot is 28 litres, so the second decimal there is real resolution
+    // rather than the noise it is in L/min.
+    auth.units = "imperial";
+    render(
+      <DiveGasConsumptionCard
+        dive={dive({
+          gas_use: {
+            gas_used: 3080,
+            rmv: 14.29,
+            sac_bar_per_min: 1.19,
+            tanks: [],
+            attributed_seconds: null,
+            duration_seconds: null,
+          },
+        })}
+      />,
+    );
+
+    expect(screen.getByText("0.50 cuft/min")).toBeInTheDocument();
+    expect(screen.getByText("17.3 psi/min")).toBeInTheDocument();
+    expect(screen.getByText("108.8 cuft")).toBeInTheDocument();
+  });
+
   it("explains the absence instead of hiding when nothing could be derived", () => {
+    // Both cylinders carry pressures here, which is the flaggable shape, so the
+    // sentence is the parallel nudge rather than the hand-logged one. That is the
+    // point of where the nudge sits: this dive has no profile, so it used to be
+    // told to import a file it never made.
     render(<DiveGasConsumptionCard dive={twoTankDive({ gas_use: null })} />);
 
-    // No profile on this fixture, so it is the hand-logged sentence - which must
-    // not send the diver to a field or blame an import they never made.
+    expect(
+      screen.getByText(/breathed alternately at the same depth/i),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the hand-logged sentence for a pair the flag cannot rescue", () => {
+    // The deco bottle logs no pressures - the corpus's actual multi-gas shape -
+    // so the additive branch could do nothing with it and the existing sentence
+    // stands. It must still not send the diver to a field or blame an import
+    // they never made.
+    render(
+      <DiveGasConsumptionCard
+        dive={twoTankDive({
+          gas_use: null,
+          mixtures: [
+            mixture({ role: "bottom" }),
+            mixture({
+              id: 2,
+              gas_number: 2,
+              role: "deco",
+              start_pressure: null,
+              end_pressure: null,
+            }),
+          ],
+        })}
+      />,
+    );
+
     expect(screen.getByText(/multi-tank/i)).toBeInTheDocument();
     expect(screen.getByText(/doesn't have one/)).toBeInTheDocument();
   });
 
-  it("drops the average-depth footnote when the figures aren't from it", () => {
-    // The single-tank prose names `avg_depth` as the denominator. A null SAC is
-    // the API's marker for the per-cylinder derivation, so both halves of this
-    // layout gate on it - otherwise the card asserts the very thing this branch
-    // deleted from the dashboard chart.
+  it("keeps the average-depth footnote when only the SAC is missing", () => {
+    // This is an additive parallel set of unequal volumes: the pooled SAC is
+    // withheld because a mean drop across two different volumes is not a rate of
+    // anything, while `rmv` and `gas_used` were divided by the dive's own average
+    // depth and the sentence naming it is simply true.
+    //
+    // A null SAC used to stand in for "derived per cylinder" and gated this
+    // sentence. It no longer can. What guarantees the claim is position: this arm
+    // renders only where `tanks` came back empty, which is exactly the set of
+    // derivations taken against `dive.avg_depth`.
     render(
       <DiveGasConsumptionCard
         dive={dive({
@@ -186,6 +261,18 @@ describe("DiveGasConsumptionCard layouts", () => {
         })}
       />,
     );
+
+    expect(screen.getByText(/from an average depth of/)).toBeInTheDocument();
+    // And the SAC tile shows its muted placeholder rather than vanishing or
+    // leaving a bare unit under the heading.
+    expect(screen.getByText("-")).toBeInTheDocument();
+  });
+
+  it("keeps the average-depth footnote off the per-tank layout entirely", () => {
+    // The claim the gate used to protect, now protected by position: an
+    // attributed dive renders the table arm, which does not contain this
+    // sentence at all. Pinned so a future refactor cannot quietly move it there.
+    render(<DiveGasConsumptionCard dive={twoTankDive()} />);
 
     expect(screen.queryByText(/from an average depth of/)).toBeNull();
   });

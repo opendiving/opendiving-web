@@ -99,16 +99,19 @@ describe("mapSearchResults", () => {
   it("builds menu rows that resolve back to what they append", () => {
     const { items, locations } = mapSearchResults([MOALBOAL, BOHOL]);
 
+    // The hint is the label minus the name the row already shows, so the menu
+    // reads "Moalboal, Cebu, Central Visayas, Philippines" rather than naming
+    // Moalboal twice.
     expect(items).toEqual([
       {
         id: locationKey(geocodeResultToLocation(MOALBOAL)),
         name: "Moalboal",
-        hint: "Moalboal, Cebu, Central Visayas, Philippines",
+        hint: "Cebu, Central Visayas, Philippines",
       },
       {
         id: locationKey(geocodeResultToLocation(BOHOL)),
         name: "Bohol",
-        hint: "Bohol, Central Visayas, Philippines",
+        hint: "Central Visayas, Philippines",
       },
     ]);
     expect(locations.get(items[1].id)).toEqual(geocodeResultToLocation(BOHOL));

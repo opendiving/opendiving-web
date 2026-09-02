@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { Download, Loader2 } from "lucide-react";
+import { coursesAPI, Course } from "@/lib/api/courses";
 import {
   certificationsAPI,
   certificationAgencyLabel,
@@ -28,7 +30,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { CertificationCardImage } from "./certification-card-image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 interface CertificationViewDialogProps {
   certification: Certification | null;
@@ -47,6 +49,44 @@ function DetailRow({
     <div>
       <dt className="text-xs text-muted-foreground">{label}</dt>
       <dd className="text-sm">{value}</dd>
+    </div>
+  );
+}
+
+// The course this card came out of, as a link to it.
+//
+// The certification carries the course's uuid and nothing else, so the name has
+// to be fetched - and the row only appears once it has arrived. A failed lookup
+// is non-fatal and leaves the row out, exactly as the dive page's trip link does:
+// the rest of the dialog is what the diver opened it for.
+function CourseRow({ courseUuid }: { courseUuid: string }) {
+  const [course, setCourse] = useState<Course | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    coursesAPI
+      .getCourse(courseUuid)
+      .then((data) => {
+        if (!cancelled) setCourse(data);
+      })
+      .catch((error) => console.error("Failed to fetch course:", error));
+
+    return () => {
+      cancelled = true;
+    };
+  }, [courseUuid]);
+
+  if (!course) return null;
+
+  return (
+    <div>
+      <dt className="text-xs text-muted-foreground">Course</dt>
+      <dd className="text-sm">
+        <Link href={`/courses/${course.uuid}`} className="hover:underline">
+          {course.name}
+        </Link>
+      </dd>
     </div>
   );
 }
@@ -160,6 +200,9 @@ export function CertificationViewDialog({
               label="Certification number"
               value={certification.certification_number}
             />
+            {certification.course_uuid && (
+              <CourseRow courseUuid={certification.course_uuid} />
+            )}
             <DetailRow
               label="Certified on"
               value={

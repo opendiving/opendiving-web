@@ -59,6 +59,110 @@ describe("TripLocationMultiSelect", () => {
     ]);
   });
 
+  it("does not name a place twice in one row", () => {
+    // Nominatim's label opens with the name it matched, so the row's own name
+    // and the label after it read "Dahab, Dahab, South Sinai, 45214, Egypt" -
+    // the trim is what `formatLocationContext` is for, and this is where a
+    // reader would meet it. The `title` carries the same text, since that is
+    // what an ellipsis hides.
+    render(
+      <Field
+        initial={[
+          {
+            name: "Dahab",
+            display_name: "Dahab, South Sinai, 45214, Egypt",
+            latitude: 28.4954,
+            longitude: 34.5197,
+          },
+        ]}
+      />,
+    );
+
+    expect(rows()).toEqual(["Dahab, South Sinai, 45214, Egypt"]);
+    expect(screen.getByTitle("Dahab, South Sinai, 45214, Egypt")).toBeVisible();
+  });
+
+  it("shows a label that repeats the name and nothing else as the name alone", () => {
+    // And still not as "not on the map" - the place has a position, the label
+    // simply had nothing to add.
+    render(
+      <Field
+        initial={[
+          {
+            name: "Bohol",
+            display_name: "Bohol",
+            latitude: 9.85,
+            longitude: 124.14,
+          },
+        ]}
+      />,
+    );
+
+    expect(rows()).toEqual(["Bohol"]);
+  });
+
+  it("renders the credit's licence link rather than its markdown", async () => {
+    // The API folds the licence URL into the credit as a markdown link. Printed
+    // rather than rendered, a diver reads "[Data © OpenStreetMap contributors,
+    // ODbL 1.0.](https://osm.org/copyright)" under the field.
+    searchPlaces.mockResolvedValue([
+      {
+        latitude: 28.4954,
+        longitude: 34.5197,
+        location: "Dahab, Egypt",
+        display_name: "Dahab, South Sinai, 45214, Egypt",
+        name: "Dahab",
+        attribution:
+          "[Data © OpenStreetMap contributors, ODbL 1.0.](https://osm.org/copyright)",
+      },
+    ]);
+    render(<Field />);
+
+    await userEvent.click(screen.getByRole("combobox"));
+    await userEvent.paste("Dahab");
+    await waitFor(() => expect(searchPlaces).toHaveBeenCalledWith("Dahab"), {
+      timeout: 2000,
+    });
+
+    const link = await screen.findByRole("link", {
+      name: "Data © OpenStreetMap contributors, ODbL 1.0.",
+    });
+    expect(link).toHaveAttribute("href", "https://osm.org/copyright");
+    expect(screen.queryByText(/\[Data ©/)).not.toBeInTheDocument();
+  });
+
+  it("keeps the credit's line reserved before any search has run", async () => {
+    // The credit used to appear with the first result, growing the field and
+    // shoving the map - and the Notes field under it - down the dialog while
+    // the diver was mid-edit. Its line is held open instead, so nothing below
+    // it moves. Counted as elements rather than measured, since jsdom lays
+    // nothing out: what must not happen is a paragraph arriving.
+    searchPlaces.mockResolvedValue([
+      {
+        latitude: 28.4954,
+        longitude: 34.5197,
+        location: "Dahab, Egypt",
+        display_name: "Dahab, South Sinai, 45214, Egypt",
+        name: "Dahab",
+        attribution: "Data © OpenStreetMap contributors, ODbL 1.0.",
+      },
+    ]);
+    const { container } = render(<Field />);
+    const before = container.querySelectorAll("p").length;
+
+    await userEvent.click(screen.getByRole("combobox"));
+    await userEvent.paste("Dahab");
+    await waitFor(
+      () =>
+        expect(
+          screen.getByText(/OpenStreetMap contributors, ODbL/),
+        ).toBeInTheDocument(),
+      { timeout: 2000 },
+    );
+
+    expect(container.querySelectorAll("p").length).toBe(before);
+  });
+
   it("truncates a typed name to what the API will take", async () => {
     // Without this the row is added and the *form* refuses to save, reporting an
     // error under a field that renders it as the word "undefined".
