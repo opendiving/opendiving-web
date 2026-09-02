@@ -7,10 +7,17 @@ import type { DiveNeighbors } from "@/lib/api/dives";
 // `lib/date-time.test.ts`. What only a render reaches is the wiring around it: which
 // arrow points at which end of the log (getting this backwards is invisible until you
 // click), that an end of the log leaves an arrow present but dead rather than dropping
-// it, that stepping to a neighbour never leaves the arrows aimed at the dive you just
-// left - the reason the fetched neighbours are keyed by uuid - and that the arrow
-// keeps its DOM node across that step, which is the only thing standing between a
-// keyboard diver and re-tabbing to `>` on every dive in a trip.
+// it, that a new `diveUuid` never leaves the arrows aimed at the dive you just left -
+// the reason the fetched neighbours are keyed by uuid - and that the arrow keeps its
+// DOM node while it goes dead and comes back, which is the only thing standing between
+// a keyboard diver and re-tabbing to `>` on every dive in a trip.
+//
+// The prop change below is a `rerender`, and a real step is a route change: the two
+// were conflated here for a while, and the difference is why this file passed for
+// months while a diver following the arrows lost focus on every single one. Whether
+// this component survives a step at all is the route tree's business - see "The step
+// remounted the page..." in DECISIONS.md. What is left here is what it does once it
+// has survived one.
 
 vi.mock("@/lib/api/dives", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/dives")>()),
@@ -109,12 +116,14 @@ describe("DiveDateNav", () => {
     expect(next).toHaveAttribute("aria-busy", "false");
   });
 
-  it("keeps the same arrow node - and the focus on it - across a step", async () => {
+  it("keeps the same arrow node - and the focus on it - when the dive changes", async () => {
     // The reason this component doesn't use `next/link`. A keyboard diver tabs to
     // `>`, presses Enter, and lands on the next dive; if the arrow's DOM node is
     // replaced on the way - which alternating `<Link>` with anything else does -
     // the browser drops focus to `<body>` and they tab back for every dive in the
-    // trip.
+    // trip. The replacement this reaches is the one inside a mounted component:
+    // the arrow goes dead and comes back once per dive, and has to stay one node
+    // through it. The route change around that is verified in a browser.
     vi.mocked(divesAPI.getDiveNeighbors).mockResolvedValue(neighbors());
 
     const { rerender } = render(
@@ -124,8 +133,8 @@ describe("DiveDateNav", () => {
     before.focus();
     expect(document.activeElement).toBe(before);
 
-    // The step itself: same component, new dive, neighbours not yet known - the
-    // window in which the arrow has nothing to point at.
+    // What a step leaves behind here: same component, new dive, neighbours not
+    // yet known - the window in which the arrow has nothing to point at.
     rerender(
       <DiveDateNav
         diveUuid="newer-uuid"

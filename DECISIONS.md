@@ -5045,10 +5045,19 @@ than once.** The detail page returned a `SectionSpinner` for any `isLoadingDive`
 same-route id change here — so every click tore down the header, the date line and the arrow that
 had just been clicked, then rebuilt them a fetch later. A mouse user saw a flash per step; a
 keyboard user got focus dumped on `<body>` and had to tab back to the arrow on every single dive,
-which is precisely the flow this control exists for. The spinner is now the _first_ load only
+which is precisely the flow this control exists for. The spinner is the _first_ load only
 (`isLoadingDive && !dive` — `useResource` keeps the dive being left, it never nulls `resource`), and
 a step dims the card grid to `opacity-50` under `aria-busy` instead. The page keeps its height and
 its scroll position, and what is dimmed is honestly what is on the way out.
+
+**That last paragraph was false for as long as the fetch lived in the page**, along with the two
+below it that rest on the same premise, and all three are marked where they say something the code
+only started doing later. `useResource` keeping the outgoing dive is worth nothing if the component
+holding it is destroyed, which is exactly what the App Router does to `dives/[id]` on a step — so
+the page re-mounted with no dive and drew the skeleton, and the arrow went with it. Moving the fetch
+and the header into a route-group layout above the segment is what made the three of them true; see
+"The step remounted the page, and hoisting the fetch into a route-group layout is what stopped it"
+below for the measurement on either side of that change.
 
 **The fetched neighbours are stored with the uuid they were fetched for**, and read back only when
 that uuid still matches. This is what the fix above makes load-bearing: the component now stays
@@ -5059,12 +5068,12 @@ appeared to point. Nulling the state in the effect would also work, at the cost 
 and an eslint suppression.
 
 **The neighbours are fetched for the dive being _displayed_, not for the route param**, which costs
-a round trip: the component only mounts once `getDive` has resolved, so the two requests run in
-series rather than together. Reading `params.id` instead would overlap them, and would also aim the
-arrows at the incoming dive while the date beside them still reads the outgoing one — a `>` click in
-that window skipping a dive relative to everything on screen. The arrows and the date they sit
-around have to describe the same dive; a second round trip on a control this small is the cheaper
-side of that trade.
+a round trip: `diveUuid` only takes its new value once `getDive` has resolved, so the two requests
+run in series rather than together. Reading `params.id` instead would overlap them, and would also
+aim the arrows at the incoming dive while the date beside them still reads the outgoing one — a `>`
+click in that window skipping a dive relative to everything on screen. The arrows and the date they
+sit around have to describe the same dive; a second round trip on a control this small is the
+cheaper side of that trade.
 
 **An end of the log leaves its arrow dead rather than dropping it.** Dropping it slides the date
 sideways exactly as the diver arrives at the oldest dive, and says nothing about why stepping
@@ -5086,6 +5095,13 @@ unavailable arrow needs an explicit `role="link"` — an `<a>` with no `href` is
 accessibility tree, and a generic node has no accessible name, so without it the arrow would go from
 "unavailable" to unannounced. `dive-date-nav.render.test.tsx` pins the node identity and the focus
 directly, because nothing else about the rendered output changes when this regresses.
+
+**Which it pinned at the wrong altitude, and that is the second half of the same false claim.** The
+test steps the component with `rerender`, and a re-render is not a re-mount — so it asserted node
+identity across the one thing that was never in doubt, and passed cleanly for as long as the route
+was destroying the node from above. It still earns its place: the arrow really does swap `<a href>`
+for `<a>` mid-dive, once per step, when the uuid guard nulls the neighbours, and that transition is
+this component's own to get wrong. What it cannot see is the step itself. See the section below.
 
 The one thing the shared node costs is that its accessible name and `aria-disabled` both flip on
 every step, so a screen reader announces the arrow as unavailable each time — indistinguishable from
@@ -13391,3 +13407,87 @@ frame either way), and the step ends in `|| true` with the report uploaded as an
 accent word _is_ inside `main`, so the artifact will now carry a `color-contrast` violation that no
 job fails on. Re-reading _"Verifying colour work"_ above before treating that report as clean is the
 standing advice; this entry is why it will not be clean.
+
+## The step remounted the page, and hoisting the fetch into a route-group layout is what stopped it
+
+Everything the section above claims about stepping between dives — the skeleton being the first load
+only, the outgoing dive staying on screen dimmed, the pager's `<a>` keeping the focus that is on it
+— was written against a page the App Router was destroying on every step. None of it happened. The
+three paragraphs marked up there are the ones that were describing an intention.
+
+**What a step actually did**, sampled per animation frame in a real browser on `main`, stepping from
+`Dive #493` to `Dive #492` with the keyboard:
+
+| frame  | `<h1>`      | same `<h1>` node? | pager `<a>` still in the document? | `document.activeElement`       |
+| ------ | ----------- | ----------------- | ---------------------------------- | ------------------------------ |
+| before | `Dive #493` | —                 | yes                                | the `<a>` (Enter pressed here) |
+| +49 ms | _(empty)_   | no                | **no**                             | **`<body>`**                   |
+| +88 ms | `Dive #492` | no                | no                                 | `<body>`                       |
+
+The empty `<h1>` is `DetailPageSkeleton` — its title is a `Skeleton` bar, which is a `<span>` with
+no text. So the page blanked to the skeleton on every step, and the `opacity-50` dim was unreachable
+code. 39 ms of it against a warm localhost API; anywhere else it is however long the fetch takes.
+
+**The cause is that a dynamic segment is keyed on its param value.** Everything under `dives/[id]`
+is a different subtree for `.../493` than for `.../492`, so React unmounts one and mounts the other.
+`useResource` holding the outgoing dive is worth nothing when the component holding `useResource`
+goes with it, and the arrow that was just pressed goes with it too. Nesting a `layout.tsx` _inside_
+`dives/[id]/` does not help: the key sits at that segment, so the layout is inside the subtree being
+replaced.
+
+**Two independent things had to be checked before blaming the segment**, because either would have
+produced the same trace. `app/template.tsx` re-mounts by design — but per-segment-level, and its
+level is the first path segment, `dives`, which does not change here
+(`node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/template.md`). And Next's
+route-change scroll handler used to call `focus()` on the new segment's DOM node, which would have
+taken the focus regardless of node identity; 16.3 defaults `appNewScrollHandler` on, and that fork
+"no longer focuses the first host descendant". Both are settled by the fix working at all: the
+layout below the template survives, with focus still on the arrow inside it.
+
+**The fix is a route group above the dynamic segment.** `dives/(detail)/layout.tsx` owns the fetch,
+the header and the delete flow; `dives/(detail)/[id]/page.tsx` is the card grid and nothing else,
+reading the dive from `DiveDetailProvider`. A group is what makes this scoped: it adds nothing to
+any URL, so `/dives`, `/dives/new` and `/dives/[id]/edit` — the last of which stays outside the
+group and resolves alongside it without complaint — are untouched, where a layout at `app/dives/`
+would have wrapped all four.
+
+The layout is a Client Component reading `useParams().id`. A layout above a dynamic segment gets no
+`params` prop for it, which is the one thing that looks like it should rule this out; the client
+hook answers for the current URL wherever it is called, and `useResource` already reads the param
+that way.
+
+**Measured again after, same walk:** across 325 sampled frames under `next dev` and 361 under a
+`next build` + `next start`, the `<h1>` is never empty in one of them, it is the same DOM node
+throughout, the pager's `<a>` never leaves the document and never loses the focus on it, and no
+skeleton bar renders. What renders instead is the dim — `opacity-50` on the grid for as long as the
+next dive is in flight, 322 ms in development and 39 ms against the production build. Four steps in
+a row with only the Enter key keep focus on that one node the whole way down the log, its label
+re-reading `#492`, `#491`, `#490`, `#489` as it goes.
+
+Both builds, because the two symptoms are the kind React's development-only double-mount would also
+produce, and a fix verified only under `next dev` would not have ruled it out.
+
+**No test can cover the step, and pretending otherwise is how this survived.**
+`dive-date-nav.render.test.tsx` steps the component with `rerender`, which is a re-render — the
+exact thing that was never broken — so it passed throughout. The behaviour lives in the route tree,
+and reaching it needs the App Router, a server and a browser. What is pinned instead is the piece
+that _became_ testable: `dives/(detail)/[id]/page.render.test.tsx` renders the page against a
+provider holding a dive **and** `isLoading: true`, which is the combination the old page could never
+be in, and asserts the dim. The rest is a hand-verified walk, recorded above.
+
+**Rejected: `cacheComponents`.** Next 16 keeps navigated-away routes mounted under React
+`<Activity>` instead of unmounting them, which the guide at `02-guides/preserving-ui-state.md` names
+as the replacement for exactly the hoist done here. It is the wrong tool twice over: it is an
+app-wide change to caching and rendering semantics bought for one control, and it preserves the
+route you _left_ — the dive being stepped to is still a fresh mount with a fresh `<a>`, so the focus
+half of this would not have been fixed by it at all.
+
+**Rejected: restoring focus after the step.** Have the arrow notice it had focus and call `.focus()`
+on itself on mount. It is about ten lines and it would work, but it fixes the symptom in the one
+place a diver can see it while leaving the page blanking through the skeleton — and it would have
+left the paragraphs above still claiming a node identity that no longer existed.
+
+**One consequence worth naming: the uuid guard in `DiveDateNav` is live for the first time.** It
+exists so a step never leaves the arrows pointing at the dive just left, and it could not fire while
+the component was being re-mounted with a fresh uuid each time. It fires now, on the frame the new
+dive lands.
