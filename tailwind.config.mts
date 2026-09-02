@@ -28,15 +28,13 @@ const config: Config = {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
         },
-        coral: {
-          DEFAULT: "hsl(var(--coral))",
-          solid: "hsl(var(--coral-solid))",
-          text: "hsl(var(--coral-text))",
-        },
-        teal: {
-          DEFAULT: "hsl(var(--teal))",
-          solid: "hsl(var(--teal-solid))",
-        },
+        // One class per brand accent, on purpose. These were objects with
+        // `solid` and `text` variants tuned for contrast in specific spots; the
+        // palette is now one hue each, so `bg-coral`/`text-coral` and
+        // `bg-teal`/`text-teal` are the whole vocabulary. `destructive` below
+        // keeps its `solid` variant - errors are the deliberate exception.
+        coral: "hsl(var(--coral))",
+        teal: "hsl(var(--teal))",
         pressure: "hsl(var(--pressure))",
         ceiling: "hsl(var(--ceiling))",
         tooltip: {

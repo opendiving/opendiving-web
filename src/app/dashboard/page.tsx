@@ -62,7 +62,7 @@ function Stat({
       {/* `group-hover:` is inert without a `group` ancestor, so the same markup
           serves both branches: the linked cell picks up the hover colour, the
           plain one is unaffected. */}
-      <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground mb-1 group-hover:text-coral-text">
+      <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground mb-1 group-hover:text-coral">
         {icon}
         {title}
       </div>

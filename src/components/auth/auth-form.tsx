@@ -148,7 +148,7 @@ export function AuthForm({ className, redirectTo }: AuthFormProps) {
 
         <Button
           type="submit"
-          className="w-full bg-coral-solid text-primary-foreground hover:bg-coral-solid/90"
+          className="w-full bg-coral text-primary-foreground hover:bg-coral/90"
           disabled={isSubmitting}
         >
           {isSubmitting ? (

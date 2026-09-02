@@ -2828,6 +2828,13 @@ keeps its own `aria-label` ("UTC offset", "Load a gear set").
 
 ## `--coral-solid`, for the same reason as `--teal-solid`
 
+**Superseded on 2026-09-02: `--coral-solid`, `--coral-text` and `--teal-solid` no longer exist.**
+The brand accents collapsed back to one hue each - see _"The brand accents are their CSS named
+colours again, and the contrast split went with them"_ at the end of this file. The contrast
+arithmetic below is still correct, and is the price that collapse pays. The two _other_ fixes in
+this section - the stats strip's `text-primary-foreground/70` and `text-primary` as a link colour -
+are untouched and still hold.
+
 `--coral` is tuned for the logo and for icons and active states against a light or dark surface.
 Used as a filled button background with white text it reaches only 2.3:1, which axe flags on the
 landing page's sign-in button. `--coral-solid` (`16 100% 40%`) is the same hue darkened until white
@@ -2912,6 +2919,12 @@ Most of it was mechanical - `text-neutral-600 dark:text-neutral-400` is `text-mu
 so on. Three cases were not, and all three resolved the same way: **a colour tuned to sit _behind_
 white text cannot also be read _as_ text, and vice versa.** The codebase already had one instance of
 this (`--teal` / `--teal-solid`); it now has the rest of the family.
+
+(**The first two bullets are superseded** - the two coral variants and `--teal-solid` were removed
+on 2026-09-02 and every call site is back on plain `--coral` / `--teal`. The third, the destructive
+pair, is the one the collapse deliberately kept. See the section at the end of this file. Everything
+else here - the raw-class sweep, `--success`, `--warning`, `--muted-foreground`, underlined links -
+is unaffected.)
 
 - `--coral-solid` for filled coral buttons (`--coral` is 2.3:1 under white).
 - `--coral-text` for coral _as_ text - the header's active nav item was 2.5:1 on a light background.
@@ -3329,8 +3342,9 @@ outline, then amber, then `destructive`'s red. It also stops "Due soon" being th
 
 **`--warning` is dark and slightly brown in light mode (`32 92% 27%`), and that is deliberate** - it
 carries white text, and the obvious mid-amber only reaches 3.9:1 under white. Same split as
-`--coral` / `--coral-solid`, arrived at from the other direction. In dark mode it flips to
-`38 95% 62%` with near-black text and reads as proper amber.
+`--coral` / `--coral-solid` was at the time, arrived at from the other direction (that coral pair is
+gone as of 2026-09-02; `--warning`'s own split is unaffected, being a semantic token rather than a
+brand one). In dark mode it flips to `38 95% 62%` with near-black text and reads as proper amber.
 
 ### And then the token itself, because every other secondary chip had it too
 
@@ -7854,8 +7868,9 @@ replacements, and the shape of the page follows from it:
   original dive-computer file kept behind every import) is what the numbers were there to imply. The
   three facts under it — the licence, no trackers, the three export formats — are the only figures
   left, and each one is a `grep` away. Note the contrast constraint documented under `--coral-solid`
-  still applies to this band: full `text-primary-foreground`, never `/70`, which is 4.90:1 on
-  `bg-primary` in dark mode against 3.4:1 for the faded version.
+  (the section survives, the token does not) still applies to this band: full
+  `text-primary-foreground`, never `/70`, which is 4.90:1 on `bg-primary` in dark mode against 3.4:1
+  for the faded version.
 - **The store badges became a line of prose that answers for them** — there are no mobile apps, the
   iOS companion is parked, and this web app is built for a phone in the meantime — with the source
   and the way to run your own as inline links. The absence needed stating outright rather than being
@@ -13006,18 +13021,19 @@ they are.
 
 `--destructive` was shadcn's default `0 84.2% 60.2%` — a saturated hue-0 red, the one colour in the
 app that belonged to no other token. Every other accent here is warm-or-cool by design: `--coral` at
-16, `--teal` at 187 across the wheel from it, `--pressure` at 265 opposite the pair. A fire-engine
-red beside them reads as imported rather than chosen, which is what "bare red fights the palette"
-means in practice.
+16, `--teal` at 187 across the wheel from it (180 since 2026-09-02, which does not change the
+argument), `--pressure` at 265 opposite the pair. A fire-engine red beside them reads as imported
+rather than chosen, which is what "bare red fights the palette" means in practice.
 
 Both tokens moved into the coral family: `--destructive` is `10 88% 42%` light and `10 100% 68%`
 dark, `--destructive-solid` is `10 88% 40%` in both. **Hue 10, not 16** — six degrees off the brand
 coral, close enough to sit in the same family and far enough to stay a distinguishable pigment where
-the two land near each other. They do land near each other: the sign-in button is `bg-coral-solid`
-and a delete button is now `bg-destructive-solid`, and those are visibly the same kind of colour.
-That collision was raised and accepted deliberately — the alternative was keeping a red that
-belonged to nothing. Anything that needs the destructive control to be unmistakable has to carry it
-in the label or a confirm step, not in the hue, and `ConfirmDialog` already does.
+the two land near each other. They do land near each other: the sign-in button is `bg-coral`
+(`bg-coral-solid` when this was written) and a delete button is `bg-destructive-solid`, and those
+are visibly the same kind of colour. That collision was raised and accepted deliberately — the
+alternative was keeping a red that belonged to nothing. Anything that needs the destructive control
+to be unmistakable has to carry it in the label or a confirm step, not in the hue, and
+`ConfirmDialog` already does.
 
 **The lightness change is the load-bearing half, and it was not the point of the exercise.**
 `text-destructive` is real body text in `FormMessage` — every per-field validation message in the
@@ -13283,3 +13299,95 @@ because a script that merely approximates the committed artefact is how the two 
 **And this is what the marketplace rule was always about.** CC0 permits redistribution outright,
 which is why a 318 KB blob can be committed here a day after three were purged from history: the
 difference is the terms, never the file size.
+
+## The brand accents are their CSS named colours again, and the contrast split went with them
+
+`--coral` had grown two siblings and `--teal` one: `--coral-solid` (`16 100% 40%`) for anything
+filled, `--coral-text` (`16 100% 36%` light, the brand coral again dark) for coral read as text, and
+`--teal-solid` (`187 60% 30%`) for filled teal. Each arrived for a real reason, documented in the
+two sections above, and together they turned "use the brand accent" into a four-way choice at every
+call site — `bg-coral` and `bg-coral-solid` and `text-coral` and `text-coral-text`, three of which
+are wrong in any given spot and none of which is wrong in a way the compiler or a test can see.
+
+**They are gone. There is one coral and one teal, and each is exactly its CSS named colour:**
+`--coral` is `coral` (`#FF7F50`) and `--teal` is `teal` (`#008080`, moved from `187 60% 45%`).
+Tailwind's `coral` and `teal` keys are plain strings rather than objects now, so `bg-coral-solid`
+and friends are not merely discouraged, they don't compile.
+
+**`--coral` moved too, and the move is 0.3 of a percentage point.** It was `16 100% 66%`, which
+renders `#FF8052` — two units off `coral` on green and on blue. That would be beneath notice if
+`icon.svg` did not hard-code `#FF7F50` for the favicon, which it does: the brand mark and its own
+favicon were two different colours by a hair. `16 100% 65.7%` is `#FF7F50` exactly. `180 100% 25%`
+needs no such correction; it lands on `#008080` on the nose.
+
+**This is a deliberate trade, not an oversight.** The numbers, measured rather than estimated — "on
+white" meaning the light theme's `--background`, "under white" meaning `--primary-foreground`, which
+is `0 0% 100%` in both themes:
+
+| pairing               | before                      | after     |
+| --------------------- | --------------------------- | --------- |
+| coral text on white   | 6.1:1 (`--coral-text` 36%)  | **2.5:1** |
+| white on coral fill   | 5.1:1 (`--coral-solid` 40%) | **2.5:1** |
+| teal text on white    | 2.9:1 (`--teal` 45%)        | **4.8:1** |
+| white on teal fill    | 5.8:1 (`--teal-solid` 30%)  | 4.8:1     |
+| coral text on dark bg | 7.3:1                       | 7.2:1     |
+| teal on dark card     | 5.7:1 (`--teal` 45%)        | 3.4:1     |
+
+**Teal comes out of this better than it went in, which was not the intent and is worth stating.**
+`#008080` is 4.8:1 on white where the old `--teal` was 2.9:1, so every teal _icon_ on the light
+theme — the three landing-page feature icons — clears AA text contrast now and did not before. It
+loses a little at the other end: on the dark theme's card it drops from 5.7:1 to 3.4:1, still past
+the 3:1 that WCAG asks of a graphical object, which is what the chart strokes and the activity bars
+are. That is the whole of teal's cost, and it is why teal needed no `-text` variant to begin with —
+CSS named `teal` at 25% lightness precisely so it could carry white and be read on white.
+
+**Coral's cost lands in two places, and only one of them is light-theme-only.** The distinction is
+which token each call site was on, and it is easy to state backwards. The lists below were derived
+by `git grep` against `origin/main` rather than written from memory — `globals.css` carries the same
+three, and they are meant to stay identical:
+
+- **What was on `--coral-text` regresses in the light theme alone**, 6.1:1 on white to 2.5:1: the
+  landing hero's accent word (`landing-page.tsx`), the header's nav items — active _and_ on hover,
+  in the desktop bar and again in the mobile menu, so ten class sites across five links twice over
+  (`header.tsx`) — the dashboard stat cell's label on `group-hover` (`dashboard/page.tsx`), and the
+  species card's hover border (`species/page.tsx`), which is a border rather than text but was on
+  the same token. The dark theme sees no change in any of them: `--coral-text` _was_ redeclared
+  under `.dark`, and redeclared to the brand coral itself, which is 7.2:1 on that background.
+- **What was on `--coral-solid` regresses in both themes**, 5.1:1 under white to 2.5:1: the sign-in
+  button in the header (`header.tsx`) and `AuthForm`'s submit button (`auth-form.tsx`).
+  `--coral-solid` was **never** redeclared under `.dark`, and neither is `--coral`, nor
+  `--primary-foreground`. Fill and label are both theme-constant, so that pairing never involved
+  `--background` at all. This is where the change makes the _dark_ theme worse, and the first draft
+  of this entry said the dark theme was unchanged throughout — wrong, because it reasoned from
+  `--coral-text`'s dark-theme behaviour about a button that never used that token. A code reviewer
+  caught it.
+- **What was on `--teal-solid` stays above AA in both themes**, 5.8:1 under white to 4.8:1:
+  `Button`'s `default` variant, which is every filled button in the app, and the calendar's selected
+  day (`calendar.tsx`).
+
+**Both enumerations were short on the first attempt**, in different ways — one listed three sites
+and the other two, and neither had the dashboard stat cell. That is the ordinary failure mode of a
+list written from what the author remembers touching, and the reason these were re-derived from
+`git grep origin/main -- src` for each removed token rather than recalled. A prose list of call
+sites has nothing checking it, so the way it stays true is being generated rather than remembered.
+
+**The exception is errors and destructive actions**, and it is the exception on purpose.
+`--destructive` / `--destructive-solid` keeps its tuned pair, because that colour is carrying
+_meaning_ — a validation message has to be readable and a delete button has to be unmistakable —
+where the brand accents are carrying identity, and identity is what the owner asked to be able to
+name in one word. `--success` and `--warning` are semantic for the same reason and were never in
+scope.
+
+**The three README screenshots were retaken in this change**, in one
+`npm run screenshots -- <owner>` run rather than one at a time — the palette reaches all three, and
+a partial retake is how a mixed-account set gets in (see _"The README screenshots are generated, at
+one width that is a breakpoint"_). The same script also writes the front door repo's copies of the
+same three files; those were reverted rather than committed, because that is a different repository
+and belongs in its own change. It will show the old palette until someone re-runs the script there.
+
+**Nothing in CI catches the regression, and that is worth knowing rather than discovering.**
+`code-quality.yml` runs `@axe-core/cli` over `/` only, `--include="main"` (so the header is out of
+frame either way), and the step ends in `|| true` with the report uploaded as an artifact. The hero
+accent word _is_ inside `main`, so the artifact will now carry a `color-contrast` violation that no
+job fails on. Re-reading _"Verifying colour work"_ above before treating that report as clean is the
+standing advice; this entry is why it will not be clean.
