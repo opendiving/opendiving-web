@@ -1,8 +1,9 @@
 # Third-Party Notices
 
 OpenDiving Web is licensed under AGPL-3.0 (see `LICENSE`). This file covers third-party material
-that is copied into this repository's own tree: artwork redrawn by hand into source files, and
-vendored build output and assets under `public/`.
+that is copied into this repository's own tree — artwork redrawn by hand into source files, and
+vendored assets under `public/` — plus one entry, MapLibre's worker, that is generated into
+`public/` at build time and ships in the image rather than in the tree.
 
 It is deliberately not an inventory of the npm dependency graph. Those packages are installed, not
 redistributed from here, and each carries its own license text inside `node_modules/` — and inside
@@ -31,9 +32,15 @@ service, and a fork that drops Google sign-in should drop the mark with it.
 
 <https://github.com/maplibre/maplibre-gl-js>
 
-`public/maplibre/maplibre-gl-shared.mjs` and `public/maplibre/maplibre-gl-worker.mjs` are vendored
-build output from `maplibre-gl`, licensed under the 3-Clause BSD License. Both files carry the
-upstream license header, which names the exact version and links its full text.
+`public/maplibre/maplibre-gl-shared.mjs` and `public/maplibre/maplibre-gl-worker.mjs` are build
+output from `maplibre-gl`, licensed under the 3-Clause BSD License. Both files carry the upstream
+license header, which names the exact version and links its full text.
+
+They are the one entry here that is _not_ in the tree: `/public/maplibre/` is gitignored, and
+`scripts/copy-maplibre-worker.mjs` copies both files out of `node_modules` at `predev`, `prebuild`
+and `pretest`. A clone contains neither. They are listed because they reach the published image and
+the browser bundle, which is where a notice has to travel — but a reader looking for them in a fresh
+checkout will not find them.
 
 ## OpenFreeMap basemap styles
 

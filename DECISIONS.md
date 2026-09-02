@@ -13126,14 +13126,18 @@ the licence names. Buying it did not buy either of those. Both files are gone, a
 without a background accent.
 
 **The screenshots are clean, and the check is worth recording so nobody repeats it.** Nine images
-have ever been committed here, across all of history: `docs/screenshots/`'s `dashboard.png`,
-`dive-detail.png` and `gear-item.png`; the two basemap sprite sheets `public/basemap/sprite/ofm.png`
-and `ofm@2x.png`; `public/coral.png` and `public/octo.png`; and the brand mark's own
-`src/app/icon.svg` and `src/app/favicon.ico`. All three screenshots are of authenticated pages —
-`scripts/screenshots.mjs` shoots dashboard, dive-detail and gear-item and nothing else. The reef
-rendered on the _landing_ hero, which no screenshot captures, and the two glow PNGs rendered nowhere
-at all. The older screenshots do carry the previous waves mark, but that was lucide under ISC, which
-permits redistribution.
+had ever been committed here when this was written, across all of history: `docs/screenshots/`'s
+`dashboard.png`, `dive-detail.png` and `gear-item.png`; the two basemap sprite sheets
+`public/basemap/sprite/ofm.png` and `ofm@2x.png`; `public/coral.png` and `public/octo.png`; and the
+brand mark's own `src/app/icon.svg` and `src/app/favicon.ico`. All three screenshots are of
+authenticated pages — `scripts/screenshots.mjs` shoots dashboard, dive-detail and gear-item and
+nothing else. The reef rendered on the _landing_ hero, which no screenshot captures, and the two
+glow PNGs rendered nowhere at all. The older screenshots do carry the previous waves mark, but that
+was lucide under ISC, which permits redistribution.
+
+**Seven of those nine remain.** `coral.png` and `octo.png` went out of the history itself in the
+purge below, so a clone now reaches the three screenshots, the two basemap sprite sheets, `icon.svg`
+and `favicon.ico`, and nothing else.
 
 **Getting that list right took three tries, and each wrong answer came from the tool rather than the
 tree.** A first sweep globbed `png|jpe?g|webp|gif` and so silently dropped `favicon.ico` and
@@ -13157,11 +13161,12 @@ goes public.
 
 **Provenance has to be recorded when the artwork lands, because it cannot be recovered later.** The
 reef component's docstring said "Path data unmodified from the source artwork" and named no source;
-its only commit was `98c72af feat: Authentication flow update (#6)`, which is about something else
-entirely. Nothing in the repository could answer where it came from, and the licence question was
-only settleable by asking the person who made the purchase. A file that says it came from somewhere
-without saying where is worse than one that says nothing, because it establishes the obligation
-while withholding what would let anyone discharge it.
+its only commit was `feat: Authentication flow update (#6)` — then `98c72af`, a hash the purge below
+has since made unreachable; the same change is `06c19b1` on `main` today and no longer carries the
+artwork at all — which is about something else entirely. Nothing in the repository could answer
+where it came from, and the licence question was only settleable by asking the person who made the
+purchase. A file that says it came from somewhere without saying where is worse than one that says
+nothing, because it establishes the obligation while withholding what would let anyone discharge it.
 
 **`NOTICE.md` covers the tree, not the dependency graph**, and the boundary is load-bearing rather
 than lazy. Listed: artwork redrawn into source (`icons/google-icon.tsx`) and vendored build output
@@ -13182,3 +13187,50 @@ accuracy is worse than none.
 `.next/` directories and nothing else, so `LICENSE` never reached it either — an operator who only
 ever pulls the image received the software with no notice attached, which is the case AGPL-3.0 §4
 and 3-Clause BSD are both written about. One `COPY --from=builder` in the runner stage fixes both.
+
+## The licensed artwork came out of the history, and the history paid for it
+
+On 2026-09-02 the three purchased files above were removed from every commit with
+`git filter-repo --invert-paths`, and `main` was force-pushed. Deleting them from the tip had
+settled nothing: publishing the repository publishes its history, so `git log -p` or a checkout of
+the commit that added them still handed anyone the vector source. That is the redistribution the
+licence forbids, and the tip-only deletion only made it less obvious.
+
+They entered in one commit and were never modified after: 1.4 MB of `coral.png`, 1.4 MB of
+`octo.png`, and 14 KB of `coral-reef-background.tsx`, all in the squash-merge of `#6`. No sibling
+repository carried them. That made the surgery narrow - three paths, one commit - but the commit
+sits fifth of 138, so every hash after it moved.
+
+**Three rewrites happened where one was planned, and the extra two paid for something nobody
+costed.** A GPG signature covers the commit object, so rewriting a commit destroys its signature and
+no tool can carry one across. Every commit on `main` had been signed by GitHub's own key at
+squash-merge, reporting `E` - signed, unverifiable locally - which is exactly what
+`.githooks/pre-push` is written to allow. After the purge all 138 reported `N`, and the hook refused
+the push it exists to refuse.
+
+Re-signing them locally was the second pass, and it made the display _worse_: the commits were then
+signed with the maintainer's key while their committer was still `GitHub <noreply@github.com>`, and
+GitHub verifies a signature against the committer's identity. It returned `unknown_key`, which
+renders as an Unverified badge - louder than the absence of a badge an unsigned commit gets. The
+third pass set committer to author before re-signing. Every commit is authored by the same person
+and always has been, so committer-equals-author is true here rather than convenient, and all 230
+commits across every branch now verify.
+
+**What is permanently gone is GitHub's attestation**, not the history. Those signatures said GitHub
+performed those merges; only GitHub can make them, and they cannot be reconstructed. `main` is now
+signed by the maintainer instead. New PRs squash-merge and are GitHub-signed again as normal, so
+only the past is affected.
+
+**The purge broke `main`, and the branch that motivated it was the fix.** Removing a path from every
+commit leaves the commits that legitimately used it importing a module that no longer exists:
+`landing-page.tsx` on `main` still imported `coral-reef-background`, and `main` stopped compiling
+the moment it was pushed. Nothing caught it because the branch doing the removal had already dropped
+that import, so its CI stayed green while `main`'s went red. **After rewriting history, type-check
+the branches you did not rewrite it on.**
+
+**A bundle of all 28 pre-purge refs was taken before any of it** and is the only complete copy of
+the original history - `refs/original/*` is not, having been overwritten by the re-signing passes.
+It also contains the licensed artwork, so it is evidence with a shelf life rather than an archive to
+keep. GitHub keeps unreachable objects fetchable by hash until it garbage-collects on its own
+schedule; asking Support to run `gc` is what finally closes this, and until that happens the purge
+is complete locally and merely mostly complete upstream.
