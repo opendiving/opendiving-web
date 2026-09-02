@@ -43,7 +43,7 @@ function LifeListCard({ entry }: { entry: SpeciesLifeListEntry }) {
   return (
     <Link
       href={`/species/${entry.uuid}`}
-      className="group rounded-lg border bg-card overflow-hidden transition-colors hover:border-coral-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="group rounded-lg border bg-card overflow-hidden transition-colors hover:border-coral focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       {/* A fixed-height band whether or not there is a photo, so the cards line
           up in their rows. A species with none shows a muted panel with its name

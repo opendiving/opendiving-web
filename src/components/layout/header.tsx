@@ -164,9 +164,9 @@ export function Header() {
                 <>
                   <Link
                     href="/dashboard"
-                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-coral-text ${
+                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-coral ${
                       currentPage === "dashboard"
-                        ? "text-coral-text"
+                        ? "text-coral"
                         : "text-foreground"
                     }`}
                   >
@@ -174,40 +174,32 @@ export function Header() {
                   </Link>
                   <Link
                     href="/trips"
-                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-coral-text ${
-                      currentPage === "trips"
-                        ? "text-coral-text"
-                        : "text-foreground"
+                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-coral ${
+                      currentPage === "trips" ? "text-coral" : "text-foreground"
                     }`}
                   >
                     Trips
                   </Link>
                   <Link
                     href="/dives"
-                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-coral-text ${
-                      currentPage === "dives"
-                        ? "text-coral-text"
-                        : "text-foreground"
+                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-coral ${
+                      currentPage === "dives" ? "text-coral" : "text-foreground"
                     }`}
                   >
                     Dives
                   </Link>
                   <Link
                     href="/sites"
-                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-coral-text ${
-                      currentPage === "sites"
-                        ? "text-coral-text"
-                        : "text-foreground"
+                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-coral ${
+                      currentPage === "sites" ? "text-coral" : "text-foreground"
                     }`}
                   >
                     Dive Sites
                   </Link>
                   <Link
                     href="/gear"
-                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-coral-text ${
-                      currentPage === "gear"
-                        ? "text-coral-text"
-                        : "text-foreground"
+                    className={`whitespace-nowrap text-sm font-medium transition-colors hover:text-coral ${
+                      currentPage === "gear" ? "text-coral" : "text-foreground"
                     }`}
                   >
                     Gear
@@ -357,7 +349,7 @@ export function Header() {
               <Button
                 asChild
                 size="sm"
-                className="bg-coral-solid text-primary-foreground hover:bg-coral-solid/90"
+                className="bg-coral text-primary-foreground hover:bg-coral/90"
               >
                 <Link href="/signin">Sign In</Link>
               </Button>
@@ -393,35 +385,35 @@ export function Header() {
                 <>
                   <Link
                     href="/dashboard"
-                    className={`text-sm font-medium hover:text-coral-text py-2 ${currentPage === "dashboard" ? "text-coral-text" : "text-foreground"}`}
+                    className={`text-sm font-medium hover:text-coral py-2 ${currentPage === "dashboard" ? "text-coral" : "text-foreground"}`}
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Dashboard
                   </Link>
                   <Link
                     href="/trips"
-                    className={`text-sm font-medium hover:text-coral-text py-2 ${currentPage === "trips" ? "text-coral-text" : "text-foreground"}`}
+                    className={`text-sm font-medium hover:text-coral py-2 ${currentPage === "trips" ? "text-coral" : "text-foreground"}`}
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Trips
                   </Link>
                   <Link
                     href="/dives"
-                    className={`text-sm font-medium hover:text-coral-text py-2 ${currentPage === "dives" ? "text-coral-text" : "text-foreground"}`}
+                    className={`text-sm font-medium hover:text-coral py-2 ${currentPage === "dives" ? "text-coral" : "text-foreground"}`}
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Dives
                   </Link>
                   <Link
                     href="/sites"
-                    className={`text-sm font-medium hover:text-coral-text py-2 ${currentPage === "sites" ? "text-coral-text" : "text-foreground"}`}
+                    className={`text-sm font-medium hover:text-coral py-2 ${currentPage === "sites" ? "text-coral" : "text-foreground"}`}
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Dive Sites
                   </Link>
                   <Link
                     href="/gear"
-                    className={`text-sm font-medium hover:text-coral-text py-2 ${currentPage === "gear" ? "text-coral-text" : "text-foreground"}`}
+                    className={`text-sm font-medium hover:text-coral py-2 ${currentPage === "gear" ? "text-coral" : "text-foreground"}`}
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     Gear

@@ -28,16 +28,21 @@ const config: Config = {
           DEFAULT: "hsl(var(--primary))",
           foreground: "hsl(var(--primary-foreground))",
         },
+        // One class per brand accent, on purpose. These were objects with
+        // `solid` and `text` variants tuned for contrast in specific spots; the
+        // palette is now one hue each, so `bg-coral`/`text-coral` and
+        // `bg-teal`/`text-teal` are the whole vocabulary. `destructive` below
+        // keeps its `solid` variant - errors are the deliberate exception.
+        //
+        // `coral.foreground` is not a fourth coral. It is the label that sits
+        // *on* a coral fill, the same pairing every other filled token here has,
+        // and the collapse was about differently-tuned corals rather than about
+        // the object.
         coral: {
           DEFAULT: "hsl(var(--coral))",
           foreground: "hsl(var(--coral-foreground))",
-          solid: "hsl(var(--coral-solid))",
-          text: "hsl(var(--coral-text))",
         },
-        teal: {
-          DEFAULT: "hsl(var(--teal))",
-          solid: "hsl(var(--teal-solid))",
-        },
+        teal: "hsl(var(--teal))",
         pressure: "hsl(var(--pressure))",
         ceiling: "hsl(var(--ceiling))",
         tooltip: {

@@ -64,7 +64,7 @@ export function LandingPage() {
               <h1 className="text-4xl md:text-6xl font-extrabold uppercase tracking-tight text-foreground mb-6 leading-tight">
                 The Ultimate
                 <br />
-                <span className="text-coral-text text-[0.8em]">Diving App</span>
+                <span className="text-coral text-[0.8em]">Diving App</span>
               </h1>
               <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
                 An open-source logbook for scuba divers, recreational and
