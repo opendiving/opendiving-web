@@ -3183,9 +3183,17 @@ for everything, and no reason to special-case the hero on that axis.
 **Height is per page, and the cut lands on a card boundary rather than a round figure.** Cutting at
 the _end_ of a card matters more than the exact number, and more than the three shots agreeing: a
 frame that stops just shy of finishing a card reads as an off-by-one, while one that stops well
-inside a card the reader can see continues reads as a page that goes on. 1086 is where the dive
-page's profile chart finishes - it also clears the sidebar column beside it - and where the gear
-page's service history does.
+inside a card the reader can see continues reads as a page that goes on. 1086 clears the dive page's
+profile chart and the sidebar column beside it, and ends the gear page below its service history.
+
+**It does not, however, land on a boundary on the dive page, and that sentence used to claim it
+did.** The frame runs past the profile card and stops part-way through the glyphs of the _Gas
+Consumption_ heading below it - true on `main` as much as on any branch, and checked by decoding
+both PNGs rather than by eye. The wrong claim cost a review round: a reviewer read it, compared it
+to the image, and reported a regression that a validator then refuted, because the clipping was
+never a regression at all. The real fix, if the edge is ever worth tidying, is a `CUT_BELOW` entry
+for `dive-detail` naming the profile card - the mechanism `dashboard` already uses - and never
+another hand-measured number.
 
 **The dashboard measures its own cut, because a written-down height goes stale quietly.** It was on
 1086 too, back when consumption was its only chart and that was where the card ended. Dive activity
@@ -13085,3 +13093,144 @@ and the measurement silently described inherited colours. **A runtime probe can 
 strings copied verbatim out of the component**, and a variant-prefixed class is a different string
 from its bare form. Where the state cannot be forced — a `:hover` colour — read the generated rule
 out of the served stylesheet instead, which is also the only way to confirm a class compiled at all.
+
+## The brand mark is original now, and marketplace artwork cannot ship here
+
+`components/logo.tsx` and `app/icon.svg` used to draw lucide's `waves-horizontal` icon
+path-for-path. Two things were wrong with that, and only one of them was the licence.
+
+The licence half was straightforward. Lucide is ISC, whose single condition is that its copyright
+notice appears in copies, and the hand-copied paths were not carrying it: nothing in the tree named
+lucide outside `package.json` and `node_modules/`. That was fixable with a notice, and briefly was.
+
+**The half that mattered more is that a stock icon cannot be a mark.** It is not distinctive, so it
+is not registrable; it cannot be exclusive, because every other dive app reaching for a water icon
+lands on the same three wavy lines; and it smears at favicon size, three 2.5px strokes at 16px
+resolving to a grey blur. None of that is a licence problem and no notice fixes any of it. The mark
+is now three bubbles rising left to right, growing as they climb, drawn for this project — which
+costs a `NOTICE.md` entry, gains something ownable, and stays legible at 16px because the smallest
+bubble goes solid rather than mushy at the favicon's heavier stroke.
+
+**Marketplace artwork cannot ship in this repository, and the reason generalises past the one asset
+that proved it.** `icons/coral-reef-background.tsx` was 14 KB of reef line art on the landing hero,
+and `public/coral.png` a neon-glow rendering of the same drawing, unreferenced but still served out
+of `public/`. A third, `public/octo.png`, an octopus in the same glow treatment, landed in that same
+commit and was deleted again in `056c34c` — so it is out of the tree but still in history, and it
+belongs on any purge list the other two are on. Neither PNG was ever referenced from source:
+`git log -S` over `src/` returns nothing for either, so both were dead weight from the day they
+arrived. Both came from a paid Etsy listing whose terms permit "personal projects and small-business
+physical products" and forbid "sharing, reselling or redistributing the digital files themselves". A
+hosted web app is not a physical product, and this repository — AGPL-3.0, and public at launch —
+publishes the vector source in editable form to anyone who clones it, which is the redistribution
+the licence names. Buying it did not buy either of those. Both files are gone, and the hero renders
+without a background accent.
+
+**The screenshots are clean, and the check is worth recording so nobody repeats it.** Nine images
+had ever been committed here when this was written, across all of history: `docs/screenshots/`'s
+`dashboard.png`, `dive-detail.png` and `gear-item.png`; the two basemap sprite sheets
+`public/basemap/sprite/ofm.png` and `ofm@2x.png`; `public/coral.png` and `public/octo.png`; and the
+brand mark's own `src/app/icon.svg` and `src/app/favicon.ico`. All three screenshots are of
+authenticated pages — `scripts/screenshots.mjs` shoots dashboard, dive-detail and gear-item and
+nothing else. The reef rendered on the _landing_ hero, which no screenshot captures, and the two
+glow PNGs rendered nowhere at all. The older screenshots do carry the previous waves mark, but that
+was lucide under ISC, which permits redistribution.
+
+**Seven of those nine remain.** `coral.png` and `octo.png` went out of the history itself in the
+purge below, so a clone now reaches the three screenshots, the two basemap sprite sheets, `icon.svg`
+and `favicon.ico`, and nothing else.
+
+**Getting that list right took three tries, and each wrong answer came from the tool rather than the
+tree.** A first sweep globbed `png|jpe?g|webp|gif` and so silently dropped `favicon.ico` and
+`icon.svg` — an extension list is a completeness claim, and that one was short by two formats. A
+second counted "three basemap sprites" from a directory holding four files, only two of them images;
+the rest are JSON manifests. And `git log --all` walks `refs/stash`, so a local stash on one machine
+contributed five `docs/screenshots/*.png` that were never committed to any branch —
+`--branches --tags --remotes` is the spelling that answers "what would a clone see". A completeness
+claim inside a licensing audit is the one kind of prose here that gets relied on instead of
+re-derived, so it is worth the third try.
+
+The general rule the trio leaves behind: **artwork that arrives under someone else's terms cannot
+live in this tree at all.** Not with a notice, not with attribution, not behind a comment recording
+where it came from — the tree itself is what gets published, so anything in it is redistributed by
+definition, and a stock licence that allows use in a product almost never allows that. Two of the
+three entries left in `NOTICE.md` survive precisely because their terms do allow it: MapLibre's
+3-Clause BSD, and a trademark used under Google's own branding guidelines. The third, the
+OpenFreeMap styles, is the one still open — the vendored copies carry no licence metadata at all, so
+nobody here has read the terms they travel under, and that is worth settling before the repository
+goes public.
+
+**Provenance has to be recorded when the artwork lands, because it cannot be recovered later.** The
+reef component's docstring said "Path data unmodified from the source artwork" and named no source;
+its only commit was `feat: Authentication flow update (#6)` — then `98c72af`, a hash the purge below
+has since made unreachable; the same change is `06c19b1` on `main` today and no longer carries the
+artwork at all — which is about something else entirely. Nothing in the repository could answer
+where it came from, and the licence question was only settleable by asking the person who made the
+purchase. A file that says it came from somewhere without saying where is worse than one that says
+nothing, because it establishes the obligation while withholding what would let anyone discharge it.
+
+**`NOTICE.md` covers the tree, not the dependency graph**, and the boundary is load-bearing rather
+than lazy. Listed: artwork redrawn into source (`icons/google-icon.tsx`) and vendored build output
+and assets under `public/` (MapLibre's two `.mjs` files, the OpenFreeMap style JSON and sprite).
+Excluded: everything in `node_modules/`, which is installed rather than redistributed from here and
+ships its own licence text. A file that tried to be a full dependency inventory would be a generated
+artefact pretending to be a hand-written one, and would be wrong within a release.
+
+Two of its entries needed narrowing before they were true, and both traps are the same shape — a
+claim that reads fine until you check the code. Google's "G" is _not_ unmodified: the mark's own
+pixels are, but the pill background from the same download was dropped and the ids are namespaced
+per instance. And the basemap does not "refuse to start without an attribution" flatly —
+`lib/basemap.ts` ships `DEFAULT_BASEMAP_ATTRIBUTION` for the bundled styles and throws only when
+`MAP_STYLE_URL` is set without `MAP_ATTRIBUTION`. An attribution file that overstates its own
+accuracy is worse than none.
+
+**The image had to be taught to carry the notices.** The runner stage copies `public/` and the two
+`.next/` directories and nothing else, so `LICENSE` never reached it either — an operator who only
+ever pulls the image received the software with no notice attached, which is the case AGPL-3.0 §4
+and 3-Clause BSD are both written about. One `COPY --from=builder` in the runner stage fixes both.
+
+## The licensed artwork came out of the history, and the history paid for it
+
+On 2026-09-02 the three purchased files above were removed from every commit with
+`git filter-repo --invert-paths`, and `main` was force-pushed. Deleting them from the tip had
+settled nothing: publishing the repository publishes its history, so `git log -p` or a checkout of
+the commit that added them still handed anyone the vector source. That is the redistribution the
+licence forbids, and the tip-only deletion only made it less obvious.
+
+They entered in one commit and were never modified after: 1.4 MB of `coral.png`, 1.4 MB of
+`octo.png`, and 14 KB of `coral-reef-background.tsx`, all in the squash-merge of `#6`. No sibling
+repository carried them. That made the surgery narrow - three paths, one commit - but the commit
+sits fifth of 138, so every hash after it moved.
+
+**Three rewrites happened where one was planned, and the extra two paid for something nobody
+costed.** A GPG signature covers the commit object, so rewriting a commit destroys its signature and
+no tool can carry one across. Every commit on `main` had been signed by GitHub's own key at
+squash-merge, reporting `E` - signed, unverifiable locally - which is exactly what
+`.githooks/pre-push` is written to allow. After the purge all 138 reported `N`, and the hook refused
+the push it exists to refuse.
+
+Re-signing them locally was the second pass, and it made the display _worse_: the commits were then
+signed with the maintainer's key while their committer was still `GitHub <noreply@github.com>`, and
+GitHub verifies a signature against the committer's identity. It returned `unknown_key`, which
+renders as an Unverified badge - louder than the absence of a badge an unsigned commit gets. The
+third pass set committer to author before re-signing. Every commit is authored by the same person
+and always has been, so committer-equals-author is true here rather than convenient, and all 230
+commits across every branch now verify.
+
+**What is permanently gone is GitHub's attestation**, not the history. Those signatures said GitHub
+performed those merges; only GitHub can make them, and they cannot be reconstructed. `main` is now
+signed by the maintainer instead. New PRs squash-merge and are GitHub-signed again as normal, so
+only the past is affected.
+
+**The purge broke `main`, and the branch that motivated it was the fix.** Removing a path from every
+commit leaves the commits that legitimately used it importing a module that no longer exists:
+`landing-page.tsx` on `main` still imported `coral-reef-background`, and `main` stopped compiling
+the moment it was pushed. Nothing caught it because the branch doing the removal had already dropped
+that import, so its CI stayed green while `main`'s went red. **After rewriting history, type-check
+the branches you did not rewrite it on.**
+
+**A bundle of all 28 pre-purge refs was taken before any of it** and is the only complete copy of
+the original history - `refs/original/*` is not, having been overwritten by the re-signing passes.
+It also contains the licensed artwork, so it is evidence with a shelf life rather than an archive to
+keep. GitHub keeps unreachable objects fetchable by hash until it garbage-collects on its own
+schedule; asking Support to run `gc` is what finally closes this, and until that happens the purge
+is complete locally and merely mostly complete upstream.
