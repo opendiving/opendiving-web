@@ -13123,7 +13123,8 @@ physical products" and forbid "sharing, reselling or redistributing the digital 
 hosted web app is not a physical product, and this repository — AGPL-3.0, and public at launch —
 publishes the vector source in editable form to anyone who clones it, which is the redistribution
 the licence names. Buying it did not buy either of those. Both files are gone, and the hero renders
-without a background accent.
+without a background accent. (No longer true - the hero carries a CC0 silhouette again; see "The
+hero's reef ships as a 19 KB mask, not the 318 KB SVG it came from" below.)
 
 **The screenshots are clean, and the check is worth recording so nobody repeats it.** Nine images
 had ever been committed here when this was written, across all of history: `docs/screenshots/`'s
@@ -13153,11 +13154,11 @@ The general rule the trio leaves behind: **artwork that arrives under someone el
 live in this tree at all.** Not with a notice, not with attribution, not behind a comment recording
 where it came from — the tree itself is what gets published, so anything in it is redistributed by
 definition, and a stock licence that allows use in a product almost never allows that. Two of the
-three entries left in `NOTICE.md` survive precisely because their terms do allow it: MapLibre's
-3-Clause BSD, and a trademark used under Google's own branding guidelines. The third, the
-OpenFreeMap styles, is the one still open — the vendored copies carry no licence metadata at all, so
-nobody here has read the terms they travel under, and that is worth settling before the repository
-goes public.
+three entries then left in `NOTICE.md` (there are four now, svgsilh having joined them) survive
+precisely because their terms do allow it: MapLibre's 3-Clause BSD, and a trademark used under
+Google's own branding guidelines. The third, the OpenFreeMap styles, is the one still open — the
+vendored copies carry no licence metadata at all, so nobody here has read the terms they travel
+under, and that is worth settling before the repository goes public.
 
 **Provenance has to be recorded when the artwork lands, because it cannot be recovered later.** The
 reef component's docstring said "Path data unmodified from the source artwork" and named no source;
