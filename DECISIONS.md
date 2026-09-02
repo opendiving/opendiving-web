@@ -13127,6 +13127,29 @@ is now three bubbles rising left to right, growing as they climb, drawn for this
 costs a `NOTICE.md` entry, gains something ownable, and stays legible at 16px because the smallest
 bubble goes solid rather than mushy at the favicon's heavier stroke.
 
+**The mark doubles as the icon for a dive, and that is deliberate.** `Total Dives` on the dashboard,
+the Recent Dives card's header and empty state, and "New Dive" in the create menu all drew lucide's
+`Waves` — chosen back when the logo was the same three wavy lines, so the app was consistent by
+accident. Once the mark stopped being a wave that consistency was gone, and the four places meaning
+_a dive_ now draw the bubbles instead, through a `DiveIcon` alias exported beside `Logo` in
+`components/logo.tsx`. The alias is not indirection for its own sake: `<Logo />` inside a stat tile
+reads as the site's logo having wandered into the dashboard, where `<DiveIcon />` says what the
+glyph is standing for. One component, two names, and the docblock on each says which job it is
+doing.
+
+**The two `Waves` that remain are about water, not dives**, and they stay: the Water type select in
+`dive-form-fields.tsx` and the Water Type row in `dive-detail-sidebar.tsx`. A wave there is the
+subject of the field rather than a stand-in for the dive, so swapping it would have made the icon
+say less, not more. Anyone sweeping for "the old icon" should expect to find those two and leave
+them alone.
+
+**Typing the create menu's `icon` had to give.** `CreateAction` in `layout/header.tsx` declared
+`icon: LucideIcon`, which is lucide's `ForwardRefExoticComponent`; `DiveIcon` is a plain function
+component and does not satisfy it. The field is now typed as what the menu actually renders — a
+`React.ComponentType<{ className?: string }>` — which both kinds of icon meet. Widening the
+declaration is the fix rather than wrapping the mark in `forwardRef`, since nothing in that menu
+ever takes a ref.
+
 **Marketplace artwork cannot ship in this repository, and the reason generalises past the one asset
 that proved it.** `icons/coral-reef-background.tsx` was 14 KB of reef line art on the landing hero,
 and `public/coral.png` a neon-glow rendering of the same drawing, unreferenced but still served out

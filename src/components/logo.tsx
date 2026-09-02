@@ -40,3 +40,18 @@ export function Logo({ className, ...props }: React.SVGProps<SVGSVGElement>) {
     </svg>
   );
 }
+
+/**
+ * The same three bubbles under the name the dive UI reads them by. Wherever the
+ * app needs an icon that means *a dive* - the Total Dives figure, the Recent
+ * Dives card, "New Dive" in the create menu - this is it, and importing `Logo`
+ * there would have every one of those call sites claim to be drawing the site's
+ * logo. Nothing about the mark changes between the two names; only what it is
+ * standing for does.
+ *
+ * These places drew lucide's `Waves` until the mark stopped being a wave. Water
+ * icons still mean water: the Water type field and the dive's Water Type row
+ * keep `Waves`, because there the wave is the subject rather than a stand-in for
+ * the dive.
+ */
+export const DiveIcon = Logo;
