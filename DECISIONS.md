@@ -13353,6 +13353,13 @@ where the brand accents are carrying identity, and identity is what the owner as
 name in one word. `--success` and `--warning` are semantic for the same reason and were never in
 scope.
 
+**The three README screenshots were retaken in this change**, in one
+`npm run screenshots -- <owner>` run rather than one at a time — the palette reaches all three, and
+a partial retake is how a mixed-account set gets in (see _"The README screenshots are generated, at
+one width that is a breakpoint"_). The same script also writes the front door repo's copies of the
+same three files; those were reverted rather than committed, because that is a different repository
+and belongs in its own change. It will show the old palette until someone re-runs the script there.
+
 **Nothing in CI catches the regression, and that is worth knowing rather than discovering.**
 `code-quality.yml` runs `@axe-core/cli` over `/` only, `--include="main"` (so the header is out of
 frame either way), and the step ends in `|| true` with the report uploaded as an artifact. The hero
