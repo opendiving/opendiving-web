@@ -13123,7 +13123,8 @@ physical products" and forbid "sharing, reselling or redistributing the digital 
 hosted web app is not a physical product, and this repository — AGPL-3.0, and public at launch —
 publishes the vector source in editable form to anyone who clones it, which is the redistribution
 the licence names. Buying it did not buy either of those. Both files are gone, and the hero renders
-without a background accent.
+without a background accent. (No longer true - the hero carries a CC0 silhouette again; see "The
+hero's reef ships as a 19 KB mask, not the 318 KB SVG it came from" below.)
 
 **The screenshots are clean, and the check is worth recording so nobody repeats it.** Nine images
 had ever been committed here when this was written, across all of history: `docs/screenshots/`'s
@@ -13153,11 +13154,11 @@ The general rule the trio leaves behind: **artwork that arrives under someone el
 live in this tree at all.** Not with a notice, not with attribution, not behind a comment recording
 where it came from — the tree itself is what gets published, so anything in it is redistributed by
 definition, and a stock licence that allows use in a product almost never allows that. Two of the
-three entries left in `NOTICE.md` survive precisely because their terms do allow it: MapLibre's
-3-Clause BSD, and a trademark used under Google's own branding guidelines. The third, the
-OpenFreeMap styles, is the one still open — the vendored copies carry no licence metadata at all, so
-nobody here has read the terms they travel under, and that is worth settling before the repository
-goes public.
+three entries then left in `NOTICE.md` (there are four now, svgsilh having joined them) survive
+precisely because their terms do allow it: MapLibre's 3-Clause BSD, and a trademark used under
+Google's own branding guidelines. The third, the OpenFreeMap styles, is the one still open — the
+vendored copies carry no licence metadata at all, so nobody here has read the terms they travel
+under, and that is worth settling before the repository goes public.
 
 **Provenance has to be recorded when the artwork lands, because it cannot be recovered later.** The
 reef component's docstring said "Path data unmodified from the source artwork" and named no source;
@@ -13228,9 +13229,57 @@ the moment it was pushed. Nothing caught it because the branch doing the removal
 that import, so its CI stayed green while `main`'s went red. **After rewriting history, type-check
 the branches you did not rewrite it on.**
 
+**`git filter-repo` removes the `origin` remote every time, on purpose.** It is a guard against
+reflexively pushing a rewritten history somewhere nobody thought about, and it caught this session
+twice - the second time as a bare "'origin' does not appear to be a git repository" after a rewrite,
+which reads like a broken checkout rather than a deliberate safety catch. Re-add it before pushing.
+
 **A bundle of all 28 pre-purge refs was taken before any of it** and is the only complete copy of
 the original history - `refs/original/*` is not, having been overwritten by the re-signing passes.
 It also contains the licensed artwork, so it is evidence with a shelf life rather than an archive to
 keep. GitHub keeps unreachable objects fetchable by hash until it garbage-collects on its own
 schedule; asking Support to run `gc` is what finally closes this, and until that happens the purge
 is complete locally and merely mostly complete upstream.
+
+## The hero's reef ships as a 19 KB mask, not the 318 KB SVG it came from
+
+The accent lost when the licensed reef came out is back, from svgsilh under CC0 — a licence that
+permits the one thing the Etsy and Vecteezy terms both forbid, redistributing the file itself, which
+is what publishing this repository does. Provenance is in `NOTICE.md`.
+
+**The file as downloaded was unusable, and the reason is instructive.** 318 KB, 925 paths, 92,690
+coordinates: an autotrace of a bitmap rather than drawn vector. `svgo --multipass` took it to 311
+KB, because there is no redundancy in autotrace output to remove. Rasterising helped less than
+expected too — the drawing's polyp stipple is thousands of tiny loops, which is high-frequency
+detail that PNG and WebP both spend bits on: 237 KB as a 1024px PNG, 85 KB as a 512px WebP.
+
+What collapses it is noticing that **none of that detail is used**. The accent renders about 280px
+wide at 25% opacity behind live copy. It needs a silhouette, not a drawing. One channel, two
+colours, 512px: **19 KB**, and pixel-identical at the size it ships.
+
+**A CSS mask rather than an `<img>`, so the shape keeps its colour token.** Going to raster would
+normally mean baking the colour in and losing the theme; `mask-image` with
+`background-color: hsl(var(--teal))` keeps it following the token in both themes, which is what
+`currentColor` did for the SVG. `mask-mode: luminance` is required rather than decorative — the file
+has no alpha channel, the shape being white on black, and the default `match-source` reads a missing
+alpha as fully opaque and paints the whole box. Prefixed for Safari before 15.4.
+
+**The general shape of the trade:** a decorative asset should be measured at the size and opacity it
+actually renders, not at the size it was authored. Three formats were compared before the answer
+turned out to be a fourth thing entirely - throwing away every channel but one.
+
+**The source is committed, and that is the point rather than an afterthought.** A 19 KB mask cannot
+be regenerated from itself, and no other derivative can be made from it - a larger one, or one
+keeping the interior stipple this pipeline discards. `assets/artwork/` holds the 318 KB original so
+both stay possible when svgsilh no longer hosts it, which for a project whose whole argument is
+outliving the vendor is not a detail to be relaxed about. It sits outside `public/` deliberately:
+the runner stage copies only `LICENSE`, `NOTICE.md`, `public/` and `.next`, so the source is served
+to nobody and adds nothing to the image.
+
+`scripts/generate-reef-mask.mjs` reproduces the committed mask **byte for byte** - same sha256 - so
+it is the pipeline rather than a description of one. That is worth checking after any change to it,
+because a script that merely approximates the committed artefact is how the two quietly diverge.
+
+**And this is what the marketplace rule was always about.** CC0 permits redistribution outright,
+which is why a 318 KB blob can be committed here a day after three were purged from history: the
+difference is the terms, never the file size.
