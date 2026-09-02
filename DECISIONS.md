@@ -13342,20 +13342,34 @@ are. That is the whole of teal's cost, and it is why teal needed no `-text` vari
 CSS named `teal` at 25% lightness precisely so it could carry white and be read on white.
 
 **Coral's cost lands in two places, and only one of them is light-theme-only.** The distinction is
-which token each call site was on, and it is easy to state backwards:
+which token each call site was on, and it is easy to state backwards. The lists below were derived
+by `git grep` against `origin/main` rather than written from memory — `globals.css` carries the same
+three, and they are meant to stay identical:
 
-- **Coral as text regresses in the light theme alone.** The landing hero's accent word, the header's
-  active nav item (desktop and mobile) and the species card's hover border were on `--coral-text`,
-  which _was_ redeclared under `.dark` — and redeclared to the brand coral itself, because on a
-  near-black background the brand coral is already 8:1. So the dark theme sees no change at all in
-  these three.
-- **Coral as a fill under white regresses in both themes.** The sign-in button in the header and in
-  `AuthForm` were on `--coral-solid`, which was **never** redeclared under `.dark` — and neither is
-  `--coral`, nor `--primary-foreground`. Fill and label are both theme-constant, so that pairing
-  never involved `--background`: it was 5.1:1 in both themes and is 2.5:1 in both themes. This is
-  the one thing in the change that makes the _dark_ theme worse, and the first draft of this entry
-  said the dark theme was unchanged throughout — wrong, because it reasoned from `--coral-text`'s
-  dark-theme behaviour about a button that never used that token. A code reviewer caught it.
+- **What was on `--coral-text` regresses in the light theme alone**, 6.1:1 on white to 2.5:1: the
+  landing hero's accent word (`landing-page.tsx`), the header's nav items — active _and_ on hover,
+  in the desktop bar and again in the mobile menu, so ten class sites across five links twice over
+  (`header.tsx`) — the dashboard stat cell's label on `group-hover` (`dashboard/page.tsx`), and the
+  species card's hover border (`species/page.tsx`), which is a border rather than text but was on
+  the same token. The dark theme sees no change in any of them: `--coral-text` _was_ redeclared
+  under `.dark`, and redeclared to the brand coral itself, which is 7.2:1 on that background.
+- **What was on `--coral-solid` regresses in both themes**, 5.1:1 under white to 2.5:1: the sign-in
+  button in the header (`header.tsx`) and `AuthForm`'s submit button (`auth-form.tsx`).
+  `--coral-solid` was **never** redeclared under `.dark`, and neither is `--coral`, nor
+  `--primary-foreground`. Fill and label are both theme-constant, so that pairing never involved
+  `--background` at all. This is where the change makes the _dark_ theme worse, and the first draft
+  of this entry said the dark theme was unchanged throughout — wrong, because it reasoned from
+  `--coral-text`'s dark-theme behaviour about a button that never used that token. A code reviewer
+  caught it.
+- **What was on `--teal-solid` stays above AA in both themes**, 5.8:1 under white to 4.8:1:
+  `Button`'s `default` variant, which is every filled button in the app, and the calendar's selected
+  day (`calendar.tsx`).
+
+**Both enumerations were short on the first attempt**, in different ways — one listed three sites
+and the other two, and neither had the dashboard stat cell. That is the ordinary failure mode of a
+list written from what the author remembers touching, and the reason these were re-derived from
+`git grep origin/main -- src` for each removed token rather than recalled. A prose list of call
+sites has nothing checking it, so the way it stays true is being generated rather than remembered.
 
 **The exception is errors and destructive actions**, and it is the exception on purpose.
 `--destructive` / `--destructive-solid` keeps its tuned pair, because that colour is carrying
