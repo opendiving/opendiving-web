@@ -106,14 +106,15 @@ export function serviceStatusLabel(status: ServiceStatus): string {
 
 // Maps onto the `Badge` variants already in the design system rather than introducing
 // new colours: overdue is the same weight as any other destructive state, and due-soon
-// borrows --warning, the token that already means "take this seriously, it isn't a
-// failure". It used to be `secondary`, which is nearly invisible on a card in dark mode
-// and, being the same chip as "Rented", didn't read as a status at all.
+// is the brand --coral, one step down from it in the same warm family. It used to be
+// `secondary`, which is nearly invisible on a card in dark mode and, being the same
+// chip as "Rented", didn't read as a status at all; then --warning's amber, which read
+// as a fourth accent beside a palette that has three.
 export function serviceStatusBadgeVariant(
   status: ServiceStatus,
-): "destructive" | "warning" | "outline" {
+): "destructive" | "coral" | "outline" {
   if (status === "overdue") return "destructive";
-  if (status === "due_soon") return "warning";
+  if (status === "due_soon") return "coral";
   return "outline";
 }
 

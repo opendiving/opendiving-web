@@ -94,6 +94,13 @@
        the same in both themes. */
     --coral: 16 100% 66%;
 
+    /* Label colour for anything *filled* with --coral. Near-black rather than white:
+       at 66% lightness the brand coral carries white at only 2.5:1, and the same dark
+       label the dark theme's --warning and --success already use reaches 7.3:1 on it.
+       Constant across themes because --coral is - a per-theme pair would have nothing
+       to adapt to. */
+    --coral-foreground: 240 4% 9%;
+
     /* Same coral, darkened enough that white label text clears WCAG AA (5.1:1).
        --coral itself is tuned for the logo and for icons/active states against a
        light or dark surface; used as a filled button background it only reaches

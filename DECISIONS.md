@@ -3359,6 +3359,70 @@ All/Year/Month was active, so that one was a functional bug, not a cosmetic one.
 deliberately stayed at 16% despite having been the same value - it is a large-area wash (the footer,
 callouts), and 22% over that much surface reads as a panel rather than a tint.
 
+### Correction: "Due soon" is coral now, and the amber was a fourth accent
+
+The section above is still the reason `due_soon` is not `secondary`, and its measurements still
+hold. What changed is which filled variant it lands on: `serviceStatusBadgeVariant` returns
+`"coral"`, a new `Badge` variant over `--coral`, not `"warning"`.
+
+The palette has three accents by design - `--coral` at hue 16, `--teal` at 187 across the wheel from
+it, `--pressure` at 265 opposite the pair - and the reasoning under _Errors are coral_ is that a
+colour belonging to no other token reads as imported rather than chosen. `--warning`'s amber
+(`32 92% 27%` light, `38 95% 62%` dark) was exactly that on a status chip: a fourth hue, introduced
+for one badge. Coral is the accent the app already owns, and "Due soon" is the state the brand
+colour is well suited to - urgent enough to notice, not a failure.
+
+**It separates from `destructive` by lightness, and could never separate by hue.** The two are six
+degrees apart (16 against `--destructive-solid`'s 10) - 2.36:1 between the two fills - so the
+escalation reads as outline -> pale coral -> deep coral, and the words "Due soon" and "Overdue" do
+the rest. That is the same trade already accepted for `--ceiling` beside `--coral` on the dive
+profile, and for `bg-coral-solid` beside `bg-destructive-solid` on the sign-in and delete buttons.
+
+**`--coral` needed a `--coral-foreground`, and it is near-black.** This is the first place the brand
+coral is used as a _fill_; everywhere else it is a stroke or a glyph (`text-coral`, the logo) or the
+darkened `--coral-solid` under white. At 66% lightness it carries white at only 2.5:1, so the label
+is `240 4% 9%` - the same near-black the dark theme's `--warning-foreground` and
+`--success-foreground` already use - for 7.3:1. Constant across themes, like `--coral` itself: a
+per-theme pair would have nothing to adapt to.
+
+**Measured off the rendered dashboard, both themes**, per _Verifying colour work_. The fill paints
+`rgb(255, 128, 82)` in both, which is the token exactly - `bg-coral` has no alpha, so this is the
+one case where the arithmetic and the painted value agree.
+
+| Surface                       | Light  | Dark   | Bar   |
+| ----------------------------- | ------ | ------ | ----- |
+| Badge label on the coral fill | 7.28:1 | 7.28:1 | 4.5:1 |
+| Coral fill against `--card`   | 2.48:1 | 6.55:1 | 3:1   |
+
+**The light-theme figure is under 3:1 and was accepted.** It is the mirror of the bug this section
+was written about - a chip that does not separate from the card behind it - and the reason it is not
+the same defect is the reason the light `--secondary` gap was left alone two paragraphs up: **it
+separates by hue, not lightness.** A 100%-saturation salmon on white is unmistakably a chip; the
+1.2:1 case was a near-neutral grey three points off its card, which was not. Nothing is lost if the
+fill goes unnoticed either way - the label reads at 7.28:1 and carries the whole meaning, which is
+what keeps this outside SC 1.4.11 rather than merely forgiven by it. Watch it if `--card` ever stops
+being white in the light theme.
+
+`--warning` keeps its `Badge` variant and three other consumers - `courseStatusBadgeVariant` uses it
+for `incomplete` and `provisional`, and `dive-exposure-card`, `dive-mixtures-card` and
+`mixture-fields` use `text-warning` - so nothing was orphaned.
+
+### And the dashboard puts the chip last, where the rows align
+
+`ServiceStatusBadge` renders the badge then the detail ("Due soon", "Due in 3 days"), which is right
+in the two places it is a _column_: the gear table's Service cell, and the gear detail card's
+schedule rows, where the badge is the first thing under a label and nothing to its right lines up.
+
+The dashboard's service-due card is not a column. Its rows are `flex justify-between` with the item
+name on the left and this component on the right, so badge-first parks the coloured chip in the
+middle of the row while the grey detail text takes the edge the rows actually align on - the one
+strong mark on the card, pointing at nothing. `detailFirst` (a prop, default off) swaps the two
+there only, and the chips line up on the right edge with the day counts leading into them.
+
+A prop rather than composing the two pieces in the card: the component's whole reason for existing
+is that the three places service status renders can't drift apart, and inlining a `Badge` in the
+dashboard to reorder it is exactly that drift.
+
 ## One card-header shape: `space-y-1.5` only reaches `CardHeader`'s _direct_ children
 
 `CardHeader` is `flex flex-col space-y-1.5 p-6`, and Tailwind's `space-y-*` is a `> * + *`

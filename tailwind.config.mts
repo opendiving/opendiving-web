@@ -30,6 +30,7 @@ const config: Config = {
         },
         coral: {
           DEFAULT: "hsl(var(--coral))",
+          foreground: "hsl(var(--coral-foreground))",
           solid: "hsl(var(--coral-solid))",
           text: "hsl(var(--coral-text))",
         },
