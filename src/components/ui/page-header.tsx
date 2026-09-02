@@ -13,11 +13,18 @@ export interface PageHeaderProps {
    */
   title: ReactNode;
   /**
-   * Usually a plain string. A node, so the dive page can hang its prev/next
-   * arrows off either end of the date - the `<p>` below styles the line either
-   * way, and anything richer must stay phrasing content to sit inside it.
+   * Usually a plain string. A node for the same reason `title` is one - it
+   * stands in for a `Skeleton` bar during the load. The `<p>` below styles the
+   * line either way, so anything richer must stay phrasing content.
    */
   subtitle?: ReactNode;
+  /**
+   * Navigation *between records*, as opposed to the `actions` that operate on
+   * the one being shown - currently the dive page's previous/next pager. Sits
+   * opposite the back link on its own row, which is the row already holding
+   * this page's other way out.
+   */
+  nav?: ReactNode;
   /** Optional right-aligned actions (e.g. Edit/Delete buttons on detail pages). */
   actions?: ReactNode;
 }
@@ -29,17 +36,25 @@ export function PageHeader({
   backLabel,
   title,
   subtitle,
+  nav,
   actions,
 }: PageHeaderProps) {
   return (
     <div className="mb-6">
-      <Button variant="ghost" size="sm" asChild className="mb-2 px-0">
-        <Link href={backHref}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          {backLabel}
-        </Link>
-      </Button>
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <Button variant="ghost" size="sm" asChild className="px-0">
+          <Link href={backHref}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            {backLabel}
+          </Link>
+        </Button>
+        {nav}
+      </div>
+      {/* Stacked below `sm`, side by side above it. As one `justify-between` row
+          at every width, the title block got about 150px on a 375px screen with
+          Edit and Delete beside it - enough to wrap the dive page's date line
+          over five lines. */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold">{title}</h1>
           {subtitle && <p className="text-muted-foreground mt-1">{subtitle}</p>}

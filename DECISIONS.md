@@ -5084,8 +5084,8 @@ Two things follow from hand-rolling the anchor. A plain click has to `router.pus
 cmd/ctrl/shift/alt-click has to be left alone, so a dive still opens in a new tab), and the
 unavailable arrow needs an explicit `role="link"` — an `<a>` with no `href` is `generic` to the
 accessibility tree, and a generic node has no accessible name, so without it the arrow would go from
-"unavailable" to unannounced. `dive-date-nav.render.test.tsx` pins the node identity and the focus
-directly, because nothing else about the rendered output changes when this regresses.
+"unavailable" to unannounced. `dive-neighbor-nav.render.test.tsx` pins the node identity and the
+focus directly, because nothing else about the rendered output changes when this regresses.
 
 The one thing the shared node costs is that its accessible name and `aria-disabled` both flip on
 every step, so a screen reader announces the arrow as unavailable each time — indistinguishable from
@@ -6320,6 +6320,11 @@ Two shifts survive deliberately. The dive detail page still moves 4px, because i
 and parameterising the shared skeleton for one page costs more than the 4px. The dashboard moves
 ~134px when a gear-service reminder is due, which is not a placeholder problem at all: whether that
 card exists is one of the things the request answers.
+
+(The first of those two is gone. The buttons left that line when the prev/next control became a
+pager on the back link's row - see _"The prev/next chevrons left the date line"_ below - so the dive
+page's subtitle is now the same plain 24px text as every other detail page's, and the shared `h-6`
+bar is exact for all of them.)
 
 ### Not done here
 
@@ -13391,3 +13396,61 @@ frame either way), and the step ends in `|| true` with the report uploaded as an
 accent word _is_ inside `main`, so the artifact will now carry a `color-contrast` violation that no
 job fails on. Re-reading _"Verifying colour work"_ above before treating that report as clean is the
 standing advice; this entry is why it will not be clean.
+
+## The prev/next chevrons left the date line, and the header stopped fighting the phone
+
+The dive page's step-to-the-adjacent-dive control was two bare chevrons sitting _inside_ the
+subtitle, one either side of `Sunday, April 4, 2021 at 10:04 (UTC+02:00)`. Everything in _"`<` is
+the earlier dive, which is the opposite of what the log list would suggest"_ above is still the
+reasoning behind how it works; what follows replaces where it lives and what it looks like.
+
+**A chevron inline with a sentence reads as punctuation, not as a control.** With no word attached,
+`‹` before a date is a bracket until you hover it, and hovering is how you find out — which makes
+the discoverability of the whole feature depend on a tooltip. The two of them straddling a running
+line of text also gave the eye nothing to group: they were two marks at opposite ends of a phrase,
+not one pager.
+
+**And the line wraps.** That was the trigger. The date line is the longest string in the header and
+the first thing to wrap, and inline flow — chosen precisely so the chevrons would travel with the
+text rather than strand at the edges — means the wrap point lands wherever it lands. `‹` could end
+up alone above the date, `›` alone below it, with the two halves of one control on different lines
+and neither next to anything that explains it.
+
+**They are now a pager on the back link's row**, right-aligned opposite `← Back to Dives`:
+`‹ Previous` and `Next ›` as two `outline`/`sm` buttons, the same visual vocabulary the log list's
+`PaginationFooter` already uses for the same idea. Three things follow from that row in particular.
+It is the only row in the header that cannot wrap — one short link and one short pair. It groups
+this control with the page's other way out, which is what it is: navigation between records, as
+against the `actions` beside the title that operate on the record being shown. And it was empty, so
+the pager costs no vertical space at all.
+
+`PageHeader` gained a `nav` slot for it. Its `subtitle` stays `ReactNode` — that width was
+originally taken for these chevrons, but `DetailPageSkeleton` needs it too, so it does not narrow
+back to `string`.
+
+**The visible labels are fixed words and never the neighbour's date**, which is the one design point
+worth defending, because "show what it goes to" is the obvious improvement and it is wrong here. The
+neighbours arrive from a second request, and the component stays mounted across a step (that is the
+whole point of it — see the section above), so a data-derived label would empty on every click and
+refill a round trip later. The button would shrink under the cursor of the diver who is clicking it
+repeatedly and grow back between two clicks. The date instead rides `aria-label` and `title`, where
+it costs no layout: `Previous dive: #11, Apr 3, 2021`, exactly as before. The word on screen is the
+first word of that string, so the visible label stays part of the accessible one (WCAG 2.5.3).
+
+**The pair is a `<nav aria-label="Adjacent dives">`.** Two adjacent links in the middle of a header
+are two anonymous links; a named landmark makes them one control and gives a screen-reader user
+something to jump to.
+
+**`PageHeader`'s title row now stacks below `sm`.** That was named in the section above as belonging
+to "whoever takes that on", and this is that change: the title block and the actions were one
+`justify-between` row at every width, which left the title about 150px on a 375px screen with Edit
+and Delete beside it — enough to wrap this date over five lines. Stacked, the date gets the full
+width and wraps over two. It moves every detail page's header, which is why it was deferred and why
+it is called out here rather than buried: seven pages plus both skeletons render this component, and
+the change is the same one on all of them.
+
+Inline flow for the subtitle is gone with the chevrons — the line is plain text again, and
+`formatDiveStartTime` is called from the page rather than from inside a client component.
+
+`dive-date-nav.tsx` is `dive-neighbor-nav.tsx`, and `DiveDateNav` is `DiveNeighborNav`: it no longer
+renders the date, so a name built around it would have been the second thing to mislead here.

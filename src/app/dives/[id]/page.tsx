@@ -10,13 +10,14 @@ import { tripsAPI, Trip } from "@/lib/api/trips";
 import { coursesAPI, Course } from "@/lib/api/courses";
 import { DiveDetailMain } from "@/components/dives/dive-detail-main";
 import { DiveDetailSidebar } from "@/components/dives/dive-detail-sidebar";
-import { DiveDateNav } from "@/components/dives/dive-date-nav";
+import { DiveNeighborNav } from "@/components/dives/dive-neighbor-nav";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { PageHeader } from "@/components/ui/page-header";
 import { DetailPageSkeleton } from "@/components/ui/page-skeleton";
 import { NotFoundState } from "@/components/ui/not-found-state";
 import { Edit, Trash2, Loader2 } from "lucide-react";
+import { formatDiveStartTime } from "@/lib/date-time";
 import Link from "next/link";
 import { PageSpinner } from "@/components/ui/page-spinner";
 import { cn } from "@/lib/utils";
@@ -101,9 +102,9 @@ export default function DiveDetailPage() {
   }
 
   // Only the *first* load stands the page in. Stepping to a neighbouring dive with
-  // the header's arrows is a same-route id change, which flips `isLoadingDive` again
+  // the header's pager is a same-route id change, which flips `isLoadingDive` again
   // while `useResource` still holds the dive being left - and returning a placeholder
-  // there tore the whole page down mid-step, taking the arrow that was just clicked
+  // there tore the whole page down mid-step, taking the button that was just clicked
   // with it. What the diver sees now is the dive they came from, dimmed, until the
   // next one lands.
   if (isLoadingDive && !dive) {
@@ -134,10 +135,11 @@ export default function DiveDetailPage() {
         // The time of day sits here with the date rather than in a card of its
         // own below: the two are one fact, and splitting them put the dive's
         // date in the header and the clock it was on two scroll positions away.
-        // The arrows around it step to the chronologically adjacent dives.
-        subtitle={
-          <DiveDateNav diveUuid={dive.uuid} startTime={dive.start_time} />
-        }
+        subtitle={formatDiveStartTime(dive.start_time)}
+        // Up on the back link's row rather than around the date: stepping
+        // through the log is the same kind of move as leaving for it, and this
+        // line is the one in the header that never wraps.
+        nav={<DiveNeighborNav diveUuid={dive.uuid} />}
         actions={
           <>
             <Button variant="outline" asChild>

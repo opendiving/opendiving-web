@@ -1,16 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
-import { DiveDateNav } from "./dive-date-nav";
+import { DiveNeighborNav } from "./dive-neighbor-nav";
 import type { DiveNeighbors } from "@/lib/api/dives";
 
-// The date line itself is `formatDiveStartTime`'s and is tested in
-// `lib/date-time.test.ts`. What only a render reaches is the wiring around it: which
-// arrow points at which end of the log (getting this backwards is invisible until you
-// click), that an end of the log leaves an arrow present but dead rather than dropping
-// it, that stepping to a neighbour never leaves the arrows aimed at the dive you just
-// left - the reason the fetched neighbours are keyed by uuid - and that the arrow
-// keeps its DOM node across that step, which is the only thing standing between a
-// keyboard diver and re-tabbing to `>` on every dive in a trip.
+// What only a render reaches is the wiring: which button points at which end of the
+// log (getting this backwards is invisible until you click), that the word on screen
+// stays put while the destination behind it changes - the reason the date is on the
+// accessible name and not in the label - that an end of the log leaves a button
+// present but dead rather than dropping it, that stepping to a neighbour never leaves
+// the pager aimed at the dive you just left, and that the link keeps its DOM node
+// across that step, which is the only thing standing between a keyboard diver and
+// re-tabbing to "Next" on every dive in a trip.
 
 vi.mock("@/lib/api/dives", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/dives")>()),
@@ -25,8 +25,6 @@ const router = { push };
 vi.mock("next/navigation", () => ({ useRouter: () => router }));
 
 const { divesAPI } = await import("@/lib/api/dives");
-
-const APRIL_4 = "2021-04-04T10:04:47+02:00";
 
 function neighbors(overrides: Partial<DiveNeighbors> = {}): DiveNeighbors {
   return {
@@ -44,7 +42,7 @@ function neighbors(overrides: Partial<DiveNeighbors> = {}): DiveNeighbors {
   };
 }
 
-describe("DiveDateNav", () => {
+describe("DiveNeighborNav", () => {
   beforeEach(() => {
     vi.mocked(divesAPI.getDiveNeighbors).mockReset();
     push.mockClear();
@@ -56,13 +54,13 @@ describe("DiveDateNav", () => {
     vi.restoreAllMocks();
   });
 
-  it("points the left arrow at the earlier dive and the right at the later one", async () => {
-    // The whole point of the control, and the one thing a `>` can get wrong while
+  it("points the left button at the earlier dive and the right at the later one", async () => {
+    // The whole point of the control, and the one thing it can get wrong while
     // still rendering perfectly: `getDives` lists newest first, so "next" is the
     // opposite direction there.
     vi.mocked(divesAPI.getDiveNeighbors).mockResolvedValue(neighbors());
 
-    render(<DiveDateNav diveUuid="current-uuid" startTime={APRIL_4} />);
+    render(<DiveNeighborNav diveUuid="current-uuid" />);
 
     const previous = await screen.findByRole("link", {
       name: /previous dive/i,
@@ -75,28 +73,43 @@ describe("DiveDateNav", () => {
     expect(next).toHaveAccessibleName(/#13, Apr 5, 2021/);
   });
 
-  it("keeps the dive's own date beside the arrows", async () => {
+  it("shows a word that doesn't change with the destination behind it", async () => {
+    // A label carrying the neighbour's date would empty and refill on every step,
+    // resizing the button under the cursor of the diver clicking it. The words are
+    // fixed, and each is the start of its own accessible name - so the visible
+    // label stays part of the announced one.
     vi.mocked(divesAPI.getDiveNeighbors).mockResolvedValue(neighbors());
 
-    render(<DiveDateNav diveUuid="current-uuid" startTime={APRIL_4} />);
+    render(<DiveNeighborNav diveUuid="current-uuid" />);
 
-    // Rendered from the prop, so it is on screen before the neighbours arrive -
-    // asserted without awaiting for exactly that reason.
-    expect(screen.getByText(/April 4, 2021 at 10:04/)).toBeInTheDocument();
+    // On screen before the neighbours land, since neither word depends on them.
+    expect(screen.getByText("Previous")).toBeInTheDocument();
+    expect(screen.getByText("Next")).toBeInTheDocument();
 
-    // Then let the fetch settle, so the state update lands inside the test rather
-    // than after teardown.
-    await screen.findByRole("link", { name: /previous dive/i });
+    await screen.findByRole("link", { name: /previous dive:/i });
+    expect(screen.getByText("Previous")).toBeInTheDocument();
+    expect(screen.getByText("Next")).toBeInTheDocument();
   });
 
-  it("leaves an end of the log dead rather than dropping its arrow", async () => {
-    // The newest dive in the log. A dropped arrow would slide the date sideways as
+  it("names the pair, so the two links are heard as one control", async () => {
+    vi.mocked(divesAPI.getDiveNeighbors).mockResolvedValue(neighbors());
+
+    render(<DiveNeighborNav diveUuid="current-uuid" />);
+
+    expect(
+      screen.getByRole("navigation", { name: "Adjacent dives" }),
+    ).toBeInTheDocument();
+    await screen.findByRole("link", { name: /previous dive:/i });
+  });
+
+  it("leaves an end of the log dead rather than dropping its button", async () => {
+    // The newest dive in the log. A dropped button would slide the pair sideways as
     // the diver steps onto it, and would say nothing about why stepping stopped.
     vi.mocked(divesAPI.getDiveNeighbors).mockResolvedValue(
       neighbors({ next: null }),
     );
 
-    render(<DiveDateNav diveUuid="current-uuid" startTime={APRIL_4} />);
+    render(<DiveNeighborNav diveUuid="current-uuid" />);
 
     await screen.findByRole("link", { name: /previous dive/i });
     // Still a link, and still named: `aria-disabled` rather than a `<button
@@ -109,29 +122,22 @@ describe("DiveDateNav", () => {
     expect(next).toHaveAttribute("aria-busy", "false");
   });
 
-  it("keeps the same arrow node - and the focus on it - across a step", async () => {
+  it("keeps the same link node - and the focus on it - across a step", async () => {
     // The reason this component doesn't use `next/link`. A keyboard diver tabs to
-    // `>`, presses Enter, and lands on the next dive; if the arrow's DOM node is
+    // "Next", presses Enter, and lands on the next dive; if the link's DOM node is
     // replaced on the way - which alternating `<Link>` with anything else does -
     // the browser drops focus to `<body>` and they tab back for every dive in the
     // trip.
     vi.mocked(divesAPI.getDiveNeighbors).mockResolvedValue(neighbors());
 
-    const { rerender } = render(
-      <DiveDateNav diveUuid="current-uuid" startTime={APRIL_4} />,
-    );
+    const { rerender } = render(<DiveNeighborNav diveUuid="current-uuid" />);
     const before = await screen.findByRole("link", { name: /next dive/i });
     before.focus();
     expect(document.activeElement).toBe(before);
 
     // The step itself: same component, new dive, neighbours not yet known - the
-    // window in which the arrow has nothing to point at.
-    rerender(
-      <DiveDateNav
-        diveUuid="newer-uuid"
-        startTime="2021-04-05T09:00:00+02:00"
-      />,
-    );
+    // window in which the button has nothing to point at.
+    rerender(<DiveNeighborNav diveUuid="newer-uuid" />);
 
     const during = screen.getByRole("link", { name: "Next dive" });
     expect(during).toBe(before);
@@ -154,7 +160,7 @@ describe("DiveDateNav", () => {
     // still opens the dive in a new tab.
     vi.mocked(divesAPI.getDiveNeighbors).mockResolvedValue(neighbors());
 
-    render(<DiveDateNav diveUuid="current-uuid" startTime={APRIL_4} />);
+    render(<DiveNeighborNav diveUuid="current-uuid" />);
     const next = await screen.findByRole("link", { name: /next dive/i });
 
     next.click();
@@ -171,7 +177,7 @@ describe("DiveDateNav", () => {
     expect(push).not.toHaveBeenCalled();
   });
 
-  it("leaves both arrows dead when the neighbours can't be loaded", async () => {
+  it("leaves both buttons dead when the neighbours can't be loaded", async () => {
     // A failure here is not the diver's problem - the dive they came for rendered
     // fine - so it costs them the shortcut and nothing else.
     const consoleError = vi
@@ -179,7 +185,7 @@ describe("DiveDateNav", () => {
       .mockImplementation(() => {});
     vi.mocked(divesAPI.getDiveNeighbors).mockRejectedValue(new Error("boom"));
 
-    render(<DiveDateNav diveUuid="current-uuid" startTime={APRIL_4} />);
+    render(<DiveNeighborNav diveUuid="current-uuid" />);
 
     // Waiting on the log line, not on the call: the call is made synchronously in
     // the effect, so waiting for it would resolve on the first check and assert a
@@ -191,22 +197,20 @@ describe("DiveDateNav", () => {
       );
     });
     for (const name of ["Previous dive", "Next dive"]) {
-      const arrow = screen.getByRole("link", { name });
-      expect(arrow).toHaveAttribute("aria-disabled", "true");
-      expect(arrow).not.toHaveAttribute("href");
+      const link = screen.getByRole("link", { name });
+      expect(link).toHaveAttribute("aria-disabled", "true");
+      expect(link).not.toHaveAttribute("href");
     }
   });
 
-  it("never aims the arrows at the dive that was just navigated away from", async () => {
-    // Following one of these arrows swaps the uuid on a component that stays
+  it("never aims the pager at the dive that was just navigated away from", async () => {
+    // Following one of these links swaps the uuid on a component that stays
     // mounted. Held as plain state, the old dive's neighbours would still be on
     // screen for the length of the new fetch - long enough to click, and the click
     // would land two dives from where it looked like it went.
     vi.mocked(divesAPI.getDiveNeighbors).mockResolvedValue(neighbors());
 
-    const { rerender } = render(
-      <DiveDateNav diveUuid="current-uuid" startTime={APRIL_4} />,
-    );
+    const { rerender } = render(<DiveNeighborNav diveUuid="current-uuid" />);
     await screen.findByRole("link", { name: /previous dive/i });
 
     let resolveSecond: (value: DiveNeighbors) => void = () => {};
@@ -215,12 +219,7 @@ describe("DiveDateNav", () => {
         resolveSecond = resolve;
       }),
     );
-    rerender(
-      <DiveDateNav
-        diveUuid="newer-uuid"
-        startTime="2021-04-05T09:00:00+02:00"
-      />,
-    );
+    rerender(<DiveNeighborNav diveUuid="newer-uuid" />);
 
     // Dead, rather than still carrying the previous dive's destination.
     expect(
@@ -232,13 +231,13 @@ describe("DiveDateNav", () => {
         previous: {
           uuid: "current-uuid",
           dive_number: 12,
-          start_time: APRIL_4,
+          start_time: "2021-04-04T10:04:47+02:00",
         },
       }),
     );
     await waitFor(() => {
       expect(
-        screen.getByRole("link", { name: /previous dive/i }),
+        screen.getByRole("link", { name: /previous dive:/i }),
       ).toHaveAttribute("href", "/dives/current-uuid");
     });
   });
