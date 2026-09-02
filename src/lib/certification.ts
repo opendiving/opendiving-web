@@ -91,10 +91,18 @@ export function certificationRenewals<T extends { expires_on?: string | null }>(
     .sort((a, b) => a.expiresOn.localeCompare(b.expiresOn));
 }
 
-// Maps onto the `Badge` variants already in the design system, matching how
-// `serviceStatusBadgeVariant` handles the equivalent gear states.
+// Maps onto the `Badge` variants already in the design system, on the same filled
+// brand scale as `serviceStatusBadgeVariant`: `destructive` for the state that has
+// already gone wrong, the brand `coral` for the one that is about to. There is no
+// `teal` counterpart here because there is no settled state to paint - a
+// certification with plenty of time left produces no status at all and never
+// reaches this function, which is why the card exists only when something is
+// flagged.
+//
+// `expiring_soon` was `secondary` until the service scale moved, and grey beside a
+// coral "Due soon" on the same dashboard read as "not really a status".
 export function certificationExpiryBadgeVariant(
   status: CertificationExpiryStatus,
-): "destructive" | "secondary" {
-  return status === "expired" ? "destructive" : "secondary";
+): "destructive" | "coral" {
+  return status === "expired" ? "destructive" : "coral";
 }

@@ -2971,6 +2971,17 @@ Reading the accessibility tree catches labelling; contrast needs measuring. Both
 trust arithmetic over the rendered value - `bg-destructive/10` composites over whatever is behind
 it, so the painted background is not the token's own colour.
 
+**Switch themes the way the app does, not by poking the class from the console.** Toggling `dark` on
+`documentElement` and reading `getComputedStyle` in the same script is the obvious move and it lies:
+the custom property re-resolves - `getPropertyValue("--destructive-foreground")` correctly reported
+the light `210 40% 98%` - while `color` on the elements already on the page kept painting the _dark_
+theme's value. That reads as a theme-constant token and is not one. It cost a wrong pair of figures
+in the service-badge table below, caught only because the number disagreed with a comment
+`globals.css` had carried for weeks. Emulate `prefers-color-scheme` and **reload** - the Browser
+pane's `resize_window{colorScheme}`, or Playwright's `colorScheme` - then measure. The tell that you
+have the real thing is that unrelated body text changes colour too; if the surrounding page still
+looks like the other theme, only the variable moved.
+
 `npx @axe-core/cli` covers the public pages; the authenticated ones have no session under it, so
 those were swept with an in-page script that walks every text node, resolves the nearest opaque
 background, and applies WCAG's large-text threshold. That is what found the footer regression and
@@ -3372,6 +3383,178 @@ All/Year/Month was active, so that one was a functional bug, not a cosmetic one.
 `Button` `secondary` variant, which sounds risky and isn't: nothing in the app uses it. `--muted`
 deliberately stayed at 16% despite having been the same value - it is a large-area wash (the footer,
 callouts), and 22% over that much surface reads as a panel rather than a tint.
+
+### Correction: the service scale is three brand fills now, and the amber was a fourth accent
+
+The section above is still the reason `due_soon` is not `secondary`, and its measurements still
+hold. What changed is the whole scale. `serviceStatusBadgeVariant` returns `"coral"` for `due_soon`
+and `"teal"` for `ok` - two new `Badge` variants over the two brand accents - alongside the
+unchanged `"destructive"`, which has always painted `bg-destructive-solid`. `warning` and `outline`
+are both out of this function.
+
+**The scale is read by hue now, not by weight.** It used to escalate by how much ink a chip spent:
+an outline for "In service", a fill for "Due soon", a heavier fill for "Overdue". All three are
+filled, so what separates them is teal against coral against deep coral - the settled state on the
+cool half of the brand pair, the two urgent ones on the warm half. That trade is deliberate: an
+outline chip beside two filled ones read as an absence rather than a state, and "In service" is a
+verdict the app is making, not a lack of one. The `outline` variant is untouched and still carries
+"Archived", "Paused" and "Rented" - facts about an item rather than judgments about it, which is the
+line the scale now draws.
+
+The palette has three accents by design - `--coral` at hue 16, `--teal` at 180, `--pressure` at 265
+opposite the pair - and the reasoning under _Errors are coral_ is that a colour belonging to no
+other token reads as imported rather than chosen. `--warning`'s amber (`32 92% 27%` light,
+`38 95% 62%` dark) was exactly that on a status chip: a fourth hue, introduced for one badge. Coral
+is the accent the app already owns, and "Due soon" is the state the brand colour is well suited to -
+urgent enough to notice, not a failure.
+
+**Coral and `destructive` separate by lightness, and could never separate by hue.** The two are six
+degrees apart (16 against `--destructive-solid`'s 10) - 2.35:1 between the two fills - so the urgent
+end reads as pale coral then deep coral, and the words "Due soon" and "Overdue" do the rest. That is
+the same trade already accepted for `--ceiling` beside `--coral` on the dive profile, and for the
+coral sign-in button beside a `bg-destructive-solid` delete button. Teal has no such problem: it is
+the opposite side of the wheel, which is the whole reason it is the accent the settled state gets.
+
+**Each accent needed a `-foreground`, and both are white.** This is the first place either brand
+colour is used as a _fill_; everywhere else they are strokes or glyphs - `text-coral`, the logo, the
+buttons that took the hues directly when _One coral and one teal_ below collapsed the family. Teal
+is the dark half of the pair (`#008080`) and wanted white on its own merits: 4.77:1 under white
+against 3.8:1 under a near-black. Coral did not, and takes white anyway, so that the three chips
+carry one label colour between them and match `--destructive-foreground` on the third.
+
+**That is where this palette pays, and the bill is 2.50:1.** White on `#FF7F50` is well under the
+4.5:1 AA asks of the label; a near-black would have been 7.23:1, and `--coral-foreground` carried
+exactly that until the uniformity was chosen over it. Unlike the fill misses below, this one is on
+the _text_ - the part of the chip that carries the meaning - so it is a real legibility cost rather
+than an argument about whether a boundary is visible. It is recorded here, and in the token's own
+comment in `globals.css`, because it is the kind of decision the next contrast sweep rediscovers as
+a bug. The fix, if it is ever wanted back, is the near-black on `--coral-foreground` alone; nothing
+else in the scale depends on it.
+
+**Those tokens are not what the collapse removed, which is why they may exist at all.**
+`--coral-solid` and `--coral-text` were _other corals_, tuned darker for a filled button and for
+text on white, and the point of removing them was to stop four coral-ish classes competing at every
+call site. `--coral-foreground` is not a coral: it is the label that sits on one, the pairing
+`--destructive`, `--success`, `--warning` and every other filled token in the palette already carry.
+A fill with no foreground token is the thing that has no precedent here.
+
+**Measured off the rendered dashboard and gear table, both themes**, per _Verifying colour work_.
+The two brand fills paint `rgb(255, 127, 80)` and `rgb(0, 128, 128)` in both themes - `coral` and
+`teal` exactly, and the tokens exactly, since neither class carries alpha and so neither composites
+over anything.
+
+| Surface                                | Light  | Dark   | Bar   |
+| -------------------------------------- | ------ | ------ | ----- |
+| Badge label on the coral fill          | 2.50:1 | 2.50:1 | 4.5:1 |
+| Coral fill against `--card`            | 2.50:1 | 6.51:1 | 3:1   |
+| Badge label on the teal fill           | 4.77:1 | 4.77:1 | 4.5:1 |
+| Teal fill against `--card`             | 4.77:1 | 3.41:1 | 3:1   |
+| Badge label on `--destructive-solid`   | 5.61:1 | 5.87:1 | 4.5:1 |
+| `--destructive-solid` against `--card` | 5.87:1 | 2.77:1 | 3:1   |
+
+The `destructive` rows are measured rather than changed - that chip is untouched by this work. Its
+label is the one figure here that is _not_ theme-constant, and that is worth stating because the
+brand rows above it are: `--destructive-foreground` is redeclared under `.dark` (`210 40% 98%`
+light, `0 0% 100%` dark) where `--coral-foreground` and `--teal-foreground` are not, which is why
+its light and dark labels differ and theirs do not. Those two figures agree with the ones already on
+the `--destructive-solid` comment in `globals.css`. The fill misses the non-text bar in the dark
+theme, which is the mirror of coral's light-theme miss and has the same answer: a saturated
+red-orange chip on a 13%-lightness card is not a chip you fail to see, and its label clears AA in
+both. Both are on record here so that a future change to `--card` has somewhere to check.
+
+The coral label's 2.50:1 is the one figure in this table that is not an argument about visibility;
+see _That is where this palette pays_ above.
+
+**Coral against a white card was the miss this section set out to justify, and it was accepted.** It
+is the mirror of the bug this section was written about - a chip that does not separate from the
+card behind it - and the reason it is not the same defect is the reason the light `--secondary` gap
+was left alone two paragraphs up: **it separates by hue, not lightness.** A 100%-saturation salmon
+on white is unmistakably a chip; the 1.2:1 case was a near-neutral grey three points off its card,
+which was not. What keeps the _fill_ outside SC 1.4.11 rather than merely forgiven by it is that the
+label carries the whole meaning; the label's own contrast is a separate matter, and on this one chip
+it is the cost named above. Watch the fill if `--card` ever stops being white in the light theme.
+
+`--warning` keeps its `Badge` variant and four other consumers - `courseStatusBadgeVariant` uses it
+for `incomplete` and `provisional`; `dive-exposure-card`, `dive-mixtures-card` and `mixture-fields`
+use `text-warning`; and `terms/page.tsx` still draws the safety notice with `border-warning/40`,
+`bg-warning/10` and `text-warning`, which is the use the correction under _Theme tokens_ was written
+about. Nothing was orphaned.
+
+That correction is now one item out of date in the other direction: it lists `lib/gear-service.ts`
+among the token's consumers, and after this change that file no longer touches `--warning` at all.
+(It also said "overdue service", which was wrong when written - `overdue` has always been
+`destructive`, and it was `due_soon` that borrowed the amber.)
+
+### And the dashboard puts the chip last, where the rows align
+
+`ServiceStatusBadge` renders the badge then the detail ("Due soon", "Due in 3 days"), which is right
+in the two places it is a _column_: the gear table's Service cell, and the gear detail card's
+schedule rows, where the badge is the first thing under a label and nothing to its right lines up.
+
+The dashboard's service-due card is not a column. Its rows are `flex justify-between` with the item
+name on the left and this component on the right, so badge-first parks the coloured chip in the
+middle of the row while the grey detail text takes the edge the rows actually align on - the one
+strong mark on the card, pointing at nothing. `detailFirst` (a prop, default off) swaps the two
+there only, and the chips line up on the right edge with the day counts leading into them.
+
+A prop rather than composing the two pieces in the card: the component's whole reason for existing
+is that the three places service status renders can't drift apart, and inlining a `Badge` in the
+dashboard to reorder it is exactly that drift.
+
+**`CertificationExpiryCard` is the same row and got the same treatment**, and it was missed on the
+first pass. It renders directly below the service-due card on the dashboard, off the same `Link`
+class string, with the same left name block and the same badge-plus-detail group on the right - so
+badge-first there produced exactly the stranded chip this section is about, now sitting one card
+under the fixed version of itself. It composes its own `Badge` rather than going through
+`ServiceStatusBadge` (different labels, different variants), so this one is an inline swap; the
+argument above is about not inlining a `Badge` where a shared component already exists, not about
+never inlining one.
+
+**And the colours were unified after that**, so the two cards no longer speak different
+vocabularies. `certificationExpiryBadgeVariant` returns `destructive` / `coral` where it returned
+`destructive` / `secondary`: grey beside a coral "Due soon" on the same dashboard read as "not
+really a status", which is the same complaint that moved service status off `secondary` in the first
+place, one card lower.
+
+**Certifications get no `teal`, and the asymmetry is real rather than an omission.** The service
+scale has three states because "In service" is a verdict worth painting. `CertificationExpiryStatus`
+has two, and `certificationExpiryStatus` returns `null` for a card with plenty of time left - so a
+healthy certification produces no status, never reaches this function, and never renders a chip.
+There is nothing for a settled colour to sit on, which is the same fact that makes the card render
+only when something is flagged.
+
+That recolour reaches three render sites, not just the dashboard: `certifications/page.tsx`, the
+`certification-view-dialog`, and `CertificationExpiryCard`. One mapping function is what makes that
+a single edit - the same property that let the service scale's own recolour need no sweep.
+
+**The widths are per-card, not global.** Service chips are `min-w-24` (96px, clearing "In service"
+at ~79px); certification chips are `min-w-28` (112px, clearing "Expiring soon"). One number across
+both would pad the shorter set to no purpose - what has to line up is the right edge, and
+`justify-between` already guarantees that regardless of chip width.
+
+**The courses table's Status column got the same width, and nothing else.** It is the third status
+column in the app and was the last one still ragged - six labels at six widths, where gear's Service
+column is uniform. Same `min-w-24`; "Not passed" is the widest at 88px, so the same 6rem clears it.
+`whitespace-nowrap` is doing more work there than in the other two: `courseStatusLabel` falls back
+to the raw wire value for a status this build doesn't recognise, so unlike the service and
+certification labels its content is not drawn from a fixed set and has no length bound at all.
+
+Deliberately layout-only. `courseStatusBadgeVariant` still returns `default` / `secondary` /
+`warning` / `destructive` / `outline` - a fourth vocabulary beside the brand fills, and the app's
+only remaining consumer of the amber `warning` badge. It survives because courses never share a
+screen with a gear or certification chip: they render on `/courses` and `/courses/[id]` and nowhere
+else, so the mismatch that forced the certification card's hand does not arise. Whether courses
+should join the brand scale is open, and is a bigger question than a column width - the scale has
+six states against gear's three, and `completed` currently owns the only chip in the app carrying
+`--primary`.
+
+Both service and certification chips also carry `whitespace-nowrap`, which changes nothing today and
+is the point: every label fits its width in Inter, and the failure it guards against is a chip
+quietly becoming two lines tall rather than one - a fallback font while Inter loads, a browser
+minimum-font-size, a longer label added later. Measured by forcing a 50px `max-width` on a live "In
+service" chip: 22px tall with the guard, 38px without. A chip that overflows its pill is visible
+immediately; one that grows a second line just looks like a slightly taller row, and the min-width
+makes that _more_ likely to go unnoticed, not less, because the pill still looks deliberate.
 
 ## One card-header shape: `space-y-1.5` only reaches `CardHeader`'s _direct_ children
 
@@ -10214,12 +10397,14 @@ things, and only one of them is a copyright question at all.
 The token entry above says `--warning` has "one use, the terms page's safety notice". That was true
 when it was written and is not any more: `dive-exposure-card.tsx` colours an alert exposure figure
 with `text-warning`, `dive-mixtures-card.tsx` and `mixture-fields.tsx` both use it on mixture
-warnings, `ui/badge.tsx` has a `warning` variant built on `bg-warning`, and `lib/gear-service.ts`
-borrows it for overdue service. The safety notice is therefore **not** load-bearing for the token,
-and the reason to keep it is its own: it is the one part of the page that was unambiguously true
-before this change, and a dive log disclaiming safety advice should not look like a footnote. It
-survives this sweep on its merits, with only "a platform for logging and sharing diving experiences"
-corrected to "software for logging dives".
+warnings, `ui/badge.tsx` has a `warning` variant built on `bg-warning`, and `lib/course.ts` returns
+that variant for `incomplete` and `provisional` courses. (`lib/gear-service.ts` was in this list
+too, for `due_soon` - not "overdue", which has always been `destructive`. It moved to `--coral`; see
+_Correction: the service scale is three brand fills now_.) The safety notice is therefore **not**
+load-bearing for the token, and the reason to keep it is its own: it is the one part of the page
+that was unambiguously true before this change, and a dive log disclaiming safety advice should not
+look like a footnote. It survives this sweep on its merits, with only "a platform for logging and
+sharing diving experiences" corrected to "software for logging dives".
 
 ## The footer's column labels were headings, and the footer is shared chrome
 
@@ -13313,6 +13498,12 @@ are wrong in any given spot and none of which is wrong in a way the compiler or 
 `--coral` is `coral` (`#FF7F50`) and `--teal` is `teal` (`#008080`, moved from `187 60% 45%`).
 Tailwind's `coral` and `teal` keys are plain strings rather than objects now, so `bg-coral-solid`
 and friends are not merely discouraged, they don't compile.
+
+**Superseded on 2026-09-02:** both keys are objects again, carrying a `DEFAULT` and a `foreground`
+(`tailwind.config.mts`). The removed classes stay removed - there is no `solid` or `text` key on
+either - so `bg-coral-solid` still doesn't compile and the paragraph's point survives; what changed
+is that a filled accent needed a label token, which is a pairing rather than a rival hue. See
+_Correction: the service scale is three brand fills now_.
 
 **`--coral` moved too, and the move is 0.3 of a percentage point.** It was `16 100% 66%`, which
 renders `#FF8052` — two units off `coral` on green and on blue. That would be beneath notice if

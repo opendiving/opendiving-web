@@ -33,8 +33,19 @@ const config: Config = {
         // palette is now one hue each, so `bg-coral`/`text-coral` and
         // `bg-teal`/`text-teal` are the whole vocabulary. `destructive` below
         // keeps its `solid` variant - errors are the deliberate exception.
-        coral: "hsl(var(--coral))",
-        teal: "hsl(var(--teal))",
+        //
+        // The `foreground` on each is not a second coral or a second teal. It is
+        // the label that sits *on* that fill, the pairing every other filled token
+        // here already has, and the collapse was about differently-tuned brand
+        // hues rather than about the object.
+        coral: {
+          DEFAULT: "hsl(var(--coral))",
+          foreground: "hsl(var(--coral-foreground))",
+        },
+        teal: {
+          DEFAULT: "hsl(var(--teal))",
+          foreground: "hsl(var(--teal-foreground))",
+        },
         pressure: "hsl(var(--pressure))",
         ceiling: "hsl(var(--ceiling))",
         tooltip: {
