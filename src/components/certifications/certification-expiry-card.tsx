@@ -91,14 +91,24 @@ export function CertificationExpiryCard({
                 )}
               </div>
             </div>
+            {/* Detail first, then the chip, and one width for both chips - the same
+                treatment as the service-due card directly above this one on the
+                dashboard, for the same reason. These rows are `justify-between`, so
+                a leading badge parks the coloured chip mid-row and leaves the grey
+                date on the edge the rows align on. "Expiring soon" is the wider of
+                the two labels; `min-w-28` clears it with room for a fallback font, and
+                `whitespace-nowrap` keeps a chip that outgrows it one line tall. */}
             <div className="flex flex-wrap items-center gap-2">
-              <Badge variant={certificationExpiryBadgeVariant(status)}>
-                {certificationExpiryLabel(status)}
-              </Badge>
               <span className="text-xs text-muted-foreground">
                 {status === "expired" ? "Expired" : "Expires"}{" "}
                 {formatDateOnly(expiresOn)}
               </span>
+              <Badge
+                variant={certificationExpiryBadgeVariant(status)}
+                className="min-w-28 justify-center whitespace-nowrap"
+              >
+                {certificationExpiryLabel(status)}
+              </Badge>
             </div>
           </Link>
         ))}

@@ -184,8 +184,8 @@ describe("serviceStatusLabel / serviceStatusBadgeVariant", () => {
 
   it("maps onto existing badge variants", () => {
     expect(serviceStatusBadgeVariant("overdue")).toBe("destructive");
-    expect(serviceStatusBadgeVariant("due_soon")).toBe("warning");
-    expect(serviceStatusBadgeVariant("ok")).toBe("outline");
+    expect(serviceStatusBadgeVariant("due_soon")).toBe("coral");
+    expect(serviceStatusBadgeVariant("ok")).toBe("teal");
   });
 });
 

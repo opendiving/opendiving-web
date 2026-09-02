@@ -25,9 +25,9 @@ export function DetailPageSkeleton({ backHref, backLabel }: PageSkeletonProps) {
         backLabel={backLabel}
         // Sized to the type they stand in for, measured rather than guessed:
         // `text-3xl` sets a 36px line box and the subtitle's `text-base` a 24px
-        // one, so the cards below start at the offset they'll settle at. (The
-        // dive page is the one exception - its subtitle is `DiveDateNav`, whose
-        // buttons make it 28px, so that page alone still moves 4px.)
+        // one, so the cards below start at the offset they'll settle at. Every
+        // detail page's subtitle is now plain text, the dive page's included -
+        // its prev/next pager used to sit in this line and cost it 4px.
         title={<Skeleton className="h-9 w-64" />}
         subtitle={<Skeleton className="h-6 w-44" />}
         actions={

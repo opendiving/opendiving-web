@@ -13,11 +13,19 @@ export interface PageHeaderProps {
    */
   title: ReactNode;
   /**
-   * Usually a plain string. A node, so the dive page can hang its prev/next
-   * arrows off either end of the date - the `<p>` below styles the line either
-   * way, and anything richer must stay phrasing content to sit inside it.
+   * Usually a plain string. A node for the same reason `title` is one - it
+   * stands in for a `Skeleton` bar during the load. The `<p>` below styles the
+   * line either way, so anything richer must stay phrasing content.
    */
   subtitle?: ReactNode;
+  /**
+   * Navigation *between records*, as opposed to the `actions` that operate on
+   * the one being shown - currently the dive page's previous/next pager. Sits
+   * on the title's own line, at the opposite end of that row from `actions`:
+   * it is about the record named beside it, and the width between the two
+   * keeps a step away from the destructive button.
+   */
+  nav?: ReactNode;
   /** Optional right-aligned actions (e.g. Edit/Delete buttons on detail pages). */
   actions?: ReactNode;
 }
@@ -29,6 +37,7 @@ export function PageHeader({
   backLabel,
   title,
   subtitle,
+  nav,
   actions,
 }: PageHeaderProps) {
   return (
@@ -39,12 +48,25 @@ export function PageHeader({
           {backLabel}
         </Link>
       </Button>
-      <div className="flex items-center justify-between">
+      {/* Stacked below `sm`, side by side above it. As one `justify-between` row
+          at every width, the title block got about 150px on a 375px screen with
+          Edit and Delete beside it - enough to wrap the dive page's date line
+          over five lines. `items-start` rather than `items-center` so `actions`
+          sits on the title's line and not on the midpoint between the title and
+          the subtitle, which is where `nav` now is. */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">{title}</h1>
+          {/* `nav` shares the title's line, and `h-9` on its controls is exactly
+              the `text-3xl` line box, so the two sit level without either being
+              nudged. Wraps below the title on a narrow screen rather than
+              squeezing it. */}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <h1 className="text-3xl font-bold">{title}</h1>
+            {nav}
+          </div>
           {subtitle && <p className="text-muted-foreground mt-1">{subtitle}</p>}
         </div>
-        {actions && <div className="flex gap-2">{actions}</div>}
+        {actions && <div className="flex shrink-0 gap-2">{actions}</div>}
       </div>
     </div>
   );
