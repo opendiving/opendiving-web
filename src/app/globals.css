@@ -110,13 +110,20 @@
        favicon - the brand mark and its own favicon were quietly different colours.
        180 100% 25% needs no such correction; it lands on #008080 exactly.
 
-       The cost is real and was accepted knowingly: `coral` under white is 2.5:1
-       and as text on the light theme's white background is the same 2.5:1, so the
-       hero accent word, the header's active nav item and the coral sign-in button
-       are below WCAG AA in the light theme. `teal` is 4.8:1 under white and on
-       white, so it clears AA on both counts. The exception that keeps its tuned
-       pair is the one where colour carries meaning rather than brand: errors and
-       destructive actions, --destructive / --destructive-solid below. */
+       The cost is real and was accepted knowingly, and it lands in two different
+       places rather than one. Coral as *text* regresses in the light theme only -
+       2.5:1 on white against --coral-text's 6.1:1 - which is the hero accent word
+       and the header's active nav item; the dark theme is untouched there, since
+       --coral-text already resolved to the brand coral on that background.
+       Coral as a *fill* under white regresses in **both** themes - 2.5:1 against
+       --coral-solid's 5.1:1 - because neither token was ever redeclared under
+       .dark: the fill and the white label on it are theme-constant, so the pairing
+       never involved --background at all. That is the sign-in button in the header
+       and in AuthForm, and it is the one place this change makes the dark theme
+       worse. `teal` is 4.8:1 both under white and on white, so it clears AA on both
+       counts and needs no such note. The exception that keeps its tuned pair is the
+       one where colour carries meaning rather than brand: errors and destructive
+       actions, --destructive / --destructive-solid below. */
     --coral: 16 100% 65.7%;
     --teal: 180 100% 25%;
 

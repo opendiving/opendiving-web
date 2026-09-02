@@ -13320,9 +13320,9 @@ renders `#FF8052` — two units off `coral` on green and on blue. That would be 
 favicon were two different colours by a hair. `16 100% 65.7%` is `#FF7F50` exactly. `180 100% 25%`
 needs no such correction; it lands on `#008080` on the nose.
 
-**This is a deliberate trade, not an oversight, and the losing side is light-theme contrast.** The
-numbers, measured rather than estimated, white being `--primary-foreground` and the light theme's
-`--background`:
+**This is a deliberate trade, not an oversight.** The numbers, measured rather than estimated — "on
+white" meaning the light theme's `--background`, "under white" meaning `--primary-foreground`, which
+is `0 0% 100%` in both themes:
 
 | pairing               | before                      | after     |
 | --------------------- | --------------------------- | --------- |
@@ -13341,10 +13341,21 @@ the 3:1 that WCAG asks of a graphical object, which is what the chart strokes an
 are. That is the whole of teal's cost, and it is why teal needed no `-text` variant to begin with —
 CSS named `teal` at 25% lightness precisely so it could carry white and be read on white.
 
-Coral does not survive as well, and the four places that feel it are all light-theme: the landing
-hero's accent word, the header's active nav item (desktop and mobile), the species card's hover
-border, and the coral sign-in button in the header and `AuthForm`. The dark theme is unchanged
-throughout, `--coral-text` having resolved to the brand coral there already.
+**Coral's cost lands in two places, and only one of them is light-theme-only.** The distinction is
+which token each call site was on, and it is easy to state backwards:
+
+- **Coral as text regresses in the light theme alone.** The landing hero's accent word, the header's
+  active nav item (desktop and mobile) and the species card's hover border were on `--coral-text`,
+  which _was_ redeclared under `.dark` — and redeclared to the brand coral itself, because on a
+  near-black background the brand coral is already 8:1. So the dark theme sees no change at all in
+  these three.
+- **Coral as a fill under white regresses in both themes.** The sign-in button in the header and in
+  `AuthForm` were on `--coral-solid`, which was **never** redeclared under `.dark` — and neither is
+  `--coral`, nor `--primary-foreground`. Fill and label are both theme-constant, so that pairing
+  never involved `--background`: it was 5.1:1 in both themes and is 2.5:1 in both themes. This is
+  the one thing in the change that makes the _dark_ theme worse, and the first draft of this entry
+  said the dark theme was unchanged throughout — wrong, because it reasoned from `--coral-text`'s
+  dark-theme behaviour about a button that never used that token. A code reviewer caught it.
 
 **The exception is errors and destructive actions**, and it is the exception on purpose.
 `--destructive` / `--destructive-solid` keeps its tuned pair, because that colour is carrying
