@@ -7436,7 +7436,8 @@ name). The two differ by whether the name _is_ the settlement or sits inside it,
 string says which. The structured address does, which is why the API composes it there and why the
 answer has to travel rather than be recomputed.
 
-That costs the two things the trim's own note lists, and both are smaller than they look:
+That costs the two things the trim's own note lists, plus one it could not have foreseen. All three
+are smaller than they look:
 
 - **Old rows keep their old label.** A trip saved before this holds the provider's label, and there
   is no second field to recompose the short form from, so it renders as it stands and re-picking the
@@ -7448,6 +7449,16 @@ That costs the two things the trim's own note lists, and both are smaller than t
   the key does not lose is the ability to separate two places of one name: "Moalboal, Cebu" and
   "Moalboal, Negros Oriental" both compose to "Moalboal, Philippines", but they sit at different
   coordinates, and the coordinates were always in the key.
+- **A trip stops being findable by its region.** `_search_conditions` in the API's `trips.py` ORs a
+  search term against `TripLocation.display_name` as well as `.name`, so a trip in Moalboal used to
+  match a search for "Cebu" through the stored label. `_short_location` composes place _or_ region
+  and then the country - never both - so once the place is known the region is gone from the row
+  entirely, and that search finds nothing. Searching the country still works, and so does the town.
+  Nothing catches this: the API's `test_the_display_name_matches_too` hand-writes a fixture label
+  containing "Cebu" rather than composing one, so it passes either way, and the web has no test that
+  searches trips at all. Left as it stands rather than repaired here - the repair is a second stored
+  field or a search that reaches the geocoder, both of which are an API change, and neither is worth
+  buying with a label a diver reads on every trip they own.
 
 The menu hints go short with the stored value rather than staying long to disambiguate, in both
 pickers. Two Moalboals do then read identically in the menu - the loss is real and it is the price
