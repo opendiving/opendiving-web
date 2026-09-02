@@ -8,7 +8,7 @@ import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { divesAPI, Dive } from "@/lib/api/dives";
 import { tripsAPI, Trip } from "@/lib/api/trips";
 import { coursesAPI, Course } from "@/lib/api/courses";
-import { DiveDateNav } from "@/components/dives/dive-date-nav";
+import { DiveNeighborNav } from "@/components/dives/dive-neighbor-nav";
 import { DiveDetailProvider } from "@/components/dives/dive-detail-context";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -16,6 +16,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { DetailPageSkeleton } from "@/components/ui/page-skeleton";
 import { NotFoundState } from "@/components/ui/not-found-state";
 import { Edit, Trash2, Loader2 } from "lucide-react";
+import { formatDiveStartTime } from "@/lib/date-time";
 import Link from "next/link";
 import { PageSpinner } from "@/components/ui/page-spinner";
 
@@ -47,7 +48,7 @@ export default function DiveDetailLayout({
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
   // Both stored with the uuid they were looked up for, and read back only while
   // the dive on screen still names that uuid - the same shape, and for the same
-  // reason, as `DiveDateNav`'s neighbours. This state now outlives a step, so
+  // reason, as `DiveNeighborNav`'s neighbours. This state now outlives a step, so
   // held plainly it would spend the second round trip after a boundary-crossing
   // step showing the *previous* dive's trip beside the new dive's everything
   // else, as a live link to it, with `isLoadingDive` already false and nothing
@@ -154,7 +155,7 @@ export default function DiveDetailLayout({
   }
 
   // Only the *first* load stands the page in. Stepping to a neighbouring dive
-  // with the header's arrows is a same-route id change, which flips
+  // with the header's pager is a same-route id change, which flips
   // `isLoadingDive` again while `useResource` still holds the dive being left -
   // and this component staying mounted across the step is what makes that hold
   // worth anything.
@@ -186,10 +187,12 @@ export default function DiveDetailLayout({
         // The time of day sits here with the date rather than in a card of its
         // own below: the two are one fact, and splitting them put the dive's
         // date in the header and the clock it was on two scroll positions away.
-        // The arrows around it step to the chronologically adjacent dives.
-        subtitle={
-          <DiveDateNav diveUuid={dive.uuid} startTime={dive.start_time} />
-        }
+        subtitle={formatDiveStartTime(dive.start_time)}
+        // Beside the dive it steps away from, rather than inside the date line
+        // below it. The far end of this row is Delete, and the width between
+        // them is the point: a step is a thing you do repeatedly and quickly,
+        // and it should not share a corner with the button you must not miss.
+        nav={<DiveNeighborNav diveUuid={dive.uuid} />}
         actions={
           <>
             <Button variant="outline" asChild>

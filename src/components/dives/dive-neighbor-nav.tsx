@@ -5,17 +5,14 @@ import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { divesAPI, DiveNeighbor, DiveNeighbors } from "@/lib/api/dives";
-import { formatDiveDateTime, formatDiveStartTime } from "@/lib/date-time";
+import { formatDiveDateTime } from "@/lib/date-time";
 import { cn } from "@/lib/utils";
 
-export interface DiveDateNavProps {
+export interface DiveNeighborNavProps {
   diveUuid: string;
-  // The dive's own `start_time`, already on the page - so the line renders in
-  // full on the first paint and the arrows fill in around it.
-  startTime: string;
 }
 
-// What the arrow's tooltip and accessible name say about where it goes. The
+// What the button's tooltip and accessible name say about where it goes. The
 // neighbour's own date, not "older"/"newer": a diver skimming a trip knows the
 // dive they want by its day, and `#212` alone is ambiguous in a log with
 // duplicate numbers - which the numbering summary exists precisely because
@@ -33,21 +30,28 @@ function neighborLabel(
 }
 
 /**
- * The dive detail page's subtitle line: the dive's date and clock time with a
- * step-back and step-forward control around it.
+ * The dive detail page's pager: one step back and one step forward through the
+ * log, sitting opposite the "Back to Dives" link in the page header.
  *
- * Chronological, not list-order - `<` is the earlier dive and `>` the later one,
- * so a trip reads front to back however the log page happens to be sorted. See
- * `DiveNeighbors` for why that is the opposite of `getDives`' ordering.
+ * Chronological, not list-order - "Previous" is the earlier dive and "Next" the
+ * later one, so a trip reads front to back however the log page happens to be
+ * sorted. See `DiveNeighbors` for why that is the opposite of `getDives`'
+ * ordering.
  *
- * An end of the log leaves its arrow disabled rather than dropping it, so the
- * date doesn't slide sideways as a diver steps onto the oldest dive - and so the
- * end of the log is visible instead of merely being where clicking stops.
+ * The two labels are fixed words and never the neighbour's date. This is a
+ * control a diver clicks repeatedly, and a label that emptied and refilled with
+ * each step's fetch would resize the button under their cursor between two
+ * clicks. The date rides the accessible name and the tooltip instead, where it
+ * costs no layout.
+ *
+ * An end of the log leaves its button in place but dead rather than dropping it,
+ * so the pair doesn't shift sideways as a diver steps onto the oldest dive - and
+ * so the end of the log is visible instead of merely being where clicking stops.
  */
-export function DiveDateNav({ diveUuid, startTime }: DiveDateNavProps) {
+export function DiveNeighborNav({ diveUuid }: DiveNeighborNavProps) {
   // Keyed by the uuid they were fetched for. Navigating between two dives keeps
   // this component mounted with a new `diveUuid`, and a plain `neighbors` state
-  // would spend that render pointing the arrows at the previous dive's
+  // would spend that render pointing the buttons at the previous dive's
   // neighbours - a click landing somewhere the diver didn't aim.
   const [loaded, setLoaded] = useState<{
     diveUuid: string;
@@ -62,9 +66,9 @@ export function DiveDateNav({ diveUuid, startTime }: DiveDateNavProps) {
         const neighbors = await divesAPI.getDiveNeighbors(diveUuid);
         if (!cancelled) setLoaded({ diveUuid, neighbors });
       } catch (error) {
-        // Silent, and both arrows stay disabled. This is a shortcut to the rest
-        // of the log, not part of the dive the diver came to read, and a toast
-        // over the top of a page that loaded fine would say otherwise.
+        // Silent, and both buttons stay dead. This is a shortcut to the rest of
+        // the log, not part of the dive the diver came to read, and a toast over
+        // the top of a page that loaded fine would say otherwise.
         console.error("Failed to load neighbouring dives:", error);
       }
     };
@@ -77,54 +81,49 @@ export function DiveDateNav({ diveUuid, startTime }: DiveDateNavProps) {
   }, [diveUuid]);
 
   const neighbors = loaded?.diveUuid === diveUuid ? loaded.neighbors : null;
-  // "Not yet known" rather than "not there". Both render the same dead arrow, but
+  // "Not yet known" rather than "not there". Both render the same dead button, but
   // a screen reader following a step would otherwise hear the end of the log every
-  // time - the arrow's name and `aria-disabled` flip on each one - with no way to
+  // time - the button's name and `aria-disabled` flip on each one - with no way to
   // tell that from actually having reached the oldest dive.
   const isPending = loaded?.diveUuid !== diveUuid;
 
-  // Inline flow rather than a flex row, so the arrows travel with the text. As a
-  // flex row the date is one item that stretches to the full width of the line
-  // before wrapping, which parks `>` against the right edge of the header on a
-  // phone - a chevron floating a screen-width away from the date it belongs to.
-  // Inline, it simply follows the last word onto whatever line that word lands on.
+  // A landmark, so the pair is announced as one named thing rather than as two
+  // loose links in the middle of the header.
   return (
-    <span>
-      <NavArrow
+    <nav
+      aria-label="Adjacent dives"
+      className="flex shrink-0 items-center gap-2"
+    >
+      <NavLink
         direction="previous"
         neighbor={neighbors?.previous ?? null}
         isPending={isPending}
-        // Pulls the chevron's own padding back off the left edge so the date
-        // line still starts under the dive number above it.
-        className="-ml-1.5"
       />
-      {formatDiveStartTime(startTime)}
-      <NavArrow
+      <NavLink
         direction="next"
         neighbor={neighbors?.next ?? null}
         isPending={isPending}
       />
-    </span>
+    </nav>
   );
 }
 
-interface NavArrowProps {
+interface NavLinkProps {
   direction: "previous" | "next";
   neighbor: DiveNeighbor | null;
   // Whether `neighbor` being null means "still loading" rather than "end of log".
   isPending: boolean;
-  className?: string;
 }
 
 /**
- * One chevron. Always the same `<a>`, whether or not it currently leads anywhere.
+ * One step. Always the same `<a>`, whether or not it currently leads anywhere.
  *
  * That is the whole reason this doesn't use `next/link` and drive the unavailable
  * state with `disabled`, which is the obvious build. `<Link>` and a bare `<a>` are
  * different element types to React, so alternating between them - which every step
  * does, since arriving at a dive nulls the neighbours until the next fetch lands -
  * replaces the DOM node. The browser drops focus when the focused node goes, so a
- * keyboard diver pressing Enter on `>` landed on the next dive with focus on
+ * keyboard diver pressing Enter on "Next" landed on the next dive with focus on
  * `<body>` and had to tab all the way back for every single step. `disabled` on a
  * focused button costs the same thing.
  *
@@ -132,13 +131,16 @@ interface NavArrowProps {
  * the price of re-doing the two things `<Link>` was doing: pushing the route on a
  * plain click, and staying out of the way of a modified one so cmd-click still
  * opens a dive in a new tab.
+ *
+ * It only started paying for itself once the route tree stopped destroying this
+ * node from above. Until `dives/(detail)/layout.tsx` hoisted the fetch out of the
+ * dynamic segment, the App Router re-mounted the whole page on a `/dives/[id]`
+ * param change and focus landed on `<body>` however careful this component was -
+ * see "The step remounted the page, and hoisting the fetch into a route-group
+ * layout is what stopped it" in `DECISIONS.md`. Both halves are load-bearing: the
+ * hoist keeps the component mounted, and this keeps the node inside it.
  */
-function NavArrow({
-  direction,
-  neighbor,
-  isPending,
-  className,
-}: NavArrowProps) {
+function NavLink({ direction, neighbor, isPending }: NavLinkProps) {
   const router = useRouter();
   const isPrevious = direction === "previous";
   const Chevron = isPrevious ? ChevronLeft : ChevronRight;
@@ -151,16 +153,12 @@ function NavArrow({
 
   return (
     <Button
-      variant="ghost"
-      size="icon"
+      variant="outline"
+      size="sm"
       className={cn(
-        // `align-middle` because an inline-flex box baselines on its bottom
-        // edge, which would hang the chevron below the text it sits beside.
-        "h-7 w-7 shrink-0 align-middle",
         // Matches `Button`'s own `disabled:` styling, since `aria-disabled` is
         // what stands in for `disabled` here.
         !href && "pointer-events-none opacity-50",
-        className,
       )}
       asChild
     >
@@ -170,11 +168,13 @@ function NavArrow({
         tabIndex={0}
         // An `<a>` with no `href` is `generic` to the accessibility tree, not a
         // link, and a generic node carries no accessible name - so without this
-        // the unavailable arrow would stop announcing itself entirely rather
+        // the unavailable button would stop announcing itself entirely rather
         // than announcing itself as unavailable.
         role="link"
         aria-disabled={!href}
         aria-busy={isPending}
+        // The word on screen is the first word of this, which is what keeps the
+        // visible label part of the accessible one.
         aria-label={label}
         title={label}
         onClick={(event) => {
@@ -196,7 +196,9 @@ function NavArrow({
           router.push(href);
         }}
       >
-        <Chevron className="h-4 w-4" />
+        {isPrevious && <Chevron className="h-4 w-4 mr-1" />}
+        {isPrevious ? "Previous" : "Next"}
+        {!isPrevious && <Chevron className="h-4 w-4 ml-1" />}
       </a>
     </Button>
   );

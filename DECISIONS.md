@@ -5276,8 +5276,8 @@ Two things follow from hand-rolling the anchor. A plain click has to `router.pus
 cmd/ctrl/shift/alt-click has to be left alone, so a dive still opens in a new tab), and the
 unavailable arrow needs an explicit `role="link"` — an `<a>` with no `href` is `generic` to the
 accessibility tree, and a generic node has no accessible name, so without it the arrow would go from
-"unavailable" to unannounced. `dive-date-nav.render.test.tsx` pins the node identity and the focus
-directly, because nothing else about the rendered output changes when this regresses.
+"unavailable" to unannounced. `dive-neighbor-nav.render.test.tsx` pins the node identity and the
+focus directly, because nothing else about the rendered output changes when this regresses.
 
 **Which it pinned at the wrong altitude, and that is the second half of the same false claim.** The
 test steps the component with `rerender`, and a re-render is not a re-mount — so it asserted node
@@ -5303,6 +5303,10 @@ the header, a screen-width from the date it belongs to. Inline, it follows the l
 that word lands. The arrows take `align-middle`, since an `inline-flex` box baselines on its bottom
 edge and would otherwise hang below the text.
 
+(Both sentences describe a control that has left this line. The chevrons are labelled buttons beside
+the title now, the subtitle is a plain string, and nothing in the header carries `align-middle` —
+see _"The prev/next chevrons left the date line"_ below.)
+
 `PageHeader`'s `subtitle` widened from `string` to `ReactNode` for this. It stays inside the same
 `<p>`, so whatever a caller passes has to be phrasing content.
 
@@ -5313,6 +5317,9 @@ Delete beside it. Stacking that row below `sm` fixes it and was tried, but it mo
 page's header and belongs to whoever takes that on rather than to this control. Inline flow is what
 keeps the arrows tolerable in the meantime: they wrap with the text instead of stranding at the
 edges of a five-line block.
+
+(Taken on, in the section named just above: the title row stacks below `sm`, and this date wraps
+over two lines rather than five.)
 
 ## Both gas tables finally fit their slot
 
@@ -6553,6 +6560,11 @@ Two shifts survive deliberately. The dive detail page still moves 4px, because i
 and parameterising the shared skeleton for one page costs more than the 4px. The dashboard moves
 ~134px when a gear-service reminder is due, which is not a placeholder problem at all: whether that
 card exists is one of the things the request answers.
+
+(The first of those two is gone. The buttons left that line when the prev/next control became a
+pager beside the title - see _"The prev/next chevrons left the date line"_ below - so the dive
+page's subtitle is now the same plain 24px text as every other detail page's, and the shared `h-6`
+bar is exact for all of them.)
 
 ### Not done here
 
@@ -13695,7 +13707,7 @@ Both builds, because the two symptoms are the kind React's development-only doub
 produce, and a fix verified only under `next dev` would not have ruled it out.
 
 **No test can cover the step, and pretending otherwise is how this survived.**
-`dive-date-nav.render.test.tsx` steps the component with `rerender`, which is a re-render — the
+`dive-neighbor-nav.render.test.tsx` steps the component with `rerender`, which is a re-render — the
 exact thing that was never broken — so it passed throughout. The behaviour lives in the route tree,
 and reaching it needs the App Router, a server and a browser. What is pinned instead is the piece
 that _became_ testable: `dives/(detail)/[id]/page.render.test.tsx` renders the page against a
@@ -13714,7 +13726,7 @@ on itself on mount. It is about ten lines and it would work, but it fixes the sy
 place a diver can see it while leaving the page blanking through the skeleton — and it would have
 left the paragraphs above still claiming a node identity that no longer existed.
 
-**One consequence worth naming: the uuid guard in `DiveDateNav` is live for the first time.** It
+**One consequence worth naming: the uuid guard in `DiveNeighborNav` is live for the first time.** It
 exists so a step never leaves the arrows pointing at the dive just left, and it could not fire while
 the component was being re-mounted with a fresh uuid each time. It fires now, on the frame the new
 dive lands.
@@ -13752,3 +13764,77 @@ carries a course.
 stale window is one paint wide, so the test drives it by holding the second `getTrip` unresolved.
 Both boundary tests were confirmed to fail against the unkeyed version before being kept — a
 regression test that has never been seen red is a test of nothing.
+
+## The prev/next chevrons left the date line, and the header stopped fighting the phone
+
+The dive page's step-to-the-adjacent-dive control was two bare chevrons sitting _inside_ the
+subtitle, one either side of `Sunday, April 4, 2021 at 10:04 (UTC+02:00)`. Everything in _"`<` is
+the earlier dive, which is the opposite of what the log list would suggest"_ above is still the
+reasoning behind how it works; what follows replaces where it lives and what it looks like.
+
+**A chevron inline with a sentence reads as punctuation, not as a control.** With no word attached,
+`‹` before a date is a bracket until you hover it, and hovering is how you find out — which makes
+the discoverability of the whole feature depend on a tooltip. The two of them straddling a running
+line of text also gave the eye nothing to group: they were two marks at opposite ends of a phrase,
+not one pager.
+
+**And the line wraps.** That was the trigger. The date line is the longest string in the header and
+the first thing to wrap, and inline flow — chosen precisely so the chevrons would travel with the
+text rather than strand at the edges — means the wrap point lands wherever it lands. `‹` could end
+up alone above the date, `›` alone below it, with the two halves of one control on different lines
+and neither next to anything that explains it.
+
+**They are now a pager on the title's own line**, immediately after `Dive #2` and at the opposite
+end of that row from Edit and Delete: `‹ Previous` and `Next ›` as two `outline`/`sm` buttons, the
+same visual vocabulary the log list's `PaginationFooter` already uses for the same idea. `h-9` on
+those controls is exactly what `text-3xl` sets as a line box, so the pair sits level with the
+heading with nothing nudged into place.
+
+**It went to the back link's row first, and that was wrong for a reason worth writing down.** That
+row was empty and cannot wrap, which is what recommended it — but right-aligning the pair there
+stacked it directly above Edit and Delete, and `Next ›` ended up one button-height from `Delete` in
+the same corner. A step is the thing a diver does repeatedly and quickly; it is the last control
+that should share a corner with the one that must never be hit by accident. Splitting the two
+clusters across the row instead puts real width between them: 458px at a 1024px viewport, and 90px
+at the tightest point, the `sm` boundary where they still share a row. Below `sm` the row stacks and
+the date line sits between them.
+
+Two smaller consequences of that row. `actions` is `sm:items-start` rather than `items-center`, so
+Edit and Delete sit on the title's line rather than on the midpoint between the title and the date.
+And the title row is `flex-wrap`: a five-digit dive number on a phone drops the pager onto its own
+line under the heading rather than squeezing it, which is the honest outcome — measured at 375px
+with `Dive #99101`, no horizontal overflow.
+
+`PageHeader` gained a `nav` slot for it. Its `subtitle` stays `ReactNode` — that width was
+originally taken for these chevrons, but `DetailPageSkeleton` needs it too, so it does not narrow
+back to `string`.
+
+**The visible labels are fixed words and never the neighbour's date**, which is the one design point
+worth defending, because "show what it goes to" is the obvious improvement and it is wrong here. The
+neighbours arrive from a second request, and the component stays mounted across a step (that is the
+whole point of it — see the section above), so a data-derived label would empty on every click and
+refill a round trip later. The button would shrink under the cursor of the diver who is clicking it
+repeatedly and grow back between two clicks. The date instead rides `aria-label` and `title`, where
+it costs no layout: `Previous dive: #11, Apr 3, 2021`, exactly as before. The word on screen is the
+first word of that string, so the visible label stays part of the accessible one (WCAG 2.5.3).
+
+**The pair is a `<nav aria-label="Adjacent dives">`.** Two adjacent links in the middle of a header
+are two anonymous links; a named landmark makes them one control and gives a screen-reader user
+something to jump to.
+
+**`PageHeader`'s title row now stacks below `sm`.** That was named in the section above as belonging
+to "whoever takes that on", and this is that change: the title block and the actions were one
+`justify-between` row at every width, which left the title about 150px on a 375px screen with Edit
+and Delete beside it — enough to wrap this date over five lines. Stacked, the date gets the full
+width and wraps over two. It moves every detail page's header, which is why it was deferred and why
+it is called out here rather than buried: eight render sites plus both skeletons, and the change is
+the same one on all of them. Eight rather than the seven this first said — the count came from the
+files named `page.tsx`, and the dive page is no longer one of them, being the very layout this
+change edits.
+
+Inline flow for the subtitle is gone with the chevrons — the line is plain text again, formatted by
+`formatDiveStartTime` where the header is assembled. No server/client boundary moved with it: the
+layout doing the formatting is `"use client"` too, as every page in this app is.
+
+`dive-date-nav.tsx` is `dive-neighbor-nav.tsx`, and `DiveDateNav` is `DiveNeighborNav`: it no longer
+renders the date, so a name built around it would have been the second thing to mislead here.
