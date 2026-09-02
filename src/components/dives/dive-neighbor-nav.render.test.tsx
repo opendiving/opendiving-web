@@ -7,15 +7,18 @@ import type { DiveNeighbors } from "@/lib/api/dives";
 // log (getting this backwards is invisible until you click), that the word on screen
 // stays put while the destination behind it changes - the reason the date is on the
 // accessible name and not in the label - that an end of the log leaves a button
-// present but dead rather than dropping it, that stepping to a neighbour never leaves
-// the pager aimed at the dive you just left, and that the link keeps its DOM node
-// across that step.
+// present but dead rather than dropping it, that a new `diveUuid` never leaves the
+// pager aimed at the dive you just left - the reason the fetched neighbours are keyed
+// by uuid - and that the link keeps its DOM node while it goes dead and comes back,
+// which is the only thing standing between a keyboard diver and re-tabbing to "Next"
+// on every dive in a trip.
 //
-// That last one is a component-level guarantee, and `rerender` is the only thing
-// that sees it: in the running app the App Router remounts the page around this
-// component, so focus is lost across a step regardless. The assertion is still the
-// one that fails if this starts swapping element types again - it is just not proof
-// that a keyboard diver keeps their focus. See `DECISIONS.md`.
+// The prop change below is a `rerender`, and a real step is a route change: the two
+// were conflated here for a while, and the difference is why this file passed for
+// months while a diver following the arrows lost focus on every single one. Whether
+// this component survives a step at all is the route tree's business - see "The step
+// remounted the page..." in DECISIONS.md. What is left here is what it does once it
+// has survived one.
 
 vi.mock("@/lib/api/dives", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/dives")>()),
@@ -127,12 +130,14 @@ describe("DiveNeighborNav", () => {
     expect(next).toHaveAttribute("aria-busy", "false");
   });
 
-  it("keeps the same link node - and the focus on it - across a step", async () => {
+  it("keeps the same link node - and the focus on it - when the dive changes", async () => {
     // The reason this component doesn't use `next/link`. A keyboard diver tabs to
     // "Next", presses Enter, and lands on the next dive; if the link's DOM node is
     // replaced on the way - which alternating `<Link>` with anything else does -
     // the browser drops focus to `<body>` and they tab back for every dive in the
-    // trip.
+    // trip. The replacement this reaches is the one inside a mounted component:
+    // the link goes dead and comes back once per dive, and has to stay one node
+    // through it. The route change around that is verified in a browser.
     vi.mocked(divesAPI.getDiveNeighbors).mockResolvedValue(neighbors());
 
     const { rerender } = render(<DiveNeighborNav diveUuid="current-uuid" />);
@@ -140,8 +145,8 @@ describe("DiveNeighborNav", () => {
     before.focus();
     expect(document.activeElement).toBe(before);
 
-    // The step itself: same component, new dive, neighbours not yet known - the
-    // window in which the button has nothing to point at.
+    // What a step leaves behind here: same component, new dive, neighbours not
+    // yet known - the window in which the button has nothing to point at.
     rerender(<DiveNeighborNav diveUuid="newer-uuid" />);
 
     const during = screen.getByRole("link", { name: "Next dive" });

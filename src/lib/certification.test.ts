@@ -210,6 +210,6 @@ describe("expiry presentation", () => {
 
   it("reserves the loudest badge for an already-expired card", () => {
     expect(certificationExpiryBadgeVariant("expired")).toBe("destructive");
-    expect(certificationExpiryBadgeVariant("expiring_soon")).toBe("secondary");
+    expect(certificationExpiryBadgeVariant("expiring_soon")).toBe("coral");
   });
 });

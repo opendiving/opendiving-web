@@ -2971,6 +2971,17 @@ Reading the accessibility tree catches labelling; contrast needs measuring. Both
 trust arithmetic over the rendered value - `bg-destructive/10` composites over whatever is behind
 it, so the painted background is not the token's own colour.
 
+**Switch themes the way the app does, not by poking the class from the console.** Toggling `dark` on
+`documentElement` and reading `getComputedStyle` in the same script is the obvious move and it lies:
+the custom property re-resolves - `getPropertyValue("--destructive-foreground")` correctly reported
+the light `210 40% 98%` - while `color` on the elements already on the page kept painting the _dark_
+theme's value. That reads as a theme-constant token and is not one. It cost a wrong pair of figures
+in the service-badge table below, caught only because the number disagreed with a comment
+`globals.css` had carried for weeks. Emulate `prefers-color-scheme` and **reload** - the Browser
+pane's `resize_window{colorScheme}`, or Playwright's `colorScheme` - then measure. The tell that you
+have the real thing is that unrelated body text changes colour too; if the surrounding page still
+looks like the other theme, only the variable moved.
+
 `npx @axe-core/cli` covers the public pages; the authenticated ones have no session under it, so
 those were swept with an in-page script that walks every text node, resolves the nearest opaque
 background, and applies WCAG's large-text threshold. That is what found the footer regression and
@@ -3372,6 +3383,178 @@ All/Year/Month was active, so that one was a functional bug, not a cosmetic one.
 `Button` `secondary` variant, which sounds risky and isn't: nothing in the app uses it. `--muted`
 deliberately stayed at 16% despite having been the same value - it is a large-area wash (the footer,
 callouts), and 22% over that much surface reads as a panel rather than a tint.
+
+### Correction: the service scale is three brand fills now, and the amber was a fourth accent
+
+The section above is still the reason `due_soon` is not `secondary`, and its measurements still
+hold. What changed is the whole scale. `serviceStatusBadgeVariant` returns `"coral"` for `due_soon`
+and `"teal"` for `ok` - two new `Badge` variants over the two brand accents - alongside the
+unchanged `"destructive"`, which has always painted `bg-destructive-solid`. `warning` and `outline`
+are both out of this function.
+
+**The scale is read by hue now, not by weight.** It used to escalate by how much ink a chip spent:
+an outline for "In service", a fill for "Due soon", a heavier fill for "Overdue". All three are
+filled, so what separates them is teal against coral against deep coral - the settled state on the
+cool half of the brand pair, the two urgent ones on the warm half. That trade is deliberate: an
+outline chip beside two filled ones read as an absence rather than a state, and "In service" is a
+verdict the app is making, not a lack of one. The `outline` variant is untouched and still carries
+"Archived", "Paused" and "Rented" - facts about an item rather than judgments about it, which is the
+line the scale now draws.
+
+The palette has three accents by design - `--coral` at hue 16, `--teal` at 180, `--pressure` at 265
+opposite the pair - and the reasoning under _Errors are coral_ is that a colour belonging to no
+other token reads as imported rather than chosen. `--warning`'s amber (`32 92% 27%` light,
+`38 95% 62%` dark) was exactly that on a status chip: a fourth hue, introduced for one badge. Coral
+is the accent the app already owns, and "Due soon" is the state the brand colour is well suited to -
+urgent enough to notice, not a failure.
+
+**Coral and `destructive` separate by lightness, and could never separate by hue.** The two are six
+degrees apart (16 against `--destructive-solid`'s 10) - 2.35:1 between the two fills - so the urgent
+end reads as pale coral then deep coral, and the words "Due soon" and "Overdue" do the rest. That is
+the same trade already accepted for `--ceiling` beside `--coral` on the dive profile, and for the
+coral sign-in button beside a `bg-destructive-solid` delete button. Teal has no such problem: it is
+the opposite side of the wheel, which is the whole reason it is the accent the settled state gets.
+
+**Each accent needed a `-foreground`, and both are white.** This is the first place either brand
+colour is used as a _fill_; everywhere else they are strokes or glyphs - `text-coral`, the logo, the
+buttons that took the hues directly when _One coral and one teal_ below collapsed the family. Teal
+is the dark half of the pair (`#008080`) and wanted white on its own merits: 4.77:1 under white
+against 3.8:1 under a near-black. Coral did not, and takes white anyway, so that the three chips
+carry one label colour between them and match `--destructive-foreground` on the third.
+
+**That is where this palette pays, and the bill is 2.50:1.** White on `#FF7F50` is well under the
+4.5:1 AA asks of the label; a near-black would have been 7.23:1, and `--coral-foreground` carried
+exactly that until the uniformity was chosen over it. Unlike the fill misses below, this one is on
+the _text_ - the part of the chip that carries the meaning - so it is a real legibility cost rather
+than an argument about whether a boundary is visible. It is recorded here, and in the token's own
+comment in `globals.css`, because it is the kind of decision the next contrast sweep rediscovers as
+a bug. The fix, if it is ever wanted back, is the near-black on `--coral-foreground` alone; nothing
+else in the scale depends on it.
+
+**Those tokens are not what the collapse removed, which is why they may exist at all.**
+`--coral-solid` and `--coral-text` were _other corals_, tuned darker for a filled button and for
+text on white, and the point of removing them was to stop four coral-ish classes competing at every
+call site. `--coral-foreground` is not a coral: it is the label that sits on one, the pairing
+`--destructive`, `--success`, `--warning` and every other filled token in the palette already carry.
+A fill with no foreground token is the thing that has no precedent here.
+
+**Measured off the rendered dashboard and gear table, both themes**, per _Verifying colour work_.
+The two brand fills paint `rgb(255, 127, 80)` and `rgb(0, 128, 128)` in both themes - `coral` and
+`teal` exactly, and the tokens exactly, since neither class carries alpha and so neither composites
+over anything.
+
+| Surface                                | Light  | Dark   | Bar   |
+| -------------------------------------- | ------ | ------ | ----- |
+| Badge label on the coral fill          | 2.50:1 | 2.50:1 | 4.5:1 |
+| Coral fill against `--card`            | 2.50:1 | 6.51:1 | 3:1   |
+| Badge label on the teal fill           | 4.77:1 | 4.77:1 | 4.5:1 |
+| Teal fill against `--card`             | 4.77:1 | 3.41:1 | 3:1   |
+| Badge label on `--destructive-solid`   | 5.61:1 | 5.87:1 | 4.5:1 |
+| `--destructive-solid` against `--card` | 5.87:1 | 2.77:1 | 3:1   |
+
+The `destructive` rows are measured rather than changed - that chip is untouched by this work. Its
+label is the one figure here that is _not_ theme-constant, and that is worth stating because the
+brand rows above it are: `--destructive-foreground` is redeclared under `.dark` (`210 40% 98%`
+light, `0 0% 100%` dark) where `--coral-foreground` and `--teal-foreground` are not, which is why
+its light and dark labels differ and theirs do not. Those two figures agree with the ones already on
+the `--destructive-solid` comment in `globals.css`. The fill misses the non-text bar in the dark
+theme, which is the mirror of coral's light-theme miss and has the same answer: a saturated
+red-orange chip on a 13%-lightness card is not a chip you fail to see, and its label clears AA in
+both. Both are on record here so that a future change to `--card` has somewhere to check.
+
+The coral label's 2.50:1 is the one figure in this table that is not an argument about visibility;
+see _That is where this palette pays_ above.
+
+**Coral against a white card was the miss this section set out to justify, and it was accepted.** It
+is the mirror of the bug this section was written about - a chip that does not separate from the
+card behind it - and the reason it is not the same defect is the reason the light `--secondary` gap
+was left alone two paragraphs up: **it separates by hue, not lightness.** A 100%-saturation salmon
+on white is unmistakably a chip; the 1.2:1 case was a near-neutral grey three points off its card,
+which was not. What keeps the _fill_ outside SC 1.4.11 rather than merely forgiven by it is that the
+label carries the whole meaning; the label's own contrast is a separate matter, and on this one chip
+it is the cost named above. Watch the fill if `--card` ever stops being white in the light theme.
+
+`--warning` keeps its `Badge` variant and four other consumers - `courseStatusBadgeVariant` uses it
+for `incomplete` and `provisional`; `dive-exposure-card`, `dive-mixtures-card` and `mixture-fields`
+use `text-warning`; and `terms/page.tsx` still draws the safety notice with `border-warning/40`,
+`bg-warning/10` and `text-warning`, which is the use the correction under _Theme tokens_ was written
+about. Nothing was orphaned.
+
+That correction is now one item out of date in the other direction: it lists `lib/gear-service.ts`
+among the token's consumers, and after this change that file no longer touches `--warning` at all.
+(It also said "overdue service", which was wrong when written - `overdue` has always been
+`destructive`, and it was `due_soon` that borrowed the amber.)
+
+### And the dashboard puts the chip last, where the rows align
+
+`ServiceStatusBadge` renders the badge then the detail ("Due soon", "Due in 3 days"), which is right
+in the two places it is a _column_: the gear table's Service cell, and the gear detail card's
+schedule rows, where the badge is the first thing under a label and nothing to its right lines up.
+
+The dashboard's service-due card is not a column. Its rows are `flex justify-between` with the item
+name on the left and this component on the right, so badge-first parks the coloured chip in the
+middle of the row while the grey detail text takes the edge the rows actually align on - the one
+strong mark on the card, pointing at nothing. `detailFirst` (a prop, default off) swaps the two
+there only, and the chips line up on the right edge with the day counts leading into them.
+
+A prop rather than composing the two pieces in the card: the component's whole reason for existing
+is that the three places service status renders can't drift apart, and inlining a `Badge` in the
+dashboard to reorder it is exactly that drift.
+
+**`CertificationExpiryCard` is the same row and got the same treatment**, and it was missed on the
+first pass. It renders directly below the service-due card on the dashboard, off the same `Link`
+class string, with the same left name block and the same badge-plus-detail group on the right - so
+badge-first there produced exactly the stranded chip this section is about, now sitting one card
+under the fixed version of itself. It composes its own `Badge` rather than going through
+`ServiceStatusBadge` (different labels, different variants), so this one is an inline swap; the
+argument above is about not inlining a `Badge` where a shared component already exists, not about
+never inlining one.
+
+**And the colours were unified after that**, so the two cards no longer speak different
+vocabularies. `certificationExpiryBadgeVariant` returns `destructive` / `coral` where it returned
+`destructive` / `secondary`: grey beside a coral "Due soon" on the same dashboard read as "not
+really a status", which is the same complaint that moved service status off `secondary` in the first
+place, one card lower.
+
+**Certifications get no `teal`, and the asymmetry is real rather than an omission.** The service
+scale has three states because "In service" is a verdict worth painting. `CertificationExpiryStatus`
+has two, and `certificationExpiryStatus` returns `null` for a card with plenty of time left - so a
+healthy certification produces no status, never reaches this function, and never renders a chip.
+There is nothing for a settled colour to sit on, which is the same fact that makes the card render
+only when something is flagged.
+
+That recolour reaches three render sites, not just the dashboard: `certifications/page.tsx`, the
+`certification-view-dialog`, and `CertificationExpiryCard`. One mapping function is what makes that
+a single edit - the same property that let the service scale's own recolour need no sweep.
+
+**The widths are per-card, not global.** Service chips are `min-w-24` (96px, clearing "In service"
+at ~79px); certification chips are `min-w-28` (112px, clearing "Expiring soon"). One number across
+both would pad the shorter set to no purpose - what has to line up is the right edge, and
+`justify-between` already guarantees that regardless of chip width.
+
+**The courses table's Status column got the same width, and nothing else.** It is the third status
+column in the app and was the last one still ragged - six labels at six widths, where gear's Service
+column is uniform. Same `min-w-24`; "Not passed" is the widest at 88px, so the same 6rem clears it.
+`whitespace-nowrap` is doing more work there than in the other two: `courseStatusLabel` falls back
+to the raw wire value for a status this build doesn't recognise, so unlike the service and
+certification labels its content is not drawn from a fixed set and has no length bound at all.
+
+Deliberately layout-only. `courseStatusBadgeVariant` still returns `default` / `secondary` /
+`warning` / `destructive` / `outline` - a fourth vocabulary beside the brand fills, and the app's
+only remaining consumer of the amber `warning` badge. It survives because courses never share a
+screen with a gear or certification chip: they render on `/courses` and `/courses/[id]` and nowhere
+else, so the mismatch that forced the certification card's hand does not arise. Whether courses
+should join the brand scale is open, and is a bigger question than a column width - the scale has
+six states against gear's three, and `completed` currently owns the only chip in the app carrying
+`--primary`.
+
+Both service and certification chips also carry `whitespace-nowrap`, which changes nothing today and
+is the point: every label fits its width in Inter, and the failure it guards against is a chip
+quietly becoming two lines tall rather than one - a fallback font while Inter loads, a browser
+minimum-font-size, a longer label added later. Measured by forcing a 50px `max-width` on a live "In
+service" chip: 22px tall with the guard, 38px without. A chip that overflows its pill is visible
+immediately; one that grows a second line just looks like a slightly taller row, and the min-width
+makes that _more_ likely to go unnoticed, not less, because the pill still looks deliberate.
 
 ## One card-header shape: `space-y-1.5` only reaches `CardHeader`'s _direct_ children
 
@@ -5045,10 +5228,19 @@ than once.** The detail page returned a `SectionSpinner` for any `isLoadingDive`
 same-route id change here — so every click tore down the header, the date line and the arrow that
 had just been clicked, then rebuilt them a fetch later. A mouse user saw a flash per step; a
 keyboard user got focus dumped on `<body>` and had to tab back to the arrow on every single dive,
-which is precisely the flow this control exists for. The spinner is now the _first_ load only
+which is precisely the flow this control exists for. The spinner is the _first_ load only
 (`isLoadingDive && !dive` — `useResource` keeps the dive being left, it never nulls `resource`), and
 a step dims the card grid to `opacity-50` under `aria-busy` instead. The page keeps its height and
 its scroll position, and what is dimmed is honestly what is on the way out.
+
+**That last paragraph was false for as long as the fetch lived in the page**, along with the two
+below it that rest on the same premise, and all three are marked where they say something the code
+only started doing later. `useResource` keeping the outgoing dive is worth nothing if the component
+holding it is destroyed, which is exactly what the App Router does to `dives/[id]` on a step — so
+the page re-mounted with no dive and drew the skeleton, and the arrow went with it. Moving the fetch
+and the header into a route-group layout above the segment is what made the three of them true; see
+"The step remounted the page, and hoisting the fetch into a route-group layout is what stopped it"
+below for the measurement on either side of that change.
 
 **The fetched neighbours are stored with the uuid they were fetched for**, and read back only when
 that uuid still matches. This is what the fix above makes load-bearing: the component now stays
@@ -5059,12 +5251,12 @@ appeared to point. Nulling the state in the effect would also work, at the cost 
 and an eslint suppression.
 
 **The neighbours are fetched for the dive being _displayed_, not for the route param**, which costs
-a round trip: the component only mounts once `getDive` has resolved, so the two requests run in
-series rather than together. Reading `params.id` instead would overlap them, and would also aim the
-arrows at the incoming dive while the date beside them still reads the outgoing one — a `>` click in
-that window skipping a dive relative to everything on screen. The arrows and the date they sit
-around have to describe the same dive; a second round trip on a control this small is the cheaper
-side of that trade.
+a round trip: `diveUuid` only takes its new value once `getDive` has resolved, so the two requests
+run in series rather than together. Reading `params.id` instead would overlap them, and would also
+aim the arrows at the incoming dive while the date beside them still reads the outgoing one — a `>`
+click in that window skipping a dive relative to everything on screen. The arrows and the date they
+sit around have to describe the same dive; a second round trip on a control this small is the
+cheaper side of that trade.
 
 **An end of the log leaves its arrow dead rather than dropping it.** Dropping it slides the date
 sideways exactly as the diver arrives at the oldest dive, and says nothing about why stepping
@@ -5086,6 +5278,13 @@ unavailable arrow needs an explicit `role="link"` — an `<a>` with no `href` is
 accessibility tree, and a generic node has no accessible name, so without it the arrow would go from
 "unavailable" to unannounced. `dive-neighbor-nav.render.test.tsx` pins the node identity and the
 focus directly, because nothing else about the rendered output changes when this regresses.
+
+**Which it pinned at the wrong altitude, and that is the second half of the same false claim.** The
+test steps the component with `rerender`, and a re-render is not a re-mount — so it asserted node
+identity across the one thing that was never in doubt, and passed cleanly for as long as the route
+was destroying the node from above. It still earns its place: the arrow really does swap `<a href>`
+for `<a>` mid-dive, once per step, when the uuid guard nulls the neighbours, and that transition is
+this component's own to get wrong. What it cannot see is the step itself. See the section below.
 
 The one thing the shared node costs is that its accessible name and `aria-disabled` both flip on
 every step, so a screen reader announces the arrow as unavailable each time — indistinguishable from
@@ -6283,11 +6482,45 @@ chart's `text-xs` legend occupies under its plot and the activity chart has noth
 prop is the difference between the gas card measuring 560px in both states and measuring 560 loaded
 against 536 loading.
 
-`app/template.tsx` was the other half of it. Next remounts it on every navigation, and it ran
+`app/template.tsx` was the other half of it. Next remounts a template, and it ran
 `fade-in slide-in-from-bottom-1` over 300ms — which meant it spent the entire animation sliding a
 `Loader2` up the screen and then cut hard to the real content, putting the motion on the throwaway
 state and none on the swap that mattered. It is now a 150ms fade with no travel: what it animates is
 real page structure, so it only needs enough to mark that the route changed.
+
+**"On every navigation" is what that said until 2026-09-02, and it was never true.** A template is
+keyed at its own segment level, and the root one's level is the _first path segment_ — so the fade
+runs when that segment changes and not otherwise. Measured by tagging the template's DOM node and
+navigating client-side, identically under `next dev` and a `next build` + `next start`:
+
+| navigation                               | template remounts |
+| ---------------------------------------- | ----------------- |
+| `/dives` → `/dashboard`                  | yes               |
+| `/dashboard` → `/trips`                  | yes               |
+| `/dives` → `/dives/[id]`                 | **no**            |
+| `/dives` → `/dives/new`                  | **no**            |
+| `/dives/[id]` → `/dives/[id]/edit`       | **no**            |
+| `/dives/a` → `/dives/b` (pager step)     | **no**            |
+| back to `/dives/[id]` from its edit page | **no**            |
+
+So the fade marks a move between top-level areas, and a move _within_ one — including opening a dive
+from the log, which is the most-travelled navigation in the app — gets none. The wrong sentence is
+what made that invisible: nobody looks for a missing animation they have been told is running.
+
+**Widening it is not free, and the obvious way to do it is now actively wrong.** Wrapping `children`
+in a client component keyed on `usePathname()` would fire the fade on every navigation, as the old
+sentence claimed — and it would remount the whole subtree on a dive-pager step, undoing
+`dives/(detail)/`: the page would blank into its skeleton again and the pager would drop keyboard
+focus on every dive (see "The step remounted the page, and hoisting the fetch into a route-group
+layout is what stopped it"). A `dives/template.tsx` has the same problem one level down — its
+segment level is `[id]`, so a step remounts it too. The only placement that fades a step without
+touching the header is `dives/(detail)/[id]/template.tsx`, wrapping the card grid alone, and that
+one contradicts a different decision on purpose: a step is supposed to _dim_ the outgoing cards, not
+cross-fade them.
+
+Left as it is, deliberately. The behaviour is defensible — it is the description that was wrong, and
+correcting the description is the whole change. Anyone who does want the fade on list-to-detail
+should read the paragraph above first, because the cheap version of it costs the pager.
 
 ### The placeholders are hidden from assistive tech, rows and all
 
@@ -10219,12 +10452,14 @@ things, and only one of them is a copyright question at all.
 The token entry above says `--warning` has "one use, the terms page's safety notice". That was true
 when it was written and is not any more: `dive-exposure-card.tsx` colours an alert exposure figure
 with `text-warning`, `dive-mixtures-card.tsx` and `mixture-fields.tsx` both use it on mixture
-warnings, `ui/badge.tsx` has a `warning` variant built on `bg-warning`, and `lib/gear-service.ts`
-borrows it for overdue service. The safety notice is therefore **not** load-bearing for the token,
-and the reason to keep it is its own: it is the one part of the page that was unambiguously true
-before this change, and a dive log disclaiming safety advice should not look like a footnote. It
-survives this sweep on its merits, with only "a platform for logging and sharing diving experiences"
-corrected to "software for logging dives".
+warnings, `ui/badge.tsx` has a `warning` variant built on `bg-warning`, and `lib/course.ts` returns
+that variant for `incomplete` and `provisional` courses. (`lib/gear-service.ts` was in this list
+too, for `due_soon` - not "overdue", which has always been `destructive`. It moved to `--coral`; see
+_Correction: the service scale is three brand fills now_.) The safety notice is therefore **not**
+load-bearing for the token, and the reason to keep it is its own: it is the one part of the page
+that was unambiguously true before this change, and a dive log disclaiming safety advice should not
+look like a footnote. It survives this sweep on its merits, with only "a platform for logging and
+sharing diving experiences" corrected to "software for logging dives".
 
 ## The footer's column labels were headings, and the footer is shared chrome
 
@@ -13319,6 +13554,12 @@ are wrong in any given spot and none of which is wrong in a way the compiler or 
 Tailwind's `coral` and `teal` keys are plain strings rather than objects now, so `bg-coral-solid`
 and friends are not merely discouraged, they don't compile.
 
+**Superseded on 2026-09-02:** both keys are objects again, carrying a `DEFAULT` and a `foreground`
+(`tailwind.config.mts`). The removed classes stay removed - there is no `solid` or `text` key on
+either - so `bg-coral-solid` still doesn't compile and the paragraph's point survives; what changed
+is that a filled accent needed a label token, which is a pairing rather than a rival hue. See
+_Correction: the service scale is three brand fills now_.
+
 **`--coral` moved too, and the move is 0.3 of a percentage point.** It was `16 100% 66%`, which
 renders `#FF8052` — two units off `coral` on green and on blue. That would be beneath notice if
 `icon.svg` did not hard-code `#FF7F50` for the favicon, which it does: the brand mark and its own
@@ -13397,6 +13638,126 @@ accent word _is_ inside `main`, so the artifact will now carry a `color-contrast
 job fails on. Re-reading _"Verifying colour work"_ above before treating that report as clean is the
 standing advice; this entry is why it will not be clean.
 
+## The step remounted the page, and hoisting the fetch into a route-group layout is what stopped it
+
+Everything the section above claims about stepping between dives — the skeleton being the first load
+only, the outgoing dive staying on screen dimmed, the pager's `<a>` keeping the focus that is on it
+— was written against a page the App Router was destroying on every step. None of it happened. The
+three paragraphs marked up there are the ones that were describing an intention.
+
+**What a step actually did**, sampled per animation frame in a real browser on `main`, stepping from
+`Dive #493` to `Dive #492` with the keyboard:
+
+| frame  | `<h1>`      | same `<h1>` node? | pager `<a>` still in the document? | `document.activeElement`       |
+| ------ | ----------- | ----------------- | ---------------------------------- | ------------------------------ |
+| before | `Dive #493` | —                 | yes                                | the `<a>` (Enter pressed here) |
+| +49 ms | _(empty)_   | no                | **no**                             | **`<body>`**                   |
+| +88 ms | `Dive #492` | no                | no                                 | `<body>`                       |
+
+The empty `<h1>` is `DetailPageSkeleton` — its title is a `Skeleton` bar, which is a `<span>` with
+no text. So the page blanked to the skeleton on every step, and the `opacity-50` dim was unreachable
+code. 39 ms of it against a warm localhost API; anywhere else it is however long the fetch takes.
+
+**The cause is that a dynamic segment is keyed on its param value.** Everything under `dives/[id]`
+is a different subtree for `.../493` than for `.../492`, so React unmounts one and mounts the other.
+`useResource` holding the outgoing dive is worth nothing when the component holding `useResource`
+goes with it, and the arrow that was just pressed goes with it too. Nesting a `layout.tsx` _inside_
+`dives/[id]/` does not help: the key sits at that segment, so the layout is inside the subtree being
+replaced.
+
+**Two independent things had to be checked before blaming the segment**, because either would have
+produced the same trace. `app/template.tsx` re-mounts by design — but per-segment-level, and its
+level is the first path segment, `dives`, which does not change here
+(`node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/template.md`). The file's
+own comment said "on every navigation", which would have made it a suspect; it was wrong, and
+chasing this is what caught it — see the enter-animation subsection above. And Next's route-change
+scroll handler used to call `focus()` on the new segment's DOM node, which would have taken the
+focus regardless of node identity; 16.3 defaults `appNewScrollHandler` on, and that fork "no longer
+focuses the first host descendant". Both are settled by the fix working at all: the layout below the
+template survives, with focus still on the arrow inside it.
+
+**The fix is a route group above the dynamic segment.** `dives/(detail)/layout.tsx` owns the fetch,
+the header and the delete flow; `dives/(detail)/[id]/page.tsx` is the card grid and nothing else,
+reading the dive from `DiveDetailProvider`. A group is what makes this scoped: it adds nothing to
+any URL, so `/dives`, `/dives/new` and `/dives/[id]/edit` — the last of which stays outside the
+group and resolves alongside it without complaint — are untouched, where a layout at `app/dives/`
+would have wrapped all four.
+
+The layout is a Client Component reading `useParams().id`. A layout above a dynamic segment gets no
+`params` prop for it, which is the one thing that looks like it should rule this out; the client
+hook answers for the current URL wherever it is called, and `useResource` already reads the param
+that way.
+
+**Measured again after, same walk:** across 325 sampled frames under `next dev` and 361 under a
+`next build` + `next start`, the `<h1>` is never empty in one of them, it is the same DOM node
+throughout, the pager's `<a>` never leaves the document and never loses the focus on it, and no
+skeleton bar renders. What renders instead is the dim — `opacity-50` on the grid for as long as the
+next dive is in flight, 322 ms in development and 39 ms against the production build. Four steps in
+a row with only the Enter key keep focus on that one node the whole way down the log, its label
+re-reading `#492`, `#491`, `#490`, `#489` as it goes.
+
+Both builds, because the two symptoms are the kind React's development-only double-mount would also
+produce, and a fix verified only under `next dev` would not have ruled it out.
+
+**No test can cover the step, and pretending otherwise is how this survived.**
+`dive-neighbor-nav.render.test.tsx` steps the component with `rerender`, which is a re-render — the
+exact thing that was never broken — so it passed throughout. The behaviour lives in the route tree,
+and reaching it needs the App Router, a server and a browser. What is pinned instead is the piece
+that _became_ testable: `dives/(detail)/[id]/page.render.test.tsx` renders the page against a
+provider holding a dive **and** `isLoading: true`, which is the combination the old page could never
+be in, and asserts the dim. The rest is a hand-verified walk, recorded above.
+
+**Rejected: `cacheComponents`.** Next 16 keeps navigated-away routes mounted under React
+`<Activity>` instead of unmounting them, which the guide at `02-guides/preserving-ui-state.md` names
+as the replacement for exactly the hoist done here. It is the wrong tool twice over: it is an
+app-wide change to caching and rendering semantics bought for one control, and it preserves the
+route you _left_ — the dive being stepped to is still a fresh mount with a fresh `<a>`, so the focus
+half of this would not have been fixed by it at all.
+
+**Rejected: restoring focus after the step.** Have the arrow notice it had focus and call `.focus()`
+on itself on mount. It is about ten lines and it would work, but it fixes the symptom in the one
+place a diver can see it while leaving the page blanking through the skeleton — and it would have
+left the paragraphs above still claiming a node identity that no longer existed.
+
+**One consequence worth naming: the uuid guard in `DiveNeighborNav` is live for the first time.** It
+exists so a step never leaves the arrows pointing at the dive just left, and it could not fire while
+the component was being re-mounted with a fresh uuid each time. It fires now, on the frame the new
+dive lands.
+
+**And the trip and course lookups needed the same guard, which the hoist is what created the need
+for.** They resolve a uuid on the dive into a name, they now live in the layout, and so for the
+first time they outlive the dive they were resolved for. Held as plain state that is a worse bug
+than the one this change set out to fix: `useResource` commits the new dive and `isLoading: false`
+in one batch, so on a step across a trip boundary the incoming dive's page renders — at full
+opacity, with nothing dimmed to say otherwise — beside the _previous_ dive's trip, drawn by
+`DiveDetailSidebar` as a live `<Link href={/trips/...}>`. A whole round trip of a clickable link to
+somewhere the diver is no longer looking. The blanking that the remount used to cause was, for this
+one row, the thing keeping it honest.
+
+So both are stored with the uuid they were looked up for and read back only while the dive still
+names it — the same shape as the neighbours, for the same reason and in the same words. The one
+difference is what they are keyed on: the **record**, not the dive. Keyed on the dive, stepping
+_within_ a trip would blank the row and re-fetch an answer that had not changed, which is most of
+the steps a diver actually takes; keyed on `trip_uuid`, the row is untouched. Verified both ways in
+a browser — a step from `#458` to `#460` across a trip boundary shows no frame carrying the new
+dive's header with the old trip's link, and a step from `#491` to `#492` inside `Dahab 2026` has no
+frame without the row and makes no second `getTrip` call.
+
+**What the key buys is the row, not the request, and this is not a cache.** The two lookups share
+one effect — deliberately, so a dive with both pays for them concurrently rather than in series —
+and its deps are `[tripUuid, courseUuid]`, so either one changing re-runs both. A step that starts
+or ends a course part-way through a trip therefore re-fetches the unchanged trip. Nothing blanks and
+nothing is wrong on screen, because the derived read still matches on `tripUuid`; it is only the
+request that is redundant. The first draft of this section claimed the stronger thing — that no
+request is made unless the trip differs — which the shared effect had never made true. The same-trip
+test asserts a single `getTrip` call, and it can only assert that because neither of its dives
+carries a course.
+
+`layout.render.test.tsx` pins all three cases, and pins them where the browser cannot help: the
+stale window is one paint wide, so the test drives it by holding the second `getTrip` unresolved.
+Both boundary tests were confirmed to fail against the unkeyed version before being kept — a
+regression test that has never been seen red is a test of nothing.
+
 ## The prev/next chevrons left the date line, and the header stopped fighting the phone
 
 The dive page's step-to-the-adjacent-dive control was two bare chevrons sitting _inside_ the
@@ -13467,37 +13828,3 @@ Inline flow for the subtitle is gone with the chevrons — the line is plain tex
 
 `dive-date-nav.tsx` is `dive-neighbor-nav.tsx`, and `DiveDateNav` is `DiveNeighborNav`: it no longer
 renders the date, so a name built around it would have been the second thing to mislead here.
-
-### The step still remounts the page, so the node-identity work never gets its payoff
-
-Found while walking this change through a browser, and it is **not** something this change
-introduced — `main` does it identically. Two claims in _"`<` is the earlier dive, which is the
-opposite of what the log list would suggest"_ above do not survive contact with the running app:
-
-Following one of these links **remounts `DiveDetailPage`**. The App Router treats a `/dives/[id]`
-param change as a new page instance, so nothing inside the page survives it. Two consequences, both
-of them the exact thing that section says was fixed:
-
-- **The page blanks.** `useResource` starts over with `resource === null`, so
-  `isLoadingDive && !dive` is true again and `DetailPageSkeleton` renders. Watching the `<h1>` at
-  frame resolution across a step gives `Dive #2` → `(empty)` → `Dive #3`. The `opacity-50` dim on
-  the card grid is real code that a step never reaches.
-- **Focus lands on `<body>`.** The whole `<a>`-that-swaps-its-`href` construction is destroyed from
-  above, and the browser drops focus exactly as it would have with `<Link>`.
-
-Measured three ways, all identical: `main` on the dev server, this branch on the dev server, and
-this branch on a `next build` + `next start` — so it is not a StrictMode or HMR artifact.
-
-`dive-neighbor-nav.render.test.tsx` passes throughout, and is not lying: it drives the component
-with `rerender`, which is a re-render and not a remount. There is no test at the layer where this
-goes wrong, which is why it survived a section of this file being written about it.
-
-**Not fixed here**, deliberately — this change is about where the control lives and what it looks
-like, and the fix is somewhere else entirely: hoisting the dive fetch above the page component (a
-layout, or a context keyed on the log rather than the dive) so a step re-renders instead of
-remounting. The pager's own construction is kept as it is, because it is the correct shape for the
-component and it is what makes that fix worth doing.
-
-What this is really an entry about: **a design defended in prose for a whole section, verified by a
-unit test at the wrong layer, and wrong in the app the entire time.** The unit test and the prose
-agreed with each other, and neither had ever been checked against a browser.

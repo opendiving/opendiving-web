@@ -138,6 +138,29 @@
     --coral: 16 100% 65.7%;
     --teal: 180 100% 25%;
 
+    /* Labels for anything *filled* with a brand accent, which the gear service
+       badge is the first thing to do - everywhere else coral and teal are strokes
+       or glyphs. Both are pure white, which puts the three service chips on one
+       label colour in the dark theme and within a shade of it in the light one,
+       where --destructive-foreground is the near-white 210 40% 98% rather than
+       #FFF. Close enough to read as one treatment; not close enough to call them
+       the same value.
+
+       Neither is a second coral or a second teal, and so neither is what the
+       collapse above removed: they are the colour that sits *on* the accent, the
+       pairing --destructive, --success, --warning and every other filled token
+       here already have. Constant across themes because the accents are - a
+       per-theme pair would have nothing to adapt to.
+
+       --coral-foreground is where this palette pays for the uniformity, and the
+       cost is on the record rather than hidden: white on #FF7F50 is 2.50:1, under
+       the 4.5:1 AA asks of the label, where a near-black would have been 7.23:1.
+       Teal is the dark half of the pair and has no such problem - 4.77:1 under
+       white, and only 3.8:1 under the near-black, so it wanted white anyway.
+       See "the service scale is three brand fills now" in DECISIONS.md. */
+    --coral-foreground: 0 0% 100%;
+    --teal-foreground: 0 0% 100%;
+
     /* Third chart accent, for the dive profile's tank-pressure curve. Depth is
        teal and temperature is coral; pressure needs a hue that's separable from
        both at a glance, since all three are thin lines sharing one plot. Violet

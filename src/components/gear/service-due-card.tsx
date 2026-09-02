@@ -94,6 +94,7 @@ export function ServiceDueCard({ userId }: ServiceDueCardProps) {
               <ServiceStatusBadge
                 status={status}
                 detail={formatServiceDue(schedule, entry.gear_item_dive_count)}
+                detailFirst
               />
             </Link>
           );
