@@ -91,8 +91,12 @@ export function certificationRenewals<T extends { expires_on?: string | null }>(
     .sort((a, b) => a.expiresOn.localeCompare(b.expiresOn));
 }
 
-// Maps onto the `Badge` variants already in the design system, matching how
-// `serviceStatusBadgeVariant` handles the equivalent gear states.
+// Maps onto the `Badge` variants already in the design system. It used to mirror
+// `serviceStatusBadgeVariant` and no longer does: gear service moved to a filled
+// brand scale (`destructive` / `coral` / `teal`) and certifications did not, so the
+// two chips sit on the same dashboard wearing different vocabularies. That is an
+// open inconsistency rather than a decision - see "the service scale is three brand
+// fills now" in DECISIONS.md.
 export function certificationExpiryBadgeVariant(
   status: CertificationExpiryStatus,
 ): "destructive" | "secondary" {

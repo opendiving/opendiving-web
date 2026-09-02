@@ -2971,6 +2971,17 @@ Reading the accessibility tree catches labelling; contrast needs measuring. Both
 trust arithmetic over the rendered value - `bg-destructive/10` composites over whatever is behind
 it, so the painted background is not the token's own colour.
 
+**Switch themes the way the app does, not by poking the class from the console.** Toggling `dark` on
+`documentElement` and reading `getComputedStyle` in the same script is the obvious move and it lies:
+the custom property re-resolves - `getPropertyValue("--destructive-foreground")` correctly reported
+the light `210 40% 98%` - while `color` on the elements already on the page kept painting the _dark_
+theme's value. That reads as a theme-constant token and is not one. It cost a wrong pair of figures
+in the service-badge table below, caught only because the number disagreed with a comment
+`globals.css` had carried for weeks. Emulate `prefers-color-scheme` and **reload** - the Browser
+pane's `resize_window{colorScheme}`, or Playwright's `colorScheme` - then measure. The tell that you
+have the real thing is that unrelated body text changes colour too; if the surrounding page still
+looks like the other theme, only the variable moved.
+
 `npx @axe-core/cli` covers the public pages; the authenticated ones have no session under it, so
 those were swept with an in-page script that walks every text node, resolves the nearest opaque
 background, and applies WCAG's large-text threshold. That is what found the footer regression and
@@ -3438,14 +3449,18 @@ over anything.
 | Coral fill against `--card`            | 2.50:1 | 6.51:1 | 3:1   |
 | Badge label on the teal fill           | 4.77:1 | 4.77:1 | 4.5:1 |
 | Teal fill against `--card`             | 4.77:1 | 3.41:1 | 3:1   |
-| Badge label on `--destructive-solid`   | 5.87:1 | 5.87:1 | 4.5:1 |
+| Badge label on `--destructive-solid`   | 5.61:1 | 5.87:1 | 4.5:1 |
 | `--destructive-solid` against `--card` | 5.87:1 | 2.77:1 | 3:1   |
 
-The `destructive` row is measured rather than changed - that chip is untouched by this work, and its
-figures are theme-constant for the same reason the brand ones are. It misses the non-text bar in the
-dark theme, which is the mirror of coral's light-theme miss and has the same answer: a saturated
-red-orange chip on a 13%-lightness card is not a chip you fail to see, and its label is 5.87:1
-either way. Both are on record here so that a future change to `--card` has somewhere to check.
+The `destructive` rows are measured rather than changed - that chip is untouched by this work. Its
+label is the one figure here that is _not_ theme-constant, and that is worth stating because the
+brand rows above it are: `--destructive-foreground` is redeclared under `.dark` (`210 40% 98%`
+light, `0 0% 100%` dark) where `--coral-foreground` and `--teal-foreground` are not, which is why
+its light and dark labels differ and theirs do not. Those two figures agree with the ones already on
+the `--destructive-solid` comment in `globals.css`. The fill misses the non-text bar in the dark
+theme, which is the mirror of coral's light-theme miss and has the same answer: a saturated
+red-orange chip on a 13%-lightness card is not a chip you fail to see, and its label clears AA in
+both. Both are on record here so that a future change to `--card` has somewhere to check.
 
 The coral label's 2.50:1 is the one figure in this table that is not an argument about visibility;
 see _That is where this palette pays_ above.
@@ -10330,11 +10345,11 @@ with `text-warning`, `dive-mixtures-card.tsx` and `mixture-fields.tsx` both use 
 warnings, `ui/badge.tsx` has a `warning` variant built on `bg-warning`, and `lib/course.ts` returns
 that variant for `incomplete` and `provisional` courses. (`lib/gear-service.ts` was in this list
 too, for `due_soon` - not "overdue", which has always been `destructive`. It moved to `--coral`; see
-_Correction: "Due soon" is coral now_.) The safety notice is therefore **not** load-bearing for the
-token, and the reason to keep it is its own: it is the one part of the page that was unambiguously
-true before this change, and a dive log disclaiming safety advice should not look like a footnote.
-It survives this sweep on its merits, with only "a platform for logging and sharing diving
-experiences" corrected to "software for logging dives".
+_Correction: the service scale is three brand fills now_.) The safety notice is therefore **not**
+load-bearing for the token, and the reason to keep it is its own: it is the one part of the page
+that was unambiguously true before this change, and a dive log disclaiming safety advice should not
+look like a footnote. It survives this sweep on its merits, with only "a platform for logging and
+sharing diving experiences" corrected to "software for logging dives".
 
 ## The footer's column labels were headings, and the footer is shared chrome
 
@@ -13428,6 +13443,12 @@ are wrong in any given spot and none of which is wrong in a way the compiler or 
 `--coral` is `coral` (`#FF7F50`) and `--teal` is `teal` (`#008080`, moved from `187 60% 45%`).
 Tailwind's `coral` and `teal` keys are plain strings rather than objects now, so `bg-coral-solid`
 and friends are not merely discouraged, they don't compile.
+
+**Superseded on 2026-09-02:** both keys are objects again, carrying a `DEFAULT` and a `foreground`
+(`tailwind.config.mts`). The removed classes stay removed - there is no `solid` or `text` key on
+either - so `bg-coral-solid` still doesn't compile and the paragraph's point survives; what changed
+is that a filled accent needed a label token, which is a pairing rather than a rival hue. See
+_Correction: the service scale is three brand fills now_.
 
 **`--coral` moved too, and the move is 0.3 of a percentage point.** It was `16 100% 66%`, which
 renders `#FF8052` — two units off `coral` on green and on blue. That would be beneath notice if
