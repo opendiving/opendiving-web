@@ -132,13 +132,13 @@ interface NavLinkProps {
  * plain click, and staying out of the way of a modified one so cmd-click still
  * opens a dive in a new tab.
  *
- * That survival is real at this component's own layer and is not currently reached
- * in the app: the App Router remounts the whole page on a `/dives/[id]` param
- * change, so this node is destroyed by something above it and focus lands on
- * `<body>` anyway. Measured, on `main` as much as here - see "The step still
- * remounts the page, so the node-identity work never gets its payoff" in
- * `DECISIONS.md`. Kept because it is the correct shape for this component and is
- * what makes the fix upstairs worth having.
+ * It only started paying for itself once the route tree stopped destroying this
+ * node from above. Until `dives/(detail)/layout.tsx` hoisted the fetch out of the
+ * dynamic segment, the App Router re-mounted the whole page on a `/dives/[id]`
+ * param change and focus landed on `<body>` however careful this component was -
+ * see "The step remounted the page, and hoisting the fetch into a route-group
+ * layout is what stopped it" in `DECISIONS.md`. Both halves are load-bearing: the
+ * hoist keeps the component mounted, and this keeps the node inside it.
  */
 function NavLink({ direction, neighbor, isPending }: NavLinkProps) {
   const router = useRouter();

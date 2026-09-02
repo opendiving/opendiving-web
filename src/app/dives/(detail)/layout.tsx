@@ -48,7 +48,7 @@ export default function DiveDetailLayout({
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
   // Both stored with the uuid they were looked up for, and read back only while
   // the dive on screen still names that uuid - the same shape, and for the same
-  // reason, as `DiveDateNav`'s neighbours. This state now outlives a step, so
+  // reason, as `DiveNeighborNav`'s neighbours. This state now outlives a step, so
   // held plainly it would spend the second round trip after a boundary-crossing
   // step showing the *previous* dive's trip beside the new dive's everything
   // else, as a live link to it, with `isLoadingDive` already false and nothing

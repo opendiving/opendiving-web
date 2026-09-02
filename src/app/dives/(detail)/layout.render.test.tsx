@@ -41,9 +41,9 @@ vi.mock("next/navigation", () => ({
 }));
 
 // Rendered inside the header; its own behaviour belongs to
-// `dive-date-nav.render.test.tsx`.
-vi.mock("@/components/dives/dive-date-nav", () => ({
-  DiveDateNav: () => null,
+// `dive-neighbor-nav.render.test.tsx`.
+vi.mock("@/components/dives/dive-neighbor-nav", () => ({
+  DiveNeighborNav: () => null,
 }));
 
 const getTrip = vi.fn();
