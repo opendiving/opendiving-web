@@ -138,17 +138,25 @@
     --coral: 16 100% 65.7%;
     --teal: 180 100% 25%;
 
-    /* Label colour for anything *filled* with --coral, which the gear service
-       badge is the first thing to do - everywhere else coral is a stroke or a
-       glyph. Near-black rather than white: at 65.7% the brand coral carries white
-       at only 2.5:1, and the same dark label the dark theme's --warning and
-       --success already use reaches 7.2:1 on it.
+    /* Labels for anything *filled* with a brand accent, which the gear service
+       badge is the first thing to do - everywhere else coral and teal are strokes
+       or glyphs. Both are white, so the three service chips carry one label colour
+       between them, matching --destructive-foreground on the third.
 
-       Not a fourth coral, and so not what the collapse above removed: it is the
-       colour that sits *on* coral, the pairing --destructive, --success, --warning
-       and every other filled token here already have. Constant across themes
-       because --coral is - a per-theme pair would have nothing to adapt to. */
-    --coral-foreground: 240 4% 9%;
+       Neither is a second coral or a second teal, and so neither is what the
+       collapse above removed: they are the colour that sits *on* the accent, the
+       pairing --destructive, --success, --warning and every other filled token
+       here already have. Constant across themes because the accents are - a
+       per-theme pair would have nothing to adapt to.
+
+       --coral-foreground is where this palette pays for the uniformity, and the
+       cost is on the record rather than hidden: white on #FF7F50 is 2.5:1, under
+       the 4.5:1 AA asks of the label, where a near-black would have been 7.2:1.
+       Teal is the dark half of the pair and has no such problem - 4.8:1 under
+       white, and only 3.8:1 under the near-black, so it wanted white anyway.
+       See "the service scale is three brand fills now" in DECISIONS.md. */
+    --coral-foreground: 0 0% 100%;
+    --teal-foreground: 0 0% 100%;
 
     /* Third chart accent, for the dive profile's tank-pressure curve. Depth is
        teal and temperature is coral; pressure needs a hue that's separable from

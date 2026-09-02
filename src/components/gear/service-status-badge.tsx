@@ -33,8 +33,16 @@ export function ServiceStatusBadge({
     return <span className="text-muted-foreground">—</span>;
   }
 
+  // One width for all three, so a column of them reads as a scale rather than as
+  // three differently-sized chips: "In service" is the widest at ~79px, and 6rem
+  // clears it with room for a fallback font. `justify-center` is what the extra
+  // width is spent on - `Badge` is `inline-flex items-center` and would otherwise
+  // leave the label hard against the left padding.
   const badge = (
-    <Badge variant={serviceStatusBadgeVariant(status)}>
+    <Badge
+      variant={serviceStatusBadgeVariant(status)}
+      className="min-w-24 justify-center"
+    >
       {serviceStatusLabel(status)}
     </Badge>
   );

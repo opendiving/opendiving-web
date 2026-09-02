@@ -24,10 +24,14 @@ const badgeVariants = cva(
         // seriously that is not yet a failure - but on the palette's own accent
         // rather than amber, for statuses that sit beside a `destructive` chip and
         // should read as the same family one step down. It separates from
-        // `destructive` by lightness (66% against --destructive-solid's 40%), not by
-        // hue: the two are six degrees apart and never could.
+        // `destructive` by lightness (65.7% against --destructive-solid's 40%), not
+        // by hue: the two are six degrees apart and never could.
         coral:
           "border-transparent bg-coral text-coral-foreground hover:bg-coral/80",
+        // The other brand accent, filled, for the settled end of a status scale
+        // whose urgent end is `coral`. Teal is the dark half of the brand pair, so
+        // unlike `coral` it carries a white label.
+        teal: "border-transparent bg-teal text-teal-foreground hover:bg-teal/80",
         outline: "text-foreground",
       },
     },

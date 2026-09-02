@@ -3373,53 +3373,102 @@ All/Year/Month was active, so that one was a functional bug, not a cosmetic one.
 deliberately stayed at 16% despite having been the same value - it is a large-area wash (the footer,
 callouts), and 22% over that much surface reads as a panel rather than a tint.
 
-### Correction: "Due soon" is coral now, and the amber was a fourth accent
+### Correction: the service scale is three brand fills now, and the amber was a fourth accent
 
 The section above is still the reason `due_soon` is not `secondary`, and its measurements still
-hold. What changed is which filled variant it lands on: `serviceStatusBadgeVariant` returns
-`"coral"`, a new `Badge` variant over `--coral`, not `"warning"`.
+hold. What changed is the whole scale. `serviceStatusBadgeVariant` returns `"coral"` for `due_soon`
+and `"teal"` for `ok` - two new `Badge` variants over the two brand accents - alongside the
+unchanged `"destructive"`, which has always painted `bg-destructive-solid`. `warning` and `outline`
+are both out of this function.
 
-The palette has three accents by design - `--coral` at hue 16, `--teal` at 187 across the wheel from
-it, `--pressure` at 265 opposite the pair - and the reasoning under _Errors are coral_ is that a
-colour belonging to no other token reads as imported rather than chosen. `--warning`'s amber
-(`32 92% 27%` light, `38 95% 62%` dark) was exactly that on a status chip: a fourth hue, introduced
-for one badge. Coral is the accent the app already owns, and "Due soon" is the state the brand
-colour is well suited to - urgent enough to notice, not a failure.
+**The scale is read by hue now, not by weight.** It used to escalate by how much ink a chip spent:
+an outline for "In service", a fill for "Due soon", a heavier fill for "Overdue". All three are
+filled, so what separates them is teal against coral against deep coral - the settled state on the
+cool half of the brand pair, the two urgent ones on the warm half. That trade is deliberate: an
+outline chip beside two filled ones read as an absence rather than a state, and "In service" is a
+verdict the app is making, not a lack of one. The `outline` variant is untouched and still carries
+"Archived", "Paused" and "Rented" - facts about an item rather than judgments about it, which is the
+line the scale now draws.
 
-**It separates from `destructive` by lightness, and could never separate by hue.** The two are six
-degrees apart (16 against `--destructive-solid`'s 10) - 2.36:1 between the two fills - so the
-escalation reads as outline -> pale coral -> deep coral, and the words "Due soon" and "Overdue" do
-the rest. That is the same trade already accepted for `--ceiling` beside `--coral` on the dive
-profile, and for `bg-coral-solid` beside `bg-destructive-solid` on the sign-in and delete buttons.
+The palette has three accents by design - `--coral` at hue 16, `--teal` at 180, `--pressure` at 265
+opposite the pair - and the reasoning under _Errors are coral_ is that a colour belonging to no
+other token reads as imported rather than chosen. `--warning`'s amber (`32 92% 27%` light,
+`38 95% 62%` dark) was exactly that on a status chip: a fourth hue, introduced for one badge. Coral
+is the accent the app already owns, and "Due soon" is the state the brand colour is well suited to -
+urgent enough to notice, not a failure.
 
-**`--coral` needed a `--coral-foreground`, and it is near-black.** This is the first place the brand
-coral is used as a _fill_; everywhere else it is a stroke or a glyph (`text-coral`, the logo) or the
-darkened `--coral-solid` under white. At 66% lightness it carries white at only 2.5:1, so the label
-is `240 4% 9%` - the same near-black the dark theme's `--warning-foreground` and
-`--success-foreground` already use - for 7.3:1. Constant across themes, like `--coral` itself: a
-per-theme pair would have nothing to adapt to.
+**Coral and `destructive` separate by lightness, and could never separate by hue.** The two are six
+degrees apart (16 against `--destructive-solid`'s 10) - 2.35:1 between the two fills - so the urgent
+end reads as pale coral then deep coral, and the words "Due soon" and "Overdue" do the rest. That is
+the same trade already accepted for `--ceiling` beside `--coral` on the dive profile, and for the
+coral sign-in button beside a `bg-destructive-solid` delete button. Teal has no such problem: it is
+the opposite side of the wheel, which is the whole reason it is the accent the settled state gets.
 
-**Measured off the rendered dashboard, both themes**, per _Verifying colour work_. The fill paints
-`rgb(255, 128, 82)` in both, which is the token exactly - `bg-coral` has no alpha, so this is the
-one case where the arithmetic and the painted value agree.
+**Each accent needed a `-foreground`, and both are white.** This is the first place either brand
+colour is used as a _fill_; everywhere else they are strokes or glyphs - `text-coral`, the logo, the
+buttons that took the hues directly when _One coral and one teal_ below collapsed the family. Teal
+is the dark half of the pair (`#008080`) and wanted white on its own merits: 4.77:1 under white
+against 3.8:1 under a near-black. Coral did not, and takes white anyway, so that the three chips
+carry one label colour between them and match `--destructive-foreground` on the third.
 
-| Surface                       | Light  | Dark   | Bar   |
-| ----------------------------- | ------ | ------ | ----- |
-| Badge label on the coral fill | 7.28:1 | 7.28:1 | 4.5:1 |
-| Coral fill against `--card`   | 2.48:1 | 6.55:1 | 3:1   |
+**That is where this palette pays, and the bill is 2.50:1.** White on `#FF7F50` is well under the
+4.5:1 AA asks of the label; a near-black would have been 7.23:1, and `--coral-foreground` carried
+exactly that until the uniformity was chosen over it. Unlike the fill misses below, this one is on
+the _text_ - the part of the chip that carries the meaning - so it is a real legibility cost rather
+than an argument about whether a boundary is visible. It is recorded here, and in the token's own
+comment in `globals.css`, because it is the kind of decision the next contrast sweep rediscovers as
+a bug. The fix, if it is ever wanted back, is the near-black on `--coral-foreground` alone; nothing
+else in the scale depends on it.
 
-**The light-theme figure is under 3:1 and was accepted.** It is the mirror of the bug this section
-was written about - a chip that does not separate from the card behind it - and the reason it is not
-the same defect is the reason the light `--secondary` gap was left alone two paragraphs up: **it
-separates by hue, not lightness.** A 100%-saturation salmon on white is unmistakably a chip; the
-1.2:1 case was a near-neutral grey three points off its card, which was not. Nothing is lost if the
-fill goes unnoticed either way - the label reads at 7.28:1 and carries the whole meaning, which is
-what keeps this outside SC 1.4.11 rather than merely forgiven by it. Watch it if `--card` ever stops
-being white in the light theme.
+**Those tokens are not what the collapse removed, which is why they may exist at all.**
+`--coral-solid` and `--coral-text` were _other corals_, tuned darker for a filled button and for
+text on white, and the point of removing them was to stop four coral-ish classes competing at every
+call site. `--coral-foreground` is not a coral: it is the label that sits on one, the pairing
+`--destructive`, `--success`, `--warning` and every other filled token in the palette already carry.
+A fill with no foreground token is the thing that has no precedent here.
 
-`--warning` keeps its `Badge` variant and three other consumers - `courseStatusBadgeVariant` uses it
-for `incomplete` and `provisional`, and `dive-exposure-card`, `dive-mixtures-card` and
-`mixture-fields` use `text-warning` - so nothing was orphaned.
+**Measured off the rendered dashboard and gear table, both themes**, per _Verifying colour work_.
+The two brand fills paint `rgb(255, 127, 80)` and `rgb(0, 128, 128)` in both themes - `coral` and
+`teal` exactly, and the tokens exactly, since neither class carries alpha and so neither composites
+over anything.
+
+| Surface                                | Light  | Dark   | Bar   |
+| -------------------------------------- | ------ | ------ | ----- |
+| Badge label on the coral fill          | 2.50:1 | 2.50:1 | 4.5:1 |
+| Coral fill against `--card`            | 2.50:1 | 6.51:1 | 3:1   |
+| Badge label on the teal fill           | 4.77:1 | 4.77:1 | 4.5:1 |
+| Teal fill against `--card`             | 4.77:1 | 3.41:1 | 3:1   |
+| Badge label on `--destructive-solid`   | 5.87:1 | 5.87:1 | 4.5:1 |
+| `--destructive-solid` against `--card` | 5.87:1 | 2.77:1 | 3:1   |
+
+The `destructive` row is measured rather than changed - that chip is untouched by this work, and its
+figures are theme-constant for the same reason the brand ones are. It misses the non-text bar in the
+dark theme, which is the mirror of coral's light-theme miss and has the same answer: a saturated
+red-orange chip on a 13%-lightness card is not a chip you fail to see, and its label is 5.87:1
+either way. Both are on record here so that a future change to `--card` has somewhere to check.
+
+The coral label's 2.50:1 is the one figure in this table that is not an argument about visibility;
+see _That is where this palette pays_ above.
+
+**Coral against a white card was the miss this section set out to justify, and it was accepted.** It
+is the mirror of the bug this section was written about - a chip that does not separate from the
+card behind it - and the reason it is not the same defect is the reason the light `--secondary` gap
+was left alone two paragraphs up: **it separates by hue, not lightness.** A 100%-saturation salmon
+on white is unmistakably a chip; the 1.2:1 case was a near-neutral grey three points off its card,
+which was not. What keeps the _fill_ outside SC 1.4.11 rather than merely forgiven by it is that the
+label carries the whole meaning; the label's own contrast is a separate matter, and on this one chip
+it is the cost named above. Watch the fill if `--card` ever stops being white in the light theme.
+
+`--warning` keeps its `Badge` variant and four other consumers - `courseStatusBadgeVariant` uses it
+for `incomplete` and `provisional`; `dive-exposure-card`, `dive-mixtures-card` and `mixture-fields`
+use `text-warning`; and `terms/page.tsx` still draws the safety notice with `border-warning/40`,
+`bg-warning/10` and `text-warning`, which is the use the correction under _Theme tokens_ was written
+about. Nothing was orphaned.
+
+That correction is now one item out of date in the other direction: it lists `lib/gear-service.ts`
+among the token's consumers, and after this change that file no longer touches `--warning` at all.
+(It also said "overdue service", which was wrong when written - `overdue` has always been
+`destructive`, and it was `due_soon` that borrowed the amber.)
 
 ### And the dashboard puts the chip last, where the rows align
 
@@ -10278,12 +10327,14 @@ things, and only one of them is a copyright question at all.
 The token entry above says `--warning` has "one use, the terms page's safety notice". That was true
 when it was written and is not any more: `dive-exposure-card.tsx` colours an alert exposure figure
 with `text-warning`, `dive-mixtures-card.tsx` and `mixture-fields.tsx` both use it on mixture
-warnings, `ui/badge.tsx` has a `warning` variant built on `bg-warning`, and `lib/gear-service.ts`
-borrows it for overdue service. The safety notice is therefore **not** load-bearing for the token,
-and the reason to keep it is its own: it is the one part of the page that was unambiguously true
-before this change, and a dive log disclaiming safety advice should not look like a footnote. It
-survives this sweep on its merits, with only "a platform for logging and sharing diving experiences"
-corrected to "software for logging dives".
+warnings, `ui/badge.tsx` has a `warning` variant built on `bg-warning`, and `lib/course.ts` returns
+that variant for `incomplete` and `provisional` courses. (`lib/gear-service.ts` was in this list
+too, for `due_soon` - not "overdue", which has always been `destructive`. It moved to `--coral`; see
+_Correction: "Due soon" is coral now_.) The safety notice is therefore **not** load-bearing for the
+token, and the reason to keep it is its own: it is the one part of the page that was unambiguously
+true before this change, and a dive log disclaiming safety advice should not look like a footnote.
+It survives this sweep on its merits, with only "a platform for logging and sharing diving
+experiences" corrected to "software for logging dives".
 
 ## The footer's column labels were headings, and the footer is shared chrome
 
