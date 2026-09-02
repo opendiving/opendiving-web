@@ -13416,13 +13416,26 @@ text rather than strand at the edges — means the wrap point lands wherever it 
 up alone above the date, `›` alone below it, with the two halves of one control on different lines
 and neither next to anything that explains it.
 
-**They are now a pager on the back link's row**, right-aligned opposite `← Back to Dives`:
-`‹ Previous` and `Next ›` as two `outline`/`sm` buttons, the same visual vocabulary the log list's
-`PaginationFooter` already uses for the same idea. Three things follow from that row in particular.
-It is the only row in the header that cannot wrap — one short link and one short pair. It groups
-this control with the page's other way out, which is what it is: navigation between records, as
-against the `actions` beside the title that operate on the record being shown. And it was empty, so
-the pager costs no vertical space at all.
+**They are now a pager on the title's own line**, immediately after `Dive #2` and at the opposite
+end of that row from Edit and Delete: `‹ Previous` and `Next ›` as two `outline`/`sm` buttons, the
+same visual vocabulary the log list's `PaginationFooter` already uses for the same idea. `h-9` on
+those controls is exactly what `text-3xl` sets as a line box, so the pair sits level with the
+heading with nothing nudged into place.
+
+**It went to the back link's row first, and that was wrong for a reason worth writing down.** That
+row was empty and cannot wrap, which is what recommended it — but right-aligning the pair there
+stacked it directly above Edit and Delete, and `Next ›` ended up one button-height from `Delete` in
+the same corner. A step is the thing a diver does repeatedly and quickly; it is the last control
+that should share a corner with the one that must never be hit by accident. Splitting the two
+clusters across the row instead puts real width between them: 458px at a 1024px viewport, and 90px
+at the tightest point, the `sm` boundary where they still share a row. Below `sm` the row stacks and
+the date line sits between them.
+
+Two smaller consequences of that row. `actions` is `sm:items-start` rather than `items-center`, so
+Edit and Delete sit on the title's line rather than on the midpoint between the title and the date.
+And the title row is `flex-wrap`: a five-digit dive number on a phone drops the pager onto its own
+line under the heading rather than squeezing it, which is the honest outcome — measured at 375px
+with `Dive #99101`, no horizontal overflow.
 
 `PageHeader` gained a `nav` slot for it. Its `subtitle` stays `ReactNode` — that width was
 originally taken for these chevrons, but `DetailPageSkeleton` needs it too, so it does not narrow

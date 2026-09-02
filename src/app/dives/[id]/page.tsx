@@ -136,9 +136,10 @@ export default function DiveDetailPage() {
         // own below: the two are one fact, and splitting them put the dive's
         // date in the header and the clock it was on two scroll positions away.
         subtitle={formatDiveStartTime(dive.start_time)}
-        // Up on the back link's row rather than around the date: stepping
-        // through the log is the same kind of move as leaving for it, and this
-        // line is the one in the header that never wraps.
+        // Beside the dive it steps away from, rather than inside the date line
+        // below it. The far end of this row is Delete, and the width between
+        // them is the point: a step is a thing you do repeatedly and quickly,
+        // and it should not share a corner with the button you must not miss.
         nav={<DiveNeighborNav diveUuid={dive.uuid} />}
         actions={
           <>
