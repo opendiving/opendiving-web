@@ -3510,12 +3510,22 @@ under the fixed version of itself. It composes its own `Badge` rather than going
 argument above is about not inlining a `Badge` where a shared component already exists, not about
 never inlining one.
 
-**The two cards still speak different colour vocabularies, and that is not resolved here.** Service
-status is `destructive` / `coral` / `teal`; `certificationExpiryBadgeVariant` is still `destructive`
-/ `secondary`, so an "Expiring soon" chip is the grey `secondary` while a "Due soon" one directly
-above it is brand coral. Ordering and width are fixed, colour is not - noted on
-`certificationExpiryBadgeVariant` itself so the next person to touch either scale finds it. Whether
-certifications should join the brand scale is a design call, not a cleanup.
+**And the colours were unified after that**, so the two cards no longer speak different
+vocabularies. `certificationExpiryBadgeVariant` returns `destructive` / `coral` where it returned
+`destructive` / `secondary`: grey beside a coral "Due soon" on the same dashboard read as "not
+really a status", which is the same complaint that moved service status off `secondary` in the first
+place, one card lower.
+
+**Certifications get no `teal`, and the asymmetry is real rather than an omission.** The service
+scale has three states because "In service" is a verdict worth painting. `CertificationExpiryStatus`
+has two, and `certificationExpiryStatus` returns `null` for a card with plenty of time left - so a
+healthy certification produces no status, never reaches this function, and never renders a chip.
+There is nothing for a settled colour to sit on, which is the same fact that makes the card render
+only when something is flagged.
+
+That recolour reaches three render sites, not just the dashboard: `certifications/page.tsx`, the
+`certification-view-dialog`, and `CertificationExpiryCard`. One mapping function is what makes that
+a single edit - the same property that let the service scale's own recolour need no sweep.
 
 **The widths are per-card, not global.** Service chips are `min-w-24` (96px, clearing "In service"
 at ~79px); certification chips are `min-w-28` (112px, clearing "Expiring soon"). One number across

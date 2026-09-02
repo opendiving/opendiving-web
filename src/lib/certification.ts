@@ -91,14 +91,18 @@ export function certificationRenewals<T extends { expires_on?: string | null }>(
     .sort((a, b) => a.expiresOn.localeCompare(b.expiresOn));
 }
 
-// Maps onto the `Badge` variants already in the design system. It used to mirror
-// `serviceStatusBadgeVariant` and no longer does: gear service moved to a filled
-// brand scale (`destructive` / `coral` / `teal`) and certifications did not, so the
-// two chips sit on the same dashboard wearing different vocabularies. That is an
-// open inconsistency rather than a decision - see "the service scale is three brand
-// fills now" in DECISIONS.md.
+// Maps onto the `Badge` variants already in the design system, on the same filled
+// brand scale as `serviceStatusBadgeVariant`: `destructive` for the state that has
+// already gone wrong, the brand `coral` for the one that is about to. There is no
+// `teal` counterpart here because there is no settled state to paint - a
+// certification with plenty of time left produces no status at all and never
+// reaches this function, which is why the card exists only when something is
+// flagged.
+//
+// `expiring_soon` was `secondary` until the service scale moved, and grey beside a
+// coral "Due soon" on the same dashboard read as "not really a status".
 export function certificationExpiryBadgeVariant(
   status: CertificationExpiryStatus,
-): "destructive" | "secondary" {
-  return status === "expired" ? "destructive" : "secondary";
+): "destructive" | "coral" {
+  return status === "expired" ? "destructive" : "coral";
 }
