@@ -8,9 +8,9 @@ import {
   Clock,
   Fish,
   Plus,
-  Waves,
 } from "lucide-react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
+import { DiveIcon } from "@/components/logo";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { RecentTripsCard } from "@/components/dives/recent-trips-card";
 import { DiveActivityCard } from "@/components/dives/dive-activity-card";
@@ -238,7 +238,7 @@ export default function DashboardPage() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-6">
               <Stat
                 title="Total Dives"
-                icon={<Waves className="h-4 w-4" />}
+                icon={<DiveIcon className="h-4 w-4" />}
                 value={stats && String(stats.total_dives)}
                 hint="Logged in your logbook"
               />

@@ -17,7 +17,8 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ListRowsSkeleton } from "@/components/ui/skeleton";
-import { Waves, Plus, Clock, ArrowDownToLine } from "lucide-react";
+import { Plus, Clock, ArrowDownToLine } from "lucide-react";
+import { DiveIcon } from "@/components/logo";
 import { useUnits } from "@/hooks/useUnits";
 import { formatDepth } from "@/lib/units";
 
@@ -117,7 +118,7 @@ export function RecentDivesCard({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-1.5">
             <CardTitle as="h2" className="flex items-center gap-2">
-              <Waves className="h-5 w-5" />
+              <DiveIcon className="h-5 w-5" />
               {title}
             </CardTitle>
             <CardDescription>{description}</CardDescription>
@@ -139,7 +140,7 @@ export function RecentDivesCard({
           <ListRowsSkeleton rows={Math.min(limit, RECENT_DIVES_COUNT)} />
         ) : recentDives.length === 0 ? (
           <div className="text-center py-12">
-            <Waves className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <DiveIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-medium text-foreground mb-2">
               {emptyTitle}
             </h3>

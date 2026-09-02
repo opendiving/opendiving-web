@@ -10,7 +10,7 @@ import { isFormPath } from "@/lib/return-to";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { ThemeMenuItems, ThemeToggle } from "@/components/theme-toggle";
-import { Logo } from "@/components/logo";
+import { DiveIcon, Logo } from "@/components/logo";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,14 +23,12 @@ import {
   Settings,
   Menu,
   Plus,
-  Waves,
   MapPin,
   Luggage,
   Backpack,
   BadgeCheck,
   GraduationCap,
   Fish,
-  type LucideIcon,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -43,12 +41,17 @@ import {
 // the hamburger is navigation and "+" is creation. A dive is the only form big
 // enough to warrant its own page; the rest open a dialog over whatever the
 // diver is looking at.
-type CreateAction = { label: string; icon: LucideIcon } & (
-  { href: string } | { kind: QuickCreateKind }
-);
+// `icon` is typed by what this menu actually renders - a component taking a
+// `className` - rather than as `LucideIcon`: "New Dive" carries the brand mark,
+// which is a plain function component and not one of lucide's forward-ref
+// exports.
+type CreateAction = {
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+} & ({ href: string } | { kind: QuickCreateKind });
 
 const CREATE_ACTIONS: CreateAction[] = [
-  { label: "New Dive", icon: Waves, href: "/dives/new" },
+  { label: "New Dive", icon: DiveIcon, href: "/dives/new" },
   { label: "New Trip", icon: Luggage, kind: "trip" },
   { label: "New Dive Site", icon: MapPin, kind: "site" },
   { label: "New Gear", icon: Backpack, kind: "gear" },
