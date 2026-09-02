@@ -6555,7 +6555,7 @@ and parameterising the shared skeleton for one page costs more than the 4px. The
 card exists is one of the things the request answers.
 
 (The first of those two is gone. The buttons left that line when the prev/next control became a
-pager on the back link's row - see _"The prev/next chevrons left the date line"_ below - so the dive
+pager beside the title - see _"The prev/next chevrons left the date line"_ below - so the dive
 page's subtitle is now the same plain 24px text as every other detail page's, and the shared `h-6`
 bar is exact for all of them.)
 
