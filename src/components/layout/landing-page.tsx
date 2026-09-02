@@ -45,6 +45,10 @@ export function LandingPage() {
     <div className="bg-background">
       {/* Hero Section */}
       <section id="get-started" className="relative overflow-x-hidden py-20">
+        <div
+          aria-hidden="true"
+          className="hero-reef pointer-events-none absolute top-12 left-[48%] hidden w-[280px] -translate-x-1/2 opacity-25 lg:block"
+        />
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
             <div className="text-center">
