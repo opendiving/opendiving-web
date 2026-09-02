@@ -32,11 +32,13 @@ service, and a fork that drops Google sign-in should drop the mark with it.
 
 <https://svgsilh.com/image/1298776.html>
 
-`public/reef-mask.png` is the silhouette of svgsilh's "ocean coral reef marine" image, released
-under [Creative Commons CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/). CC0 is a
-public-domain dedication: it permits redistribution and modification, and requires no attribution.
-This entry exists because provenance that is not written down cannot be recovered later, not because
-the licence asks for it.
+`assets/artwork/reef-svgsilh-1298776.svg` is svgsilh's "ocean coral reef marine" image, released
+under [Creative Commons CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/).
+`public/reef-mask.png` is the silhouette derived from it by `scripts/generate-reef-mask.mjs`, and is
+the only one of the two that ships: the source is kept out of `public/` so it is served to nobody
+and never reaches the image. CC0 is a public-domain dedication: it permits redistribution and
+modification, and requires no attribution. This entry exists because provenance that is not written
+down cannot be recovered later, not because the licence asks for it.
 
 Two things worth knowing rather than rediscovering. The dedication is svgsilh's blanket assertion
 across its library, applied to artwork it derived from a Pixabay original — Pixabay's own terms

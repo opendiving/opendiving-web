@@ -13228,6 +13228,11 @@ the moment it was pushed. Nothing caught it because the branch doing the removal
 that import, so its CI stayed green while `main`'s went red. **After rewriting history, type-check
 the branches you did not rewrite it on.**
 
+**`git filter-repo` removes the `origin` remote every time, on purpose.** It is a guard against
+reflexively pushing a rewritten history somewhere nobody thought about, and it caught this session
+twice - the second time as a bare "'origin' does not appear to be a git repository" after a rewrite,
+which reads like a broken checkout rather than a deliberate safety catch. Re-add it before pushing.
+
 **A bundle of all 28 pre-purge refs was taken before any of it** and is the only complete copy of
 the original history - `refs/original/*` is not, having been overwritten by the re-signing passes.
 It also contains the licensed artwork, so it is evidence with a shelf life rather than an archive to
@@ -13261,3 +13266,19 @@ alpha as fully opaque and paints the whole box. Prefixed for Safari before 15.4.
 **The general shape of the trade:** a decorative asset should be measured at the size and opacity it
 actually renders, not at the size it was authored. Three formats were compared before the answer
 turned out to be a fourth thing entirely - throwing away every channel but one.
+
+**The source is committed, and that is the point rather than an afterthought.** A 19 KB mask cannot
+be regenerated from itself, and no other derivative can be made from it - a larger one, or one
+keeping the interior stipple this pipeline discards. `assets/artwork/` holds the 318 KB original so
+both stay possible when svgsilh no longer hosts it, which for a project whose whole argument is
+outliving the vendor is not a detail to be relaxed about. It sits outside `public/` deliberately:
+the runner stage copies only `LICENSE`, `NOTICE.md`, `public/` and `.next`, so the source is served
+to nobody and adds nothing to the image.
+
+`scripts/generate-reef-mask.mjs` reproduces the committed mask **byte for byte** - same sha256 - so
+it is the pipeline rather than a description of one. That is worth checking after any change to it,
+because a script that merely approximates the committed artefact is how the two quietly diverge.
+
+**And this is what the marketplace rule was always about.** CC0 permits redistribution outright,
+which is why a 318 KB blob can be committed here a day after three were purged from history: the
+difference is the terms, never the file size.
