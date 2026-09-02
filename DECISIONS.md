@@ -3532,13 +3532,29 @@ at ~79px); certification chips are `min-w-28` (112px, clearing "Expiring soon").
 both would pad the shorter set to no purpose - what has to line up is the right edge, and
 `justify-between` already guarantees that regardless of chip width.
 
-Both also carry `whitespace-nowrap`, which changes nothing today and is the point: every label fits
-its width in Inter, and the failure it guards against is a chip quietly becoming two lines tall
-rather than one - a fallback font while Inter loads, a browser minimum-font-size, a longer label
-added later. Measured by forcing a 50px `max-width` on a live "In service" chip: 22px tall with the
-guard, 38px without. A chip that overflows its pill is visible immediately; one that grows a second
-line just looks like a slightly taller row, and the min-width makes that _more_ likely to go
-unnoticed, not less, because the pill still looks deliberate.
+**The courses table's Status column got the same width, and nothing else.** It is the third status
+column in the app and was the last one still ragged - six labels at six widths, where gear's Service
+column is uniform. Same `min-w-24`; "Not passed" is the widest at 88px, so the same 6rem clears it.
+`whitespace-nowrap` is doing more work there than in the other two: `courseStatusLabel` falls back
+to the raw wire value for a status this build doesn't recognise, so unlike the service and
+certification labels its content is not drawn from a fixed set and has no length bound at all.
+
+Deliberately layout-only. `courseStatusBadgeVariant` still returns `default` / `secondary` /
+`warning` / `destructive` / `outline` - a fourth vocabulary beside the brand fills, and the app's
+only remaining consumer of the amber `warning` badge. It survives because courses never share a
+screen with a gear or certification chip: they render on `/courses` and `/courses/[id]` and nowhere
+else, so the mismatch that forced the certification card's hand does not arise. Whether courses
+should join the brand scale is open, and is a bigger question than a column width - the scale has
+six states against gear's three, and `completed` currently owns the only chip in the app carrying
+`--primary`.
+
+Both service and certification chips also carry `whitespace-nowrap`, which changes nothing today and
+is the point: every label fits its width in Inter, and the failure it guards against is a chip
+quietly becoming two lines tall rather than one - a fallback font while Inter loads, a browser
+minimum-font-size, a longer label added later. Measured by forcing a 50px `max-width` on a live "In
+service" chip: 22px tall with the guard, 38px without. A chip that overflows its pill is visible
+immediately; one that grows a second line just looks like a slightly taller row, and the min-width
+makes that _more_ likely to go unnoticed, not less, because the pill still looks deliberate.
 
 ## One card-header shape: `space-y-1.5` only reaches `CardHeader`'s _direct_ children
 

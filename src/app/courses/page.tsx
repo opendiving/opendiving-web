@@ -215,8 +215,22 @@ export default function CoursesPage() {
                         course.end_date ?? undefined,
                       ) ?? <span className="text-muted-foreground">-</span>}
                     </TableCell>
+                    {/* A status column, so the chips get one width the way the
+                        gear table's Service column does - `min-w-24` is the same
+                        6rem, and clears "Not passed" at 88px, the widest of the
+                        six labels. Only the layout is shared: these variants are
+                        still the older `default`/`secondary`/`warning` scale, not
+                        the brand fills gear and certifications moved to.
+
+                        `whitespace-nowrap` earns more here than it does there.
+                        `courseStatusLabel` falls back to the raw wire value for a
+                        status this build doesn't know, so the label is not drawn
+                        from a fixed set of six and can be arbitrarily long. */}
                     <TableCell>
-                      <Badge variant={courseStatusBadgeVariant(course.status)}>
+                      <Badge
+                        variant={courseStatusBadgeVariant(course.status)}
+                        className="min-w-24 justify-center whitespace-nowrap"
+                      >
                         {courseStatusLabel(course.status)}
                       </Badge>
                     </TableCell>
