@@ -3501,6 +3501,27 @@ A prop rather than composing the two pieces in the card: the component's whole r
 is that the three places service status renders can't drift apart, and inlining a `Badge` in the
 dashboard to reorder it is exactly that drift.
 
+**`CertificationExpiryCard` is the same row and got the same treatment**, and it was missed on the
+first pass. It renders directly below the service-due card on the dashboard, off the same `Link`
+class string, with the same left name block and the same badge-plus-detail group on the right - so
+badge-first there produced exactly the stranded chip this section is about, now sitting one card
+under the fixed version of itself. It composes its own `Badge` rather than going through
+`ServiceStatusBadge` (different labels, different variants), so this one is an inline swap; the
+argument above is about not inlining a `Badge` where a shared component already exists, not about
+never inlining one.
+
+**The two cards still speak different colour vocabularies, and that is not resolved here.** Service
+status is `destructive` / `coral` / `teal`; `certificationExpiryBadgeVariant` is still `destructive`
+/ `secondary`, so an "Expiring soon" chip is the grey `secondary` while a "Due soon" one directly
+above it is brand coral. Ordering and width are fixed, colour is not - noted on
+`certificationExpiryBadgeVariant` itself so the next person to touch either scale finds it. Whether
+certifications should join the brand scale is a design call, not a cleanup.
+
+**The widths are per-card, not global.** Service chips are `min-w-24` (96px, clearing "In service"
+at ~79px); certification chips are `min-w-28` (112px, clearing "Expiring soon"). One number across
+both would pad the shorter set to no purpose - what has to line up is the right edge, and
+`justify-between` already guarantees that regardless of chip width.
+
 ## One card-header shape: `space-y-1.5` only reaches `CardHeader`'s _direct_ children
 
 `CardHeader` is `flex flex-col space-y-1.5 p-6`, and Tailwind's `space-y-*` is a `> * + *`
