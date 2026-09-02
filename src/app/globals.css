@@ -63,9 +63,12 @@
        survives the recolour, but its reason has narrowed: --destructive is now dark
        enough in *this* theme to carry white itself, and what still needs a separate
        token is the dark theme, where --destructive has to be light enough to read as
-       text on a near-black background and so cannot sit under a white label. Same
-       shape as --teal / --teal-solid and --coral / --coral-solid: --destructive for
-       text, icons and tints; --destructive-solid for anything filled. */
+       text on a near-black background and so cannot sit under a white label. This
+       split is now unique to the destructive pair: the brand accents each collapsed
+       to a single hue, and --destructive / --destructive-solid is the carve-out the
+       collapse deliberately left standing, because here the colour is carrying
+       meaning rather than brand. --destructive for text, icons and tints;
+       --destructive-solid for anything filled. */
     --destructive-solid: 10 88% 40%;
 
     /* The counterpart to --destructive, for a confirmation that has to persist in
@@ -88,42 +91,34 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 240 2% 15%;
 
-    /* Brand accent used for the logo, favicon, and the active/selected
-       state of primary navigation items. Intentionally constant across
-       light/dark (not redeclared under .dark) so the brand color reads
-       the same in both themes. */
-    --coral: 16 100% 66%;
+    /* The two brand accents, and each is exactly its CSS named colour: --coral is
+       `coral` (#FF7F50) and --teal is `teal` (#008080). That is the whole
+       definition, deliberately - one hue per accent, no per-role variants. The
+       palette had grown --coral-solid, --coral-text and --teal-solid alongside
+       these, each a contrast-tuned darkening for one job (a filled button, text
+       on a light background), and picking between four coral-ish classes at every
+       call site is what the owner asked to be rid of. Anything coral is now
+       `coral`; anything teal is `teal`.
 
-    /* Same coral, darkened enough that white label text clears WCAG AA (5.1:1).
-       --coral itself is tuned for the logo and for icons/active states against a
-       light or dark surface; used as a filled button background it only reaches
-       2.3:1 with white on top, which axe flags on the landing page's sign-in
-       button. Exactly the same split, and the same reasoning, as --teal /
-       --teal-solid. Kept constant across light/dark for the same reason as
-       --coral. */
-    --coral-solid: 16 100% 40%;
+       Both are constant across light/dark - not redeclared under .dark - so a
+       brand colour reads the same in both themes. --coral-text used to be the one
+       exception and is gone with the rest.
 
-    /* Coral as *text* on the page background - the header's active nav item, the
-       landing hero's accent word. --coral itself is only 2.3:1 on a light
-       background, which fails AA on a primary navigation affordance.
-       Unlike --coral and --coral-solid this one IS redeclared under .dark, and has
-       to be: a colour dark enough to read on white is too dark to read on the dark
-       theme's background. The brand mark keeps using --coral in both themes, so the
-       "reads the same everywhere" property that token exists for is unaffected. */
-    --coral-text: 16 100% 36%;
+       65.7%, not the 66% this token carried for months: the rounded value renders
+       #FF8052, two units off coral on two channels. Imperceptible on its own and
+       not imperceptible next to `icon.svg`, which hard-codes #FF7F50 for the
+       favicon - the brand mark and its own favicon were quietly different colours.
+       180 100% 25% needs no such correction; it lands on #008080 exactly.
 
-    /* Secondary brand accent - a teal that sits across the color wheel from
-       coral, used for feature icons and other spots that want a cooler
-       counterpoint to coral. Same rationale as --coral: kept constant across
-       light/dark so it reads consistently in both themes. */
-    --teal: 187 60% 45%;
-
-    /* Same teal, darkened enough that white label text clears WCAG AA (5.7:1).
-       --teal itself is tuned for icons and strokes against a light or dark
-       surface; used as a filled button background it only reaches 2.9:1 with
-       white on top. Kept constant across light/dark for the same reason as
-       --teal. */
-    --teal-solid: 187 60% 30%;
+       The cost is real and was accepted knowingly: `coral` under white is 2.5:1
+       and as text on the light theme's white background is the same 2.5:1, so the
+       hero accent word, the header's active nav item and the coral sign-in button
+       are below WCAG AA in the light theme. `teal` is 4.8:1 under white and on
+       white, so it clears AA on both counts. The exception that keeps its tuned
+       pair is the one where colour carries meaning rather than brand: errors and
+       destructive actions, --destructive / --destructive-solid below. */
+    --coral: 16 100% 65.7%;
+    --teal: 180 100% 25%;
 
     /* Third chart accent, for the dive profile's tank-pressure curve. Depth is
        teal and temperature is coral; pressure needs a hue that's separable from
@@ -212,13 +207,9 @@
     --destructive: 10 100% 68%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Constant across themes, like --teal-solid and --coral-solid: it is only ever
-       under white label text, so it has nothing to adapt to. */
+    /* Constant across themes, like the brand accents: it is only ever under white
+       label text, so it has nothing to adapt to. */
     --destructive-solid: 10 88% 40%;
-
-    /* The light theme needs a dark coral for text; on this background the brand
-       coral itself is already 8:1, so text can simply use it. */
-    --coral-text: 16 100% 66%;
 
     /* Lightened for the dark surface, exactly as --destructive is. */
     --success: 142 65% 55%;
