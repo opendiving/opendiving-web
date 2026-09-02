@@ -13491,3 +13491,28 @@ left the paragraphs above still claiming a node identity that no longer existed.
 exists so a step never leaves the arrows pointing at the dive just left, and it could not fire while
 the component was being re-mounted with a fresh uuid each time. It fires now, on the frame the new
 dive lands.
+
+**And the trip and course lookups needed the same guard, which the hoist is what created the need
+for.** They resolve a uuid on the dive into a name, they now live in the layout, and so for the
+first time they outlive the dive they were resolved for. Held as plain state that is a worse bug
+than the one this change set out to fix: `useResource` commits the new dive and `isLoading: false`
+in one batch, so on a step across a trip boundary the incoming dive's page renders — at full
+opacity, with nothing dimmed to say otherwise — beside the _previous_ dive's trip, drawn by
+`DiveDetailSidebar` as a live `<Link href={/trips/...}>`. A whole round trip of a clickable link to
+somewhere the diver is no longer looking. The blanking that the remount used to cause was, for this
+one row, the thing keeping it honest.
+
+So both are stored with the uuid they were looked up for and read back only while the dive still
+names it — the same shape as the neighbours, for the same reason and in the same words. The one
+difference is what they are keyed on: the **record**, not the dive. Keyed on the dive, stepping
+_within_ a trip would blank the row and re-fetch an answer that had not changed, which is most of
+the steps a diver actually takes; keyed on `trip_uuid`, the row is untouched and no request is made
+unless the trip really is a different one. Verified both ways in a browser — a step from `#458` to
+`#460` across a trip boundary shows no frame carrying the new dive's header with the old trip's
+link, and a step from `#491` to `#492` inside `Dahab 2026` has no frame without the row and makes no
+second `getTrip` call.
+
+`layout.render.test.tsx` pins all three cases, and pins them where the browser cannot help: the
+stale window is one paint wide, so the test drives it by holding the second `getTrip` unresolved.
+Both boundary tests were confirmed to fail against the unkeyed version before being kept — a
+regression test that has never been seen red is a test of nothing.

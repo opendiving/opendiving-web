@@ -45,8 +45,21 @@ export default function DiveDetailLayout({
 }) {
   const router = useRouter();
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
-  const [trip, setTrip] = useState<Trip | null>(null);
-  const [course, setCourse] = useState<Course | null>(null);
+  // Both stored with the uuid they were looked up for, and read back only while
+  // the dive on screen still names that uuid - the same shape, and for the same
+  // reason, as `DiveDateNav`'s neighbours. This state now outlives a step, so
+  // held plainly it would spend the second round trip after a boundary-crossing
+  // step showing the *previous* dive's trip beside the new dive's everything
+  // else, as a live link to it, with `isLoadingDive` already false and nothing
+  // dimmed to say so. Keyed on the record rather than on the dive, so stepping
+  // *within* a trip - a diver reading one front to back - keeps the row it
+  // already has instead of blanking it to fetch the same answer again.
+  const [links, setLinks] = useState<{
+    tripUuid?: string;
+    trip: Trip | null;
+    courseUuid?: string;
+    course: Course | null;
+  } | null>(null);
 
   const {
     resource: dive,
@@ -84,13 +97,13 @@ export default function DiveDetailLayout({
   // is: held in the page, a step would reset both to null while the outgoing
   // dive is still on screen, and the sidebar would blank the two rows it fills
   // from them under a card grid that is otherwise intact.
+  const tripUuid = user ? dive?.trip_uuid : undefined;
+  const courseUuid = user ? dive?.course_uuid : undefined;
+
   useEffect(() => {
     let cancelled = false;
 
     const fetchLinks = async () => {
-      const tripUuid = user ? dive?.trip_uuid : undefined;
-      const courseUuid = user ? dive?.course_uuid : undefined;
-
       const [tripData, courseData] = await Promise.all([
         tripUuid
           ? tripsAPI.getTrip(tripUuid).catch((error) => {
@@ -107,8 +120,12 @@ export default function DiveDetailLayout({
       ]);
 
       if (cancelled) return;
-      setTrip(tripData);
-      setCourse(courseData);
+      setLinks({
+        tripUuid,
+        trip: tripData,
+        courseUuid,
+        course: courseData,
+      });
     };
 
     fetchLinks();
@@ -116,7 +133,13 @@ export default function DiveDetailLayout({
     return () => {
       cancelled = true;
     };
-  }, [user, dive?.trip_uuid, dive?.course_uuid]);
+  }, [tripUuid, courseUuid]);
+
+  // Null while a lookup for *this* dive's trip or course is still in flight -
+  // the row is missing for a round trip rather than describing the dive before
+  // it, which is the same trade the dead-until-known arrows make.
+  const trip = links && links.tripUuid === tripUuid ? links.trip : null;
+  const course = links && links.courseUuid === courseUuid ? links.course : null;
 
   if (isAuthLoading) {
     return <PageSpinner variant="inset" />;
