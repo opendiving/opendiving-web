@@ -53,7 +53,11 @@ export default function DiveDetailLayout({
   // else, as a live link to it, with `isLoadingDive` already false and nothing
   // dimmed to say so. Keyed on the record rather than on the dive, so stepping
   // *within* a trip - a diver reading one front to back - keeps the row it
-  // already has instead of blanking it to fetch the same answer again.
+  // already has instead of blanking it and drawing it again. What that buys is
+  // the row, not the request: the two lookups share one effect, so a step that
+  // changes the course but not the trip re-fetches the trip as well. Harmless,
+  // since the key still matches and nothing blanks - but it is the reason not
+  // to read this as a cache.
   const [links, setLinks] = useState<{
     tripUuid?: string;
     trip: Trip | null;

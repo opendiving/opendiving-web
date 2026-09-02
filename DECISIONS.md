@@ -13506,11 +13506,20 @@ So both are stored with the uuid they were looked up for and read back only whil
 names it — the same shape as the neighbours, for the same reason and in the same words. The one
 difference is what they are keyed on: the **record**, not the dive. Keyed on the dive, stepping
 _within_ a trip would blank the row and re-fetch an answer that had not changed, which is most of
-the steps a diver actually takes; keyed on `trip_uuid`, the row is untouched and no request is made
-unless the trip really is a different one. Verified both ways in a browser — a step from `#458` to
-`#460` across a trip boundary shows no frame carrying the new dive's header with the old trip's
-link, and a step from `#491` to `#492` inside `Dahab 2026` has no frame without the row and makes no
-second `getTrip` call.
+the steps a diver actually takes; keyed on `trip_uuid`, the row is untouched. Verified both ways in
+a browser — a step from `#458` to `#460` across a trip boundary shows no frame carrying the new
+dive's header with the old trip's link, and a step from `#491` to `#492` inside `Dahab 2026` has no
+frame without the row and makes no second `getTrip` call.
+
+**What the key buys is the row, not the request, and this is not a cache.** The two lookups share
+one effect — deliberately, so a dive with both pays for them concurrently rather than in series —
+and its deps are `[tripUuid, courseUuid]`, so either one changing re-runs both. A step that starts
+or ends a course part-way through a trip therefore re-fetches the unchanged trip. Nothing blanks and
+nothing is wrong on screen, because the derived read still matches on `tripUuid`; it is only the
+request that is redundant. The first draft of this section claimed the stronger thing — that no
+request is made unless the trip differs — which the shared effect had never made true. The same-trip
+test asserts a single `getTrip` call, and it can only assert that because neither of its dives
+carries a course.
 
 `layout.render.test.tsx` pins all three cases, and pins them where the browser cannot help: the
 stale window is one paint wide, so the test drives it by holding the second `getTrip` unresolved.
