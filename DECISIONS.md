@@ -13454,3 +13454,37 @@ Inline flow for the subtitle is gone with the chevrons — the line is plain tex
 
 `dive-date-nav.tsx` is `dive-neighbor-nav.tsx`, and `DiveDateNav` is `DiveNeighborNav`: it no longer
 renders the date, so a name built around it would have been the second thing to mislead here.
+
+### The step still remounts the page, so the node-identity work never gets its payoff
+
+Found while walking this change through a browser, and it is **not** something this change
+introduced — `main` does it identically. Two claims in _"`<` is the earlier dive, which is the
+opposite of what the log list would suggest"_ above do not survive contact with the running app:
+
+Following one of these links **remounts `DiveDetailPage`**. The App Router treats a `/dives/[id]`
+param change as a new page instance, so nothing inside the page survives it. Two consequences, both
+of them the exact thing that section says was fixed:
+
+- **The page blanks.** `useResource` starts over with `resource === null`, so
+  `isLoadingDive && !dive` is true again and `DetailPageSkeleton` renders. Watching the `<h1>` at
+  frame resolution across a step gives `Dive #2` → `(empty)` → `Dive #3`. The `opacity-50` dim on
+  the card grid is real code that a step never reaches.
+- **Focus lands on `<body>`.** The whole `<a>`-that-swaps-its-`href` construction is destroyed from
+  above, and the browser drops focus exactly as it would have with `<Link>`.
+
+Measured three ways, all identical: `main` on the dev server, this branch on the dev server, and
+this branch on a `next build` + `next start` — so it is not a StrictMode or HMR artifact.
+
+`dive-neighbor-nav.render.test.tsx` passes throughout, and is not lying: it drives the component
+with `rerender`, which is a re-render and not a remount. There is no test at the layer where this
+goes wrong, which is why it survived a section of this file being written about it.
+
+**Not fixed here**, deliberately — this change is about where the control lives and what it looks
+like, and the fix is somewhere else entirely: hoisting the dive fetch above the page component (a
+layout, or a context keyed on the log rather than the dive) so a step re-renders instead of
+remounting. The pager's own construction is kept as it is, because it is the correct shape for the
+component and it is what makes that fix worth doing.
+
+What this is really an entry about: **a design defended in prose for a whole section, verified by a
+unit test at the wrong layer, and wrong in the app the entire time.** The unit test and the prose
+agreed with each other, and neither had ever been checked against a browser.

@@ -131,6 +131,14 @@ interface NavLinkProps {
  * the price of re-doing the two things `<Link>` was doing: pushing the route on a
  * plain click, and staying out of the way of a modified one so cmd-click still
  * opens a dive in a new tab.
+ *
+ * That survival is real at this component's own layer and is not currently reached
+ * in the app: the App Router remounts the whole page on a `/dives/[id]` param
+ * change, so this node is destroyed by something above it and focus lands on
+ * `<body>` anyway. Measured, on `main` as much as here - see "The step still
+ * remounts the page, so the node-identity work never gets its payoff" in
+ * `DECISIONS.md`. Kept because it is the correct shape for this component and is
+ * what makes the fix upstairs worth having.
  */
 function NavLink({ direction, neighbor, isPending }: NavLinkProps) {
   const router = useRouter();

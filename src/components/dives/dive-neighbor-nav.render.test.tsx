@@ -9,8 +9,13 @@ import type { DiveNeighbors } from "@/lib/api/dives";
 // accessible name and not in the label - that an end of the log leaves a button
 // present but dead rather than dropping it, that stepping to a neighbour never leaves
 // the pager aimed at the dive you just left, and that the link keeps its DOM node
-// across that step, which is the only thing standing between a keyboard diver and
-// re-tabbing to "Next" on every dive in a trip.
+// across that step.
+//
+// That last one is a component-level guarantee, and `rerender` is the only thing
+// that sees it: in the running app the App Router remounts the page around this
+// component, so focus is lost across a step regardless. The assertion is still the
+// one that fails if this starts swapping element types again - it is just not proof
+// that a keyboard diver keeps their focus. See `DECISIONS.md`.
 
 vi.mock("@/lib/api/dives", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api/dives")>()),
