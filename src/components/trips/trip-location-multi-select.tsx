@@ -36,9 +36,16 @@ const PLACE_SEARCH_DEBOUNCE_MS = 450;
  *
  * Locations are value objects - the API stores what the geocoder said rather
  * than pointing at a shared gazetteer entry - so identity has to come from the
- * content. The position plus the provider's full label is specific enough that
- * two genuinely different places never collide, and identical enough that
- * picking the same place twice is recognised as a duplicate.
+ * content. The position plus the label the row keeps is specific enough that two
+ * genuinely different places never collide, and identical enough that picking
+ * the same place twice is recognised as a duplicate.
+ *
+ * The label is the short "Dahab, Egypt" form now, so two Moalboals no longer
+ * differ by it - they differ by position, which they always did and which is
+ * what actually separates two places of one name. The one thing that costs: a
+ * place saved before the picker switched forms carries the provider's label, so
+ * it keys differently from a fresh pick of the same place and "already in the
+ * list" lets that duplicate through, once, on a row that predates the change.
  *
  * A location typed in by hand has no position at all, so those are keyed by
  * name. Case- and whitespace-insensitively: "moalboal" and "Moalboal " are the
@@ -58,13 +65,23 @@ export function locationKey(location: TripLocationFormValue): string {
  * `name` falls back to `location` (the short composed form, "Dahab, Egypt")
  * because a result that matched an address rather than a named place has no name
  * of its own, and a row has to say something.
+ *
+ * `display_name` is that same short form rather than the provider's own label,
+ * which is the one place the two `display_name`s in this app diverge:
+ * `GeocodeResult.display_name` is what the provider said, and
+ * `trip_location.display_name` is what a diver reads under the name. Nominatim's
+ * is "Dahab, South Sinai, 45214, Egypt" - a postcode and an administrative level
+ * nobody writes in a dive log - while `location` is the place-plus-country the
+ * API composes from the structured address for exactly this purpose. It cannot
+ * be recovered from the label later, which is why the choice happens here rather
+ * than at render (DECISIONS.md).
  */
 export function geocodeResultToLocation(
   result: GeocodeResult,
 ): TripLocationFormValue {
   return {
     name: result.name ?? result.location,
-    display_name: result.display_name,
+    display_name: result.location,
     latitude: result.latitude,
     longitude: result.longitude,
     bbox_south: result.bbox_south,
@@ -105,9 +122,9 @@ export function mapSearchResults(results: GeocodeResult[]): MappedPlaces {
       items.push({
         id,
         name: location.name,
-        // What tells "Moalboal, Cebu" apart from "Moalboal, Negros Oriental" -
-        // minus the row's own name, which the label repeats at the front and
-        // the row is already showing.
+        // The place-plus-country the row would be added as, minus the part of
+        // it the row's own name already shows. What the diver reads in the menu
+        // is then exactly what lands in the list a click later.
         hint: formatLocationContext(location),
       });
     }
@@ -304,9 +321,9 @@ export function TripLocationMultiSelect({
           {value.map((location, index) => {
             const isDragging = draggingIndex === index;
             // The label without the leading repeat of the name beside it, so
-            // the row reads "Dahab, South Sinai, 45214, Egypt" rather than
-            // naming Dahab twice. `undefined` when the label said no more than
-            // the name does, and then the row is just the name.
+            // the row reads "Dahab, Egypt" rather than naming Dahab twice.
+            // `undefined` when the label said no more than the name does, and
+            // then the row is just the name.
             const context = formatLocationContext(location);
             return (
               <li
@@ -343,13 +360,15 @@ export function TripLocationMultiSelect({
                   </button>
                 )}
                 {/* `min-w-0` is what makes `truncate` mean anything: a flex
-                    item's default `min-width: auto` is its content, and the
-                    content here is one nowrap line of "Ko Tao, Ko Tao, Ko
-                    Pha-ngan District, Surat Thani Province, Thailand" - so the
-                    row refused to shrink and pushed the whole form out past the
-                    side of the dialog. The full label is on `title`, since what
-                    an ellipsis hides is exactly what tells two places of the
-                    same name apart. */}
+                    item's default `min-width: auto` is its content, and this
+                    row is one nowrap line - which was "Ko Tao, Ko Tao, Ko
+                    Pha-ngan District, Surat Thani Province, Thailand" when the
+                    defect was found, so the row refused to shrink and pushed the
+                    whole form out past the side of the dialog. Short labels made
+                    that rarer, not impossible: a typed-in name is 255 characters
+                    wide before the form objects. The same text is on `title`,
+                    since an ellipsis is exactly what a narrow dialog produces
+                    here. */}
                 <span
                   className="min-w-0 flex-1 truncate"
                   title={

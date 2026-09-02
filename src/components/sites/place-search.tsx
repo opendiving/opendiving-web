@@ -61,6 +61,12 @@ function catalogKey(site: DiveSiteSuggestion): string {
 // different places never collide - the same reasoning as `locationKey` in the
 // trip picker, which this deliberately does not import: a dive site is not a
 // trip location, and the two features share `lib/`, not each other's components.
+//
+// Still the provider's label rather than the short one the row now shows.
+// Nothing renders from this, it only has to be unique for the length of one
+// menu, and the longer string is the stricter of the two - a place returned
+// twice under different labels is two rows a diver can tell apart, which is not
+// the duplicate this is here to collapse.
 function placeKey(result: GeocodeResult): string {
   return `${result.latitude}:${result.longitude}:${result.display_name}`;
 }
@@ -221,12 +227,14 @@ export function PlaceSearch({ onPick, position, disabled }: PlaceSearchProps) {
           {
             id,
             name,
-            // What tells "Moalboal, Cebu" apart from "Moalboal, Negros
-            // Oriental" - minus the row's own name, which the label repeats at
-            // the front and the row is already showing.
+            // The short place-plus-country the API composes ("Dahab, Egypt"),
+            // not the provider's "Dahab, South Sinai, 45214, Egypt" - and minus
+            // the part of it the row's own name already shows. It is also what
+            // picking the row writes into the Location field below, so the menu
+            // and the form say the same thing.
             hint: formatLocationContext({
               name,
-              display_name: result.display_name,
+              display_name: result.location,
             }),
           },
         );

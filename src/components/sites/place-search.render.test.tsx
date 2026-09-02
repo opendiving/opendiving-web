@@ -190,18 +190,19 @@ describe("PlaceSearch results", () => {
     await waitFor(() => expect(screen.getAllByRole("option")).toHaveLength(1));
   });
 
-  it("does not name a place twice in one row", async () => {
-    // The geocoder's label opens with the name it matched, so a row printing
-    // both reads "Dahab, Dahab, South Sinai, 45214, Egypt".
+  it("names a place the short way, and only once", async () => {
+    // Two things at once, because one row shows both. The label the row carries
+    // is the API's composed "Dahab, Egypt" rather than the provider's "Dahab,
+    // South Sinai, 45214, Egypt" - which is also what picking the row writes
+    // into the Location field. And that label opens with the name the row is
+    // already showing, so a row printing both would read "Dahab, Dahab, Egypt".
     searchPlaces.mockResolvedValue([DAHAB]);
     render(<PlaceSearch onPick={vi.fn()} />);
 
     await searchFor("Dahab");
 
     expect(
-      await screen.findByRole("option", {
-        name: "Dahab, South Sinai, 45214, Egypt",
-      }),
+      await screen.findByRole("option", { name: "Dahab, Egypt" }),
     ).toBeInTheDocument();
   });
 

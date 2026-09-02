@@ -184,13 +184,13 @@ export default function TripDetailPage() {
                   </div>
                   {/* One row per place, in the order the diver arranged them,
                       rather than the joined line the header and the trips table
-                      show: this is the one surface with room for the context
-                      that tells two places of the same name apart. */}
+                      show: this is the one surface with room to put the country
+                      under the name as well. */}
                   <ul className="space-y-1.5">
                     {tripLocations.map((location, index) => {
-                      // The full label with the name above it trimmed off its
-                      // front, so the two lines don't read "Dahab" over "Dahab,
-                      // South Sinai, 45214, Egypt".
+                      // The label with the name above it trimmed off its front,
+                      // so the two lines don't read "Dahab" over "Dahab,
+                      // Egypt".
                       const context = formatLocationContext(location);
                       return (
                         <li
