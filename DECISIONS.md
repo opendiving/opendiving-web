@@ -6299,11 +6299,45 @@ chart's `text-xs` legend occupies under its plot and the activity chart has noth
 prop is the difference between the gas card measuring 560px in both states and measuring 560 loaded
 against 536 loading.
 
-`app/template.tsx` was the other half of it. Next remounts it on every navigation, and it ran
+`app/template.tsx` was the other half of it. Next remounts a template, and it ran
 `fade-in slide-in-from-bottom-1` over 300ms — which meant it spent the entire animation sliding a
 `Loader2` up the screen and then cut hard to the real content, putting the motion on the throwaway
 state and none on the swap that mattered. It is now a 150ms fade with no travel: what it animates is
 real page structure, so it only needs enough to mark that the route changed.
+
+**"On every navigation" is what that said until 2026-09-02, and it was never true.** A template is
+keyed at its own segment level, and the root one's level is the _first path segment_ — so the fade
+runs when that segment changes and not otherwise. Measured by tagging the template's DOM node and
+navigating client-side, identically under `next dev` and a `next build` + `next start`:
+
+| navigation                               | template remounts |
+| ---------------------------------------- | ----------------- |
+| `/dives` → `/dashboard`                  | yes               |
+| `/dashboard` → `/trips`                  | yes               |
+| `/dives` → `/dives/[id]`                 | **no**            |
+| `/dives` → `/dives/new`                  | **no**            |
+| `/dives/[id]` → `/dives/[id]/edit`       | **no**            |
+| `/dives/a` → `/dives/b` (pager step)     | **no**            |
+| back to `/dives/[id]` from its edit page | **no**            |
+
+So the fade marks a move between top-level areas, and a move _within_ one — including opening a dive
+from the log, which is the most-travelled navigation in the app — gets none. The wrong sentence is
+what made that invisible: nobody looks for a missing animation they have been told is running.
+
+**Widening it is not free, and the obvious way to do it is now actively wrong.** Wrapping `children`
+in a client component keyed on `usePathname()` would fire the fade on every navigation, as the old
+sentence claimed — and it would remount the whole subtree on a dive-pager step, undoing
+`dives/(detail)/`: the page would blank into its skeleton again and the pager would drop keyboard
+focus on every dive (see "The step remounted the page, and hoisting the fetch into a route-group
+layout is what stopped it"). A `dives/template.tsx` has the same problem one level down — its
+segment level is `[id]`, so a step remounts it too. The only placement that fades a step without
+touching the header is `dives/(detail)/[id]/template.tsx`, wrapping the card grid alone, and that
+one contradicts a different decision on purpose: a step is supposed to _dim_ the outgoing cards, not
+cross-fade them.
+
+Left as it is, deliberately. The behaviour is defensible — it is the description that was wrong, and
+correcting the description is the whole change. Anyone who does want the fade on list-to-detail
+should read the paragraph above first, because the cheap version of it costs the pager.
 
 ### The placeholders are hidden from assistive tech, rows and all
 
@@ -13438,11 +13472,13 @@ replaced.
 **Two independent things had to be checked before blaming the segment**, because either would have
 produced the same trace. `app/template.tsx` re-mounts by design — but per-segment-level, and its
 level is the first path segment, `dives`, which does not change here
-(`node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/template.md`). And Next's
-route-change scroll handler used to call `focus()` on the new segment's DOM node, which would have
-taken the focus regardless of node identity; 16.3 defaults `appNewScrollHandler` on, and that fork
-"no longer focuses the first host descendant". Both are settled by the fix working at all: the
-layout below the template survives, with focus still on the arrow inside it.
+(`node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/template.md`). The file's
+own comment said "on every navigation", which would have made it a suspect; it was wrong, and
+chasing this is what caught it — see the enter-animation subsection above. And Next's route-change
+scroll handler used to call `focus()` on the new segment's DOM node, which would have taken the
+focus regardless of node identity; 16.3 defaults `appNewScrollHandler` on, and that fork "no longer
+focuses the first host descendant". Both are settled by the fix working at all: the layout below the
+template survives, with focus still on the arrow inside it.
 
 **The fix is a route group above the dynamic segment.** `dives/(detail)/layout.tsx` owns the fetch,
 the header and the delete flow; `dives/(detail)/[id]/page.tsx` is the card grid and nothing else,
