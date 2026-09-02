@@ -13234,3 +13234,30 @@ It also contains the licensed artwork, so it is evidence with a shelf life rathe
 keep. GitHub keeps unreachable objects fetchable by hash until it garbage-collects on its own
 schedule; asking Support to run `gc` is what finally closes this, and until that happens the purge
 is complete locally and merely mostly complete upstream.
+
+## The hero's reef ships as a 19 KB mask, not the 318 KB SVG it came from
+
+The accent lost when the licensed reef came out is back, from svgsilh under CC0 — a licence that
+permits the one thing the Etsy and Vecteezy terms both forbid, redistributing the file itself, which
+is what publishing this repository does. Provenance is in `NOTICE.md`.
+
+**The file as downloaded was unusable, and the reason is instructive.** 318 KB, 925 paths, 92,690
+coordinates: an autotrace of a bitmap rather than drawn vector. `svgo --multipass` took it to 311
+KB, because there is no redundancy in autotrace output to remove. Rasterising helped less than
+expected too — the drawing's polyp stipple is thousands of tiny loops, which is high-frequency
+detail that PNG and WebP both spend bits on: 237 KB as a 1024px PNG, 85 KB as a 512px WebP.
+
+What collapses it is noticing that **none of that detail is used**. The accent renders about 280px
+wide at 25% opacity behind live copy. It needs a silhouette, not a drawing. One channel, two
+colours, 512px: **19 KB**, and pixel-identical at the size it ships.
+
+**A CSS mask rather than an `<img>`, so the shape keeps its colour token.** Going to raster would
+normally mean baking the colour in and losing the theme; `mask-image` with
+`background-color: hsl(var(--teal))` keeps it following the token in both themes, which is what
+`currentColor` did for the SVG. `mask-mode: luminance` is required rather than decorative — the file
+has no alpha channel, the shape being white on black, and the default `match-source` reads a missing
+alpha as fully opaque and paints the whole box. Prefixed for Safari before 15.4.
+
+**The general shape of the trade:** a decorative asset should be measured at the size and opacity it
+actually renders, not at the size it was authored. Three formats were compared before the answer
+turned out to be a fourth thing entirely - throwing away every channel but one.

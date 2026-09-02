@@ -28,6 +28,23 @@ This is a trademark used under Google's branding guidelines, not material under 
 license. It carries no permission to use it for anything other than identifying Google's sign-in
 service, and a fork that drops Google sign-in should drop the mark with it.
 
+## svgsilh — the hero's reef
+
+<https://svgsilh.com/image/1298776.html>
+
+`public/reef-mask.png` is the silhouette of svgsilh's "ocean coral reef marine" image, released
+under [Creative Commons CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/). CC0 is a
+public-domain dedication: it permits redistribution and modification, and requires no attribution.
+This entry exists because provenance that is not written down cannot be recovered later, not because
+the licence asks for it.
+
+Two things worth knowing rather than rediscovering. The dedication is svgsilh's blanket assertion
+across its library, applied to artwork it derived from a Pixabay original — Pixabay's own terms
+became more restrictive in 2019, so the claim rests on svgsilh's upstream having predated that,
+which its age supports but does not prove. And what ships is not the file as downloaded: the 318 KB
+SVG was reduced to a 19 KB two-colour mask (see `DECISIONS.md`), which CC0 permits without
+qualification.
+
 ## MapLibre GL JS
 
 <https://github.com/maplibre/maplibre-gl-js>

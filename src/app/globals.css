@@ -327,3 +327,29 @@
 .maplibregl-map .maplibregl-cooperative-gesture-screen {
   display: none;
 }
+
+/* The hero's reef accent is a CC0 silhouette (see `NOTICE.md`), carried as a
+   19 KB two-colour PNG rather than the 318 KB SVG it was traced into: the
+   drawing's polyp stipple is thousands of tiny loops, which is why neither
+   svgo nor WebP could shrink it, and why none of that detail survives being
+   drawn at 15% opacity anyway.
+
+   A mask rather than an `<img>`, so the shape takes its colour from a token and
+   follows the theme the way the rest of the page does. `mask-mode: luminance`
+   is required, not decorative: the file has no alpha channel - the shape is
+   white on black - and `match-source` would read a missing alpha as fully
+   opaque and paint the whole box. Prefixed twice for Safari before 15.4. */
+.hero-reef {
+  -webkit-mask-image: url("/reef-mask.png");
+  mask-image: url("/reef-mask.png");
+  -webkit-mask-mode: luminance;
+  mask-mode: luminance;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  background-color: hsl(var(--teal));
+  aspect-ratio: 3516 / 5556;
+}
