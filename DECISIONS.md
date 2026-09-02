@@ -5303,6 +5303,10 @@ the header, a screen-width from the date it belongs to. Inline, it follows the l
 that word lands. The arrows take `align-middle`, since an `inline-flex` box baselines on its bottom
 edge and would otherwise hang below the text.
 
+(Both sentences describe a control that has left this line. The chevrons are labelled buttons beside
+the title now, the subtitle is a plain string, and nothing in the header carries `align-middle` —
+see _"The prev/next chevrons left the date line"_ below.)
+
 `PageHeader`'s `subtitle` widened from `string` to `ReactNode` for this. It stays inside the same
 `<p>`, so whatever a caller passes has to be phrasing content.
 
@@ -5313,6 +5317,9 @@ Delete beside it. Stacking that row below `sm` fixes it and was tried, but it mo
 page's header and belongs to whoever takes that on rather than to this control. Inline flow is what
 keeps the arrows tolerable in the meantime: they wrap with the text instead of stranding at the
 edges of a five-line block.
+
+(Taken on, in the section named just above: the title row stacks below `sm`, and this date wraps
+over two lines rather than five.)
 
 ## Both gas tables finally fit their slot
 
@@ -13820,11 +13827,14 @@ to "whoever takes that on", and this is that change: the title block and the act
 `justify-between` row at every width, which left the title about 150px on a 375px screen with Edit
 and Delete beside it — enough to wrap this date over five lines. Stacked, the date gets the full
 width and wraps over two. It moves every detail page's header, which is why it was deferred and why
-it is called out here rather than buried: seven pages plus both skeletons render this component, and
-the change is the same one on all of them.
+it is called out here rather than buried: eight render sites plus both skeletons, and the change is
+the same one on all of them. Eight rather than the seven this first said — the count came from the
+files named `page.tsx`, and the dive page is no longer one of them, being the very layout this
+change edits.
 
-Inline flow for the subtitle is gone with the chevrons — the line is plain text again, and
-`formatDiveStartTime` is called from the page rather than from inside a client component.
+Inline flow for the subtitle is gone with the chevrons — the line is plain text again, formatted by
+`formatDiveStartTime` where the header is assembled. No server/client boundary moved with it: the
+layout doing the formatting is `"use client"` too, as every page in this app is.
 
 `dive-date-nav.tsx` is `dive-neighbor-nav.tsx`, and `DiveDateNav` is `DiveNeighborNav`: it no longer
 renders the date, so a name built around it would have been the second thing to mislead here.
