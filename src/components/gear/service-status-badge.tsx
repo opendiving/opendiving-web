@@ -38,10 +38,16 @@ export function ServiceStatusBadge({
   // clears it with room for a fallback font. `justify-center` is what the extra
   // width is spent on - `Badge` is `inline-flex items-center` and would otherwise
   // leave the label hard against the left padding.
+  //
+  // `whitespace-nowrap` guards that headroom rather than fixing anything visible
+  // today: the labels fit inside 6rem in Inter, and a two-line pill is the one way
+  // this fails once they don't - a fallback font while Inter loads, a browser
+  // minimum-font-size, or a longer label added later. A chip that overflows is
+  // obvious; one that silently grows to two lines is not.
   const badge = (
     <Badge
       variant={serviceStatusBadgeVariant(status)}
-      className="min-w-24 justify-center"
+      className="min-w-24 justify-center whitespace-nowrap"
     >
       {serviceStatusLabel(status)}
     </Badge>

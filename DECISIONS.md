@@ -3532,6 +3532,14 @@ at ~79px); certification chips are `min-w-28` (112px, clearing "Expiring soon").
 both would pad the shorter set to no purpose - what has to line up is the right edge, and
 `justify-between` already guarantees that regardless of chip width.
 
+Both also carry `whitespace-nowrap`, which changes nothing today and is the point: every label fits
+its width in Inter, and the failure it guards against is a chip quietly becoming two lines tall
+rather than one - a fallback font while Inter loads, a browser minimum-font-size, a longer label
+added later. Measured by forcing a 50px `max-width` on a live "In service" chip: 22px tall with the
+guard, 38px without. A chip that overflows its pill is visible immediately; one that grows a second
+line just looks like a slightly taller row, and the min-width makes that _more_ likely to go
+unnoticed, not less, because the pill still looks deliberate.
+
 ## One card-header shape: `space-y-1.5` only reaches `CardHeader`'s _direct_ children
 
 `CardHeader` is `flex flex-col space-y-1.5 p-6`, and Tailwind's `space-y-*` is a `> * + *`
