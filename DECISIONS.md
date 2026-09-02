@@ -13401,7 +13401,7 @@ ever takes a ref.
 that proved it.** `icons/coral-reef-background.tsx` was 14 KB of reef line art on the landing hero,
 and `public/coral.png` a neon-glow rendering of the same drawing, unreferenced but still served out
 of `public/`. A third, `public/octo.png`, an octopus in the same glow treatment, landed in that same
-commit and was deleted again in `056c34c` — so it is out of the tree but still in history, and it
+commit and was deleted again in `fc69abf` — so it is out of the tree but still in history, and it
 belongs on any purge list the other two are on. Neither PNG was ever referenced from source:
 `git log -S` over `src/` returns nothing for either, so both were dead weight from the day they
 arrived. Both came from a paid Etsy listing whose terms permit "personal projects and small-business
