@@ -773,7 +773,7 @@ export default function PrivacyPage() {
               not you, and why the link and code expire quickly and work only
               once. The address-confirmation message is the same shape: it goes
               to whatever new address a signed-in diver typed, for the express
-              purpose of proving they can read it. None of those two is
+              purpose of proving they can read it. Neither of those two is
               something the recipient can prevent, because the alternative is a
               sign-in flow that cannot start. The invitation goes to whatever
               address somebody with an account here invited, and names them so

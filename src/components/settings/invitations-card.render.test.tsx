@@ -239,4 +239,46 @@ describe("InvitationsCard", () => {
       screen.queryByRole("button", { name: /show older invitations/i }),
     ).toBeNull();
   });
+
+  // The route pages by offset over a newest-first ordering, so a row created
+  // since the first page was read shifts every later row down one — and a send
+  // does exactly that locally, without asking the server for a new page number.
+  // Page 2 then starts on the row that was the last of page 1. Staged here as
+  // the server genuinely behaves: page 2 comes back containing that boundary
+  // row, and the card must not render it twice under the same React key.
+  it("does not duplicate the boundary row when a send has shifted the pages", async () => {
+    mocks.listInvitations.mockImplementation((requested: number = 1) =>
+      Promise.resolve(
+        requested === 1
+          ? page([PENDING, ACCEPTED], { has_more: true, page: 1 })
+          : // ACCEPTED has slid onto page 2 because the send pushed everything
+            // down one; REVOKED is the genuinely new row.
+            page([ACCEPTED, REVOKED], { has_more: false, page: 2 }),
+      ),
+    );
+    mocks.sendInvitation.mockResolvedValue({
+      uuid: "inv-4",
+      email: "buddy@example.com",
+      created_at: "2026-09-03T09:00:00Z",
+      accepted_at: null,
+      revoked_at: null,
+    });
+    const user = userEvent.setup();
+
+    render(<InvitationsCard />);
+    await screen.findByText("pending@example.com");
+
+    await user.type(emailField(), "buddy@example.com");
+    await user.click(sendButton());
+    await screen.findByText("buddy@example.com");
+
+    await user.click(
+      screen.getByRole("button", { name: /show older invitations/i }),
+    );
+
+    expect(await screen.findByText("revoked@example.com")).toBeInTheDocument();
+    // The assertion that fails without the dedup: `getAllByText` returns two
+    // nodes for the boundary address, which is also two children under one key.
+    expect(screen.getAllByText("accepted@example.com")).toHaveLength(1);
+  });
 });
