@@ -1441,6 +1441,30 @@ simply omitted on create. Radix's `SelectItem` can't take an empty string value,
 "No type" option uses a `__none__` sentinel - the same pattern as `GearSetDialog`'s "Create a new
 set".
 
+**The vocabulary is DiveJSON 1.0's, and parity with it is the rule going forward.** The API's
+`GearType` — which this array mirrors — is the `gear_item.type` enum of the
+[DiveJSON](https://github.com/divejson/divejson) dive-log interchange format, value for value and in
+order, so `GEAR_TYPES` is held to the same parity at one remove. That is newer than the array: the
+app's list came first and was four short, and `mirror`, `whistle`, `line_cutter` and `shears` were
+added to close the gap. They went in at the format's own positions — the first two after `smb`, the
+last two after `knife` — rather than being appended, because declaration order is the picker's order
+and appending would have put a signalling mirror after the camera.
+
+Two consequences. **A new category is no longer ours to invent alone**: it goes into the format
+first and arrives here where the format puts it. And **the check is a diff rather than a reading** —
+this array against `schema/1.0/divejson.schema.json`'s `#/$defs/gear_item/properties/type/enum` in
+that repository, which is public. Re-derive it; a list of members written into prose is the copy
+that goes stale, and the paragraph above names four of them only because _which four were added_ is
+the part a diff cannot tell you afterwards.
+
+**Nothing generates this list from either the API's enum or the schema**, so the three move in
+separate commits and a window where they disagree is possible. The API is the one that has to widen
+first: it rejects a `type` it does not know on save, so a picker offering a value ahead of the API
+turns a diver's save into a 422 rather than degrading gracefully. Widening this array is the last
+step of that sequence, not the first — which is the opposite of the fallback in `gearTypeLabel()`
+above, and for the same underlying reason. Reading an unknown value is survivable and worth
+handling; writing one is not.
+
 ## `ComboboxItem.location` was renamed to `hint`
 
 `CreatableCombobox` has always had an optional second line of text after an item's name, documented

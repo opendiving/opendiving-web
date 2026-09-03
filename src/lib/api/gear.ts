@@ -30,8 +30,12 @@ export const GEAR_TYPES = [
   "cylinder",
   "light",
   "smb",
+  "mirror",
+  "whistle",
   "reel",
   "knife",
+  "line_cutter",
+  "shears",
   "compass",
   "camera",
   "other",
@@ -40,7 +44,8 @@ export const GEAR_TYPES = [
 export type GearType = (typeof GEAR_TYPES)[number];
 
 // Display labels. Most are just the capitalized value, but the acronyms and
-// multi-word ones (BCD, SMB, "Dive computer") would read badly if derived.
+// multi-word ones (BCD, SMB, "Dive computer", "Line cutter") would read badly
+// if derived.
 const GEAR_TYPE_LABELS: Record<GearType, string> = {
   mask: "Mask",
   snorkel: "Snorkel",
@@ -57,8 +62,12 @@ const GEAR_TYPE_LABELS: Record<GearType, string> = {
   cylinder: "Cylinder",
   light: "Light",
   smb: "SMB",
+  mirror: "Mirror",
+  whistle: "Whistle",
   reel: "Reel",
   knife: "Knife",
+  line_cutter: "Line cutter",
+  shears: "Shears",
   compass: "Compass",
   camera: "Camera",
   other: "Other",
