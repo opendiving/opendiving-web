@@ -28,6 +28,19 @@ export interface User {
   // server default, so a response either carries it or comes from an API this build
   // cannot talk to anyway (`PATCH /user` would 422 on the settings card's own field).
   units: UnitSystem;
+  // Whether this account holds the operator's rights - the caller's own record on
+  // `GET /user` (the backend's `UserRead.is_superuser`), never a disclosure about
+  // anybody else. It is what the header uses to offer the `/admin` section at all.
+  //
+  // Optional, and read as false when absent, for the same reason as
+  // `gear_service_emails`: a response from an API that predates the field still has
+  // to type-check. Absent is the right default anyway - this is the field that opens
+  // a door, so an instance that cannot say yes must not be read as having said it.
+  //
+  // The web gate this feeds is a convenience, never the protection: every
+  // `/admin/*` route is superuser-gated on the API, which is what actually refuses
+  // a diver who edits this out of a response.
+  is_superuser?: boolean;
 }
 
 // Mirrors the backend's `AuthOutcome` (see `schemas/auth.py`), and it has three
