@@ -12,7 +12,9 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useRedirectIfAuthenticated } from "@/hooks/useRedirectIfAuthenticated";
+import { useRegistrationMode } from "@/hooks/useRegistrationMode";
 import { AuthForm } from "@/components/auth/auth-form";
+import { InviteRequestForm } from "@/components/auth/invite-request-form";
 import { Fish, Anchor, ArrowRight, HardDriveDownload } from "lucide-react";
 
 // Every claim on this page has to be true of the software as it stands, because
@@ -32,8 +34,13 @@ const SELF_HOSTING_URL = "https://github.com/opendiving/opendiving";
 
 export function LandingPage() {
   const { isAuthenticated, isLoading } = useRedirectIfAuthenticated();
+  // Under the same gate as the auth bootstrap below, and that is the point: the
+  // hero must never paint one form and then swap it for the other. Both requests
+  // start on mount and run in parallel, so waiting for this one costs nothing the
+  // auth check was not already costing.
+  const { mode, isLoading: isModeLoading } = useRegistrationMode();
 
-  if (isLoading || isAuthenticated) {
+  if (isLoading || isAuthenticated || isModeLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -75,8 +82,26 @@ export function LandingPage() {
               </p>
             </div>
 
+            {/* Which form the hero holds is the one thing on this page that
+                depends on the instance. In `invite` mode there is nothing a
+                stranger can do with a sign-in form, so the column holds the
+                request form instead; every other route in - the header's Sign In
+                button, "Sign in to this instance" below, and the link inside the
+                request form - still reaches `/signin`, which is unchanged in both
+                modes.
+
+                An unknown mode renders the sign-in form. A landing page has to
+                work on an instance whose API is briefly down, and `/signin` is
+                the answer that is right on any instance; it is also what the axe
+                scan sees, since that job runs the web with no API at all.
+
+                What the swap costs, accepted deliberately: `AuthForm` is the only
+                mount of the conditional passkey ceremony and of the passkey and
+                Google buttons, so in `invite` mode the landing page arms none of
+                them. A returning member takes Sign In and has all three on
+                `/signin`, one tap away. */}
             <div className="flex justify-center">
-              <AuthForm />
+              {mode === "invite" ? <InviteRequestForm /> : <AuthForm />}
             </div>
           </div>
 

@@ -45,8 +45,11 @@ interface SentLink {
 // Passkeys reach this form twice over. The explicit button below is the visible
 // half; the invisible one is a ceremony armed on mount, which puts the diver's
 // passkey in the browser's own autofill dropdown on the email field. That arms on
-// the landing page as well, deliberately: the hero *is* the sign-in surface for a
-// returning visitor, and one tap from there beats a round trip through an inbox.
+// the landing page as well, deliberately: on an `open`-mode instance the hero *is*
+// the sign-in surface for a returning visitor, and one tap from there beats a
+// round trip through an inbox. On an `invite`-mode instance the hero holds the
+// request form instead and this one is not mounted there, so `/signin` is where
+// the ceremony arms - see `components/layout/landing-page.tsx`.
 export function AuthForm({ className, redirectTo }: AuthFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState<SentLink | null>(null);

@@ -167,4 +167,36 @@ describe("the magic-link landing page", () => {
     ).toBeVisible();
     expect(screen.queryByRole("button")).toBeNull();
   });
+
+  // One of the doors an uninvited address can reach on an instance that is not
+  // taking registrations. The link itself is perfectly good - the precheck says
+  // so - and what refuses is the gate behind it, after the address has been
+  // proven. The sentence is the API's and is shown as it arrives: this app must
+  // not write a second copy of it, and must not treat the 403 as an expired
+  // session, which the response interceptor's 401-only handling already ensures.
+  it("shows the gate's refusal inline for an address nobody invited", async () => {
+    checkEmailLink.mockResolvedValue({
+      valid: true,
+      email: "stranger@example.com",
+    });
+    verifyEmailLink.mockRejectedValue({
+      response: {
+        status: 403,
+        data: {
+          detail:
+            "This address hasn't been invited to this instance yet. You can request an invitation from the home page.",
+        },
+      },
+    });
+    const user = userEvent.setup();
+
+    render(<VerifyMagicLinkPage />);
+    await user.click(await screen.findByRole("button", { name: /^sign in$/i }));
+
+    expect(
+      await screen.findByText(/hasn't been invited to this instance yet/i),
+    ).toBeVisible();
+    expect(pageText()).toContain("request an invitation from the home page");
+    expect(router.replace).not.toHaveBeenCalled();
+  });
 });

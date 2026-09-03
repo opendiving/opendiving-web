@@ -547,6 +547,11 @@ section (`app/page.tsx`, `#get-started`), not behind a dedicated route or a moda
 authenticated-out state is now a single "Sign In" button linking to `/#get-started` rather than
 separate Sign In/Sign Up buttons.
 
+(The hero half of that is now conditional, and on the shipped default it is false: an instance with
+`REGISTRATION_MODE=invite` - which is what a new install gets - holds `InviteRequestForm` in the
+hero and mounts `AuthForm` only on `/signin`. See "The landing hero holds one of two forms, and the
+API is what says which" below.)
+
 Three new routes carry the rest of the flow:
 
 - **`app/auth/verify/page.tsx`** - what the emailed magic link actually points to
@@ -574,7 +579,9 @@ remaining standalone, chrome-free pages).
 (Both of those are no longer true: `/signin` is back as a dedicated page and `useAuthGuard` bounces
 to it again - see "`/signin` is back, and carries where the visitor was headed" below. The _form_ is
 still the single shared `AuthForm`, and the landing page still hosts its own copy of it; only the
-routing changed.)
+routing changed. That last clause has since become conditional too - the landing page hosts it in
+`open` mode and holds the invite-request form instead in `invite` mode, which is the default a new
+install gets.)
 
 Settings' "Change Password" card was deleted outright (`app/settings/page.tsx`,
 `lib/validations/settings.ts`'s `passwordSchema`) - there's no password anywhere to change. Profile
@@ -2210,7 +2217,10 @@ trying to reach. `app/signin/page.tsx` is a dedicated page for exactly that: the
 `NO_CHROME_ROUTES` in `app-shell.tsx`), matching the other two auth-flow pages, `/auth/verify` and
 `/onboarding`. This is _not_ a return to the old password-based `/signin`/`/signup` pair - there's
 still exactly one form and one entry point, and the landing page still hosts its own `AuthForm` in
-the hero for visitors arriving cold.
+the hero for visitors arriving cold. (True of an `open`-mode instance. On an `invite`-mode one - the
+default a new install gets - the hero holds the invite-request form and `/signin` is the only mount
+of `AuthForm`, which makes this page load-bearing rather than a convenience: see "The landing hero
+holds one of two forms, and the API is what says which".)
 
 `Header`'s signed-out state, which rendered nothing at all where the user menu sits, now has a coral
 "Sign In" button linking there. It stays in the actions row at every breakpoint rather than being
@@ -8747,11 +8757,20 @@ the form behaves exactly as it did before. The one concession is a single silent
 failed verify, which covers the ordinary case of a diver leaving the login page open past the
 challenge's ten-minute life; a second failure is left alone rather than looped on.
 
-It arms on the landing page too, because `AuthForm` mounts in the hero there. That is deliberate:
-the hero _is_ the sign-in surface for a returning visitor, and one tap from it beats a round trip
-through an inbox. The cost is one POST per supporting signed-out page view, which the API's per-IP
-limit on that route is sized for. If it ever needs cutting, the lever is arming on first focus of
-the email input rather than on mount — not a lower ceiling.
+It arms on the landing page too **where `AuthForm` mounts in the hero**, which is an `open`-mode
+instance. That is deliberate: there the hero _is_ the sign-in surface for a returning visitor, and
+one tap from it beats a round trip through an inbox. The cost is one POST per supporting signed-out
+page view, which the API's per-IP limit on that route is sized for. If it ever needs cutting, the
+lever is arming on first focus of the email input rather than on mount — not a lower ceiling.
+
+On an `invite`-mode instance - the default a new install gets - the hero holds `InviteRequestForm`,
+which mounts no ceremony, and `/signin` is where the autofill arms. That was ruled acceptable rather
+than overlooked: a returning member on `/` takes the header's Sign In button and has the ceremony,
+the passkey button and Google one tap away. The alternative considered and rejected was arming the
+ceremony on the request form's own email field - a field that asks to be invited but signs you in
+has odd semantics, and it would be more code for a case `/signin` already covers. Also note what the
+request field carries: plain `autoComplete="email"`, not `username webauthn`, since the `webauthn`
+half exists only to let a conditional ceremony arm.
 
 The email input carries `autoComplete="username webauthn"`. The `webauthn` half is load-bearing: v13
 refuses to arm a conditional ceremony at all without an input that has it, and the `username` half
@@ -9183,11 +9202,13 @@ its `img-src` slot in `src/proxy.ts`; the copy block on `/settings`; and §4.8 o
 which existed only to disclose the request nobody makes now. `getUserInitials` stays — the initials
 were always the fallback and still are.
 
-**§4.8 has since been re-used, so read that number as historical.** The privacy-page rewrite gave it
-to the Google sign-in disclosure, on this section's own
+**§4.8 has since been re-used twice, so read that number as historical.** The privacy-page rewrite
+gave it to the Google sign-in disclosure, on this section's own
 renders-only-where-there-is-something-to-disclose precedent — see _"The privacy page describes this
-app, and there is still no cookie banner"_. "§4.8" above means the **removed Gravatar** section; a
-reader who follows it to today's page lands on a different disclosure entirely.
+app, and there is still no cookie banner"_. The invitations work then took §4.8 for the invitation
+disclosure and moved Google to **§4.9**, because the invitations section is unconditional and
+Google's is not. "§4.8" above means the **removed Gravatar** section; a reader who follows it to
+today's page lands on a different disclosure again.
 
 ### The digest is the whole client contract
 
@@ -10045,8 +10066,9 @@ or analytics technology at all — not disabled, not configurable, absent, with 
 the build. Sign-in and map functionality that contacts a third party is **function, not tracking**,
 and each one is disclosed on the page rather than denied. The one genuinely uncomfortable case is
 Google's sign-in script loading at mount on a Google-enabled instance before anyone clicks anything;
-that is disclosed in §4.8 as today's behaviour and is being narrowed to a click by a separate change
-already in hand.
+that is disclosed in §4.9 as today's behaviour and is being narrowed to a click by a separate change
+already in hand. (That disclosure was §4.8 when this was written; it moved when the invitations
+section took the number.)
 
 Note also what §10 does **not** claim: not "no third-party cookies", full stop. The app itself sets
 none, but the operator picks the tile provider through `MAP_TILE_URL` and that provider's servers
@@ -10188,10 +10210,11 @@ the page whose purpose is not overclaiming was the wrong direction to be wrong i
 The first draft of this rewrite got §6.3 wrong in the same shape as the boilerplate it was
 replacing, which is worth recording because the mistake is so easy to repeat. It said "almost every
 email … is one you asked for" and then "one email arrives on its own, and only under one condition"
-— naming the gear-service digest as the sole automatic one. The api sends **eight** kinds of mail,
-and three of them fit neither half of that: `send_passkey_added_email` and
-`send_passkey_removed_email` (`api/v1/passkeys.py`), and `send_email_changed_notification`
-(`api/v1/users.py`), which goes to the **old** address naming the new one.
+— naming the gear-service digest as the sole automatic one. The api sent **eight** kinds of mail at
+the time (nine now — the invitation email is the ninth; see the end of this section), and three of
+them fit neither half of that: `send_passkey_added_email` and `send_passkey_removed_email`
+(`api/v1/passkeys.py`), and `send_email_changed_notification` (`api/v1/users.py`), which goes to the
+**old** address naming the new one.
 
 That third one is the one a closed list must never lose, and it is the reason §6.3 now has a
 three-part structure rather than a two-part one. Its whole purpose is to reach someone who did
@@ -10230,6 +10253,33 @@ _about_ you rather than _to_ you, since it goes to `CONTACT_FORM_EMAIL` rather t
 Anyone adding a `send_*` function to the api owes this section a line, on the same reasoning as the
 storage-key rule above; unlike that one it has no test behind it, because the truth it would have to
 check lives in the other repo.
+
+**Nine kinds now, and half of that rule did get a test.** The invitation email is the ninth sender,
+and it landed in the first group as a fourth action-driven message — so "Only the last of those
+three is sent to your account's own address" became false in the exact shape this section predicts.
+It reads "Only one of those four" now, the deletion confirmation being the one, and the invitation
+joins the sign-in message and the address-confirmation as mail that goes to an address somebody else
+typed. The section's _opening_ count is untouched and must stay untouched: "three kinds of email"
+counts the three **groups**, not the three messages in the first of them, and correcting it to
+"four" is the plausible wrong edit here.
+
+What is now pinned (`app/privacy/page.test.tsx`) is the correspondence _within_ the section: the
+count in that sentence is derived from the number of messages the group lists, so the two cannot
+drift apart again. What still cannot be pinned from this repo is whether the group lists every
+sender the api has — that number lives one repo over, and the rule above remains its only guard.
+
+**And the count is not the only thing a new message moves.** The paragraph closed "None of the three
+is something the recipient can prevent, because the alternative is a sign-in flow that cannot
+start", and adding the invitation to the group silently extended that _reason_ to a message it is
+false of: nothing about the invitation gates a flow, because the address is admitted the moment the
+invitation row commits and the mail is a courtesy rather than a step (the api says so in
+`create_invitation`'s own docstring — "the invitation is real whether or not the mail arrived"). The
+count was corrected and the justification was not, which is the same failure this section already
+records twice under a different sentence. So: **a message added to a group inherits every claim the
+group's prose makes about its members, not just the numeral** — read the paragraph to its end before
+adding to the list, and split the reason if the new member does not share it. The invitation now has
+its own sentence saying what actually makes it unpreventable, which is that this copy cannot know in
+advance that an address would rather not hear from it.
 
 ### What the CSP actually buys, and the sentence above that oversold it
 
@@ -10285,6 +10335,36 @@ precedent for _why_ — it is the one heading that appears on some instances and
 sits last in §4 and its absence leaves no gap in the numbering of the headings that are always
 there. An unset `GOOGLE_CLIENT_ID` means no section and no hole. The Gravatar-removal entry has been
 annotated in place so its "§4.8" does not send a reader to the wrong disclosure.
+
+**Google moved to §4.9 when invitations took §4.8, and the precedent above is what decided which way
+round.** The invitations disclosure — what an invitation shows the person you invite, what it shows
+you about them, and the "that address already has an account" refusal — is _unconditional_: an
+operator flips `REGISTRATION_MODE` with a restart, and a section that appeared and disappeared with
+it would be a page that changes under a reader for a reason nothing on it explains. So it takes a
+fixed number and hedges in prose ("where this copy is invite-only"), the way §5's passwordless
+bullet hedges Google. Google's stays conditional and therefore stays last. The table above grows a
+row:
+
+| Pins              | Section                                                                    |
+| ----------------- | -------------------------------------------------------------------------- |
+| Invitations entry | §4.8 by number, and **§4.9's number in prose** — Google moved to make room |
+
+Four live references moved with it and are listed because none of them is reachable from the obvious
+grep: `git grep '4\.8'` matches neither of the page's two assertions nor the test comment above
+them, because those are JavaScript regex literals spelling `4\.8` and the dot in the pattern does
+not match a backslash. The four were §2.1's and §10.4's "section 4.8" pointers on the page itself,
+`lib/google-oauth.test.ts`'s comment, and `page.test.tsx`'s pair. Use `git grep -n -E '4\\?\.[89]'`
+for the next one.
+
+**The two assertions were rewritten rather than renumbered, and that distinction is the point.**
+`page.test.tsx` pinned "ends section 4 at 4.7 with no gap when Google is unconfigured" with
+`queryByText(/4\.8 Signing In with Google/)` and `queryByText(/^4\.9 /)` both null. After the shift
+_both still pass and neither pins anything_: with Google unconfigured there is still no "4.9"
+heading, and "4.8 Signing In with Google" is a heading that no longer exists under any
+configuration. A test that passes for the wrong reason is worse than one that fails, so the pair now
+asserts the new arrangement in both directions — §4.8 is the invitations heading and is always
+present, §4.9 is Google's and is present only when configured — with a second case covering the
+configured half, which nothing covered before.
 
 ### The ICO's `localStorage` suggestion, read and answered rather than passed over
 
@@ -10347,7 +10427,8 @@ The sweep found more than the nine falsehoods it set out with, which is the usua
   `GOOGLE_CLIENT_ID` and absent from most instances; the page states it unconditionally and hedges
   in prose — "where this copy offers it" — the way `/privacy` §5's passwordless bullet hedges the
   same fact in its own voice ("where an instance offers it"), rather than branching on config the
-  way `/privacy` §4.8's full disclosure has to.
+  way `/privacy` §4.9's full disclosure has to. (§4.8 when this was written - the invitations
+  disclosure has that number now, and it takes the hedge-in-prose route rather than the branch.)
 - **§13's "GitHub Issues in our repository"** was offered as a channel for questions about the
   Terms. The project cannot answer for an operator's service, so §13 splits: the operator for
   anything about this copy, the project for a defect in the software.
@@ -13942,3 +14023,83 @@ repository's change and not this one's, and it has to land before a self-hosted 
 any of this. The note is here because nothing else in this repository would say so: the pages, the
 routes and the tests are all perfectly happy, and the topology that breaks is the one most
 self-hosters run.
+
+## The landing hero holds one of two forms, and the API is what says which
+
+The API gained a registration mode - `open`, where any verified address gets an account, and
+`invite`, where only an invited one does - and the landing page has to show a different form for
+each. On an `invite` instance a sign-in form in the hero is an invitation to fail: a stranger types
+their address, gets an email, follows the link, and is refused at the far end. So the hero holds
+`InviteRequestForm` there instead, and `AuthForm` only in `open` mode.
+
+**The web learns the mode from `GET /config`, not from its own environment**, and the reason is
+three arguments this repo has already paid for once each.
+
+- **Two copies of a server fact.** `GOOGLE_CLIENT_ID` is mirrored in this container's environment,
+  and what that costs is already on the record: the web has no way to learn that the API lacks the
+  matching secret, which is why the API refuses to boot in that state rather than letting the web
+  find out at the moment a diver presses the button. The registration mode is the same class of fact
+  and would have had the same failure available to it.
+- **`runtimeConfig()` is memoised for the life of the process** (`lib/runtime-config.ts`), so a web
+  env var would make flipping the mode a _web_ restart as well as an API one. An endpoint makes it
+  an API restart, which is what it already is for every other setting.
+- **The install bundle hands this container a curated list of variables** while passing the API the
+  whole `.env`. A web-side setting is therefore a compose change, and `docker compose pull` does not
+  deliver one to an install that already exists; an endpoint ships with the image.
+
+_Rejected:_ a `PublicConfig` field fed from a `REGISTRATION_MODE` the web container also receives -
+one render with no fetch, at the cost of all three of the above.
+
+**The fetch sits under the same gate as the auth bootstrap**, in `useRegistrationMode`, and the
+landing page waits for both before it paints anything. That is the whole invariant: the hero must
+never show one form and then swap it for the other. It costs nothing in practice because both
+requests start on mount and run in parallel, and the page was already behind a spinner until
+`useRedirectIfAuthenticated` settled.
+
+**A failed fetch renders the sign-in form.** The hook resolves `mode: null` rather than defaulting
+to a mode, and the decision about what an unknown mode means belongs at the call site: `/signin`
+works on any instance, so it is the safe answer for a page that has to keep working when the API is
+briefly down. It is also what the axe scan in `code-quality.yml` sees, since that job runs the web
+with no API at all - so the accessibility of the _request_ form is pinned by its own render test
+rather than by that job.
+
+**Nothing is written to browser storage for the mode.** Every key this app writes has to be
+registered in `lib/storage-keys.ts` and named on `/privacy` §10 (`lib/storage-keys.test.ts`), and a
+value the API already marks `public, max-age=60` does not earn one - the browser's own cache is the
+cache. The visible consequence, which is intended rather than a defect: after an operator flips the
+mode and restarts the API, a browser that loaded `/` inside the last minute keeps the old answer
+until it hard-reloads.
+
+## The invitations card learns the registration mode from a 404, and knows nothing else
+
+`InvitationsCard` never asks what mode the instance is in. `GET /user/invitations` answers `404` on
+an `open`-mode instance - the feature is absent there, not idle - and the card maps that status to
+`absent` and returns `null`, exactly as `SessionsCard` and `PasskeysCard` do for an API that
+predates their features. So the settings grid loses a cell with no web-side knowledge of anything,
+and there is no second place for the mode to be wrong.
+
+This is deliberately _not_ `useRegistrationMode`. The card would then have two sources for one fact
+and could render itself against a mode the API disagrees with; the 404 is the API telling it
+directly, on the request it was going to make anyway.
+
+Three smaller calls inside it, recorded because each had an obvious alternative:
+
+- **A send prepends the created row rather than re-reading the list.** `POST /user/invitations`
+  answers with the row it made and the list is newest-first, so a second GET would be a request for
+  something the first answer already contains. The render test pins the list request count at one
+  for that path - the shape `DECISIONS.md` §"The new-dive render test was in a loop with itself"
+  asks for.
+- **A revoke _does_ re-read.** `revoked_at` is the server's own stamp, and a row showing a time this
+  browser invented would be a worse answer than one extra request. It costs any older pages the
+  diver had loaded, which is the right trade for something done rarely.
+- **Refusals are shown verbatim, in the form's own error slot rather than a toast.** There are four
+  the API can answer with - the address already has an account, this account already invited it, the
+  limit is spent, the address is malformed - and each says what to do about it. A toast would fade
+  while the diver was still reading it, and rewording any of them here would put a second copy of a
+  rule this repo does not own beside the copy that enforces it.
+
+The list is paginated where the sessions and passkeys lists are not, because it is the only one of
+the three that grows without a cap: the API bounds live sessions and registered passkeys, and bounds
+invitations only as a rate. The card reads the first page and offers "Show older invitations" for
+the rest, rather than truncating silently - a diver who wants to revoke their twenty-fifth
+invitation has to be able to reach it.

@@ -17,7 +17,7 @@ import PrivacyPage from "./page";
 // The last test in this block is what holds that - a sentence claiming no control
 // exists is the specific thing this section may no longer say.
 //
-// This is also where the section's conditional half is pinned. §4.8 and the Google
+// This is also where the section's conditional half is pinned. §4.9 and the Google
 // storage key exist only where an instance has Google sign-in configured, so every
 // count here has two correct answers rather than one, and an instance that has not
 // turned Google on must not read as though it had.
@@ -257,14 +257,83 @@ describe.each([
     ).toBeInTheDocument();
   });
 
-  // §7's two retention periods are facts about the API's own sweep, and the page
-  // is the only place a diver can read them. Both, and the asymmetry between
-  // them, have to survive an edit to either paragraph.
-  it("§7 states both retention periods and where the erasure stops", () => {
+  // §6.3 had no pin at all until the invitation email became its fourth
+  // action-driven message, and the sentence that counts them - "Only the last of
+  // those three is sent to your account's own address" - was exactly the kind of
+  // prose `DECISIONS.md` §"§6.3 enumerates every email" warns about: a closed
+  // count with nothing behind it, one repo away from the thing it counts.
+  //
+  // What is checkable from here is the correspondence *within* the section: the
+  // group lists N messages and the sentence under it says N. Whether N is the
+  // number of senders the API actually has still cannot be checked here, and the
+  // rule in DECISIONS.md remains the guard for that half.
+  it("§6.3's action-driven group and the sentence counting it agree", () => {
     renderPage({ google });
 
-    expect(screen.getByText(/after 90 days/i)).toBeInTheDocument();
-    expect(screen.getByText(/after 7 days/i)).toBeInTheDocument();
+    const group = screen
+      .getByText(/Emails that follow an action on this site/i)
+      .closest("p")!;
+    // The messages are semicolon-separated in one sentence, so the count is one
+    // more than the separators. A pin, not a parser: a message description that
+    // grew a semicolon of its own would fail this loudly, which is the right way
+    // round for prose nobody else is watching.
+    const listed = (group.textContent!.match(/;/g)?.length ?? 0) + 1;
+    expect(
+      screen.getByText(
+        new RegExp(
+          `Only one of those ${NUMBER_WORDS[listed]} is sent to your account`,
+          "i",
+        ),
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        new RegExp(`The other ${NUMBER_WORDS[listed - 1]}`, "i"),
+      ),
+    ).toBeInTheDocument();
+
+    // And the section's opening counts *groups* - action-driven, security
+    // notices, one scheduled - not the messages in the first of them. It must not
+    // follow the number above, which is the mistake that reading the two
+    // sentences as one count would produce.
+    expect(
+      screen.getByText(/sends you three kinds of email/i),
+    ).toBeInTheDocument();
+  });
+
+  // §7's retention periods are facts about the API's own sweeps, and the page is
+  // the only place a diver can read them. All four, and the asymmetries between
+  // them, have to survive an edit to any of the paragraphs.
+  //
+  // Each assertion names its own sentence rather than matching a bare "after 90
+  // days": there are two 90-day sweeps on this page now, and a regex that broad
+  // would fail on finding both rather than pin either.
+  it("§7 states every retention period and where the erasure stops", () => {
+    renderPage({ google });
+
+    // The two audit tiers, and the reason they differ.
+    expect(
+      screen.getByText(/entries tied to an account after 90 days/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/from before any account existed, after 7 days/i),
+    ).toBeInTheDocument();
+    // The two invitation-side sweeps, which hold an address belonging to
+    // somebody who may have no account here at all. Read off the paragraph
+    // rather than by `getByText` per sentence: both periods are 90 days and the
+    // phrase appears in §2.1 as well, so only the paragraph itself is unique.
+    const invitations = screen
+      .getByText(/Two more expire on their own where this copy is invite-only/i)
+      .closest("p")!;
+    expect(invitations).toHaveTextContent(
+      /request to be invited.{0,20}is kept for up to 90 days from when it was made/i,
+    );
+    expect(invitations).toHaveTextContent(
+      /invitation nobody has used.{0,20}is kept for up to 90 days from when it was sent/i,
+    );
+    // And the one that is deliberately never swept, because it belongs to two
+    // accounts by then.
+    expect(invitations).toHaveTextContent(/was used is not swept/i);
     // The honest partial claim: an address the account moved off is not reached
     // by the deletion and is bounded by the sweep alone.
     expect(
@@ -285,18 +354,41 @@ describe("the Google half of the page", () => {
   });
 
   // Invariant: an instance that has not configured Google says nothing about
-  // Google at all - no §4.8, no numbering gap where it would have been, and no
-  // link off to Google's own policy.
-  it("ends section 4 at 4.7 with no gap when Google is unconfigured", () => {
+  // Google at all - no Google subsection, no numbering gap where it would have
+  // been, and no link off to Google's own policy.
+  //
+  // These two assertions moved when the invitations disclosure took §4.8 and
+  // Google inherited §4.9, and *rewriting* them was the point rather than
+  // renumbering them: after the shift both of the old ones would have passed
+  // while pinning nothing at all. With Google unconfigured there is still no
+  // "4.9" heading, and "4.8" is no longer Google's, so a `queryByText(/4\.8
+  // Signing In with Google/)` returning null would have said only that a
+  // heading which no longer exists under that number does not exist. What is
+  // pinned now is the pair: §4.8 is the invitations section and is always here,
+  // and Google is §4.9 and is here only when it is configured.
+  it("ends section 4 at 4.8 with no gap when Google is unconfigured", () => {
     renderPage({ google: false });
 
     expect(screen.getByText(/4\.7 Legal Requirements/)).toBeInTheDocument();
-    expect(screen.queryByText(/4\.8 Signing In with Google/)).toBeNull();
-    expect(screen.queryByText(/^4\.9 /)).toBeNull();
+    expect(
+      screen.getByText(/4\.8 Inviting Someone to This Copy/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/4\.9 Signing In with Google/)).toBeNull();
+    expect(screen.queryByText(/^4\.10 /)).toBeNull();
     expect(document.querySelector('a[href*="policies.google.com"]')).toBeNull();
     expect(storageEntries().some((entry) => entry.includes("google"))).toBe(
       false,
     );
+  });
+
+  it("numbers Google 4.9, after the invitations section, where it is configured", () => {
+    renderPage({ google: true });
+
+    expect(
+      screen.getByText(/4\.8 Inviting Someone to This Copy/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/4\.9 Signing In with Google/)).toBeInTheDocument();
+    expect(screen.queryByText(/4\.8 Signing In with Google/)).toBeNull();
   });
 
   // §10.4 used to name Google as one of "two outside parties [that] act on their

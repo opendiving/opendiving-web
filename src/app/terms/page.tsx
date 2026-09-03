@@ -123,7 +123,10 @@ export default function TermsPage() {
               usually claims otherwise: there are no public profiles, no feeds,
               no forums, no comments, no ratings, no dive buddies and no photo
               sharing. Nothing you enter is visible to any other account on this
-              copy. Section 5 says what follows from that.
+              copy. The one thing this copy does show one person to another is
+              an invitation, which is about your name rather than about anything
+              you entered; section 5 says exactly what that is, and what follows
+              from the rest.
             </p>
             <p className="text-foreground mb-4">
               Whether this copy costs anything, who may register for it, and how
@@ -160,6 +163,13 @@ export default function TermsPage() {
               </li>
               <li>Accept responsibility for what is done under your account</li>
             </ul>
+            <p className="text-foreground mb-4">
+              Where the operator of this copy has closed it to new accounts,
+              registering also needs an invitation, and the address you register
+              with must be the one that was invited. The exception is the very
+              first account on a copy that has none: whoever signs in first is
+              its operator, and needs no invitation to do so.
+            </p>
           </section>
 
           <section className="mb-8">
@@ -245,7 +255,20 @@ export default function TermsPage() {
               technically needed to run the Service for you &mdash; to store
               your entries, show them back to you, and include them in exports
               you ask for. Your entries are not published, shared with other
-              users, or shown to anyone else by this software.
+              users, or shown to anyone else by this software. The next
+              paragraph is the one thing this copy does show one person to
+              another, and it is not an entry.
+            </p>
+            <p className="text-foreground mb-4">
+              Where this copy is invite-only and you invite somebody to it, you
+              grant the operator the further permission that act needs, and only
+              that: to tell the address you invited that <em>you</em> invited
+              them, naming you, and to tell you whether that address went on to
+              register here. Nothing you have logged is involved &mdash; no
+              dive, site, trip, gear item, course or certification &mdash; and
+              nobody you have not invited learns anything either way. The
+              privacy policy&rsquo;s section 4.8 sets out the same in its own
+              register.
             </p>
             <p className="text-foreground mb-4">
               That permission is deliberately no wider than what running the
@@ -253,7 +276,8 @@ export default function TermsPage() {
               it that way: if a version of the software ever adds a way to show
               what you entered to someone else, that feature arrives with a
               permission of its own written here and a section of its own on the
-              privacy page, rather than leaning on this one.
+              privacy page, rather than leaning on this one. The invitation
+              grant above is that rule being kept, not an exception to it.
             </p>
           </section>
 
