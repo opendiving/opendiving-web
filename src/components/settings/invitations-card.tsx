@@ -168,16 +168,35 @@ export function InvitationsCard() {
     try {
       setIsLoadingMore(true);
       const response = await invitationsAPI.listInvitations(list.page + 1);
-      setList((current) =>
-        current.status === "ready"
-          ? {
-              ...current,
-              invitations: [...current.invitations, ...response.data],
-              hasMore: response.has_more,
-              page: response.page,
-            }
-          : current,
-      );
+      setList((current) => {
+        if (current.status !== "ready") return current;
+        // Deduped by uuid, and this is load-bearing rather than belt-and-braces.
+        // The route pages by offset over a newest-first ordering, so any row
+        // added since the first page was read shifts every later row down one -
+        // and a send does exactly that, prepending its created row without
+        // asking the server for a new page number. Page 2 would then start on
+        // the row that was the last of page 1 and append a second copy of it,
+        // duplicating a React key. Filtering on identity fixes the whole class,
+        // not just the send: an invitation created in another tab, or from the
+        // admin queue, shifts the window the same way, and no page number this
+        // card could track would know about those.
+        //
+        // `fetchAllPages` in `lib/api/client.ts` carries the same `keyOf` dedup
+        // for the same reason, and its comment records the half neither of us
+        // can fix: a row pushed *out* of an already-read page leaves a gap.
+        // Nothing here removes rows - a revoke stamps rather than deletes, and
+        // re-reads anyway - so only the duplicate half can arise.
+        const known = new Set(current.invitations.map((one) => one.uuid));
+        return {
+          ...current,
+          invitations: [
+            ...current.invitations,
+            ...response.data.filter((one) => !known.has(one.uuid)),
+          ],
+          hasMore: response.has_more,
+          page: response.page,
+        };
+      });
     } catch (error) {
       console.error("Couldn't load older invitations.", error);
       toast({

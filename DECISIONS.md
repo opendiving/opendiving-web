@@ -14103,3 +14103,24 @@ the three that grows without a cap: the API bounds live sessions and registered 
 invitations only as a rate. The card reads the first page and offers "Show older invitations" for
 the rest, rather than truncating silently - a diver who wants to revoke their twenty-fifth
 invitation has to be able to reach it.
+
+**Appending a page has to dedupe by uuid, and the reason is the interaction between the two bullets
+above.** `GET /user/invitations` pages by _offset_ over a newest-first ordering, so any row created
+since the first page was read shifts every later row down one — and the prepend-on-send above does
+exactly that, adding a row locally without the server's page numbering knowing. "Show older
+invitations" then asks for page 2, whose offset now lands on the row that was the last of page 1,
+and a naive append renders that invitation twice under the same React key. The two design choices
+are individually right and buy this together, which is why it is written down rather than left as a
+line of code: neither section explains the other.
+
+Deduping on identity is the fix rather than tracking an offset, and it is the wider one. A page
+number this card maintains can only account for rows _it_ created; an invitation created in another
+tab, or from the operator's own admin queue, shifts the window identically and is invisible from
+here. `fetchAllPages` in `lib/api/client.ts` already carries a `keyOf` dedup for the same reason and
+its comment records the half neither of us can fix — a row pushed _out_ of an already-read page
+leaves a gap. That half cannot arise here: nothing in this card removes a row, since a revoke stamps
+rather than deletes and re-reads regardless.
+
+The render test stages the shifted window explicitly — page 2 comes back containing page 1's last
+row — and asserts one node for that address. Run it against a plain append before trusting it; the
+naive version renders two, and a test written from the fixed code alone would pass either way.
