@@ -61,21 +61,26 @@ function resolveLimit(count: number, max?: number): number {
 
 interface LabelledLocation {
   name?: string | null;
-  // The geocoder's full label, "Dahab, South Sinai, 45214, Egypt".
+  // The label kept beside the name: "Dahab, Egypt" for a place picked since the
+  // picker started storing the API's short composed form, and the geocoder's
+  // own "Dahab, South Sinai, 45214, Egypt" for one saved before it.
   display_name?: string | null;
 }
 
 /**
- * The geocoder's full label with the leading repeat of the place's own name
- * taken off, or `undefined` when that leaves nothing.
+ * A location's label with the leading repeat of the place's own name taken off,
+ * or `undefined` when that leaves nothing.
  *
  * Every surface that has room for the label shows the name first and the label
- * after it, and the label starts with the name: "Dahab" and "Dahab, South
- * Sinai, 45214, Egypt" read together as "Dahab, Dahab, South Sinai, 45214,
- * Egypt". Only the leading parts the name itself repeats are dropped, so a site
- * named "Blue Hole" keeps every word of "Dahab, South Sinai, Egypt" - what goes
- * is a duplicate, not context, and the context is the whole reason the label is
- * on screen.
+ * after it, and the label starts with the name: "Dahab" and "Dahab, Egypt" read
+ * together as "Dahab, Dahab, Egypt". Only the leading parts the name itself
+ * repeats are dropped, so a site named "Blue Hole" keeps every word of "Dahab,
+ * Egypt" - what goes is a duplicate, not context, and the context is the whole
+ * reason the label is on screen.
+ *
+ * How short the label is, is not this function's business: it trims a repeat,
+ * and both the short form and a provider label saved before the picker switched
+ * to it go through unchanged otherwise.
  *
  * `undefined` rather than "" so a caller can drop the element entirely with
  * `&&` - a place whose label says no more than its name gets no second line

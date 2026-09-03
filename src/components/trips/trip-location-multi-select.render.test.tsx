@@ -60,11 +60,32 @@ describe("TripLocationMultiSelect", () => {
   });
 
   it("does not name a place twice in one row", () => {
-    // Nominatim's label opens with the name it matched, so the row's own name
-    // and the label after it read "Dahab, Dahab, South Sinai, 45214, Egypt" -
-    // the trim is what `formatLocationContext` is for, and this is where a
-    // reader would meet it. The `title` carries the same text, since that is
-    // what an ellipsis hides.
+    // A label opens with the name it was matched by, so the row's own name and
+    // the label after it read "Dahab, Dahab, Egypt" - the trim is what
+    // `formatLocationContext` is for, and this is where a reader would meet it.
+    // The `title` carries the same text, since that is what an ellipsis hides.
+    render(
+      <Field
+        initial={[
+          {
+            name: "Dahab",
+            display_name: "Dahab, Egypt",
+            latitude: 28.4954,
+            longitude: 34.5197,
+          },
+        ]}
+      />,
+    );
+
+    expect(rows()).toEqual(["Dahab, Egypt"]);
+    expect(screen.getByTitle("Dahab, Egypt")).toBeVisible();
+  });
+
+  it("shows a place saved before the short form the way it was saved", () => {
+    // The picker keeps the API's "Dahab, Egypt" now, but a trip saved before it
+    // did holds the provider's whole label, and the API has no second field to
+    // recompose it from. Rendered as it stands rather than trimmed by guesswork:
+    // an old row reads long, and re-picking the place is what shortens it.
     render(
       <Field
         initial={[
@@ -79,7 +100,6 @@ describe("TripLocationMultiSelect", () => {
     );
 
     expect(rows()).toEqual(["Dahab, South Sinai, 45214, Egypt"]);
-    expect(screen.getByTitle("Dahab, South Sinai, 45214, Egypt")).toBeVisible();
   });
 
   it("shows a label that repeats the name and nothing else as the name alone", () => {

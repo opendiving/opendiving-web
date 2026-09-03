@@ -29,16 +29,18 @@ const BOHOL: GeocodeResult = {
 };
 
 describe("locationKey", () => {
-  it("identifies a picked place by position and full label", () => {
+  it("identifies a picked place by position and label", () => {
     // Locations are value objects with no id of their own, so identity has to
-    // come from the content - and the label is what separates two places that
-    // share a name.
+    // come from the content.
     expect(locationKey(geocodeResultToLocation(MOALBOAL))).toBe(
-      "geo:9.9366:123.3986:Moalboal, Cebu, Central Visayas, Philippines",
+      "geo:9.9366:123.3986:Moalboal, Philippines",
     );
   });
 
   it("separates two places of the same name", () => {
+    // Both compose to "Moalboal, Philippines" now the short form is what the
+    // row keeps, so the position is the whole of what separates them - which is
+    // the thing that actually differs between two places of one name.
     const negros = geocodeResultToLocation({
       ...MOALBOAL,
       latitude: 9.33,
@@ -76,7 +78,7 @@ describe("geocodeResultToLocation", () => {
     // put one pin in the middle of it.
     expect(geocodeResultToLocation(BOHOL)).toEqual({
       name: "Bohol",
-      display_name: "Bohol, Central Visayas, Philippines",
+      display_name: "Bohol, Philippines",
       latitude: 9.85,
       longitude: 124.14,
       bbox_south: 9.48,
@@ -84,6 +86,19 @@ describe("geocodeResultToLocation", () => {
       bbox_west: 123.7,
       bbox_east: 124.66,
     });
+  });
+
+  it("keeps the composed location as the label, not the provider's", () => {
+    // The whole of this change: Nominatim's label carries an administrative
+    // level and a postcode ("Dahab, South Sinai, 45214, Egypt") that no diver
+    // writes down, and the API already composes the place-plus-country form
+    // beside it. Chosen here rather than at render because the short form
+    // cannot be recovered from the long one - "Dahab" is the settlement in
+    // "Dahab, South Sinai, Egypt" and a dive site in "Blue Hole, Dahab, South
+    // Sinai, Egypt", and nothing in the flat string says which.
+    expect(geocodeResultToLocation(MOALBOAL).display_name).toBe(
+      "Moalboal, Philippines",
+    );
   });
 
   it("falls back to the composed location when the result has no name", () => {
@@ -100,18 +115,19 @@ describe("mapSearchResults", () => {
     const { items, locations } = mapSearchResults([MOALBOAL, BOHOL]);
 
     // The hint is the label minus the name the row already shows, so the menu
-    // reads "Moalboal, Cebu, Central Visayas, Philippines" rather than naming
-    // Moalboal twice.
+    // reads "Moalboal, Philippines" rather than naming Moalboal twice - and the
+    // provider's "Moalboal, Cebu, Central Visayas, Philippines" never reaches a
+    // menu row at all.
     expect(items).toEqual([
       {
         id: locationKey(geocodeResultToLocation(MOALBOAL)),
         name: "Moalboal",
-        hint: "Cebu, Central Visayas, Philippines",
+        hint: "Philippines",
       },
       {
         id: locationKey(geocodeResultToLocation(BOHOL)),
         name: "Bohol",
-        hint: "Central Visayas, Philippines",
+        hint: "Philippines",
       },
     ]);
     expect(locations.get(items[1].id)).toEqual(geocodeResultToLocation(BOHOL));

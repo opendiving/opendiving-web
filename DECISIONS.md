@@ -7422,6 +7422,61 @@ The trim is deliberately not applied to the `title` attribute's _shape_ - the ro
 same name apart. It is the same trimmed context, just with the name back in front of it, which is
 what the row would read if it had the width.
 
+The label being trimmed is a short one now - see the next section, which _did_ change what
+`geocodeResultToLocation` stores, and had to answer both of the objections above to do it. The trim
+itself is unchanged and still runs at render, on whichever label a row happens to hold.
+
+## The label a trip location keeps is the API's short form, chosen on the way in
+
+`trip_location.display_name` used to be Nominatim's own `display_name`, so the picker's rows, its
+menu hints and a trip page's location list all read "Dahab, South Sinai, 45214, Egypt". A postcode
+is not context, an administrative level below the country is rarely the context anyone wanted, and a
+dive log records "Dahab, Egypt". `GeocodeResult` has carried that short form all along as
+`location` - the API's `_short_location` composes place-plus-country out of the provider's
+_structured_ address - and `geocodeResultToLocation` was simply keeping the wrong one of the two.
+The dive site form was already on the right one: a geocoded pick writes `result.location` into
+`dive_site.location`, and has since that field existed.
+
+**The short form cannot be derived at render, only received**, which is what separates this from the
+trim above it and is the whole reason it happens on the way in. Given the flat string, there is no
+rule that produces the right answer for both "Dahab, South Sinai, 45214, Egypt" (name "Dahab",
+wanted "Dahab, Egypt" - so drop everything but the country) and "Blue Hole, Dahab, South Sinai,
+45214, Egypt" (name "Blue Hole", wanted "Blue Hole, Dahab, Egypt" - so keep the part after the
+name). The two differ by whether the name _is_ the settlement or sits inside it, and nothing in the
+string says which. The structured address does, which is why the API composes it there and why the
+answer has to travel rather than be recomputed.
+
+That costs the two things the trim's own note lists, plus one it could not have foreseen. All three
+are smaller than they look:
+
+- **Old rows keep their old label.** A trip saved before this holds the provider's label, and there
+  is no second field to recompose the short form from, so it renders as it stands and re-picking the
+  place is what shortens it. `formatLocationContext` handles either, and a render test pins the long
+  one so nobody later "fixes" it with a guess at which comma to cut at.
+- **`locationKey` changes shape**, from `geo:{lat}:{lon}:{provider label}` to the same with the
+  short label. A place saved before and re-picked after keys differently, so the picker's "already
+  in the list" check lets that one duplicate through - once, on a row that predates the change. What
+  the key does not lose is the ability to separate two places of one name: "Moalboal, Cebu" and
+  "Moalboal, Negros Oriental" both compose to "Moalboal, Philippines", but they sit at different
+  coordinates, and the coordinates were always in the key.
+- **A trip stops being findable by its region.** `_search_conditions` in the API's `trips.py` ORs a
+  search term against `TripLocation.display_name` as well as `.name`, so a trip in Moalboal used to
+  match a search for "Cebu" through the stored label. `_short_location` composes place _or_ region
+  and then the country - never both - so once the place is known the region is gone from the row
+  entirely, and that search finds nothing. Searching the country still works, and so does the town.
+  Nothing catches this: the API's `test_the_display_name_matches_too` hand-writes a fixture label
+  containing "Cebu" rather than composing one, so it passes either way, and the web has no test that
+  searches trips at all. Left as it stands rather than repaired here - the repair is a second stored
+  field or a search that reaches the geocoder, both of which are an API change, and neither is worth
+  buying with a label a diver reads on every trip they own.
+
+The menu hints go short with the stored value rather than staying long to disambiguate, in both
+pickers. Two Moalboals do then read identically in the menu - the loss is real and it is the price
+of the ask - but a menu row that promises more than the row it becomes is its own defect, and
+`ComboboxItem` has an `id`, a `name` and a `hint` and nowhere to put a second label. `placeKey` in
+`place-search.tsx` still keys on the provider's label, because nothing renders from it, it only has
+to be unique for the length of one menu, and the longer string is the stricter of the two.
+
 ## The geocoder's attribution is a wire format, not display copy
 
 `GeocodeResult.attribution` used to arrive as prose with a bare URL on the end -
