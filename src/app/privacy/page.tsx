@@ -773,11 +773,19 @@ export default function PrivacyPage() {
               not you, and why the link and code expire quickly and work only
               once. The address-confirmation message is the same shape: it goes
               to whatever new address a signed-in diver typed, for the express
-              purpose of proving they can read it. So is the invitation, which
-              goes to whatever address somebody with an account here invited,
-              and names them so you know who. None of the three is something the
-              recipient can prevent, because the alternative is a sign-in flow
-              that cannot start.
+              purpose of proving they can read it. None of those two is
+              something the recipient can prevent, because the alternative is a
+              sign-in flow that cannot start. The invitation goes to whatever
+              address somebody with an account here invited, and names them so
+              you know who; it is not preventable either, but for a different
+              reason and it is worth being exact about which. Nothing turns on
+              its arrival &mdash; the address is admitted the moment the
+              invitation is made, so the message is a courtesy rather than a
+              step, and the person who invited you could as easily have told you
+              by other means. What makes it unpreventable is that this copy has
+              no way to know, before sending, that an address would rather not
+              hear from it. What bounds it instead is the limit in section 4.8
+              on how many invitations one account may send.
             </p>
             <p className="text-foreground mb-4">
               Being sent to your own address is not the same as being sent

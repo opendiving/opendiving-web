@@ -10268,6 +10268,19 @@ count in that sentence is derived from the number of messages the group lists, s
 drift apart again. What still cannot be pinned from this repo is whether the group lists every
 sender the api has — that number lives one repo over, and the rule above remains its only guard.
 
+**And the count is not the only thing a new message moves.** The paragraph closed "None of the three
+is something the recipient can prevent, because the alternative is a sign-in flow that cannot
+start", and adding the invitation to the group silently extended that _reason_ to a message it is
+false of: nothing about the invitation gates a flow, because the address is admitted the moment the
+invitation row commits and the mail is a courtesy rather than a step (the api says so in
+`create_invitation`'s own docstring — "the invitation is real whether or not the mail arrived"). The
+count was corrected and the justification was not, which is the same failure this section already
+records twice under a different sentence. So: **a message added to a group inherits every claim the
+group's prose makes about its members, not just the numeral** — read the paragraph to its end before
+adding to the list, and split the reason if the new member does not share it. The invitation now has
+its own sentence saying what actually makes it unpreventable, which is that this copy cannot know in
+advance that an address would rather not hear from it.
+
 ### What the CSP actually buys, and the sentence above that oversold it
 
 **Correction to this file, appended rather than rewritten.** The section _"Gravatar is off unless an
