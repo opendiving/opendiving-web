@@ -29,6 +29,7 @@ import {
   BadgeCheck,
   GraduationCap,
   Fish,
+  Shield,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -338,6 +339,20 @@ export function Header() {
                         Settings
                       </Link>
                     </DropdownMenuItem>
+                    {/* The only entrance to the admin section, and only for the
+                        account that has the rights. A plain `Link`, so nothing
+                        under `app/admin/` is imported here and the App Router
+                        keeps that chunk out of every other browser's bundle.
+                        Hiding it is a courtesy to a diver who would only meet a
+                        403 - the API gates the routes themselves. */}
+                    {user.is_superuser && (
+                      <DropdownMenuItem asChild>
+                        <Link href="/admin" className="flex items-center">
+                          <Shield className="mr-2 h-4 w-4" />
+                          Admin
+                        </Link>
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuSeparator />
                     <ThemeMenuItems />
                     <DropdownMenuSeparator />
