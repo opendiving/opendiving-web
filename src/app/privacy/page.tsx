@@ -1177,7 +1177,11 @@ export default function PrivacyPage() {
               own session cookies under its own address. They are the tool of
               whoever administers this copy, they appear only for someone
               signing in to it, and they are documented for operators in the
-              self-hosting documentation rather than here.
+              self-hosting documentation rather than here. That panel is a
+              separate thing from the Admin section inside this app, which
+              whoever runs this copy reaches from their own account menu: those
+              are ordinary pages on this address, signed in to exactly like the
+              rest of it, and they store nothing of their own.
             </p>
             <p className="text-foreground mb-4">
               The rule this project holds itself to, stricter than the law
