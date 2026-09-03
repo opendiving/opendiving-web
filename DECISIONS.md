@@ -14240,10 +14240,14 @@ instead:
 git grep -nI -P '(\.cost\b|(?<![\w-])cost\s*[?:]|"cost"|(?<![\w-])Cost(?![\w-]))' -- src README.md
 ```
 
-Two survivors of that are still prose (`dive-detail-main.tsx`, `lib/dive-profile.ts`) and one is a
-different model entirely: `gear-service-record-dialog.tsx` has
-`placeholder="Parts replaced, cost, test pressure..."` on a service record's notes, which is free
-text about a repair bill and has nothing to do with courses.
+On the commit that removed the field that returns exactly two lines, and both are prose:
+`dive-detail-main.tsx` and `lib/dive-profile.ts`, the trade-off sense again. Anything else it
+returns is a course-cost site that survived.
+
+The bare word search turns up one hit worth knowing about before you delete it, because the anchored
+form deliberately does not reach it: `gear-service-record-dialog.tsx` has
+`placeholder="Parts replaced, cost, test pressure..."` on a service record's notes. That is free
+text about a repair bill on a different model, and it stays.
 
 `README.md`'s courses bullet named cost in the feature copy and was updated with the field. It is
 the repo's public pitch, so a removed feature left in it is a promise the app no longer keeps.
