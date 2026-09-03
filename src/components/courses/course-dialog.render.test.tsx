@@ -27,7 +27,6 @@ const EXISTING: Course = {
   instructor_name: "Ana Ruiz",
   instructor_number: "TDI-99871",
   training_center: "Blue Ocean, Koh Tao",
-  cost: "EUR 1450",
   notes: "Ran the 21m and 30m dives on back gas.",
   user_uuid: "user-1",
   created_at: "2026-03-08T09:00:00Z",
@@ -67,25 +66,27 @@ describe("CourseDialog", () => {
       "Blue Ocean, Koh Tao",
     );
     expect(screen.getByLabelText("Instructor number")).toHaveValue("TDI-99871");
-    expect(screen.getByLabelText("Cost")).toHaveValue("EUR 1450");
+    expect(screen.getByLabelText("Instructor")).toHaveValue("Ana Ruiz");
   });
 
   it("sends an explicit null for every field the diver cleared", async () => {
     // The whole reason the submit maps `""` back to `null`: an omitted key
-    // leaves the stored value alone, so clearing the cost of a course would
-    // report success and change nothing.
+    // leaves the stored value alone, so clearing the instructor of a course
+    // would report success and change nothing.
     open(EXISTING);
 
     await waitFor(() =>
-      expect(screen.getByLabelText("Cost")).toHaveValue("EUR 1450"),
+      expect(screen.getByLabelText("Instructor number")).toHaveValue(
+        "TDI-99871",
+      ),
     );
-    await userEvent.clear(screen.getByLabelText("Cost"));
+    await userEvent.clear(screen.getByLabelText("Instructor number"));
     await userEvent.clear(screen.getByLabelText("Instructor"));
     await save();
 
     await waitFor(() => expect(updateCourse).toHaveBeenCalled());
     expect(updateCourse.mock.calls[0][1]).toMatchObject({
-      cost: null,
+      instructor_number: null,
       instructor_name: null,
       training_center: "Blue Ocean, Koh Tao",
     });

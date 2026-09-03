@@ -54,9 +54,6 @@ export interface Course {
   instructor_name?: string | null;
   instructor_number?: string | null;
   training_center?: string | null;
-  // Free text ("EUR 1450", "1 200 AUD included gear"). Cost appears in no agency
-  // record; it is a personal note, and nothing else in the app models money.
-  cost?: string | null;
   notes?: string;
   user_uuid: string;
   created_at: string;
@@ -73,7 +70,6 @@ export interface CourseCreate {
   instructor_name?: string | null;
   instructor_number?: string | null;
   training_center?: string | null;
-  cost?: string | null;
   notes?: string;
 }
 
