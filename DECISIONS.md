@@ -13930,3 +13930,15 @@ _is_ admitted, so the operator's move is to reach that person another way, not t
 carried across a page change would act on rows nobody can see. Clearing it on every page change and
 after every action is also what keeps a batch inside the API's cap without this page repeating the
 number - a selection can never be larger than one page of the queue.
+
+**Local development reaches the section; a bundled install does not, until the bundle's proxy
+changes.** Local dev is split-origin - the browser is pointed at the API directly through
+`NEXT_PUBLIC_API_URL` - so `/admin` is unambiguously this app's route there. The published bundle
+puts one Caddy in front of both containers, and its `@api` path matcher still names `/admin*`, which
+sends that path to the API container; the CRUDAdmin panel is still mounted at the same path by
+default on that side, so a bundled install gets the panel, or the 404 of a panel that is switched
+off, rather than the section built here. Dropping `/admin*` from that matcher is the bundle
+repository's change and not this one's, and it has to land before a self-hosted install can reach
+any of this. The note is here because nothing else in this repository would say so: the pages, the
+routes and the tests are all perfectly happy, and the topology that breaks is the one most
+self-hosters run.
