@@ -13861,3 +13861,72 @@ layout doing the formatting is `"use client"` too, as every page in this app is.
 
 `dive-date-nav.tsx` is `dive-neighbor-nav.tsx`, and `DiveDateNav` is `DiveNeighborNav`: it no longer
 renders the date, so a name built around it would have been the second thing to mislead here.
+
+## Admin is superuser routes and web pages, not a panel
+
+The app grew its first operator surface: `/admin`, a superuser-gated section of this web app driving
+superuser-gated JSON routes on the API. The obvious alternative was an admin _on_ the API - the
+CRUDAdmin panel that already exists there, or a library like starlette-admin - and the argument that
+decided against it is about auth rather than about features.
+
+**This app has no passwords.** The access token is a bearer header held in browser memory and the
+refresh cookie is single-use and `SameSite=lax`, so a browser _navigating_ to a server-rendered
+admin page on the API origin carries no credential the API recognises. The staging `/docs` route is
+the existing proof: it is gated on the same superuser dependency, and it is reachable only by a
+client that sets the header by hand. Every API-side admin therefore either keeps a second identity
+with its own password - which is exactly what CRUDAdmin is, and why it ships with its own IP
+allowlist - or builds a cookie-to-page auth bridge nobody else ships. A page in _this_ app already
+holds the credential, so the whole question disappears.
+
+Three smaller reasons, none of them decisive alone: an admin library writes straight to the tables
+and skips the service layer, which this project has already paid for once on the API side; the map
+picker a dive-site catalogue would want is a web artifact whose basemap settings and CSP reach only
+this container, so an API-side admin would build it twice; and a list with checkboxes, a confirm
+dialog and a toast is the shape this repo is most practised at.
+
+**The gate here is a convenience, and the API's is the one that counts.** `app/admin/layout.tsx`
+runs `useAuthGuard` like every protected page and then renders `NotFoundState` for a signed-in diver
+who is not a superuser - not a "forbidden" page, because a diver who guesses the URL should learn
+nothing about whether the section exists, which is the same answer a dive uuid that is not theirs
+already gets. All of that is cosmetic: the `/admin/*` routes carry a router-level superuser
+dependency, so an edited `is_superuser` buys an empty table and a toast. `User.is_superuser` is
+optional on the web's type and read as false when absent, because an API one version behind omits it
+and an absent field must never open a door.
+
+**"Not mixing the admin into the diver's app" is a structural invariant, not a hope.** Nothing
+outside `app/admin/` and `components/admin/` imports anything inside them - the header's entry is a
+plain `Link` - so the App Router ships that chunk only to a browser that navigates there.
+`lib/admin-isolation.test.ts` is that rule with teeth: it resolves every import specifier under
+`src/` to an absolute path, so the alias form, the relative form and a future third form are one
+question. It carries a negative control, and the control has to _assemble_ its specifier from parts
+rather than write one out, because the file is inside its own scan and a literal would be found and
+reported as the violation it is standing in for.
+
+**The first screen is only the queue**, deliberately. No user management, no second tab, no "invite
+an address" form - a superuser's own Settings card does that, and it is quota-exempt anyway. A
+section with one screen does not need navigation, so `/admin` is a server `redirect()` to
+`/admin/invites` and nothing else.
+
+**No copy in the section may describe the instance's registration policy.** The three `/admin/*`
+routes carry no registration-mode check, on purpose and under test on the API side: an operator who
+opens registration to everybody may still have a queue of people who asked before that. So this
+section is reachable, and works, on an instance where anybody may sign up, and a line like
+"registration is by invitation" would simply be false there. Say what the queue holds - addresses
+that asked for an invitation - not what the instance does with it. This is not a hypothetical worry:
+the same defect shipped in the API's invitation email and was caught only by somebody reading it.
+The page and the table each pin it with a test that greps their rendered text.
+
+**The batch toast is built from the response, never from the selection.** `POST /admin/invitations`
+answers with a per-address outcome - `invited`, `already_registered`, `already_invited`,
+`mail_failed` - and the last two of those mean the selection and the result disagree by design. A
+summary counted from what was ticked would confidently state something the API did not do, so
+`components/admin/invitation-outcomes.ts` counts the response and renders "4 invited, 1 already
+registered". It counts an outcome this build has no label for under its own wire name, so an API
+that grows a fifth one reads oddly rather than silently dropping rows from the total. `mail_failed`
+is worded "created but not emailed" for a reason: the invitation row is committed and the address
+_is_ admitted, so the operator's move is to reach that person another way, not to invite them again.
+
+**Selection is per page and cleared with it.** The two actions take addresses, so a selection
+carried across a page change would act on rows nobody can see. Clearing it on every page change and
+after every action is also what keeps a batch inside the API's cap without this page repeating the
+number - a selection can never be larger than one page of the queue.
