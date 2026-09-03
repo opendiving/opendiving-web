@@ -120,7 +120,21 @@ export default function PrivacyPage() {
               fetched by this server and stored here as your avatar &mdash;
               once, when the account is made, and never again afterwards. That
               only happens on instances with Google sign-in turned on; section
-              4.8 describes it if this one does.
+              4.9 describes it if this one does.
+            </p>
+            <p className="text-foreground mb-4">
+              Two more addresses can reach this copy before any account exists,
+              and both belong to whoever is running it rather than to a
+              directory of any kind. If this copy is not taking new accounts on
+              its own, its home page offers a form for{" "}
+              <strong>asking to be invited</strong>: the address you type there
+              is stored while the request is pending, for up to 90 days, or
+              until whoever runs this copy invites you or removes the request.
+              Being invited does not erase it &mdash; it becomes an{" "}
+              <strong>invitation</strong> instead, which records the address
+              invited, the account that sent it, and whether it has been used,
+              and is what lets you create an account here. Section 4.8 is about
+              both, and section 7 says how long each is kept.
             </p>
             <p className="text-foreground mb-4">
               There are no photos of dives, no bio, no experience level, and no
@@ -157,41 +171,45 @@ export default function PrivacyPage() {
               <li>
                 <strong>Account security events:</strong> A record of things
                 that happen to accounts on this copy, and this is the whole list
-                &mdash; a sign-in link requested; a sign-in succeeding, or a
-                sign-in code got wrong; a verified sign-in being offered a new
-                account to make, or a deleted one to bring back; an account
-                created or restored; a second way of signing in attached to an
-                existing account; a passkey added or removed; a passkey
-                reporting a use count that suggests it has been copied; an email
-                address change asked for or completed; an account asked to be
-                deleted; a sign-out; one device signed out, or every other one
-                at once; and a spent sign-in cookie turning up again. Each entry
-                holds what happened and when, the IP address and user agent it
-                came from, which way of signing in it was about &mdash; email,
-                Google or a passkey &mdash; where that applies, and either the
-                account it was about or, for something that happened before any
-                account existed, the email address that was typed. Never a link,
-                a code or a token itself, only the fact that one was issued or
-                used. Nothing in the app shows these to you; they are there for
-                whoever runs this copy to look into a break-in or a burst of
-                sign-in attempts, and section 6.2 says what that means for
-                asking for a copy
+                &mdash; a sign-in link requested; an invitation asked for; an
+                invitation sent; a sign-in succeeding, or a sign-in code got
+                wrong; a verified sign-in being offered a new account to make,
+                or a deleted one to bring back; an account created or restored;
+                a second way of signing in attached to an existing account; a
+                passkey added or removed; a passkey reporting a use count that
+                suggests it has been copied; an email address change asked for
+                or completed; an account asked to be deleted; a sign-out; one
+                device signed out, or every other one at once; and a spent
+                sign-in cookie turning up again. Each entry holds what happened
+                and when, the IP address and user agent it came from, which way
+                of signing in it was about &mdash; email, Google or a passkey
+                &mdash; where that applies, and the account it was about, or,
+                for something that happened before any account existed, the
+                email address that was typed. An invitation sent is the one
+                entry that carries both, because both are the point of it: the
+                account that sent the invitation, and the address it went to.
+                Never a link, a code or a token itself, only the fact that one
+                was issued or used. Nothing in the app shows these to you; they
+                are there for whoever runs this copy to look into a break-in or
+                a burst of sign-in attempts, and section 6.2 says what that
+                means for asking for a copy
               </li>
               <li>
-                <strong>Rate-limit counters:</strong> To stop sign-in and the
-                contact form being hammered, this server counts recent requests
-                in a short-lived store. The counters are keyed three ways
-                &mdash; by IP address, by the email address a sign-in link or a
-                contact message was requested for, and by account id for things
-                you can only do signed in, such as exporting your data, changing
-                your username or email, registering a passkey, and looking up
-                place and species names. Each counter is a number and expires by
-                itself: after 15 minutes on the sign-in and account paths, after
-                an hour on the contact form, exports, and the place- and
-                species-name lookups. Other counters exist that hold no
-                identifier at all &mdash; they cap how often this server as a
-                whole may call an outside provider, and are keyed on the
-                provider, not on anyone
+                <strong>Rate-limit counters:</strong> To stop sign-in, the
+                contact form and the invite-request form being hammered, this
+                server counts recent requests in a short-lived store. The
+                counters are keyed three ways &mdash; by IP address, by the
+                email address a sign-in link, a contact message or an invitation
+                was requested for, and by account id for things you can only do
+                signed in, such as exporting your data, changing your username
+                or email, registering a passkey, inviting somebody, and looking
+                up place and species names. Each counter is a number and expires
+                by itself: after 15 minutes on the sign-in and account paths,
+                after an hour on the contact form, the invite-request form,
+                exports, and the place- and species-name lookups. Other counters
+                exist that hold no identifier at all &mdash; they cap how often
+                this server as a whole may call an outside provider, and are
+                keyed on the provider, not on anyone
               </li>
               <li>
                 <strong>Passkey labels:</strong> If you register a passkey, a
@@ -253,13 +271,22 @@ export default function PrivacyPage() {
               </li>
               <li>
                 <strong>Email:</strong> Send you a sign-in link and code,
-                confirm an address change, confirm a deletion, tell you when a
-                passkey is added to or removed from your account, tell your old
-                address when your email address is changed, and &mdash; if you
-                have set a service schedule on a piece of gear &mdash; remind
-                you when it comes due. If you use the contact form, deliver what
-                you wrote to whoever runs this copy. Section 6.3 lists all of
-                these and says which arrive without you asking
+                confirm an address change, confirm a deletion, tell an address
+                that it has been invited here, tell you when a passkey is added
+                to or removed from your account, tell your old address when your
+                email address is changed, and &mdash; if you have set a service
+                schedule on a piece of gear &mdash; remind you when it comes
+                due. If you use the contact form, deliver what you wrote to
+                whoever runs this copy. Section 6.3 lists all of these and says
+                which arrive without you asking
+              </li>
+              <li>
+                <strong>Decide who may create an account:</strong> Where this
+                copy is invite-only, keep its invitations and the requests
+                waiting on them, so that the address that was invited is the one
+                that gets in, and so that whoever runs this copy can see who has
+                asked. Section 4.8 says what that shows to whom, and section 7
+                how long either is kept
               </li>
               <li>
                 <strong>Keep the instance standing:</strong> Apply the rate
@@ -298,13 +325,20 @@ export default function PrivacyPage() {
             </p>
 
             <h3 className="text-xl font-semibold text-foreground mb-3">
-              4.2 Nothing Is Shared with Other Divers
+              4.2 What Other Divers Can See
             </h3>
             <p className="text-foreground mb-4">
-              This software has no way to share anything between accounts. There
-              are no dive buddies, no groups, no comments, and no shared logs.
-              Another diver with an account on this same copy cannot see
-              anything of yours.
+              Nothing you have entered is shared between accounts, and there is
+              no way to make it so. There are no dive buddies, no groups, no
+              comments, and no shared logs. Another diver with an account on
+              this same copy cannot see any dive, dive site, trip, gear item,
+              course or certification of yours.
+            </p>
+            <p className="text-foreground mb-4">
+              There is one exception and it is not about anything you entered:
+              inviting somebody shows them your name, and shows you whether they
+              went on to register. Section 4.8 sets out exactly what that
+              discloses, in both directions.
             </p>
             <p className="text-foreground mb-4">
               The one thing every account on this copy does draw on is the
@@ -465,10 +499,69 @@ export default function PrivacyPage() {
               this paragraph is about, and the duty falls on it like any other.
             </p>
 
+            {/* Unconditional, unlike the Google subsection below it, and that is
+                why it takes the fixed number and Google moves after it. An
+                instance can be flipped between open and invite-only with a
+                restart, so a section that appeared and disappeared with the mode
+                would be a page that changes under a reader for a reason nothing
+                on it explains. It is hedged in prose instead - the same shape §5's
+                passwordless bullet uses for Google. See "The numbering in §4 is
+                load-bearing, and §4.8 has changed hands" in DECISIONS.md. */}
+            <h3 className="text-xl font-semibold text-foreground mb-3">
+              4.8 Inviting Someone to This Copy
+            </h3>
+            <p className="text-foreground mb-4">
+              Whoever runs this copy decides whether anyone may create an
+              account on it or only people who have been invited. Where it is
+              invitations, this is the one place in the software where something
+              about one person is shown to another, and this section is the
+              whole of it.
+            </p>
+            <p className="text-foreground mb-4">
+              An invitation carries no code, no link and no token &mdash; it is
+              simply a note that this copy will let a particular address create
+              an account. So there is nothing to forward and nothing to keep
+              secret, and the person invited still has to prove they can read
+              that mailbox in the ordinary way.
+            </p>
+            <p className="text-foreground mb-4">
+              <strong>What the person you invite is told:</strong> your name, as
+              it is on your account, and that you invited them to this copy.
+              Nothing else about you, and nothing you have logged.{" "}
+              <strong>What you are told:</strong> the address you invited, when
+              you invited it, and whether it has been used to create an account
+              &mdash; which is a fact about them, arriving because of something
+              you did. Whoever runs this copy can see the same, because they can
+              read the database on their own machine, which is true of
+              everything on this page.
+            </p>
+            <p className="text-foreground mb-4">
+              One thing more is disclosed, and only to the person doing the
+              inviting: if you try to invite an address that already has an
+              account here, this copy says so rather than leaving you to wonder
+              why nothing arrived. That does tell you an address is registered,
+              so what bounds it is a limit on how many invitations one account
+              may <em>attempt</em> in a quarter of an hour, counted with the
+              other rate limits in section 2.2 &mdash; not the separate limit on
+              how many invitations you may send in a day, which counts only
+              invitations that were actually sent and so never counts a refusal.
+            </p>
+            <p className="text-foreground mb-4">
+              If this copy is not taking new accounts on its own, its home page
+              offers a form for asking to be invited. The address typed there is
+              stored so that whoever runs this copy can see who has asked; the
+              form answers the same way whatever it did with the address, so
+              nobody can use it to find out whether an address already has an
+              account here. Whoever runs this copy is shown that flag when they
+              look at the queue, so they can drop the request instead of
+              inviting somebody who is already here. Section 7 says how long a
+              pending request and an unused invitation are kept.
+            </p>
+
             {googleClientId && (
               <>
                 <h3 className="text-xl font-semibold text-foreground mb-3">
-                  4.8 Signing In with Google
+                  4.9 Signing In with Google
                 </h3>
                 <p className="text-foreground mb-4">
                   This copy of OpenDiving offers &ldquo;Continue with
@@ -593,6 +686,11 @@ export default function PrivacyPage() {
                 See every device signed in to your account, and sign any of them
                 out
               </li>
+              <li>
+                Where this copy is invite-only, invite someone, see the
+                invitations you have sent, and take back one that has not been
+                used
+              </li>
               <li>Export everything you have entered</li>
               <li>Delete your account and everything attached to it</li>
             </ul>
@@ -659,22 +757,25 @@ export default function PrivacyPage() {
             <p className="text-foreground mb-4">
               <strong>Emails that follow an action on this site:</strong> the
               sign-in message, which carries both a link and a code; the message
-              confirming a new email address, sent to that new address; and the
-              message confirming that you asked to delete your account. None of
-              these can be switched off without breaking the thing they are part
-              of.
+              confirming a new email address, sent to that new address; the
+              message confirming that you asked to delete your account; and,
+              where this copy is invite-only, the message telling an address
+              that somebody here has invited it. None of these can be switched
+              off without breaking the thing they are part of.
             </p>
             <p className="text-foreground mb-4">
-              Only the last of those three is sent to your account&rsquo;s own
-              address; the first two go to whatever address was typed, and it is
-              worth being straight about what that means. Signing in needs no
-              account, so anyone who types your address into this copy causes a
-              sign-in message to be sent to you &mdash; which is why that
-              message tells you to ignore it if it was not you, and why the link
-              and code expire quickly and work only once. The
-              address-confirmation message is the same shape: it goes to
-              whatever new address a signed-in diver typed, for the express
-              purpose of proving they can read it. Neither is something the
+              Only one of those four is sent to your account&rsquo;s own address
+              &mdash; the deletion confirmation. The other three go to whatever
+              address was typed, and it is worth being straight about what that
+              means. Signing in needs no account, so anyone who types your
+              address into this copy causes a sign-in message to be sent to you
+              &mdash; which is why that message tells you to ignore it if it was
+              not you, and why the link and code expire quickly and work only
+              once. The address-confirmation message is the same shape: it goes
+              to whatever new address a signed-in diver typed, for the express
+              purpose of proving they can read it. So is the invitation, which
+              goes to whatever address somebody with an account here invited,
+              and names them so you know who. None of the three is something the
               recipient can prevent, because the alternative is a sign-in flow
               that cannot start.
             </p>
@@ -744,6 +845,19 @@ export default function PrivacyPage() {
               here.
             </p>
             <p className="text-foreground mb-4">
+              Two more expire on their own where this copy is invite-only, and
+              both hold an address belonging to somebody who may have no account
+              here at all. A <strong>request to be invited</strong> is kept for
+              up to 90 days from when it was made, and goes sooner if whoever
+              runs this copy invites the address or removes the request. An{" "}
+              <strong>invitation nobody has used</strong> is kept for up to 90
+              days from when it was sent, whether or not it was taken back
+              before then; after that the address is refused again until
+              somebody invites it afresh. An invitation that <em>was</em> used
+              is not swept, because by then it belongs to two accounts and goes
+              when either of them does.
+            </p>
+            <p className="text-foreground mb-4">
               When you delete your account:
             </p>
             <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
@@ -760,6 +874,13 @@ export default function PrivacyPage() {
                 everything hanging off it &mdash; dives, sites, trips, gear,
                 courses, certifications &mdash; are destroyed, and the files you
                 uploaded are unlinked from disk with them
+              </li>
+              <li>
+                Any invitations you sent go with it, used or not. Somebody you
+                invited who has not created an account yet loses the invitation
+                and would have to be invited again by someone else. Any
+                invitation or pending request naming <em>your</em> address is
+                found by that address and removed as well
               </li>
               <li>
                 Your sessions and your account security events go with it. The
@@ -1039,7 +1160,7 @@ export default function PrivacyPage() {
                 Nothing of Google&rsquo;s runs in your browser on this site, and
                 Google sets nothing in your browser under this address. Signing
                 in with Google takes you to Google, where whatever it stores is
-                its own on its own address &mdash; section 4.8 has the detail.
+                its own on its own address &mdash; section 4.9 has the detail.
               </p>
             )}
             <p className="text-foreground mb-4">

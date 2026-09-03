@@ -19,6 +19,7 @@ import { DataExportCard } from "@/components/settings/data-export-card";
 import { DeleteAccountCard } from "@/components/settings/delete-account-card";
 import { DeviceMemoryCard } from "@/components/settings/device-memory-card";
 import { EmailChangeCard } from "@/components/settings/email-change-card";
+import { InvitationsCard } from "@/components/settings/invitations-card";
 import { NotificationsCard } from "@/components/settings/notifications-card";
 import { PasskeysCard } from "@/components/settings/passkeys-card";
 import { SessionsCard } from "@/components/settings/sessions-card";
@@ -195,6 +196,12 @@ export default function SettingsPage() {
         <PasskeysCard />
 
         <SessionsCard />
+
+        {/* Removes itself on an instance that lets anyone register, the same way
+            the two cards above it do on an instance whose API is older than the
+            feature they belong to. Nothing here knows the registration mode; the
+            404 the list route answers with is what carries it. */}
+        <InvitationsCard />
 
         <DeviceMemoryCard />
       </div>

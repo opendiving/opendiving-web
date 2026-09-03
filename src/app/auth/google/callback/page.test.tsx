@@ -103,6 +103,30 @@ describe("a callback that matches an attempt this browser started", () => {
       screen.getByRole("link", { name: /back to sign in/i }),
     ).toHaveAttribute("href", "/signin");
   });
+
+  // The third of the four doors an uninvited address can reach on an instance
+  // that is not taking registrations. Google verified the address perfectly well
+  // and the gate behind the exchange is what refuses, so the detail has to reach
+  // the visitor as it arrives rather than as a generic sign-in failure.
+  it("shows the gate's refusal for an address nobody invited", async () => {
+    signInWithGoogle.mockRejectedValue({
+      response: {
+        status: 403,
+        data: {
+          detail:
+            "This address hasn't been invited to this instance yet. You can request an invitation from the home page.",
+        },
+      },
+    });
+    const state = await startAttempt();
+
+    renderCallback(`code=real-code&state=${state}`);
+
+    expect(
+      await screen.findByText(/hasn't been invited to this instance yet/i),
+    ).toBeInTheDocument();
+    expect(router.replace).not.toHaveBeenCalled();
+  });
 });
 
 // Google's codes are single-use, and React Strict Mode invokes effects twice in

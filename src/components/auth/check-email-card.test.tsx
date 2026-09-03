@@ -152,4 +152,29 @@ describe("CheckEmailCard", () => {
     // does next, retype or resend, they can do it from here.
     expect(verifyButton()).toBeEnabled();
   });
+
+  // The second of the four doors an uninvited address can reach on an instance
+  // that is not taking registrations. The code is right and the refusal comes
+  // from the gate behind it, so the message has to say that rather than send the
+  // diver off to request another email; it is the API's sentence, verbatim.
+  it("shows the gate's refusal for an address nobody invited", async () => {
+    verifyEmailCode.mockRejectedValue({
+      response: {
+        status: 403,
+        data: {
+          detail:
+            "This address hasn't been invited to this instance yet. You can request an invitation from the home page.",
+        },
+      },
+    });
+    const user = renderCard();
+
+    await user.type(codeInput(), "123456");
+    await user.click(verifyButton());
+
+    expect(
+      await screen.findByText(/hasn't been invited to this instance yet/i),
+    ).toBeInTheDocument();
+    expect(router.push).not.toHaveBeenCalled();
+  });
 });
