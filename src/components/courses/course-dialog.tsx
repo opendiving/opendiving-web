@@ -31,7 +31,6 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -93,7 +92,6 @@ export function CourseDialog({
       instructor_name: "",
       instructor_number: "",
       training_center: "",
-      cost: "",
       notes: "",
     },
   });
@@ -118,7 +116,6 @@ export function CourseDialog({
       instructor_name: course?.instructor_name ?? "",
       instructor_number: course?.instructor_number ?? "",
       training_center: course?.training_center ?? "",
-      cost: course?.cost ?? "",
       notes: course?.notes ?? "",
     });
     // Same deliberate reset-on-open pattern as `certification-dialog.tsx`;
@@ -156,7 +153,6 @@ export function CourseDialog({
         instructor_name: data.instructor_name || null,
         instructor_number: data.instructor_number || null,
         training_center: data.training_center || null,
-        cost: data.cost || null,
         notes: data.notes || "",
       };
 
@@ -376,30 +372,6 @@ export function CourseDialog({
                 )}
               />
             </div>
-
-            <FormField
-              control={form.control}
-              name="cost"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Cost</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="e.g. EUR 1450"
-                      {...field}
-                      value={field.value ?? ""}
-                    />
-                  </FormControl>
-                  {/* Free text on purpose: cost appears in no agency record, and
-                      a currency-aware number would be real currency handling for
-                      a field nothing ever adds up. */}
-                  <FormDescription>
-                    Whatever you paid, in whatever currency you paid it.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
             <FormField
               control={form.control}

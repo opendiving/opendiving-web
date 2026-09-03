@@ -42,7 +42,6 @@ export const courseSchema = z
       .string()
       .max(255, "Training center cannot exceed 255 characters")
       .optional(),
-    cost: z.string().max(64, "Cost cannot exceed 64 characters").optional(),
     notes: z
       .string()
       .max(10000, "Notes cannot exceed 10000 characters")

@@ -128,15 +128,6 @@ describe("courseSchema", () => {
   });
 
   describe("lengths mirroring the API's columns", () => {
-    it("rejects an over-long cost", () => {
-      expect(
-        courseSchema.safeParse({ ...valid, cost: "e".repeat(65) }).success,
-      ).toBe(false);
-      expect(
-        courseSchema.safeParse({ ...valid, cost: "e".repeat(64) }).success,
-      ).toBe(true);
-    });
-
     it("rejects an over-long instructor number", () => {
       expect(
         courseSchema.safeParse({ ...valid, instructor_number: "1".repeat(65) })

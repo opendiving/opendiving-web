@@ -207,7 +207,6 @@ export default function CourseDetailPage() {
                   {course.instructor_number}
                 </InfoRow>
               )}
-              {course.cost && <InfoRow label="Cost">{course.cost}</InfoRow>}
               {course.notes && (
                 <InfoRow label="Notes">
                   <span className="whitespace-pre-wrap">{course.notes}</span>

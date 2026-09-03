@@ -40,7 +40,6 @@ const course = (overrides: Partial<Course> = {}): Course => ({
   instructor_name: "Alex Diver",
   instructor_number: "123",
   training_center: "Blue Ocean, Koh Tao",
-  cost: "EUR 1450",
   notes: "Ran the 21m and 30m dives on back gas.",
   user_uuid: "user-1",
   created_at: "2026-03-08T09:00:00Z",

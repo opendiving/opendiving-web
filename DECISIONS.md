@@ -14179,3 +14179,75 @@ rather than deletes and re-reads regardless.
 The render test stages the shifted window explicitly — page 2 comes back containing page 1's last
 row — and asserts one node for that address. Run it against a plain append before trusting it; the
 naive version renders two, and a test written from the fixed code alone would pass either way.
+
+## Courses no longer record a cost, and the null-on-clear test had to move off it
+
+`Course.cost` was free text — "EUR 1450", "1 200 AUD included gear" — on one field of one model. It
+is gone from the `Course` and `CourseCreate` types, from `courseSchema`, from `CourseDialog` and
+from the `/courses/[id]` info list; the courses list never showed it. What a diver stops seeing is
+one input on the course form and one row on the course page, and nothing else in the app changes.
+
+**Cost is a cross-cutting concern, and one string on one model was never the start of it.** Gear has
+a purchase price, a trip has a bill, a fill has a price — the moment any of those wants a number the
+answer is a currency, an amount and a display convention, shared across models. A free-text field on
+courses could not grow into that; it could only be migrated away from later, with stored values in
+it. It is being removed while removing it is free.
+
+Free text is also what it had to be while it stood alone, and the form said so: the field's
+`FormDescription` read "Whatever you paid, in whatever currency you paid it", because a
+currency-aware number would have been real currency handling for a value nothing ever adds up. That
+note was the field arguing for its own removal — it existed to explain why the field could not do
+the job its label implied.
+
+**This is not a placeholder waiting for money handling to arrive.** Nothing here is scaffolding for
+that: when the app models money it will do it in one place with its own shape, and a course will
+reference it rather than carry a copy. Recovering the field verbatim is not the plan and would be
+the wrong start.
+
+No dead code fell out with it. There is no currency helper anywhere in `src/`, no
+`Intl.NumberFormat`, and nothing summed or aggregated the value — `lib/format.ts` exports
+`formatFileSize` and nothing else.
+
+### The `""` → `null` contract was being tested on cost, and belongs to no particular field
+
+`course-dialog.render.test.tsx`'s _"sends an explicit null for every field the diver cleared"_ used
+Cost as its lead example: it cleared the Cost input and asserted `cost: null` in the PATCH body. The
+contract there is the dialog's submit mapping — `""` is the form's "not set" state for every
+optional field, and an omitted key leaves the stored value alone, so a cleared field would report
+success and change nothing. That is a property of `onSubmit`, not of cost. The case was rewritten
+around `instructor_number`, which is nullable the same way, rather than deleted with the field.
+
+Worth stating because the shape recurs: a test whose _subject_ is a mechanism can be filed under
+whichever field happened to demonstrate it, and deleting the field then deletes coverage of
+something that still exists, silently and with a green suite. Read what a test is asserting before
+assuming it goes with the thing it names.
+
+### A course field's removal reaches outside `components/courses/`
+
+Two fixtures set `cost` only to satisfy the `Course` type and asserted nothing on it:
+`course-certifications-card.render.test.tsx` and — the one that is easy to miss —
+`certification-dialog.render.test.tsx`, filed under `components/certifications/` because that dialog
+picks a course. Both stopped compiling when the field went, which is the good outcome; the point to
+carry is that `Course` object literals live wherever a course is _selected_, not only where one is
+edited.
+
+Grepping is what finds them, and a bare word-boundary search for `cost` is close to useless in this
+repo — it returns dozens of hits, almost all of them the trade-off sense of the word in comments,
+because the comments here argue about what things cost. Anchor on the identifier and the label
+instead:
+
+```bash
+git grep -nI -P '(\.cost\b|(?<![\w-])cost\s*[?:]|"cost"|(?<![\w-])Cost(?![\w-]))' -- src README.md
+```
+
+On the commit that removed the field that returns exactly two lines, and both are prose:
+`dive-detail-main.tsx` and `lib/dive-profile.ts`, the trade-off sense again. Anything else it
+returns is a course-cost site that survived.
+
+The bare word search turns up one hit worth knowing about before you delete it, because the anchored
+form deliberately does not reach it: `gear-service-record-dialog.tsx` has
+`placeholder="Parts replaced, cost, test pressure..."` on a service record's notes. That is free
+text about a repair bill on a different model, and it stays.
+
+`README.md`'s courses bullet named cost in the feature copy and was updated with the field. It is
+the repo's public pitch, so a removed feature left in it is a promise the app no longer keeps.
