@@ -227,9 +227,15 @@ export interface DiveGasUse {
 export interface Dive {
   uuid: string;
   dive_number: number;
-  // Offset-aware ISO 8601, e.g. "2021-04-04T10:04:47.910+02:00" - the offset
-  // is the dive's own original timezone (see `lib/date-time.ts`'s
-  // "UTC-offset-aware dive `start_time` helpers"), not the viewer's.
+  // ISO 8601, e.g. "2021-04-04T10:04:47.910+02:00" - the offset is the dive's
+  // own original timezone (see `lib/date-time.ts`'s "UTC-offset-aware dive
+  // `start_time` helpers"), not the viewer's.
+  //
+  // **It may carry no offset at all** ("2026-04-17T11:49:23"), which is a dive
+  // imported from a DiveJSON document that recorded a wall clock and no zone.
+  // Read it with the `formatDive*` helpers, which render that state as the clock
+  // alone; never with `new Date(...)` and local getters, which would silently
+  // reinterpret it in the viewer's own timezone.
   start_time: string;
   duration: number;
   max_depth?: number;
@@ -515,6 +521,10 @@ export interface DiveCreate {
   // Must be an offset-aware ISO 8601 string, e.g.
   // "2021-04-04T10:04:47.910+02:00" - see `Dive.start_time` above. Build one
   // with `combineStartTime()` from `lib/date-time.ts`.
+  //
+  // Offset-**required**, unlike `Dive.start_time` and `DiveUpdate.start_time`:
+  // import is the only thing that may create a dive with no offset, so a new one
+  // entered here always has a zone to state.
   start_time: string;
   duration: number;
   max_depth?: number | null;
@@ -540,7 +550,13 @@ export interface DiveCreate {
 
 export interface DiveUpdate {
   dive_number?: number;
-  // Same offset-aware ISO 8601 format as `Dive.start_time`/`DiveCreate.start_time`.
+  // Same ISO 8601 format as `Dive.start_time`, offset included **or omitted**.
+  //
+  // The API accepts an offsetless value only on a dive whose stored offset is
+  // already unknown, and leaves it unknown; on a dive that has any offset - `0`
+  // included - it refuses with 422 and a flat `{"detail": "<sentence>"}`, so
+  // render the failure through `getApiErrorMessage`. Adopting a real offset is
+  // always allowed and is the only way out of the unknown state.
   start_time?: string;
   duration?: number;
   max_depth?: number | null;
@@ -612,9 +628,11 @@ export interface DiveNumberingSummary {
 export interface DiveRenumberRequest {
   // The number to give the earliest dive in scope.
   start_at?: number;
-  // Offset-aware ISO 8601. Renumber only dives at or after this instant,
-  // leaving earlier ones alone - so a log whose older entries mirror a paper
-  // logbook can have just its recent tail tidied. Omit to renumber everything.
+  // Offset-aware ISO 8601, and still offset-**required** where `Dive.start_time`
+  // no longer is: this names an *instant* to compare dives against, which an
+  // offsetless wall clock cannot do. Renumber only dives at or after it, leaving
+  // earlier ones alone - so a log whose older entries mirror a paper logbook can
+  // have just its recent tail tidied. Omit to renumber everything.
   from_start_time?: string;
   // Compute the changes and write nothing. Always send `true` first: it's what
   // the confirmation dialog renders.
@@ -795,6 +813,8 @@ export const divesAPI = {
 
   // The dive number to prefill for a dive starting at `startTime` (offset-aware
   // ISO 8601 - build one with `combineStartTime()` from `lib/date-time.ts`).
+  // Offset-**required**, for the same reason as `DiveRenumberRequest`: it orders
+  // the new dive against existing ones, which is a question about instants.
   //
   // A suggestion, not a reservation. Always the signed-in user's own log, so
   // unlike `getDives` this takes no user uuid.

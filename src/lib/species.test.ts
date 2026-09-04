@@ -148,12 +148,12 @@ describe("speciesSeenRange", () => {
     ).toBe("Aug 30, 2026 \u2013 Sep 2, 2026");
   });
 
-  // Both ends are rendered in the offset the dive carries, not the viewer's -
-  // the app-wide contract for a dive `start_time`. This pair is late enough on
-  // the 30th in Thailand to be the 30th there and the 29th in UTC, so a
-  // formatter that re-derived a local time would print the wrong day here and
-  // the right one for any fixture logged at +00:00.
-  it("reports each end in the offset its own dive was logged in", () => {
+  // Both ends are rendered in the zone the dive carries, not the viewer's - the
+  // app-wide contract for a dive `start_time`. This pair is late enough on the
+  // 30th in Thailand to be the 30th there and the 29th in UTC, so a formatter
+  // that re-derived a local time would print the wrong day here and the right
+  // one for any fixture logged at +00:00.
+  it("reports each end in the zone its own dive was logged in", () => {
     expect(
       speciesSeenRange(
         "2026-08-30T02:00:00+07:00",

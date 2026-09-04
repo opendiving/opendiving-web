@@ -16,7 +16,7 @@ export function parseFormDateTime(value: string): Date {
 
 // --- UTC-offset-aware dive `start_time` helpers ---
 //
-// The API's `start_time` is always an offset-aware ISO 8601 string, e.g.
+// The API's `start_time` is *usually* an offset-aware ISO 8601 string, e.g.
 // "2021-04-04T10:04:47.910+02:00" - the offset is the dive's *own* original
 // timezone (wherever/whatever logged it), not the viewer's. The dive form
 // splits that single string into a "YYYY-MM-DD HH:mm:ss" wall-clock string
@@ -27,6 +27,21 @@ export function parseFormDateTime(value: string): Date {
 // actually logged in. See `dive-file-import.tsx` for how a dive-computer
 // file's `start_time` (which may or may not carry its own explicit offset)
 // feeds into this.
+//
+// "Usually", not "always": a dive imported from a DiveJSON document may have no
+// offset at all. The format defines an offset-less local date-time as a third
+// state - the wall clock is recorded and the instant is genuinely unknown - so
+// that a converter never has to fabricate one or drop the dive. The API sends
+// that state through as a naive `start_time` ("2026-04-17T11:49:23") and accepts
+// one back on a dive that already has none.
+//
+// **That state is a `null` offset, and it has to survive every helper here.** It
+// is not the same as UTC and must never be shown or saved as one: printing
+// "+00:00" beside the clock is a claim about the world that nothing recorded.
+// `parseUtcOffsetMinutes()` returns `null` for it, `splitStartTime()` hands that
+// `null` on, `combineStartTime()` writes no offset when it gets one back, and
+// `formatDiveStartTime()` prints no zone at all. See DECISIONS.md, "An unknown
+// UTC offset is a third state, and `new Date()` used to silently invent one".
 
 // Matches a trailing UTC offset ("Z", "+HH:MM", "+HHMM", or "+HH") on an ISO
 // 8601 datetime string.
@@ -72,20 +87,54 @@ export function getBrowserUtcOffsetMinutes(): number {
   return -new Date().getTimezoneOffset();
 }
 
-// Shifts an offset-aware ISO datetime string's underlying instant by its own
-// embedded UTC offset (defaulting to UTC if it has none). The result is a
-// `Date` whose *UTC* getters read back the original wall-clock time - shared
-// by every function below that needs to read or display that wall-clock
-// time without ever converting through the browser's own timezone.
+// A date-time carrying no offset, e.g. "2026-04-17T11:49:23" or
+// "2026-04-17T11:49:23.910". A space instead of the "T" is accepted because that
+// is the shape `formatDateTimeForForm()` produces.
+const NAIVE_DATE_TIME_REGEX =
+  /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/;
+
+// Parses a date-time that carries no UTC offset, pinning it to UTC so that the
+// *UTC* getters read its digits back unchanged.
+//
+// This one line is the whole offset-unknown display fix, and it is a correction
+// rather than a feature. `new Date("2026-04-17T11:49:23")` is *specified* to
+// parse as the browser's local time, so a dive logged at 11:49 with no recorded
+// offset used to be shifted by the viewer's own offset on the way through
+// `shiftByEmbeddedOffset` - displaying as 08:49 in UTC+03:00 and as 14:49 in
+// UTC-03:00, neither of which anything recorded. Appending "Z" removes the
+// browser from the calculation entirely.
+//
+// A bare "YYYY-MM-DD" is left alone: ECMAScript already parses the date-only
+// form as UTC, and "2026-04-17Z" is not a date-time at all. Anything else is
+// handed to `Date` unchanged, so an unparseable value still comes back NaN
+// exactly as it did before.
+function parseAsWallClockUtc(isoString: string): Date {
+  return NAIVE_DATE_TIME_REGEX.test(isoString)
+    ? new Date(`${isoString.replace(" ", "T")}Z`)
+    : new Date(isoString);
+}
+
+// Shifts an ISO datetime string's underlying instant by its own embedded UTC
+// offset. The result is a `Date` whose *UTC* getters read back the original
+// wall-clock time - shared by every function below that needs to read or display
+// that wall-clock time without ever converting through the browser's own
+// timezone.
+//
+// `offsetMinutes` is `null` for a string that carries no offset, and callers
+// must pass that `null` on rather than collapsing it to zero: the wall clock is
+// still exact, and it is only the zone that is unknown.
 function shiftByEmbeddedOffset(isoString: string): {
   shifted: Date;
-  offsetMinutes: number;
+  offsetMinutes: number | null;
 } {
-  const offsetMinutes = parseUtcOffsetMinutes(isoString) ?? 0;
-  const shifted = new Date(
-    new Date(isoString).getTime() + offsetMinutes * 60_000,
-  );
-  return { shifted, offsetMinutes };
+  const offsetMinutes = parseUtcOffsetMinutes(isoString);
+  if (offsetMinutes === null) {
+    return { shifted: parseAsWallClockUtc(isoString), offsetMinutes: null };
+  }
+  return {
+    shifted: new Date(new Date(isoString).getTime() + offsetMinutes * 60_000),
+    offsetMinutes,
+  };
 }
 
 // A dive's `start_time` as a timestamp whose *UTC* getters read back the dive's
@@ -101,14 +150,19 @@ export function diveWallClockTime(startTime: string): number {
   return shiftByEmbeddedOffset(startTime).shifted.getTime();
 }
 
-// Splits an offset-aware ISO 8601 datetime string (e.g. the API's dive
-// `start_time`) into its wall-clock component - formatted like
-// `formatDateTimeForForm()` - and its UTC offset in minutes, *without* ever
-// converting through the browser's own timezone. Falls back to a UTC
-// ("+00:00") offset if the string has none.
+// Splits an ISO 8601 datetime string (e.g. the API's dive `start_time`) into its
+// wall-clock component - formatted like `formatDateTimeForForm()` - and its UTC
+// offset in minutes, *without* ever converting through the browser's own
+// timezone.
+//
+// `offsetMinutes` is `null` when the string carries no offset. That is the
+// dive's unknown-offset state travelling out to `UtcOffsetSelect`'s "Not
+// recorded" option, and `combineStartTime()` takes it straight back. It used to
+// come back as `0` here, which is how an imported dive's first save wrote both
+// the wrong hour and a "+00:00" nobody chose.
 export function splitStartTime(isoString: string): {
   localDateTime: string;
-  offsetMinutes: number;
+  offsetMinutes: number | null;
 } {
   const { shifted, offsetMinutes } = shiftByEmbeddedOffset(isoString);
   const localDateTime = `${shifted.getUTCFullYear()}-${pad(shifted.getUTCMonth() + 1)}-${pad(
@@ -118,13 +172,21 @@ export function splitStartTime(isoString: string): {
 }
 
 // Inverse of `splitStartTime()`: combines a "YYYY-MM-DD HH:mm:ss" wall-clock
-// string (as produced by `DateTimePicker`) and a UTC offset in minutes into
-// the offset-aware ISO 8601 string the API expects for `start_time`.
+// string (as produced by `DateTimePicker`) and a UTC offset in minutes into the
+// single ISO 8601 string the API expects for `start_time`.
+//
+// A `null` offset writes no offset at all, which is the point: the diver editing
+// a dive whose zone was never recorded is saving a wall clock and nothing more.
+// Appending "+00:00" instead would be this function inventing a fact, and the
+// API would store it - the state is unrecoverable once written.
 export function combineStartTime(
   localDateTime: string,
-  offsetMinutes: number,
+  offsetMinutes: number | null,
 ): string {
-  return `${localDateTime.replace(" ", "T")}${formatUtcOffset(offsetMinutes)}`;
+  const wallClock = localDateTime.replace(" ", "T");
+  return offsetMinutes === null
+    ? wallClock
+    : `${wallClock}${formatUtcOffset(offsetMinutes)}`;
 }
 
 // A `start_time` that carries only a date, with no time at all, e.g.
@@ -228,9 +290,12 @@ export function formatDiveTimeOnly(
 // appended by hand at the end either way - so the whole line is assembled here
 // rather than half of it being inherited.
 //
-// The offset is printed as `+00:00` for a `start_time` that carries none, on the
-// same assumption `shiftByEmbeddedOffset` makes for the clock time beside it. The
-// API always sends one, so this is a degenerate case rather than a supported one.
+// A `start_time` carrying no offset prints the date and the clock and **stops** -
+// no "(UTC...)" parenthetical at all. This used to say `+00:00`, on the reasoning
+// that the API always sent an offset so the case was degenerate; import made it a
+// real state, and a wall clock with no zone beside it is exactly what it means.
+// Saying "UTC" would be a claim about where the dive happened, which is the one
+// thing nothing here knows.
 export function formatDiveStartTime(startTime: string): string {
   const date = formatDiveDateTime(startTime, {
     weekday: "long",
@@ -238,9 +303,11 @@ export function formatDiveStartTime(startTime: string): string {
     month: "long",
     day: "numeric",
   });
-  const offset = formatUtcOffset(parseUtcOffsetMinutes(startTime) ?? 0);
+  const offsetMinutes = parseUtcOffsetMinutes(startTime);
+  const zone =
+    offsetMinutes === null ? "" : ` (UTC${formatUtcOffset(offsetMinutes)})`;
 
-  return `${date} at ${formatDiveTimeOnly(startTime)} (UTC${offset})`;
+  return `${date} at ${formatDiveTimeOnly(startTime)}${zone}`;
 }
 
 // Formats a plain "YYYY-MM-DD" date (no time component, e.g. a trip's start

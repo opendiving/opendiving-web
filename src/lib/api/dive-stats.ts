@@ -16,7 +16,9 @@ export interface UserDiveStats {
 export interface DiveGasUsePoint {
   dive_uuid: string;
   dive_number: number;
-  // The dive's own offset-aware start time, same convention as `Dive.start_time`.
+  // The dive's own start time, same convention as `Dive.start_time` - which
+  // means the offset may be absent on an imported dive, not that it is always
+  // there. Format it with the `formatDive*` helpers.
   start_time: string;
   avg_depth: number;
   gas_use: DiveGasUse;

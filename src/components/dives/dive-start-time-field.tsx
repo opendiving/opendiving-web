@@ -10,9 +10,13 @@ import {
 import type { FormControlSlotProps } from "@/components/ui/form";
 
 export interface DiveStartTimeFieldProps extends FormControlSlotProps {
-  // An offset-aware ISO 8601 string, e.g. "2021-04-04T10:04:47+02:00" - the
-  // same shape as the API's `Dive.start_time` - or `""`/`undefined` while
-  // still empty (e.g. the edit form before the dive has loaded).
+  // An ISO 8601 string, e.g. "2021-04-04T10:04:47+02:00" - the same shape as the
+  // API's `Dive.start_time` - or `""`/`undefined` while still empty (e.g. the
+  // edit form before the dive has loaded).
+  //
+  // It may carry no offset ("2026-04-17T11:49:23"), which is a dive imported
+  // from a DiveJSON document whose zone was never recorded. That is a state to
+  // preserve, not a value to repair - see `lib/date-time.ts`.
   value?: string;
   onChange: (value: string) => void;
   disabled?: boolean;
@@ -34,12 +38,29 @@ export function DiveStartTimeField({
   // its own `aria-label`, since "Start time" would describe it only vaguely.
   ...slotProps
 }: DiveStartTimeFieldProps) {
+  // The browser's offset is reached only when there is no value at all - a brand
+  // new dive, which `nowStartTime()` is about to give a real offset anyway. It is
+  // never a *fallback* for a value that has none: that is the unknown state, and
+  // `splitStartTime` hands it back as `null` for both controls to carry.
   const { localDateTime, offsetMinutes } = value
     ? splitStartTime(value)
     : { localDateTime: undefined, offsetMinutes: getBrowserUtcOffsetMinutes() };
 
+  // Offered only while the value in hand has no offset, so it can never be used
+  // to *remove* one: the moment the diver adopts a real offset the option is
+  // gone, which is the API's rule (an offsetless `start_time` is accepted only on
+  // a dive whose stored offset is already NULL) made true in the UI rather than
+  // merely reported by a 422. The cost is that adopting an offset is one-way
+  // within an unsaved edit - cancel and reopen the form to get back - and that is
+  // the right way round for a state import is the sole origin of.
+  const offsetUnknown = offsetMinutes === null;
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      {/* Stays live while the offset is unknown, deliberately: the wall clock is
+          the half that *was* recorded, so a typo in it is still the diver's to
+          fix. The API accepts an offsetless `start_time` on such a dive and
+          leaves the offset NULL, so this saves without inventing a zone. */}
       <DateTimePicker
         {...slotProps}
         value={localDateTime}
@@ -52,6 +73,7 @@ export function DiveStartTimeField({
           localDateTime && onChange(combineStartTime(localDateTime, next))
         }
         disabled={disabled}
+        allowUnknown={offsetUnknown}
       />
     </div>
   );
