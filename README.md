@@ -12,8 +12,9 @@ Cloud dive logs come and go — Movescount, Deepblu, Diveboard — and when they
 history go with them. OpenDiving is built on a different premise: the app is AGPL-licensed, the data
 sits in a plain Postgres database, and every dive keeps the original dive-computer export it was
 imported from, downloadable at any time. Self-hosting isn't a feature here; it's the guarantee
-behind the rest — anyone can run this software, and one click hands the whole log back in open
-formats, so no shutdown, acquisition, or paywall can ever take your logbook with it.
+behind the rest — anyone can run this software, one click hands the whole log back in open formats,
+and the app reads its own DiveJSON straight back in, so no shutdown, acquisition, or paywall can
+ever take your logbook with it.
 
 **This repository is the web app — one component of the stack.** The project itself, and everything
 about running it, lives at **[opendiving/opendiving](https://github.com/opendiving/opendiving)**:
@@ -60,6 +61,13 @@ components together. Start there if you want to run OpenDiving rather than work 
   sides of every c-card. [DiveJSON](https://divejson.org) is the open dive-log interchange format
   this project maintains, and this app is its reference implementation. A data-ownership log without
   an exit door is a contradiction.
+- **Logbook import** — and a door that only opens outwards is half a promise, so the DiveJSON
+  document and the archive read straight back in: move a logbook between instances, or restore one
+  from a backup. You see a full report of what it would do — new records, ones already present,
+  dives it would bring back from deletion, and anything it could not represent — before a single row
+  is written. Records you already have are matched rather than duplicated, and a dive you deleted
+  returns under its own identity. The archive additionally restores the dive-computer files and
+  c-card scans, which the bare document names by digest but does not carry.
 - **Passwordless sign-in** — email magic links or Google; no passwords stored, ever.
 - **Dark mode & responsive** — works on the boat, in the dive shop, and on your desk.
 

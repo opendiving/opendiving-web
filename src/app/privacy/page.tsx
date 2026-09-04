@@ -102,7 +102,8 @@ export default function PrivacyPage() {
                 <strong>Dive-Computer Files:</strong> When you import a dive
                 from a dive computer, the exported file itself is kept alongside
                 the dive &mdash; one per dive, under the filename it arrived
-                with
+                with. Importing a full archive puts those same files back, since
+                it carries them
               </li>
               <li>
                 <strong>Equipment Data:</strong> Diving equipment details and
@@ -201,15 +202,16 @@ export default function PrivacyPage() {
                 counters are keyed three ways &mdash; by IP address, by the
                 email address a sign-in link, a contact message or an invitation
                 was requested for, and by account id for things you can only do
-                signed in, such as exporting your data, changing your username
-                or email, registering a passkey, inviting somebody, and looking
-                up place and species names. Each counter is a number and expires
-                by itself: after 15 minutes on the sign-in and account paths,
-                after an hour on the contact form, the invite-request form,
-                exports, and the place- and species-name lookups. Other counters
-                exist that hold no identifier at all &mdash; they cap how often
-                this server as a whole may call an outside provider, and are
-                keyed on the provider, not on anyone
+                signed in, such as exporting your data, importing a logbook,
+                changing your username or email, registering a passkey, inviting
+                somebody, and looking up place and species names. Each counter
+                is a number and expires by itself: after 15 minutes on the
+                sign-in and account paths, after an hour on the contact form,
+                the invite-request form, exports, logbook imports, and the
+                place- and species-name lookups. Other counters exist that hold
+                no identifier at all &mdash; they cap how often this server as a
+                whole may call an outside provider, and are keyed on the
+                provider, not on anyone
               </li>
               <li>
                 <strong>Passkey labels:</strong> If you register a passkey, a
@@ -231,7 +233,8 @@ export default function PrivacyPage() {
               2.3 Location Information
             </h3>
             <p className="text-foreground mb-4">
-              Location reaches this server two ways, and both start with you:
+              Location reaches this server three ways, and all three start with
+              you:
             </p>
             <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
               <li>
@@ -242,6 +245,12 @@ export default function PrivacyPage() {
                 GPS positions recorded inside a dive-computer file you import,
                 which are where you actually were rather than which site you
                 picked
+              </li>
+              <li>
+                Coordinates carried in a logbook you import &mdash; a DiveJSON
+                document can record where a dive entered and left the water,
+                where a dive site is, and where a trip went, and those are
+                written as the file gives them
               </li>
             </ul>
             <p className="text-foreground mb-4">
@@ -381,14 +390,15 @@ export default function PrivacyPage() {
               This happens whenever a map is on screen, whether or not you
               interact with it: the form to add or edit a dive site, a dive
               site&rsquo;s own page, the form to add or edit a trip, a trip with
-              places on it, and the page of a dive that has a position — either
-              from the site it was logged at or from the GPS reading in the file
-              it was imported from. Where the map shows a recorded position,
-              that is where you actually were rather than only which site you
-              picked. Apart from those two forms, which load a map as soon as
-              they open — one to place a pin on, one to show you the places you
-              pick — a page with nothing to show loads no map and contacts
-              nobody.
+              places on it, and the page of a dive that has a position — from
+              the site it was logged at, from the GPS reading in the
+              dive-computer file it was imported from, or from a logbook file
+              that carried the position itself. Where the map shows a recorded
+              position, that is where you actually were rather than only which
+              site you picked. Apart from those two forms, which load a map as
+              soon as they open — one to place a pin on, one to show you the
+              places you pick — a page with nothing to show loads no map and
+              contacts nobody.
             </p>
             <p className="text-foreground mb-4">
               If you run your own copy of OpenDiving you can point it at a
@@ -444,16 +454,27 @@ export default function PrivacyPage() {
               and nothing about you or the dive.
             </p>
             <p className="text-foreground mb-4">
-              At that same moment we also ask a third outside service, Wikimedia
-              Commons, whether it has a photograph of that species, and download
-              the picture once if it does. What Commons receives is the name of
-              an image file, worked out from the species&rsquo; number: again,
-              not what you typed, and nothing about you or the dive. The picture
-              is then stored on this copy of OpenDiving and served from here, so
-              your browser never contacts Wikimedia and Wikimedia is never told
-              which species you are looking at. Nothing is downloaded when a
-              species already has its photo, and a species that has none is left
-              without one rather than shown something else.
+              Importing a logbook does the same thing without a picker being
+              involved at all. A DiveJSON file can name marine life this copy of
+              OpenDiving has never seen, and those species are looked up before
+              the import is written &mdash; the same two registers, the same
+              request, carrying the species&rsquo; number and nothing about you.
+              Species it cannot match are left out of the import rather than
+              guessed at, and it tells you which.
+            </p>
+            <p className="text-foreground mb-4">
+              At that same moment &mdash; whether the species came from the
+              picker or from a file you imported &mdash; we also ask a third
+              outside service, Wikimedia Commons, whether it has a photograph of
+              that species, and download the picture once if it does. What
+              Commons receives is the name of an image file, worked out from the
+              species&rsquo; number: again, not what you typed, and nothing
+              about you or the dive. The picture is then stored on this copy of
+              OpenDiving and served from here, so your browser never contacts
+              Wikimedia and Wikimedia is never told which species you are
+              looking at. Nothing is downloaded when a species already has its
+              photo, and a species that has none is left without one rather than
+              shown something else.
             </p>
             <p className="text-foreground mb-4">
               Most of the time none of those requests happens at all. Answers
@@ -466,10 +487,11 @@ export default function PrivacyPage() {
               copy of OpenDiving runs, the less it has to ask.
             </p>
             <p className="text-foreground mb-4">
-              All of this happens only as you fill a dive in, never when you
-              view a dive, a species or your species list you have already
-              saved, and nothing is sent at all if you never open the species
-              picker. The photographs on those pages come from this copy of
+              All of this happens only as you fill a dive in or import a
+              logbook, never when you view a dive, a species or your species
+              list you have already saved. If you never open the species picker
+              and never import a file naming marine life, nothing is sent at
+              all. The photographs on those pages come from this copy of
               OpenDiving like every other image on the site.
             </p>
             <p className="text-foreground mb-4">
@@ -692,6 +714,10 @@ export default function PrivacyPage() {
                 used
               </li>
               <li>Export everything you have entered</li>
+              <li>
+                Bring a logbook back in, from a file this app exported &mdash;
+                seeing what it would do before anything is written
+              </li>
               <li>Delete your account and everything attached to it</li>
             </ul>
             <p className="text-foreground mb-4">
@@ -720,7 +746,8 @@ export default function PrivacyPage() {
               </li>
               <li>
                 <strong>Portability:</strong> Export your data in a common
-                format
+                format &mdash; and read it back into another copy of this app,
+                which is the half that makes the format worth having
               </li>
               <li>
                 <strong>Objection:</strong> Object to certain processing of your
@@ -1251,10 +1278,10 @@ export default function PrivacyPage() {
             </h2>
             <p className="text-foreground mb-4">
               Most of what people write to a privacy address to ask for, you can
-              simply do. Exporting everything you have entered and deleting your
-              account are both buttons in Settings; they work immediately, they
-              need nobody&rsquo;s approval, and no request has to be sent to
-              anyone.
+              simply do. Exporting everything you have entered, bringing a
+              logbook back in and deleting your account are all buttons in
+              Settings; they work immediately, they need nobody&rsquo;s
+              approval, and no request has to be sent to anyone.
             </p>
             <p className="text-foreground mb-4">
               For anything else &mdash; a question about this page, about how

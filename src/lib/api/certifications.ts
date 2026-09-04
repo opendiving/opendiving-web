@@ -8,8 +8,20 @@ import type { PaginatedResponse } from "./client";
  * badge and group by it.
  *
  * Declared roughly by how many divers hold cards from each rather than
- * alphabetically: `CERTIFICATION_AGENCIES` drives the picker's option order, and
- * most people reach for the first two. Keep in sync with the API.
+ * alphabetically: `CERTIFICATION_AGENCIES` drives option order in both pickers
+ * that offer it - the certification dialog and the course dialog - and most
+ * people reach for the first two. It also backs both `z.enum()`s
+ * (`validations/certification.ts`, `validations/course.ts`), so this one array is
+ * the whole vocabulary and widening it here reaches all four. Keep in sync with
+ * the API.
+ *
+ * **Value for value, and in order, the DiveJSON vocabulary** (spec §6.16, shared
+ * with §6.17's courses). `agency` is a REQUIRED member of a closed set and the
+ * format freezes those at 1.0, so this list cannot grow again without a major
+ * version - the five that arrived with the importer (`andi`, `snsi`, `acuc`,
+ * `pss`, `ida`) are the last additions there will be. They are here rather than
+ * laundered through `other`/`agency_other` on the way in, which would have made a
+ * round trip lossy on a member the format guarantees.
  */
 export const CERTIFICATION_AGENCIES = [
   "padi",
@@ -25,6 +37,11 @@ export const CERTIFICATION_AGENCIES = [
   "psai",
   "dan",
   "efr",
+  "andi",
+  "snsi",
+  "acuc",
+  "pss",
+  "ida",
   "other",
 ] as const;
 
@@ -54,6 +71,11 @@ const CERTIFICATION_AGENCY_LABELS: Record<CertificationAgency, string> = {
   psai: "PSAI",
   dan: "DAN",
   efr: "EFR",
+  andi: "ANDI",
+  snsi: "SNSI",
+  acuc: "ACUC",
+  pss: "PSS",
+  ida: "IDA",
   other: "Other",
 };
 

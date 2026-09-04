@@ -27,10 +27,25 @@ for (
   OFFSET_OPTIONS.push(minutes);
 }
 
+// The value "Not recorded" carries in the DOM. A `Select` is a string-valued
+// control and Radix reserves `""` for "nothing selected", so the unknown state
+// needs a sentinel of its own - it is a real choice, not the absence of one.
+// Never sent anywhere: `UtcOffsetSelect` maps it back to `null` at this
+// boundary, and `null` is what the rest of the app speaks.
+const UNKNOWN_OFFSET_VALUE = "unknown";
+
 export interface UtcOffsetSelectProps {
-  value?: number;
-  onChange: (value: number) => void;
+  // `null` is "not recorded" - the dive's own zone was never captured. Distinct
+  // from `undefined`, which is a field with nothing in it yet.
+  value?: number | null;
+  onChange: (value: number | null) => void;
   disabled?: boolean;
+  // Offers "Not recorded" as a choice at all. Only ever true while editing a
+  // dive whose offset is *already* unknown, which is why it is opt-in rather
+  // than the default: the API refuses to remove an offset from a dive that has
+  // one, so offering it anywhere else would be a control that cannot do what it
+  // says. Import is the only thing that creates the state.
+  allowUnknown?: boolean;
 }
 
 // Picks the UTC offset (in minutes) a dive's `start_time` was logged in -
@@ -41,17 +56,32 @@ export function UtcOffsetSelect({
   value,
   onChange,
   disabled,
+  allowUnknown = false,
 }: UtcOffsetSelectProps) {
+  const selected =
+    value === null
+      ? UNKNOWN_OFFSET_VALUE
+      : value !== undefined
+        ? String(value)
+        : undefined;
+
   return (
     <Select
-      value={value !== undefined ? String(value) : undefined}
-      onValueChange={(next) => onChange(Number(next))}
+      value={selected}
+      onValueChange={(next) =>
+        onChange(next === UNKNOWN_OFFSET_VALUE ? null : Number(next))
+      }
       disabled={disabled}
     >
       <SelectTrigger aria-label="UTC offset">
         <SelectValue placeholder="UTC offset" />
       </SelectTrigger>
       <SelectContent>
+        {/* First, not last: it is the state the dive is already in whenever this
+            option exists at all, so it is what the trigger is showing. */}
+        {allowUnknown && (
+          <SelectItem value={UNKNOWN_OFFSET_VALUE}>Not recorded</SelectItem>
+        )}
         {OFFSET_OPTIONS.map((minutes) => (
           <SelectItem key={minutes} value={String(minutes)}>
             UTC{formatUtcOffset(minutes)}

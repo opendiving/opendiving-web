@@ -55,11 +55,12 @@ import { unitLabel } from "@/lib/units";
 // which erased type safety between the create/update form shapes entirely.
 export interface DiveFormValues extends FieldValues {
   dive_number?: number;
-  // Offset-aware ISO 8601, e.g. "2021-04-04T10:04:47+02:00" - the dive's own
-  // original timezone, not the viewer's browser. Edited via
-  // `DiveStartTimeField`, which is the only place that splits/recombines it
-  // into the wall-clock + offset pair its two underlying inputs actually
-  // edit - see `lib/date-time.ts`.
+  // ISO 8601, e.g. "2021-04-04T10:04:47+02:00" - the dive's own original
+  // timezone, not the viewer's browser, and on an imported dive possibly no
+  // timezone at all ("2026-04-17T11:49:23"). Edited via `DiveStartTimeField`,
+  // which is the only place that splits/recombines it into the wall-clock +
+  // offset pair its two underlying inputs actually edit - see
+  // `lib/date-time.ts`.
   start_time?: string;
   duration?: string;
   max_depth?: number | null;

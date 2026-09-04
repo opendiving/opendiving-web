@@ -78,7 +78,7 @@ export function LandingPage() {
                 technical. Nitrox and trimix mixes, dives imported straight from
                 your computer with the full profile, gear and c-cards alongside
                 them — and an export button that hands the lot back in open
-                formats.
+                formats, which this app will read straight back in.
               </p>
             </div>
 
@@ -215,6 +215,9 @@ export function LandingPage() {
                   <li>
                     • DiveJSON, UDDF, CSV or a complete archive, on demand
                   </li>
+                  {/* The half that makes the export more than a download: a copy
+                      you cannot read back is a copy in name only. */}
+                  <li>• DiveJSON and the archive import straight back in</li>
                   <li>• No trackers and no analytics</li>
                   <li>• Passwordless sign-in; no passwords stored</li>
                 </ul>
@@ -243,14 +246,20 @@ export function LandingPage() {
             Movescount, Deepblu, Diveboard — cloud dive logs come and go, and
             when they go, years of dive history go with them. OpenDiving keeps
             the original dive-computer file behind every imported dive, hands
-            the whole log back in open formats on one click, and is AGPL
-            licensed so anyone can keep running it. There is no company here
-            whose shutdown takes your logbook with it — and if the instance you
-            are on ever goes away, your export still opens in something else.
+            the whole log back in open formats on one click, reads its own
+            DiveJSON straight back in, and is AGPL licensed so anyone can keep
+            running it. There is no company here whose shutdown takes your
+            logbook with it — and if the instance you are on ever goes away,
+            your export still opens in something else, or moves into a copy of
+            this one.
           </p>
           <div className="mt-10 grid gap-4 text-sm font-medium sm:grid-cols-3">
             <div>AGPL-3.0, server side included</div>
             <div>No trackers, no analytics</div>
+            {/* Four formats out, and deliberately not "and back": only DiveJSON
+                and the archive import, so a round-trip claim spanning all four
+                would be false of UDDF and CSV. The paragraph above carries the
+                import half, naming the format it is actually true of. */}
             <div>DiveJSON, UDDF, CSV or a full archive, one click</div>
           </div>
         </div>
@@ -268,6 +277,12 @@ export function LandingPage() {
             your domain. The images are prebuilt for amd64 and arm64, so a
             Raspberry Pi runs the same bytes as a VPS.
           </p>
+          {/* Re-judged when logbook import shipped, and kept: the two importers
+              it names are still genuinely to come, and it never claimed import in
+              general was. What made it safe to keep is that the page now says
+              elsewhere that DiveJSON and the archive read back in - without that,
+              a reader could take this line for the whole story on import. Narrow
+              it further only by shipping one of these two, never by softening it. */}
           <p className="text-muted-foreground mb-8">
             Still to come: Subsurface and UDDF import, depth and time
             statistics, and public links for a dive or a trip. The{" "}

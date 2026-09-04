@@ -16,11 +16,20 @@ import {
 } from "@/lib/api/dives";
 import { barToPsi, displayBound } from "@/lib/units";
 
-// Same offset-aware ISO 8601 shape as the API's `Dive.start_time`, e.g.
+// Same ISO 8601 shape as the API's `Dive.start_time`, e.g.
 // "2021-04-04T10:04:47+02:00" - produced/consumed by `DiveStartTimeField`
 // (`components/dives/dive-start-time-field.tsx`), so the form and the API
 // always agree on a single `start_time` value with no separate offset field
 // to keep in sync.
+// Whether `Date` can read the value at all. An offsetless date-time parses fine
+// here (as browser-local, which is wrong for *display* and the whole subject of
+// `shiftByEmbeddedOffset` - but validity is the same question either way), so
+// this one predicate serves both fields below.
+const isRealDateTime = (val: string) => !Number.isNaN(new Date(val).getTime());
+
+// A *new* dive must carry an offset, matching the API's `DiveCreate`: there is
+// nothing to preserve, and the form defaults the field to the browser's own
+// offset, so an offsetless value here could only be a mistake.
 const dateTimeField = (
   message = "Start time must include a UTC offset, e.g. 2021-04-04T10:04:47+02:00",
 ) =>
@@ -28,9 +37,26 @@ const dateTimeField = (
     .string()
     .min(1, "Start time is required")
     .refine((val) => parseUtcOffsetMinutes(val) !== null, { message })
-    .refine((val) => !Number.isNaN(new Date(val).getTime()), {
+    .refine(isRealDateTime, {
       message: "Start time must be a valid datetime",
     });
+
+// An *edit* accepts both shapes, and that is a deliberate relaxation rather than
+// a gap. `PATCH /dive/{uuid}` takes an offsetless `start_time` on a dive whose
+// own offset is already unknown - the state a DiveJSON import creates - and
+// refuses one on a dive that has an offset, `0` included. Only the server can
+// apply that rule: it turns on the *stored* offset, which this schema cannot
+// see, and re-deriving it in the form from a value the form itself is editing is
+// how a client ends up refusing what the API accepts.
+//
+// So the client checks the shape and the server checks the rule. A refusal comes
+// back as HTTP 422 with a flat `{"detail": "<sentence>"}` - not the per-field
+// array a Pydantic field error produces - which is why every caller renders it
+// through `getApiErrorMessage` rather than reading `detail` structurally.
+const updatedDateTimeField = () =>
+  z.string().min(1, "Start time is required").refine(isRealDateTime, {
+    message: "Start time must be a valid datetime",
+  });
 
 // "MM:SS", e.g. "45:30" - minutes can be 1-3 digits, seconds must be two
 // digits from 00-59. Converted to/from a plain seconds number right before
@@ -350,8 +376,11 @@ export function toDiveMixtureInput(mixture: DiveMixture): DiveMixtureInput {
 export function diveToFormValues(dive: Dive): DiveUpdateInput {
   return {
     dive_number: dive.dive_number,
-    // Already the offset-aware shape `DiveStartTimeField` edits, so it carries
-    // straight over with no conversion.
+    // Already the shape `DiveStartTimeField` edits, so it carries straight over
+    // with no conversion - including a value with no offset at all, which is an
+    // imported dive whose zone was never recorded. Copying it verbatim is what
+    // preserves that state: anything normalizing it here would be inventing the
+    // offset before the diver ever saw the field.
     start_time: dive.start_time,
     duration: formatDurationForForm(dive.duration),
     max_depth: dive.max_depth,
@@ -427,7 +456,7 @@ export const diveUpdateSchema = z.object({
     .int()
     .positive("Dive number must be a positive integer")
     .optional(),
-  start_time: dateTimeField().optional(),
+  start_time: updatedDateTimeField().optional(),
   duration: durationField().optional(),
   max_depth: z
     .number()

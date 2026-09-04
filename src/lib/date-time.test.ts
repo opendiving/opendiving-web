@@ -221,9 +221,48 @@ describe("splitStartTime/combineStartTime", () => {
     spy.mockRestore();
   });
 
-  it("defaults to a UTC offset for a naive string with none", () => {
+  // This used to assert `0` - "defaults to a UTC offset for a naive string with
+  // none" - and that default is the bug rather than the behaviour. An imported
+  // dive whose zone was never recorded arrives naive, and collapsing it to UTC
+  // both moved the clock and invented a zone the first save then wrote down.
+  it("reports a null offset for a string carrying none, rather than UTC", () => {
     const { offsetMinutes } = splitStartTime("2024-05-01T09:00:00");
-    expect(offsetMinutes).toBe(0);
+    expect(offsetMinutes).toBeNull();
+  });
+
+  it("keeps a naive string's wall clock exactly as written", () => {
+    // Load-bearing only outside UTC, and deliberately written anyway: the old
+    // code read a naive value through `new Date()`, which ECMAScript parses as
+    // *local*, so these digits came back shifted by whatever offset the reader
+    // happened to be sitting in - and came back correct, by luck, in UTC. The
+    // round-trip below is the assertion that fails in every zone.
+    const { localDateTime } = splitStartTime("2026-04-17T11:49:23");
+    expect(localDateTime).toBe("2026-04-17 11:49:23");
+  });
+
+  it("round-trips a naive string back to itself, offset and all", () => {
+    // The one that fails in **every** timezone, UTC included, and the one that
+    // matters: this is the save path. Under the old code UTC produced
+    // "2026-04-17T11:49:23+00:00" - the right hour with a fabricated zone welded
+    // on - and every other zone produced a wrong hour as well.
+    const original = "2026-04-17T11:49:23";
+    const { localDateTime, offsetMinutes } = splitStartTime(original);
+    expect(combineStartTime(localDateTime, offsetMinutes)).toBe(original);
+  });
+
+  it("writes no offset when combining with a null one", () => {
+    expect(combineStartTime("2026-04-17 11:49:23", null)).toBe(
+      "2026-04-17T11:49:23",
+    );
+  });
+
+  it("adopts a real offset chosen from the unknown state, keeping the clock", () => {
+    // The only exit from the unknown state, and the diver's own deliberate act:
+    // the wall clock they were shown is the wall clock that gets the zone.
+    const { localDateTime } = splitStartTime("2026-04-17T11:49:23");
+    expect(combineStartTime(localDateTime, 180)).toBe(
+      "2026-04-17T11:49:23+03:00",
+    );
   });
 
   it("combineStartTime is the inverse of splitStartTime", () => {
@@ -293,6 +332,16 @@ describe("formatDiveStartTime", () => {
     expect(formatDiveStartTime("2021-04-04T23:30:00-05:00")).toBe(
       "Sunday, April 4, 2021 at 23:30 (UTC-05:00)",
     );
+  });
+
+  it("claims no zone at all for a dive whose offset was never recorded", () => {
+    // Fails in every timezone under the old code, which appended "(UTC+00:00)"
+    // unconditionally - a statement about where the dive happened that nothing
+    // in the record supports. The clock is what was written down; the zone is
+    // genuinely not known, and the header says so by saying nothing.
+    const line = formatDiveStartTime("2026-04-17T11:49:23");
+    expect(line).toBe("Friday, April 17, 2026 at 11:49");
+    expect(line).not.toMatch(/UTC/);
   });
 });
 

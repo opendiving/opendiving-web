@@ -112,13 +112,19 @@ export function speciesNameWithRank(species: RankedSpecies): string {
  * When a diver saw this species, as one line: a single date when every sighting
  * falls on one day, and a range otherwise.
  *
- * **The two inputs are dive `start_time`s, so they carry the offset of the dive
- * behind each end of the range rather than UTC** - the app-wide contract every
- * dive-derived surface honours. That is why this goes through
+ * **The two inputs are dive `start_time`s, so each end reads in the zone of the
+ * dive behind it rather than in UTC or the viewer's** - the app-wide contract
+ * every dive-derived surface honours. That is why this goes through
  * `formatDiveDateTime` and not `formatDateTime`: the latter would re-derive the
  * *viewer's* local time and report a dive logged in Thailand at the reader's
  * clock. The error is invisible against any dive logged at `+00:00`, which is
  * most fixtures and almost no real log.
+ *
+ * An imported dive may carry **no** offset, and then the wall clock is the whole
+ * of what was recorded. `formatDiveDateTime` prints those digits as they stand,
+ * so such a sighting lands on the day the diver wrote down - which is the only
+ * day there is to land on. It is the same call as everywhere else here; what
+ * would break it is any attempt to supply the missing zone.
  *
  * **The collapse compares the formatted dates, not the timestamps behind them**,
  * and that distinction is the whole reason this is a function rather than an
