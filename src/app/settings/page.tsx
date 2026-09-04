@@ -206,7 +206,7 @@ export default function SettingsPage() {
         <DeviceMemoryCard />
       </div>
 
-      {/* Full width rather than another cell in the grid above: the three rows each
+      {/* Full width rather than another cell in the grid above: the four rows each
           carry a sentence of prose, and at half the page every one of them wraps to
           four lines. */}
       <div className="mt-8">

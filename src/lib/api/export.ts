@@ -2,15 +2,16 @@ import { apiClient } from "./client";
 import { filenameFromContentDisposition } from "@/lib/download";
 
 /**
- * The three shapes `/export/*` serves a logbook in.
+ * The four shapes `/export/*` serves a logbook in.
  *
  * The value is the path segment as well as the label, which is why `archive` is not
  * called `zip` - `/export/archive` is the route, `.zip` is only what it saves as.
  */
-export type ExportFormat = "uddf" | "csv" | "archive";
+export type ExportFormat = "divejson" | "uddf" | "csv" | "archive";
 
 /** What each format saves as. The archive is the only one where the two differ. */
 const EXPORT_EXTENSIONS: Record<ExportFormat, string> = {
+  divejson: "divejson",
   uddf: "uddf",
   csv: "csv",
   archive: "zip",
@@ -56,7 +57,7 @@ export function exportFilename(
 
 export const exportAPI = {
   /**
-   * Fetches one of the three exports of the signed-in diver's own logbook.
+   * Fetches one of the four exports of the signed-in diver's own logbook.
    *
    * There is no uuid or username parameter because the endpoint has none: the bearer
    * token names the only account there is to export. `username` here is only ever used

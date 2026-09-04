@@ -20,6 +20,7 @@ describe("exportFilename", () => {
   const noon = new Date("2026-08-14T12:00:00Z");
 
   it.each([
+    ["divejson" as const, "opendiving-alex-20260814.divejson"],
     ["uddf" as const, "opendiving-alex-20260814.uddf"],
     ["csv" as const, "opendiving-alex-20260814.csv"],
     // `archive` is the route; `.zip` is what it saves as. The only row where the
@@ -53,13 +54,21 @@ describe("exportFilename", () => {
 });
 
 describe("exportAPI.download", () => {
-  it("requests the format's route as a blob", async () => {
-    get.mockResolvedValue({ data: new Blob(["<uddf/>"]), headers: {} });
+  // Every format, not just one: the union value *is* the path segment, and nothing in
+  // the types would notice a fifth member wired to the wrong route - or a fourth
+  // wired to a route the API does not serve.
+  it.each(["divejson", "uddf", "csv", "archive"] as const)(
+    "requests the %s route as a blob",
+    async (format) => {
+      get.mockResolvedValue({ data: new Blob(["bytes"]), headers: {} });
 
-    await exportAPI.download("uddf", "alex");
+      await exportAPI.download(format, "alex");
 
-    expect(get).toHaveBeenCalledWith("/export/uddf", { responseType: "blob" });
-  });
+      expect(get).toHaveBeenCalledWith(`/export/${format}`, {
+        responseType: "blob",
+      });
+    },
+  );
 
   it("takes the filename from the server when the header is readable", async () => {
     get.mockResolvedValue({

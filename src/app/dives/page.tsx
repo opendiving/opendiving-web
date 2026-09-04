@@ -184,7 +184,7 @@ export default function DivesPage() {
                           name - and the name has to say *which* dive, or a screen
                           reader's controls list is thirty entries reading
                           "View, Edit, Delete" ten times over. Same reasoning as the
-                          export card's three Download buttons; see DECISIONS.md. */}
+                          export card's Download buttons; see DECISIONS.md. */}
                       <div className="flex justify-end gap-2">
                         <Button
                           variant="ghost"

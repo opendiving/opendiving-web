@@ -212,7 +212,9 @@ export function LandingPage() {
               <CardContent>
                 <ul className="space-y-2 text-sm text-muted-foreground">
                   <li>• AGPL-3.0, server side included</li>
-                  <li>• UDDF, CSV or a complete archive, on demand</li>
+                  <li>
+                    • DiveJSON, UDDF, CSV or a complete archive, on demand
+                  </li>
                   <li>• No trackers and no analytics</li>
                   <li>• Passwordless sign-in; no passwords stored</li>
                 </ul>
@@ -249,7 +251,7 @@ export function LandingPage() {
           <div className="mt-10 grid gap-4 text-sm font-medium sm:grid-cols-3">
             <div>AGPL-3.0, server side included</div>
             <div>No trackers, no analytics</div>
-            <div>UDDF, CSV or a full archive, one click</div>
+            <div>DiveJSON, UDDF, CSV or a full archive, one click</div>
           </div>
         </div>
       </section>

@@ -54,10 +54,12 @@ components together. Start there if you want to run OpenDiving rather than work 
   plastic.
 - **Courses** — the training itself, with the agency, instructor and shop: link the dives you did on
   it and the cards it issued, so a course is one record instead of a shape you have to remember.
-- **Full export** — one click to take _everything_ out in open formats: a **UDDF** document other
-  programs import, a **CSV** for a spreadsheet, or a complete **archive** with the structured JSON,
-  every CSV, every dive-computer file you uploaded and both sides of every c-card. A data-ownership
-  log without an exit door is a contradiction.
+- **Full export** — one click to take _everything_ out in open formats: a **DiveJSON** document
+  holding the whole logbook, a **UDDF** one other programs import, a **CSV** for a spreadsheet, or a
+  complete **archive** carrying all three alongside every dive-computer file you uploaded and both
+  sides of every c-card. [DiveJSON](https://divejson.org) is the open dive-log interchange format
+  this project maintains, and this app is its reference implementation. A data-ownership log without
+  an exit door is a contradiction.
 - **Passwordless sign-in** — email magic links or Google; no passwords stored, ever.
 - **Dark mode & responsive** — works on the boat, in the dive shop, and on your desk.
 
