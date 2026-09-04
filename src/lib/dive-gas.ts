@@ -747,15 +747,16 @@ const UNATTRIBUTED_NOTE_SECONDS = 60;
  * 38 - but presenting them as the whole dive would understate every one of them.
  *
  * **The denominator is attributed to the dive computer in so many words**, and
- * has to be. It is the profile's span, which routinely runs longer than the
- * duration the same page prints at the top - a computer keeps sampling after the
- * diver surfaces, by five minutes on dive #493. An unattributed "of the 1h 12min
- * recorded" under a header reading "1h 7min" reads as one of the two being
- * wrong, when both are right about different things.
+ * has to be. It is `DiveGasUse.duration` - the profile's span, not the dive's own
+ * `duration`, which the two now share a name with - and it routinely runs longer
+ * than the duration the same page prints at the top: a computer keeps sampling
+ * after the diver surfaces, by five minutes on dive #493. An unattributed "of the
+ * 1h 12min recorded" under a header reading "1h 7min" reads as one of the two
+ * being wrong, when both are right about different things.
  */
 export function gasAttributionNote(gasUse: DiveGasUse): string | null {
   const attributed = gasUse.attributed_seconds;
-  const total = gasUse.duration_seconds;
+  const total = gasUse.duration;
 
   if (attributed == null || total == null) return null;
   if (!Number.isFinite(attributed) || !Number.isFinite(total)) return null;

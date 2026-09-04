@@ -203,30 +203,32 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
   const temperature = toChannelSeries(profile, "temperature", units);
   const pressure = toPressureSeries(profile, units);
 
-  const duration = profile.duration_seconds;
+  const duration = profile.duration;
   const x = (seconds: number) =>
     PADDING.left + (duration > 0 ? seconds / duration : 0) * PLOT_WIDTH;
 
   // Markers that land inside the plot, which is this chart's job rather than the
   // API's and is stated as such at the other end: `_rebase_events` clamps the low
-  // side at zero, deliberately leaves the high side alone - `duration_seconds` is
-  // the span of the *samples*, and a device goes on recording after the last one,
-  // so a FIT `user_marker` pressed after surfacing happened when the file says it
-  // did - and signs off with "a chart that draws past its x domain is the chart's
-  // to clip". This is that clip.
+  // side at zero, deliberately leaves the high side alone - the profile's
+  // `duration` is the span of the *samples*, and a device goes on recording after
+  // the last one, so a FIT `user_marker` pressed after surfacing happened when the
+  // file says it did - and signs off with "a chart that draws past its x domain is
+  // the chart's to clip". This is that clip. The DiveJSON spec blesses the same
+  // arrangement (§6.4), so the rename that brought `duration` here changed the
+  // word and nothing about which markers exist.
   //
   // Dropped rather than clamped to the last second, which would invent a time to
   // keep a marker on screen, and rather than left to the SVG's own clipping,
-  // which is not clipping at all: `x(t)` past `duration` lands in the right-hand
-  // axis-label gutter first (aligned with no time on the axis) and only leaves
-  // the viewBox further out.
+  // which is not clipping at all: `x(time)` past `duration` lands in the
+  // right-hand axis-label gutter first (aligned with no time on the axis) and only
+  // leaves the viewBox further out.
   //
   // One filtered list feeds all three consumers - the glyphs, the crosshair and
   // `describeProfile` - so the picture and the accessible summary cannot disagree
   // about what the chart contains. That disagreement is the actual bug here: a
   // marker invisible to the eye but named to a screen reader.
   const events = (profile.events ?? []).filter(
-    (event) => event.t >= 0 && event.t <= duration,
+    (event) => event.time >= 0 && event.time <= duration,
   );
 
   // Rebuilt every render rather than memoized: the series are already capped at
@@ -836,9 +838,9 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
               {eventsShown &&
                 events.map((event, index) => (
                   <EventMarker
-                    key={`${event.t}-${event.type}-${index}`}
+                    key={`${event.time}-${event.type}-${index}`}
                     event={event}
-                    cx={x(event.t)}
+                    cx={x(event.time)}
                     hovered={event === hoveredEvent}
                   />
                 ))}
@@ -1383,11 +1385,11 @@ function describeProfile({
   // this reorders nothing today; at n <= 200 it costs nothing to not depend on it.
   if (events.length > 0) {
     const named = [...events]
-      .sort((first, second) => first.t - second.t)
+      .sort((first, second) => first.time - second.time)
       .slice(0, MAX_DESCRIBED_EVENTS)
       .map(
         (event) =>
-          `${describeEvent(event)} at ${formatDurationHoursMinutes(event.t)}`,
+          `${describeEvent(event)} at ${formatDurationHoursMinutes(event.time)}`,
       );
     if (events.length > named.length) {
       named.push(`and ${events.length - named.length} more`);

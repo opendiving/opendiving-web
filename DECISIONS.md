@@ -4481,9 +4481,9 @@ lived in how the component wired well-tested helpers together, which is what
 `_rebase_events` clamps an event's time at zero — an XML export records the opening gas selection at
 `GasChangeTime 0` while numbering samples from `Time 1`, so the naive rebase is -1 and dropping it
 would lose which gas the dive started on — and **deliberately leaves the high end alone**, because
-`duration_seconds` is the span of the _samples_ and a device goes on recording after the last one. A
-FIT `user_marker` can be pressed after surfacing. It closes with: "A chart that draws past its x
-domain is the chart's to clip."
+the profile's `duration` is the span of the _samples_ and a device goes on recording after the last
+one. A FIT `user_marker` can be pressed after surfacing. It closes with: "A chart that draws past
+its x domain is the chart's to clip."
 
 This chart wasn't clipping. `x(6000)` on a 3 000 s dive is 1 304 in a 720-unit viewBox, so that
 marker vanished; `x(3200)` is 716, which is _inside_ the viewBox but in the right-hand axis-label
@@ -4672,12 +4672,12 @@ a remainder — a file recording gas switches but not the gas the diver entered 
 nothing to assign the descent to. Presenting figures that describe 38 of a dive's 42 minutes as
 though they described the dive understates every one of them.
 
-`gasAttributionNote` says so, from the `attributed_seconds`/`duration_seconds` pair, and says
-nothing below a one-minute remainder — which is rounding, and would also print a sentence whose two
-spans render identically at the minute resolution the note is phrased at. The denominator is the
-profile's span rather than `Dive.duration` because that is what the attribution actually ran over;
-`Dive.duration` is the diver's own record and may have been hand-edited, which would make the
-fraction unfalsifiable.
+`gasAttributionNote` says so, from the `attributed_seconds`/`duration` pair, and says nothing below
+a one-minute remainder — which is rounding, and would also print a sentence whose two spans render
+identically at the minute resolution the note is phrased at. The denominator is the profile's span
+rather than `Dive.duration` because that is what the attribution actually ran over; `Dive.duration`
+is the diver's own record and may have been hand-edited, which would make the fraction
+unfalsifiable.
 
 It also returns null when `attributed >= total`, rather than printing "covers 45min of the 40min
 recorded". That is unreachable from a correct API but is the exact shape a degenerate profile or
@@ -4685,14 +4685,14 @@ self-overlapping attribution would take, and the failure mode of trusting it is 
 destroys confidence in the numbers above it.
 
 **The denominator names the dive computer, because the page prints a different number for the same
-thing.** `duration_seconds` is the profile's span and routinely outruns the dive's logged duration —
-4300 against 4001 on dive #493, five minutes of a computer still sampling after the diver surfaced.
-The note first read "38min of the 42min recorded", which on real data became "35min of the 1h 12min
-recorded" sitting a card below a header reading **Duration 1h 7min**. Two right numbers for two
-different spans, presented as if one of them were wrong. "the 1h 12min _the dive computer recorded_"
-costs four words and says whose span it is. This is the cost of choosing the profile's span, and it
-is still the right choice — it is what the attribution actually ran over — but the choice has to be
-visible in the sentence, not just in this file.
+thing.** `DiveGasUse.duration` is the profile's span and routinely outruns the dive's own logged
+`duration` — 4300 against 4001 on dive #493, five minutes of a computer still sampling after the
+diver surfaced. The note first read "38min of the 42min recorded", which on real data became "35min
+of the 1h 12min recorded" sitting a card below a header reading **Duration 1h 7min**. Two right
+numbers for two different spans, presented as if one of them were wrong. "the 1h 12min _the dive
+computer recorded_" costs four words and says whose span it is. This is the cost of choosing the
+profile's span, and it is still the right choice — it is what the attribution actually ran over —
+but the choice has to be visible in the sentence, not just in this file.
 
 ## The total row is dropped when it would restate the only row above it
 
@@ -11506,8 +11506,8 @@ the same change, each in this file's own idiom:
 - `tanks: []` is no longer synonymous with single-tank. It also arrives on the additive path. The
   non-empty test still selects the right layout — an additive dive genuinely has one set of
   whole-dive figures — but anything reading `[]` as "one cylinder" is now wrong.
-- `attributed_seconds`/`duration_seconds` are null "wherever the whole dive is accounted for", not
-  "outside the multi-tank path".
+- `attributed_seconds`/`duration` are null "wherever the whole dive is accounted for", not "outside
+  the multi-tank path".
 
 **The list of sites was short, and that is the durable lesson.** The API side of this change found
 four falsified strings its own plan never named, on a list that had survived eight review rounds.
@@ -14275,3 +14275,61 @@ text about a repair bill on a different model, and it stays.
 
 `README.md`'s courses bullet named cost in the feature copy and was updated with the field. It is
 the repo's public pitch, so a removed feature left in it is a promise the app no longer keeps.
+
+## The profile read shape speaks DiveJSON, and the rename came through rather than around
+
+The API's JSON export became DiveJSON 1.0, and `ExportDive.profile` is typed `DiveProfileRead` — the
+same class `GET /dive/{uuid}/profile` serves and the same summary `GET /dive/{uuid}` embeds. So
+making the export speak the published format changed those two read endpoints too, and this repo
+declared and read every member that moved. Seven of them:
+
+| was                                | is          | where                           |
+| ---------------------------------- | ----------- | ------------------------------- |
+| `DiveProfileRead.duration_seconds` | `duration`  | the profile payload             |
+| `DiveProfileRead.pressure`         | `pressures` | the profile payload             |
+| `DiveProfileSeries.t`              | `times`     | every channel                   |
+| `DiveProfileSeries.v`              | `values`    | every channel                   |
+| `DiveProfileEvent.t`               | `time`      | every marker                    |
+| `DiveProfileInfo.duration_seconds` | `duration`  | the dive-detail summary         |
+| `DiveGasUse.duration_seconds`      | `duration`  | the gas-attribution denominator |
+
+The alternative was export-local profile schemas on the API side: the export would speak DiveJSON,
+`GET /dive/{uuid}/profile` would keep its old shape, and this repo would not have changed at all. It
+was rejected because the cost is permanent rather than one-off — the project would speak two profile
+vocabularies on two surfaces forever, and every later profile change would have to be made twice.
+Translating at the export boundary buys nothing here: there is nowhere this is deployed, so a
+read-contract break costs one PR in each repo and no migration for anybody.
+
+**Two of the seven renamed for internal consistency, not because the format asked.**
+`DiveProfileInfo.duration` is an app response shape and `DiveGasUse.duration` is the denominator of
+a figure DiveJSON does not describe at all — there is no `gas_use` anywhere in the published format.
+They both mean the profile's span, so they moved with it rather than leaving one quantity under two
+names depending on which response you were looking at. Worth saying plainly, because the tidier
+story — "we renamed what the format renamed" — is not true of these two.
+
+**`duration` is now an overloaded word in one payload, and every reader has to say which it means.**
+`Dive.duration` is the diver's own logged length; `DiveProfileInfo.duration` and
+`DiveGasUse.duration` are the profile's span, which routinely runs longer — 4300 against a logged
+4001 on dive #493. The comments in `lib/api/dives.ts` and `gasAttributionNote`'s docstring name the
+owner explicitly for that reason, and the note the diver reads already said "the dive computer
+recorded" before this change. The old `duration_seconds` spelling was self-disambiguating in a way
+`duration` is not, and that is the accepted cost of one vocabulary.
+
+**Nothing renders differently, and two properties made that easy to lose.** An event past the
+profile's `duration` still plots where the file put it: the API deliberately does not clamp the high
+end, the format blesses that arrangement (spec §6.4), and clipping the marker to the plot stays this
+chart's job — the rename changed the word and nothing about which markers exist. And the coverage
+fraction kept its denominator: `gasAttributionNote` reads `DiveGasUse.duration`, which is a member
+of the API's `schemas/dive.py` rather than of its profile schemas, so a web-side rename that assumed
+otherwise would have blanked the note with every test still green. The render tests rename their own
+fixtures alongside the code and would not have caught it; what settles it is the shape the API
+actually serves.
+
+**`ChannelSeries` in `lib/dive-profile.ts` kept its `t`.** It is the chart's own converted shape,
+not the wire's — its `values` are display units, not the wire's integers — and following the rename
+would have hidden the one difference between them that matters.
+
+**No CI job runs the two repos together** (`CONTRIBUTING.md`, _Changes that span both repos_), so
+between the API change merging and this one the chart and the gas-use card rendered nothing while
+both suites stayed green. That is the accepted shape of a breaking API change here — API first, web
+second, the two PRs linked — and it is worth knowing that neither suite is the thing that tells you.

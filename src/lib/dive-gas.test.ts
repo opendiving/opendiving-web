@@ -58,7 +58,7 @@ function dive(overrides: Partial<Dive> = {}): Dive {
 function profile(): NonNullable<Dive["profile"]> {
   return {
     uuid: "p1",
-    duration_seconds: 4300,
+    duration: 4300,
     depth_sample_count: 431,
     channels: ["depth"],
   };
@@ -92,10 +92,7 @@ function multiTankUse(
       (sum, entry) => sum + entry.seconds_on_gas,
       0,
     ),
-    duration_seconds: tanks.reduce(
-      (sum, entry) => sum + entry.seconds_on_gas,
-      0,
-    ),
+    duration: tanks.reduce((sum, entry) => sum + entry.seconds_on_gas, 0),
     ...overrides,
   };
 }
@@ -711,7 +708,7 @@ describe("gasAttributionNote", () => {
       gasAttributionNote(
         multiTankUse([tank()], {
           attributed_seconds: 2700,
-          duration_seconds: 2700,
+          duration: 2700,
         }),
       ),
     ).toBeNull();
@@ -722,7 +719,7 @@ describe("gasAttributionNote", () => {
       gasAttributionNote(
         multiTankUse([tank()], {
           attributed_seconds: 2655,
-          duration_seconds: 2700,
+          duration: 2700,
         }),
       ),
     ).toBeNull();
@@ -732,7 +729,7 @@ describe("gasAttributionNote", () => {
     const note = gasAttributionNote(
       multiTankUse([tank()], {
         attributed_seconds: 2280,
-        duration_seconds: 2520,
+        duration: 2520,
       }),
     );
 
@@ -749,7 +746,7 @@ describe("gasAttributionNote", () => {
     const note = gasAttributionNote(
       multiTankUse([tank()], {
         attributed_seconds: 2075,
-        duration_seconds: 4300,
+        duration: 4300,
       }),
     );
 
@@ -770,7 +767,7 @@ describe("gasAttributionNote", () => {
       gasAttributionNote(
         multiTankUse([tank()], {
           attributed_seconds: 2700,
-          duration_seconds: 2400,
+          duration: 2400,
         }),
       ),
     ).toBeNull();
@@ -778,7 +775,7 @@ describe("gasAttributionNote", () => {
       gasAttributionNote(
         multiTankUse([tank()], {
           attributed_seconds: 0,
-          duration_seconds: 0,
+          duration: 0,
         }),
       ),
     ).toBeNull();
