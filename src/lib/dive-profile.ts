@@ -26,7 +26,7 @@ export interface ProfileChannel {
   key: ProfileChannelKey;
   label: string;
   unit: string;
-  // What the API's integer `v` values are divided by to reach display units.
+  // What the API's integer `values` are divided by to reach display units.
   // Mirrors `DEPTH_SCALE`/`TEMPERATURE_SCALE`/`PRESSURE_SCALE` in the API's
   // `schemas/dive_profile.py` - these two lists are a pair.
   scale: number;
@@ -160,9 +160,11 @@ export const EVENTS_LABEL = "Markers";
 
 export interface ChannelSeries {
   channel: ProfileChannel;
-  // Elapsed seconds, as stored.
+  // Elapsed seconds, as served. Kept as `t` rather than following the wire's
+  // `times`: this is the chart's own shape, and every consumer of it below reads
+  // a *converted* series, which is the difference worth keeping visible.
   t: number[];
-  // Display units - `v` divided by the channel's scale.
+  // Display units - the wire's integer `values` divided by the channel's scale.
   values: number[];
 }
 
@@ -233,7 +235,7 @@ export function toChannelSeries(
   units: UnitSystem,
 ): ChannelSeries | null {
   const series: DiveProfileSeries | null | undefined = profile[key];
-  if (!series || series.t.length === 0) return null;
+  if (!series || series.times.length === 0) return null;
 
   const channel = PROFILE_CHANNELS[key];
   // Converted here, once, rather than at each of the dozen places downstream that
@@ -243,8 +245,8 @@ export function toChannelSeries(
   // and there is nowhere left for a conversion to be forgotten.
   return {
     channel: displayChannel(channel, units),
-    t: series.t,
-    values: series.v.map((value) =>
+    t: series.times,
+    values: series.values.map((value) =>
       toChannelDisplay(value / channel.scale, key, units),
     ),
   };
@@ -257,13 +259,13 @@ export function toPressureSeries(
   units: UnitSystem,
 ): (ChannelSeries & { gasNumber: number })[] {
   const channel = PROFILE_CHANNELS.pressure;
-  return (profile.pressure ?? [])
-    .filter((cylinder) => cylinder.t.length > 0)
+  return (profile.pressures ?? [])
+    .filter((cylinder) => cylinder.times.length > 0)
     .map((cylinder: DiveProfilePressureSeries) => ({
       channel: displayChannel(channel, units),
       gasNumber: cylinder.gas_number,
-      t: cylinder.t,
-      values: cylinder.v.map((value) =>
+      t: cylinder.times,
+      values: cylinder.values.map((value) =>
         toChannelDisplay(value / channel.scale, "pressure", units),
       ),
     }));
@@ -304,7 +306,7 @@ export function depthDomain(
 // search: the saving is unmeasurable and the scan doesn't care whether the list
 // arrived sorted.
 //
-// **Ties go to the earlier event**, and that is compared on `t` rather than left
+// **Ties go to the earlier event**, and that is compared on `time` rather than left
 // to iteration order. `delta < bestDelta` alone would mean "first in the array",
 // which is only the same thing on a sorted list - and not assuming sorted input
 // is the whole reason this is a scan. The API does sort in `normalize`, so this
@@ -319,13 +321,13 @@ export function nearestEvent(
   let bestDelta = Number.POSITIVE_INFINITY;
 
   for (const event of events) {
-    const delta = Math.abs(event.t - seconds);
+    const delta = Math.abs(event.time - seconds);
     if (delta > maxDeltaSeconds) continue;
 
     if (
       best === null ||
       delta < bestDelta ||
-      (delta === bestDelta && event.t < best.t)
+      (delta === bestDelta && event.time < best.time)
     ) {
       best = event;
       bestDelta = delta;

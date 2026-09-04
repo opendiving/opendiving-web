@@ -207,17 +207,21 @@ export interface DiveGasUse {
   // Both null wherever the whole dive is accounted for and there is no fraction to
   // report: a single-cylinder dive, and a flagged parallel set summed over the
   // dive's own duration. Seconds, matching `Dive.duration` and
-  // `DiveProfileInfo.duration_seconds`; `duration_seconds` is the profile's span,
-  // not `Dive.duration`, because that is what the attribution actually ran over
-  // and a hand-edited dive duration would make the fraction unfalsifiable.
+  // `DiveProfileInfo.duration`.
   //
-  // Those two are routinely different, and `duration_seconds` is usually the
-  // larger: a dive computer goes on recording after the diver surfaces (4300
-  // against a logged 4001 on dive #493). Anything rendering this denominator has
-  // to say whose number it is, or it reads as contradicting the duration shown
-  // at the top of the same page - see `gasAttributionNote`.
+  // **The `duration` below is the profile's span, not `Dive.duration`** - that is
+  // what the attribution actually ran over, and a hand-edited dive duration would
+  // make the fraction unfalsifiable. The two carry the same word since the profile
+  // shape started speaking DiveJSON, so anything reading either has to say which
+  // one it means.
+  //
+  // They are routinely different, and the profile's span is usually the larger: a
+  // dive computer goes on recording after the diver surfaces (4300 against a
+  // logged 4001 on dive #493). Anything rendering this denominator has to say
+  // whose number it is, or it reads as contradicting the duration shown at the top
+  // of the same page - see `gasAttributionNote`.
   attributed_seconds?: number | null;
-  duration_seconds?: number | null;
+  duration?: number | null;
 }
 
 export interface Dive {
@@ -340,10 +344,11 @@ export interface Dive {
 // which version of the series to ask for.
 export interface DiveProfileInfo {
   uuid: string;
-  // Span of the recorded samples, which is *not* `dive.duration` - a dive
-  // computer keeps logging for a few seconds after the dive ends, and
-  // `dive.duration` is the diver's own record and may have been hand-edited.
-  duration_seconds: number;
+  // Span of the recorded samples, which is *not* `dive.duration` despite sharing
+  // the word - a dive computer keeps logging for a few seconds after the dive
+  // ends, and `dive.duration` is the diver's own record and may have been
+  // hand-edited.
+  duration: number;
   depth_sample_count: number;
   // Which curves the profile carries: any of "depth", "ceiling",
   // "temperature", "pressure".
@@ -367,20 +372,23 @@ export interface DiveProfileInfo {
   updated_at?: string | null;
 }
 
-// One channel of a profile, exactly as the API stores it: `t` is elapsed seconds
-// from the start of the dive, `v` is integer-scaled (see `PROFILE_CHANNELS` in
-// `lib/dive-profile.ts` for the divisor per channel).
+// One channel of a profile, in the DiveJSON vocabulary the API serves it in:
+// `times` is elapsed seconds from the start of the dive, `values` is
+// integer-scaled (see `PROFILE_CHANNELS` in `lib/dive-profile.ts` for the divisor
+// per channel). The API's *storage* still uses the compact `t`/`v` keys and maps
+// them here on the way out, so a payload dumped from its JSONB column does not
+// look like this.
 //
 // Integers rather than floats deliberately, both on the wire and in the
 // database: a float round-trip reintroduces `20.600000000000023`-class noise
 // several thousand times per dive, and the chart is going to map every point
 // through a scale function anyway - so it divides once per point there.
 //
-// There are no nulls inside a series. A sensor dropout is a *gap in `t`*, which
-// `segmentByTimeGap` turns into separate polylines.
+// There are no nulls inside a series. A sensor dropout is a *gap in `times`*,
+// which `segmentByTimeGap` turns into separate polylines.
 export interface DiveProfileSeries {
-  t: number[];
-  v: number[];
+  times: number[];
+  values: number[];
 }
 
 export interface DiveProfilePressureSeries extends DiveProfileSeries {
@@ -404,8 +412,8 @@ export type DiveProfileEventType =
 // over a channel.
 export interface DiveProfileEvent {
   // Elapsed seconds from the start of the dive, on the same axis as every
-  // series' `t`.
-  t: number;
+  // series' `times`.
+  time: number;
   type: DiveProfileEventType;
   // Set only on a `gas_switch`, and the same label `DiveMixture.gas_number` and
   // the pressure curves carry - so a switch marker and the cylinder it switched
@@ -423,18 +431,24 @@ export interface DiveProfileEvent {
 }
 
 export interface DiveProfile {
-  duration_seconds: number;
+  // The span of the sample channels, in seconds. An event may sit past it: the
+  // API leaves a marker pressed after the recorder's last sample where the file
+  // put it, and clipping that to the plot is the chart's job (see
+  // `dive-profile-chart.tsx`).
+  duration: number;
   depth?: DiveProfileSeries | null;
   // The deco ceiling, in centimeters on depth's own scale, because it is drawn
   // against depth's axis and a ceiling of 3 m has to be the same integer as a
   // depth of 3 m for the shading to line up with the curve it bounds.
   //
-  // Present only while the dive owed decompression: a gap in `t` is a stretch
-  // with no obligation, not a sensor dropout, and the channel is absent
+  // Present only while the dive owed decompression: a gap in `times` is a
+  // stretch with no obligation, not a sensor dropout, and the channel is absent
   // entirely on every no-deco dive.
   ceiling?: DiveProfileSeries | null;
   temperature?: DiveProfileSeries | null;
-  pressure: DiveProfilePressureSeries[];
+  // Plural, unlike the three channels above, because this one is genuinely
+  // multi-tank: one entry per cylinder the device reported.
+  pressures: DiveProfilePressureSeries[];
   events: DiveProfileEvent[];
 }
 

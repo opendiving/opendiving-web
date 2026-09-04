@@ -96,7 +96,7 @@ function twoTankDive(overrides: Partial<Dive> = {}): Dive {
         }),
       ],
       attributed_seconds: 3000,
-      duration_seconds: 3000,
+      duration: 3000,
     },
     ...overrides,
   });
@@ -134,7 +134,7 @@ function oneTransmitterDive(overrides: Partial<Dive> = {}): Dive {
         }),
       ],
       attributed_seconds: 2075,
-      duration_seconds: 4300,
+      duration: 4300,
     },
     ...overrides,
   });
@@ -162,7 +162,7 @@ describe("DiveGasConsumptionCard layouts", () => {
             sac_bar_per_min: 1.19,
             tanks: [],
             attributed_seconds: null,
-            duration_seconds: null,
+            duration: null,
           },
         })}
       />,
@@ -187,7 +187,7 @@ describe("DiveGasConsumptionCard layouts", () => {
             sac_bar_per_min: 1.19,
             tanks: [],
             attributed_seconds: null,
-            duration_seconds: null,
+            duration: null,
           },
         })}
       />,
@@ -256,7 +256,7 @@ describe("DiveGasConsumptionCard layouts", () => {
             sac_bar_per_min: null,
             tanks: [],
             attributed_seconds: null,
-            duration_seconds: null,
+            duration: null,
           },
         })}
       />,
@@ -412,7 +412,7 @@ describe("DiveGasConsumptionCard per-tank table", () => {
             sac_bar_per_min: null,
             tanks: [],
             attributed_seconds: null,
-            duration_seconds: null,
+            duration: null,
           },
         })}
       />,
@@ -452,7 +452,7 @@ describe("DiveGasConsumptionCard per-tank table", () => {
           gas_use: {
             ...twoTankDive().gas_use!,
             attributed_seconds: 2280,
-            duration_seconds: 2520,
+            duration: 2520,
           },
         })}
       />,

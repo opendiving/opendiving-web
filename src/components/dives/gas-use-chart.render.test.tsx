@@ -53,7 +53,7 @@ function multiTankPoint(): DiveGasUsePoint {
         },
       ],
       attributed_seconds: 2075,
-      duration_seconds: 4300,
+      duration: 4300,
     },
   });
 }

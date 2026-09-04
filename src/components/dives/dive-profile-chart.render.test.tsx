@@ -27,10 +27,13 @@ afterEach(() => {
 
 function profile(overrides: Partial<DiveProfile> = {}): DiveProfile {
   return {
-    duration_seconds: 300,
-    depth: { t: [0, 60, 120, 180, 240, 300], v: [0, 1800, 3000, 2400, 800, 0] },
+    duration: 300,
+    depth: {
+      times: [0, 60, 120, 180, 240, 300],
+      values: [0, 1800, 3000, 2400, 800, 0],
+    },
     temperature: null,
-    pressure: [],
+    pressures: [],
     events: [],
     ...overrides,
   };
@@ -40,10 +43,10 @@ function profile(overrides: Partial<DiveProfile> = {}): DiveProfile {
 // depth series spanning all of it so the crosshair always has something to report.
 function longProfile(overrides: Partial<DiveProfile> = {}): DiveProfile {
   return profile({
-    duration_seconds: 3000,
+    duration: 3000,
     depth: {
-      t: [0, 300, 600, 900, 1200, 1500, 1800, 2100, 2400, 2700, 3000],
-      v: [0, 2000, 3000, 3000, 3000, 3000, 3000, 2000, 1000, 500, 0],
+      times: [0, 300, 600, 900, 1200, 1500, 1800, 2100, 2400, 2700, 3000],
+      values: [0, 2000, 3000, 3000, 3000, 3000, 3000, 2000, 1000, 500, 0],
     },
     ...overrides,
   });
@@ -58,26 +61,26 @@ const PLOT = { left: 0, width: 1000 };
 // Every channel this chart can plot, all of them drawable, so a test can pick any
 // subset of them and get exactly that subset back.
 function everyChannel(overrides: Partial<DiveProfile> = {}): DiveProfile {
-  const t = [0, 300, 600, 900, 1200, 1500, 1800, 2100, 2400, 2700, 3000];
+  const times = [0, 300, 600, 900, 1200, 1500, 1800, 2100, 2400, 2700, 3000];
 
   return {
-    duration_seconds: 3000,
+    duration: 3000,
     depth: {
-      t,
-      v: [0, 2000, 3000, 3000, 3000, 3000, 3000, 2000, 1000, 500, 0],
+      times,
+      values: [0, 2000, 3000, 3000, 3000, 3000, 3000, 2000, 1000, 500, 0],
     },
     // Four adjacent samples: an obligation short enough to be one run and long
     // enough to be drawn, which is what keeps the ceiling in `available`.
-    ceiling: { t: [1200, 1210, 1220, 1230], v: [300, 300, 320, 300] },
+    ceiling: { times: [1200, 1210, 1220, 1230], values: [300, 300, 320, 300] },
     temperature: {
-      t,
-      v: [260, 250, 240, 235, 232, 230, 230, 232, 238, 245, 252],
+      times,
+      values: [260, 250, 240, 235, 232, 230, 230, 232, 238, 245, 252],
     },
-    pressure: [
+    pressures: [
       {
         gas_number: 1,
-        t,
-        v: [2000, 1850, 1700, 1560, 1420, 1280, 1140, 1000, 880, 800, 760],
+        times,
+        values: [2000, 1850, 1700, 1560, 1420, 1280, 1140, 1000, 880, 800, 760],
       },
     ],
     events: [],
@@ -165,14 +168,14 @@ describe("DiveProfileChart in imperial", () => {
     // Sampled on depth's own clock, so the crosshair has a reading of each to
     // quote at the moment it is over.
     temperature: {
-      t: [0, 60, 120, 180, 240, 300],
-      v: [250, 245, 240, 238, 236, 235],
+      times: [0, 60, 120, 180, 240, 300],
+      values: [250, 245, 240, 238, 236, 235],
     },
-    pressure: [
+    pressures: [
       {
         gas_number: 1,
-        t: [0, 60, 120, 180, 240, 300],
-        v: [2000, 1800, 1600, 1400, 1200, 1000],
+        times: [0, 60, 120, 180, 240, 300],
+        values: [2000, 1800, 1600, 1400, 1200, 1000],
       },
     ],
   });
@@ -220,7 +223,11 @@ describe("DiveProfileChart with an event type this build doesn't know", () => {
   // destructuring that threw inside render. With no `error.tsx` anywhere under
   // `src/app`, that took out the whole dive detail route rather than one tick.
   const rogue = (label?: string) =>
-    ({ t: 120, type: "ndl_violation", label }) as unknown as DiveProfileEvent;
+    ({
+      time: 120,
+      type: "ndl_violation",
+      label,
+    }) as unknown as DiveProfileEvent;
 
   it("renders the chart instead of throwing", () => {
     expect(() =>
@@ -265,8 +272,8 @@ describe("DiveProfileChart ceiling", () => {
     // back. The chart must shade each separately rather than spanning the middle,
     // where the diver owed nothing.
     ceiling: {
-      t: [60, 70, 80, 200, 210, 220],
-      v: [300, 320, 340, 300, 310, 320],
+      times: [60, 70, 80, 200, 210, 220],
+      values: [300, 320, 340, 300, 310, 320],
     },
   });
 
@@ -321,7 +328,7 @@ describe("DiveProfileChart crosshair over a short deco obligation", () => {
   // Two samples ten seconds apart: a dive that tipped into deco briefly, which
   // still draws (they are inside the 15 s floor) and still reads out.
   const shortObligation = longProfile({
-    ceiling: { t: [1400, 1410], v: [300, 300] },
+    ceiling: { times: [1400, 1410], values: [300, 300] },
   });
 
   it("does not quote the ceiling from the far side of the dive", () => {
@@ -345,7 +352,7 @@ describe("DiveProfileChart crosshair over a short deco obligation", () => {
     // a fact about this file and nothing asserted it.
     render(
       <DiveProfileChart
-        profile={longProfile({ events: [{ t: 900, type: "bookmark" }] })}
+        profile={longProfile({ events: [{ time: 900, type: "bookmark" }] })}
       />,
     );
 
@@ -364,7 +371,7 @@ describe("DiveProfileChart shading a brief obligation", () => {
   // minutes of forbidden zone across a stretch the diver owed nothing, while the
   // crosshair (already floored to 15 s) reported no ceiling there at all.
   const twoMoments = longProfile({
-    ceiling: { t: [1400, 2600], v: [300, 300] },
+    ceiling: { times: [1400, 2600], values: [300, 300] },
   });
 
   it("does not span twenty minutes between two isolated deco samples", () => {
@@ -387,7 +394,9 @@ describe("DiveProfileChart shading a brief obligation", () => {
     // floor, so they remain one run.
     const { container } = render(
       <DiveProfileChart
-        profile={longProfile({ ceiling: { t: [1400, 1410], v: [300, 300] } })}
+        profile={longProfile({
+          ceiling: { times: [1400, 1410], values: [300, 300] },
+        })}
       />,
     );
 
@@ -445,7 +454,7 @@ describe("DiveProfileChart summary over a partly-drawn channel", () => {
   // raw series to the summary and to the shared axis. Here 2000 s is an isolated
   // 9.0 m sample that draws nothing, while the drawn run tops out at 3.0 m.
   const partlyDrawn = longProfile({
-    ceiling: { t: [600, 610, 620, 2000], v: [300, 300, 300, 900] },
+    ceiling: { times: [600, 610, 620, 2000], values: [300, 300, 300, 900] },
   });
 
   it("quotes the deepest ceiling that was drawn, not the deepest recorded", () => {
@@ -499,10 +508,10 @@ describe("DiveProfileChart with a two-sample measured channel", () => {
     const { container } = render(
       <DiveProfileChart
         profile={{
-          duration_seconds: 3000,
-          depth: { t: [100, 400], v: [1000, 2000] },
+          duration: 3000,
+          depth: { times: [100, 400], values: [1000, 2000] },
           temperature: null,
-          pressure: [],
+          pressures: [],
           events: [],
         }}
       />,
@@ -518,7 +527,9 @@ describe("DiveProfileChart with a two-sample measured channel", () => {
   it("still plots a temperature series of two samples", () => {
     render(
       <DiveProfileChart
-        profile={longProfile({ temperature: { t: [100, 160], v: [220, 219] } })}
+        profile={longProfile({
+          temperature: { times: [100, 160], values: [220, 219] },
+        })}
       />,
     );
 
@@ -536,7 +547,7 @@ describe("DiveProfileChart with a ceiling too sparse to plot", () => {
   // up with nothing drawable. When it does, it must not claim a legend entry, an
   // axis in its own colour, or a line in the summary.
   const sparseCeiling = longProfile({
-    ceiling: { t: [100, 1600], v: [300, 300] },
+    ceiling: { times: [100, 1600], values: [300, 300] },
   });
 
   it("draws no curve, and says so consistently everywhere", () => {
@@ -583,10 +594,10 @@ describe("DiveProfileChart depth fill across a dropout", () => {
   // this 1 500 s hole is well clear of it. Modelled on `Dive_2025-03-08-1440.xml`,
   // which has a 1 341-second one.
   const withDropout = profile({
-    duration_seconds: 3000,
+    duration: 3000,
     depth: {
-      t: [0, 300, 600, 900, 2400, 2700, 3000],
-      v: [0, 2000, 3000, 3000, 1000, 500, 0],
+      times: [0, 300, 600, 900, 2400, 2700, 3000],
+      values: [0, 2000, 3000, 3000, 1000, 500, 0],
     },
   });
 
@@ -826,9 +837,9 @@ describe("DiveProfileChart markers past the end of the recorded profile", () => 
   // right-hand axis-label gutter, aligned with no time on the axis.
   const late = longProfile({
     events: [
-      { t: 1500, type: "bookmark" },
-      { t: 3200, type: "bookmark" },
-      { t: 6000, type: "gas_switch", gas_number: 1 },
+      { time: 1500, type: "bookmark" },
+      { time: 3200, type: "bookmark" },
+      { time: 6000, type: "gas_switch", gas_number: 1 },
     ],
   });
 
@@ -865,9 +876,9 @@ describe("DiveProfileChart marker toggle", () => {
   // annotates, and the diver had no way to put it down.
   const withMarkers = longProfile({
     events: [
-      { t: 600, type: "gas_switch", gas_number: 2 },
-      { t: 1500, type: "bookmark" },
-      { t: 2400, type: "safety_stop" },
+      { time: 600, type: "gas_switch", gas_number: 2 },
+      { time: 1500, type: "bookmark" },
+      { time: 2400, type: "safety_stop" },
     ],
   });
 
@@ -988,11 +999,11 @@ describe("DiveProfileChart selection across dives", () => {
   // failure the `-v3` key bump exists to fix once, at migration; writing a narrowed
   // selection back would reopen it on every dive that lacks a key.
   const noMarkers = longProfile({
-    temperature: { t: [0, 300, 600, 900], v: [260, 250, 240, 235] },
+    temperature: { times: [0, 300, 600, 900], values: [260, 250, 240, 235] },
   });
   const withMarkers = longProfile({
-    temperature: { t: [0, 300, 600, 900], v: [260, 250, 240, 235] },
-    events: [{ t: 600, type: "bookmark" }],
+    temperature: { times: [0, 300, 600, 900], values: [260, 250, 240, 235] },
+    events: [{ time: 600, type: "bookmark" }],
   });
 
   it("does not let a marker-less dive switch the markers off for the next one", () => {
@@ -1022,7 +1033,7 @@ describe("DiveProfileChart selection across dives", () => {
     render(
       <DiveProfileChart
         profile={longProfile({
-          ceiling: { t: [1200, 1210, 1220], v: [300, 300, 320] },
+          ceiling: { times: [1200, 1210, 1220], values: [300, 300, 320] },
         })}
       />,
     );
@@ -1053,7 +1064,7 @@ describe("DiveProfileChart legend group name", () => {
     // this chart polices everywhere else, one level up in the tree.
     const { rerender } = render(
       <DiveProfileChart
-        profile={longProfile({ events: [{ t: 600, type: "bookmark" }] })}
+        profile={longProfile({ events: [{ time: 600, type: "bookmark" }] })}
       />,
     );
     expect(
@@ -1072,11 +1083,11 @@ describe("DiveProfileChart with markers but nothing plottable", () => {
   // axis, a row of ticks and a legend reading only "Markers", with nothing
   // saying why it is bare.
   const markersOnly: DiveProfile = {
-    duration_seconds: 3000,
+    duration: 3000,
     depth: null,
     temperature: null,
-    pressure: [],
-    events: [{ t: 600, type: "bookmark" }],
+    pressures: [],
+    events: [{ time: 600, type: "bookmark" }],
   };
 
   it("says the file recorded no samples, which markers are not", () => {
@@ -1096,7 +1107,7 @@ describe("DiveProfileChart remembered selection that plots no curve here", () =>
   // `events` leaves the chart with marker ticks, no curve, no axis - and no message,
   // since the overlay stands down while the markers are up.
   const depthAndMarkers = longProfile({
-    events: [{ t: 600, type: "bookmark" }],
+    events: [{ time: 600, type: "bookmark" }],
   });
 
   it("falls back to the curves this dive does have", () => {

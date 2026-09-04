@@ -23,17 +23,17 @@ import {
 
 function profile(overrides: Partial<DiveProfile> = {}): DiveProfile {
   return {
-    duration_seconds: 30,
-    depth: { t: [0, 10, 20, 30], v: [139, 372, 632, 88] },
-    temperature: { t: [0, 10, 20, 30], v: [219, 219, 218, 220] },
-    pressure: [{ gas_number: 1, t: [0, 10], v: [2052, 2041] }],
+    duration: 30,
+    depth: { times: [0, 10, 20, 30], values: [139, 372, 632, 88] },
+    temperature: { times: [0, 10, 20, 30], values: [219, 219, 218, 220] },
+    pressures: [{ gas_number: 1, times: [0, 10], values: [2052, 2041] }],
     events: [],
     ...overrides,
   };
 }
 
 function event(overrides: Partial<DiveProfileEvent> = {}): DiveProfileEvent {
-  return { t: 0, type: "gas_switch", ...overrides };
+  return { time: 0, type: "gas_switch", ...overrides };
 }
 
 describe("toChannelSeries", () => {
@@ -47,7 +47,7 @@ describe("toChannelSeries", () => {
 
   it("converts tenths of a degree without floating-point noise", () => {
     const series = toChannelSeries(
-      profile({ temperature: { t: [0], v: [206] } }),
+      profile({ temperature: { times: [0], values: [206] } }),
       "temperature",
       "metric",
     );
@@ -63,7 +63,11 @@ describe("toChannelSeries", () => {
 
   it("returns null for an empty channel rather than an empty series", () => {
     expect(
-      toChannelSeries(profile({ depth: { t: [], v: [] } }), "depth", "metric"),
+      toChannelSeries(
+        profile({ depth: { times: [], values: [] } }),
+        "depth",
+        "metric",
+      ),
     ).toBeNull();
   });
 
@@ -81,9 +85,9 @@ describe("toPressureSeries", () => {
   it("keeps each cylinder separate and labelled by its gas number", () => {
     const series = toPressureSeries(
       profile({
-        pressure: [
-          { gas_number: 0, t: [0, 10], v: [2074, 2051] },
-          { gas_number: 3, t: [0], v: [1500] },
+        pressures: [
+          { gas_number: 0, times: [0, 10], values: [2074, 2051] },
+          { gas_number: 3, times: [0], values: [1500] },
         ],
       }),
       "metric",
@@ -94,7 +98,7 @@ describe("toPressureSeries", () => {
   });
 
   it("is an empty list when no transmitter recorded anything", () => {
-    expect(toPressureSeries(profile({ pressure: [] }), "metric")).toEqual([]);
+    expect(toPressureSeries(profile({ pressures: [] }), "metric")).toEqual([]);
   });
 });
 
@@ -103,7 +107,7 @@ describe("toChannelSeries for the ceiling", () => {
     // 300 cm is a 3.0 m ceiling - the commonest stop depth there is, and it has
     // to come out as the same number a 300 cm *depth* would.
     const ceiling = toChannelSeries(
-      profile({ ceiling: { t: [730, 940], v: [300, 323] } }),
+      profile({ ceiling: { times: [730, 940], values: [300, 323] } }),
       "ceiling",
       "metric",
     );
@@ -163,9 +167,9 @@ describe("depthDomain", () => {
 
 describe("nearestEvent", () => {
   const events = [
-    event({ t: 0, type: "gas_switch", gas_number: 0 }),
-    event({ t: 497, type: "other", label: "NoDecoTime" }),
-    event({ t: 2075, type: "gas_switch", gas_number: 1 }),
+    event({ time: 0, type: "gas_switch", gas_number: 0 }),
+    event({ time: 497, type: "other", label: "NoDecoTime" }),
+    event({ time: 2075, type: "gas_switch", gas_number: 1 }),
   ];
 
   it("finds the closest marker within the tolerance", () => {
@@ -179,25 +183,29 @@ describe("nearestEvent", () => {
   });
 
   it("prefers the nearer of two markers on either side", () => {
-    expect(nearestEvent(events, 300, 600)?.t).toBe(497);
-    expect(nearestEvent(events, 200, 600)?.t).toBe(0);
+    expect(nearestEvent(events, 300, 600)?.time).toBe(497);
+    expect(nearestEvent(events, 200, 600)?.time).toBe(0);
   });
 
   it("gives a tie to the earlier marker, whatever order it arrived in", () => {
     expect(
-      nearestEvent([event({ t: 100 }), event({ t: 200 })], 150, 60)?.t,
+      nearestEvent([event({ time: 100 }), event({ time: 200 })], 150, 60)?.time,
     ).toBe(100);
     // The half that array order alone would get wrong: the later marker is
     // listed first, and "earlier event" has to mean earlier in time.
     expect(
-      nearestEvent([event({ t: 200 }), event({ t: 100 })], 150, 60)?.t,
+      nearestEvent([event({ time: 200 }), event({ time: 100 })], 150, 60)?.time,
     ).toBe(100);
   });
 
   it("does not assume the list arrived sorted", () => {
-    const unsorted = [event({ t: 900 }), event({ t: 60 }), event({ t: 400 })];
+    const unsorted = [
+      event({ time: 900 }),
+      event({ time: 60 }),
+      event({ time: 400 }),
+    ];
 
-    expect(nearestEvent(unsorted, 70, 30)?.t).toBe(60);
+    expect(nearestEvent(unsorted, 70, 30)?.time).toBe(60);
   });
 
   it("is null on a dive with no markers", () => {
@@ -205,8 +213,8 @@ describe("nearestEvent", () => {
   });
 
   it("includes a marker exactly at the tolerance", () => {
-    expect(nearestEvent([event({ t: 100 })], 160, 60)?.t).toBe(100);
-    expect(nearestEvent([event({ t: 100 })], 161, 60)).toBeNull();
+    expect(nearestEvent([event({ time: 100 })], 160, 60)?.time).toBe(100);
+    expect(nearestEvent([event({ time: 100 })], 161, 60)).toBeNull();
   });
 });
 
@@ -379,7 +387,7 @@ describe("describeEvent", () => {
     // was told is one of five. Without the `default` the switch fell off the end
     // and returned `undefined` from a function typed `: string`.
     const rogue = {
-      t: 10,
+      time: 10,
       type: "ndl_violation",
       label: "NDL Violation",
     } as unknown as DiveProfileEvent;
@@ -387,7 +395,7 @@ describe("describeEvent", () => {
     expect(describeEvent(rogue)).toBe("NDL Violation");
     expect(
       describeEvent({
-        t: 10,
+        time: 10,
         type: "ndl_violation",
       } as unknown as DiveProfileEvent),
     ).toBe("Device event");
@@ -594,7 +602,7 @@ describe("the imperial display layer", () => {
   it("converts pressure into psi", () => {
     const series = toPressureSeries(
       profile({
-        pressure: [{ gas_number: 1, t: [0], v: [2000] }],
+        pressures: [{ gas_number: 1, times: [0], values: [2000] }],
       }),
       "imperial",
     );
@@ -608,8 +616,8 @@ describe("the imperial display layer", () => {
   // would drift off the curve it bounds.
   it("converts the ceiling exactly as it converts depth", () => {
     const withCeiling = profile({
-      depth: { t: [0], v: [3048] },
-      ceiling: { t: [0], v: [3048] },
+      depth: { times: [0], values: [3048] },
+      ceiling: { times: [0], values: [3048] },
     });
 
     expect(toChannelSeries(withCeiling, "ceiling", "imperial")?.values).toEqual(
