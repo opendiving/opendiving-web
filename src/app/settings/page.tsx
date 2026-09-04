@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AvatarCard } from "@/components/settings/avatar-card";
 import { DataExportCard } from "@/components/settings/data-export-card";
+import { DataImportCard } from "@/components/settings/data-import-card";
 import { DeleteAccountCard } from "@/components/settings/delete-account-card";
 import { DeviceMemoryCard } from "@/components/settings/device-memory-card";
 import { EmailChangeCard } from "@/components/settings/email-change-card";
@@ -211,6 +212,13 @@ export default function SettingsPage() {
           four lines. */}
       <div className="mt-8">
         <DataExportCard username={user.username} />
+      </div>
+
+      {/* Directly under the export card and full width for the same reason: it is
+          the other half of the same promise, and its report table needs the room
+          the two-column grid above would not give it. */}
+      <div className="mt-8">
+        <DataImportCard />
       </div>
 
       <div className="mt-8">
