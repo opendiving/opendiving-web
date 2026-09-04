@@ -23,12 +23,13 @@ export interface DiveStartTimeFieldProps extends FormControlSlotProps {
 }
 
 // A date/time picker plus a UTC offset select, combined into the single
-// offset-aware `start_time` string the API expects. This is the *only* place
-// that splits/recombines that string into the wall-clock + offset pair the
-// two underlying inputs actually edit (`splitStartTime()`/`combineStartTime()`
-// in `lib/date-time.ts`) - every caller of this component (the dive
-// create/edit forms, file import) only ever has to deal with one field, in
-// exactly the format the API already uses.
+// `start_time` string the API expects - offset-aware, or carrying no offset
+// where the dive's own zone was never recorded. This is the *only* place that
+// splits/recombines that string into the wall-clock + offset pair the two
+// underlying inputs actually edit (`splitStartTime()`/`combineStartTime()` in
+// `lib/date-time.ts`) - every caller of this component (the dive create/edit
+// forms, file import) only ever has to deal with one field, in exactly the
+// format the API already uses.
 export function DiveStartTimeField({
   value,
   onChange,

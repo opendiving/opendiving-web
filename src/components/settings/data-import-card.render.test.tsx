@@ -102,9 +102,9 @@ describe("the logbook import card", () => {
   });
 
   it("gives restored its own column rather than folding it into created", async () => {
-    // The plan's own requirement and the API's: `restored` never hides inside
-    // `created` or `skipped`, because un-deleting is the one thing import does
-    // that nothing else in the app can.
+    // The API keeps the four counts disjoint on purpose: `restored` never hides
+    // inside `created` or `skipped`, because un-deleting is the one thing import
+    // does that nothing else in the app can.
     mocks.preview.mockResolvedValue(
       preview({
         collections: [

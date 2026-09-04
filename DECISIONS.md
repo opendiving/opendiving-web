@@ -14422,7 +14422,7 @@ drop the dive. The API accepts it, stores `utc_offset_minutes` as NULL, and send
 `new Date(isoString).getTime() + (parseUtcOffsetMinutes(isoString) ?? 0) * 60_000`, and **ECMAScript
 parses a date-time with no offset as _local_**. So the `?? 0` was not the whole of it: the instant
 was already wrong before the zero was added. A dive logged at 11:49 with no recorded offset
-displayed as 08:49 in UTC+03:00 and 15:49 in UTC-03:00 — shifted by the _viewer's_ offset, a number
+displayed as 08:49 in UTC+03:00 and 14:49 in UTC-03:00 — shifted by the _viewer's_ offset, a number
 with nothing to do with the dive — through `formatDiveDateTime`, `formatDiveTimeOnly`,
 `formatDiveStartTime` and `diveWallClockTime` alike, with `formatDiveStartTime` then printing
 `(UTC+00:00)` beside the wrong hour.
@@ -14541,11 +14541,12 @@ plainly, not invent alarm about a sentence it cannot interpret.
 
 ## A sentence about what one format lacks is a claim about all of them, and import made that bite twice
 
-`web-1` learned this adding a fourth export row — the UDDF row's "ride in the archive instead" and
-the CSV row's "ships inside the archive" were claims about DiveJSON written before DiveJSON existed.
-Adding _import_ produces the mirror, and it is easier to walk into: every sentence that presented
-portability as a one-way door is now half a statement, and none of them contains the word "import"
-to be found by.
+The change that added a fourth export row learned this the hard way — the UDDF row's "ride in the
+archive instead" and the CSV row's "ships inside the archive" were claims about DiveJSON written
+before DiveJSON existed (see _"A fourth export row, and the count came out of the sentences around
+it"_). Adding _import_ produces the mirror, and it is easier to walk into: every sentence that
+presented portability as a one-way door is now half a statement, and none of them contains the word
+"import" to be found by.
 
 Two were caught by writing them wrong first. The landing page's three-up strip read "DiveJSON, UDDF,
 CSV or a full archive, one click"; widening it to "out and back" would have promised a UDDF and a
@@ -14562,7 +14563,7 @@ as the whole story. Narrow it by shipping one of the two, never by softening it.
 
 **`app/privacy/` is the blind spot, and it is eleven claims rather than the one an export sweep
 finds.** Not one of them names a format, which is exactly why `git grep -niwE "uddf|three"` reaches
-none. They fall in four groups, and only the first is about export at all:
+none. They fall in five groups, and only the first is about export at all:
 
 - **Settings capability lists** — §6.1's list, §6.2's Portability right, and §13's "Exporting
   everything you have entered and deleting your account are both buttons in Settings". Each now
@@ -14599,6 +14600,6 @@ spelled as a word next to a list it counts is this page's most reliable way of g
 
 **`settings/page.tsx`'s wrapper comment says "the four rows each", and it stays.** The count is
 about `DataExportCard`'s rows, which this change does not touch — the import card is a **sibling**
-of that card, not a fifth row in it. `web-1` updated that number rather than deleting it, and a
-`-w three` sweep no longer matches the comment at all, which is how an earlier reading concluded it
-was gone. Read it before assuming either.
+of that card, not a fifth row in it. The fourth-row change updated that number rather than deleting
+it, and a `-w three` sweep no longer matches the comment at all, which is how an earlier reading
+concluded it was gone. Read it before assuming either.
