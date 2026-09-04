@@ -62,6 +62,46 @@ describe("diveCreateSchema start_time", () => {
   });
 });
 
+// The create and update schemas deliberately disagree about the offset, and the
+// asymmetry is the thing worth pinning: a *new* dive always has a zone to state,
+// while an edit may be of a dive imported with none. The API accepts an offsetless
+// `start_time` only where the dive's stored offset is already NULL - a rule that
+// turns on the row, which no client-side schema can see - so the form checks the
+// shape and the server checks the rule. A client that refused it here would make
+// an imported dive's wall clock uncorrectable.
+describe("diveUpdateSchema start_time", () => {
+  it("accepts an offsetless datetime, unlike the create schema", () => {
+    expect(
+      diveUpdateSchema.safeParse({ start_time: "2026-04-17T11:49:23" }).success,
+    ).toBe(true);
+    // The same value against the create schema, so the two are pinned as a pair
+    // rather than as one rule that could be relaxed in both by accident.
+    expect(
+      diveCreateSchema.safeParse({
+        ...validDive,
+        start_time: "2026-04-17T11:49:23",
+      }).success,
+    ).toBe(false);
+  });
+
+  it("still accepts an offset-aware datetime", () => {
+    // Adopting a real offset is the only exit from the unknown state, so this
+    // direction must never become the casualty of relaxing the other.
+    expect(
+      diveUpdateSchema.safeParse({ start_time: "2026-04-17T11:49:23+03:00" })
+        .success,
+    ).toBe(true);
+  });
+
+  it("still rejects an empty or unparseable start_time", () => {
+    // Relaxed about the offset, not about being a datetime at all.
+    expect(diveUpdateSchema.safeParse({ start_time: "" }).success).toBe(false);
+    expect(diveUpdateSchema.safeParse({ start_time: "whenever" }).success).toBe(
+      false,
+    );
+  });
+});
+
 describe("diveCreateSchema duration", () => {
   it("accepts MM:SS with 1-3 digit minutes", () => {
     expect(

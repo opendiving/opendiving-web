@@ -42,13 +42,19 @@ interface ExportRow {
 //
 // DiveJSON leads because it is the complete one and the app's own format; the two lossy
 // rows below it are for handing to something else.
+//
+// Two of the four also come *back* - DiveJSON and the archive, through the import card
+// below this one - and each of those rows says so. The other two deliberately do not, and
+// that asymmetry is the point: a sentence about what one format can do is read as a claim
+// about the ones beside it, so "brings it back" on every row would promise a UDDF and a
+// CSV import that do not exist.
 const EXPORT_ROWS: ExportRow[] = [
   {
     format: "divejson",
     icon: FileJson,
     title: "DiveJSON",
     description:
-      "Your whole logbook in one file: every dive with its full sample profile, cylinders, sites, trips, courses, marine life, gear with its service history and your c-card records — everything in the account except the uploaded files themselves, which it names by digest. DiveJSON is the open dive-log format this project maintains, and this app is its reference implementation.",
+      "Your whole logbook in one file: every dive with its full sample profile, cylinders, sites, trips, courses, marine life, gear with its service history and your c-card records — everything in the account except the uploaded files themselves, which it names by digest. DiveJSON is the open dive-log format this project maintains, and this app is its reference implementation — so this is also the file the import card below reads back in.",
   },
   {
     format: "uddf",
@@ -69,7 +75,7 @@ const EXPORT_ROWS: ExportRow[] = [
     icon: FileArchive,
     title: "Full archive",
     description:
-      "Everything, as a zip: the DiveJSON, the UDDF, the full CSV set, every dive-computer file you imported and both sides of every certification card. Those card scans are personal documents — treat the file as one.",
+      "Everything, as a zip: the DiveJSON, the UDDF, the full CSV set, every dive-computer file you imported and both sides of every certification card. This is the one to keep as a backup — it is also the only download that can put those files back, since the import card below can restore bytes it actually carries. Those card scans are personal documents, so treat the file as one.",
   },
 ];
 
@@ -81,7 +87,9 @@ interface DataExportCardProps {
 
 // "Your data" on the settings page: four buttons, each handing back the whole logbook.
 // The product's promise is that nothing in an account is reachable only through this
-// app, and this card is the falsifiable half of it.
+// app, and this card is the half that can be checked by pressing a button. `DataImportCard`
+// below it is the other half - a copy nothing can read back is a copy in name only - and
+// the two together are what make the round trip a claim rather than an intention.
 //
 // Downloads go through the API client and a synthetic click rather than a plain
 // `<a href>` - the endpoints need an `Authorization` header, which a link cannot send

@@ -98,12 +98,14 @@ export interface Species extends SpeciesSummary {
  * half is the same subset `SpeciesSummary` carries, so a card renders without a
  * second request per row.
  *
- * **`first_seen` and `last_seen` are dive start times, so they carry the offset
- * of the dive behind each end of the range - not UTC.** That is the app-wide
+ * **`first_seen` and `last_seen` are dive start times, so each reads in the zone
+ * of the dive behind it - not UTC, and not the viewer's.** That is the app-wide
  * contract every dive-derived surface honours, and it means they are formatted
  * with `formatDiveDateTime`, never with `formatDateTime`. Re-deriving a local
  * time from either would report the viewer's clock for a dive logged in
- * Thailand; the error is invisible against any dive logged at `+00:00`.
+ * Thailand; the error is invisible against any dive logged at `+00:00`. An
+ * imported dive may carry no offset at all, and `formatDiveDateTime` renders
+ * that as the recorded wall clock with no zone claimed for it.
  */
 export interface SpeciesLifeListEntry {
   uuid: string;

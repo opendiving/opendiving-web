@@ -89,7 +89,13 @@ correctly still can't just go through `new Date(dateString)` and local getters.
 
 ## A dive's `start_time` displays/edits in its own timezone, never the browser's
 
-`Dive.start_time` is always an offset-aware ISO 8601 string, e.g.
+> **Amended when logbook import shipped.** This section's rule stands unchanged; its premise does
+> not. `Dive.start_time` is no longer _always_ offset-aware — an imported dive may carry no offset
+> at all, a third state that is neither UTC nor the viewer's zone. Read "never the browser's" as the
+> invariant it always was, and see _"An unknown UTC offset is a third state, and `new Date()` used
+> to silently invent one"_ for what the missing offset does to every helper named below.
+
+`Dive.start_time` is usually an offset-aware ISO 8601 string, e.g.
 `"2021-04-04T10:04:47.910+02:00"` - the offset is the dive's _own_ original timezone
 (wherever/whatever logged it), not the viewer's. A dive logged at 09:00 in Thailand should always
 show 09:00, whether it's viewed from Thailand, the US, or anywhere else.
@@ -102,18 +108,20 @@ The naive approach - `new Date(start_time)` then `.getHours()`/`toLocaleString()
 - `parseUtcOffsetMinutes()` extracts the embedded offset (or `null` for a naive string with none).
 - `formatDiveDateTime()`/`formatDiveTimeOnly()` (display) shift the underlying instant by that
   offset and format with `timeZone: "UTC"`, so `Intl`/`toLocaleDateString` reads the shifted instant
-  back as the original wall-clock time regardless of the browser's own zone.
+  back as the original wall-clock time regardless of the browser's own zone. Where the offset is
+  `null` there is no shift to make and the string is parsed _as_ UTC instead, which reads its digits
+  back unchanged - the same end, reached without inventing a zone.
 - `splitStartTime()`/`combineStartTime()` convert between that single string and a "YYYY-MM-DD
-  HH:mm:ss" wall-clock string + a UTC offset in minutes - the two pieces the underlying
-  `DateTimePicker`/`UtcOffsetSelect` inputs actually edit.
+  HH:mm:ss" wall-clock string + a UTC offset in minutes **or `null`** - the two pieces the
+  underlying `DateTimePicker`/`UtcOffsetSelect` inputs actually edit.
 
 `formatDateTime()`/`formatTimeOnly()` (plain, no `Dive`-prefix) are unaffected and still show the
 _viewer's_ browser-local time - correct for `created_at` and any other plain metadata timestamp,
 just not for a dive's `start_time`.
 
-**The form only ever has one `start_time` field**, in the exact offset-aware shape the API uses -
-there's no separate `start_time_utc_offset_minutes` form field to keep in sync with it.
-`DiveStartTimeField` (`components/dives/dive-start-time-field.tsx`) is the _only_ place that calls
+**The form only ever has one `start_time` field**, in the exact shape the API uses - there's no
+separate `start_time_utc_offset_minutes` form field to keep in sync with it. `DiveStartTimeField`
+(`components/dives/dive-start-time-field.tsx`) is the _only_ place that calls
 `splitStartTime()`/`combineStartTime()`: it renders the `DateTimePicker` + `UtcOffsetSelect` pair,
 splitting its single `value` prop for them to display and recombining their changes back into one
 string via `onChange`. Every caller - the create/edit forms, `dive-file-import.tsx`,
@@ -4827,6 +4835,14 @@ clock was on — as one line, and the card is gone. The offset stays because dro
 the time unverifiable: this app deliberately shows a dive in its own timezone rather than the
 viewer's (see _"A dive's `start_time` displays/edits in its own timezone, never the browser's"_),
 and `10:04` with nothing after it is a number the reader cannot check.
+
+**Amended when logbook import shipped: "all three parts" is now two or three, by what the dive
+records.** A dive imported from a DiveJSON document may carry no offset, and that line then prints
+the date and the clock and stops — no `(UTC+00:00)`, which is what it used to print for such a value
+on the reasoning that the API always sent one. The paragraph above still holds where an offset
+exists, and where none does the argument inverts: naming a zone the record does not have is the
+unverifiable claim, not omitting it. See _"An unknown UTC offset is a third state, and `new Date()`
+used to silently invent one"_.
 
 It is composed from `formatDiveDateTime` + `formatDiveTimeOnly` rather than asking `Intl` for the
 date and the time in one call. en-US does join them with `" at "`, but which separator a locale
@@ -14392,3 +14408,198 @@ and `lib/download.test.ts` use the extension as a generic attachment filename in
 `Content-Disposition` fixtures, and the landing page's "Still to come: Subsurface and UDDF import"
 is roadmap copy about the import direction, which this change does not touch. Classifying the sweep
 per line rather than per file is what keeps those three intact.
+
+## An unknown UTC offset is a third state, and `new Date()` used to silently invent one
+
+Logbook import gave `Dive.start_time` a shape it had never had: no offset at all. The format admits
+an offset-less local date-time as a defined state — the wall clock was recorded, the instant is
+genuinely unknown — so that a converter reading a source with no zone never has to fabricate one or
+drop the dive. The API accepts it, stores `utc_offset_minutes` as NULL, and sends it back as
+`2026-04-17T11:49:23`.
+
+**Web did not have a labelling bug about this. It had a parsing bug, and it moved the clock.**
+`shiftByEmbeddedOffset` computed
+`new Date(isoString).getTime() + (parseUtcOffsetMinutes(isoString) ?? 0) * 60_000`, and **ECMAScript
+parses a date-time with no offset as _local_**. So the `?? 0` was not the whole of it: the instant
+was already wrong before the zero was added. A dive logged at 11:49 with no recorded offset
+displayed as 08:49 in UTC+03:00 and 14:49 in UTC-03:00 — shifted by the _viewer's_ offset, a number
+with nothing to do with the dive — through `formatDiveDateTime`, `formatDiveTimeOnly`,
+`formatDiveStartTime` and `diveWallClockTime` alike, with `formatDiveStartTime` then printing
+`(UTC+00:00)` beside the wrong hour.
+
+**In UTC it looked correct**, which is why it survived. The digits come back right when the viewer's
+offset is zero, so a developer in UTC, and CI, both see the intended output. Reproduced before
+fixing:
+
+```
+TZ=Europe/Nicosia   → Friday, April 17, 2026 at 08:49 (UTC+00:00)
+TZ=America/New_York → Friday, April 17, 2026 at 15:49 (UTC+00:00)
+TZ=UTC              → Friday, April 17, 2026 at 11:49 (UTC+00:00)
+```
+
+The edit path inherited the same shift rather than introducing one of its own. `splitStartTime` gave
+`DiveStartTimeField` `{localDateTime: "2026-04-17 08:49:23", offsetMinutes: 0}`, so the first save
+of an imported dive wrote `2026-04-17T08:49:23+00:00` — **the wrong hour _and_ a fabricated
+offset**, silently rewriting a record the diver had not touched. `getBrowserUtcOffsetMinutes()` was
+never involved: it is reached only when the field has no value at all, which is a new dive.
+
+**The fix is that `parseUtcOffsetMinutes`'s `null` survives.** It already returned `number | null`
+and every caller collapsed it. Now `shiftByEmbeddedOffset` parses an offset-less value _as UTC_
+(appending `Z`, so the UTC getters read its digits back unchanged) and returns
+`offsetMinutes: null`; `splitStartTime` passes that out, `combineStartTime` writes no offset when it
+gets one back, and `formatDiveStartTime` prints no zone. Only then is there anything for a UI to
+represent — an "unknown" option with no value behind it is decoration.
+
+`UtcOffsetSelect` gains **"Not recorded"**, and it is `allowUnknown`-gated rather than always
+present. The option appears only while the value in hand already lacks an offset, so it can never be
+used to _remove_ one: the API refuses an offsetless `start_time` on a dive that has any offset (`0`
+included, since the column's server default is `0` and the guard is `is not None`), and a control
+that offers what the server will refuse is worse than no control. The accepted cost is that adopting
+a real offset is one-way inside an unsaved edit — cancel and reopen to get back — which is the right
+way round for a state whose only origin is import.
+
+**The date and time picker stays live while "Not recorded" is selected**, deliberately. The wall
+clock is the half that _was_ recorded, so a typo in it is still the diver's to fix, and the API
+accepts an offsetless `start_time` on such a dive and leaves it NULL. The invariant on the save path
+is that nothing the form sends ever carries an offset the diver did not choose — not the browser's,
+not `+00:00`, not one recovered from a previous render.
+
+**`validations/dive.ts` splits into two fields, and the asymmetry is the point.** `dateTimeField()`
+keeps the offset requirement for `diveCreateSchema`; `updatedDateTimeField()` drops it for
+`diveUpdateSchema`. The client cannot apply the real rule — it turns on the dive's _stored_ offset,
+which the form cannot see and must not re-derive from the value it is itself editing — so the client
+checks the shape and the server checks the rule. The refusal arrives as **HTTP 422 with a flat
+`{"detail": "<sentence>"}`**, not the per-field array a Pydantic field error produces, which is one
+more reason every call site goes through `getApiErrorMessage` rather than reading `detail`
+structurally.
+
+**Two write paths keep stamping the browser's offset on, and that is correct.** `lib/api/dives.ts`'s
+`/dives/next-number` query parameter and `renumber-dives-dialog.tsx`'s `from_start_time` both name
+an _instant_ to order dives against, which an offsetless wall clock cannot do; both are
+offset-required on the API. Neither is editing a dive's own recorded zone, so neither has an unknown
+state to preserve. They turn up in any `utc_offset|combineStartTime` sweep and should be classified
+rather than "fixed".
+
+**A test that mocks `getTimezoneOffset()` cannot catch this**, and the existing "never converts
+through the browser's own timezone" test is the proof:
+`vi.spyOn(Date.prototype, "getTimezoneOffset")` does not change how `new Date(string)` _parses_,
+which is where the defect lived. So the regression tests are written to be timezone-independent
+instead — `splitStartTime` → `combineStartTime` round-tripping a naive string back to itself fails
+in **every** zone, UTC included, because the old code produced `...+00:00` there; likewise
+`formatDiveStartTime` no longer containing `UTC`. The digit-comparison tests beside them are
+load-bearing only outside UTC and say so in a comment.
+
+Pinning a non-UTC `TZ` for the whole `unit` project was considered and rejected: it would make those
+digit assertions load-bearing in CI, but one unrelated test (`app/goodbye`) is timezone-sensitive
+today, so the pin would have had to come with an unrelated fix. Worth revisiting as its own change.
+
+**What no suite test here can close** is the round trip: an offsetless dive imported, displayed,
+edited and re-exported with its wall clock and its missing offset both intact. jsdom renders no
+uploads, and every fixture logbook this app ships is entirely offset-aware. That check is a live
+one, and it has to be run in a **non-UTC** `TZ` — in UTC the broken code showed the right hour, so a
+walk performed there would have confirmed nothing.
+
+## The logbook import card renders a plan, not a result, and the two are one shape
+
+Import is two calls — `POST /import/divejson/preview`, then `POST /import/divejson` with the same
+file and the preview's `token` — and `DataImportCard` renders the report from each through one
+`ImportReportView`. That is deliberate rather than incidental: a preview a diver approved and the
+result they got back are only worth comparing if they look the same, which is the same reasoning
+behind the API modelling both as one `ImportReport`. The file is held in state beside the token
+because apply needs both; the API re-hashes the body and refuses a token minted for other bytes, so
+sending the token alone would fail against a real server and pass against a lax mock.
+
+**`restored` gets its own column and is never folded into `created`.** The four counts are disjoint
+on the wire precisely so a diver restoring a backup can see how much of it actually came back —
+un-deleting is the one thing import does that nothing else in the app can. A total row that absorbed
+restores into "new" would destroy the only number that answers the question the diver came with.
+
+**Notes are a persistent element, never a toast.** A logbook import can return hundreds, and the
+diver has to still be able to read them _while deciding whether to apply_ — the `MixtureImportNotes`
+discipline from the dive form, raised from one dive to a whole logbook. Where `notes_truncated` is
+non-zero the list is a **prefix** and the UI says so, along with the fact that the counts above it
+are not truncated: without that line a 600-note import renders 500 notes as though they were all of
+them, and the numbers and the list would be read as equally complete.
+
+**A bare document's `not_contained` files are the expected case, not damage.** A document references
+its stored files by digest and carries none of their bytes, so `restored: 0` and
+`not_contained: <every referenced file>` is what a correct document import looks like.
+`noteIsWarning` therefore excludes `file_not_contained`, and `fileRestoreHint` names the move —
+import the archive — rather than reporting a fault. Colouring the ordinary case amber would teach
+divers to ignore the colour.
+
+**The two remap codes are rendered as two sentences because they are two contracts.**
+`record_remapped_references_follow` and `record_remapped_references_stay` are named for what
+happened to _other_ records' references, not for the cause, so one value read on its own settles
+what a client should do. They were one code (`record_remapped`) until the API split them, and the
+messages were already distinct — it was branching on prose that the split removed the need for.
+
+`noteIsWarning` treats an unrecognised code as information rather than as a warning, on the same
+forward-compatibility stance `certificationAgencyLabel` takes for an unknown agency and
+`collectionLabel` for an unknown collection: a build that predates a note type should render it
+plainly, not invent alarm about a sentence it cannot interpret.
+
+## A sentence about what one format lacks is a claim about all of them, and import made that bite twice
+
+The change that added a fourth export row learned this the hard way — the UDDF row's "ride in the
+archive instead" and the CSV row's "ships inside the archive" were claims about DiveJSON written
+before DiveJSON existed (see _"A fourth export row, and the count came out of the sentences around
+it"_). Adding _import_ produces the mirror, and it is easier to walk into: every sentence that
+presented portability as a one-way door is now half a statement, and none of them contains the word
+"import" to be found by.
+
+Two were caught by writing them wrong first. The landing page's three-up strip read "DiveJSON, UDDF,
+CSV or a full archive, one click"; widening it to "out and back" would have promised a UDDF and a
+CSV import that do not exist. It stays "one click", and the import half is stated in the paragraph
+above it, naming the two formats it is actually true of. The export card's rows now say which of the
+four come back — DiveJSON and the archive — and deliberately leave the other two silent rather than
+gaining a symmetric sentence each.
+
+**The landing page's "Still to come: Subsurface and UDDF import" was re-judged and kept.** It names
+two importers that genuinely are still to come and never claimed import in general was missing. What
+made it safe to keep is that the page now says elsewhere that DiveJSON and the archive read back in;
+without that, the line would have been the only thing on the page about import and would have read
+as the whole story. Narrow it by shipping one of the two, never by softening it.
+
+**`app/privacy/` is the blind spot, and it is eleven claims rather than the one an export sweep
+finds.** Not one of them names a format, which is exactly why `git grep -niwE "uddf|three"` reaches
+none. They fall in five groups, and only the first is about export at all:
+
+- **Settings capability lists** — §6.1's list, §6.2's Portability right, and §13's "Exporting
+  everything you have entered and deleting your account are both buttons in Settings". Each now
+  claims the import half too.
+- **Rate-limit disclosures** — §2.2's "things you can only do signed in, such as exporting your
+  data…" and its hour-bucket list. Both went stale the moment the API added two per-user
+  rate-limited import endpoints, and neither mentions a format.
+- **Species trigger claims** — §4.6 tied every outside request to the species picker: "if you then
+  pick a species…", "nothing is sent at all if you never open the species picker", and the Wikimedia
+  Commons paragraph's "at that same moment". The import's species pre-pass reaches WoRMS, Wikidata
+  **and** Commons with no picker involved at all.
+- **Closed enumerations of how coordinates arrive** — §2.3's "Location reaches this server two ways"
+  with its two bullets, now three, and §4.4's "either from the site it was logged at or from the GPS
+  reading in the file it was imported from", now a triple. An import writes positions straight from
+  the document with no dive-computer file anywhere.
+- **How stored files come to be here** — §2.1's Dive-Computer Files entry said those files arrive
+  "when you import a dive from a dive computer", which an archive import falsifies: it carries the
+  bytes and puts them back. The eleventh, found only by reading the section rather than by any of
+  the patterns above, which is the usual way the last one turns up.
+
+The probe is
+`git grep -niE "export|portab|species|coordinat|GPS|location reaches" -- src/app/privacy/` — the
+**directory**, because `page.test.tsx` pins several of these sentences — and the last four patterns
+exist because the export-facing two reach neither the species claims nor the location ones. Treat
+eleven as a floor: this page's census has come out short at every single round that looked at it (1
+→ 6 → 8 → 9 → 11), which is the standing lesson about enumerations working exactly as advertised.
+
+**The species and location claims now have pins, and the reason they had none is worth keeping.**
+`page.test.tsx`'s §4.6 test asserted only _which_ outside services are named, never _what triggers
+them_ — so the section could go stale on timing while staying green on substance, which is precisely
+what happened. There is now a test for the trigger half, and §2.3's "two/three ways" count is
+checked against the length of the list under it the way §10's and §2.2's already were. A number
+spelled as a word next to a list it counts is this page's most reliable way of going quietly wrong.
+
+**`settings/page.tsx`'s wrapper comment says "the four rows each", and it stays.** The count is
+about `DataExportCard`'s rows, which this change does not touch — the import card is a **sibling**
+of that card, not a fifth row in it. The fourth-row change updated that number rather than deleting
+it, and a `-w three` sweep no longer matches the comment at all, which is how an earlier reading
+concluded it was gone. Read it before assuming either.

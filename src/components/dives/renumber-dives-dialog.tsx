@@ -36,6 +36,12 @@ const PREVIEW_DEBOUNCE_MS = 350;
 // timezone that week. The alternative - asking for a date *and* a timezone -
 // buys precision nobody needs to split a log into "the old part" and "the
 // recent part", which is the only thing this control is for.
+//
+// This is one of the two remaining write paths that stamps the browser's offset
+// on, and it stays that way while the display and edit paths stop: it names an
+// *instant* to compare dives against, and `DiveRenumberRequest.from_start_time`
+// is offset-required on the API for that reason. Nothing here is editing a
+// dive's own recorded zone, so there is no unknown state to preserve.
 function scopeStartTime(date: string): string | undefined {
   if (!date) return undefined;
   return combineStartTime(`${date} 00:00:00`, getBrowserUtcOffsetMinutes());

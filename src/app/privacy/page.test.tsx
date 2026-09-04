@@ -257,6 +257,56 @@ describe.each([
     ).toBeInTheDocument();
   });
 
+  // The *trigger* half of §4.6, which had no pin at all and went stale the moment
+  // logbook import shipped: the section used to tie every one of those outside
+  // requests to the species picker, and import reaches all three services with no
+  // picker involved. The test above asserts only *which* services are named, so
+  // nothing failed when *when* became wrong - the exact shape of staleness this
+  // page keeps producing, and the reason these are separate assertions.
+  it("§4.6 names importing as a second trigger for the species lookups", () => {
+    renderPage({ google });
+
+    // A logbook file reaching the registers without a picker.
+    expect(
+      screen.getByText(/without a picker being involved at all/i),
+    ).toBeInTheDocument();
+
+    // The Commons request has the same two triggers, not just the picker's one.
+    expect(
+      screen.getByText(
+        /whether the species came from the\s+picker or from a file you imported/i,
+      ),
+    ).toBeInTheDocument();
+
+    // And the "nothing is sent" promise now has to survive both doors being shut,
+    // not only the picker's.
+    const nothingSent = screen.getByText(
+      /If you never open the species picker/i,
+    ).textContent!;
+    expect(nothingSent).toMatch(/never import a file naming marine life/i);
+    expect(nothingSent).toMatch(/nothing is sent\s+at\s+all/i);
+  });
+
+  // §2.3 and §4.4 are closed enumerations of how coordinates arrive, and a
+  // closed enumeration is exactly what an import falsifies quietly: a document
+  // can carry positions with no dive-computer file and no pin-dropping involved.
+  // §2.3 counts its ways in words, so the count and the list have to agree.
+  it("§2.3 counts the ways location arrives, and the list agrees", () => {
+    renderPage({ google });
+
+    const sentence = screen.getByText(
+      /Location reaches this server \w+ ways/,
+    ).textContent!;
+    const claimed = NUMBER_WORDS.indexOf(
+      /Location reaches this server (\w+) ways/
+        .exec(sentence)![1]
+        .toLowerCase(),
+    );
+
+    expect(claimed).toBeGreaterThan(0);
+    expect(listAfterHeading(/2\.3 Location Information/)).toHaveLength(claimed);
+  });
+
   // §6.3 had no pin at all until the invitation email became its fourth
   // action-driven message, and the sentence that counts them - "Only the last of
   // those three is sent to your account's own address" - was exactly the kind of
