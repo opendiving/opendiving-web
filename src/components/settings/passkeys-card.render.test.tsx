@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { PasskeysCard } from "./passkeys-card";
 import { dismissPasskeyNudge } from "@/lib/passkey-nudge";
 import { memoryStorage, useStorage } from "@/test/memory-storage";
+import { localDay } from "@/test/local-day";
 
 // What only a render can reach: that the list is what a diver can act on - rename
 // it, revoke it, add to it - and that the card removes itself where none of that
@@ -81,8 +82,12 @@ describe("PasskeysCard", () => {
     render(<PasskeysCard />);
 
     expect(await screen.findByText("iPhone")).toBeInTheDocument();
-    expect(row("iPhone")).toHaveTextContent("Added Jan 12, 2026");
-    expect(row("iPhone")).toHaveTextContent("Last used Feb 3, 2026");
+    expect(row("iPhone")).toHaveTextContent(
+      `Added ${localDay(IPHONE.created_at)}`,
+    );
+    expect(row("iPhone")).toHaveTextContent(
+      `Last used ${localDay(IPHONE.last_used_at)}`,
+    );
     // A passkey that has never signed anyone in says so, rather than showing a
     // dash the diver has to interpret.
     expect(row("YubiKey")).toHaveTextContent("Never used");

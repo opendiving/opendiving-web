@@ -14392,3 +14392,124 @@ and `lib/download.test.ts` use the extension as a generic attachment filename in
 `Content-Disposition` fixtures, and the landing page's "Still to come: Subsurface and UDDF import"
 is roadmap copy about the import direction, which this change does not touch. Classifying the sweep
 per line rather than per file is what keeps those three intact.
+
+## A fixture meaning "in the future" is derived, never written down
+
+`goodbye/page.render.test.tsx` has a case called "names the day everything is erased", and what it
+exists to pin is the branch `GoodbyeContent` takes when the purge date is **still ahead** — the one
+that says "nothing has been erased yet" and names the day. Its fixture was the literal
+`"2026-09-04T12:00:00Z"`. At midday UTC on 4 September 2026 that stopped being ahead, the page took
+its `deadlinePassed` branch instead, and the test went red on `main` in every timezone on earth —
+CI's `TZ=UTC` included. Nothing about the page had changed. The clock had.
+
+**The literal was not the mistake; writing a relative fact as an absolute one was.** The fixture's
+role in that assertion is not "4 September 2026", it is "a date this test's `Date.now()` has not
+reached yet", and only one of those two can be written down. So it is computed:
+
+```ts
+const ahead = new Date();
+ahead.setUTCDate(ahead.getUTCDate() + 30);
+ahead.setUTCHours(12, 0, 0, 0);
+```
+
+Three things about that shape are load-bearing. **Midday UTC survives, and for its original reason**
+— the page renders the date in the reader's own timezone, so a midnight fixture lands on different
+days either side of the world and the day the test asserts stops being the day the page prints. The
+rewrite kept that reasoning rather than dropping it as incidental; a derived fixture inherits every
+constraint the literal had. **Thirty days out is aimed at no month boundary in particular**, which
+is exactly why the assertions read the month name and year off `ahead` itself rather than off a
+guess — `ahead.toLocaleDateString("en-US", { month: "long" })`, not `"September"`. A derived fixture
+with a hardcoded assertion beside it is the same bug wearing a different hat: it breaks on the first
+of a month instead of on a fixed instant. **And the past-facing cases in the same file keep their
+literals.** `"2020-01-01T12:00:00Z"` means "already behind us" and always will; a date in the past
+is a stable fact and deriving it would only add noise.
+
+**The two places this class of bug looks most likely to live are immune, and the reason is worth
+copying rather than the outcome.** Certification expiry and gear service scheduling both render
+"expires in N days" branches off a comparison with today, and between them own most of the future
+dates in the suite — `"2027-08-10"`, `"2030-01-01"`, `"2028-01-01"`. None of them can rot, because
+`certification.ts` and `gear-service.ts` do not read the clock where the comparison happens: every
+one of `certificationExpiryStatus`, `certificationRenewals`, `serviceStatus`, `worstServiceStatus`
+and `formatServiceDue` takes `today` as a trailing parameter defaulting to `todayIsoDate()`, and
+every test passes it explicitly from one `const TODAY = "2026-08-10"`. With both ends of the
+comparison pinned, the literal on the other end is as safe as the arithmetic. **Injecting the clock
+is the stronger fix than deriving the fixture**, and where a helper is being written from scratch it
+is the one to reach for; deriving is what you do when the clock is already inside the thing under
+test, as it is inside `GoodbyeContent`.
+
+**Where the next one gets planted is the components, not the helpers.** The call sites that render
+those statuses all omit the `today` argument and take the real-clock default, so a render test for
+any of them is written against `Date.now()` whether or not its author notices:
+
+```
+git grep -nE "certificationExpiryStatus\(|certificationRenewals\(|worstServiceStatus\(|serviceStatus\(|formatServiceDue\(" \
+  -- 'src/**' ':!src/lib/certification.ts' ':!src/lib/gear-service.ts' ':!*.test.*'
+```
+
+That currently names call sites in `app/certifications/page.tsx`, `certifications/`'s expiry card
+and view dialog, and `gear/`'s items card, service card and service-due card — most of which have no
+render test at all yet. The ones that do (`gear-service-card.render.test.tsx`,
+`certifications/page.render.test.tsx`) are safe only because their fixtures are comfortably past,
+which is luck rather than design. A test added there asserting "Due soon" or "Expiring soon" off a
+literal is the same bug again, and it will be dated far enough out that nobody sees it fail for
+months.
+
+**The census probe, and what it over-reports.**
+`git grep -nE "20[2-9][0-9]-[0-1][0-9]-[0-3][0-9]" -- 'src/**'` is the starting point but answers
+the wrong question: most of its couple of hundred hits are legitimately-past fixtures, comment
+examples like the `"2021-04-04T10:04:47+02:00"` that documents the dive start-time format wherever
+that string is parsed or produced, and the error message in `validations/dive.ts` that shows a diver
+what an offset-aware timestamp looks like. All of those are fine and none should be touched. The
+question to ask of each hit is not when the date is but **what it means to the assertion** — an
+expiry, a deadline, a purge date, a session still valid, a service not yet due. It also misses three
+date spellings entirely, which is why a sweep run on it alone reads clean: `new Date(2026, 7, 9)`,
+`Date.UTC(2026, 3, 17)` and the `{ year: 2025, month: 8, day: 11 }` fixtures in
+`dive-activity.test.ts`. Those turn out to be anchor-driven rather than clock-driven —
+`chart-period.ts` and `dive-activity.ts` never call `new Date()` for "now" — but that was worth
+confirming rather than assuming, and the confirming probe is the complement of the census:
+`git grep -nE "new Date\(\)|Date\.now\(\)|todayIsoDate\(\)" -- 'src/**' ':!*.test.*'` enumerates
+every place in the app that can read the clock at all, and it is short enough to read end to end.
+
+**Timezone corners are a separate axis and have to be run separately.** A fixture can be time-safe
+and still timezone-fragile, and the machine that runs the suite only ever proves one offset.
+`TZ=UTC`, `TZ=Pacific/Kiritimati` (UTC+14) and `TZ=Pacific/Midway` (UTC−11) are the corners worth
+running before believing a date change, because they are 25 hours apart and put any day-boundary
+error on screen. `TZ=UTC` alone is what CI runs and is the weakest of the three at finding this
+class.
+
+**Running those corners is what turned up the second half of this sweep, and it corrects a
+convention the tests already lean on.** Several fixtures carry a comment saying midday UTC was
+chosen "on purpose", the reasoning being that a midnight one lands on a different day either side of
+the world. That reasoning is right and the hour is still the best single choice, but **it does not
+buy what the comment implies.** UTC offsets run from −12 to +14 — a 26-hour spread, wider still than
+the 25 hours between the two corners named above — so no instant whatsoever renders as the same
+calendar day everywhere, and `12:00Z` is already 02:00 _the next day_ in Kiritimati. Midday UTC
+survives a ±12 world, not the real one.
+
+Three tests were red on `main` in one corner or the other, none of them visible to CI, carrying four
+bad assertions between them: `passkeys-card.render.test.tsx` ("Added Jan 12, 2026" _and_ "Last used
+Feb 3, 2026"), `admin/invites/page.render.test.tsx` ("Sep 1, 2026") and
+`invitations-card.render.test.tsx` ("Invited Sep 1, 2026"). Three and four are both right, for
+different things, and the gap between them is worth knowing when reading a failure list: a test
+stops at its first failed assertion, so `Last used` never executed on `main` and never appeared in a
+report, but it was wrong by the same arithmetic and is fixed by the same edit. Counting red tests
+undercounts the repair. None of the four had applied the convention in the first place — their
+fixtures sit at `08:30Z`, `09:00Z` and `10:00Z` — but that is the point rather than the excuse:
+moving them to `12:00Z` would have fixed `TZ=Pacific/Midway` and left `TZ=Pacific/Kiritimati`
+failing, so the convention was never the repair available here. The fix is the same move as the
+time-bomb one a paragraph up — **the expected day is derived from the fixture rather than written
+beside it** — through `localDay()` in `test/local-day.ts`, spelling out
+`toLocaleDateString("en-US", { year, month: "short", day })`. It is spelled out there rather than
+reusing `formatDateTime` so the shape the tests expect (short month, no time) stays pinned by the
+tests independently of the helper the cards call, and it is shared rather than repeated per file
+because the reasoning above is most of its length. What the assertion then means is "the date in
+this field, under this label", which is the behaviour actually worth pinning; the calendar
+arithmetic is `Intl`'s job and testing it here only encodes the runner's timezone into the suite.
+
+The two fixtures whose midday-UTC comments remain — `restore-account-card.render.test.tsx` and
+`auth/verify/page.render.test.tsx` — are fine, and it is worth knowing why so the next reader
+neither "fixes" them nor copies them as a pattern: both check `"September"` against a date sitting
+mid-month, so the one-day slip UTC+14 introduces changes nothing they assert. That is a property of
+those particular dates, not protection the convention provides. Both cards only _format_ the date
+they are handed, with no past/future branch anywhere in them, which is also why neither was a time
+bomb despite carrying the same literal that took `goodbye` down.

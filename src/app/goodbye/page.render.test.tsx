@@ -27,14 +27,28 @@ const pageText = () => document.body.textContent ?? "";
 
 describe("the goodbye screen", () => {
   it("names the day everything is erased", () => {
-    // Midday UTC on purpose: the date renders in the reader's own timezone, and a
-    // midnight one would land on a different day either side of the world.
-    withPurgeAfter("2026-09-04T12:00:00Z");
+    // Relative to now, not a literal, and that is the whole point: this case is
+    // "a date still ahead", and a hard-coded one stops being ahead on a date
+    // nobody is watching for. The 2026-09-04T12:00:00Z that used to sit here did
+    // exactly that at midday on 2026-09-04, turning every run afterwards - CI on
+    // main included - red for a reason that has nothing to do with the page.
+    //
+    // Midday UTC still, on the original reasoning: the date renders in the
+    // reader's own timezone, and a midnight one would land on a different day
+    // either side of the world. Thirty days out keeps it inside no month
+    // boundary in particular, so the month and year read off the same `Date` the
+    // page will format rather than off a guess about which they are.
+    const ahead = new Date();
+    ahead.setUTCDate(ahead.getUTCDate() + 30);
+    ahead.setUTCHours(12, 0, 0, 0);
+    withPurgeAfter(ahead.toISOString());
 
     render(<GoodbyePage />);
 
-    expect(pageText()).toContain("September");
-    expect(pageText()).toContain("2026");
+    expect(pageText()).toContain(
+      ahead.toLocaleDateString("en-US", { month: "long" }),
+    );
+    expect(pageText()).toContain(String(ahead.getFullYear()));
     expect(screen.getByText(/nothing has been erased yet/i)).toBeVisible();
   });
 

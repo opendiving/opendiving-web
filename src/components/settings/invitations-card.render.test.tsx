@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { InvitationsCard } from "./invitations-card";
+import { localDay } from "@/test/local-day";
 
 // What only a render can reach: that the three statuses are legible, that a send
 // costs one request rather than two, that revoking asks first, and that the whole
@@ -94,7 +95,9 @@ describe("InvitationsCard", () => {
     expect(
       within(row("revoked@example.com")).getByText("Revoked"),
     ).toBeVisible();
-    expect(row("pending@example.com")).toHaveTextContent("Invited Sep 1, 2026");
+    expect(row("pending@example.com")).toHaveTextContent(
+      `Invited ${localDay(PENDING.created_at)}`,
+    );
   });
 
   // The revoke control is offered against what the row actually is, not against

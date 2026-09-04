@@ -7,6 +7,7 @@ import {
   type AdminInvitationOutcome,
   type AdminInviteRequest,
 } from "@/lib/api/admin";
+import { localDay } from "@/test/local-day";
 
 const mocks = vi.hoisted(() => ({ toast: vi.fn() }));
 
@@ -104,7 +105,7 @@ describe("the invite queue", () => {
 
     const row = (await screen.findByText("first@example.com")).closest("tr");
     expect(row).not.toBeNull();
-    expect(row).toHaveTextContent("Sep 1, 2026");
+    expect(row).toHaveTextContent(localDay(request().created_at));
   });
 
   it("marks a request whose address already has an account", async () => {
