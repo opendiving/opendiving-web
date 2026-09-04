@@ -14493,6 +14493,15 @@ Pinning a non-UTC `TZ` for the whole `unit` project was considered and rejected:
 digit assertions load-bearing in CI, but one unrelated test (`app/goodbye`) is timezone-sensitive
 today, so the pin would have had to come with an unrelated fix. Worth revisiting as its own change.
 
+**That unrelated fix has since landed, and the blocker named above is gone** — see "A fixture
+meaning 'in the future' is derived, never written down" below. `app/goodbye` derives its fixture now
+rather than pinning one, and three further tests were found to be day-boundary fragile in the same
+sweep (`passkeys-card`, `admin/invites`, `invitations-card`) and fixed the same way; the count of
+one above was what a `TZ=UTC` run could see. The whole suite passes at `TZ=UTC`,
+`TZ=Pacific/Kiritimati` (UTC+14) and `TZ=Pacific/Midway` (UTC−11). The other half of the objection
+is untouched by that and still decides the question: a pin would make the digit assertions
+load-bearing in CI, which is a tradeoff to weigh rather than a blocker to clear.
+
 **What no suite test here can close** is the round trip: an offsetless dive imported, displayed,
 edited and re-exported with its wall clock and its missing offset both intact. jsdom renders no
 uploads, and every fixture logbook this app ships is entirely offset-aware. That check is a live
