@@ -4,8 +4,8 @@ import userEvent from "@testing-library/user-event";
 import { DataExportCard } from "./data-export-card";
 
 // The card holds no logic worth unit-testing - naming lives in `lib/api/export.ts` and
-// is tested there. What only a render reaches is the wiring between three visually
-// identical buttons and three different endpoints, and the two states a diver notices
+// is tested there. What only a render reaches is the wiring between four visually
+// identical buttons and four different endpoints, and the two states a diver notices
 // when it goes wrong: a spinner on the wrong row, or a failure that saves nothing and
 // says nothing.
 
@@ -72,9 +72,10 @@ function deferred() {
 }
 
 describe("DataExportCard", () => {
-  it("offers all three exports", () => {
+  it("offers all four exports", () => {
     render(<DataExportCard username="alex" />);
 
+    expect(downloadButton("DiveJSON")).toBeInTheDocument();
     expect(downloadButton("UDDF")).toBeInTheDocument();
     expect(downloadButton("Spreadsheet")).toBeInTheDocument();
     expect(downloadButton("Full archive")).toBeInTheDocument();
@@ -89,6 +90,9 @@ describe("DataExportCard", () => {
   });
 
   it.each([
+    // The label is the row's title and the format is the URL segment, which is exactly
+    // the pairing a fourth row could get wrong without any type disagreeing.
+    ["DiveJSON", "divejson"],
     ["UDDF", "uddf"],
     ["Spreadsheet", "csv"],
     ["Full archive", "archive"],
@@ -105,7 +109,7 @@ describe("DataExportCard", () => {
   });
 
   it("only busies the row being fetched", async () => {
-    // A shared boolean would grey out all three buttons because one is running, which
+    // A shared boolean would grey out all four buttons because one is running, which
     // reads as "the whole card is broken" on a download that takes a while - and the
     // archive is exactly the one that takes a while.
     const archive = deferred();
@@ -115,6 +119,7 @@ describe("DataExportCard", () => {
     await userEvent.click(downloadButton("Full archive"));
 
     await waitFor(() => expectInert(busyButton("Full archive")));
+    expectLive(downloadButton("DiveJSON"));
     expectLive(downloadButton("UDDF"));
     expectLive(downloadButton("Spreadsheet"));
 

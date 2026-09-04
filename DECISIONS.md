@@ -5149,7 +5149,7 @@ Two things follow from keeping a naming rule in two languages:
   nothing structural keeping the two in step, so the tests spell out the scrub cases (`Alex.Vesnin`,
   a username that scrubs to nothing) rather than only the happy path.
 
-Verified end-to-end against a real Chrome: all three buttons save
+Verified end-to-end against a real Chrome, back when the card had three rows: all three buttons save
 `opendiving-aleskiontherun-20260814.{uddf,csv,zip}`, and the CSV the browser saves is hash-identical
 to the one `curl` fetches. The UDDF differs by nine bytes between any two requests — the timestamp
 in its `<generator>` — and the zip likewise, so those two are equal modulo the clock, not
@@ -5157,8 +5157,8 @@ byte-equal.
 
 ## The whole export is buffered in browser memory, and the escape hatch is a signed URL
 
-All three exports are fetched with axios `responseType: "blob"` and saved through `downloadBlob`,
-which is the same path the dive source file and the c-card images take, and for the same reason: the
+Every export is fetched with axios `responseType: "blob"` and saved through `downloadBlob`, which is
+the same path the dive source file and the c-card images take, and for the same reason: the
 endpoints require an `Authorization` header, and a plain `<a href>` cannot send one because the
 access token lives in memory rather than in a cookie.
 
@@ -5179,7 +5179,7 @@ library on this side.
 ## Three buttons named "Download" need three accessible names
 
 The export card's rows are visually distinct — an icon, a title, a sentence of prose — and its
-buttons are not: all three read `Download`. A screen reader listing the page's buttons gets
+buttons are not: every one of them reads `Download`. A screen reader listing the page's buttons gets
 "Download, Download, Download" and no way to tell which file is which, so each carries an
 `aria-label` naming its row. The visible label stays one word, because the row above it has already
 said which file this is.
@@ -5211,9 +5211,9 @@ control slow enough that the announcement matters.
 
 **The busy state is a `Set<ExportFormat>`, and the two simpler shapes are both wrong.**
 
-- A **boolean** disables all three buttons because one of them is running. The archive is the
-  slowest of the three by an order of magnitude, so it is precisely the one that would make the
-  other two look broken for the length of its request.
+- A **boolean** disables every button because one of them is running. The archive is the slowest of
+  them by an order of magnitude, so it is precisely the one that would make the rest look broken for
+  the length of its request.
 - A **single `ExportFormat | null`** — which this shipped as, briefly — looks right until a diver
   does the thing the enabled buttons invite: start a second export while the first is still
   fetching. Both handlers' `finally` blocks run `setBusy(null)`, so whichever request lands first
@@ -5234,8 +5234,8 @@ possibly-large blob pinned for `REVOKE_DELAY_MS`. Annoying rather than expensive
 the `Set` and the handler's early return are for, and naming the wrong cost here would have sent the
 next person looking for a rate-limit bug that the client layer already prevents.
 
-Letting all three run at once is deliberate. The API rate-limits exports per user, so a diver firing
-all three is spending their own budget, which is their call to make rather than a state for this
+Letting them all run at once is deliberate. The API rate-limits exports per user, so a diver firing
+every row is spending their own budget, which is their call to make rather than a state for this
 card to prevent.
 
 ## `<` is the earlier dive, which is the opposite of what the log list would suggest
@@ -8200,11 +8200,10 @@ replacements, and the shape of the page follows from it:
 - **The band that held the fake stats now carries the argument they were standing in for.** It is
   the same coloured section, and the vendor-shutdown case (Movescount, Deepblu, Diveboard; AGPL; the
   original dive-computer file kept behind every import) is what the numbers were there to imply. The
-  three facts under it — the licence, no trackers, the three export formats — are the only figures
-  left, and each one is a `grep` away. Note the contrast constraint documented under `--coral-solid`
-  (the section survives, the token does not) still applies to this band: full
-  `text-primary-foreground`, never `/70`, which is 4.90:1 on `bg-primary` in dark mode against 3.4:1
-  for the faded version.
+  three facts under it — the licence, no trackers, the export formats — are the only figures left,
+  and each one is a `grep` away. Note the contrast constraint documented under `--coral-solid` (the
+  section survives, the token does not) still applies to this band: full `text-primary-foreground`,
+  never `/70`, which is 4.90:1 on `bg-primary` in dark mode against 3.4:1 for the faded version.
 - **The store badges became a line of prose that answers for them** — there are no mobile apps, the
   iOS companion is parked, and this web app is built for a phone in the meantime — with the source
   and the way to run your own as inline links. The absence needed stating outright rather than being
@@ -11651,7 +11650,7 @@ false statement about their data rather than an untidy comment. The surfaces:
 - `app/auth/verify/page.tsx` - what restoring brings back, in both the `purgeOn` branch and the
   dateless one.
 - `components/settings/data-export-card.tsx` - what each export format contains, including the UDDF
-  row's list of what has no slot in that format and rides in the archive instead.
+  row's list of what has no slot in that format and rides in the DiveJSON and the archive instead.
 - `README.md`'s feature list.
 - `components/layout/landing-page.tsx`'s closing feature sentence, which enumerates what the app
   organizes. Added after the `certifications` probe below missed it - see "Courses nest a dialog
@@ -14333,3 +14332,54 @@ would have hidden the one difference between them that matters.
 between the API change merging and this one the chart and the gas-use card rendered nothing while
 both suites stayed green. That is the accepted shape of a breaking API change here — API first, web
 second, the two PRs linked — and it is worth knowing that neither suite is the thing that tells you.
+
+## A fourth export row, and the count came out of the sentences around it
+
+The API grew `GET /export/divejson`, so the settings card grew a row for it. Structurally that is
+three edits — a `"divejson"` member on `ExportFormat`, an `EXPORT_EXTENSIONS` entry, an
+`EXPORT_ROWS` entry — and the `Record<ExportFormat, string>` typing on the extensions map is what
+makes the compiler catch the second if you forget it. Nothing catches the third: `EXPORT_ROWS` is a
+plain array, so a format with no row is a route the card simply never offers, and a row wired to the
+wrong segment type-checks perfectly. `export.test.ts` now asserts the route for every member of the
+union rather than for `uddf` alone, and the card's render test pairs each row's title with the
+segment it fetches, because those are the two things the types will not do for you.
+
+**DiveJSON goes first, ahead of UDDF.** The rows were ordered by what you would hand to another
+program, and DiveJSON is the one that holds everything the account has as data — it is what the
+archive's own `logbook.divejson` member is, and it is this app's own format rather than a lossy
+projection of it. Putting it under the two lossy rows would have read as an afterthought on the
+format this project maintains.
+
+**The card's copy rule needed amending, not just extending.** The comment above `EXPORT_ROWS` said
+each sentence names what is _in_ the file and that "only the archive can answer 'all of it'". Two
+rows can answer that now, so the copy's whole job on those two is the difference between them: the
+DiveJSON has everything as data, the archive has that plus the uploaded files. The UDDF row's "gear
+sets, service history, your courses and your c-cards … ride in the archive instead" was true and
+became incomplete on the same day, which is the ordinary way this copy goes wrong — a sentence about
+what a format _lacks_ is a claim about every other format in the card.
+
+**The counts came out of the sentences rather than going up by one**, wherever the number was not
+load-bearing. `dives/page.tsx`, `sites/page.tsx` and `trips/page.tsx` all point at the export card's
+accessible-name reasoning and all said "three Downloads"; they now say "the export card's
+Downloads", and will still be right when the import work adds nothing to that card and when
+something else does. Same for the `Set<ExportFormat>` argument recorded above — a boolean disabling
+"every button" is the durable form of a boolean disabling "all three". That is this file's own
+recorded lesson about hand-kept censuses (see _"Every count in them was already wrong"_), applied to
+the change that would otherwise have gone on proving it. Where the count _is_ the point it is
+correct rather than absent: the card comment saying a diver is choosing between four downloads, and
+`export.ts`'s "the four shapes `/export/*` serves a logbook in", both sit next to the list they
+count.
+
+**The blind spot this sweep cannot reach is `app/privacy/`.** Its export claims name no format at
+all — "Export everything you have entered", "Export your data in a common format" — so
+`git grep -niwE "uddf|three"` finds none of them, and they are the sentences a diver is most likely
+to be reading when the answer matters. Nothing in this change falsifies them, but they are where to
+look next time an export capability moves; `git grep -niE "export|portab" -- src/app/privacy/` is
+the probe, and the directory rather than the page, because `page.test.tsx` pins several of the
+sentences.
+
+**Two `.uddf` hits in the tree are not export-format sites and must stay.** `lib/api-proxy.test.ts`
+and `lib/download.test.ts` use the extension as a generic attachment filename in
+`Content-Disposition` fixtures, and the landing page's "Still to come: Subsurface and UDDF import"
+is roadmap copy about the import direction, which this change does not touch. Classifying the sweep
+per line rather than per file is what keeps those three intact.

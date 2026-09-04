@@ -142,7 +142,7 @@ export default function SitesPage() {
                     <TableCell className="text-right">
                       {/* Named per row, not per action: ten identical "Edit"s tell a
                           screen reader's controls list nothing about which site.
-                          See DECISIONS.md on the export card's three Downloads. */}
+                          See DECISIONS.md on the export card's Downloads. */}
                       <div className="flex justify-end gap-2">
                         <Button
                           variant="ghost"

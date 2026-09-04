@@ -5,6 +5,7 @@ import {
   Download,
   FileArchive,
   FileCode,
+  FileJson,
   HardDriveDownload,
   Sheet,
 } from "lucide-react";
@@ -32,31 +33,43 @@ interface ExportRow {
 }
 
 // One sentence per row, and each says what is *in* the file rather than what the format
-// is - a diver choosing between three downloads is asking "which one has my stuff in
-// it". Only the archive can answer "all of it", which is also why it is the row that
-// mentions the certification scans: that is the one thing here worth knowing *before*
-// the file lands in a downloads folder, not after.
+// is - a diver choosing between four downloads is asking "which one has my stuff in
+// it". Two of them can answer "all of it", and the difference between those two is the
+// only thing this copy has to get across: DiveJSON holds everything the account has as
+// data, the archive holds that plus the files that were uploaded into it. Which is also
+// why the archive is the row that mentions the certification scans - the one thing here
+// worth knowing *before* the file lands in a downloads folder, not after.
+//
+// DiveJSON leads because it is the complete one and the app's own format; the two lossy
+// rows below it are for handing to something else.
 const EXPORT_ROWS: ExportRow[] = [
+  {
+    format: "divejson",
+    icon: FileJson,
+    title: "DiveJSON",
+    description:
+      "Your whole logbook in one file: every dive with its full sample profile, cylinders, sites, trips, courses, marine life, gear with its service history and your c-card records — everything in the account except the uploaded files themselves, which it names by digest. DiveJSON is the open dive-log format this project maintains, and this app is its reference implementation.",
+  },
   {
     format: "uddf",
     icon: FileCode,
     title: "UDDF",
     description:
-      "Every dive with its sites, trips, gases, cylinders, gear and full sample profile, in the open format Subsurface, MacDive and divelogs.de import. This is the file to hand another program — gear sets, service history, your courses and your c-cards have no slot in it, and ride in the archive instead.",
+      "Every dive with its sites, trips, gases, cylinders, gear and full sample profile, in the open format Subsurface, MacDive and divelogs.de import. This is the file to hand another program — gear sets, service history, your courses and your c-cards have no slot in it, and ride in the DiveJSON and the archive instead.",
   },
   {
     format: "csv",
     icon: Sheet,
     title: "Spreadsheet",
     description:
-      "One row per dive, flattened for Excel, Numbers or a notebook. The normalized set — cylinders, trips, sites, gear, service history, courses, certifications — ships inside the archive.",
+      "One row per dive, flattened for Excel, Numbers or a notebook. The normalized set — cylinders, trips, sites, gear, service history, courses, certifications — rides in the DiveJSON, and as its own CSVs inside the archive.",
   },
   {
     format: "archive",
     icon: FileArchive,
     title: "Full archive",
     description:
-      "Everything, as a zip: the structured JSON, the UDDF, the full CSV set, every dive-computer file you imported and both sides of every certification card. Those card scans are personal documents — treat the file as one.",
+      "Everything, as a zip: the DiveJSON, the UDDF, the full CSV set, every dive-computer file you imported and both sides of every certification card. Those card scans are personal documents — treat the file as one.",
   },
 ];
 
@@ -66,7 +79,7 @@ interface DataExportCardProps {
   username: string;
 }
 
-// "Your data" on the settings page: three buttons, each handing back the whole logbook.
+// "Your data" on the settings page: four buttons, each handing back the whole logbook.
 // The product's promise is that nothing in an account is reachable only through this
 // app, and this card is the falsifiable half of it.
 //
@@ -76,7 +89,7 @@ interface DataExportCardProps {
 export function DataExportCard({ username }: DataExportCardProps) {
   const { toast } = useToast();
   // A *set* of formats, rather than a boolean or the single `ExportFormat | null` this
-  // started as: the three rows run independently, so two concurrent downloads must not
+  // started as: the four rows run independently, so two concurrent downloads must not
   // clear each other's spinner. DECISIONS.md carries the argument and what each of the
   // simpler shapes gets wrong.
   const [busy, setBusy] = useState<ReadonlySet<ExportFormat>>(new Set());
@@ -180,11 +193,11 @@ export function DataExportCard({ username }: DataExportCardProps) {
                   // `disabled:opacity-50` keys off the real attribute.
                   //
                   // Only the row being fetched goes inert. The API rate-limits exports
-                  // per user, so letting all three run at once is the diver's call to
+                  // per user, so letting all four run at once is the diver's call to
                   // spend their budget on, not a bug to prevent.
                   aria-disabled={isBusy}
                   // The visible label is the same one word on every row, so without
-                  // this a screen reader hears "Download" three times with nothing to
+                  // this a screen reader hears "Download" four times with nothing to
                   // tell them apart.
                   //
                   // It has to *change* with the busy state, not just name the row. An
