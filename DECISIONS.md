@@ -5176,13 +5176,13 @@ API endpoint and a token scheme, which is a great deal of machinery for a ceilin
 but it is the thing to build when someone does, rather than reaching for a streaming-download
 library on this side.
 
-## Three buttons named "Download" need three accessible names
+## Buttons all named "Download" need an accessible name each
 
 The export card's rows are visually distinct — an icon, a title, a sentence of prose — and its
 buttons are not: every one of them reads `Download`. A screen reader listing the page's buttons gets
-"Download, Download, Download" and no way to tell which file is which, so each carries an
-`aria-label` naming its row. The visible label stays one word, because the row above it has already
-said which file this is.
+that one word repeated, with no way to tell which file is which, so each carries an `aria-label`
+naming its row. The visible label stays one word, because the row above it has already said which
+file this is.
 
 **The label has to change with the busy state, not just name the row.** An `aria-label` _overrides_
 the button's own text, so a static one hides the switch to "Preparing..." completely — the only
@@ -10791,10 +10791,10 @@ had no accessible name at all - axe reported `button-name` (critical) on the del
 controls list nothing about which trip it would edit.
 
 All three now name their row: `View dive #412`, `Edit Palau 2025`, `Delete Pescador Island`. Same
-reasoning as the export card's three Downloads recorded above - a name that is unique among the
-page's controls is the point, not merely a name that exists. The dive rows key off
-`dive.dive_number` rather than the date, because the number is what the row leads with and what a
-diver would say out loud.
+reasoning as the export card's Downloads recorded above - a name that is unique among the page's
+controls is the point, not merely a name that exists. The dive rows key off `dive.dive_number`
+rather than the date, because the number is what the row leads with and what a diver would say out
+loud.
 
 **That sweep was table-by-table, and it missed three tables.** The certifications list and both gear
 lists (items and sets) kept their bare `Edit`/`Delete`/`Card images`/`Archive`, and the courses list
@@ -14362,13 +14362,22 @@ what a format _lacks_ is a claim about every other format in the card.
 load-bearing. `dives/page.tsx`, `sites/page.tsx` and `trips/page.tsx` all point at the export card's
 accessible-name reasoning and all said "three Downloads"; they now say "the export card's
 Downloads", and will still be right when the import work adds nothing to that card and when
-something else does. Same for the `Set<ExportFormat>` argument recorded above — a boolean disabling
-"every button" is the durable form of a boolean disabling "all three". That is this file's own
-recorded lesson about hand-kept censuses (see _"Every count in them was already wrong"_), applied to
-the change that would otherwise have gone on proving it. Where the count _is_ the point it is
-correct rather than absent: the card comment saying a diver is choosing between four downloads, and
-`export.ts`'s "the four shapes `/export/*` serves a logbook in", both sit next to the list they
-count.
+something else does. Same for the `Set<ExportFormat>` argument recorded above, and for the
+accessible-name section's own heading and the sentence in _"Ten rows of 'Edit' name nothing"_ that
+cites it — a boolean disabling "every button" and a screen reader hearing "that one word repeated"
+are the durable forms of "all three". That is this file's own recorded lesson about hand-kept
+censuses (see _"Every count in them was already wrong"_), applied to the change that would otherwise
+have gone on proving it. Where the count _is_ the point it is correct rather than absent: the card
+comment saying a diver is choosing between four downloads, and `export.ts`'s "the four shapes
+`/export/*` serves a logbook in", both sit next to the list they count.
+
+**Both of the count sites inside this file were missed on the first pass and found by review**,
+which is the part worth recording. The code comments were easy: `git grep -w three` over `src/` puts
+them in front of you. The two in here were a heading and a cross-reference in a _different_ section,
+neither adjacent to anything the change touched — so a sweep run over `src/` and then narrowed to
+"the export sections of `DECISIONS.md`" reaches neither. The probe that does is
+`grep -nE "three (Download|button|export|row|format)|all three" DECISIONS.md`, run over the whole
+file.
 
 **The blind spot this sweep cannot reach is `app/privacy/`.** Its export claims name no format at
 all — "Export everything you have entered", "Export your data in a common format" — so
