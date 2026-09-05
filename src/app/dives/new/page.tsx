@@ -181,9 +181,18 @@ function NewDivePageContent() {
           // `defaultValues` above.
           mixtures:
             lastDive.mixtures?.map((m) => ({
-              volume: m.volume,
-              oxygen: m.oxygen,
-              helium: m.helium,
+              // `?? ""` on all three, like `po2_limit` below and for the reason
+              // recorded under "The API sends `null`, the form schema only understood
+              // `""`" in DECISIONS.md: these are nullable on the wire now that a
+              // cylinder may record a mix with no vessel, `null` is a member of no
+              // field's union in `diveMixtureSchema`, and a `reset()` seeded with one
+              // fails validation on a value the diver never entered - silently, since
+              // `handleSubmit`'s valid callback simply never fires. A last dive
+              // imported from a file that recorded no cylinder size carries that
+              // absence forward rather than acquiring an 11.1 L on the way.
+              volume: m.volume ?? ("" as const),
+              oxygen: m.oxygen ?? ("" as const),
+              helium: m.helium ?? ("" as const),
               // Same reasoning as the gas fractions above - a diver on the same
               // 32/1.4 back gas and EAN50/1.6 deco bottle plans them the same way
               // dive after dive. `gas_number` is deliberately *not* carried: it

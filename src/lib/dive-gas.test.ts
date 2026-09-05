@@ -258,6 +258,60 @@ describe("gasUseUnavailableReason", () => {
     expect(oneTransmitter).toMatch(/account for every cylinder/);
   });
 
+  it("blames the sizes, not the switches, when no breathed cylinder has one", () => {
+    // `_tank_arithmetic` drops an unsized cylinder however good the attribution is:
+    // it was counted as breathed and then produced no litres, so a dive whose
+    // breathed cylinders are all unsized comes back empty for a reason the gas
+    // switches have nothing to do with. Blaming them would name the one input that
+    // is not the problem, while the profile chart draws the switches ten lines up
+    // the same page.
+    const reason = gasUseUnavailableReason(
+      dive({
+        profile: profile(),
+        mixtures: [
+          mixture({ gas_number: 0, volume: null }),
+          mixture({
+            id: 2,
+            gas_number: 1,
+            volume: null,
+            start_pressure: null,
+            end_pressure: null,
+          }),
+        ],
+      }),
+    );
+
+    expect(reason).toBe(
+      "Add each cylinder's size to see your gas consumption.",
+    );
+    expect(reason).not.toMatch(/account for every cylinder/);
+  });
+
+  it("still blames attribution when one breathed cylinder does have a size", () => {
+    // The mixed case, and the reason the narrowing is on the *breathed* set rather
+    // than on all of them: a sized, breathed cylinder can produce a figure the
+    // moment the attribution names it, so the attribution really is what is
+    // missing. The unsized one beside it is a separate loss the API reports as a
+    // coverage shortfall, not as a refusal.
+    const reason = gasUseUnavailableReason(
+      dive({
+        profile: profile(),
+        mixtures: [
+          mixture({ gas_number: 0 }),
+          mixture({
+            id: 2,
+            gas_number: 1,
+            volume: null,
+            start_pressure: null,
+            end_pressure: null,
+          }),
+        ],
+      }),
+    );
+
+    expect(reason).toMatch(/account for every cylinder/);
+  });
+
   it("names an unbreathed pair on a multi-tank dive rather than asking for it", () => {
     // Pressures present on every cylinder and equal on all of them, so the API's
     // per-tank arithmetic drops each in turn and the dive comes back empty.
@@ -448,6 +502,38 @@ describe("gasUseUnavailableReason", () => {
     );
   });
 
+  it("refuses a flagged pair on one unsized cylinder, and says every cylinder", () => {
+    // One cylinder with no recorded size contributes no litres to a sum whose
+    // denominator still covers the whole dive - an RMV too low rather than none at
+    // all, which is the same refusal the missing pressure above gets.
+    const reason = gasUseUnavailableReason(
+      dive({ mixtures: parallelPair({}, { volume: null }) }),
+    );
+
+    expect(reason).toBe(
+      "Add every cylinder's size to see your gas consumption.",
+    );
+  });
+
+  it("asks a flagged pair for the size before the pressures", () => {
+    // The reverse of the single-cylinder order, and deliberately so: each branch
+    // follows the guard order of the API function it mirrors, and
+    // `compute_parallel_gas_use` refuses an unsized cylinder before it looks at any
+    // pressure.
+    const reason = gasUseUnavailableReason(
+      dive({
+        mixtures: parallelPair(
+          { volume: null },
+          { start_pressure: null, end_pressure: null },
+        ),
+      }),
+    );
+
+    expect(reason).toBe(
+      "Add every cylinder's size to see your gas consumption.",
+    );
+  });
+
   it("says nothing at all for a flagged pair with nothing missing", () => {
     // Unreachable through the app - a set that passes every additive guard has a
     // figure, so this function is not called for it - and pinned anyway, because
@@ -516,6 +602,47 @@ describe("gasUseUnavailableReason", () => {
     });
 
     expect(gasUseUnavailableReason(untouched)).toMatch(/no gas used/);
+  });
+
+  it("asks a single cylinder for its size when that is all that is missing", () => {
+    // The mix-only cylinder: a UDDF `<tankdata>` with a gas link and no
+    // `<tankvolume>`, on a dive that carries an average depth, both pressures and a
+    // real drop between them. Every other input `compute_gas_use` wants is present,
+    // so this is the only refusal left to reach - and before the column was nullable
+    // the cylinder was skipped on import and the dive had no gas card at all.
+    const mixOnly = dive({ mixtures: [mixture({ volume: null })] });
+
+    expect(gasUseUnavailableReason(mixOnly)).toBe(
+      "Add this tank's size to see your gas consumption.",
+    );
+  });
+
+  it("asks for the size before saying the pressures show no drop", () => {
+    // `compute_gas_use` checks the volume ahead of the drop, so a cylinder with no
+    // size and no drop is refused for the size. Both are true; the order is the
+    // API's, and the size is the one the diver can do something about.
+    const neither = dive({
+      mixtures: [
+        mixture({ volume: null, start_pressure: 200, end_pressure: 200 }),
+      ],
+    });
+
+    expect(gasUseUnavailableReason(neither)).toMatch(/size/);
+  });
+
+  it("asks for the pressures before the size, unlike a flagged pair", () => {
+    // The single-cylinder order, and the mirror of the parallel test below: with no
+    // pressures *and* no size, one cylinder is asked for its pressures because
+    // `compute_gas_use` refuses on those first.
+    const bare = dive({
+      mixtures: [
+        mixture({ volume: null, start_pressure: null, end_pressure: null }),
+      ],
+    });
+
+    expect(gasUseUnavailableReason(bare)).toBe(
+      "Add this tank's start and end pressure to see your gas consumption.",
+    );
   });
 });
 

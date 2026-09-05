@@ -122,12 +122,14 @@ function MixtureGasHint({
   // `depth` is null unless this is the only cylinder, which is what keeps END/EAD
   // off a staged deco bottle - `gasHintParts` documents the rule.
   const parts = gasHintParts({
-    oxygen,
-    helium,
+    // `""` is the cleared state on all three of these, not a fraction of zero or a
+    // limit of zero - normalized here so `gasHintParts` deals only in numbers and
+    // nulls, the way every other caller hands it values. On the two fractions that
+    // is what keeps a cleared O₂ box from naming the cylinder "EAN0" while the
+    // diver is still deciding what was in it.
+    oxygen: oxygen === "" ? null : oxygen,
+    helium: helium === "" ? null : helium,
     depth: isOnlyMixture ? maxDepth : null,
-    // `""` is the cleared state, not a limit of zero - normalized here so
-    // `gasHintParts` deals only in numbers and nulls, the way every other caller
-    // hands it values.
     ppO2: po2Limit === "" ? null : po2Limit,
     // The depths in the hint are converted; `maxDepth` itself is metric form
     // state and stays that way.
@@ -428,17 +430,16 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                       {...field}
                       value={field.value ?? ""}
                       onChange={(e) => {
-                        // An emptied box is `undefined`, never `NaN`. Unlike
-                        // the pressures below - which are optional and use ""
-                        // as their placeholder - O2/He are required numbers, so
-                        // `undefined` gets the schema's "required" message
-                        // instead of a "expected number, received nan" one, and
-                        // `value ?? ""` keeps React from warning about a NaN
-                        // value attribute in the meantime.
+                        // An emptied box is `""`, never `NaN` and no longer
+                        // `undefined` - the same sentinel the two pressures
+                        // below use, and now for the same reason: an unrecorded
+                        // mix is a state a cylinder can be in, so clearing this
+                        // box has to submit "not recorded" rather than draw a
+                        // "required" message. `undefined` is the one spelling
+                        // that cannot work, because react-hook-form re-displays
+                        // a field's default the moment its value resolves to it.
                         const raw = e.target.value;
-                        field.onChange(
-                          raw === "" ? undefined : parseFloat(raw),
-                        );
+                        field.onChange(raw === "" ? "" : parseFloat(raw));
                       }}
                     />
                   </FormControl>
@@ -462,17 +463,14 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                       {...field}
                       value={field.value ?? ""}
                       onChange={(e) => {
-                        // An emptied box is `undefined`, never `NaN`. Unlike
-                        // the pressures below - which are optional and use ""
-                        // as their placeholder - O2/He are required numbers, so
-                        // `undefined` gets the schema's "required" message
-                        // instead of a "expected number, received nan" one, and
-                        // `value ?? ""` keeps React from warning about a NaN
-                        // value attribute in the meantime.
+                        // `""` on an emptied box, for the reason O₂ above gives.
+                        // Blank is not 0 % helium here any more than it is on the
+                        // wire: a file that recorded no analysis said nothing
+                        // about helium, and writing a 0 for it would be the app
+                        // inventing the one fact that separates nitrox from
+                        // trimix.
                         const raw = e.target.value;
-                        field.onChange(
-                          raw === "" ? undefined : parseFloat(raw),
-                        );
+                        field.onChange(raw === "" ? "" : parseFloat(raw));
                       }}
                     />
                   </FormControl>

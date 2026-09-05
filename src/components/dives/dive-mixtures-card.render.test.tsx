@@ -147,6 +147,65 @@ describe("DiveMixturesCard helium column", () => {
     expect(screen.getByText("35%")).toBeInTheDocument();
     expect(screen.getByText("0%")).toBeInTheDocument();
   });
+
+  it("stays away for a dive whose cylinders record no helium either way", () => {
+    // Unrecorded is not zero, and it is not helium either. A column summoned by rows
+    // that would all read "-" is width spent saying nothing twice over - which is
+    // what the guard on `showHelium` and the dash in the cell have to agree about.
+    const unanalysed: DiveMixture = { volume: 12, oxygen: null, helium: null };
+    render(<DiveMixturesCard dive={dive([unanalysed], 30)} />);
+
+    expect(
+      screen.queryByRole("columnheader", { name: "He" }),
+    ).not.toBeInTheDocument();
+  });
+});
+
+// A cylinder may record a mix with no vessel, or a vessel with no analysis, so every
+// figure on a row is one the dive might not have. The card's job is that a diver can
+// tell a recorded number from an absent one - which is a claim about each cell, not
+// only about the two pressures that happened to be nullable first.
+describe("DiveMixturesCard absent figures", () => {
+  const MIX_ONLY: DiveMixture = {
+    volume: null,
+    oxygen: 32,
+    helium: 0,
+    start_pressure: 200,
+    end_pressure: 90,
+  };
+
+  it("dashes a cylinder that records a mix and no size", () => {
+    // The UDDF `<tankdata>` with a gas link and no `<tankvolume>`. Before the column
+    // was nullable this cylinder was dropped on import and the row did not exist.
+    render(<DiveMixturesCard dive={dive([MIX_ONLY], 30)} />);
+
+    expect(screen.getByRole("cell", { name: "-" })).toBeInTheDocument();
+    expect(screen.queryByText(/11\.1 L/)).not.toBeInTheDocument();
+    // The figures it *does* record are untouched.
+    expect(screen.getByRole("cell", { name: "EAN32" })).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "32%" })).toBeInTheDocument();
+  });
+
+  it("mutes the dash rather than printing it at full contrast", () => {
+    // An absence at full contrast reads as a value - the same rule the consumption
+    // card below applies to its own dashes.
+    render(<DiveMixturesCard dive={dive([MIX_ONLY], 30)} />);
+
+    expect(screen.getByRole("cell", { name: "-" })).toHaveClass(
+      "text-muted-foreground",
+    );
+  });
+
+  it("names no gas for a cylinder whose mix was never recorded", () => {
+    // Not "EAN0" and not "Air": a size with no analysis behind it says nothing about
+    // what was breathed, so the badge, the MOD and the O₂ cell all decline.
+    const sizeOnly: DiveMixture = { volume: 12, oxygen: null, helium: null };
+    render(<DiveMixturesCard dive={dive([sizeOnly], 30)} />);
+
+    expect(screen.queryByText(/^EAN/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Air")).not.toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "12 L" })).toBeInTheDocument();
+  });
 });
 
 // The MOD column states the limit its number was computed at on every row, and the

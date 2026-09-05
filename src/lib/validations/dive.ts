@@ -141,7 +141,15 @@ const PRESSURE_CEILING_CLAUSE =
 export const diveMixtureSchema = z
   .object({
     id: z.number().optional(),
-    volume: z.number().positive("Volume must be positive"),
+    // Blank is a real answer here, and it is the same `""` the pressures below use
+    // rather than a second spelling of empty: a file that recorded a gas and no
+    // vessel stores no size, and the form has to be able to say that back. The
+    // convenience of a proposed 11.1 L survives where it belongs - `DEFAULT_MIXTURE`,
+    // which only a cylinder added by hand starts from, and which the diver can see and
+    // change. It is the *import* path that stopped inventing one.
+    volume: z
+      .union([z.literal(""), z.number().positive("Volume must be positive")])
+      .optional(),
     // The two pressures are deliberately not symmetric, and one sentence of diving
     // is the whole reason: you cannot start a dive on an empty cylinder, but you
     // can finish one on an empty cylinder. An out-of-gas ascent, a drained stage
@@ -186,14 +194,29 @@ export const diveMixtureSchema = z
           .max(MAX_PRESSURE_BAR, `End pressure ${PRESSURE_CEILING_CLAUSE}`),
       ])
       .optional(),
+    // Blank for the same reason as `volume`, and the stakes are higher: a diver plans
+    // gas off these two, so a source that never recorded a mix must not have air
+    // assumed for it. Absent is not 21 % and not 0 % helium - it is unknown, and the
+    // gas name, the MOD and the END/EAD all decline to render rather than describing a
+    // cylinder nobody analysed.
     oxygen: z
-      .number()
-      .min(0, "Oxygen percentage must be at least 0")
-      .max(100, "Oxygen percentage must be at most 100"),
+      .union([
+        z.literal(""),
+        z
+          .number()
+          .min(0, "Oxygen percentage must be at least 0")
+          .max(100, "Oxygen percentage must be at most 100"),
+      ])
+      .optional(),
     helium: z
-      .number()
-      .min(0, "Helium percentage must be at least 0")
-      .max(100, "Helium percentage must be at most 100"),
+      .union([
+        z.literal(""),
+        z
+          .number()
+          .min(0, "Helium percentage must be at least 0")
+          .max(100, "Helium percentage must be at most 100"),
+      ])
+      .optional(),
     // Mirrors `ck_dive_mixture_po2_limit_range`. The band is wide because it exists to
     // catch a unit error rather than an aggressive gas plan - a Suunto JSON export
     // writes 140000 Pa for 1.4 bar - and it has to admit both real values a diver
@@ -252,7 +275,13 @@ export const diveMixtureSchema = z
       // instead of them, so an oxygen of 150 otherwise draws *two* errors: the
       // accurate one on `oxygen`, and this one pointing at a helium box reading
       // 0. The range message names the field that actually has to change.
+      //
+      // A blank box is quiet for a different reason: two fractions can only be
+      // said to exceed the whole when both of them are recorded. Reading a cleared
+      // `""` as 0 would make an unknown helium content into a claim that there is
+      // none, which is exactly the substitution this field stopped making.
       const { oxygen, helium } = mixture;
+      if (typeof oxygen !== "number" || typeof helium !== "number") return true;
       const inRange = (value: number) => value >= 0 && value <= 100;
       if (!inRange(oxygen) || !inRange(helium)) return true;
 
@@ -267,11 +296,11 @@ export const diveMixtureSchema = z
 export type DiveMixtureInput = z.input<typeof diveMixtureSchema>;
 
 export interface NormalizedDiveMixture {
-  volume: number;
+  volume?: number;
   start_pressure?: number;
   end_pressure?: number;
-  oxygen: number;
-  helium: number;
+  oxygen?: number;
+  helium?: number;
   po2_limit?: number;
   gas_number?: number;
   role?: GasRole;
@@ -293,11 +322,11 @@ export interface NormalizedDiveMixture {
 export function normalizeMixtures(
   mixtures: {
     id?: number;
-    volume: number;
+    volume?: number | "";
     start_pressure?: number | "";
     end_pressure?: number | "";
-    oxygen: number;
-    helium: number;
+    oxygen?: number | "";
+    helium?: number | "";
     po2_limit?: number | "";
     gas_number?: number;
     role?: GasRole | "";
@@ -305,13 +334,13 @@ export function normalizeMixtures(
   }[],
 ): NormalizedDiveMixture[] {
   return mixtures.map((mixture) => ({
-    volume: mixture.volume,
+    volume: mixture.volume === "" ? undefined : mixture.volume,
     start_pressure:
       mixture.start_pressure === "" ? undefined : mixture.start_pressure,
     end_pressure:
       mixture.end_pressure === "" ? undefined : mixture.end_pressure,
-    oxygen: mixture.oxygen,
-    helium: mixture.helium,
+    oxygen: mixture.oxygen === "" ? undefined : mixture.oxygen,
+    helium: mixture.helium === "" ? undefined : mixture.helium,
     po2_limit: mixture.po2_limit === "" ? undefined : mixture.po2_limit,
     // Passed straight through: unlike the fields above it has no cleared state,
     // because no input writes to it. It is either the number an import put there or
@@ -337,11 +366,11 @@ export function normalizeMixtures(
 export function toDiveMixtureInput(mixture: DiveMixture): DiveMixtureInput {
   return {
     id: mixture.id,
-    volume: mixture.volume,
+    volume: mixture.volume ?? "",
     start_pressure: mixture.start_pressure ?? "",
     end_pressure: mixture.end_pressure ?? "",
-    oxygen: mixture.oxygen,
-    helium: mixture.helium,
+    oxygen: mixture.oxygen ?? "",
+    helium: mixture.helium ?? "",
     po2_limit: mixture.po2_limit ?? "",
     // The one field with no `""` state, because no input writes to it - see
     // `normalizeMixtures`, which passes it back out the same way.

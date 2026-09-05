@@ -29,6 +29,26 @@ interface DiveMixturesCardProps {
   dive: Dive;
 }
 
+// One figure a cylinder may or may not record, already written out, or `null` where it
+// records none.
+//
+// Muted dashes throughout, as the consumption card below already writes its own: an
+// absence at full contrast reads as a value. The class goes on the cell rather than
+// round a `-` in a span, which is how that card spells the same thing.
+//
+// A component rather than the ternary pair repeated five times, which is what this was
+// when only the two pressures could be absent. `volume`, `oxygen` and `helium` joined
+// them once a cylinder could record a mix without a vessel - and the point of the card
+// is that a diver can tell a recorded number from an absent one, which is a claim about
+// every cell in it rather than about the two that happened to be nullable first.
+function RecordedCell({ value }: { value: string | null }) {
+  return (
+    <TableCell className={value === null ? "text-muted-foreground" : undefined}>
+      {value ?? "-"}
+    </TableCell>
+  );
+}
+
 /**
  * The dive's gas mixtures, one row per cylinder. Renders nothing when the dive has none,
  * which is the common case for a dive logged by hand.
@@ -72,11 +92,16 @@ export function DiveMixturesCard({ dive }: DiveMixturesCardProps) {
   // a column of zeroes down every recreational dive is width spent saying nothing.
   // Dropped only when no cylinder has any, so a trimix dive still shows all of them -
   // including the 0 of an air cylinder carried alongside, which is a real contrast.
-  // `> 0` rather than `!== 0` so a NaN fraction can't summon the column. Deliberately
-  // no null guard: `DiveMixture.helium` is non-null and the cell below prints it
-  // unguarded, so a check here would be defending against a value the row it controls
-  // would render as a bare "%" anyway. The two lines agree or neither is honest.
-  const showHelium = dive.mixtures.some((mixture) => mixture.helium > 0);
+  // `> 0` rather than `!== 0` so a NaN fraction can't summon the column.
+  //
+  // The null guard is the cell's guard, restated: `DiveMixture.helium` is nullable now
+  // that a cylinder may record a vessel with no analysis, the cell below renders an
+  // unrecorded fraction as a muted dash, and a column summoned by rows that all read
+  // "-" would be width spent saying nothing twice over. The two lines agree or neither
+  // is honest - which is the same rule this comment carried when both were unguarded.
+  const showHelium = dive.mixtures.some(
+    (mixture) => mixture.helium != null && mixture.helium > 0,
+  );
 
   // The tank-usage flags, stated under the table rather than badged in it: a third
   // badge in the Gas cell pushed MOD off screen at the width this card is narrowest
@@ -202,37 +227,41 @@ export function DiveMixturesCard({ dive }: DiveMixturesCardProps) {
                           `tankUsageSentences` and DECISIONS.md. */}
                     </div>
                   </TableCell>
-                  <TableCell>{mixture.volume} L</TableCell>
-                  {/* Muted dashes throughout, as the consumption card below already
-                      writes its own: an absence at full contrast reads as a value.
-                      The class goes on the cell rather than round a `-` in a span,
-                      which is how that card spells the same thing. */}
-                  <TableCell
-                    className={
-                      mixture.start_pressure == null
-                        ? "text-muted-foreground"
-                        : undefined
+                  {/* Litres in both systems, and the one figure on this row that
+                      does not convert: a cylinder's litres are its water capacity,
+                      while its cubic feet are the gas it holds at a rated pressure
+                      the mixture does not record - see `volumeOptionLabel`. */}
+                  <RecordedCell
+                    value={
+                      mixture.volume != null ? `${mixture.volume} L` : null
                     }
-                  >
-                    {mixture.start_pressure != null
-                      ? formatPressure(mixture.start_pressure, units)
-                      : "-"}
-                  </TableCell>
-                  <TableCell
-                    className={
-                      mixture.end_pressure == null
-                        ? "text-muted-foreground"
-                        : undefined
+                  />
+                  <RecordedCell
+                    value={
+                      mixture.start_pressure != null
+                        ? formatPressure(mixture.start_pressure, units)
+                        : null
                     }
-                  >
-                    {mixture.end_pressure != null
-                      ? formatPressure(mixture.end_pressure, units)
-                      : "-"}
-                  </TableCell>
+                  />
+                  <RecordedCell
+                    value={
+                      mixture.end_pressure != null
+                        ? formatPressure(mixture.end_pressure, units)
+                        : null
+                    }
+                  />
                   {/* Deliberately unrounded, matching the API's 2-decimal precision -
                       see DECISIONS.md. The gas badge is the rounded shorthand. */}
-                  <TableCell>{mixture.oxygen}%</TableCell>
-                  {showHelium && <TableCell>{mixture.helium}%</TableCell>}
+                  <RecordedCell
+                    value={mixture.oxygen != null ? `${mixture.oxygen}%` : null}
+                  />
+                  {showHelium && (
+                    <RecordedCell
+                      value={
+                        mixture.helium != null ? `${mixture.helium}%` : null
+                      }
+                    />
+                  )}
                   <TableCell
                     className={
                       workingMod == null ? "text-muted-foreground" : undefined

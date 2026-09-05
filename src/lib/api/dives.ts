@@ -51,20 +51,28 @@ export const WATER_TYPE_LABELS: Record<WaterType, string> = {
   en13319: "EN13319",
 };
 
-// Every optional field is `| null` because that is what comes back on the wire, not
+// Every field but `id` is `| null` because that is what comes back on the wire, not
 // merely what could be missing: the API declares them `X | None` (`DiveMixtureBase`
 // in `schemas/dive_mixture.py`) and sets no `exclude_none`, so an unrecorded field
 // arrives as an explicit `null` rather than an absent key. Writing them `?: number`
 // alone made TypeScript vouch for a value the response never promised, and the form
 // pages - which feed these straight into `diveMixtureSchema`, where `null` is not a
 // member of any field's union - were the ones that paid for it.
+//
+// `volume`, `oxygen` and `helium` were the last three to hold out, and they are the
+// expensive ones to get wrong. A cylinder may now record a mix with no vessel - a
+// UDDF `<tankdata>` with a gas link and no `<tankvolume>` is the shape that forced
+// it - so the API stores NULL and sends it, and every guard written downstream of a
+// `volume: number` here looks redundant to a compiler that has been told the value
+// is always there. Absent is not 11.1 L, and for `oxygen` it is explicitly not 21:
+// a diver plans gas off that number.
 export interface DiveMixture {
   id?: number;
-  volume: number;
+  volume?: number | null;
   start_pressure?: number | null;
   end_pressure?: number | null;
-  oxygen: number;
-  helium: number;
+  oxygen?: number | null;
+  helium?: number | null;
   // The ppO₂ this gas was planned to, in bar - the limit its MOD is derived from.
   // Imported from the dive computer where the export records one, and editable.
   // Null/undefined falls back to `PPO2_WORKING` at every call site computing a MOD.
@@ -685,10 +693,13 @@ export type PaginatedDivesResponse = PaginatedResponse<Dive>;
 // record this" - the API's parsers report what they read and never substitute a
 // plausible value.
 //
-// Fill the gaps with `DEFAULT_MIXTURE` (`components/dives/mixture-fields.tsx`),
-// which is what the form shows for a cylinder added by hand - and say so, via
-// `describeMixtureImport`. A guessed cylinder size feeds `gas_use`, so a diver
-// who cannot tell it from a reading gets an RMV presented as a derived fact.
+// The gaps are **not** filled from `DEFAULT_MIXTURE` on the way into the form: a
+// blank box is what the file said, and `mergeMixture` (`lib/dive-import.ts`) leaves
+// it blank unless the form already held a cylinder to carry over - which it does say,
+// via `describeMixtureImport`. A guessed cylinder size feeds `gas_use`, so a diver
+// who cannot tell it from a reading gets an RMV presented as a derived fact. A
+// cylinder added by hand still starts from `DEFAULT_MIXTURE`, where the diver can see
+// the numbers and change them.
 export interface ParsedDiveMixture {
   volume: number | null;
   start_pressure: number | null;

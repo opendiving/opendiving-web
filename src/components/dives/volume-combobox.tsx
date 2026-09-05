@@ -63,8 +63,22 @@ export function volumeOptionLabel(
 }
 
 export interface VolumeComboboxProps extends FormControlSlotProps {
-  value?: number;
-  onChange: (value: number | undefined) => void;
+  /** Litres, or `""` for a cylinder whose size was never recorded. */
+  value?: number | "";
+  /**
+   * Emits `""` when the box is cleared, never `undefined`.
+   *
+   * `""` is what this form spells cleared as, for the reason `diveMixtureSchema`
+   * gives: react-hook-form re-displays a field's default the moment its value
+   * resolves to `undefined`, so an emptied box would fill itself back in. The two
+   * mixture pressures beside this one already work this way; this field joined them
+   * when a cylinder became able to record a mix with no vessel.
+   *
+   * Unlike `UnitNumberInput`, the sentinel is fixed rather than a prop: the mixture
+   * volume is the only field this combobox serves, and a `null`-clearing caller
+   * would be a caller that does not exist.
+   */
+  onChange: (value: number | "") => void;
   disabled?: boolean;
   placeholder?: string;
 }
@@ -153,13 +167,13 @@ export function VolumeCombobox({
         type="text"
         inputMode="decimal"
         placeholder={placeholder}
-        value={draft ?? (value === undefined ? "" : String(value))}
+        value={draft ?? (typeof value === "number" ? String(value) : "")}
         disabled={disabled}
         onChange={(e) => {
           const raw = e.target.value;
           setDraft(raw);
           const parsed = parseFloat(raw);
-          onChange(Number.isNaN(parsed) ? undefined : parsed);
+          onChange(Number.isNaN(parsed) ? "" : parsed);
         }}
         role="combobox"
         aria-expanded={isOpen}

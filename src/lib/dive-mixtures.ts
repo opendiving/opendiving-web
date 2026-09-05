@@ -243,8 +243,18 @@ export const PPO2_DECO = 1.6;
 // impossible mix genuinely reaches this module and must come out looking impossible
 // rather than acquiring a plausible name. Zero oxygen is excluded for the same
 // reason: "EAN0" is a well-formed label for a gas nobody can breathe.
-export function isNameableMix(oxygen: number, helium: number): boolean {
+// An unrecorded fraction is not a nameable mix either, and the parameters say so
+// rather than leaving each caller to check first: `gasName` and `mod` beside this one
+// have always taken `null | undefined`, and a cylinder may now record a mix with no
+// vessel *or* a vessel with no mix, so the callers holding a stored `DiveMixture` hold
+// nulls as a matter of course.
+export function isNameableMix(
+  oxygen: number | null | undefined,
+  helium: number | null | undefined,
+): boolean {
   return (
+    oxygen != null &&
+    helium != null &&
     Number.isFinite(oxygen) &&
     Number.isFinite(helium) &&
     oxygen > 0 &&
@@ -444,8 +454,17 @@ export function ead(
 // Just the fields the oxygen-exposure warnings need, so both a saved `DiveMixture`
 // and a half-filled form row satisfy it without either type being imported here.
 export interface OxygenFractions {
-  oxygen: number | null | undefined;
-  helium?: number | null | undefined;
+  // `""` for the reason `po2_limit` and `usage` below give, and it reached these two
+  // last: a cleared O₂ or He box is now a live form value, because a cylinder may
+  // record a vessel with no mix. `recordedFraction` is what every reader here puts it
+  // through.
+  //
+  // Optional as well as nullable, which `helium` already was and `oxygen` has just
+  // become: the key is absent on a `DiveMixture` too, and requiring it here only
+  // forced the two callers holding one to spread it back in - a promise the wire never
+  // made, which is the same mistake `DiveMixture` itself was corrected for.
+  oxygen?: number | "" | null | undefined;
+  helium?: number | "" | null | undefined;
   // Accepted and **deliberately never read** - `PPO2_WORKING`/`PPO2_DECO` are what
   // the warnings judge against, and a dive's own recorded limit must not be able to
   // move them (see `modWarning`). Declared rather than left off so that reading
@@ -465,6 +484,18 @@ export interface OxygenFractions {
   // one `po2_limit` carries: a live form row spells a cleared select that way, and
   // this type has to be satisfied by a half-filled row as well as a saved one.
   usage?: TankUsage | "" | null | undefined;
+}
+
+// One recorded fraction, or `null` for every way of not having one - a cleared form
+// box, an API `null`, a field that was never there. The three functions below take
+// whole `OxygenFractions` rather than loose numbers, so this is where their `""`
+// stops: everything downstream (`gasName`, `mod`, `modWarning`'s comparisons) already
+// deals in numbers and nulls, and letting `""` past would have `0`-coerce it into a
+// gas nobody can breathe.
+function recordedFraction(
+  value: number | "" | null | undefined,
+): number | null {
+  return typeof value === "number" ? value : null;
 }
 
 /**
@@ -499,8 +530,9 @@ export function modWarning(
 ): string | null {
   if (breathedDepth == null || !Number.isFinite(breathedDepth)) return null;
 
-  const decoLimit = mod(mixture.oxygen, PPO2_DECO);
-  const workingLimit = mod(mixture.oxygen, PPO2_WORKING);
+  const oxygen = recordedFraction(mixture.oxygen);
+  const decoLimit = mod(oxygen, PPO2_DECO);
+  const workingLimit = mod(oxygen, PPO2_WORKING);
   if (decoLimit == null || workingLimit == null) return null;
 
   // The limits keep the one decimal they have always printed; the depth keeps the
@@ -610,7 +642,20 @@ export function gasHintParts({
 // which rounds: two rows at 31.6% and 32.4% are both "EAN32" and are not the same fill.
 //
 // `helium` is normalized to 0 because that is what the form and every parser write for
-// a non-trimix, while `OxygenFractions` allows it absent.
+// a non-trimix, while `OxygenFractions` allows it absent - and an absent one now
+// genuinely arrives, from an import that stopped writing a 0 the file never recorded.
+// That normalization is safe where the same one on oxygen would not be: every figure
+// this predicate feeds is derived from the oxygen fraction alone (`modWarning`), so a
+// pairing that is wrong about helium changes nothing that gets warned about, while one
+// that is wrong about oxygen picks a cylinder's MOD to judge the whole dive by.
+//
+// **An unrecorded oxygen is not a gas two cylinders can share.** Two rows that both say
+// nothing are equal as values and identical about nothing, so comparing them raw would
+// call a pair of unanalysed cylinders one mix and hand `diveModWarning` the first of
+// them to judge. It answers `null` for that pair anyway - `mod(null)` has no depth to
+// give - but the agreement would be an accident of what the caller does next rather
+// than of what this predicate claims, and a later caller reading it as "these hold the
+// same gas" would be reading it wrong.
 //
 // It sits *above* that doc block rather than between it and its function: a `/** */`
 // binds to the next declaration whatever `//` comments intervene, so parking a helper
@@ -622,10 +667,14 @@ export function isSingleGasParallelSet(
   if (!isParallelSet(mixtures)) return false;
 
   const [first] = mixtures;
+  const firstOxygen = recordedFraction(first.oxygen);
+  if (firstOxygen === null) return false;
+
   return mixtures.every(
     (mixture) =>
-      mixture.oxygen === first.oxygen &&
-      (mixture.helium ?? 0) === (first.helium ?? 0),
+      recordedFraction(mixture.oxygen) === firstOxygen &&
+      (recordedFraction(mixture.helium) ?? 0) ===
+        (recordedFraction(first.helium) ?? 0),
   );
 }
 
@@ -662,7 +711,10 @@ export function isSingleGasParallelSet(
  *   capable gas on board still cannot reach the maximum depth, then no gas could
  *   have, whichever order they were breathed in. That is a real finding (a depth
  *   typo, or a genuinely unplanned dive) and it is reported against the dive rather
- *   than blamed on any one cylinder.
+ *   than blamed on any one cylinder. A cylinder with no usable oxygen fraction - a
+ *   box mid-retype, or an import from a file that recorded no analysis - is left out
+ *   of the maximum rather than silencing the sentence; see the comment at that branch
+ *   for why the weaker claim is the right one.
  *
  * The 1.4 working limit is deliberately not applied in the multi-cylinder case: a
  * deco gas exceeding 1.4 somewhere on the dive is the normal, intended state of
@@ -693,8 +745,17 @@ export function diveModWarning(
     return modWarning(mixtures[0], maxDepth, units);
   }
 
+  // A cylinder with no usable oxygen fraction is left out of the maximum rather than
+  // silencing the sentence, and a nullable `oxygen` does not change that. It reads
+  // like a weaker claim than "no gas logged can reach" deserves - an unanalysed
+  // cylinder could have held the deep mix - but the direction of the error is what
+  // settles it: a warning that vanishes because one row is blank is the missing
+  // warning `PPO2_WORKING` is a constant to prevent, arriving through an import
+  // instead of a settings screen, and it would flicker off every time a diver cleared
+  // an O₂ box to retype it. The gases that *are* logged still cannot reach the depth,
+  // which is a true and useful thing to say.
   const limits = mixtures
-    .map((mixture) => mod(mixture.oxygen, PPO2_DECO))
+    .map((mixture) => mod(recordedFraction(mixture.oxygen), PPO2_DECO))
     .filter((limit): limit is number => limit !== null);
   if (limits.length === 0) return null;
 

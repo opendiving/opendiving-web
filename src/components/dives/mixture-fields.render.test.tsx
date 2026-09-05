@@ -393,6 +393,56 @@ describe("MixtureFields role input", () => {
   });
 });
 
+// A cylinder may record a mix with no vessel and a vessel with no mix, so all three
+// of these boxes have to be clearable and have to *stay* clear. The trap is the one
+// `role` documents above: `undefined` is what react-hook-form reads as "show the
+// default", so a field that clears to it fills itself straight back in.
+describe("MixtureFields blank gas fields", () => {
+  it("lets an imported cylinder size be cleared and stay cleared", () => {
+    render(<Harness mixtures={[EAN54]} maxDepth={30} />);
+    const volume = screen.getByLabelText("Volume (L)");
+
+    fireEvent.change(volume, { target: { value: "" } });
+
+    expect(volume).toHaveValue("");
+  });
+
+  it("lets the O₂ and He boxes be cleared and stay cleared", () => {
+    render(<Harness mixtures={[EAN54]} maxDepth={30} />);
+    const oxygen = screen.getByLabelText("O₂ (%)");
+    const helium = screen.getByLabelText("He (%)");
+
+    fireEvent.change(oxygen, { target: { value: "" } });
+    fireEvent.change(helium, { target: { value: "" } });
+
+    expect(oxygen).toHaveValue(null);
+    expect(helium).toHaveValue(null);
+  });
+
+  it("stops naming the gas once the O₂ box is empty", () => {
+    // Not "EAN0" and not the EAN54 that was there: an unrecorded fraction is not a
+    // gas, so the hint under the boxes has nothing to say and says nothing.
+    render(<Harness mixtures={[EAN54]} maxDepth={30} />);
+    expect(screen.getByText(/EAN54/)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("O₂ (%)"), {
+      target: { value: "" },
+    });
+
+    expect(screen.queryByText(/EAN/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/MOD/)).not.toBeInTheDocument();
+  });
+
+  it("renders an empty volume box for a cylinder that records no size", () => {
+    render(<Harness mixtures={[{ ...EAN54, volume: "" }]} maxDepth={30} />);
+
+    expect(screen.getByLabelText("Volume (L)")).toHaveValue("");
+    // The gas it does record is still named: the two facts are independent, which is
+    // the whole reason the column became nullable on its own.
+    expect(screen.getByText(/EAN54/)).toBeInTheDocument();
+  });
+});
+
 // The per-dimension entry switch. Every test here installs its own storage - under
 // this runner `window.localStorage` reads back as `undefined` and the override
 // module's try/catch turns that into "no override", so a suite written without it

@@ -87,10 +87,12 @@ describe("applyParsedDiveToForm", () => {
   const emptyForm = () => formHolding([]);
 
   it("flags a cylinder size the file didn't record, against a seeded form", () => {
-    // The bug this pins: `defaulted` used to require that *no* source had the
-    // value, and the seed always has one. So on the ordinary one-cylinder import
-    // the note never appeared - on either form - and 11.1 L went in looking like
-    // a reading, which is the ~26 %-low RMV case.
+    // The bug this pins: the note used to require that *no* source had the value,
+    // and the seed always has one. So on the ordinary one-cylinder import the note
+    // never appeared - on either form - and 11.1 L went in looking like a reading,
+    // which is the ~26 %-low RMV case. The size on screen here is the seeded
+    // cylinder's rather than a default the merge invented, which is the only way
+    // this note can fire now - and it is exactly the case worth firing on.
     const notes = applyParsedDiveToForm(
       seededForm(),
       parsedDive([parsed({ oxygen: 32 })]),
@@ -119,23 +121,28 @@ describe("applyParsedDiveToForm", () => {
     expect(note).toContain("gas mix");
   });
 
-  it("calls it a default, not the form's, when the form held nothing", () => {
+  it("leaves the size blank and says nothing when the form held nothing", () => {
     // The create form's actual starting state. `existingMixtureFor` won't pair a
-    // one-cylinder file against a zero-cylinder form, so `DEFAULT_MIXTURE` supplies
-    // the volume - and "that is a default" is the more urgent sentence of the two:
-    // something is on screen that no dive ever recorded. While the form seeded a
-    // cylinder this read `"form"` and told the diver a number the page had invented
-    // was "already on this form".
+    // one-cylinder file against a zero-cylinder form, so nothing supplies the volume
+    // and it stays empty - which is what the API stores and what the dive page shows.
+    // This used to be the loudest of the notes ("Those are defaults"), because
+    // `DEFAULT_MIXTURE` put an 11.1 L on screen that no dive ever recorded; there is
+    // nothing on screen to warn about now, and the empty box says it better than a
+    // sentence 2 200 px above it could.
+    let applied: DiveMixtureInput[] = [];
     const notes = applyParsedDiveToForm(
       emptyForm(),
       parsedDive([parsed({ oxygen: 32 })]),
-      () => {},
+      (mixtures) => {
+        applied = mixtures;
+      },
     );
 
-    expect(notes.guessed.volume).toBe("default");
-    // Plural, because the file left helium to the default too - against a seeded
-    // form that 0 came from the cylinder already there and read `"form"`.
-    expect(describeMixtureImport(notes)).toContain("Those are defaults");
+    expect(applied[0].volume).toBe("");
+    expect(applied[0].helium).toBe("");
+    expect(applied[0].oxygen).toBe(32);
+    expect(notes.guessed).toEqual({});
+    expect(describeMixtureImport(notes)).toBeNull();
   });
 
   it("reports no lost pressures importing onto an empty form", () => {
@@ -202,7 +209,10 @@ describe("applyParsedDiveToForm", () => {
     );
 
     expect(applied[0].start_pressure).toBe("");
-    expect(applied[0].volume).toBe(DEFAULT_MIXTURE.volume);
+    // Blank rather than the form's 11.1 L, for the same reason the pressure above it
+    // is blank: with no pairing there is no cylinder to carry anything from, and the
+    // import path invents nothing.
+    expect(applied[0].volume).toBe("");
     expect(notes.keptPressures).toBe(false);
     // ...and the diver is told the pressures went, which on the edit form takes the
     // dive's `gas_use` with it.

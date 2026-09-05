@@ -76,10 +76,11 @@ describe("mergeMixture", () => {
   });
 
   it("leaves the tech fields empty when the file recorded none", () => {
-    // Unlike volume and the gas fractions, these have no default tier: an absent
-    // ppO2 limit falls back to PPO2_WORKING where a MOD is computed, and an absent
-    // role or gas number simply isn't shown. So there is nothing to guess and
-    // nothing for the import note to warn about.
+    // An absent ppO2 limit falls back to PPO2_WORKING where a MOD is computed, and an
+    // absent role or gas number simply isn't shown - so there is nothing here for the
+    // import note to warn about. Volume and the gas fractions are left empty too now,
+    // but they *are* in the note's field list, because a value carried over from the
+    // previous dive's cylinder is a number on screen this file never recorded.
     const mixture = mergeMixture(parsed({ oxygen: 21, helium: 0 })).value;
 
     // `""` for the two the form has an input for - the cleared state their
@@ -115,27 +116,44 @@ describe("mergeMixture", () => {
     expect(mixture.gas_number).toBe(0);
   });
 
-  it("fills gas and volume the export never recorded from DEFAULT_MIXTURE", () => {
+  it("leaves gas and volume the export never recorded blank", () => {
     // The 2026 Suunto Ocean JSON export records transmitter pressures but no gas
-    // fraction and no tank size anywhere, and a FIT file cannot express cylinder
-    // size at all. The API sends `null` rather than inventing air, so the guess
-    // happens here - where it is the same one a hand-added cylinder starts with.
+    // fraction and no tank size anywhere, and a FIT file cannot express cylinder size
+    // at all. The API sends `null` rather than inventing air, and the form no longer
+    // converts that back into a number: every one of these boxes stays empty, saves as
+    // NULL, and shows on the dive page as an absence. `DEFAULT_MIXTURE` is still what a
+    // cylinder added *by hand* starts from - it is the import path that stopped
+    // guessing.
     const mixture = mergeMixture(
       parsed({ start_pressure: 205.11, end_pressure: 91.55 }),
     ).value;
 
-    expect(mixture.volume).toBe(DEFAULT_MIXTURE.volume);
-    expect(mixture.oxygen).toBe(DEFAULT_MIXTURE.oxygen);
-    expect(mixture.helium).toBe(DEFAULT_MIXTURE.helium);
+    expect(mixture.volume).toBe("");
+    expect(mixture.oxygen).toBe("");
+    expect(mixture.helium).toBe("");
     // The values that *were* read are untouched.
     expect(mixture.start_pressure).toBe(205.11);
     expect(mixture.end_pressure).toBe(91.55);
   });
 
+  it("does not carry a blank form field over as if it were a value", () => {
+    // The form's cleared state is `""`, which is a value in the union and not a gap:
+    // read with `!= null` it would count as something the form held, and the import
+    // note would report a carry-over of an empty box. A diver who cleared the size on
+    // the previous dive gets a blank here, and no sentence about it.
+    const merged = mergeMixture(
+      parsed({ start_pressure: 205.11 }),
+      onForm({ volume: "", oxygen: "", helium: "" }),
+    );
+
+    expect(merged.value.volume).toBe("");
+    expect(merged.sources.volume).toBe("blank");
+    expect(merged.sources.oxygen).toBe("blank");
+  });
+
   it("treats a recorded zero as a reading, not as a gap", () => {
-    // 0 % helium on a nitrox fill is a real recorded value. `??` (not `||`) is
-    // what keeps it from being replaced by the default - which for `helium`
-    // happens to be 0 too, so `oxygen` is the field that would actually break.
+    // 0 % helium on a nitrox fill is a real recorded value, and `!= null` rather than
+    // a truthiness test is what keeps it from being read as an absence and blanked.
     const mixture = mergeMixture(parsed({ helium: 0, oxygen: 0 })).value;
 
     expect(mixture.helium).toBe(0);
@@ -226,29 +244,28 @@ describe("describeMixtureImport", () => {
     expect(note).not.toContain("default");
   });
 
-  it("says the value is a default when nothing supplied it", () => {
-    expect(describeMixtureImport(notesFor({ volume: "default" }))).toContain(
-      "That is a default",
+  it("says it in the singular for one carried-over field", () => {
+    expect(describeMixtureImport(notesFor({ volume: "form" }))).toContain(
+      "That value was already on this form",
     );
   });
 
-  it("calls it a default when a folded-away helium was the default", () => {
-    // Helium is folded into the "gas mix" label when oxygen was guessed too, so judging
-    // provenance over the *named* fields alone let a defaulted helium hide behind a
-    // form-sourced oxygen: the note said "already on this form" while the He box showed
-    // a DEFAULT_MIXTURE 0 the diver had deliberately cleared.
-    expect(
-      describeMixtureImport(
-        notesFor({ volume: "form", oxygen: "form", helium: "default" }),
-      ),
-    ).toContain("Those are defaults");
-  });
+  it("says nothing about a field neither the file nor the form had", () => {
+    // The blank case is not a note. There is no number on screen to mistake for a
+    // reading - the box is empty, the save stores NULL, and the dive page renders the
+    // absence as an absence. A sentence 2 200 px above the empty box would be the
+    // second place for that fact to live and the one that could go stale.
+    const merged = [
+      mergeMixture(parsed({ start_pressure: 205.11, end_pressure: 91.55 })),
+    ];
+    const notes = mixtureImportNotes(
+      [parsed({ start_pressure: 205.11, end_pressure: 91.55 })],
+      merged,
+      [],
+    );
 
-  it("calls it a default when any one of them was", () => {
-    // Something on screen that no dive ever recorded is the more urgent of the two.
-    expect(
-      describeMixtureImport(notesFor({ volume: "form", oxygen: "default" })),
-    ).toContain("Those are defaults");
+    expect(notes.guessed).toEqual({});
+    expect(describeMixtureImport(notes)).toBeNull();
   });
 
   it("quotes no values at all", () => {
@@ -256,7 +273,7 @@ describe("describeMixtureImport", () => {
     // quoted figure can never be compared with the one in the box - and quoting a value
     // is what forced the sentence to track the form and go stale when it didn't.
     const note = describeMixtureImport(
-      notesFor({ volume: "default", oxygen: "default", helium: "default" }),
+      notesFor({ volume: "form", oxygen: "form", helium: "form" }),
     );
 
     expect(note).not.toMatch(/\d/);
@@ -264,14 +281,14 @@ describe("describeMixtureImport", () => {
   });
 
   it("names helium on its own rather than an oxygen it didn't guess", () => {
-    const note = describeMixtureImport(notesFor({ helium: "default" }));
+    const note = describeMixtureImport(notesFor({ helium: "form" }));
 
     expect(note).toContain("helium fraction");
   });
 
   it("folds helium into the gas mix when both were guessed", () => {
     const note = describeMixtureImport(
-      notesFor({ oxygen: "default", helium: "default" }),
+      notesFor({ oxygen: "form", helium: "form" }),
     );
 
     expect(note).toContain("gas mix");
