@@ -385,11 +385,15 @@ export function formatDurationForForm(durationSeconds: number): string {
   return `${minutes}:${pad(seconds)}`;
 }
 
-// Parses the "MM:SS" form representation back into a duration in seconds.
-// Assumes `value` already matches `durationField()`'s format.
+// Parses the form representation back into a duration in seconds. Assumes
+// `value` already matches `durationField()`'s format, which admits both "MM:SS"
+// and a bare "MM" - a colonless entry is whole minutes, so the missing half is
+// zero seconds rather than a parse failure. `formatDurationForForm` always
+// writes the "MM:SS" half, so a "45" typed once comes back as "45:00" on the
+// next read of the dive.
 export function parseFormDuration(value: string): number {
   const [minutes, seconds] = value.split(":").map(Number);
-  return minutes * 60 + seconds;
+  return minutes * 60 + (seconds ?? 0);
 }
 
 // Formats a duration given in seconds as "Xh Ym" (or just "Ymin" under an hour).

@@ -120,12 +120,46 @@ describe("diveCreateSchema duration", () => {
     expect(result.success).toBe(false);
   });
 
-  it("rejects a duration without a colon", () => {
+  it("accepts bare minutes, the shape the placeholder promises", () => {
+    expect(
+      diveCreateSchema.safeParse({ ...validDive, duration: "45" }).success,
+    ).toBe(true);
+    expect(
+      diveCreateSchema.safeParse({ ...validDive, duration: "7" }).success,
+    ).toBe(true);
+    expect(
+      diveCreateSchema.safeParse({ ...validDive, duration: "120" }).success,
+    ).toBe(true);
+  });
+
+  // Four digits is not a fourth minute digit and not an unpunctuated "10:30" -
+  // it is the entry the widened regex must still refuse, so that dropping the
+  // colon requirement didn't turn a typo into a 1,030-minute dive.
+  it("rejects more than three digits of minutes", () => {
     const result = diveCreateSchema.safeParse({
       ...validDive,
       duration: "1030",
     });
     expect(result.success).toBe(false);
+  });
+
+  it("rejects a trailing colon with no seconds", () => {
+    const result = diveCreateSchema.safeParse({
+      ...validDive,
+      duration: "45:",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("names both accepted shapes in its error message", () => {
+    const result = diveCreateSchema.safeParse({
+      ...validDive,
+      duration: "abc",
+    });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.message).toBe(
+      "Duration must be minutes or MM:SS, e.g. 45 or 67:30",
+    );
   });
 
   it("rejects an empty duration", () => {
@@ -853,6 +887,10 @@ describe("buildDiveUpdate", () => {
 
   it("converts the MM:SS duration to seconds", () => {
     expect(buildDiveUpdate({ duration: "45:30" }).duration).toBe(2730);
+  });
+
+  it("reads a bare-minutes duration as whole minutes", () => {
+    expect(buildDiveUpdate({ duration: "45" }).duration).toBe(2700);
   });
 
   it("normalizes mixtures, dropping the empty-string pressure placeholders", () => {
