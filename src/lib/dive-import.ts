@@ -161,12 +161,15 @@ export function mergeMixture(
         mixture.end_pressure ?? carriedPressures?.end_pressure ?? "",
       oxygen: oxygen.value,
       helium: helium.value,
-      // File, then form, then nothing - these three deliberately have no default
-      // tier, so they are absent from `DefaultedMixtureField` and never appear in
-      // the import note. There is nothing to warn about: a missing ppO₂ limit falls
-      // back to `PPO2_WORKING` at the point a MOD is computed, and a missing role or
-      // gas number simply isn't displayed. Compare `volume`, where the form showing
-      // 11.1 L for a cylinder the file never described is a claim worth flagging.
+      // File, then form, then nothing - the same two tiers `pick` applies above,
+      // and these three are deliberately absent from `CarriedMixtureField`, so a
+      // carry-over here is never reported. There is nothing to warn about: a
+      // missing ppO₂ limit falls back to `PPO2_WORKING` at the point a MOD is
+      // computed, and a missing role or gas number simply isn't displayed. Compare
+      // `volume`, where a hand-added cylinder's 11.1 L carried onto a cylinder the
+      // file never described is a claim worth flagging - the tiers are the same, and
+      // what separates the two sets is whether the value carried says something the
+      // diver could mistake for a reading.
       po2_limit: mixture.po2_limit ?? existing?.po2_limit ?? "",
       gas_number: mixture.gas_number ?? existing?.gas_number,
       // `""` rather than `undefined` for the same reason as `po2_limit` above: it
