@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import NewDivePage from "./page";
 import { divesAPI, type Dive } from "@/lib/api/dives";
@@ -1104,6 +1110,37 @@ describe("the Fields control", () => {
       expect(control).toBeChecked();
       expect(control).toBeDisabled();
     }
+  });
+
+  it("leads the gas section with the switch that governs it", async () => {
+    // `mixtures` sits mid-registry, after the three always-on cylinder columns it
+    // decides the fate of and before the five per-cylinder ones the panel disables
+    // while it is off. Listing it in that order would put the reason those rows are
+    // unavailable below the rows it explains.
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+    await openFieldsPanel();
+
+    const section = screen.getByRole("group", { name: /gas mixtures/i });
+    const rows = within(section)
+      .getAllByRole("switch")
+      .map((control) =>
+        document
+          .querySelector(`label[for="${CSS.escape(control.id)}"]`)
+          ?.textContent?.trim(),
+      );
+
+    expect(rows).toEqual([
+      "Gas Mixtures",
+      "Volume",
+      "O₂",
+      "He",
+      "ppO₂ limit",
+      "Start pressure",
+      "End pressure",
+      "Role",
+      "Usage",
+    ]);
   });
 
   it("disables the per-cylinder rows while the gas section is off screen", async () => {

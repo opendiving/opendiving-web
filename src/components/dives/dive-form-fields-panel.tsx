@@ -19,6 +19,7 @@ import {
   canonicalHiddenFields,
   hiddenFieldsEqual,
   isMixtureField,
+  type DiveFormFieldEntry,
   type DiveFormFieldGroup,
   type DiveFormFieldKey,
 } from "@/lib/dive-form-fields";
@@ -73,6 +74,25 @@ interface DiveFormFieldsPanelProps {
   /** The signed-in diver, whose presets these are - the API refuses anyone else's. */
   userId: string;
 }
+
+/**
+ * The hideable field a group lists ahead of everything else, where it has one.
+ *
+ * Only `mixtures` does. It is the switch that decides whether the Gas Mixtures section
+ * is on the form at all, and every other row in that group is downstream of it - the
+ * three always-on cylinder columns as much as the five per-cylinder ones, which the
+ * panel disables outright while it is off. Listing it after them would put the reason
+ * they are unavailable below the rows it explains. It is the form's own order too: the
+ * section exists before any cylinder in it does.
+ *
+ * The registry stays in form order for the guard's sake; presentation order is this
+ * file's business, which is why the exception lives here and not beside it.
+ */
+const LEADING_GROUP_FIELD: Partial<
+  Record<DiveFormFieldGroup, DiveFormFieldKey>
+> = {
+  "Gas mixtures": "mixtures",
+};
 
 /** Which name prompt is open, and what confirming it does. */
 type NamePrompt =
@@ -263,10 +283,47 @@ export function DiveFormFieldsPanel({
     id: `${id}-always-${index}`,
   }));
 
-  const rowsFor = (group: DiveFormFieldGroup) => ({
-    fields: DIVE_FORM_FIELD_REGISTRY.filter((entry) => entry.group === group),
-    alwaysOn: alwaysOnRows.filter((row) => row.entry.group === group),
-  });
+  const rowsFor = (group: DiveFormFieldGroup) => {
+    const hideable = DIVE_FORM_FIELD_REGISTRY.filter(
+      (entry) => entry.group === group,
+    );
+    const leadingKey = LEADING_GROUP_FIELD[group];
+    return {
+      leading: hideable.filter((entry) => entry.key === leadingKey),
+      fields: hideable.filter((entry) => entry.key !== leadingKey),
+      alwaysOn: alwaysOnRows.filter((row) => row.entry.group === group),
+    };
+  };
+
+  const fieldRow = (entry: DiveFormFieldEntry) => {
+    const fieldId = `${id}-field-${entry.key}`;
+    const perCylinder = isMixtureField(entry.key);
+    const revealed =
+      visibility.isHidden(entry.key) && visibility.isRevealed(entry.key);
+    return (
+      <div key={entry.key}>
+        <div className="flex items-center gap-2">
+          <Switch
+            id={fieldId}
+            checked={visibility.isVisible(entry.key)}
+            // Per-cylinder switches keep their state while the section they
+            // belong to is off screen, but there is nothing on screen for them
+            // to govern, so they are not offered.
+            disabled={perCylinder && !gasOnScreen}
+            onCheckedChange={(next) => toggleField(entry.key, next)}
+          />
+          <Label htmlFor={fieldId} className="font-normal">
+            {entry.label}
+          </Label>
+        </div>
+        {revealed && (
+          <p className="pl-11 text-xs text-muted-foreground">
+            shown because it holds a value
+          </p>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div id={id} className="border-t px-6 py-4 space-y-5">
@@ -435,14 +492,16 @@ export function DiveFormFieldsPanel({
       <section className="space-y-6">
         <h3 className="text-sm font-medium">Fields on this form</h3>
         {DIVE_FORM_FIELD_GROUPS.map((group) => {
-          const { fields, alwaysOn } = rowsFor(group);
-          if (fields.length === 0 && alwaysOn.length === 0) return null;
+          const { leading, fields, alwaysOn } = rowsFor(group);
+          if (leading.length + fields.length + alwaysOn.length === 0)
+            return null;
 
           return (
             <fieldset key={group} className="space-y-3">
               <legend className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 {group}
               </legend>
+              {leading.map(fieldRow)}
               {/* The same row as a hideable field, down to the label's own colour:
                   the switch being on and unavailable is the whole of what marks it,
                   and a diver looking for Duration finds it where they would look for
@@ -456,37 +515,7 @@ export function DiveFormFieldsPanel({
                   </Label>
                 </div>
               ))}
-              {fields.map((entry) => {
-                const fieldId = `${id}-field-${entry.key}`;
-                const perCylinder = isMixtureField(entry.key);
-                const revealed =
-                  visibility.isHidden(entry.key) &&
-                  visibility.isRevealed(entry.key);
-                return (
-                  <div key={entry.key}>
-                    <div className="flex items-center gap-2">
-                      <Switch
-                        id={fieldId}
-                        checked={visibility.isVisible(entry.key)}
-                        // Per-cylinder switches keep their state while the
-                        // section they belong to is off screen, but there is
-                        // nothing on screen for them to govern, so they are not
-                        // offered.
-                        disabled={perCylinder && !gasOnScreen}
-                        onCheckedChange={(next) => toggleField(entry.key, next)}
-                      />
-                      <Label htmlFor={fieldId} className="font-normal">
-                        {entry.label}
-                      </Label>
-                    </div>
-                    {revealed && (
-                      <p className="pl-11 text-xs text-muted-foreground">
-                        shown because it holds a value
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
+              {fields.map(fieldRow)}
             </fieldset>
           );
         })}
