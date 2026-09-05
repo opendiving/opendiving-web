@@ -243,8 +243,12 @@ treats the missing half as zero seconds; `formatDurationForForm()` still always 
 a `45` typed once reads back as `45:00`.
 
 The `<FormLabel>` is a bare `Duration` for the same reason - it used to read `Duration (MM:SS)`,
-which is a second place for the field to promise one shape while accepting another. The placeholder
-is the only format hint, so there is one string to keep in step with the regex rather than three.
+which is a third place for the field to promise one shape while accepting another. **Two strings
+still have to move with `DURATION_REGEX` and both are prose about the format**: the placeholder in
+`dive-form-fields.tsx` and `durationField()`'s default message, which this change rewrote from
+`Duration must be in MM:SS format, e.g. 67:30` to name both shapes. A test pins the message
+verbatim, so widening the regex again fails the suite until the message is updated - the placeholder
+has no such guard, and is the one to check by hand.
 
 Conversion to/from the API's seconds representation happens right before submit / right after fetch
 via `parseFormDuration()`/`formatDurationForForm()` in `lib/date-time.ts` (mirroring
