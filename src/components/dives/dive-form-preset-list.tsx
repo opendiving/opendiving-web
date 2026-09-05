@@ -1,15 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { dialogFormSubmit } from "@/lib/dialog-form";
-import { hiddenFieldsEqual } from "@/lib/dive-form-fields";
 import type { DiveFormPreset } from "@/lib/api/dive-form-presets";
 import type { DiveFormPresets } from "@/hooks/useDiveFormPresets";
-import type { DiveFormVisibility } from "@/hooks/useDiveFormVisibility";
 
 /**
  * The Presets tab: what the account has saved, and the two things that can be done to
@@ -20,16 +18,12 @@ import type { DiveFormVisibility } from "@/hooks/useDiveFormVisibility";
  * preset or over an existing one - so a row is left with renaming and deleting, which
  * is all that is genuinely about the preset rather than about the form.
  *
- * **A preset is a snapshot**, so the check marks the row whose set *equals* the stored
- * state and marks nothing when none does. Nothing remembers which one was applied.
+ * **Nor does the mark for which one is current.** The menu carries it, where it is the
+ * answer to what the diver is about to pick from; renaming and deleting a preset are
+ * the same acts whether or not its set happens to equal what is on the form, so a check
+ * here only invited the reading that this row is somehow protected.
  */
-export function DiveFormPresetList({
-  presets,
-  visibility,
-}: {
-  presets: DiveFormPresets;
-  visibility: DiveFormVisibility;
-}) {
+export function DiveFormPresetList({ presets }: { presets: DiveFormPresets }) {
   const [renaming, setRenaming] = useState<DiveFormPreset | null>(null);
   const [promptName, setPromptName] = useState("");
   const [deleting, setDeleting] = useState<DiveFormPreset | null>(null);
@@ -65,57 +59,35 @@ export function DiveFormPresetList({
         <p className="text-sm text-muted-foreground">Loading presets...</p>
       ) : rows && rows.length > 0 ? (
         <ul className="space-y-1">
-          {rows.map((preset) => {
-            const isCurrent = hiddenFieldsEqual(
-              preset.hidden_fields,
-              visibility.hidden,
-            );
-            return (
-              <li
-                key={preset.uuid}
-                className="flex flex-wrap items-center gap-2"
+          {rows.map((preset) => (
+            <li key={preset.uuid} className="flex flex-wrap items-center gap-2">
+              <span className="min-w-0 flex-1 text-sm">{preset.name}</span>
+              {presets.busyUuid === preset.uuid && (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+              )}
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={presets.isWorking}
+                onClick={() => {
+                  setPromptName(preset.name);
+                  setRenaming(preset);
+                }}
               >
-                <span className="flex min-w-0 flex-1 items-center gap-1.5 text-sm">
-                  {/* The mark is a check *and* a word: colour and an icon alone
-                      would leave the current preset unnamed to a screen reader,
-                      and `aria-current` is the attribute for "this one of a set". */}
-                  {isCurrent && (
-                    <Check className="h-3.5 w-3.5 text-teal" aria-hidden />
-                  )}
-                  <span aria-current={isCurrent ? "true" : undefined}>
-                    {preset.name}
-                  </span>
-                  {isCurrent && (
-                    <span className="sr-only">(current fields)</span>
-                  )}
-                </span>
-                {presets.busyUuid === preset.uuid && (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-                )}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  disabled={presets.isWorking}
-                  onClick={() => {
-                    setPromptName(preset.name);
-                    setRenaming(preset);
-                  }}
-                >
-                  Rename
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  disabled={presets.isWorking}
-                  onClick={() => setDeleting(preset)}
-                >
-                  Delete
-                </Button>
-              </li>
-            );
-          })}
+                Rename
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={presets.isWorking}
+                onClick={() => setDeleting(preset)}
+              >
+                Delete
+              </Button>
+            </li>
+          ))}
         </ul>
       ) : (
         <p className="text-sm text-muted-foreground">

@@ -15034,7 +15034,10 @@ second way to do the quick thing would put it behind two clicks and a modal.
 
 **The dialog is two tabs, Fields first and default**, because that is what a diver opens it for.
 Presets is the housekeeping tab — rename, delete, restore the three seeded defaults — and nothing on
-it changes what the form shows.
+it changes what the form shows. It carries **no mark for the current preset**: renaming and deleting
+one are the same acts whether or not its set happens to equal what is on the form, and a check there
+only invited the reading that the marked row was somehow protected. The menu keeps the mark, where
+it answers what the diver is about to pick from.
 
 **Saving is one control at the foot of the Fields tab, not a button per preset row.** "Save as" is a
 name with the account's presets on a dropdown and a single Save: a name matching nothing creates, a

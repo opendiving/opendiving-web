@@ -670,6 +670,9 @@ const inFieldsPanel = () => within(screen.getByRole("dialog"));
 const openPresetsTab = () =>
   userEvent.click(screen.getByRole("tab", { name: /presets/i }));
 
+const openFieldsMenu = () =>
+  userEvent.click(screen.getByRole("button", { name: /fields/i }));
+
 const lastDiveWith = (overrides: Partial<Dive>) => {
   vi.mocked(divesAPI.getDives).mockResolvedValue({
     ...emptyPage<Dive>(),
@@ -1233,6 +1236,10 @@ describe("the preset list", () => {
   });
 
   it("marks the one whose set equals the stored state, and only that one", async () => {
+    // The menu carries the mark, and only the menu: on the Presets tab, renaming
+    // and deleting are the same acts whether or not a preset's set is the one on
+    // the form. The mark is a word as well as a check, so this reads it out of the
+    // accessible name rather than off the icon.
     stable.auth.user.dive_form_hidden_fields = [
       "altitude",
       "mixture.po2_limit",
@@ -1241,43 +1248,61 @@ describe("the preset list", () => {
     ];
     render(<NewDivePage />);
     await screen.findByLabelText(/duration/i);
-    await openFieldsPanel();
-    await openPresetsTab();
+    await openFieldsMenu();
 
-    await inFieldsPanel().findByText("Recreational");
-    expect(inFieldsPanel().getByText("Recreational")).toHaveAttribute(
-      "aria-current",
-      "true",
-    );
-    expect(inFieldsPanel().getByText("Technical")).not.toHaveAttribute(
-      "aria-current",
-    );
+    expect(
+      await screen.findByRole("menuitem", {
+        name: /recreational\s*\(current fields\)/i,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("menuitem", { name: /^technical$/i }),
+    ).toBeInTheDocument();
   });
 
-  it("marks nothing once the diver toggles a field of their own", async () => {
+  it("leaves the Presets tab unmarked, current set or not", async () => {
     stable.auth.user.dive_form_hidden_fields = [];
     render(<NewDivePage />);
     await screen.findByLabelText(/duration/i);
     await openFieldsPanel();
     await openPresetsTab();
 
-    // Technical hides nothing, so it matches a fresh account exactly.
+    // Technical hides nothing, so it matches a fresh account exactly - and still
+    // gets no check, no `aria-current` and no "(current fields)" here.
     await inFieldsPanel().findByText("Technical");
-    expect(inFieldsPanel().getByText("Technical")).toHaveAttribute(
-      "aria-current",
-      "true",
-    );
-
-    await userEvent.click(screen.getByRole("tab", { name: /fields/i }));
-    await userEvent.click(screen.getByRole("switch", { name: /^notes$/i }));
-    await openPresetsTab();
-
     expect(inFieldsPanel().getByText("Technical")).not.toHaveAttribute(
       "aria-current",
     );
-    expect(inFieldsPanel().getByText("Recreational")).not.toHaveAttribute(
-      "aria-current",
-    );
+    expect(
+      inFieldsPanel().queryByText(/current fields/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("marks nothing once the diver toggles a field of their own", async () => {
+    stable.auth.user.dive_form_hidden_fields = [];
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+
+    // Technical hides nothing, so it matches a fresh account exactly.
+    await openFieldsMenu();
+    expect(
+      await screen.findByRole("menuitem", {
+        name: /technical\s*\(current fields\)/i,
+      }),
+    ).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+
+    await openFieldsPanel();
+    await userEvent.click(screen.getByRole("switch", { name: /^notes$/i }));
+    await closeFieldsPanel();
+
+    await openFieldsMenu();
+    expect(
+      await screen.findByRole("menuitem", { name: /^technical$/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("menuitem", { name: /^recreational$/i }),
+    ).toBeInTheDocument();
   });
 
   it("applies one from the menu by storing its set, not by remembering it", async () => {
@@ -1398,14 +1423,13 @@ describe("the preset list", () => {
         { hidden_fields: ["altitude", "notes"] },
       ),
     );
-    // Which is what makes it the marked one now: the mark is set equality against
-    // the stored state, so nothing has to remember that this was the preset applied.
-    await openPresetsTab();
+    // Which is what makes it the named one now: the trigger is set equality against
+    // the stored state, so nothing has to remember that this was the preset saved.
+    await closeFieldsPanel();
     await waitFor(() =>
-      expect(inFieldsPanel().getByText("Recreational")).toHaveAttribute(
-        "aria-current",
-        "true",
-      ),
+      expect(
+        screen.getByRole("button", { name: "Fields: Recreational" }),
+      ).toBeInTheDocument(),
     );
   });
 

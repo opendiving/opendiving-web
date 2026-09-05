@@ -95,7 +95,7 @@ export function DiveFormFieldsDialog({
           </TabsContent>
 
           <TabsContent value="presets" className="pt-4">
-            <DiveFormPresetList presets={presets} visibility={visibility} />
+            <DiveFormPresetList presets={presets} />
           </TabsContent>
         </Tabs>
 
