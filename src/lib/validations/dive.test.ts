@@ -288,6 +288,59 @@ describe("diveMixtureSchema", () => {
     expect(result.success).toBe(true);
   });
 
+  it("accepts a cylinder that records a mix and no vessel", () => {
+    // The UDDF `<tankdata>` with a gas link and no `<tankvolume>`. The column is
+    // nullable, so the form has to be able to hold and submit the same absence -
+    // and `""` is the spelling, for the reason the pressures beside it use it.
+    const result = diveMixtureSchema.safeParse({
+      ...validMixture,
+      volume: "",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts a cylinder that records a vessel and no mix", () => {
+    // The other half, and the one with the sharper consequence: a diver plans gas
+    // off these two numbers, so a source that carried no analysis must not have air
+    // assumed for it.
+    const result = diveMixtureSchema.safeParse({
+      volume: 12,
+      oxygen: "",
+      helium: "",
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts a cylinder recording none of the three", () => {
+    // Every mixture field is optional on the API's create schema, so a row with
+    // nothing in it is a row the API will store. The form must not be the stricter
+    // of the two.
+    expect(diveMixtureSchema.safeParse({}).success).toBe(true);
+  });
+
+  it("leaves the sum rule alone when a fraction is blank", () => {
+    // Two fractions can only exceed the whole when both are recorded. Reading `""`
+    // as 0 would turn an unknown helium content into a claim that there is none -
+    // the substitution this field stopped making.
+    expect(
+      diveMixtureSchema.safeParse({ volume: 12, oxygen: 50, helium: "" })
+        .success,
+    ).toBe(true);
+    expect(
+      diveMixtureSchema.safeParse({ volume: 12, oxygen: "", helium: 60 })
+        .success,
+    ).toBe(true);
+  });
+
+  it("still rejects a blank-and-recorded pair that genuinely exceeds 100", () => {
+    // The guard above is about `""`, not about giving up on the rule: two recorded
+    // fractions are still checked against each other.
+    expect(
+      diveMixtureSchema.safeParse({ volume: 12, oxygen: 50, helium: 60 })
+        .success,
+    ).toBe(false);
+  });
+
   // The pressure band, both ends and both fields. The message is the deliverable
   // as much as the rejection is - "Start pressure must be positive" was accurate
   // and useless, because it never said what to type instead - so these assert the
@@ -584,6 +637,37 @@ describe("toDiveMixtureInput", () => {
         usage: undefined,
       },
     ]);
+  });
+
+  it("round-trips a mix-only cylinder without inventing a size", () => {
+    // The whole point of the nullable column, checked at both boundaries at once:
+    // NULL comes in, the form holds `""`, the save sends the key absent, and the
+    // API's `DiveMixtureCreate` default puts NULL back. An 11.1 L appearing
+    // anywhere in that loop is the failure - it would feed `compute_gas_use` and
+    // present an invented RMV as a derived fact.
+    const mixOnly: DiveMixture = {
+      ...fromApi,
+      volume: null,
+      start_pressure: 200,
+      end_pressure: 90,
+    };
+    const asForm = toDiveMixtureInput(mixOnly);
+
+    expect(asForm.volume).toBe("");
+    expect(diveMixtureSchema.safeParse(asForm).success).toBe(true);
+    expect(normalizeMixtures([asForm])[0].volume).toBeUndefined();
+  });
+
+  it("round-trips an unanalysed cylinder without inventing air", () => {
+    const noMix: DiveMixture = { ...fromApi, oxygen: null, helium: null };
+    const asForm = toDiveMixtureInput(noMix);
+
+    expect(asForm.oxygen).toBe("");
+    expect(asForm.helium).toBe("");
+    expect(diveMixtureSchema.safeParse(asForm).success).toBe(true);
+    const normalized = normalizeMixtures([asForm])[0];
+    expect(normalized.oxygen).toBeUndefined();
+    expect(normalized.helium).toBeUndefined();
   });
 
   it("round-trips a flagged parallel cylinder back to the wire value", () => {

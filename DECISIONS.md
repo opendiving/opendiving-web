@@ -1009,6 +1009,16 @@ deliberate until the public-profile endpoint exists.
 
 ## FIT imports: one vendor-neutral label, and gas gaps filled here but declared
 
+**The second of the three decisions below is superseded: the gaps are no longer filled.** The
+`volume`/`oxygen`/`helium` columns are nullable now, so a file that recorded none of them stores
+none of them and the boxes stay empty — see _"A cylinder may record a mix with no vessel, and three
+fields stopped being numbers"_ at the foot of this file. What survives unchanged is everything that
+section was actually _about_: the API keeping `null` rather than substituting a plausible number,
+the harm a silently invented 11.1 L does to `gas_use`, and the note's own design — `guessed` keyed
+off the file alone, provenance reported by the merge rather than reconstructed afterwards, and no
+values quoted in the sentence. The third tier is what went; the reasoning that made a third tier
+worth declaring is what removed it. The first and third decisions stand as written.
+
 The API gained a `fit` parser reading Garmin Descent and Suunto's native export alike, so
 `DIVE_FILE_ACCEPT` is now `.xml,.json,.fit`. Three client-side decisions came with it.
 
@@ -1023,9 +1033,11 @@ this list forgets is invisible rather than broken: the file simply cannot be sel
 a hand-written `Record<string, string>` in the test looked like it enforced this and didn't, since a
 fourth parser would have compiled and passed unchanged.
 
-**Missing gas values are defaulted here, not in the API - and the diver is told.** The API's parsers
-deliberately return `null` for anything an export did not record, rather than substituting a
-plausible number (see its `DiveMixtureSchema`). The form cannot hold `null` for
+**Missing gas values are defaulted here, not in the API - and the diver is told.** _(This heading
+and its next two sentences are the superseded part; see the note at the top of this section. Nothing
+is defaulted on the import path any more, and the form holds those gaps as `""` and saves them as
+NULL.)_ The API's parsers deliberately return `null` for anything an export did not record, rather
+than substituting a plausible number (see its `DiveMixtureSchema`). The form cannot hold `null` for
 `volume`/`oxygen`/`helium`, so `mergeMixture` fills them from `DEFAULT_MIXTURE` - the same values a
 hand-added cylinder starts with.
 
@@ -1045,7 +1057,10 @@ has all three values: at the time both dive pages seeded `mixtures` with a compl
 `DEFAULT_MIXTURE` cylinder before any import happened, and the create form's last-dive prefill
 supplies all three too. For the ordinary one-cylinder-file-against-a-one-cylinder-form case the
 counts always match, so the note appeared only when the cylinder counts differed - a minority path,
-and one that made it look like it worked.
+and one that made it look like it worked. (A form holding a cylinder now only _usually_ has all
+three, since the columns became nullable and a dive imported without a cylinder size holds a blank.
+The conclusion is untouched: keying off the file is still what makes the note fire on the imports it
+exists for, and a blank carried-over field is a gap rather than a value either way.)
 
 That premise has since gone entirely: the create form seeds `[]` rather than a cylinder (see "The
 create form proposes no cylinder, and the last one is removable" below), and the edit form seeds
@@ -4117,6 +4132,11 @@ argument for reversing the line above is in "The usage badge left the table, and
 under it" at the end of this file; the line still stands for the two badges that remain.
 
 ## The API sends `null`, the form schema only understood `""` — and the save button did nothing
+
+**Still current, and applied again since:** `volume`, `oxygen` and `helium` became `| null` on
+`DiveMixture` the same way and for the same reason — see _"A cylinder may record a mix with no
+vessel, and three fields stopped being numbers"_ at the foot of this file, which is this entry's
+general rule being used rather than a new decision.
 
 Three fields were added to `diveMixtureSchema` in this phase, and all three rejected the value the
 API actually sends. `DiveMixtureBase` declares them `X | None` with no `exclude_none` anywhere, so
@@ -14733,3 +14753,95 @@ mid-month, so the one-day slip UTC+14 introduces changes nothing they assert. Th
 those particular dates, not protection the convention provides. Both cards only _format_ the date
 they are handed, with no past/future branch anywhere in them, which is also why neither was a time
 bomb despite carrying the same literal that took `goodbye` down.
+
+## A cylinder may record a mix with no vessel, and three fields stopped being numbers
+
+`DiveMixture.volume`, `.oxygen` and `.helium` are `?: number | null` in `lib/api/dives.ts`. They
+were the last three fields on that interface still typed as always-present numbers, and the API
+widened `DiveMixtureBase` to `float | None` on all three: a UDDF `<tankdata>` with a gas link and no
+`<tankvolume>` is a real cylinder that the import path used to skip outright, and the write-side
+21.0/0.0 defaults are gone with it. OpenAPI now publishes all three as nullable with
+`default: null`, on the request and on the response.
+
+**The type is the load-bearing change and everything else follows from it.** This repo's ESLint
+config carries no type-aware rules, so a `volume: number` sitting in front of a wire `null` compiles
+and lints clean while making every guard written downstream of it look redundant — the same failure
+recorded under "The API sends `null`, the form schema only understood `""`" above, where three
+fields joined `DiveMixture` typed as promises the response never made and the Save button silently
+stopped working. That entry's general rule is the one this change is an application of: _a field
+arriving from the API needs a conversion at the boundary the moment the form gives it a sentinel
+empty value._ The conversions are `toDiveMixtureInput` (`null` → `""`) and `normalizeMixtures` (`""`
+→ absent), both already in `lib/validations/dive.ts` and both extended field by field rather than by
+a spread, for the reason that entry gives.
+
+**Blank means blank on import; the manual path keeps its prefill.** `mergeMixture` in
+`lib/dive-import.ts` had three tiers — file, then the cylinder already on the form, then
+`DEFAULT_MIXTURE` — and the third is gone. `DEFAULT_MIXTURE` stays exactly where a diver can see it
+and change it: the "Add Mixture" button, which still proposes 11.1 L of air. The split is the whole
+decision, and each half is wrong on the other's side. Defaulting everywhere leaves the database able
+to hold "not recorded" while the primary UI can never produce it, and quietly converts a stored NULL
+into an invented number the first time a diver edits an imported dive — which is the FIT-import
+failure that entry below already records, an RMV about 26 % low presented as a derived fact.
+Blank-everywhere makes a diver logging an ordinary air dive type `21` and `0` every time.
+
+`MixtureValueSource` gained `"blank"` and lost `"default"`, and only `"form"` is reported now. That
+is not a smaller note, it is the note the module was written for: a value carried over from the
+previous dive's cylinder is a real number on screen that this file never recorded, while a blank
+field is an empty box that says so itself — and says it in the one place the sentence never could,
+since the import card sits ~2 200 px above the gas fields. `DefaultedMixtureField` was renamed
+`CarriedMixtureField` for the same reason; the old name would have outlived the behaviour.
+
+**`""` is the cleared spelling on all three, not `null` and never `undefined.`** The rule is
+anti-`undefined` rather than `""`-everywhere — react-hook-form re-displays a field's default the
+moment a value resolves to `undefined`, so a box that cleared to it would fill itself back in — and
+these three join the two mixture pressures, which is the sentinel `UnitNumberInput`'s `emptyValue`
+prop already exists to serve. `VolumeCombobox` emits `""` rather than taking such a prop: the
+mixture volume is the only field it serves, so a `null`-clearing caller would be one that does not
+exist.
+
+**The browser owns the phrasing, so a new API refusal is a new sentence here.**
+`services/dive_gas.py`'s docstring draws that line, and `lib/dive-gas.ts`'s
+`gasUseUnavailableReason` is the mirror of its three functions' guard lists. This is the first
+change to hit all three at once — `compute_gas_use`, `compute_multi_tank_gas_use` and
+`compute_parallel_gas_use` each refuse an unsized cylinder — so there are three new sentences, each
+in the position its own function checks the volume in:
+
+- **One cylinder:** "Add this tank's size to see your gas consumption." After the depth and pressure
+  asks and _before_ the equal-pressures sentence, which is `compute_gas_use`'s own order. It is the
+  only refusal a diver can reach with every gauge reading filled in, and the only way to reach it is
+  an import — a cylinder added by hand starts from `DEFAULT_MIXTURE`. Deliberately not folded into
+  the combined depth-and-pressures ask: that pairing exists because the new-dive form carries
+  `usage` over and opens with both blank, which is not true of a size.
+- **A flagged parallel set:** "Add every cylinder's size to see your gas consumption." _Above_ the
+  pressure ask, because `compute_parallel_gas_use` checks the volumes first. The two orders
+  disagreeing is the point rather than an inconsistency — each branch mirrors the function it is
+  about — and both tests say so out loud, since the obvious "fix" is to make them match.
+- **An attributed multi-tank dive:** "Add each cylinder's size to see your gas consumption.",
+  replacing the attribution sentence when every _breathed_ cylinder is unsized. `_tank_arithmetic`
+  drops an unsized tank however good the attribution is, so blaming the gas switches would name the
+  one input that is not the problem while the profile chart draws those switches ten lines up the
+  same page. The narrowing is on the breathed set, not on all of them: one sized, breathed cylinder
+  means the attribution really is what is missing.
+
+"Size", not "volume", in all three: the box is labelled **Volume (L)** and a diver reads that as the
+gas in the cylinder as often as the cylinder itself, which is exactly the confusion that makes an
+S80 "80 cubic feet" and 11.1 L at once.
+
+**What did _not_ change, and was tempting.** `diveModWarning`'s multi-cylinder branch still leaves a
+cylinder with no usable oxygen fraction out of the deepest-capable maximum rather than falling
+silent on the whole dive. The stronger reading is available — an unanalysed cylinder could have held
+the mix that reaches, so "no gas logged for this dive can be breathed at 80 m" is not strictly a
+claim about every cylinder any more — and it is the wrong trade. A warning that vanishes because one
+row is blank is the missing warning `PPO2_WORKING`/`PPO2_DECO` are constants to prevent, arriving
+through an import instead of a settings screen, and it would flicker off every time a diver cleared
+an O₂ box to retype it. `isSingleGasParallelSet` is where the null case _did_ have to be answered:
+two rows that both record nothing are equal as values and identical about nothing, so it refuses a
+set whose first cylinder has no recorded oxygen rather than calling a pair of unanalysed cylinders
+one mix.
+
+**The mixtures card's "deliberately no null guard" comment is gone**, and the five figure cells it
+governed are one `RecordedCell` component. That comment justified `showHelium`'s unguarded
+`mixture.helium > 0` by pointing at a cell that printed the fraction unguarded — "the two lines
+agree or neither is honest" — and the rule survives its premise: the guard is now the cell's guard
+restated, and a column summoned by rows that would all read "-" is width spent saying nothing twice
+over. Muted dashes throughout, because an absence at full contrast reads as a value.

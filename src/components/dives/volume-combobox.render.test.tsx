@@ -14,14 +14,21 @@ vi.mock("@/contexts/AuthContext", () => ({
 // `number` the form holds, so that is what these pin: a decimal has to survive
 // being typed, and the committed value has to win once typing stops.
 
-function Harness({ initial }: { initial?: number }) {
-  const [value, setValue] = useState<number | undefined>(initial);
+function Harness({ initial }: { initial?: number | "" }) {
+  // `number | ""`, which is what the mixture form field holds: `""` is the cleared
+  // state a cylinder with no recorded size sits in, and `undefined` is the one
+  // spelling that cannot be used - react-hook-form re-displays a field's default the
+  // moment its value resolves to it.
+  const [value, setValue] = useState<number | "" | undefined>(initial);
   return (
     <>
       <VolumeCombobox value={value} onChange={setValue} />
       <button type="button">elsewhere</button>
       <output data-testid="committed">
-        {value === undefined ? "-" : value}
+        {typeof value === "number" ? value : "-"}
+      </output>
+      <output data-testid="cleared-as">
+        {value === "" ? "empty string" : ""}
       </output>
     </>
   );
@@ -98,5 +105,16 @@ describe("VolumeCombobox", () => {
     await user.clear(field());
 
     expect(committed()).toBe("-");
+    // And spells it `""`, not `undefined`. A cylinder may record a mix with no
+    // vessel, so clearing this box is a value the form has to submit rather than a
+    // field it never filled - and `undefined` is the one spelling react-hook-form
+    // reads as "show the default", which would fill the box straight back in.
+    expect(screen.getByTestId("cleared-as")).toHaveTextContent("empty string");
+  });
+
+  it("shows an empty box for a cylinder whose size was never recorded", async () => {
+    render(<Harness initial="" />);
+
+    expect(field()).toHaveValue("");
   });
 });

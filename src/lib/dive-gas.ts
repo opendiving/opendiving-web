@@ -324,6 +324,13 @@ function totalPressureDrop(mixtures: readonly DiveMixture[]): number {
 // and the third arrived with a guard none of the others had: `avg_depth` is now
 // an input to a *multi-cylinder* derivation, which it never was before.
 //
+// The most recent change hit all three at once, which is the first time that has
+// happened: `volume` became nullable, so a cylinder can record a gas and no vessel,
+// and each function refuses one at its own point in its own order. Each branch below
+// therefore carries a size sentence in the position its function checks it - after
+// the pressures for one cylinder, before them for a flagged pair, and instead of the
+// attribution sentence where the attributed cylinders are the unsized ones.
+//
 // Only meaningful on a dive from the *detail* endpoint: the list response
 // carries neither `mixtures` nor `gas_use`, so every dive in it would look
 // un-derivable. Guarded rather than assumed, since both fields are typed as
@@ -368,6 +375,21 @@ export function gasUseUnavailableReason(dive: Dive): string | null {
       // why the attribution path must never ask for it.
       if (missingDepth) {
         return "Add an average depth to see your gas consumption.";
+      }
+      // In `compute_parallel_gas_use`'s own position, which puts it *above* the
+      // pressures rather than below them as the single-cylinder branch has it. The
+      // two orders are the two functions' orders, and neither is arbitrary: a
+      // one-cylinder dive is refused for its size only once the gauges are in,
+      // while the additive path refuses an unsized cylinder before it looks at any
+      // pressure at all.
+      //
+      // *Every* cylinder, on the same terms as the pressures below: one cylinder
+      // with no recorded size contributes no litres to a sum whose denominator
+      // still covers the whole dive, which reports an RMV too low rather than none
+      // at all. Same wording as the pressure ask beside it, because it is the same
+      // refusal about a different input.
+      if (mixtures.some((mixture) => mixture.volume == null)) {
+        return "Add every cylinder's size to see your gas consumption.";
       }
       // *Every* cylinder, not "each": one missing pressure anywhere refuses the
       // whole set. A pair whose second cylinder is bare cannot be summed
@@ -517,8 +539,22 @@ export function gasUseUnavailableReason(dive: Dive): string | null {
         mixture.end_pressure != null &&
         mixture.start_pressure > mixture.end_pressure,
     );
-    if (breathed.length > 0) {
+    // Narrowed to the cylinders that could produce a figure *if* the attribution
+    // covered them. A cylinder with a drop and no recorded size is dropped by
+    // `_tank_arithmetic` however good the attribution is - it was counted as
+    // breathed and then produced no litres - so blaming the import's gas switches
+    // for a dive whose sizes are all missing names the one input that is not the
+    // problem, while the profile chart above draws the switches it says are absent.
+    const measurable = breathed.filter((mixture) => mixture.volume != null);
+    if (measurable.length > 0) {
       return "Gas consumption for a multi-tank dive needs an import whose gas switches account for every cylinder on the dive.";
+    }
+    // Breathed cylinders, none of them sized. "Each", matching the pressure ask at
+    // the foot of this branch rather than the flagged pair's "every": this path
+    // divides the dive up per cylinder instead of adding it up, so there is no
+    // whole-set refusal to state.
+    if (breathed.length > 0) {
+      return "Add each cylinder's size to see your gas consumption.";
     }
 
     // Pressures recorded on some cylinder, but no drop on any of them - the
@@ -559,6 +595,26 @@ export function gasUseUnavailableReason(dive: Dive): string | null {
   }
   if (missingPressures) {
     return "Add this tank's start and end pressure to see your gas consumption.";
+  }
+
+  // In `compute_gas_use`'s own position: after the depth and pressure checks and
+  // *before* the drop check, which is why a dive with a real drop and no size lands
+  // here rather than on the sentence below. It is the last of the four a diver meets,
+  // and the only one they can reach with every gauge reading filled in.
+  //
+  // Not folded into the combined ask above, unlike depth-and-pressures. That pairing
+  // exists because a form carrying `usage` over from the last dive opens with both
+  // blank, so asking twice would be the commonest state of the form; a blank size is
+  // not that state. `DEFAULT_MIXTURE` proposes 11.1 L on every cylinder added by hand,
+  // so the only way to arrive here is an import from a file that recorded a gas and no
+  // vessel - where the depth and the pressures came from the same file and are already
+  // filled in.
+  //
+  // "Size", not "volume": the box is labelled Volume (L) and a diver reads that as the
+  // gas in the cylinder as often as the cylinder itself, which is the confusion that
+  // makes an S80 "80 cubic feet" and 11.1 L at once.
+  if (mixture.volume == null) {
+    return "Add this tank's size to see your gas consumption.";
   }
 
   // Both pressures recorded but no drop between them. The database already
