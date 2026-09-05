@@ -98,6 +98,21 @@ interface AuthContextType {
   // for why a failed logout must not clear anything locally.
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  // Folds fields a `PATCH /user` has already stored into the cached user, with no
+  // request of its own.
+  //
+  // `refreshUser` is the general answer and stays the right one for a settings card,
+  // which changes something the whole app renders from and is a page nobody is
+  // mid-edit on. It is the wrong one for the dive form's Fields panel: that sits on
+  // `/dives/new` beside a last-dive prefill effect, and a `GET /user` per checkbox
+  // spends a round trip re-reading a value this caller already knows.
+  //
+  // It still replaces the `user` object, and that is unavoidable - a new list is a
+  // new object either way. What makes it safe is that the prefill effect keys on
+  // `user.uuid` rather than on the object (see `dives/new/page.tsx`), so the identity
+  // change re-renders consumers without re-running it. Anything else that lists
+  // `user` in a dependency array has to hold to the same rule.
+  mergeUser: (fields: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -341,6 +356,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, []);
 
+  // No-ops when nobody is signed in rather than creating a user out of a patch: the
+  // only caller is a screen that only renders for a signed-in diver, and a partial
+  // `User` in the context would be a session that never happened.
+  const mergeUser = useCallback((fields: Partial<User>) => {
+    setUser((current) => (current ? { ...current, ...fields } : current));
+  }, []);
+
   // Memoized because this object is the context value: rebuilding it (and all ten
   // methods) on every render of the provider makes every `useAuth()` consumer
   // re-render too, which is ~15 pages plus the header. `user` is what actually
@@ -366,6 +388,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       clearOnboarding,
       signOut,
       refreshUser,
+      mergeUser,
     }),
     [
       user,
@@ -382,6 +405,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       clearOnboarding,
       signOut,
       refreshUser,
+      mergeUser,
     ],
   );
 

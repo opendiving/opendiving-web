@@ -33,6 +33,7 @@ import { UnitNumberInput } from "@/components/unit-number-input";
 import { EntryUnitToggle } from "@/components/entry-unit-toggle";
 import { useEntryUnits } from "@/hooks/useEntryUnits";
 import { unitLabel } from "@/lib/units";
+import type { DiveFormFieldKey } from "@/lib/dive-form-fields";
 
 export { DEFAULT_MIXTURE };
 
@@ -268,15 +269,26 @@ function MixtureSetWarning({
 export interface MixtureFieldsProps<TFieldValues extends MixtureFieldsValues> {
   control: Control<TFieldValues>;
   fieldArray: MixtureFieldArray;
+  // Which per-cylinder inputs this form renders. A hidden one is left out of every
+  // tank card, and its stored value is untouched by that. Defaults to "all of them"
+  // so a caller with no Fields panel behind it - the render tests - gets the whole
+  // card.
+  isVisible?: (key: DiveFormFieldKey) => boolean;
 }
 
 export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
   control,
   fieldArray,
+  isVisible = () => true,
 }: MixtureFieldsProps<TFieldValues>) {
   const { fields, append, remove } = fieldArray;
   const { entryUnits, toggleEntryUnits } = useEntryUnits();
   const pressureUnits = entryUnits("pressure");
+  // Pressure is the one dimension whose toggle governs two hideable keys rather than
+  // one field, which is why it needs a condition the label rows don't: it belongs on
+  // screen only while there is a pressure box for it to convert.
+  const showsAPressureBox =
+    isVisible("mixture.start_pressure") || isVisible("mixture.end_pressure");
 
   return (
     <div className="space-y-4">
@@ -288,8 +300,13 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
             Gated on there being a cylinder, because the create form seeds no
             mixtures and an ungated control would govern no visible field. The
             stored override is untouched by the gate, so it comes back exactly
-            as the diver left it with the first "Add Mixture". */}
-        {fields.length > 0 && (
+            as the diver left it with the first "Add Mixture".
+
+            And gated a second time on one of the two pressure boxes being on
+            screen, for the same reason rather than a new one: a diver who hides
+            both keeps a control over nothing. A section an edit or an import
+            reveals with both pressures still hidden shows no pressure control. */}
+        {fields.length > 0 && showsAPressureBox && (
           <EntryUnitToggle
             dimension="pressure"
             entryUnits={pressureUnits}
@@ -355,16 +372,17 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
               )}
             />
 
-            <FormField
-              control={control}
-              name={`mixtures.${index}.po2_limit` as Path<TFieldValues>}
-              render={({ field }) => {
-                const choices = ppO2LimitChoices(field.value);
+            {isVisible("mixture.po2_limit") && (
+              <FormField
+                control={control}
+                name={`mixtures.${index}.po2_limit` as Path<TFieldValues>}
+                render={({ field }) => {
+                  const choices = ppO2LimitChoices(field.value);
 
-                return (
-                  <FormItem>
-                    <FormLabel>ppO₂ limit (bar)</FormLabel>
-                    {/* A plain `<select>` for the same two reasons as `role`
+                  return (
+                    <FormItem>
+                      <FormLabel>ppO₂ limit (bar)</FormLabel>
+                      {/* A plain `<select>` for the same two reasons as `role`
                         below: it needs "unset" as a real selectable option,
                         which Radix reserves `""` for, and `""` has to reach
                         react-hook-form as the live cleared value rather than
@@ -376,44 +394,45 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                         accepted any two decimals in a 0.4-2.0 band - so the
                         only things free entry bought were typos and a 422 on
                         save. */}
-                    <FormControl>
-                      <select
-                        className={inputClassName}
-                        {...field}
-                        // From the offered list rather than from the raw value,
-                        // so the two can't disagree about formatting: `1.0` on
-                        // the form has to find the `"1.0"` option, and
-                        // `String(1.0)` is `"1"`.
-                        value={
-                          choices.find(
-                            (option) => Number(option) === field.value,
-                          ) ?? ""
-                        }
-                        onChange={(e) => {
-                          const raw = e.target.value;
-                          field.onChange(raw === "" ? "" : parseFloat(raw));
-                        }}
-                      >
-                        {/* The fallback is named rather than pre-selected, so a
+                      <FormControl>
+                        <select
+                          className={inputClassName}
+                          {...field}
+                          // From the offered list rather than from the raw value,
+                          // so the two can't disagree about formatting: `1.0` on
+                          // the form has to find the `"1.0"` option, and
+                          // `String(1.0)` is `"1"`.
+                          value={
+                            choices.find(
+                              (option) => Number(option) === field.value,
+                            ) ?? ""
+                          }
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            field.onChange(raw === "" ? "" : parseFloat(raw));
+                          }}
+                        >
+                          {/* The fallback is named rather than pre-selected, so a
                             cylinder with no recorded limit still says what the
                             MOD beneath it was worked out from. Selecting 1.4
                             here would make it claim a limit the diver never
                             chose - see `DEFAULT_MIXTURE`. */}
-                        <option value="">
-                          Not recorded ({PPO2_WORKING} default)
-                        </option>
-                        {choices.map((option) => (
-                          <option key={option} value={option}>
-                            {option}
+                          <option value="">
+                            Not recorded ({PPO2_WORKING} default)
                           </option>
-                        ))}
-                      </select>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                );
-              }}
-            />
+                          {choices.map((option) => (
+                            <option key={option} value={option}>
+                              {option}
+                            </option>
+                          ))}
+                        </select>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
+              />
+            )}
 
             <FormField
               control={control}
@@ -479,67 +498,72 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
               )}
             />
 
-            <FormField
-              control={control}
-              name={`mixtures.${index}.start_pressure` as Path<TFieldValues>}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    Start pressure ({unitLabel("pressure", pressureUnits)})
-                  </FormLabel>
-                  <FormControl>
-                    {/* `emptyValue=""`, unlike every other number box in the
+            {isVisible("mixture.start_pressure") && (
+              <FormField
+                control={control}
+                name={`mixtures.${index}.start_pressure` as Path<TFieldValues>}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      Start pressure ({unitLabel("pressure", pressureUnits)})
+                    </FormLabel>
+                    <FormControl>
+                      {/* `emptyValue=""`, unlike every other number box in the
                         dive form: these two pressures are the fields
                         DECISIONS.md names as spelling cleared that way, and the
                         submit path converts the sentinel at the edge. */}
-                    <UnitNumberInput
-                      dimension="pressure"
-                      units={pressureUnits}
-                      step="0.01"
-                      min={0}
-                      emptyValue=""
-                      {...field}
-                      value={field.value}
-                      onChange={field.onChange}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                      <UnitNumberInput
+                        dimension="pressure"
+                        units={pressureUnits}
+                        step="0.01"
+                        min={0}
+                        emptyValue=""
+                        {...field}
+                        value={field.value}
+                        onChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
-            <FormField
-              control={control}
-              name={`mixtures.${index}.end_pressure` as Path<TFieldValues>}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    End pressure ({unitLabel("pressure", pressureUnits)})
-                  </FormLabel>
-                  <FormControl>
-                    <UnitNumberInput
-                      dimension="pressure"
-                      units={pressureUnits}
-                      step="0.01"
-                      min={0}
-                      emptyValue=""
-                      {...field}
-                      value={field.value}
-                      onChange={field.onChange}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {isVisible("mixture.end_pressure") && (
+              <FormField
+                control={control}
+                name={`mixtures.${index}.end_pressure` as Path<TFieldValues>}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      End pressure ({unitLabel("pressure", pressureUnits)})
+                    </FormLabel>
+                    <FormControl>
+                      <UnitNumberInput
+                        dimension="pressure"
+                        units={pressureUnits}
+                        step="0.01"
+                        min={0}
+                        emptyValue=""
+                        {...field}
+                        value={field.value}
+                        onChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
-            <FormField
-              control={control}
-              name={`mixtures.${index}.role` as Path<TFieldValues>}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Role</FormLabel>
-                  {/* A plain `<select>` rather than the shadcn `Select` used
+            {isVisible("mixture.role") && (
+              <FormField
+                control={control}
+                name={`mixtures.${index}.role` as Path<TFieldValues>}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Role</FormLabel>
+                    {/* A plain `<select>` rather than the shadcn `Select` used
                       elsewhere on this form, because this one has to express
                       "unset" as a real, selectable option. `Select` has no empty
                       `SelectItem` (Radix reserves `""` for clearing), so the
@@ -547,43 +571,45 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                       to `undefined` on both edges - more machinery than a
                       four-option optional field is worth. Most cylinders have no
                       recorded role and that has to stay easy to leave alone. */}
-                  <FormControl>
-                    <select
-                      // `Input`'s own classes rather than a copy of them: this
-                      // sits in a grid row beside other boxes, and the copy it
-                      // started as had drifted to a shorter, differently-ringed
-                      // control beside them.
-                      className={inputClassName}
-                      {...field}
-                      value={field.value ?? ""}
-                      // `""` straight through, not `|| undefined`: react-hook-form
-                      // re-displays a field's default whenever its value resolves to
-                      // `undefined`, so mapping the "Not recorded" option to it made
-                      // choosing that option snap back to the imported role. Same
-                      // sentinel and same reason as `po2_limit` above; converted at
-                      // the edge by `normalizeMixtures`.
-                      onChange={(e) => field.onChange(e.target.value)}
-                    >
-                      <option value="">Not recorded</option>
-                      {GAS_ROLES.map((role) => (
-                        <option key={role} value={role}>
-                          {GAS_ROLE_LABELS[role]}
-                        </option>
-                      ))}
-                    </select>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    <FormControl>
+                      <select
+                        // `Input`'s own classes rather than a copy of them: this
+                        // sits in a grid row beside other boxes, and the copy it
+                        // started as had drifted to a shorter, differently-ringed
+                        // control beside them.
+                        className={inputClassName}
+                        {...field}
+                        value={field.value ?? ""}
+                        // `""` straight through, not `|| undefined`: react-hook-form
+                        // re-displays a field's default whenever its value resolves to
+                        // `undefined`, so mapping the "Not recorded" option to it made
+                        // choosing that option snap back to the imported role. Same
+                        // sentinel and same reason as `po2_limit` above; converted at
+                        // the edge by `normalizeMixtures`.
+                        onChange={(e) => field.onChange(e.target.value)}
+                      >
+                        <option value="">Not recorded</option>
+                        {GAS_ROLES.map((role) => (
+                          <option key={role} value={role}>
+                            {GAS_ROLE_LABELS[role]}
+                          </option>
+                        ))}
+                      </select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
-            <FormField
-              control={control}
-              name={`mixtures.${index}.usage` as Path<TFieldValues>}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Usage</FormLabel>
-                  {/* A plain `<select>` for the same reason as Role above, and
+            {isVisible("mixture.usage") && (
+              <FormField
+                control={control}
+                name={`mixtures.${index}.usage` as Path<TFieldValues>}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Usage</FormLabel>
+                    {/* A plain `<select>` for the same reason as Role above, and
                       following it deliberately: the two are the cylinder's
                       answers to "what for" and "how", and a diver setting one
                       is usually about to consider the other. Per row rather
@@ -591,27 +617,28 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                       plus a staged bottle - stays expressible, which is the
                       shape the API refuses by design and can only refuse if
                       the form can say it. */}
-                  <FormControl>
-                    <select
-                      className={inputClassName}
-                      {...field}
-                      value={field.value ?? ""}
-                      // `""` straight through, same sentinel and same
-                      // react-hook-form trap as Role above.
-                      onChange={(e) => field.onChange(e.target.value)}
-                    >
-                      <option value="">Not recorded</option>
-                      {TANK_USAGE.map((usage) => (
-                        <option key={usage} value={usage}>
-                          {TANK_USAGE_OPTION_LABELS[usage]}
-                        </option>
-                      ))}
-                    </select>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    <FormControl>
+                      <select
+                        className={inputClassName}
+                        {...field}
+                        value={field.value ?? ""}
+                        // `""` straight through, same sentinel and same
+                        // react-hook-form trap as Role above.
+                        onChange={(e) => field.onChange(e.target.value)}
+                      >
+                        <option value="">Not recorded</option>
+                        {TANK_USAGE.map((usage) => (
+                          <option key={usage} value={usage}>
+                            {TANK_USAGE_OPTION_LABELS[usage]}
+                          </option>
+                        ))}
+                      </select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
           </div>
 
           {/* Narrowing to `MixtureFieldsValues` is sound for the same reason it is in

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { UseFormReturn } from "react-hook-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form } from "@/components/ui/form";
@@ -10,16 +10,29 @@ import {
   DiveFormValues,
 } from "@/components/dives/dive-form-fields";
 import { DiveFormActions } from "@/components/dives/dive-form-actions";
+import {
+  DiveFormFieldsPanel,
+  DiveFormFieldsToggle,
+} from "@/components/dives/dive-form-fields-panel";
 import { MixtureFieldArray } from "@/components/dives/mixture-fields";
 import { DiveFileInfo, DiveSiteSummary } from "@/lib/api/dives";
 import { GearItemSummary } from "@/lib/api/gear";
 import { SpeciesSummary } from "@/lib/api/species";
+import {
+  diveFormFieldsWithErrors,
+  type DiveFormFieldKey,
+} from "@/lib/dive-form-fields";
+import type { DiveFormVisibility } from "@/hooks/useDiveFormVisibility";
 
 export interface DiveFormCardProps<TFieldValues extends DiveFormValues> {
   form: UseFormReturn<TFieldValues>;
   mixtureFieldArray: MixtureFieldArray;
   mode: "create" | "edit";
   userId: string;
+  // Created by the page alongside `form`, because the page also owns the moments a
+  // value arrives from outside the diver's typing (the edit load, the URL parameters)
+  // and the prefill the show/hide rules are defined against.
+  visibility: DiveFormVisibility;
   onSubmit: (data: TFieldValues) => void | Promise<void>;
   isSubmitting: boolean;
   cancelHref: string;
@@ -48,6 +61,7 @@ export function DiveFormCard<TFieldValues extends DiveFormValues>({
   mixtureFieldArray,
   mode,
   userId,
+  visibility,
   onSubmit,
   isSubmitting,
   cancelHref,
@@ -65,27 +79,96 @@ export function DiveFormCard<TFieldValues extends DiveFormValues>({
   // yet resolved is not in form state, so a save that beat the resolve would
   // write the dive without the sighting and say nothing about it.
   const [isResolvingSpecies, setIsResolvingSpecies] = useState(false);
+  const [isFieldsPanelOpen, setIsFieldsPanelOpen] = useState(false);
+  const panelId = useId();
+
+  // The field a failed submit revealed, focused once it is actually on screen.
+  // react-hook-form focuses the first errored field itself, but only one that is
+  // mounted - and the whole point of this path is that it wasn't.
+  //
+  // A fresh object per request, so two failed submits on the same field both fire and
+  // an unrelated later reveal - an import, a gear set - does not. The `setState` and
+  // the `reveal` beside it are batched into one render, which is the render after
+  // which the input exists.
+  const [focusRequest, setFocusRequest] = useState<{
+    key: DiveFormFieldKey;
+  } | null>(null);
+  const { isVisible, reveal } = visibility;
+  useEffect(() => {
+    if (!focusRequest) return;
+    // A per-cylinder key names a column rather than an input, so there is no one
+    // field to focus; the section being on screen is the whole of the fix there.
+    if (focusRequest.key.includes(".")) return;
+    form.setFocus(
+      focusRequest.key as unknown as Parameters<typeof form.setFocus>[0],
+    );
+  }, [focusRequest, form]);
+
+  // The resolver validates hidden fields too - react-hook-form's default
+  // `shouldUnregister: false` keeps their values in form state - so without this a
+  // hidden field carrying an error would block the save with no message anywhere on
+  // the page, which is exactly the "the save button did nothing" shape DECISIONS.md
+  // records.
+  const handleInvalid = (errors: Record<string, unknown>) => {
+    const keys = diveFormFieldsWithErrors(errors);
+    if (keys.length === 0) return;
+    const stillHidden = keys.filter((key) => !isVisible(key));
+    if (stillHidden.length > 0) setFocusRequest({ key: stillHidden[0] });
+    reveal(keys);
+  };
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle as="h2">Dive Details</CardTitle>
+        {/* `relative` so the Fields control can be positioned into the title row
+            without joining it: any flex or grid parent gets a say in the row's
+            height, and this header has to be the same height with the control as
+            without it. Same mechanism, same reason, as `EntryUnitLabelRow`. */}
+        <div className="relative">
+          <CardTitle as="h2">Dive Details</CardTitle>
+          <DiveFormFieldsToggle
+            open={isFieldsPanelOpen}
+            panelId={panelId}
+            onToggle={() => setIsFieldsPanelOpen((open) => !open)}
+          />
+        </div>
       </CardHeader>
+      {isFieldsPanelOpen && (
+        // Outside the `<form>` on purpose. Nothing in the panel is a form control of
+        // the dive, and a submit raised inside it - a name prompt's Enter - would
+        // otherwise reach `handleSubmit` through the React tree even when the DOM
+        // says it cannot.
+        <DiveFormFieldsPanel
+          id={panelId}
+          visibility={visibility}
+          userId={userId}
+        />
+      )}
       <CardContent>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form
+            onSubmit={form.handleSubmit(onSubmit, handleInvalid)}
+            className="space-y-6"
+          >
             {/* Import from dive computer file */}
             <DiveFileImport
               form={form}
               replaceMixtures={mixtureFieldArray.replace}
               onFileSelected={onFileSelected}
               attachedFile={attachedFile}
+              // One of the four moments a value arrives from outside the diver's
+              // typing: whatever the file filled in is on screen, whether or not the
+              // stored set hides it, and it counts as the diver's from here on.
+              onValuesApplied={() =>
+                visibility.revealNonEmpty(form.getValues())
+              }
             />
 
             <DiveFormFields
               control={form.control}
               mode={mode}
               userId={userId}
+              visibility={visibility}
               mixtureFieldArray={mixtureFieldArray}
               knownDiveSites={knownDiveSites}
               knownGearItems={knownGearItems}

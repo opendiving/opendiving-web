@@ -15,6 +15,7 @@ import {
   DiveUpdateInput,
 } from "@/lib/validations/dive";
 import { useMixtureFieldArray } from "@/components/dives/mixture-fields";
+import { useDiveFormVisibility } from "@/hooks/useDiveFormVisibility";
 import { DiveFormCard } from "@/components/dives/dive-form-card";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageSpinner } from "@/components/ui/page-spinner";
@@ -75,13 +76,28 @@ function EditDivePageContent() {
     },
   });
   const mixtureFieldArray = useMixtureFieldArray(form.control);
+  // `fillsDefaults: false` - the edit form has no defaults to carry. What appears
+  // when a field is shown is the stored value, and hiding it never changes form
+  // state, which is react-hook-form's `shouldUnregister: false` doing all of the
+  // work by itself.
+  const visibility = useDiveFormVisibility({
+    form,
+    replaceMixtures: mixtureFieldArray.replace,
+    fillsDefaults: false,
+  });
+  const { revealNonEmpty } = visibility;
 
-  // Seeds the form from the loaded dive.
+  // Seeds the form from the loaded dive, and is the first of the four moments a
+  // value arrives from outside the diver's typing: a dive that records notes shows
+  // its notes even under a preset that hides them, because an edit form quietly
+  // holding data the diver cannot see is the one thing this feature must not do.
   const resetFromDive = useCallback(
     (diveData: Dive) => {
-      form.reset(diveToFormValues(diveData));
+      const values = diveToFormValues(diveData);
+      form.reset(values);
+      revealNonEmpty(values);
     },
-    [form],
+    [form, revealNonEmpty],
   );
 
   const {
@@ -204,6 +220,7 @@ function EditDivePageContent() {
       <DiveFormCard
         form={form}
         mixtureFieldArray={mixtureFieldArray}
+        visibility={visibility}
         mode="edit"
         userId={user?.uuid ?? ""}
         onSubmit={onSubmit}

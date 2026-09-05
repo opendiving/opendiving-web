@@ -37,6 +37,7 @@ const diver = (overrides: Partial<User> = {}): User => ({
   username: "samreef",
   email: "sam@example.com",
   units: "metric",
+  dive_form_hidden_fields: [],
   ...overrides,
 });
 

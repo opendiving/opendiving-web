@@ -5,6 +5,7 @@ import {
   setAccessToken,
 } from "./client";
 import type { UnitSystem } from "@/lib/units";
+import type { DiveFormFieldKey } from "@/lib/dive-form-fields";
 
 export interface User {
   uuid: string;
@@ -28,6 +29,17 @@ export interface User {
   // server default, so a response either carries it or comes from an API this build
   // cannot talk to anyway (`PATCH /user` would 422 on the settings card's own field).
   units: UnitSystem;
+  // Which dive-form fields this diver keeps hidden, in the API's canonical order
+  // (form order, duplicates collapsed) - so the Fields panel decides which preset
+  // matches by comparing this list element by element.
+  //
+  // Not optional, for the same reason as `units` directly above and unlike
+  // `gear_service_emails`: the column is `NOT NULL` with a server default, so a
+  // response either carries it or comes from an API this build cannot talk to anyway.
+  // It reaches the dive form with the signed-in user record rather than through a
+  // fetch of its own, which is what lets the form's *first paint* already omit the
+  // hidden fields instead of showing them and taking them away.
+  dive_form_hidden_fields: DiveFormFieldKey[];
   // Whether this account holds the operator's rights - the caller's own record on
   // `GET /user` (the backend's `UserRead.is_superuser`), never a disclosure about
   // anybody else. It is what the header uses to offer the `/admin` section at all.
@@ -85,6 +97,11 @@ export interface UpdateProfileData {
   username?: string;
   gear_service_emails?: boolean;
   units?: UnitSystem;
+  // Replaced wholesale - there is no "hide one more" verb, because the Fields panel
+  // holds the whole set and sends it. Any order is accepted and stored canonically;
+  // this client sends the canonical form anyway so what it holds and what came back
+  // cannot differ. An explicit `null` is a 422.
+  dive_form_hidden_fields?: DiveFormFieldKey[];
 }
 
 /**

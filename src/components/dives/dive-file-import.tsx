@@ -134,6 +134,13 @@ export interface DiveFileImportProps<TFieldValues extends DiveFormValues> {
   // been saved - see `divesAPI.uploadDiveFile`. A failed parse applied nothing
   // to the form, so there is nothing to attach and this isn't called.
   onFileSelected?: (file: File, fileToken: string) => void;
+  // Raised the moment a parsed file has been written onto the form, before the
+  // toast. The dive form uses it to put every field the file filled in back on
+  // screen when the diver has it hidden - an imported cylinder volume the parser
+  // guessed must not sit behind an unchecked box. `applyParsedDiveToForm` itself is
+  // deliberately visibility-blind: it sets whatever the file carries, which is the
+  // owner's import rule for free.
+  onValuesApplied?: () => void;
   // The export already stored against this dive, on the edit form. Purely
   // informational: it tells the diver what importing again would replace.
   attachedFile?: DiveFileInfo | null;
@@ -143,6 +150,7 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
   form,
   replaceMixtures,
   onFileSelected,
+  onValuesApplied,
   attachedFile,
 }: DiveFileImportProps<TFieldValues>) {
   const { toast } = useToast();
@@ -178,6 +186,7 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
       setIsParsingFile(true);
       const parsed: ParsedDive = await divesAPI.parseDiveFile(file);
       const notes = applyParsedDiveToForm(form, parsed, replaceMixtures);
+      onValuesApplied?.();
       onFileSelected?.(file, parsed.file_token);
       setPendingFileName(file.name);
       setImportNote(describeMixtureImport(notes));

@@ -31,6 +31,11 @@ export interface DiveGearFieldProps extends FormControlSlotProps {
   // itself doesn't live here.
   weight?: number | null;
   onWeightChange?: (weight: number | null) => void;
+  // Raised after a set has been written onto the dive, with the set that was
+  // written. The dive form uses it to put the fields the set just filled in back on
+  // screen when the diver has them hidden; nothing here needs to know that, which is
+  // why what is handed over is the set rather than a list of field names.
+  onSetApplied?: (set: GearSet) => void;
   disabled?: boolean;
 }
 
@@ -49,6 +54,7 @@ export function DiveGearField({
   onChange,
   weight,
   onWeightChange,
+  onSetApplied,
   disabled,
   // The field's value is the *item list*, so the label belongs to the item picker
   // rather than the gear-set switcher above it - loading a set is a shortcut for
@@ -92,6 +98,7 @@ export function DiveGearField({
     // carry, so it leaves whatever's on the dive alone rather than clearing it.
     if (set.weight != null) onWeightChange?.(set.weight);
     setLoadedSetUuid(set.uuid);
+    onSetApplied?.(set);
   };
 
   const handleSetSelected = (uuid: string) => {

@@ -14845,3 +14845,231 @@ governed are one `RecordedCell` component. That comment justified `showHelium`'s
 agree or neither is honest" — and the rule survives its premise: the guard is now the cell's guard
 restated, and a column summoned by rows that would all read "-" is width spent saying nothing twice
 over. Muted dashes throughout, because an absence at full contrast reads as a value.
+
+## The dive form hides fields by account preference, and what is stored is the hidden set
+
+`user.dive_form_hidden_fields` names the fields a diver keeps off their dive form, and
+`dive_form_preset` rows are named sets of the same thing. Both live on the account rather than on
+the device, which is the opposite of the call the per-field entry-unit switch made ("Entry units are
+a per-device override"). That switch was a single entry convenience with no names and no seeding;
+this one has three presets seeded per account at registration, and putting it on the device would
+owe a privacy-page row, a place under the device-memory switch, and a loading step before the form
+knows what to show. Instead it arrives with the signed-in user record, so the **first paint already
+omits the hidden fields** rather than painting them and taking them away.
+
+**What is stored is the hidden set, never the visible set.** A field the form gains later is visible
+under every existing preset until somebody hides it, which is the right default for a new optional
+input — and it makes "Technical", the preset that shows everything, the empty list.
+
+**A preset is a snapshot, not a live profile.** Applying one copies its `hidden_fields` into the
+account's current state; toggling a field afterwards changes the state and not the preset, until the
+diver writes it back with "Update with current fields" or saves a new one. So the panel marks the
+preset whose set _equals_ the stored state and marks nothing when none does — nothing remembers
+which one was applied last, and there is nothing to go stale. This is Lightroom's model rather than
+VS Code's; the live alternative has no separate current state to store, at the price of every
+one-off "show me altitude just this once" permanently editing a preset, and of a diver who has
+deleted all their presets having nowhere to toggle into.
+
+The mark is by set _equality_ against the stored state and not against the effective one, so editing
+an old technical dive under Recreational still reads "Recreational" even with its cylinders revealed
+on screen (see the reveal rules below).
+
+**Equality is a list comparison**, because the API canonicalizes on every write: duplicates collapse
+and the order becomes the enum's, on the preset and on the user column alike.
+`canonicalHiddenFields` in `lib/dive-form-fields.ts` is the same rule client-side, applied before
+every `PATCH /user`, so what this app holds and what came back cannot differ in ordering.
+
+**Hidden means not in the DOM**, not `hidden`. The field's `FormField` is not rendered, so its input
+is out of the tab order and the accessibility tree. The `hidden` attribute would keep the input in
+the DOM for a screen reader to skip rather than for nobody to reach. What that does _not_ change is
+what is submitted: react-hook-form's default `shouldUnregister: false` keeps an unmounted field's
+value in form state and the resolver goes on validating it, so a hidden field is sent exactly as a
+visible one. That default is what makes this feature two lines of render logic — and it is the trap
+too, which the reveal-on-invalid rule below exists for.
+
+## "Untouched" on the new dive form is the visibility layer's own record, never dirty state
+
+Showing a field a diver had hidden fills it with what the last dive carried; hiding an untouched one
+empties it; a field they typed into keeps what they typed either way. All three turn on one question
+— is this value the app's guess or the diver's? — and the answer is **not** react-hook-form's
+`dirtyFields`.
+
+Two measurements close that alternative off, and both are already recorded here in other words.
+`dirtyFields` is recomputed for the whole form from `_defaultValues` whenever any field is edited
+back to its default ("A silently prefilled field is not a clean field"), and
+`useFieldArray().replace()` — the only write for `mixtures` ("Parsed dive-file mixtures need
+`useFieldArray().replace()`") — writes `_formValues` and not `_defaultValues`, so a show-fill of the
+gas card reads as dirty though nobody typed. Under a dirty-state definition the next preset switch
+would keep the last dive's cylinders in form state, hidden and submitted.
+
+So `useDiveFormVisibility` keeps the rule `CertificationDialog` already keeps as `autofilledRef`: it
+remembers, per key, the last value it wrote itself, and a key still holding that value is untouched.
+One consequence is accepted, as the certification dialog accepts it — a key typed back to exactly
+its carried value reads as untouched again, and neither mechanism could tell the difference.
+
+**`resetField(name, { defaultValue })` is not the write, and could not be.** It is what keeps
+`dive_number` clean for `useSuggestedDiveNumber`, but it acts only on a field react-hook-form has
+registered — and a key hidden at page open has never registered, so on it the call is silently a
+no-op. The write is whatever sets the value (`setValue` for a scalar, `replace` for the cylinder
+list) and the record beside it is what carries the meaning.
+
+**The cylinder list is governed as one value.** For `mixtures` the "value" is the whole list, and
+the five per-cylinder keys are columns of it, so a diver who has typed into any tank keeps every
+column of that list, hidden or not. Per-cell bookkeeping is the obvious alternative and it is worse:
+it would let hiding a column empty it in the tank next to the one being edited.
+
+The form-level `isDirty` reads true after a show-fill, and that costs nothing. The prefill's own
+bail-out has already run by then, and `useSuggestedDiveNumber` guards on the field-level
+`getFieldState("dive_number").isDirty`, which a write to another key does not move.
+
+## Four moments put a hidden field back on screen, and the prefill is not one of them
+
+A value that arrives from outside the diver's typing shows its field, for that form only. The stored
+set is untouched and the diver can hide it again. Otherwise an edited dive would carry data its own
+form never showed, and an imported cylinder volume the parser guessed would sit off screen where
+nobody could correct it.
+
+The four, each ending in `revealNonEmpty` or `reveal` over what it just wrote:
+
+1. **the edit form's load** (`diveToFormValues`, through `useResource`'s `onLoaded`);
+2. **a parsed dive file** — `applyParsedDiveToForm` itself stays visibility-blind and sets whatever
+   the file carries, which is the rule for free; `DiveFileImport` raises `onValuesApplied`
+   afterwards;
+3. **a gear set that carries a weight** — `DiveGearField` raises `onSetApplied` with the set, and
+   the form works out which keys that filled in, so the gear field needs to know nothing about
+   visibility;
+4. **the new form's mount**, for the trip, dive site or course a page passed in the URL.
+   `course_uuid` is one of the fields the Basic preset hides, so without this a click on "Log a Dive
+   for this Course" would file the dive against no course and nothing on the form would say so.
+
+"Non-empty" means not `undefined`, not `null`, not `""` and not `[]`; **`0` is a value** — an end
+pressure of 0 is a drained cylinder, not a missing reading. A per-cylinder key counts as non-empty
+when _any_ cylinder holds a value for it, so an edit load or an import that reveals the gas section
+reveals with it every column some tank recorded.
+
+**The last-dive prefill is not one of them**: it applies only to visible keys, so it can never leave
+a value in a hidden one.
+
+**A revealed key is the diver's, so hiding it keeps its value.** Only the last-dive defaults are
+emptied on hide, because those are the app's guesses rather than the diver's entries — hiding Gas
+Mixtures after an import must not drop the imported cylinders.
+
+**A failed submit reveals too, and it is a different kind of reveal.** The resolver validates hidden
+fields, so a hidden field carrying an error would block the save with no `FormMessage` anywhere on
+screen — the exact shape of "The API sends `null`, the form schema only understood `""` — and the
+save button did nothing". `handleSubmit`'s invalid branch therefore reveals every key carrying an
+error and focuses the first that was hidden. It is nearly unreachable by hand (hidden new-form
+fields are empty and valid, and the four moments above write API-accepted values), which is why it
+has a test rather than a scenario.
+
+**A picker that unmounts reports itself no longer pending.** `SpeciesMultiSelect` tells the card
+about a pending catalog resolve through an effect with no cleanup, and the card disables the submit
+on it. Hiding Species with a resolve in flight — or applying a preset that hides it — used to leave
+that report stuck at `true` and the button on "Adding species..." until a reload. The cleanup reads
+the callback through a ref so it can be a mount-only effect: with `onPendingChange` in the
+dependencies, a caller passing an inline function would make it run on every render and report
+`false` over a live resolve.
+
+## Persisting a Fields toggle must not reset the form, and `refreshUser` would have
+
+The new-dive page's prefill effect used to list `user` in its dependencies, and every settings card
+in this app persists by calling `updateProfile` and then `refreshUser()` — which replaces the
+context's `user` object outright. Wire the Fields panel up that way and ticking a checkbox re-runs
+the prefill on a clean form: refetching the last dive and re-stamping `start_time` with
+`nowStartTime()`, under a diver who was halfway through the form.
+
+Two changes, and both are needed. The effect is keyed on `user.uuid` rather than on the `user`
+object, which is the half that actually holds — a new hidden set is a new object however it is
+delivered, so updating the context from the response is not on its own enough. And `AuthContext`
+gained `mergeUser`, which folds fields an already-successful `PATCH /user` stored into the cached
+user with no request of its own; `refreshUser` stays the right answer for a settings card, which
+changes something the whole app renders from on a page nobody is mid-edit on.
+
+The invariant, and the thing the suite pins: **persisting a toggle never resets the form, re-runs
+the prefill or refetches the last dive.** Anything added to that dependency list later has to be a
+value, not an object.
+
+The write itself is debounced and flushed on unmount, so ticking three boxes in a row is one request
+and a diver who ticks one and leaves immediately still saved it. `SAVE_DEBOUNCE_MS` in the hook is
+the figure and the only place it is written down.
+
+## The Fields control is not in a label row, and the panel is not in the form
+
+Two placements, each avoiding a trap this repo has already paid for.
+
+**The control is positioned into the card's title row, not laid out in it.** A `flex` row would give
+the button a say in the header's height, and the header has to occupy the same vertical space with
+the control as without it. `EntryUnitLabelRow` documents the mechanism at length and this is the
+same one: `relative` on the title's wrapper, `absolute inset-y-0 right-0` on the control, so nothing
+here needs to know how tall a button is. It is a disclosure — `type="button"`, `aria-expanded`,
+`aria-controls` — because the default type inside this card's `<form>` submits.
+
+**A per-field hide control was rejected outright**, because it would sit in the label row, which is
+the exact place "The toggle sits in the label row without being laid out in it, and both halves of
+that were bugs" is about. One control on the card adds nothing to any label row, and it is where the
+presets have to live anyway.
+
+**The panel renders between the header and the card content, outside the `<form>`.** Nothing in it
+is a form control of the dive, and a submit raised inside it — the name prompt's Enter — would
+otherwise reach `handleSubmit` through the React tree even though the DOM has no nested form ("A
+dialog's submit event bubbles into the form that opened it"). The name prompt still goes through
+`dialogFormSubmit` on top of that: it is one call, and it keeps the invariant true if the panel ever
+moves.
+
+**A checkbox shows the _effective_ state and edits the _stored_ one.** Checking stores the key
+visible; unchecking stores it hidden _and_ drops it from the revealed set, so a field an edit load
+put on screen can still be put away from the panel that offered the box. A key visible only because
+it was revealed says so beside its label. The per-cylinder boxes keep their state but are disabled
+while the Gas Mixtures section is off screen, since there is nothing on screen for them to govern.
+
+**Hiding a field must not strand an entry-unit toggle.** Depth's toggle follows the first _visible_
+depth field, so `avg_depth` carries it when `max_depth` is hidden and the form has no depth control
+at all when both are hidden — the gas hints then render in the effective unit, labelled as they
+already are. Coupling the two depth keys so neither hides alone was the simpler control logic and
+was rejected: it costs a diver who logs only maximum depth the choice. Pressure is the other
+dimension with a rule of its own, because its one toggle lives in the Gas Mixtures header rather
+than on a field and governs _two_ hideable keys: it renders only while the section is on screen
+**and** at least one of the two pressure boxes is visible.
+
+## `DIVE_FORM_FIELDS` is a fifth hand-kept vocabulary mirror, guarded from both ends
+
+`lib/dive-form-fields.ts` mirrors the API's `DiveFormField` enum, joining `GAS_ROLES`,
+`WATER_TYPES`, `GEAR_TYPES` and `TANK_USAGE` (see "`TANK_USAGE` is a fourth hand-kept vocabulary
+mirror"). The API owns the list and validates against it — a hidden set is `list[DiveFormField]`, so
+an unknown name is a 422 rather than a string stored unchecked, and the three seeded presets could
+be typed. Opaque strings would have needed no lockstep change when a field was added, at the price
+of a typo silently un-hiding a field in every stored preset.
+
+**The guard is two-sided, and neither side is a cross-repo test.** The API asserts every one of its
+values names a field of `DiveCreateRequest` — or, with the `mixture.` prefix, of `DiveMixtureCreate`
+— that is not required there. This side asserts the mirror _equals_ the optional keys of
+`diveCreateSchema` and `diveMixtureSchema`, minus a named exclusion list. API-optional is
+deliberately wider than form-optional, which is why that side is a subset check and this one is
+equality. What the equality check fails on is the case worth failing on: a new optional input added
+to the dive form and left unregistered, which could not be hidden and would have no row in the
+panel.
+
+Optionality is measured with `safeParse(undefined)` rather than read off `.optional()`, because
+`start_time` and `duration` are built by helpers and a `.default()` accepts `undefined` too.
+
+**Three cylinder fields are exempt by name, and that is a decision rather than a technicality.**
+`id` and `gas_number` have no input at all. `volume`, `oxygen` and `helium` became blank-able when a
+cylinder was allowed to record a mix with no vessel (see "A cylinder may record a mix with no
+vessel, and three fields stopped being numbers"), so the guard would now demand they be hideable —
+and they are what a cylinder _is_. A tank card that can lose all three records a row saying nothing,
+and "Add Mixture" would go on proposing `DEFAULT_MIXTURE` where the diver could neither see nor
+change it, which is precisely the half of that change the blank/prefill split was chosen to protect.
+Hiding them would also want three new members on the API's own enum, since a hidden set is validated
+there. `NON_HIDEABLE_MIXTURE_SCHEMA_KEYS` carries the list with the reasons, the guard reads it
+rather than restating it, and a second test asserts each name is still an optional key of the
+mixture schema — so an exemption that stopped excluding anything fails rather than passing quietly.
+
+**The keys are stored data, not labels.** A preset row and a diver's own hidden set name them, so
+renaming one is a data migration on both sides rather than a rename. The `mixture.` prefix is chosen
+over react-hook-form's own path (`mixtures.0.po2_limit`) because a key names a field of _every_
+cylinder, not of one.
+
+**The registry is the same module.** Beside the vocabulary sit the panel's rows — label and group
+per key, in form order — the empty value per key that the hide rule writes, and the groups the dive
+form's own comment-introduced blocks make. Keeping them together is what lets one test assert the
+vocabulary is complete _and_ that every key has a row, an empty value and a group the panel renders.

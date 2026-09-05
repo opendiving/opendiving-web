@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { FormProvider, useForm } from "react-hook-form";
 import { MixtureFields, useMixtureFieldArray } from "./mixture-fields";
 import type { DiveFormValues } from "./dive-form-fields";
+import type { DiveFormFieldKey } from "@/lib/dive-form-fields";
 import type { UnitSystem } from "@/lib/units";
 import {
   parseEntryUnits,
@@ -35,9 +36,14 @@ afterEach(() => {
 function Harness({
   mixtures,
   maxDepth,
+  hidden = [],
 }: {
   mixtures: DiveFormValues["mixtures"];
   maxDepth: number | null;
+  // The per-cylinder keys this form is *not* showing, as the Fields panel would
+  // have it. Given as the hidden set rather than as a predicate so a test reads the
+  // way the stored preference does.
+  hidden?: DiveFormFieldKey[];
 }) {
   const form = useForm<DiveFormValues>({
     defaultValues: { mixtures, max_depth: maxDepth } as DiveFormValues,
@@ -46,7 +52,11 @@ function Harness({
 
   return (
     <FormProvider {...form}>
-      <MixtureFields control={form.control} fieldArray={fieldArray} />
+      <MixtureFields
+        control={form.control}
+        fieldArray={fieldArray}
+        isVisible={(key) => !hidden.includes(key)}
+      />
     </FormProvider>
   );
 }
@@ -571,5 +581,68 @@ describe("MixtureFields entry units", () => {
     render(<Harness mixtures={[EAN54]} maxDepth={30} />);
 
     expect(screen.getByLabelText("Start pressure (bar)")).toBeInTheDocument();
+  });
+});
+
+describe("MixtureFields under a hidden set", () => {
+  const AIR = { volume: 11.1, oxygen: 21, helium: 0 };
+
+  it("takes one input off every tank card", () => {
+    render(
+      <Harness
+        mixtures={[AIR, AIR]}
+        maxDepth={20}
+        hidden={["mixture.role", "mixture.po2_limit"]}
+      />,
+    );
+
+    expect(screen.getAllByLabelText(/^usage$/i)).toHaveLength(2);
+    expect(screen.queryByLabelText(/^role$/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/ppO₂ limit/i)).not.toBeInTheDocument();
+    // The card is still a card: what the cylinder holds never hides.
+    expect(screen.getAllByLabelText(/O₂ \(%\)/)).toHaveLength(2);
+    expect(screen.getAllByLabelText(/volume/i)).toHaveLength(2);
+  });
+
+  it("keeps the pressure toggle while either pressure is on screen", () => {
+    render(
+      <Harness
+        mixtures={[AIR]}
+        maxDepth={20}
+        hidden={["mixture.start_pressure"]}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: /switch pressure entry/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("drops the pressure toggle when both pressures are hidden", () => {
+    // Pressure is the one dimension whose single toggle governs two hideable keys,
+    // so it needs a condition the per-field label rows do not: a control over
+    // nothing is a control that converts nothing.
+    render(
+      <Harness
+        mixtures={[AIR]}
+        maxDepth={20}
+        hidden={["mixture.start_pressure", "mixture.end_pressure"]}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: /switch pressure entry/i }),
+    ).not.toBeInTheDocument();
+    // And the cylinder is still there - only the two boxes and their control went.
+    expect(screen.getByText(/^tank 1$/i)).toBeInTheDocument();
+  });
+
+  it("still has no pressure toggle when there is no cylinder to convert", () => {
+    // The older gate, unchanged: the create form seeds no mixtures.
+    render(<Harness mixtures={[]} maxDepth={20} />);
+
+    expect(
+      screen.queryByRole("button", { name: /switch pressure entry/i }),
+    ).not.toBeInTheDocument();
   });
 });
