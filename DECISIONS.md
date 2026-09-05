@@ -15032,6 +15032,34 @@ a single click from the card; Configure — the last entry, with a cog — opens
 switches and the preset _management_. Apply deliberately does not appear in the dialog as well: a
 second way to do the quick thing would put it behind two clicks and a modal.
 
+**The dialog is two tabs, Fields first and default**, because that is what a diver opens it for.
+Presets is the housekeeping tab — rename, delete, restore the three seeded defaults — and nothing on
+it changes what the form shows.
+
+**Saving is one control at the foot of the Fields tab, not a button per preset row.** "Save as" is a
+name with the account's presets on a dropdown and a single Save: a name matching nothing creates, a
+name matching something replaces that preset's fields. It replaced two controls that were the same
+act under two names — a "Save current fields as a preset" button and a per-row "Update with current
+fields" that scaled with the list — and it sits with the switches because the thing being saved is
+on screen above it, which a preset row never was. The line under the field says which of the two the
+button is about to do, so an overwrite is read before it happens rather than discovered after.
+Matching is case-insensitive because that is how the API compares names: "recreational" taking the
+create branch would come back a 422.
+
+**It is written out rather than reaching for `CreatableCombobox`.** That component commits on blur —
+unmatched text with no `onCreate` resolves to `clear`, and the effect syncing text from the selected
+id then empties the field — so typing a new name and _clicking_ Save would wipe the name before the
+click landed. A field that holds what was typed until a separate button is pressed is the opposite
+contract, and 700 lines of blur-commit reasoning is the wrong thing to fight. Its list opens
+**upward**: the row is the last thing in a dialog that scrolls its own content, and a list dropping
+below the input is clipped by `overflow-y-auto` rather than floating over it — measured at 65px cut
+off with three presets.
+
+**Two presets can hold the same set**, since saving the current fields under a second name is all it
+takes. Every matching row is marked, on both surfaces; the trigger has to name _one_ and takes the
+first. It says which set is on the form, not which row put it there — and nothing downstream
+remembers a preset anyway.
+
 **The trigger is labelled with the state, not with the control's name** — the preset the stored
 hidden set matches, or "Custom" when it matches none. That is the same set-equality comparison the
 dialog marks a row with, so the two cannot disagree, and it answers on the card the question a diver
@@ -15114,6 +15142,13 @@ again: the honest answer for a group control here is not a switch.
 
 **Every row sits in one left-hand column**, group headings included, with the hierarchy carried by
 the heading's own type rather than by indentation.
+
+**"Environment" is the one group that is not one of the form's blocks.** It covers both the
+temperature/visibility row and the water/altitude row, which stay two rows on the form because each
+is guarded by its own fields' visibility and hides independently — but they are one thing to a
+diver, what the water was like, and four switches under two headings read as more choices than they
+are. Both blocks are commented with the group name so the correspondence is findable from the form
+side too.
 
 **`mixtures` leads its group rather than following the always-on cylinder columns.** It is the
 switch that decides whether the Gas Mixtures section is on the form at all, and every other row

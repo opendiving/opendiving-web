@@ -12,6 +12,7 @@ import {
 import { DiveFormFieldsDialog } from "@/components/dives/dive-form-fields-dialog";
 import { useDiveFormPresets } from "@/hooks/useDiveFormPresets";
 import { hiddenFieldsEqual } from "@/lib/dive-form-fields";
+import type { DiveFormPreset } from "@/lib/api/dive-form-presets";
 import type { DiveFormVisibility } from "@/hooks/useDiveFormVisibility";
 
 /** What the trigger reads while the account's presets are still on the wire. */
@@ -59,9 +60,14 @@ export function DiveFormFieldsMenu({
   const [isConfigureOpen, setIsConfigureOpen] = useState(false);
 
   const rows = presets.presets;
-  const current = rows?.find((preset) =>
-    hiddenFieldsEqual(preset.hidden_fields, visibility.hidden),
-  );
+  // Two presets can hold the same set - saving the current fields under a second name
+  // is all it takes - so "which one is current?" has no single answer, and every
+  // matching row is marked, exactly as the Presets tab marks them. The trigger has to
+  // name *one*, and takes the first: it says which set is on the form, not which row
+  // put it there, and nothing downstream remembers a preset anyway.
+  const isCurrent = (preset: DiveFormPreset) =>
+    hiddenFieldsEqual(preset.hidden_fields, visibility.hidden);
+  const current = rows?.find(isCurrent);
   const label = rows === null ? LOADING_LABEL : (current?.name ?? CUSTOM_LABEL);
 
   return (
@@ -95,18 +101,14 @@ export function DiveFormFieldsMenu({
                     current preset unnamed to a screen reader. */}
                 <Check
                   className={`mr-2 h-3.5 w-3.5 text-teal ${
-                    preset.uuid === current?.uuid ? "" : "invisible"
+                    isCurrent(preset) ? "" : "invisible"
                   }`}
                   aria-hidden
                 />
-                <span
-                  aria-current={
-                    preset.uuid === current?.uuid ? "true" : undefined
-                  }
-                >
+                <span aria-current={isCurrent(preset) ? "true" : undefined}>
                   {preset.name}
                 </span>
-                {preset.uuid === current?.uuid && (
+                {isCurrent(preset) && (
                   <span className="sr-only">(current fields)</span>
                 )}
               </DropdownMenuItem>

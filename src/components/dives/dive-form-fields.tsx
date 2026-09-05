@@ -406,7 +406,9 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
         </div>
       )}
 
-      {/* Temperature & Visibility */}
+      {/* Environment: temperature & visibility. Half of the "Environment"
+          group the Fields dialog lists; the water/altitude block below is the
+          other half, kept a separate row because it hides on its own fields. */}
       {(isVisible("bottom_temperature") || isVisible("visibility")) && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {isVisible("bottom_temperature") && (
@@ -495,7 +497,7 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
         </div>
       )}
 
-      {/* Water & Altitude - what the water was and where it was, which the
+      {/* Environment: water & altitude - what the water was and where it was, which the
           computer treats as calibration settings and the log treats as facts
           about the dive. They sit under the readings above rather than with the
           gear because they are observations, not choices carried in. */}

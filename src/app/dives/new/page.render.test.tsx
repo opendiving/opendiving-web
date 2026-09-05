@@ -666,6 +666,10 @@ const closeFieldsPanel = () => userEvent.keyboard("{Escape}");
  */
 const inFieldsPanel = () => within(screen.getByRole("dialog"));
 
+// The dialog opens on Fields; the preset list is the other tab.
+const openPresetsTab = () =>
+  userEvent.click(screen.getByRole("tab", { name: /presets/i }));
+
 const lastDiveWith = (overrides: Partial<Dive>) => {
   vi.mocked(divesAPI.getDives).mockResolvedValue({
     ...emptyPage<Dive>(),
@@ -1238,6 +1242,7 @@ describe("the preset list", () => {
     render(<NewDivePage />);
     await screen.findByLabelText(/duration/i);
     await openFieldsPanel();
+    await openPresetsTab();
 
     await inFieldsPanel().findByText("Recreational");
     expect(inFieldsPanel().getByText("Recreational")).toHaveAttribute(
@@ -1254,6 +1259,7 @@ describe("the preset list", () => {
     render(<NewDivePage />);
     await screen.findByLabelText(/duration/i);
     await openFieldsPanel();
+    await openPresetsTab();
 
     // Technical hides nothing, so it matches a fresh account exactly.
     await inFieldsPanel().findByText("Technical");
@@ -1262,7 +1268,9 @@ describe("the preset list", () => {
       "true",
     );
 
+    await userEvent.click(screen.getByRole("tab", { name: /fields/i }));
     await userEvent.click(screen.getByRole("switch", { name: /^notes$/i }));
+    await openPresetsTab();
 
     expect(inFieldsPanel().getByText("Technical")).not.toHaveAttribute(
       "aria-current",
@@ -1340,13 +1348,14 @@ describe("the preset list", () => {
     await screen.findByLabelText(/duration/i);
     await openFieldsPanel();
 
-    await userEvent.click(
-      screen.getByRole("button", { name: /save current fields as a preset/i }),
-    );
     await userEvent.type(
-      screen.getByLabelText(/preset name/i),
-      "Warm water{Enter}",
+      screen.getByRole("combobox", { name: /save as/i }),
+      "Warm water",
     );
+    expect(
+      screen.getByText(/creates a new preset called "Warm water"/i),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /^save$/i }));
 
     await waitFor(() =>
       expect(presets.diveFormPresetsAPI.createPreset).toHaveBeenCalledWith({
@@ -1356,6 +1365,7 @@ describe("the preset list", () => {
       }),
     );
     // And the new row is on the list without a refetch.
+    await openPresetsTab();
     expect(await inFieldsPanel().findByText("Warm water")).toBeInTheDocument();
     expect(presets.fetchAllDiveFormPresets).toHaveBeenCalledTimes(1);
   });
@@ -1370,12 +1380,17 @@ describe("the preset list", () => {
     await screen.findByLabelText(/duration/i);
     await openFieldsPanel();
 
-    await inFieldsPanel().findByText("Recreational");
-    await userEvent.click(
-      screen.getAllByRole("button", {
-        name: /update with current fields/i,
-      })[0],
+    // A name that matches an existing preset is an overwrite, and the line under
+    // the field says so before the button is pressed. Case-insensitively, because
+    // that is how the API compares them.
+    await userEvent.type(
+      screen.getByRole("combobox", { name: /save as/i }),
+      "recreational",
     );
+    expect(
+      screen.getByText(/replaces the fields saved in "Recreational"/i),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /^save$/i }));
 
     await waitFor(() =>
       expect(presets.diveFormPresetsAPI.updatePreset).toHaveBeenCalledWith(
@@ -1385,6 +1400,7 @@ describe("the preset list", () => {
     );
     // Which is what makes it the marked one now: the mark is set equality against
     // the stored state, so nothing has to remember that this was the preset applied.
+    await openPresetsTab();
     await waitFor(() =>
       expect(inFieldsPanel().getByText("Recreational")).toHaveAttribute(
         "aria-current",
@@ -1401,6 +1417,7 @@ describe("the preset list", () => {
     render(<NewDivePage />);
     await screen.findByLabelText(/duration/i);
     await openFieldsPanel();
+    await openPresetsTab();
 
     await screen.findByText("Recreational");
     await userEvent.click(
@@ -1428,6 +1445,7 @@ describe("the preset list", () => {
     render(<NewDivePage />);
     await screen.findByLabelText(/duration/i);
     await openFieldsPanel();
+    await openPresetsTab();
 
     await screen.findByText("Recreational");
     await userEvent.click(
@@ -1463,6 +1481,7 @@ describe("the preset list", () => {
     render(<NewDivePage />);
     await screen.findByLabelText(/duration/i);
     await openFieldsPanel();
+    await openPresetsTab();
 
     await screen.findByText("Recreational");
     await userEvent.click(

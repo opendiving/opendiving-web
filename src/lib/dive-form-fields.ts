@@ -95,18 +95,23 @@ export const NON_HIDEABLE_MIXTURE_SCHEMA_KEYS = [
 /**
  * The form's own field groups, in the order the form renders them.
  *
- * The comment-introduced blocks of `dive-form-fields.tsx`, one for one, which is what
- * makes a diver looking for a field in the panel find it where they would look for it
- * on the form. "Date and time" holds only always-on rows and is listed anyway - a gap where
- * Start time should be reads as a field that went missing.
+ * The comment-introduced blocks of `dive-form-fields.tsx`, which is what makes a diver
+ * looking for a field in the dialog find it where they would look for it on the form.
+ * "Date and time" holds only always-on rows and is listed anyway - a gap where Start
+ * time should be reads as a field that went missing.
+ *
+ * One block each, with one exception: "Environment" covers both of the form's adjacent
+ * temperature/visibility and water/altitude rows. Those stay two rows on the form
+ * because each is guarded by its own fields' visibility and hides independently, but
+ * they are one thing to a diver - what the water was like - and four separate switches
+ * under two headings read as more choices than they are.
  */
 export const DIVE_FORM_FIELD_GROUPS = [
   "Basic information, trip & course",
   "Dive site",
   "Date and time",
   "Depth",
-  "Temperature & visibility",
-  "Water & altitude",
+  "Environment",
   "Gas mixtures",
   "Gear & weight",
   "Species",
@@ -144,11 +149,11 @@ export const DIVE_FORM_FIELD_REGISTRY: readonly DiveFormFieldEntry[] = [
   {
     key: "bottom_temperature",
     label: "Bottom temperature",
-    group: "Temperature & visibility",
+    group: "Environment",
   },
-  { key: "visibility", label: "Visibility", group: "Temperature & visibility" },
-  { key: "water_type", label: "Water type", group: "Water & altitude" },
-  { key: "altitude", label: "Altitude", group: "Water & altitude" },
+  { key: "visibility", label: "Visibility", group: "Environment" },
+  { key: "water_type", label: "Water type", group: "Environment" },
+  { key: "altitude", label: "Altitude", group: "Environment" },
   { key: "mixtures", label: "Gas Mixtures", group: "Gas mixtures" },
   { key: "gear_item_uuids", label: "Gear", group: "Gear & weight" },
   { key: "weight", label: "Weight", group: "Gear & weight" },
