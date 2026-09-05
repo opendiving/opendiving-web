@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useState } from "react";
 import { UseFormReturn } from "react-hook-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form } from "@/components/ui/form";
@@ -10,10 +10,7 @@ import {
   DiveFormValues,
 } from "@/components/dives/dive-form-fields";
 import { DiveFormActions } from "@/components/dives/dive-form-actions";
-import {
-  DiveFormFieldsPanel,
-  DiveFormFieldsToggle,
-} from "@/components/dives/dive-form-fields-panel";
+import { DiveFormFieldsMenu } from "@/components/dives/dive-form-fields-menu";
 import { MixtureFieldArray } from "@/components/dives/mixture-fields";
 import { DiveFileInfo, DiveSiteSummary } from "@/lib/api/dives";
 import { GearItemSummary } from "@/lib/api/gear";
@@ -79,8 +76,6 @@ export function DiveFormCard<TFieldValues extends DiveFormValues>({
   // yet resolved is not in form state, so a save that beat the resolve would
   // write the dive without the sighting and say nothing about it.
   const [isResolvingSpecies, setIsResolvingSpecies] = useState(false);
-  const [isFieldsPanelOpen, setIsFieldsPanelOpen] = useState(false);
-  const panelId = useId();
 
   // The field a failed submit revealed, focused once it is actually on screen.
   // react-hook-form focuses the first errored field itself, but only one that is
@@ -126,24 +121,14 @@ export function DiveFormCard<TFieldValues extends DiveFormValues>({
             without it. Same mechanism, same reason, as `EntryUnitLabelRow`. */}
         <div className="relative">
           <CardTitle as="h2">Dive Details</CardTitle>
-          <DiveFormFieldsToggle
-            open={isFieldsPanelOpen}
-            panelId={panelId}
-            onToggle={() => setIsFieldsPanelOpen((open) => !open)}
-          />
+          {/* Outside the `<form>` on purpose, menu and dialog both. Nothing in
+              either is a form control of the dive, and a submit raised inside one -
+              the Configure dialog's name prompt taking Enter - would otherwise reach
+              `handleSubmit` through the React tree even when the DOM says it
+              cannot. */}
+          <DiveFormFieldsMenu visibility={visibility} userId={userId} />
         </div>
       </CardHeader>
-      {isFieldsPanelOpen && (
-        // Outside the `<form>` on purpose. Nothing in the panel is a form control of
-        // the dive, and a submit raised inside it - a name prompt's Enter - would
-        // otherwise reach `handleSubmit` through the React tree even when the DOM
-        // says it cannot.
-        <DiveFormFieldsPanel
-          id={panelId}
-          visibility={visibility}
-          userId={userId}
-        />
-      )}
       <CardContent>
         <Form {...form}>
           <form

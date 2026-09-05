@@ -33,7 +33,7 @@ describe("the vocabulary is the form's own optional fields", () => {
   //
   // What this fails on is the case worth failing on: a new optional input added to
   // the dive form and not registered here. It cannot be hidden, it has no row in the
-  // Fields panel, and nothing else in the suite would notice.
+  // Fields dialog, and nothing else in the suite would notice.
 
   it("holds every optional top-level field of the create schema, and no others", () => {
     const optional = optionalKeysOf(

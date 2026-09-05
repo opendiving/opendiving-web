@@ -314,7 +314,7 @@ describe("SpeciesMultiSelect", () => {
 
   it("stops reporting pending when it unmounts mid-resolve", async () => {
     // The picker can now leave the page while a resolve is in flight: hiding
-    // Species from the Fields panel, or applying a preset that hides it, unmounts
+    // Species from the Fields dialog, or applying a preset that hides it, unmounts
     // it. Nothing else would ever report `false` again, so the card's submit button
     // stayed on "Adding species..." until a reload - a form wedged by a checkbox.
     const onPendingChange = vi.fn();

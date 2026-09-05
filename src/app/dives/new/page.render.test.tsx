@@ -125,7 +125,8 @@ vi.mock("@/lib/api/auth", async (importOriginal) => {
   };
 });
 
-// The Fields panel reads the account's presets when it first opens. Left real, that
+// The Fields menu reads the account's presets on mount, to label its own trigger with
+// the one the stored set matches. Left real, that
 // is an XHR against jsdom's own origin - the trap the gear mock below records.
 vi.mock("@/lib/api/dive-form-presets", async (importOriginal) => {
   const actual =
@@ -230,7 +231,7 @@ beforeEach(() => {
 // ~3ms. Where the typing itself is the point (the depth warning below), the
 // tests still type.
 function fillRequiredFields() {
-  // Role-scoped, not `getByLabelText`: the Fields panel puts a "Duration" switch on
+  // Role-scoped, not `getByLabelText`: the Fields dialog puts a "Duration" switch on
   // the page beside the form's own box, and both answer to the label. Several of
   // these tests fill the form with the panel already open.
   fireEvent.change(screen.getByRole("textbox", { name: /duration/i }), {
@@ -645,8 +646,25 @@ describe("saving while a species pick is still resolving", () => {
 // is the interaction between the two: what a diver who hides Weight *saves*, and what
 // happens to a value the prefill had already put there.
 
-const openFieldsPanel = () =>
-  userEvent.click(screen.getByRole("button", { name: /fields/i }));
+// The Fields control is a menu now, and the switches live behind its last entry.
+const openFieldsPanel = async () => {
+  await userEvent.click(screen.getByRole("button", { name: /fields/i }));
+  await userEvent.click(
+    await screen.findByRole("menuitem", { name: /configure/i }),
+  );
+};
+
+// Configure is a modal dialog, so the form behind it is `aria-hidden` while it is
+// open: anything asserting on a field has to shut it first. That is the interaction
+// itself, not a testing detail - a diver sees a hidden field go only once they are
+// back on the form.
+const closeFieldsPanel = () => userEvent.keyboard("{Escape}");
+
+/**
+ * The Configure dialog, for queries that would otherwise also match the menu's own
+ * trigger - which is labelled with the preset the stored set matches.
+ */
+const inFieldsPanel = () => within(screen.getByRole("dialog"));
 
 const lastDiveWith = (overrides: Partial<Dive>) => {
   vi.mocked(divesAPI.getDives).mockResolvedValue({
@@ -757,6 +775,7 @@ describe("what the prefill does to a hidden field", () => {
 
     await openFieldsPanel();
     await userEvent.click(screen.getByRole("switch", { name: /^weight$/i }));
+    await closeFieldsPanel();
 
     await waitFor(() =>
       expect(screen.getByRole("spinbutton", { name: /^weight/i })).toHaveValue(
@@ -764,7 +783,9 @@ describe("what the prefill does to a hidden field", () => {
       ),
     );
 
+    await openFieldsPanel();
     await userEvent.click(screen.getByRole("switch", { name: /^weight$/i }));
+    await closeFieldsPanel();
     await waitFor(() =>
       expect(
         screen.queryByRole("spinbutton", { name: /^weight/i }),
@@ -789,6 +810,7 @@ describe("what the prefill does to a hidden field", () => {
 
     await openFieldsPanel();
     await userEvent.click(screen.getByRole("switch", { name: /^weight$/i }));
+    await closeFieldsPanel();
 
     fillRequiredFields();
     await logDive();
@@ -815,6 +837,7 @@ describe("what the prefill does to a hidden field", () => {
 
     await openFieldsPanel();
     await userEvent.click(screen.getByRole("switch", { name: /^weight$/i }));
+    await closeFieldsPanel();
 
     fillRequiredFields();
     await logDive();
@@ -849,6 +872,7 @@ describe("what the prefill does to a hidden field", () => {
     await userEvent.click(
       screen.getByRole("switch", { name: /^gas mixtures$/i }),
     );
+    await closeFieldsPanel();
 
     await waitFor(() =>
       expect(screen.getByLabelText(/O₂ \(%\)/)).toHaveValue(32),
@@ -858,9 +882,11 @@ describe("what the prefill does to a hidden field", () => {
       screen.getByRole("spinbutton", { name: /start pressure/i }),
     ).toHaveValue(null);
 
+    await openFieldsPanel();
     await userEvent.click(
       screen.getByRole("switch", { name: /^gas mixtures$/i }),
     );
+    await closeFieldsPanel();
     await waitFor(() =>
       expect(screen.queryByText(/^tank 1$/i)).not.toBeInTheDocument(),
     );
@@ -907,6 +933,7 @@ describe("persisting a toggle", () => {
         dive_form_hidden_fields: ["altitude", "notes"],
       }),
     );
+    await closeFieldsPanel();
     expect(divesAPI.getDives).toHaveBeenCalledTimes(1);
     expect(divesAPI.getDive).toHaveBeenCalledTimes(1);
     expect(waterType()).toHaveValue("brackish");
@@ -950,6 +977,7 @@ describe("a course handed in the URL", () => {
     expect(
       screen.getByText(/shown because it holds a value/i),
     ).toBeInTheDocument();
+    await closeFieldsPanel();
 
     fillRequiredFields();
     await logDive();
@@ -970,6 +998,7 @@ describe("a course handed in the URL", () => {
 
     await openFieldsPanel();
     await userEvent.click(screen.getByRole("switch", { name: /^course$/i }));
+    await closeFieldsPanel();
     await waitFor(() =>
       expect(
         screen.queryByRole("combobox", { name: /^course$/i }),
@@ -1006,6 +1035,7 @@ describe("a hidden field that fails validation", () => {
 
     await openFieldsPanel();
     await userEvent.click(screen.getByRole("switch", { name: /^altitude$/i }));
+    await closeFieldsPanel();
     await waitFor(() =>
       expect(
         screen.queryByRole("spinbutton", { name: /^altitude/i }),
@@ -1067,6 +1097,7 @@ describe("the depth entry-unit toggle", () => {
     await userEvent.click(
       screen.getByRole("switch", { name: /^maximum depth$/i }),
     );
+    await closeFieldsPanel();
 
     await waitFor(() => expect(depthToggles()).toHaveLength(1));
     expect(
@@ -1076,19 +1107,20 @@ describe("the depth entry-unit toggle", () => {
 });
 
 describe("the Fields control", () => {
-  it("is a disclosure whose state follows the panel", async () => {
+  it("is a menu button, and opening it submits nothing", async () => {
+    // `type="button"` is the guard: this renders on a card whose content is a
+    // `<form>`, where the default type submits.
     render(<NewDivePage />);
     await screen.findByLabelText(/duration/i);
 
     const control = screen.getByRole("button", { name: /fields/i });
-    expect(control).toHaveAttribute("aria-expanded", "false");
     expect(control).toHaveAttribute("type", "button");
+    expect(control).toHaveAttribute("aria-haspopup", "menu");
+    expect(control).toHaveAttribute("aria-expanded", "false");
 
     await userEvent.click(control);
     expect(control).toHaveAttribute("aria-expanded", "true");
-
-    await userEvent.click(control);
-    expect(control).toHaveAttribute("aria-expanded", "false");
+    expect(await screen.findByRole("menu")).toBeInTheDocument();
     expect(divesAPI.createDive).not.toHaveBeenCalled();
   });
 
@@ -1207,12 +1239,14 @@ describe("the preset list", () => {
     await screen.findByLabelText(/duration/i);
     await openFieldsPanel();
 
-    await screen.findByText("Recreational");
-    expect(screen.getByText("Recreational")).toHaveAttribute(
+    await inFieldsPanel().findByText("Recreational");
+    expect(inFieldsPanel().getByText("Recreational")).toHaveAttribute(
       "aria-current",
       "true",
     );
-    expect(screen.getByText("Technical")).not.toHaveAttribute("aria-current");
+    expect(inFieldsPanel().getByText("Technical")).not.toHaveAttribute(
+      "aria-current",
+    );
   });
 
   it("marks nothing once the diver toggles a field of their own", async () => {
@@ -1222,27 +1256,34 @@ describe("the preset list", () => {
     await openFieldsPanel();
 
     // Technical hides nothing, so it matches a fresh account exactly.
-    await screen.findByText("Technical");
-    expect(screen.getByText("Technical")).toHaveAttribute(
+    await inFieldsPanel().findByText("Technical");
+    expect(inFieldsPanel().getByText("Technical")).toHaveAttribute(
       "aria-current",
       "true",
     );
 
     await userEvent.click(screen.getByRole("switch", { name: /^notes$/i }));
 
-    expect(screen.getByText("Technical")).not.toHaveAttribute("aria-current");
-    expect(screen.getByText("Recreational")).not.toHaveAttribute(
+    expect(inFieldsPanel().getByText("Technical")).not.toHaveAttribute(
+      "aria-current",
+    );
+    expect(inFieldsPanel().getByText("Recreational")).not.toHaveAttribute(
       "aria-current",
     );
   });
 
-  it("applies a preset by storing its set, not by remembering it", async () => {
+  it("applies one from the menu by storing its set, not by remembering it", async () => {
+    // The menu is the only place a preset is applied - Configure manages what the
+    // presets are, and a second Apply there would put the quick path behind two
+    // clicks and a dialog. What lands is the set: nothing afterwards remembers
+    // which preset it came from.
     render(<NewDivePage />);
     await screen.findByLabelText(/duration/i);
-    await openFieldsPanel();
 
-    await screen.findByText("Recreational");
-    await userEvent.click(screen.getAllByRole("button", { name: "Apply" })[0]);
+    await userEvent.click(screen.getByRole("button", { name: /fields/i }));
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /recreational/i }),
+    );
 
     await waitFor(() =>
       expect(authAPI.updateProfile).toHaveBeenCalledWith({
@@ -1252,6 +1293,41 @@ describe("the preset list", () => {
     expect(
       screen.queryByRole("spinbutton", { name: /^altitude/i }),
     ).not.toBeInTheDocument();
+  });
+
+  it("names the trigger after the preset the stored set matches", async () => {
+    stable.auth.user.dive_form_hidden_fields = RECREATIONAL.hidden_fields;
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Fields: Recreational" }),
+      ).toHaveTextContent("Recreational"),
+    );
+  });
+
+  it('names it "Custom" once the set matches no preset', async () => {
+    // A preset is a snapshot, so a hidden set the diver has edited belongs to no
+    // preset at all - and the trigger is the only place that says so.
+    stable.auth.user.dive_form_hidden_fields = [];
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+
+    // Technical hides nothing, so a fresh account starts on it.
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Fields: Technical" }),
+      ).toBeInTheDocument(),
+    );
+
+    await openFieldsPanel();
+    await userEvent.click(screen.getByRole("switch", { name: /^notes$/i }));
+    await closeFieldsPanel();
+
+    expect(
+      screen.getByRole("button", { name: "Fields: Custom" }),
+    ).toHaveTextContent("Custom");
   });
 
   it("saves the current fields under a new name", async () => {
@@ -1280,7 +1356,7 @@ describe("the preset list", () => {
       }),
     );
     // And the new row is on the list without a refetch.
-    expect(await screen.findByText("Warm water")).toBeInTheDocument();
+    expect(await inFieldsPanel().findByText("Warm water")).toBeInTheDocument();
     expect(presets.fetchAllDiveFormPresets).toHaveBeenCalledTimes(1);
   });
 
@@ -1294,7 +1370,7 @@ describe("the preset list", () => {
     await screen.findByLabelText(/duration/i);
     await openFieldsPanel();
 
-    await screen.findByText("Recreational");
+    await inFieldsPanel().findByText("Recreational");
     await userEvent.click(
       screen.getAllByRole("button", {
         name: /update with current fields/i,
@@ -1310,7 +1386,7 @@ describe("the preset list", () => {
     // Which is what makes it the marked one now: the mark is set equality against
     // the stored state, so nothing has to remember that this was the preset applied.
     await waitFor(() =>
-      expect(screen.getByText("Recreational")).toHaveAttribute(
+      expect(inFieldsPanel().getByText("Recreational")).toHaveAttribute(
         "aria-current",
         "true",
       ),
@@ -1549,6 +1625,7 @@ describe("hiding the species picker while it is still resolving a pick", () => {
     await userEvent.click(
       screen.getByRole("switch", { name: /^species spotted$/i }),
     );
+    await closeFieldsPanel();
 
     await waitFor(() =>
       expect(screen.getByRole("button", { name: /log dive/i })).toBeEnabled(),

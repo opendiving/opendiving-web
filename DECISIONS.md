@@ -14993,7 +14993,7 @@ dependencies, a caller passing an inline function would make it run on every ren
 
 The new-dive page's prefill effect used to list `user` in its dependencies, and every settings card
 in this app persists by calling `updateProfile` and then `refreshUser()` — which replaces the
-context's `user` object outright. Wire the Fields panel up that way and ticking a checkbox re-runs
+context's `user` object outright. Wire the Fields dialog up that way and flipping a switch re-runs
 the prefill on a clean form: refetching the last dive and re-stamping `start_time` with
 `nowStartTime()`, under a diver who was halfway through the form.
 
@@ -15012,34 +15012,65 @@ The write itself is debounced and flushed on unmount, so ticking three boxes in 
 and a diver who ticks one and leaves immediately still saved it. `SAVE_DEBOUNCE_MS` in the hook is
 the figure and the only place it is written down.
 
-## The Fields control is not in a label row, and the panel is not in the form
+## The Fields control is a menu with a dialog behind it, and neither is in the form
 
-Two placements, each avoiding a trap this repo has already paid for.
+Three placements, each avoiding a trap this repo has already paid for.
 
 **The control is positioned into the card's title row, not laid out in it.** A `flex` row would give
 the button a say in the header's height, and the header has to occupy the same vertical space with
 the control as without it. `EntryUnitLabelRow` documents the mechanism at length and this is the
 same one: `relative` on the title's wrapper, `absolute inset-y-0 right-0` on the control, so nothing
-here needs to know how tall a button is. It is a disclosure — `type="button"`, `aria-expanded`,
-`aria-controls` — because the default type inside this card's `<form>` submits.
+here needs to know how tall a button is. It is `type="button"` because the default type inside this
+card's `<form>` submits.
 
 **A per-field hide control was rejected outright**, because it would sit in the label row, which is
 the exact place "The toggle sits in the label row without being laid out in it, and both halves of
-that were bugs" is about. One control on the card adds nothing to any label row, and it is where the
-presets have to live anyway.
+that were bugs" is about. One control on the card adds nothing to any label row.
 
-**The panel renders between the header and the card content, outside the `<form>`.** Nothing in it
-is a form control of the dive, and a submit raised inside it — the name prompt's Enter — would
-otherwise reach `handleSubmit` through the React tree even though the DOM has no nested form ("A
-dialog's submit event bubbles into the form that opened it"). The name prompt still goes through
-`dialogFormSubmit` on top of that: it is one call, and it keeps the invariant true if the panel ever
-moves.
+**Menu and dialog split by what they do.** The menu lists the account's presets and applying one is
+a single click from the card; Configure — the last entry, with a cog — opens a dialog holding the
+switches and the preset _management_. Apply deliberately does not appear in the dialog as well: a
+second way to do the quick thing would put it behind two clicks and a modal.
 
-**A checkbox shows the _effective_ state and edits the _stored_ one.** Checking stores the key
-visible; unchecking stores it hidden _and_ drops it from the revealed set, so a field an edit load
-put on screen can still be put away from the panel that offered the box. A key visible only because
-it was revealed says so beside its label. The per-cylinder boxes keep their state but are disabled
-while the Gas Mixtures section is off screen, since there is nothing on screen for them to govern.
+**The trigger is labelled with the state, not with the control's name** — the preset the stored
+hidden set matches, or "Custom" when it matches none. That is the same set-equality comparison the
+dialog marks a row with, so the two cannot disagree, and it answers on the card the question a diver
+opens the menu to ask. The accessible name keeps "Fields" in front of it (`Fields: Technical`),
+which is what stops the control from being unfindable by what it does and satisfies Label in Name.
+"Custom" is a label only and never a menu row: there is nothing to apply, and an unpickable row
+among pickable ones is a trap.
+
+**The label is what forces the preset fetch to be eager.** The old inline panel fetched on first
+open — a diver who never opened it paid nothing. The trigger cannot be painted without the list, so
+`useDiveFormPresets` now fetches on mount. A button reading "Fields" until first opened and
+"Technical" afterwards is worse than one small request, and the hook is shared by the menu and the
+dialog precisely so it stays one.
+
+**Neither is inside the `<form>`.** Nothing in either is a form control of the dive, and a submit
+raised inside one — the name prompt's Enter — would otherwise reach `handleSubmit` through the React
+tree even though the DOM has no nested form ("A dialog's submit event bubbles into the form that
+opened it"). The name prompt goes through `dialogFormSubmit` on top of that: it is one call, and it
+keeps the invariant true wherever the dialog ends up.
+
+**The dialog is modal, and that costs the live preview.** With the inline panel a diver toggled a
+switch and watched the field appear behind it; a modal `aria-hidden`s the page, so the effect is
+visible on closing. Accepted rather than worked around with `modal={false}`: a settings dialog that
+does not block is the odder thing, and every switch persists immediately, so nothing is lost but the
+glance. It is why the page tests now close the dialog before asserting on a field — the interaction
+itself moved, not just the query.
+
+**Opening focus is taken off the first control on purpose.** Radix focuses the first tabbable
+descendant, which here is a preset's "Update with current fields" — a button that overwrites a saved
+preset. Enter should not be that key on a dialog just opened, so `onOpenAutoFocus` puts focus on the
+content container instead, with `focus:outline-none` because a ring around the whole dialog reads as
+an error. `ConfirmDialog` makes the same move one step further, onto Cancel, for the same reason.
+
+**A switch shows the _effective_ state and edits the _stored_ one.** Turning one on stores the key
+visible; turning it off stores it hidden _and_ drops it from the revealed set, so a field an edit
+load put on screen can still be put away from the dialog that offered the switch. A key visible only
+because it was revealed says so beside its label. The per-cylinder switches keep their state but are
+disabled while the Gas Mixtures section is off screen, since there is nothing on screen for them to
+govern.
 
 **Hiding a field must not strand an entry-unit toggle.** Depth's toggle follows the first _visible_
 depth field, so `avg_depth` carries it when `max_depth` is hidden and the form has no depth control
@@ -15049,6 +15080,49 @@ was rejected: it costs a diver who logs only maximum depth the choice. Pressure 
 dimension with a rule of its own, because its one toggle lives in the Gas Mixtures header rather
 than on a field and governs _two_ hideable keys: it renders only while the section is on screen
 **and** at least one of the two pressure boxes is visible.
+
+## The Fields dialog is switches, and its rows are one column
+
+The controls were checkboxes and are now `@radix-ui/react-switch`. A switch is the right shape for a
+row that says "this field is on my form" — a state you leave set rather than a selection you submit
+— and it is the first Radix primitive `ui/` has needed for a control that has no native element,
+which is why `ui/checkbox.tsx` stays a plain `<input>` beside it. The two are not drop-in for one
+another: `checked`/`onCheckedChange` against `checked`/`onChange`.
+
+**On is `bg-teal`, not shadcn's `bg-primary`.** `--primary` is near-black in light and mid-grey in
+dark — the trap `map-picker.tsx` and `locations-map.tsx` already carry a comment about — so the
+shipped default renders on and off as two shades of grey with nothing to say which is which. Teal is
+the accent this app gives the settled state, the same fill the calendar's selected day and the
+default button take. Off is `bg-muted-foreground` rather than shadcn's `bg-input` for the mirror
+reason: `--input` sits nine percentage points from `--background` in both themes, so the
+`bg-background` thumb would sit on a track it barely separates from, and thumb position is half of
+what a switch says.
+
+**The always-shown rows are switches too — on, disabled, and labelled like any other row.** They
+were a muted line reading "Duration — always shown". Dropping the note and the muting means the
+control is the only thing carrying the claim, which in turn means those six switches have to be
+_named_ rather than `aria-hidden`: six rows a sighted diver sees and a screen-reader user does not
+is worse than the duplication. The duplication is real and was already the panel's condition — the
+page now has a second "Duration" and "Start time" beside the form's own, which is why
+`page.render.test.tsx` reaches those two by role rather than by label.
+
+**Section switches were built and then removed.** One switch per group, on when any field in the
+group was on, toggling every field at once — it worked, and the owner cut it. Recorded because the
+reasoning that made it look right (ARIA forbids `aria-checked="mixed"` on `role="switch"`, so a
+part-on section had to read as one or the other) is the reasoning anyone rebuilding it will hit
+again: the honest answer for a group control here is not a switch.
+
+**Every row sits in one left-hand column**, group headings included, with the hierarchy carried by
+the heading's own type rather than by indentation.
+
+**`mixtures` leads its group rather than following the always-on cylinder columns.** It is the
+switch that decides whether the Gas Mixtures section is on the form at all, and every other row
+under that heading is downstream of it — the three always-on columns as much as the five
+per-cylinder ones the dialog disables while it is off. Listing it mid-registry put the reason those
+rows were unavailable below the rows it explains. `LEADING_GROUP_FIELD` in the dialog carries the
+exception rather than the registry, which stays in form order for the completeness guard's sake; a
+test pins the whole nine-row order for that section, so a field added to the group cannot quietly
+land above it.
 
 ## `DIVE_FORM_FIELDS` is a fifth hand-kept vocabulary mirror, guarded from both ends
 

@@ -17,7 +17,7 @@
  *
  * **Order is load-bearing.** It is the canonical order the API stores every hidden
  * set in, so two equal sets are two equal lists and "which preset matches the current
- * state?" is one element-by-element comparison; and it is the order the Fields panel
+ * state?" is one element-by-element comparison; and it is the order the Fields dialog
  * takes its rows from.
  *
  * **These are stored data, not labels.** A preset row and a diver's own hidden set
@@ -166,7 +166,7 @@ export const DIVE_FORM_FIELD_REGISTRY: readonly DiveFormFieldEntry[] = [
 ];
 
 /**
- * The inputs the panel lists as always shown, so a diver looking for "Duration"
+ * The inputs the Fields dialog lists as always shown, so a diver looking for "Duration"
  * finds it rather than a gap where it should be.
  *
  * Three of them are required by the create schema; the three cylinder fields are

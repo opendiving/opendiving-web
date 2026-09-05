@@ -271,7 +271,7 @@ export interface MixtureFieldsProps<TFieldValues extends MixtureFieldsValues> {
   fieldArray: MixtureFieldArray;
   // Which per-cylinder inputs this form renders. A hidden one is left out of every
   // tank card, and its stored value is untouched by that. Defaults to "all of them"
-  // so a caller with no Fields panel behind it - the render tests - gets the whole
+  // so a caller with no Fields dialog behind it - the render tests - gets the whole
   // card.
   isVisible?: (key: DiveFormFieldKey) => boolean;
 }

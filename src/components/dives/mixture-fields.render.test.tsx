@@ -40,7 +40,7 @@ function Harness({
 }: {
   mixtures: DiveFormValues["mixtures"];
   maxDepth: number | null;
-  // The per-cylinder keys this form is *not* showing, as the Fields panel would
+  // The per-cylinder keys this form is *not* showing, as the Fields dialog would
   // have it. Given as the hidden set rather than as a predicate so a test reads the
   // way the stored preference does.
   hidden?: DiveFormFieldKey[];
