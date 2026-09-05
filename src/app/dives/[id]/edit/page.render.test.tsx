@@ -174,7 +174,7 @@ describe("a dive whose fields the diver keeps hidden", () => {
     );
 
     await openFieldsPanel();
-    expect(screen.getByRole("checkbox", { name: /^notes$/i })).toBeChecked();
+    expect(screen.getByRole("switch", { name: /^notes$/i })).toBeChecked();
     expect(
       screen.getByText(/shown because it holds a value/i),
     ).toBeInTheDocument();
@@ -197,7 +197,7 @@ describe("a dive whose fields the diver keeps hidden", () => {
     );
 
     await openFieldsPanel();
-    await userEvent.click(screen.getByRole("checkbox", { name: /^notes$/i }));
+    await userEvent.click(screen.getByRole("switch", { name: /^notes$/i }));
     // Role-scoped from here: the panel's own "Notes" checkbox answers to the label
     // too, and it stays on the page after the field goes.
     await waitFor(() =>
@@ -292,7 +292,7 @@ describe("a dive whose fields the diver keeps hidden", () => {
     );
 
     await openFieldsPanel();
-    const weightBox = () => screen.getByRole("checkbox", { name: /^weight$/i });
+    const weightBox = () => screen.getByRole("switch", { name: /^weight$/i });
     await userEvent.click(weightBox());
     await waitFor(() =>
       expect(

@@ -171,7 +171,8 @@ export const DIVE_FORM_FIELD_REGISTRY: readonly DiveFormFieldEntry[] = [
  *
  * Three of them are required by the create schema; the three cylinder fields are
  * exempt rather than required - see `NON_HIDEABLE_MIXTURE_SCHEMA_KEYS`. Both reasons
- * end in the same row, and "always shown" is the only claim the panel makes.
+ * end in the same row: a switch that is on and will not move, which is the only claim
+ * the panel makes about either.
  */
 export const DIVE_FORM_ALWAYS_ON_FIELDS: readonly {
   label: string;

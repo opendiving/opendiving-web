@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, Loader2, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { FormApiError } from "@/components/ui/form-api-error";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
 import { dialogFormSubmit } from "@/lib/dialog-form";
 import { getApiErrorMessage } from "@/lib/api/error";
@@ -254,11 +255,17 @@ export function DiveFormFieldsPanel({
 
   const gasOnScreen = visibility.isVisible("mixtures");
 
+  // The always-on rows carry no key, so their switches are identified by position in
+  // the one list they come from - stable for as long as the list is, which is what an
+  // id has to be.
+  const alwaysOnRows = DIVE_FORM_ALWAYS_ON_FIELDS.map((entry, index) => ({
+    entry,
+    id: `${id}-always-${index}`,
+  }));
+
   const rowsFor = (group: DiveFormFieldGroup) => ({
     fields: DIVE_FORM_FIELD_REGISTRY.filter((entry) => entry.group === group),
-    alwaysOn: DIVE_FORM_ALWAYS_ON_FIELDS.filter(
-      (entry) => entry.group === group,
-    ),
+    alwaysOn: alwaysOnRows.filter((row) => row.entry.group === group),
   });
 
   return (
@@ -425,48 +432,55 @@ export function DiveFormFieldsPanel({
         <FormApiError error={visibility.saveError} />
       </section>
 
-      <section className="space-y-3">
+      <section className="space-y-6">
         <h3 className="text-sm font-medium">Fields on this form</h3>
         {DIVE_FORM_FIELD_GROUPS.map((group) => {
           const { fields, alwaysOn } = rowsFor(group);
           if (fields.length === 0 && alwaysOn.length === 0) return null;
 
           return (
-            <fieldset key={group} className="space-y-1">
+            <fieldset key={group} className="space-y-3">
               <legend className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 {group}
               </legend>
-              {alwaysOn.map((entry) => (
-                <p
-                  key={entry.label}
-                  className="pl-6 text-sm text-muted-foreground"
-                >
-                  {entry.label}{" "}
-                  <span className="text-xs">&mdash; always shown</span>
-                </p>
+              {/* The same row as a hideable field, down to the label's own colour:
+                  the switch being on and unavailable is the whole of what marks it,
+                  and a diver looking for Duration finds it where they would look for
+                  it rather than in a gap. Named like every other switch here, since
+                  with no note beside it the control is the only thing that says so. */}
+              {alwaysOn.map(({ entry, id: rowId }) => (
+                <div key={rowId} className="flex items-center gap-2">
+                  <Switch id={rowId} checked disabled />
+                  <Label htmlFor={rowId} className="font-normal">
+                    {entry.label}
+                  </Label>
+                </div>
               ))}
               {fields.map((entry) => {
+                const fieldId = `${id}-field-${entry.key}`;
                 const perCylinder = isMixtureField(entry.key);
                 const revealed =
                   visibility.isHidden(entry.key) &&
                   visibility.isRevealed(entry.key);
                 return (
                   <div key={entry.key}>
-                    <label className="flex items-center gap-2 text-sm">
-                      <Checkbox
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id={fieldId}
                         checked={visibility.isVisible(entry.key)}
-                        // Per-cylinder boxes keep their state while the section
-                        // they belong to is off screen, but there is nothing on
-                        // screen for them to govern, so they are not offered.
+                        // Per-cylinder switches keep their state while the
+                        // section they belong to is off screen, but there is
+                        // nothing on screen for them to govern, so they are not
+                        // offered.
                         disabled={perCylinder && !gasOnScreen}
-                        onChange={(event) =>
-                          toggleField(entry.key, event.target.checked)
-                        }
+                        onCheckedChange={(next) => toggleField(entry.key, next)}
                       />
-                      <span>{entry.label}</span>
-                    </label>
+                      <Label htmlFor={fieldId} className="font-normal">
+                        {entry.label}
+                      </Label>
+                    </div>
                     {revealed && (
-                      <p className="pl-6 text-xs text-muted-foreground">
+                      <p className="pl-11 text-xs text-muted-foreground">
                         shown because it holds a value
                       </p>
                     )}

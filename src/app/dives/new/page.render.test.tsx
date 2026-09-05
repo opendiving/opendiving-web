@@ -224,7 +224,10 @@ beforeEach(() => {
 // ~3ms. Where the typing itself is the point (the depth warning below), the
 // tests still type.
 function fillRequiredFields() {
-  fireEvent.change(screen.getByLabelText(/duration/i), {
+  // Role-scoped, not `getByLabelText`: the Fields panel puts a "Duration" switch on
+  // the page beside the form's own box, and both answer to the label. Several of
+  // these tests fill the form with the panel already open.
+  fireEvent.change(screen.getByRole("textbox", { name: /duration/i }), {
     target: { value: "45:00" },
   });
 }
@@ -747,7 +750,7 @@ describe("what the prefill does to a hidden field", () => {
     await waitFor(() => expect(divesAPI.getDive).toHaveBeenCalled());
 
     await openFieldsPanel();
-    await userEvent.click(screen.getByRole("checkbox", { name: /^weight$/i }));
+    await userEvent.click(screen.getByRole("switch", { name: /^weight$/i }));
 
     await waitFor(() =>
       expect(screen.getByRole("spinbutton", { name: /^weight/i })).toHaveValue(
@@ -755,7 +758,7 @@ describe("what the prefill does to a hidden field", () => {
       ),
     );
 
-    await userEvent.click(screen.getByRole("checkbox", { name: /^weight$/i }));
+    await userEvent.click(screen.getByRole("switch", { name: /^weight$/i }));
     await waitFor(() =>
       expect(
         screen.queryByRole("spinbutton", { name: /^weight/i }),
@@ -779,7 +782,7 @@ describe("what the prefill does to a hidden field", () => {
     );
 
     await openFieldsPanel();
-    await userEvent.click(screen.getByRole("checkbox", { name: /^weight$/i }));
+    await userEvent.click(screen.getByRole("switch", { name: /^weight$/i }));
 
     fillRequiredFields();
     await logDive();
@@ -805,7 +808,7 @@ describe("what the prefill does to a hidden field", () => {
     });
 
     await openFieldsPanel();
-    await userEvent.click(screen.getByRole("checkbox", { name: /^weight$/i }));
+    await userEvent.click(screen.getByRole("switch", { name: /^weight$/i }));
 
     fillRequiredFields();
     await logDive();
@@ -838,7 +841,7 @@ describe("what the prefill does to a hidden field", () => {
 
     await openFieldsPanel();
     await userEvent.click(
-      screen.getByRole("checkbox", { name: /^gas mixtures$/i }),
+      screen.getByRole("switch", { name: /^gas mixtures$/i }),
     );
 
     await waitFor(() =>
@@ -850,7 +853,7 @@ describe("what the prefill does to a hidden field", () => {
     ).toHaveValue(null);
 
     await userEvent.click(
-      screen.getByRole("checkbox", { name: /^gas mixtures$/i }),
+      screen.getByRole("switch", { name: /^gas mixtures$/i }),
     );
     await waitFor(() =>
       expect(screen.queryByText(/^tank 1$/i)).not.toBeInTheDocument(),
@@ -877,20 +880,21 @@ describe("persisting a toggle", () => {
     await waitFor(() =>
       expect(screen.getByLabelText(/water type/i)).toHaveValue("brackish"),
     );
-    const startTime = (screen.getByLabelText(/start time/i) as HTMLInputElement)
-      .value;
-    // Role-scoped from here on: opening the panel puts a "Water type" checkbox on
-    // the page beside the form's own select, and both answer to the label.
+    // Role-scoped from here on: opening the panel puts a "Water type" switch on the
+    // page beside the form's own select, and both answer to the label. Start time
+    // reads its button's text rather than a `value`: the control the label names is
+    // the picker's trigger, and a `<button>` has no `value` to compare.
+    const startTimeButton = () =>
+      screen.getByRole("button", { name: /start time/i });
+    const startTime = startTimeButton().textContent;
     const waterType = () =>
       screen.getByRole("combobox", { name: /water type/i });
 
     await openFieldsPanel();
     // Unchecked in reverse form order, so what arrives on the wire can only be
     // canonical if the client put it in order.
-    await userEvent.click(screen.getByRole("checkbox", { name: /^notes$/i }));
-    await userEvent.click(
-      screen.getByRole("checkbox", { name: /^altitude$/i }),
-    );
+    await userEvent.click(screen.getByRole("switch", { name: /^notes$/i }));
+    await userEvent.click(screen.getByRole("switch", { name: /^altitude$/i }));
 
     await waitFor(() =>
       expect(authAPI.updateProfile).toHaveBeenCalledWith({
@@ -900,9 +904,7 @@ describe("persisting a toggle", () => {
     expect(divesAPI.getDives).toHaveBeenCalledTimes(1);
     expect(divesAPI.getDive).toHaveBeenCalledTimes(1);
     expect(waterType()).toHaveValue("brackish");
-    expect(
-      (screen.getByLabelText(/start time/i) as HTMLInputElement).value,
-    ).toBe(startTime);
+    expect(startTimeButton().textContent).toBe(startTime);
   });
 
   it("debounces a burst into one request", async () => {
@@ -910,12 +912,10 @@ describe("persisting a toggle", () => {
     await screen.findByLabelText(/duration/i);
 
     await openFieldsPanel();
-    await userEvent.click(screen.getByRole("checkbox", { name: /^notes$/i }));
+    await userEvent.click(screen.getByRole("switch", { name: /^notes$/i }));
+    await userEvent.click(screen.getByRole("switch", { name: /^altitude$/i }));
     await userEvent.click(
-      screen.getByRole("checkbox", { name: /^altitude$/i }),
-    );
-    await userEvent.click(
-      screen.getByRole("checkbox", { name: /^visibility$/i }),
+      screen.getByRole("switch", { name: /^visibility$/i }),
     );
 
     await waitFor(() => expect(authAPI.updateProfile).toHaveBeenCalled());
@@ -963,7 +963,7 @@ describe("a course handed in the URL", () => {
     await screen.findByLabelText(/duration/i);
 
     await openFieldsPanel();
-    await userEvent.click(screen.getByRole("checkbox", { name: /^course$/i }));
+    await userEvent.click(screen.getByRole("switch", { name: /^course$/i }));
     await waitFor(() =>
       expect(
         screen.queryByRole("combobox", { name: /^course$/i }),
@@ -999,9 +999,7 @@ describe("a hidden field that fails validation", () => {
     });
 
     await openFieldsPanel();
-    await userEvent.click(
-      screen.getByRole("checkbox", { name: /^altitude$/i }),
-    );
+    await userEvent.click(screen.getByRole("switch", { name: /^altitude$/i }));
     await waitFor(() =>
       expect(
         screen.queryByRole("spinbutton", { name: /^altitude/i }),
@@ -1061,7 +1059,7 @@ describe("the depth entry-unit toggle", () => {
 
     await openFieldsPanel();
     await userEvent.click(
-      screen.getByRole("checkbox", { name: /^maximum depth$/i }),
+      screen.getByRole("switch", { name: /^maximum depth$/i }),
     );
 
     await waitFor(() => expect(depthToggles()).toHaveLength(1));
@@ -1088,29 +1086,23 @@ describe("the Fields control", () => {
     expect(divesAPI.createDive).not.toHaveBeenCalled();
   });
 
-  it("lists every hideable field as a checkbox and the always-on ones as text", async () => {
+  it("lists every field as a switch, and the always-on ones as switches it will not move", async () => {
     render(<NewDivePage />);
     await screen.findByLabelText(/duration/i);
     await openFieldsPanel();
 
-    expect(screen.getAllByRole("checkbox")).toHaveLength(
-      DIVE_FORM_FIELDS.length,
+    expect(screen.getAllByRole("switch")).toHaveLength(
+      DIVE_FORM_FIELDS.length + DIVE_FORM_ALWAYS_ON_FIELDS.length,
     );
+
     for (const entry of DIVE_FORM_ALWAYS_ON_FIELDS) {
-      expect(
-        screen.queryByRole("checkbox", {
-          name: new RegExp(`^${entry.label}$`, "i"),
-        }),
-      ).not.toBeInTheDocument();
-      // One paragraph with the note in a smaller span, so the match is against the
-      // line rather than against either half of it.
-      expect(
-        screen.getByText(
-          (_, element) =>
-            element?.tagName === "P" &&
-            element.textContent === `${entry.label} — always shown`,
-        ),
-      ).toBeInTheDocument();
+      // The row reads like any other - no note, no muting - so on and unavailable
+      // is the whole of what says the diver cannot hide it.
+      const control = screen.getByRole("switch", {
+        name: new RegExp(`^${entry.label}$`, "i"),
+      });
+      expect(control).toBeChecked();
+      expect(control).toBeDisabled();
     }
   });
 
@@ -1120,12 +1112,12 @@ describe("the Fields control", () => {
     await screen.findByLabelText(/duration/i);
     await openFieldsPanel();
 
-    expect(screen.getByRole("checkbox", { name: /^role$/i })).toBeDisabled();
+    expect(screen.getByRole("switch", { name: /^role$/i })).toBeDisabled();
 
     await userEvent.click(
-      screen.getByRole("checkbox", { name: /^gas mixtures$/i }),
+      screen.getByRole("switch", { name: /^gas mixtures$/i }),
     );
-    expect(screen.getByRole("checkbox", { name: /^role$/i })).toBeEnabled();
+    expect(screen.getByRole("switch", { name: /^role$/i })).toBeEnabled();
   });
 });
 
@@ -1199,7 +1191,7 @@ describe("the preset list", () => {
       "true",
     );
 
-    await userEvent.click(screen.getByRole("checkbox", { name: /^notes$/i }));
+    await userEvent.click(screen.getByRole("switch", { name: /^notes$/i }));
 
     expect(screen.getByText("Technical")).not.toHaveAttribute("aria-current");
     expect(screen.getByText("Recreational")).not.toHaveAttribute(
@@ -1518,7 +1510,7 @@ describe("hiding the species picker while it is still resolving a pick", () => {
 
     await openFieldsPanel();
     await userEvent.click(
-      screen.getByRole("checkbox", { name: /^species spotted$/i }),
+      screen.getByRole("switch", { name: /^species spotted$/i }),
     );
 
     await waitFor(() =>
