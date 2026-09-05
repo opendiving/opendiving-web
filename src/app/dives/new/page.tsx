@@ -14,6 +14,7 @@ import {
   normalizeMixtures,
 } from "@/lib/validations/dive";
 import { useMixtureFieldArray } from "@/components/dives/mixture-fields";
+import { useDiveFormVisibility } from "@/hooks/useDiveFormVisibility";
 import { DiveFormCard } from "@/components/dives/dive-form-card";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageSpinner } from "@/components/ui/page-spinner";
@@ -88,6 +89,28 @@ function NewDivePageContent() {
     },
   });
   const mixtureFieldArray = useMixtureFieldArray(form.control);
+  // `fillsDefaults`, because this form has defaults to fill: showing a field the
+  // diver had hidden gives it the last dive's value, and hiding an untouched one
+  // empties it. The edit form passes false - what appears there on show is the
+  // stored value, and hide/show never change form state.
+  const visibility = useDiveFormVisibility({
+    form,
+    replaceMixtures: mixtureFieldArray.replace,
+    fillsDefaults: true,
+  });
+  const { prefill, revealNonEmpty } = visibility;
+
+  // The fourth moment a value arrives from outside the diver's typing, and the one
+  // that happens at mount: a trip, dive site or course a page passed in the URL. A
+  // diver who clicked "Log a Dive for this Course" asked for that field, and Basic
+  // hides `course_uuid` - so without this the click would file the dive against no
+  // course. Derived from the values rather than from the three parameters, so the
+  // rule is the same one the other three moments use.
+  useEffect(() => {
+    revealNonEmpty(form.getValues());
+    // Mount only. Its inputs are the `defaultValues` above, which are read once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // The dive number tracks the start time (including a start time an imported
   // file rewrote), rather than being prefilled once from the last dive - see the
@@ -110,14 +133,23 @@ function NewDivePageContent() {
 
   // Pre-fill trip, gas mixture and gear defaults from the most recent dive so
   // the user doesn't have to re-enter recurring values for every new log entry.
+  //
+  // **Keyed on `user.uuid`, not on `user`.** Persisting a Fields toggle folds the new
+  // hidden set into the auth context, which replaces the `user` object - and with
+  // that object in this dependency list, ticking a checkbox would re-run the prefill
+  // on a clean form: refetching the last dive and re-stamping `start_time` with
+  // `nowStartTime()`. The invariant is that persisting a toggle never resets the
+  // form, re-runs this effect or refetches the last dive, and the uuid is what it
+  // rests on. Anything added here later has to be a value, not an object.
+  const userUuid = user?.uuid;
   useEffect(() => {
-    if (!user) return;
+    if (!userUuid) return;
 
     let cancelled = false;
 
     const prefillFromLastDive = async () => {
       try {
-        const response = await divesAPI.getDives(user.uuid, 1, 1);
+        const response = await divesAPI.getDives(userUuid, 1, 1);
         if (cancelled || form.formState.isDirty) return;
 
         const lastDiveSummary = response.data[0];
@@ -128,21 +160,15 @@ function NewDivePageContent() {
         const lastDive = await divesAPI.getDive(lastDiveSummary.uuid);
         if (cancelled || form.formState.isDirty) return;
 
-        form.reset({
-          // Kept, not recomputed: `useSuggestedDiveNumber` owns this field and
-          // may already have filled it in by the time this prefill lands. The
-          // two run concurrently, and whichever finishes second must not undo
-          // the other - hence reading the current value back rather than
-          // deriving one from `lastDive`, which would also be the wrong number
-          // for a back-dated dive.
-          dive_number: form.getValues("dive_number"),
-          start_time: nowStartTime(),
-          duration: "",
-          max_depth: undefined,
-          avg_depth: undefined,
-          bottom_temperature: undefined,
-          visibility: undefined,
-          // Carried over, unlike the temperature and visibility above: those are
+        // What the last dive (or a URL parameter) offers per key, written out once
+        // and handed to the visibility layer twice: as part of the `reset` object
+        // and as the carried map. A key that is on screen takes its value from
+        // here; a key that is hidden takes its empty value instead and takes this
+        // one the moment the diver shows it. That is owner decision 1 read forwards
+        // and backwards at once, and the layer's record of what it wrote - not
+        // react-hook-form's dirty state - is what "untouched" means afterwards.
+        const carried: Partial<DiveCreateInput> = {
+          // Carried over, unlike the temperature and visibility below: those are
           // readings taken on the day, while the water and its elevation are
           // properties of where the diver is - and a second dive is usually in
           // the same water at the same place. Same argument as the weight below.
@@ -158,7 +184,8 @@ function NewDivePageContent() {
           // above: a course ends, and silently tagging the first fun dive after
           // it as training is a worse default than one extra pick. The mid-course
           // streak is covered by the course page's own "Log a Dive for this
-          // Course", which arrives here as `initialCourseId`.
+          // Course", which arrives here as `initialCourseId` - already revealed at
+          // mount, so hiding `course_uuid` never loses it.
           course_uuid: initialCourseId,
           dive_site_uuids:
             initialDiveSiteId !== undefined ? [initialDiveSiteId] : [],
@@ -168,13 +195,6 @@ function NewDivePageContent() {
           gear_item_uuids: (lastDive.gear_items ?? [])
             .filter((item) => !item.is_archived)
             .map((item) => item.uuid),
-          // Deliberately *not* carried over, unlike the gear above: gear is
-          // habitual, sightings are observations. Copying yesterday's turtle
-          // into today's dive would fabricate a record of seeing it. Listed
-          // rather than omitted because this `reset` enumerates every field, and
-          // a field left out of it comes back `undefined`.
-          species_uuids: [],
-          notes: "",
           // Whatever the last dive recorded, and nothing when it recorded nothing -
           // a diver who logs gas gets it carried over, a diver who doesn't keeps an
           // empty card rather than acquiring a cylinder on dive two. See
@@ -209,7 +229,40 @@ function NewDivePageContent() {
               start_pressure: "" as const,
               end_pressure: "" as const,
             })) ?? [],
-        });
+        };
+
+        form.reset(
+          prefill(
+            {
+              // Kept, not recomputed: `useSuggestedDiveNumber` owns this field and
+              // may already have filled it in by the time this prefill lands. The
+              // two run concurrently, and whichever finishes second must not undo
+              // the other - hence reading the current value back rather than
+              // deriving one from `lastDive`, which would also be the wrong number
+              // for a back-dated dive.
+              dive_number: form.getValues("dive_number"),
+              start_time: nowStartTime(),
+              duration: "",
+              max_depth: undefined,
+              avg_depth: undefined,
+              bottom_temperature: undefined,
+              visibility: undefined,
+              // Deliberately *not* carried over, unlike the gear above: gear is
+              // habitual, sightings are observations. Copying yesterday's turtle
+              // into today's dive would fabricate a record of seeing it. Listed
+              // rather than omitted because this `reset` enumerates every field, and
+              // a field left out of it comes back `undefined`.
+              species_uuids: [],
+              notes: "",
+              // Spread so this object still enumerates every field, for the reason
+              // directly above. `prefill` rewrites each of these keys against the
+              // visibility rules, so the spread is the shape and the second argument
+              // is the meaning.
+              ...carried,
+            },
+            carried,
+          ),
+        );
       } catch (error) {
         console.error("Failed to fetch last dive for pre-fill:", error);
       }
@@ -220,7 +273,14 @@ function NewDivePageContent() {
     return () => {
       cancelled = true;
     };
-  }, [user, form, initialTripId, initialDiveSiteId, initialCourseId]);
+  }, [
+    userUuid,
+    form,
+    prefill,
+    initialTripId,
+    initialDiveSiteId,
+    initialCourseId,
+  ]);
 
   if (isAuthLoading) {
     return <PageSpinner />;
@@ -326,6 +386,7 @@ function NewDivePageContent() {
       <DiveFormCard
         form={form}
         mixtureFieldArray={mixtureFieldArray}
+        visibility={visibility}
         mode="create"
         userId={user?.uuid ?? ""}
         onSubmit={onSubmit}

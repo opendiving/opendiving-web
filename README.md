@@ -27,7 +27,8 @@ components together. Start there if you want to run OpenDiving rather than work 
 
 - **Dive logging** — times, depths, duration, temperature, visibility, water type, altitude, weight,
   notes, and any number of gas mixtures (O₂/He, start/end pressures) per dive. A dive can span
-  multiple dive sites (drift dives happen), in order.
+  multiple dive sites (drift dives happen), in order. Switch off the fields you never fill in and
+  save the arrangement as a named set — the choice follows your account, not the device.
 - **Technical diving** — trimix and nitrox mixes get derived gas names and per-mix **MOD** at your
   ppO₂ limit, plus END/EAD; the profile chart shades the **deco ceiling** and marks dive events;
   **CNS/OTU** oxygen exposure and surface pressure are kept from imports, per-cylinder ppO₂ limits

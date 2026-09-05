@@ -312,6 +312,32 @@ describe("SpeciesMultiSelect", () => {
     );
   });
 
+  it("stops reporting pending when it unmounts mid-resolve", async () => {
+    // The picker can now leave the page while a resolve is in flight: hiding
+    // Species from the Fields panel, or applying a preset that hides it, unmounts
+    // it. Nothing else would ever report `false` again, so the card's submit button
+    // stayed on "Adding species..." until a reload - a form wedged by a checkbox.
+    const onPendingChange = vi.fn();
+    resolveSpecies.mockReturnValue(new Promise(() => {}));
+    const { unmount } = render(
+      <SpeciesMultiSelect
+        value={[]}
+        onChange={() => {}}
+        onPendingChange={onPendingChange}
+      />,
+    );
+    await openMenu();
+
+    await userEvent.click(
+      screen.getByRole("option", { name: /Ocellaris clownfish/ }),
+    );
+    await waitFor(() => expect(onPendingChange).toHaveBeenLastCalledWith(true));
+
+    unmount();
+
+    expect(onPendingChange).toHaveBeenLastCalledWith(false);
+  });
+
   it("stops reporting pending when the resolve fails", async () => {
     // Otherwise a 503 would leave the form's submit button disabled for good.
     const onPendingChange = vi.fn();

@@ -246,6 +246,25 @@ export function SpeciesMultiSelect({
     onPendingChange?.(isPending);
   }, [isPending, onPendingChange]);
 
+  // Read from a ref so the unmount report below can be a mount-only effect: with
+  // `onPendingChange` in its dependencies, a caller passing an inline function would
+  // make the cleanup run on every render and report `false` over a live resolve.
+  const onPendingChangeRef = useRef(onPendingChange);
+  useEffect(() => {
+    onPendingChangeRef.current = onPendingChange;
+  }, [onPendingChange]);
+
+  // A picker that unmounts reports itself no longer pending, and there is no other
+  // way for it to: the effect above only fires while this component is alive, so a
+  // resolve in flight when the picker leaves the page left the card's
+  // `isResolvingSpecies` stuck at true and the Save button reading "Adding
+  // species..." until a reload. Reachable from the Fields panel - hide Species, or
+  // apply a preset that does - which is what turned a leak nobody could trigger into
+  // a wedged form.
+  useEffect(() => {
+    return () => onPendingChangeRef.current?.(false);
+  }, []);
+
   const rememberLabels = useCallback((species: SpeciesSummary[]) => {
     if (species.length === 0) return;
     setLabels((prev) => {

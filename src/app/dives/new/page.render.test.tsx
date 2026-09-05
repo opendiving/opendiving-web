@@ -4,6 +4,10 @@ import userEvent from "@testing-library/user-event";
 import NewDivePage from "./page";
 import { divesAPI, type Dive } from "@/lib/api/dives";
 import type { Species } from "@/lib/api/species";
+import {
+  DIVE_FORM_ALWAYS_ON_FIELDS,
+  DIVE_FORM_FIELDS,
+} from "@/lib/dive-form-fields";
 
 // The seam this covers is the page's own seeding, which no unit test can reach: the
 // form's `defaultValues` and the last-dive prefill both decide what `mixtures` holds
@@ -27,11 +31,20 @@ import type { Species } from "@/lib/api/species";
 //
 // `vi.hoisted` because a `vi.mock` factory is hoisted above every other
 // statement in the file and so cannot close over an ordinary `const`.
+//
+// `dive_form_hidden_fields` lives on that same pinned object rather than being handed
+// back fresh, for the same reason: the visibility hook memoizes the account's stored
+// set on it, and `mergeUser` is what the real context would use to fold a saved toggle
+// back in. Mutating in place keeps `user`'s identity stable, which is what the prefill
+// effect's `user.uuid` key is there to survive anyway.
 const stable = vi.hoisted(() => ({
   auth: {
-    user: { uuid: "user-1" },
+    user: { uuid: "user-1", dive_form_hidden_fields: [] as string[] },
     isAuthenticated: true,
     isLoading: false,
+    mergeUser: vi.fn((fields: Record<string, unknown>) => {
+      Object.assign(stable.auth.user, fields);
+    }),
   },
   router: { push: vi.fn(), replace: vi.fn() },
   searchParams: new URLSearchParams(),
@@ -64,6 +77,7 @@ vi.mock("@/lib/api/dives", async (importOriginal) => {
       getDive: vi.fn(),
       createDive: vi.fn(),
       getNextDiveNumber: vi.fn(),
+      parseDiveFile: vi.fn(),
     },
   };
 });
@@ -97,6 +111,32 @@ vi.mock("@/lib/api/species", async (importOriginal) => {
   };
 });
 
+vi.mock("@/lib/api/auth", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/api/auth")>();
+  return {
+    ...actual,
+    authAPI: { ...actual.authAPI, updateProfile: vi.fn() },
+  };
+});
+
+// The Fields panel reads the account's presets when it first opens. Left real, that
+// is an XHR against jsdom's own origin - the trap the gear mock below records.
+vi.mock("@/lib/api/dive-form-presets", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/lib/api/dive-form-presets")>();
+  return {
+    ...actual,
+    fetchAllDiveFormPresets: vi.fn(),
+    diveFormPresetsAPI: {
+      ...actual.diveFormPresetsAPI,
+      createPreset: vi.fn(),
+      updatePreset: vi.fn(),
+      deletePreset: vi.fn(),
+      restoreDefaults: vi.fn(),
+    },
+  };
+});
+
 vi.mock("@/lib/api/gear", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/api/gear")>();
   return {
@@ -111,6 +151,8 @@ vi.mock("@/lib/api/gear", async (importOriginal) => {
   };
 });
 
+const { authAPI } = await import("@/lib/api/auth");
+const presets = await import("@/lib/api/dive-form-presets");
 const { tripsAPI } = await import("@/lib/api/trips");
 const { diveSitesAPI } = await import("@/lib/api/dive-sites");
 const gear = await import("@/lib/api/gear");
@@ -144,6 +186,10 @@ const storedDive = (overrides: Partial<Dive> = {}): Dive =>
 
 beforeEach(() => {
   vi.clearAllMocks();
+  stable.auth.user.dive_form_hidden_fields = [];
+  stable.searchParams = new URLSearchParams();
+  vi.mocked(authAPI.updateProfile).mockResolvedValue(undefined);
+  vi.mocked(presets.fetchAllDiveFormPresets).mockResolvedValue([]);
   vi.mocked(divesAPI.getDives).mockResolvedValue(emptyPage());
   vi.mocked(divesAPI.getNextDiveNumber).mockResolvedValue({
     dive_number: 42,
@@ -578,5 +624,905 @@ describe("saving while a species pick is still resolving", () => {
     expect(
       vi.mocked(divesAPI.createDive).mock.calls[0][0].species_uuids,
     ).toEqual(["species-1"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Hiding and showing fields
+// ---------------------------------------------------------------------------
+//
+// The seam here is the same one the rest of this file covers - the page's own
+// seeding - now with a stored hidden set in front of it. What no unit test can reach
+// is the interaction between the two: what a diver who hides Weight *saves*, and what
+// happens to a value the prefill had already put there.
+
+const openFieldsPanel = () =>
+  userEvent.click(screen.getByRole("button", { name: /fields/i }));
+
+const lastDiveWith = (overrides: Partial<Dive>) => {
+  vi.mocked(divesAPI.getDives).mockResolvedValue({
+    ...emptyPage<Dive>(),
+    data: [storedDive()],
+    total_count: 1,
+  });
+  vi.mocked(divesAPI.getDive).mockResolvedValue(storedDive(overrides));
+};
+
+describe("a stored hidden set", () => {
+  it("leaves the field out of the first render, not on screen and then away", async () => {
+    stable.auth.user.dive_form_hidden_fields = ["altitude"];
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+
+    expect(
+      screen.queryByRole("spinbutton", { name: /altitude/i }),
+    ).not.toBeInTheDocument();
+    // Its neighbour in the same grid row is untouched, so this is one field going
+    // rather than the block around it.
+    expect(screen.getByLabelText(/water type/i)).toBeInTheDocument();
+  });
+
+  it("takes the whole Gas Mixtures section with `mixtures`", async () => {
+    stable.auth.user.dive_form_hidden_fields = ["mixtures"];
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+
+    expect(screen.queryByText(/^gas mixtures$/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /add mixture/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/no cylinders recorded for this dive/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("takes one input off every tank card for a per-cylinder key", async () => {
+    stable.auth.user.dive_form_hidden_fields = ["mixture.role"];
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+
+    await userEvent.click(screen.getByRole("button", { name: /add mixture/i }));
+    await userEvent.click(screen.getByRole("button", { name: /add mixture/i }));
+
+    expect(screen.getAllByLabelText(/^usage$/i)).toHaveLength(2);
+    expect(screen.queryByLabelText(/^role$/i)).not.toBeInTheDocument();
+  });
+
+  it("hides Weight without taking Gear with it", async () => {
+    // The two are nested in one render so the gear picker can write the weight, and
+    // that nesting used to be the reason they could not come apart.
+    stable.auth.user.dive_form_hidden_fields = ["weight"];
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+
+    expect(screen.getByLabelText(/^gear$/i)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("spinbutton", { name: /^weight/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("hides Gear without taking Weight with it", async () => {
+    stable.auth.user.dive_form_hidden_fields = ["gear_item_uuids"];
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+
+    expect(screen.queryByLabelText(/^gear$/i)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("spinbutton", { name: /^weight/i }),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("what the prefill does to a hidden field", () => {
+  it("leaves it empty while still carrying the visible ones", async () => {
+    lastDiveWith({ weight: 8, altitude: 372 });
+    stable.auth.user.dive_form_hidden_fields = ["weight"];
+
+    render(<NewDivePage />);
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("spinbutton", { name: /^altitude/i }),
+      ).toHaveValue(372),
+    );
+    expect(
+      screen.queryByRole("spinbutton", { name: /^weight/i }),
+    ).not.toBeInTheDocument();
+
+    fillRequiredFields();
+    await logDive();
+    await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
+    expect(vi.mocked(divesAPI.createDive).mock.calls[0][0].weight).toBeNull();
+  });
+
+  it("fills it from the last dive the moment it is shown, and empties it again on hide", async () => {
+    // Both halves of owner decision 1 in one test: a field shown later holds what it
+    // would have held had it been visible all along, and it is still *untouched*, so
+    // hiding it again takes the value back out.
+    lastDiveWith({ weight: 8 });
+    stable.auth.user.dive_form_hidden_fields = ["weight"];
+
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+    await waitFor(() => expect(divesAPI.getDive).toHaveBeenCalled());
+
+    await openFieldsPanel();
+    await userEvent.click(screen.getByRole("checkbox", { name: /^weight$/i }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("spinbutton", { name: /^weight/i })).toHaveValue(
+        8,
+      ),
+    );
+
+    await userEvent.click(screen.getByRole("checkbox", { name: /^weight$/i }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("spinbutton", { name: /^weight/i }),
+      ).not.toBeInTheDocument(),
+    );
+
+    fillRequiredFields();
+    await logDive();
+    await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
+    expect(vi.mocked(divesAPI.createDive).mock.calls[0][0].weight).toBeNull();
+  });
+
+  it("empties a carried field the diver hides without touching", async () => {
+    lastDiveWith({ weight: 8 });
+
+    render(<NewDivePage />);
+    await waitFor(() =>
+      expect(screen.getByRole("spinbutton", { name: /^weight/i })).toHaveValue(
+        8,
+      ),
+    );
+
+    await openFieldsPanel();
+    await userEvent.click(screen.getByRole("checkbox", { name: /^weight$/i }));
+
+    fillRequiredFields();
+    await logDive();
+    await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
+    expect(vi.mocked(divesAPI.createDive).mock.calls[0][0].weight).toBeNull();
+  });
+
+  it("keeps a value the diver typed, hidden or not", async () => {
+    // The other half of the rule, and the one that makes hiding safe: what the diver
+    // entered is theirs, and the API is sent exactly what the form holds - hidden
+    // fields included, which is react-hook-form's `shouldUnregister: false` default.
+    lastDiveWith({ weight: 8 });
+
+    render(<NewDivePage />);
+    await waitFor(() =>
+      expect(screen.getByRole("spinbutton", { name: /^weight/i })).toHaveValue(
+        8,
+      ),
+    );
+
+    fireEvent.change(screen.getByRole("spinbutton", { name: /^weight/i }), {
+      target: { value: "7" },
+    });
+
+    await openFieldsPanel();
+    await userEvent.click(screen.getByRole("checkbox", { name: /^weight$/i }));
+
+    fillRequiredFields();
+    await logDive();
+    await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
+    expect(vi.mocked(divesAPI.createDive).mock.calls[0][0].weight).toBe(7);
+  });
+
+  it("fills and empties the gas card as the section is shown and hidden", async () => {
+    lastDiveWith({
+      mixtures: [
+        {
+          id: 7,
+          volume: 15,
+          oxygen: 32,
+          helium: 0,
+          start_pressure: 210,
+          end_pressure: 60,
+          po2_limit: 1.4,
+          gas_number: 1,
+          role: "bottom",
+        },
+      ],
+    });
+    stable.auth.user.dive_form_hidden_fields = ["mixtures"];
+
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+    await waitFor(() => expect(divesAPI.getDive).toHaveBeenCalled());
+    expect(screen.queryByText(/^tank 1$/i)).not.toBeInTheDocument();
+
+    await openFieldsPanel();
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: /^gas mixtures$/i }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByLabelText(/O₂ \(%\)/)).toHaveValue(32),
+    );
+    // Pressures are per fill and are never carried, shown or not.
+    expect(
+      screen.getByRole("spinbutton", { name: /start pressure/i }),
+    ).toHaveValue(null);
+
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: /^gas mixtures$/i }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByText(/^tank 1$/i)).not.toBeInTheDocument(),
+    );
+
+    fillRequiredFields();
+    await logDive();
+    await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
+    expect(vi.mocked(divesAPI.createDive).mock.calls[0][0].mixtures).toEqual(
+      [],
+    );
+  });
+});
+
+describe("persisting a toggle", () => {
+  it("sends the canonical list, and does not reset the form", async () => {
+    // The trap this pins: the prefill effect used to key on the `user` object, and
+    // folding a saved toggle back into the context replaces it. That would refetch
+    // the last dive and re-stamp `start_time` with `nowStartTime()` - on a form the
+    // diver was in the middle of.
+    lastDiveWith({ water_type: "brackish" });
+
+    render(<NewDivePage />);
+    await waitFor(() =>
+      expect(screen.getByLabelText(/water type/i)).toHaveValue("brackish"),
+    );
+    const startTime = (screen.getByLabelText(/start time/i) as HTMLInputElement)
+      .value;
+    // Role-scoped from here on: opening the panel puts a "Water type" checkbox on
+    // the page beside the form's own select, and both answer to the label.
+    const waterType = () =>
+      screen.getByRole("combobox", { name: /water type/i });
+
+    await openFieldsPanel();
+    // Unchecked in reverse form order, so what arrives on the wire can only be
+    // canonical if the client put it in order.
+    await userEvent.click(screen.getByRole("checkbox", { name: /^notes$/i }));
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: /^altitude$/i }),
+    );
+
+    await waitFor(() =>
+      expect(authAPI.updateProfile).toHaveBeenCalledWith({
+        dive_form_hidden_fields: ["altitude", "notes"],
+      }),
+    );
+    expect(divesAPI.getDives).toHaveBeenCalledTimes(1);
+    expect(divesAPI.getDive).toHaveBeenCalledTimes(1);
+    expect(waterType()).toHaveValue("brackish");
+    expect(
+      (screen.getByLabelText(/start time/i) as HTMLInputElement).value,
+    ).toBe(startTime);
+  });
+
+  it("debounces a burst into one request", async () => {
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+
+    await openFieldsPanel();
+    await userEvent.click(screen.getByRole("checkbox", { name: /^notes$/i }));
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: /^altitude$/i }),
+    );
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: /^visibility$/i }),
+    );
+
+    await waitFor(() => expect(authAPI.updateProfile).toHaveBeenCalled());
+    expect(authAPI.updateProfile).toHaveBeenCalledTimes(1);
+    expect(authAPI.updateProfile).toHaveBeenCalledWith({
+      dive_form_hidden_fields: ["visibility", "altitude", "notes"],
+    });
+  });
+});
+
+describe("a course handed in the URL", () => {
+  it("is on screen and on the wire even under a set that hides it", async () => {
+    // "Log a Dive for this Course" is the click this protects: `course_uuid` is one
+    // of the fourteen Basic hides, so without the reveal the dive would be filed
+    // against no course and nothing on the form would say so.
+    stable.searchParams = new URLSearchParams("course_uuid=course-9");
+    stable.auth.user.dive_form_hidden_fields = ["course_uuid"];
+
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+
+    expect(
+      screen.getByRole("combobox", { name: /^course$/i }),
+    ).toBeInTheDocument();
+    await openFieldsPanel();
+    expect(
+      screen.getByText(/shown because it holds a value/i),
+    ).toBeInTheDocument();
+
+    fillRequiredFields();
+    await logDive();
+    await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
+    expect(vi.mocked(divesAPI.createDive).mock.calls[0][0].course_uuid).toBe(
+      "course-9",
+    );
+  });
+
+  it("keeps the course when the diver hides the field again", async () => {
+    // A value that arrived from outside the diver's typing is the diver's, so hiding
+    // its field never discards it - unlike a carried default.
+    stable.searchParams = new URLSearchParams("course_uuid=course-9");
+    stable.auth.user.dive_form_hidden_fields = [];
+
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+
+    await openFieldsPanel();
+    await userEvent.click(screen.getByRole("checkbox", { name: /^course$/i }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("combobox", { name: /^course$/i }),
+      ).not.toBeInTheDocument(),
+    );
+
+    fillRequiredFields();
+    await logDive();
+    await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
+    expect(vi.mocked(divesAPI.createDive).mock.calls[0][0].course_uuid).toBe(
+      "course-9",
+    );
+  });
+});
+
+describe("a hidden field that fails validation", () => {
+  it("comes back on screen with its message rather than doing nothing", async () => {
+    // Nearly unreachable by hand - a hidden new-form field is empty and valid - and
+    // that is exactly why it needs a test. The resolver validates hidden fields, so
+    // without the reveal the save button would simply stop working.
+    lastDiveWith({ altitude: 372 });
+
+    render(<NewDivePage />);
+    await waitFor(() =>
+      expect(
+        screen.getByRole("spinbutton", { name: /^altitude/i }),
+      ).toHaveValue(372),
+    );
+
+    // Typed, so hiding keeps it - and out of range, so the resolver refuses.
+    fireEvent.change(screen.getByRole("spinbutton", { name: /^altitude/i }), {
+      target: { value: "9999" },
+    });
+
+    await openFieldsPanel();
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: /^altitude$/i }),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("spinbutton", { name: /^altitude/i }),
+      ).not.toBeInTheDocument(),
+    );
+
+    fillRequiredFields();
+    await logDive();
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("spinbutton", { name: /^altitude/i }),
+      ).toBeInTheDocument(),
+    );
+    expect(screen.getByText(/altitude must be between/i)).toBeInTheDocument();
+    expect(divesAPI.createDive).not.toHaveBeenCalled();
+  });
+});
+
+describe("the depth entry-unit toggle", () => {
+  const depthToggles = () =>
+    screen.queryAllByRole("button", { name: /switch depth entry/i });
+
+  it("moves onto Average depth when Maximum depth is hidden", async () => {
+    stable.auth.user.dive_form_hidden_fields = ["max_depth"];
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+
+    expect(depthToggles()).toHaveLength(1);
+    // The toggle sits inside the label row of the field it governs, so the field
+    // beside it in the DOM is the one that carries it.
+    expect(
+      screen.getByRole("spinbutton", { name: /average depth/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("spinbutton", { name: /maximum depth/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("leaves the form with no depth control when both are hidden", async () => {
+    stable.auth.user.dive_form_hidden_fields = ["max_depth", "avg_depth"];
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+
+    expect(depthToggles()).toHaveLength(0);
+
+    // And the gas hint still says which unit its MOD is in, which is what makes a
+    // form with no depth control readable rather than ambiguous.
+    await userEvent.click(screen.getByRole("button", { name: /add mixture/i }));
+    expect(screen.getByText(/MOD \d+(\.\d+)? m/)).toBeInTheDocument();
+  });
+
+  it("is back on Maximum depth as soon as it is shown again", async () => {
+    stable.auth.user.dive_form_hidden_fields = ["max_depth"];
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+
+    await openFieldsPanel();
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: /^maximum depth$/i }),
+    );
+
+    await waitFor(() => expect(depthToggles()).toHaveLength(1));
+    expect(
+      screen.getByRole("spinbutton", { name: /maximum depth/i }),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("the Fields control", () => {
+  it("is a disclosure whose state follows the panel", async () => {
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+
+    const control = screen.getByRole("button", { name: /fields/i });
+    expect(control).toHaveAttribute("aria-expanded", "false");
+    expect(control).toHaveAttribute("type", "button");
+
+    await userEvent.click(control);
+    expect(control).toHaveAttribute("aria-expanded", "true");
+
+    await userEvent.click(control);
+    expect(control).toHaveAttribute("aria-expanded", "false");
+    expect(divesAPI.createDive).not.toHaveBeenCalled();
+  });
+
+  it("lists every hideable field as a checkbox and the always-on ones as text", async () => {
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+    await openFieldsPanel();
+
+    expect(screen.getAllByRole("checkbox")).toHaveLength(
+      DIVE_FORM_FIELDS.length,
+    );
+    for (const entry of DIVE_FORM_ALWAYS_ON_FIELDS) {
+      expect(
+        screen.queryByRole("checkbox", {
+          name: new RegExp(`^${entry.label}$`, "i"),
+        }),
+      ).not.toBeInTheDocument();
+      // One paragraph with the note in a smaller span, so the match is against the
+      // line rather than against either half of it.
+      expect(
+        screen.getByText(
+          (_, element) =>
+            element?.tagName === "P" &&
+            element.textContent === `${entry.label} — always shown`,
+        ),
+      ).toBeInTheDocument();
+    }
+  });
+
+  it("disables the per-cylinder rows while the gas section is off screen", async () => {
+    stable.auth.user.dive_form_hidden_fields = ["mixtures"];
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+    await openFieldsPanel();
+
+    expect(screen.getByRole("checkbox", { name: /^role$/i })).toBeDisabled();
+
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: /^gas mixtures$/i }),
+    );
+    expect(screen.getByRole("checkbox", { name: /^role$/i })).toBeEnabled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Presets
+// ---------------------------------------------------------------------------
+//
+// A preset is a snapshot: applying one copies its hidden set into the account's
+// current state and nothing links the two afterwards. Everything below is about
+// keeping those two ideas apart - which is also why the panel marks by set equality
+// rather than by remembering which one was applied last.
+
+const aPreset = (
+  name: string,
+  hidden_fields: string[],
+  uuid = `preset-${name.toLowerCase()}`,
+) =>
+  ({
+    uuid,
+    user_uuid: "user-1",
+    name,
+    hidden_fields,
+    created_at: "2026-09-01T00:00:00Z",
+  }) as Awaited<ReturnType<typeof presets.fetchAllDiveFormPresets>>[number];
+
+const RECREATIONAL = aPreset("Recreational", [
+  "altitude",
+  "mixture.po2_limit",
+  "mixture.role",
+  "mixture.usage",
+]);
+const TECHNICAL = aPreset("Technical", []);
+
+describe("the preset list", () => {
+  beforeEach(() => {
+    vi.mocked(presets.fetchAllDiveFormPresets).mockResolvedValue([
+      RECREATIONAL,
+      TECHNICAL,
+    ]);
+  });
+
+  it("marks the one whose set equals the stored state, and only that one", async () => {
+    stable.auth.user.dive_form_hidden_fields = [
+      "altitude",
+      "mixture.po2_limit",
+      "mixture.role",
+      "mixture.usage",
+    ];
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+    await openFieldsPanel();
+
+    await screen.findByText("Recreational");
+    expect(screen.getByText("Recreational")).toHaveAttribute(
+      "aria-current",
+      "true",
+    );
+    expect(screen.getByText("Technical")).not.toHaveAttribute("aria-current");
+  });
+
+  it("marks nothing once the diver toggles a field of their own", async () => {
+    stable.auth.user.dive_form_hidden_fields = [];
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+    await openFieldsPanel();
+
+    // Technical hides nothing, so it matches a fresh account exactly.
+    await screen.findByText("Technical");
+    expect(screen.getByText("Technical")).toHaveAttribute(
+      "aria-current",
+      "true",
+    );
+
+    await userEvent.click(screen.getByRole("checkbox", { name: /^notes$/i }));
+
+    expect(screen.getByText("Technical")).not.toHaveAttribute("aria-current");
+    expect(screen.getByText("Recreational")).not.toHaveAttribute(
+      "aria-current",
+    );
+  });
+
+  it("applies a preset by storing its set, not by remembering it", async () => {
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+    await openFieldsPanel();
+
+    await screen.findByText("Recreational");
+    await userEvent.click(screen.getAllByRole("button", { name: "Apply" })[0]);
+
+    await waitFor(() =>
+      expect(authAPI.updateProfile).toHaveBeenCalledWith({
+        dive_form_hidden_fields: RECREATIONAL.hidden_fields,
+      }),
+    );
+    expect(
+      screen.queryByRole("spinbutton", { name: /^altitude/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("saves the current fields under a new name", async () => {
+    stable.auth.user.dive_form_hidden_fields = ["notes"];
+    vi.mocked(presets.diveFormPresetsAPI.createPreset).mockResolvedValue(
+      aPreset("Warm water", ["notes"], "preset-warm"),
+    );
+
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+    await openFieldsPanel();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /save current fields as a preset/i }),
+    );
+    await userEvent.type(
+      screen.getByLabelText(/preset name/i),
+      "Warm water{Enter}",
+    );
+
+    await waitFor(() =>
+      expect(presets.diveFormPresetsAPI.createPreset).toHaveBeenCalledWith({
+        user_uuid: "user-1",
+        name: "Warm water",
+        hidden_fields: ["notes"],
+      }),
+    );
+    // And the new row is on the list without a refetch.
+    expect(await screen.findByText("Warm water")).toBeInTheDocument();
+    expect(presets.fetchAllDiveFormPresets).toHaveBeenCalledTimes(1);
+  });
+
+  it("writes the current fields back into an existing preset", async () => {
+    stable.auth.user.dive_form_hidden_fields = ["notes", "altitude"];
+    vi.mocked(presets.diveFormPresetsAPI.updatePreset).mockResolvedValue({
+      message: "ok",
+    });
+
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+    await openFieldsPanel();
+
+    await screen.findByText("Recreational");
+    await userEvent.click(
+      screen.getAllByRole("button", {
+        name: /update with current fields/i,
+      })[0],
+    );
+
+    await waitFor(() =>
+      expect(presets.diveFormPresetsAPI.updatePreset).toHaveBeenCalledWith(
+        RECREATIONAL.uuid,
+        { hidden_fields: ["altitude", "notes"] },
+      ),
+    );
+    // Which is what makes it the marked one now: the mark is set equality against
+    // the stored state, so nothing has to remember that this was the preset applied.
+    await waitFor(() =>
+      expect(screen.getByText("Recreational")).toHaveAttribute(
+        "aria-current",
+        "true",
+      ),
+    );
+  });
+
+  it("renames a preset", async () => {
+    vi.mocked(presets.diveFormPresetsAPI.updatePreset).mockResolvedValue({
+      message: "ok",
+    });
+
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+    await openFieldsPanel();
+
+    await screen.findByText("Recreational");
+    await userEvent.click(
+      screen.getAllByRole("button", { name: /^rename$/i })[0],
+    );
+    const field = screen.getByLabelText(/new name/i);
+    await userEvent.clear(field);
+    await userEvent.type(field, "Tropics{Enter}");
+
+    await waitFor(() =>
+      expect(presets.diveFormPresetsAPI.updatePreset).toHaveBeenCalledWith(
+        RECREATIONAL.uuid,
+        { name: "Tropics" },
+      ),
+    );
+    expect(await screen.findByText("Tropics")).toBeInTheDocument();
+    expect(screen.queryByText("Recreational")).not.toBeInTheDocument();
+  });
+
+  it("confirms before deleting, and leaves the form's fields alone", async () => {
+    vi.mocked(presets.diveFormPresetsAPI.deletePreset).mockResolvedValue({
+      message: "ok",
+    });
+
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+    await openFieldsPanel();
+
+    await screen.findByText("Recreational");
+    await userEvent.click(
+      screen.getAllByRole("button", { name: /^delete$/i })[0],
+    );
+
+    expect(
+      screen.getByRole("heading", { name: /delete this preset\?/i }),
+    ).toBeInTheDocument();
+    expect(presets.diveFormPresetsAPI.deletePreset).not.toHaveBeenCalled();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /^delete$/i, hidden: false }),
+    );
+
+    await waitFor(() =>
+      expect(presets.diveFormPresetsAPI.deletePreset).toHaveBeenCalledWith(
+        RECREATIONAL.uuid,
+      ),
+    );
+    await waitFor(() =>
+      expect(screen.queryByText("Recreational")).not.toBeInTheDocument(),
+    );
+    expect(authAPI.updateProfile).not.toHaveBeenCalled();
+  });
+
+  it("restores only the defaults that were missing, and says how many", async () => {
+    const basic = aPreset("Basic", ["altitude"], "preset-basic");
+    vi.mocked(presets.diveFormPresetsAPI.restoreDefaults).mockResolvedValue([
+      basic,
+    ]);
+
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+    await openFieldsPanel();
+
+    await screen.findByText("Recreational");
+    await userEvent.click(
+      screen.getByRole("button", { name: /restore default presets/i }),
+    );
+
+    await waitFor(() =>
+      expect(presets.diveFormPresetsAPI.restoreDefaults).toHaveBeenCalled(),
+    );
+    expect(await screen.findByText("Basic")).toBeInTheDocument();
+    expect(stable.toast.toast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        description: expect.stringContaining("Added 1 preset"),
+      }),
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The two moments a value arrives from something the diver operated
+// ---------------------------------------------------------------------------
+
+function importFile() {
+  // The real input is `hidden` and driven by a button click, so `userEvent.upload`
+  // refuses it - `fireEvent.change` is what that click ultimately produces. Same
+  // helper as `dive-file-import.render.test.tsx`.
+  const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
+  fireEvent.change(input, {
+    target: {
+      files: [
+        new File(["{}"], "dive.fit", { type: "application/octet-stream" }),
+      ],
+    },
+  });
+}
+
+describe("importing a file onto a form with fields hidden", () => {
+  it("brings the gas section back with the cylinders the file carried", async () => {
+    // The import path itself stays visibility-blind: it sets whatever the file
+    // carries, which is the owner's rule for free. What this pins is the other half -
+    // that the section comes back so the diver can see, and correct, a volume the
+    // parser guessed.
+    stable.auth.user.dive_form_hidden_fields = ["mixtures"];
+    vi.mocked(divesAPI.parseDiveFile).mockResolvedValue({
+      dive_number: null,
+      start_time: null,
+      duration: null,
+      max_depth: 32.1,
+      avg_depth: null,
+      bottom_temperature: null,
+      water_type: null,
+      mixtures: [
+        { volume: 11.1, oxygen: 32, helium: 0, start_pressure: 200 },
+        { volume: 11.1, oxygen: 50, helium: 0, start_pressure: 180 },
+      ],
+      cns_start: null,
+      cns_end: null,
+      otu_start: null,
+      otu_end: null,
+      surface_pressure_bar: null,
+      file_token: "token",
+    } as Awaited<ReturnType<typeof divesAPI.parseDiveFile>>);
+
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+    expect(screen.queryByText(/^tank 1$/i)).not.toBeInTheDocument();
+
+    importFile();
+
+    await waitFor(() =>
+      expect(screen.getAllByText(/^tank \d$/i)).toHaveLength(2),
+    );
+    expect(
+      screen.getAllByRole("spinbutton", { name: /start pressure/i })[0],
+    ).toHaveValue(200);
+    // The stored set is untouched: this form shows them, the account still hides them.
+    expect(authAPI.updateProfile).not.toHaveBeenCalled();
+    expect(stable.auth.user.dive_form_hidden_fields).toEqual(["mixtures"]);
+  });
+});
+
+describe("loading a gear set onto a form with Weight hidden", () => {
+  it("puts the weight box on screen, filled with the set's own", async () => {
+    stable.auth.user.dive_form_hidden_fields = ["weight"];
+    vi.mocked(gear.fetchAllGearSets).mockResolvedValue([
+      {
+        uuid: "set-1",
+        user_uuid: "user-1",
+        name: "Warm water",
+        weight: 4,
+        gear_items: [],
+      } as unknown as Awaited<ReturnType<typeof gear.fetchAllGearSets>>[number],
+    ]);
+
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+    expect(
+      screen.queryByRole("spinbutton", { name: /^weight/i }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.click(
+      await screen.findByRole("combobox", { name: /load a gear set/i }),
+    );
+    await userEvent.click(
+      await screen.findByRole("option", { name: /warm water/i }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByRole("spinbutton", { name: /^weight/i })).toHaveValue(
+        4,
+      ),
+    );
+    expect(authAPI.updateProfile).not.toHaveBeenCalled();
+  });
+});
+
+describe("hiding the species picker while it is still resolving a pick", () => {
+  it("leaves the save button usable", async () => {
+    // The picker reports a pending catalog resolve to the card, and the card
+    // disables the submit on it. Unmounting it - by unchecking Species, or by
+    // applying a preset that hides it - used to leave that report stuck at true and
+    // the button on "Adding species..." until a reload: a form wedged by a checkbox.
+    vi.mocked(speciesAPI.searchSpecies).mockResolvedValue({
+      results: [
+        {
+          aphia_id: 278400,
+          uuid: null,
+          scientific_name: "Amphiprion ocellaris",
+          common_name: "Ocellaris clownfish",
+          rank: "Species",
+          status: "accepted",
+          matched_name: null,
+          source: "wikidata",
+          attribution: "Wikidata (CC0)",
+        },
+      ],
+      has_more: false,
+    });
+    // Never settles, so the resolve is still in flight when the picker goes.
+    vi.mocked(speciesAPI.resolveSpecies).mockReturnValue(new Promise(() => {}));
+
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+
+    await userEvent.type(
+      screen.getByLabelText(/species spotted/i),
+      "clownfish",
+    );
+    await userEvent.click(
+      await screen.findByRole("option", { name: /Ocellaris clownfish/ }),
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /adding species/i }),
+      ).toBeDisabled(),
+    );
+
+    await openFieldsPanel();
+    await userEvent.click(
+      screen.getByRole("checkbox", { name: /^species spotted$/i }),
+    );
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /log dive/i })).toBeEnabled(),
+    );
   });
 });
