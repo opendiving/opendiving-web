@@ -386,6 +386,11 @@ describe("parseFormDuration", () => {
     expect(parseFormDuration("45:30")).toBe(45 * 60 + 30);
   });
 
+  it("reads a colonless value as whole minutes", () => {
+    expect(parseFormDuration("45")).toBe(45 * 60);
+    expect(parseFormDuration("0")).toBe(0);
+  });
+
   it("round-trips with formatDurationForForm", () => {
     const seconds = 125;
     expect(parseFormDuration(formatDurationForForm(seconds))).toBe(seconds);

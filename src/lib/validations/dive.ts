@@ -58,14 +58,23 @@ const updatedDateTimeField = () =>
     message: "Start time must be a valid datetime",
   });
 
-// "MM:SS", e.g. "45:30" - minutes can be 1-3 digits, seconds must be two
-// digits from 00-59. Converted to/from a plain seconds number right before
-// hitting the API via `parseFormDuration()`/`formatDurationForForm()` in
-// `lib/date-time.ts` - see `dateTimeField()` above for the same pattern.
-const DURATION_REGEX = /^\d{1,3}:[0-5]\d$/;
+// "MM" or "MM:SS", e.g. "45" or "45:30" - minutes can be 1-3 digits, and the
+// seconds, when given, must be two digits from 00-59. Converted to/from a plain
+// seconds number right before hitting the API via
+// `parseFormDuration()`/`formatDurationForForm()` in `lib/date-time.ts` - see
+// `dateTimeField()` above for the same pattern.
+//
+// The colonless form is what most dive logs actually hold: a computer reports
+// whole minutes and a hand-written slate carries nothing finer, so making the
+// common entry the longer one ("45:00") was the field's own placeholder
+// promising something the regex refused. A bare number is read as minutes, which
+// is the only reading a duration written without a colon can have - "130" is 130
+// minutes, never 1:30. The seconds half stays strict so a mistyped ":75" is still
+// caught rather than silently rolling over.
+const DURATION_REGEX = /^\d{1,3}(?::[0-5]\d)?$/;
 
 const durationField = (
-  message = "Duration must be in MM:SS format, e.g. 67:30",
+  message = "Duration must be minutes or MM:SS, e.g. 45 or 67:30",
 ) => z.string().min(1, "Duration is required").regex(DURATION_REGEX, message);
 
 // Total ballast carried on the dive, in kilograms. Identical in the create and

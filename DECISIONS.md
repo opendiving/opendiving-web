@@ -219,17 +219,36 @@ that:
 a client-side-filtered dropdown and sets are few per user. Only the item-level pickers had a list
 that grows without bound.
 
-## Duration is a free-typed, regex-validated "MM:SS" string in the form
+## Duration is a free-typed, regex-validated "MM" or "MM:SS" string in the form
 
 `Dive.duration` on the API/`Dive`/`DiveCreate`/`DiveUpdate` types is always seconds, but the dive
-**form** field holds a plain `"MM:SS"` string (e.g. `"45:30"`), exactly like `start_time` holds a
+**form** field holds a plain string (e.g. `"45"` or `"45:30"`), exactly like `start_time` holds a
 `"YYYY-MM-DD HH:mm:ss"` string - see `dateTimeField()`/`durationField()` in
 `lib/validations/dive.ts` for the matching pattern (required, regex-validated, no `.transform()` per
 the Zod rule above). The user can type anything into the plain `<Input>`; Zod's `durationField()`
-regex (`^\d{1,3}:[0-5]\d$`) is the only validation, surfaced via the normal `<FormMessage />` -
+regex (`^\d{1,3}(?::[0-5]\d)?$`) is the only validation, surfaced via the normal `<FormMessage />` -
 there's no live reformatting/auto-correction as they type (an earlier version tried that with a
 dedicated `DurationInput` component and local text-buffer state; it was simpler to just validate the
 raw string like every other form field).
+
+The seconds half is optional, and that half of the regex was retrofitted: the field's placeholder
+read `e.g. 45 or 67:30` from the start while the regex required the colon, so the single most common
+dive duration there is - a whole number of minutes - was refused by the box that had just invited
+it, with `Duration must be in MM:SS format, e.g. 67:30` as the only explanation. Widening the regex
+was chosen over retracting the placeholder because a dive computer reports whole minutes and a slate
+carries nothing finer, so `"45:00"` is ceremony on the common path. A colonless value is minutes:
+`"130"` is 130 minutes, never 1:30, which is why the minutes half stays capped at three digits - a
+mistyped `"1030"` is still refused rather than stored as a 17-hour dive. `parseFormDuration()`
+treats the missing half as zero seconds; `formatDurationForForm()` still always writes `"MM:SS"`, so
+a `45` typed once reads back as `45:00`.
+
+The `<FormLabel>` is a bare `Duration` for the same reason - it used to read `Duration (MM:SS)`,
+which is a third place for the field to promise one shape while accepting another. **Two strings
+still have to move with `DURATION_REGEX` and both are prose about the format**: the placeholder in
+`dive-form-fields.tsx` and `durationField()`'s default message, which this change rewrote from
+`Duration must be in MM:SS format, e.g. 67:30` to name both shapes. A test pins the message
+verbatim, so widening the regex again fails the suite until the message is updated - the placeholder
+has no such guard, and is the one to check by hand.
 
 Conversion to/from the API's seconds representation happens right before submit / right after fetch
 via `parseFormDuration()`/`formatDurationForForm()` in `lib/date-time.ts` (mirroring

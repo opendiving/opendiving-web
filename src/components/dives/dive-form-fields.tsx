@@ -310,7 +310,7 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
         name={"duration" as Path<TFieldValues>}
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Duration (MM:SS){requiredMark}</FormLabel>
+            <FormLabel>Duration{requiredMark}</FormLabel>
             <div className="relative">
               <Clock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
               <FormControl>
