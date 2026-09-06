@@ -604,6 +604,23 @@ describe("MixtureFields under a hidden set", () => {
     expect(screen.getAllByLabelText(/volume/i)).toHaveLength(2);
   });
 
+  it("takes the He box off every tank card, and leaves the rest of the mix", () => {
+    // The gate the "He is hideable" change added. `volume` and `oxygen` stay - they
+    // are still exempt, on the ground that a cylinder recording neither says nothing
+    // at all, while one recording no helium is a cylinder of air.
+    render(
+      <Harness
+        mixtures={[AIR, AIR]}
+        maxDepth={20}
+        hidden={["mixture.helium"]}
+      />,
+    );
+
+    expect(screen.queryByLabelText(/He \(%\)/)).not.toBeInTheDocument();
+    expect(screen.getAllByLabelText(/O₂ \(%\)/)).toHaveLength(2);
+    expect(screen.getAllByLabelText(/volume/i)).toHaveLength(2);
+  });
+
   it("keeps the pressure toggle while either pressure is on screen", () => {
     render(
       <Harness

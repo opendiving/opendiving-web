@@ -254,7 +254,18 @@ export const EMPTY_DIVE_FORM_VALUES: Readonly<
   species_uuids: [],
   notes: "",
   "mixture.po2_limit": "",
-  "mixture.helium": "",
+  // The one column that clears to a *number*, and the only one whose absence means
+  // something. Hiding He is the diver saying they dive air and nitrox - which is what
+  // made it hideable at all - so the value it clears to has to be the zero that claim
+  // implies, matching `DEFAULT_MIXTURE.helium`. `""` here would spell "not recorded",
+  // and `gasName`/`isNameableMix` refuse to name a mix whose helium is unknown: every
+  // cylinder under Basic or Recreational would lose its "Air"/"EAN32" and its MOD, and
+  // a hand-added tank (which takes `DEFAULT_MIXTURE` whole, hidden column or not) would
+  // disagree with a carried one on the same dive, in a column neither is showing.
+  //
+  // Hiding cannot overwrite a recorded helium: a cylinder that holds one is non-empty,
+  // so the reveal rule puts the column back on screen and marks it the diver's.
+  "mixture.helium": 0,
   "mixture.start_pressure": "",
   "mixture.end_pressure": "",
   "mixture.role": "",
@@ -278,6 +289,24 @@ export type DiveFormFieldValues = {
 } & { readonly mixtures?: readonly Record<string, unknown>[] };
 
 /**
+ * Whether a value in `key` is one the reveal rule should put back on screen.
+ *
+ * Non-empty, *and* not simply what hiding the key would have written there. The second
+ * half exists for `mixture.helium` and reads as a no-op everywhere else: every other
+ * key clears to `null`, `""` or `[]`, which the first half already rejects. Helium
+ * clears to `0`, and `0` is the value nearly every stored cylinder holds - so without
+ * this, loading any air or nitrox dive would reveal the column the diver hid, on every
+ * dive they own, and hiding He would work until the first time they opened a dive.
+ *
+ * A key does not reveal itself by holding what hiding it writes. `mixture.end_pressure`
+ * still reveals on a stored `0`, because its empty value is `""`: a drained cylinder is
+ * a reading, and that distinction is the whole reason the empty values are per-key.
+ */
+function revealsField(key: DiveFormFieldKey, value: unknown): boolean {
+  return isNonEmptyFieldValue(value) && value !== EMPTY_DIVE_FORM_VALUES[key];
+}
+
+/**
  * Every key these values hold something in - what the four "a value arrived from
  * outside the diver's typing" moments reveal.
  *
@@ -292,9 +321,9 @@ export function nonEmptyDiveFormFields(
   const mixtures = Array.isArray(values.mixtures) ? values.mixtures : [];
 
   return DIVE_FORM_FIELDS.filter((key) => {
-    if (!isMixtureField(key)) return isNonEmptyFieldValue(values[key]);
+    if (!isMixtureField(key)) return revealsField(key, values[key]);
     const name = mixtureFieldName(key);
-    return mixtures.some((row) => isNonEmptyFieldValue(row?.[name]));
+    return mixtures.some((row) => revealsField(key, row?.[name]));
   });
 }
 

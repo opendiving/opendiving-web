@@ -11,6 +11,7 @@ import {
   canonicalHiddenFields,
   diveFormFieldsWithErrors,
   hiddenFieldsEqual,
+  isMixtureField,
   isNonEmptyFieldValue,
   nonEmptyDiveFormFields,
 } from "./dive-form-fields";
@@ -116,13 +117,37 @@ describe("the panel's registry", () => {
     }
   });
 
-  it("gives every key an empty value", () => {
+  it("gives every key an empty value that does not reveal it", () => {
+    // The invariant is about the reveal rule, not about `isNonEmptyFieldValue`:
+    // `mixture.helium` clears to `0`, which *is* a value by that predicate and is
+    // still not a reason to put the column back on screen. Anything else would make
+    // hiding He last until the diver opened one of their own dives.
     for (const key of DIVE_FORM_FIELDS) {
       expect(EMPTY_DIVE_FORM_VALUES).toHaveProperty(key);
-      expect(isNonEmptyFieldValue(EMPTY_DIVE_FORM_VALUES[key]), key).toBe(
-        false,
-      );
+      const asMixtureRow = {
+        mixtures: [
+          { [key.replace("mixture.", "")]: EMPTY_DIVE_FORM_VALUES[key] },
+        ],
+      };
+      const values = isMixtureField(key)
+        ? asMixtureRow
+        : { [key]: EMPTY_DIVE_FORM_VALUES[key] };
+      expect(nonEmptyDiveFormFields(values), key).not.toContain(key);
     }
+  });
+
+  it("still reveals an end pressure of 0, which is a drained cylinder", () => {
+    // The other side of the same rule: `mixture.end_pressure` clears to `""`, so a
+    // stored `0` differs from its empty value and is a reading worth showing.
+    expect(
+      nonEmptyDiveFormFields({ mixtures: [{ end_pressure: 0 }] }),
+    ).toContain("mixture.end_pressure");
+    expect(nonEmptyDiveFormFields({ mixtures: [{ helium: 0 }] })).not.toContain(
+      "mixture.helium",
+    );
+    expect(nonEmptyDiveFormFields({ mixtures: [{ helium: 30 }] })).toContain(
+      "mixture.helium",
+    );
   });
 });
 

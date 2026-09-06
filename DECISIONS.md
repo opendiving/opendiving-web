@@ -15239,6 +15239,27 @@ precisely the half of that change the blank/prefill split was chosen to protect.
 restating it, and a second test asserts each name is still an optional key of the mixture schema —
 so an exemption that stopped excluding anything fails rather than passing quietly.
 
+**A hidden helium is `0`, not blank, and that is the whole of what makes hiding it safe.** Every
+other mixture column clears to `""` — "not recorded" — and helium was written that way to match,
+which was wrong twice over. `gasName` and `isNameableMix` refuse to name a mix whose helium is
+unknown (see "a gas whose helium content is unknown cannot be told apart from air"), so every
+cylinder logged under Basic or Recreational would have lost its "Air"/"EAN32" and its MOD on the
+dive detail page. And the two ways a cylinder reaches the list disagreed: a carried one went through
+the hide rule and got `""` → `null`, while "Add Mixture" takes `DEFAULT_MIXTURE` whole and kept its
+`0` — two rows of one dive, one nameable and one not, in a column neither was showing. Hiding He is
+the diver saying they dive air and nitrox, which is the argument that made it hideable at all; the
+value it clears to has to be the zero that claim implies.
+
+**Which then broke the reveal rule, in the direction that matters.** `isNonEmptyFieldValue` counts
+`0` as a value on purpose — an end pressure of 0 is a drained cylinder — so an air dive's stored
+`helium: 0` would have revealed the column on every edit load, and hiding He would have lasted until
+the diver opened one of their own dives. The rule is now that **a key does not reveal itself by
+holding what hiding it writes**: non-empty _and_ different from that key's own empty value. It reads
+as a no-op for every other key, whose empty values are `null`/`""`/`[]` and already fail the first
+half — `mixture.end_pressure` still reveals on a stored `0`, because its empty value is `""`. That
+per-key empty value is what carries the distinction, which is why it is a map rather than one
+sentinel.
+
 **`helium` was the third of that trio and is not exempt any more.** It sat there on the strength of
 "what a cylinder is", and that argument does not survive contact with the other two: a cylinder
 recording no volume and no oxygen says nothing at all, while one recording no helium is a cylinder
