@@ -15165,12 +15165,19 @@ again: the honest answer for a group control here is not a switch.
 **Every row sits in one left-hand column**, group headings included, with the hierarchy carried by
 the heading's own type rather than by indentation.
 
-**"Environment" is the one group that is not one of the form's blocks.** It covers both the
-temperature/visibility row and the water/altitude row, which stay two rows on the form because each
-is guarded by its own fields' visibility and hides independently — but they are one thing to a
-diver, what the water was like, and four switches under two headings read as more choices than they
-are. Both blocks are commented with the group name so the correspondence is findable from the form
-side too.
+**A group is a run of adjacent form blocks, never part of one and never a reordering.** That
+invariant is what makes a diver looking for a field in the dialog find it where they would look for
+it on the form, and it is the thing to preserve when either side moves. Three groups currently span
+more than one block, because the form's rows are finer-grained than a diver's idea of the subject: a
+block is a row, and a row exists where a set of fields has to appear and disappear together, while a
+heading exists where a diver would go looking. "Trip, course & site" covers the trip/course pair and
+the dive site below it; "Dive info" covers the dive number, the date-and-time row and the depth
+pair; "Environment" covers the temperature/visibility row and the water/altitude one. Splitting any
+of them into a heading per row would offer more choices than there are decisions to make.
+
+The rule has already been restated wrongly once — as "one block per group, with Environment as the
+exception" — and was false again within a day, so `DIVE_FORM_FIELD_GROUPS`' own doc states the run
+rule rather than a count, and the exceptions are named there in one place.
 
 **`mixtures` leads its group rather than following the always-on cylinder columns.** It is the
 switch that decides whether the Gas Mixtures section is on the form at all, and every other row

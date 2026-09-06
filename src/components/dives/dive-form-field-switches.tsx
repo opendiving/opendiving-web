@@ -120,16 +120,23 @@ export function DiveFormFieldSwitches({
             <legend className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               {group}
             </legend>
-            {leading.map(fieldRow)}
-            {alwaysOn.map(({ entry, id: rowId }) => (
-              <div key={rowId} className="flex items-center gap-2">
-                <Switch id={rowId} checked disabled />
-                <Label htmlFor={rowId} className="font-normal">
-                  {entry.label}
-                </Label>
-              </div>
-            ))}
-            {fields.map(fieldRow)}
+            {/* Two columns from `md` up. The rows are a switch and a short label, so
+                one column per row leaves most of the dialog empty and makes the list
+                long enough to scroll past what a diver came to change. Flows
+                row-major, which keeps the reading order the form's order - the whole
+                point of the grouping. */}
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              {leading.map(fieldRow)}
+              {alwaysOn.map(({ entry, id: rowId }) => (
+                <div key={rowId} className="flex items-center gap-2">
+                  <Switch id={rowId} checked disabled />
+                  <Label htmlFor={rowId} className="font-normal">
+                    {entry.label}
+                  </Label>
+                </div>
+              ))}
+              {fields.map(fieldRow)}
+            </div>
           </fieldset>
         );
       })}

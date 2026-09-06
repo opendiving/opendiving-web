@@ -104,8 +104,8 @@ describe("the panel's registry", () => {
   });
 
   it("gives every group at least one row", () => {
-    // A group with nothing in it would render an empty heading. "Date and time" is
-    // the one carried only by its always-on rows, which is why both lists count.
+    // A group with nothing in it would render an empty heading, and a group can be
+    // carried entirely by its always-on rows, which is why both lists count.
     for (const group of DIVE_FORM_FIELD_GROUPS) {
       const rows =
         DIVE_FORM_FIELD_REGISTRY.filter((entry) => entry.group === group)

@@ -95,22 +95,26 @@ export const NON_HIDEABLE_MIXTURE_SCHEMA_KEYS = [
 /**
  * The form's own field groups, in the order the form renders them.
  *
- * The comment-introduced blocks of `dive-form-fields.tsx`, which is what makes a diver
- * looking for a field in the dialog find it where they would look for it on the form.
- * "Date and time" holds only always-on rows and is listed anyway - a gap where Start
- * time should be reads as a field that went missing.
+ * **A group is a run of one or more adjacent blocks of `dive-form-fields.tsx`**, in the
+ * order the form renders them. Never part of a block, and never a reordering: that is
+ * what makes a diver looking for a field in the dialog find it where they would look for
+ * it on the form, and it is the invariant to preserve when either side moves.
  *
- * One block each, with one exception: "Environment" covers both of the form's adjacent
- * temperature/visibility and water/altitude rows. Those stay two rows on the form
- * because each is guarded by its own fields' visibility and hides independently, but
- * they are one thing to a diver - what the water was like - and four separate switches
- * under two headings read as more choices than they are.
+ * Three groups currently span more than one block, each because the form's rows are
+ * finer-grained than a diver's idea of the subject. A block is a row, and a row exists
+ * where a set of fields has to appear and disappear together; a heading exists where a
+ * diver would go looking. "Trip, course & site" covers the trip/course pair and the dive
+ * site below it. "Dive info" covers the dive number, the date-and-time row and the depth
+ * pair. "Environment" covers the temperature/visibility row and the water/altitude one.
+ * Splitting any of them into a heading per row would offer more choices than there are
+ * decisions to make.
+ *
+ * Groups carried only by always-on rows are listed anyway - a gap where Start time should
+ * be reads as a field that went missing.
  */
 export const DIVE_FORM_FIELD_GROUPS = [
-  "Basic information, trip & course",
-  "Dive site",
-  "Date and time",
-  "Depth",
+  "Trip, course & site",
+  "Dive info",
   "Environment",
   "Gas mixtures",
   "Gear & weight",
@@ -136,16 +140,16 @@ export const DIVE_FORM_FIELD_REGISTRY: readonly DiveFormFieldEntry[] = [
   {
     key: "trip_uuid",
     label: "Trip",
-    group: "Basic information, trip & course",
+    group: "Trip, course & site",
   },
+  { key: "course_uuid", label: "Course", group: "Trip, course & site" },
   {
-    key: "course_uuid",
-    label: "Course",
-    group: "Basic information, trip & course",
+    key: "dive_site_uuids",
+    label: "Dive site(s)",
+    group: "Trip, course & site",
   },
-  { key: "dive_site_uuids", label: "Dive site(s)", group: "Dive site" },
-  { key: "max_depth", label: "Maximum depth", group: "Depth" },
-  { key: "avg_depth", label: "Average depth", group: "Depth" },
+  { key: "max_depth", label: "Maximum depth", group: "Dive info" },
+  { key: "avg_depth", label: "Average depth", group: "Dive info" },
   {
     key: "bottom_temperature",
     label: "Bottom temperature",
@@ -183,9 +187,9 @@ export const DIVE_FORM_ALWAYS_ON_FIELDS: readonly {
   label: string;
   group: DiveFormFieldGroup;
 }[] = [
-  { label: "Dive number", group: "Basic information, trip & course" },
-  { label: "Start time", group: "Date and time" },
-  { label: "Duration", group: "Date and time" },
+  { label: "Dive number", group: "Dive info" },
+  { label: "Start time", group: "Dive info" },
+  { label: "Duration", group: "Dive info" },
   { label: "Volume", group: "Gas mixtures" },
   { label: "O₂", group: "Gas mixtures" },
   { label: "He", group: "Gas mixtures" },
