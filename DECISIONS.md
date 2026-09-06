@@ -12475,9 +12475,24 @@ setting, and the operator of this copy can change it — and the first draft of 
 it wrong twice in the other direction, promising that a signed-out device stops working within half
 an hour and that the session cap is a hundred. The first is an operator setting outright; the second
 is a constant in the API's own module. Neither is visible from this repository, and nothing here
-would ever have swept either when it moved. They ship as "a little longer, on the short-lived token
-described below" and "an improbable number of devices" instead. The claim survives; the number that
-could go stale silently does not.
+would ever have swept either when it moved. The cap ships as "an improbable number of devices"
+instead, and the half-hour promise shipped as "a little longer, on the short-lived token described
+below". The claim survives; the number that could go stale silently does not.
+
+**The first of those two has since stopped needing a hedge at all**, which is recorded here so the
+paragraph above is not read as still describing the copy. Revoking a session now takes hold at once:
+the API resolves the session behind an access token on every authenticated request, so a revoked
+device is refused on its next call rather than for the remainder of that token's life. There is no
+window left to describe, hedged or otherwise, and §10.1 and both of `SessionsCard`'s confirm dialogs
+say so flatly. The cap keeps its hedge, because nothing about that half changed.
+
+Nothing in this repository had to change for it beyond the sentences. `lib/api/client.ts`'s response
+interceptor already reads a 401 as an aged-out access token, tries one refresh, and — when the
+refresh is refused as well, which is exactly what a revoked session gets — clears the token and
+dispatches `AUTH_SESSION_EXPIRED_EVENT` for `AuthContext` to act on. That is the path a revoked
+device already took; it now takes it in seconds rather than in minutes. `/auth/refresh` is in
+`SESSION_MINTING_PATHS`, so the failing refresh cannot recurse — see "A 401 from a sign-in endpoint
+must not go down the refresh path" above.
 
 ## The basemap is a MapLibre style, and raster is the escape hatch
 
