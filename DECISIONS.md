@@ -15039,6 +15039,17 @@ one are the same acts whether or not its set happens to equal what is on the for
 only invited the reading that the marked row was somehow protected. The menu keeps the mark, where
 it answers what the diver is about to pick from.
 
+**A failed save is a toast, not only an inline message.** `visibility.saveError` renders inside
+Configure, and that was the whole surface back when applying a preset meant clicking Apply on an
+always-open panel that showed it a few lines below. It is not enough now: picking a preset from the
+menu closes the menu, and a switch flipped in Configure can be followed by shutting the dialog
+before the 400 ms debounce fires — either way the `PATCH /user` fails with nothing mounted to say
+so, and the message ambushes the diver the next time they open Configure, reading as an error about
+whatever they are doing then. The toast is raised in `useDiveFormVisibility`'s own `flush`, which is
+the one place that knows a save failed regardless of which surface caused it, and it is also the
+only report that fires per _failure_: `setSaveError` with an identical string re-renders nothing, so
+a second failure worded the same as the first would otherwise be silent.
+
 **A row renames in place.** The pencil turns the name into a field and itself into a tick, so the
 new name is typed where the old one was rather than in a prompt below a list the diver then has to
 find their row in again. Delete becomes Cancel for as long as that lasts, which is two things at
@@ -15131,7 +15142,7 @@ dimension with a rule of its own, because its one toggle lives in the Gas Mixtur
 than on a field and governs _two_ hideable keys: it renders only while the section is on screen
 **and** at least one of the two pressure boxes is visible.
 
-## The Fields dialog is switches, and its rows are one column
+## The Fields dialog is switches, and it is the sections that share the columns
 
 The controls were checkboxes and are now `@radix-ui/react-switch`. A switch is the right shape for a
 row that says "this field is on my form" — a state you leave set rather than a selection you submit
@@ -15150,11 +15161,11 @@ what a switch says.
 
 **The always-shown rows are switches too — on, disabled, and labelled like any other row.** They
 were a muted line reading "Duration — always shown". Dropping the note and the muting means the
-control is the only thing carrying the claim, which in turn means those six switches have to be
-_named_ rather than `aria-hidden`: six rows a sighted diver sees and a screen-reader user does not
-is worse than the duplication. The duplication is real and was already the panel's condition — the
-page now has a second "Duration" and "Start time" beside the form's own, which is why
-`page.render.test.tsx` reaches those two by role rather than by label.
+control is the only thing carrying the claim, which in turn means those switches have to be _named_
+rather than `aria-hidden`: rows a sighted diver sees and a screen-reader user does not are worse
+than the duplication. The duplication is real and was already the panel's condition — the page now
+has a second "Duration" and "Start time" beside the form's own, which is why `page.render.test.tsx`
+reaches those two by role rather than by label.
 
 **Section switches were built and then removed.** One switch per group, on when any field in the
 group was on, toggling every field at once — it worked, and the owner cut it. Recorded because the
@@ -15162,8 +15173,16 @@ reasoning that made it look right (ARIA forbids `aria-checked="mixed"` on `role=
 part-on section had to read as one or the other) is the reasoning anyone rebuilding it will hit
 again: the honest answer for a group control here is not a switch.
 
-**Every row sits in one left-hand column**, group headings included, with the hierarchy carried by
-the heading's own type rather than by indentation.
+**Within a section every row sits in one left-hand column**, group heading included, with the
+hierarchy carried by the heading's own type rather than by indentation. From `md` up it is the
+_sections_ that are dealt into two columns, not the rows: a group still reads as one list top to
+bottom rather than as a pair of half-lists to scan across. CSS multi-column rather than a grid,
+because the sections differ wildly in height — one row under Species, nine under Gas mixtures — and
+a grid makes every row as tall as its tallest cell and leaves the short sections in holes.
+`break-inside-avoid` is the part that matters: it is what stops a section being split down the
+middle of itself, which is the one thing this layout must never do. The margin is per-section rather
+than `space-y-*` on the parent, since a top margin at the head of a column misaligns it against the
+other.
 
 **A group is a run of adjacent form blocks, never part of one and never a reordering.** That
 invariant is what makes a diver looking for a field in the dialog find it where they would look for

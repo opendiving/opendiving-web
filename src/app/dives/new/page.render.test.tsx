@@ -947,6 +947,31 @@ describe("persisting a toggle", () => {
     expect(startTimeButton().textContent).toBe(startTime);
   });
 
+  it("says so out loud when the save fails", async () => {
+    // A toast rather than only the inline message, because two of the three ways to
+    // reach a failed save leave nothing on screen to render one into: applying a
+    // preset closes the menu, and the debounce can fire after Configure is shut.
+    vi.mocked(authAPI.updateProfile).mockRejectedValueOnce(
+      new Error("network down"),
+    );
+
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+
+    await openFieldsPanel();
+    await userEvent.click(screen.getByRole("switch", { name: /^notes$/i }));
+    await closeFieldsPanel();
+
+    await waitFor(() =>
+      expect(stable.toast.toast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          variant: "destructive",
+          title: "Fields not saved",
+        }),
+      ),
+    );
+  });
+
   it("debounces a burst into one request", async () => {
     render(<NewDivePage />);
     await screen.findByLabelText(/duration/i);

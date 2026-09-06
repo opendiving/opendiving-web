@@ -8,6 +8,7 @@ import type {
   UseFormReturn,
 } from "react-hook-form";
 import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/components/ui/use-toast";
 import type { DiveMixtureInput } from "@/lib/validations/dive";
 import { authAPI } from "@/lib/api/auth";
 import { getApiErrorMessage } from "@/lib/api/error";
@@ -27,9 +28,9 @@ import {
 type MixtureRow = Record<string, unknown>;
 
 /**
- * How long a burst of checkbox clicks is allowed to settle before it costs a request.
- * Long enough that ticking three boxes in a row sends one `PATCH`, short enough that
- * the save has landed by the time a diver could reach another device.
+ * How long a burst of switch flips is allowed to settle before it costs a request.
+ * Long enough that flipping three switches in a row sends one `PATCH`, short enough
+ * that the save has landed by the time a diver could reach another device.
  */
 const SAVE_DEBOUNCE_MS = 400;
 
@@ -55,14 +56,15 @@ export interface DiveFormVisibility {
   hidden: readonly DiveFormFieldKey[];
   /** In the stored set, whether or not this instance has revealed it. */
   isHidden: (key: DiveFormFieldKey) => boolean;
-  /** Shown on this form only because a value arrived in it - the panel says so. */
+  /** Shown on this form only because a value arrived in it - the dialog says so. */
   isRevealed: (key: DiveFormFieldKey) => boolean;
   /** Effective visibility: not hidden, or hidden and revealed. */
   isVisible: (key: DiveFormFieldKey) => boolean;
   /**
-   * Replaces the stored hidden set: a checkbox, or a preset being applied. Applies to
-   * the form at once, persists debounced, and drops every newly hidden key from the
-   * revealed set - the panel edits what the diver sees.
+   * Replaces the stored hidden set: a switch in the Configure dialog, or a preset
+   * applied from the Fields menu. Applies to the form at once, persists debounced, and
+   * drops every newly hidden key from the revealed set - those surfaces edit what the
+   * diver sees.
    */
   setHidden: (next: readonly DiveFormFieldKey[]) => void;
   /**
@@ -139,6 +141,7 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
   fillsDefaults,
 }: UseDiveFormVisibilityOptions<TFieldValues>): DiveFormVisibility {
   const { user, mergeUser } = useAuth();
+  const { toast } = useToast();
 
   const stored = useMemo(
     () => canonicalHiddenFields(user?.dive_form_hidden_fields ?? []),
@@ -187,11 +190,13 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
   const replaceMixturesRef = useRef(replaceMixtures);
   const fillsDefaultsRef = useRef(fillsDefaults);
   const mergeUserRef = useRef(mergeUser);
+  const toastRef = useRef(toast);
   useEffect(() => {
     formRef.current = form;
     replaceMixturesRef.current = replaceMixtures;
     fillsDefaultsRef.current = fillsDefaults;
     mergeUserRef.current = mergeUser;
+    toastRef.current = toast;
   });
 
   const readValue = useCallback((key: DiveFormFieldKey): unknown => {
@@ -250,14 +255,24 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
       mergeUserRef.current({ dive_form_hidden_fields: next });
     } catch (error) {
       console.error("Failed to save dive form field visibility:", error);
-      if (isMountedRef.current) {
-        setSaveError(
-          getApiErrorMessage(
-            error,
-            "Couldn't save which fields to show. This form still looks the way you set it.",
-          ),
-        );
-      }
+      const message = getApiErrorMessage(
+        error,
+        "Couldn't save which fields to show. This form still looks the way you set it.",
+      );
+      // A toast, not only the `saveError` an open surface can render. Two of the three
+      // ways to reach this leave nothing on screen to render it into: applying a preset
+      // closes the Fields menu, and a switch flipped in Configure can be followed by
+      // closing the dialog before the debounce fires. The failure would then surface
+      // whenever Configure was next opened, reading as an error about whatever the diver
+      // was doing *then*. It is also the only report that fires per failure rather than
+      // per change of message: `setSaveError` with an identical string re-renders
+      // nothing, so a second failure with the same wording would say nothing at all.
+      toastRef.current({
+        variant: "destructive",
+        title: "Fields not saved",
+        description: message,
+      });
+      if (isMountedRef.current) setSaveError(message);
     } finally {
       if (isMountedRef.current) setIsSaving(false);
     }
@@ -385,9 +400,9 @@ export function useDiveFormVisibility<TFieldValues extends FieldValues>({
       const previousRevealed = revealedRef.current;
       const nextHiddenSet = new Set(canonical);
 
-      // Unchecking a box means "off my form", so it also takes the key out of the
+      // Turning a switch off means "off my form", so it also takes the key out of the
       // revealed set - otherwise a field revealed by an edit load could not be put
-      // away again from the panel that offered the checkbox.
+      // away again from the dialog that offered the switch.
       const nextRevealed = new Set(
         [...previousRevealed].filter((key) => !nextHiddenSet.has(key)),
       );
