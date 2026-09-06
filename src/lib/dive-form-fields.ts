@@ -273,6 +273,22 @@ export const EMPTY_DIVE_FORM_VALUES: Readonly<
 };
 
 /**
+ * The keys whose empty value is a real value rather than a blank, and what each is.
+ *
+ * Only `mixture.helium`, whose `0` is the claim hiding the column makes - see "A hidden
+ * helium is `0`, not blank" in DECISIONS.md. Every other key clears to `null`, `""` or
+ * `[]`, and that is the rule: an empty value the reveal rule would call non-empty is
+ * normally a mistake, since the key would put itself back on screen the moment a stored
+ * dive held one. The registry guard reads this list rather than restating it, so a second
+ * exception cannot be made silently, and it pins the value as well as the name.
+ */
+export const NON_BLANK_EMPTY_FIELD_VALUES: Partial<
+  Record<DiveFormFieldKey, unknown>
+> = {
+  "mixture.helium": 0,
+};
+
+/**
  * "Non-empty" as the reveal rule means it: not `undefined`, not `null`, not `""` and
  * not `[]`. `0` is a value - an end pressure of 0 is a drained cylinder, not a
  * missing reading.

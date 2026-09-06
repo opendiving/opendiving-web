@@ -7,6 +7,7 @@ import {
   DIVE_FORM_FIELD_REGISTRY,
   EMPTY_DIVE_FORM_VALUES,
   MIXTURE_FIELD_PREFIX,
+  NON_BLANK_EMPTY_FIELD_VALUES,
   NON_HIDEABLE_MIXTURE_SCHEMA_KEYS,
   canonicalHiddenFields,
   diveFormFieldsWithErrors,
@@ -117,22 +118,24 @@ describe("the panel's registry", () => {
     }
   });
 
-  it("gives every key an empty value that does not reveal it", () => {
-    // The invariant is about the reveal rule, not about `isNonEmptyFieldValue`:
-    // `mixture.helium` clears to `0`, which *is* a value by that predicate and is
-    // still not a reason to put the column back on screen. Anything else would make
-    // hiding He last until the diver opened one of their own dives.
+  it("gives every key a blank empty value, or a named exception", () => {
+    // Deliberately *not* fed back through `nonEmptyDiveFormFields`: `revealsField`
+    // compares the value against `EMPTY_DIVE_FORM_VALUES[key]`, so handing it that
+    // same value makes the comparison false by identity and the assertion true
+    // whatever the table holds. This asserts the property directly instead - an
+    // empty value the reveal rule would call non-empty is a key that puts itself
+    // back on screen the moment a stored dive holds one.
     for (const key of DIVE_FORM_FIELDS) {
       expect(EMPTY_DIVE_FORM_VALUES).toHaveProperty(key);
-      const asMixtureRow = {
-        mixtures: [
-          { [key.replace("mixture.", "")]: EMPTY_DIVE_FORM_VALUES[key] },
-        ],
-      };
-      const values = isMixtureField(key)
-        ? asMixtureRow
-        : { [key]: EMPTY_DIVE_FORM_VALUES[key] };
-      expect(nonEmptyDiveFormFields(values), key).not.toContain(key);
+      if (key in NON_BLANK_EMPTY_FIELD_VALUES) {
+        expect(EMPTY_DIVE_FORM_VALUES[key], key).toBe(
+          NON_BLANK_EMPTY_FIELD_VALUES[key],
+        );
+        continue;
+      }
+      expect(isNonEmptyFieldValue(EMPTY_DIVE_FORM_VALUES[key]), key).toBe(
+        false,
+      );
     }
   });
 

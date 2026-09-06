@@ -905,6 +905,42 @@ describe("what the prefill does to a hidden field", () => {
       [],
     );
   });
+
+  it("sends the same helium for a carried cylinder and a hand-added one", async () => {
+    // The two paths into the cylinder list disagreed: a carried tank went through
+    // the hide rule and got helium `""` -> null, while "Add Mixture" takes
+    // `DEFAULT_MIXTURE` whole and kept 0. Two rows of one dive, one of them
+    // un-nameable by `gasName`, in a column neither was showing.
+    lastDiveWith({
+      mixtures: [
+        {
+          id: 7,
+          volume: 15,
+          oxygen: 32,
+          helium: 0,
+          gas_number: 1,
+        },
+      ],
+    });
+    stable.auth.user.dive_form_hidden_fields = ["mixture.helium"];
+
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+    await waitFor(() => expect(divesAPI.getDive).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(screen.getByLabelText(/O₂ \(%\)/)).toHaveValue(32),
+    );
+    expect(screen.queryByLabelText(/He \(%\)/)).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /add mixture/i }));
+
+    fillRequiredFields();
+    await logDive();
+    await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
+    const sent = vi.mocked(divesAPI.createDive).mock.calls[0][0].mixtures ?? [];
+    expect(sent).toHaveLength(2);
+    expect(sent.map((mixture) => mixture.helium)).toEqual([0, 0]);
+  });
 });
 
 describe("persisting a toggle", () => {
@@ -945,42 +981,6 @@ describe("persisting a toggle", () => {
     expect(divesAPI.getDive).toHaveBeenCalledTimes(1);
     expect(waterType()).toHaveValue("brackish");
     expect(startTimeButton().textContent).toBe(startTime);
-  });
-
-  it("sends the same helium for a carried cylinder and a hand-added one", async () => {
-    // The two paths into the cylinder list disagreed: a carried tank went through
-    // the hide rule and got helium `""` -> null, while "Add Mixture" takes
-    // `DEFAULT_MIXTURE` whole and kept 0. Two rows of one dive, one of them
-    // un-nameable by `gasName`, in a column neither was showing.
-    lastDiveWith({
-      mixtures: [
-        {
-          id: 7,
-          volume: 15,
-          oxygen: 32,
-          helium: 0,
-          gas_number: 1,
-        },
-      ],
-    });
-    stable.auth.user.dive_form_hidden_fields = ["mixture.helium"];
-
-    render(<NewDivePage />);
-    await screen.findByLabelText(/duration/i);
-    await waitFor(() => expect(divesAPI.getDive).toHaveBeenCalled());
-    await waitFor(() =>
-      expect(screen.getByLabelText(/O₂ \(%\)/)).toHaveValue(32),
-    );
-    expect(screen.queryByLabelText(/He \(%\)/)).not.toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole("button", { name: /add mixture/i }));
-
-    fillRequiredFields();
-    await logDive();
-    await waitFor(() => expect(divesAPI.createDive).toHaveBeenCalled());
-    const sent = vi.mocked(divesAPI.createDive).mock.calls[0][0].mixtures ?? [];
-    expect(sent).toHaveLength(2);
-    expect(sent.map((mixture) => mixture.helium)).toEqual([0, 0]);
   });
 
   it("says so out loud when the save fails", async () => {

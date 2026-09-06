@@ -15260,6 +15260,16 @@ half — `mixture.end_pressure` still reveals on a stored `0`, because its empty
 per-key empty value is what carries the distinction, which is why it is a map rather than one
 sentinel.
 
+**And the exception is a named list, because the guard for it kept being written without teeth.** An
+empty value the reveal rule would call non-empty is normally a mistake — the key puts itself back on
+screen the moment a stored dive holds one — so the registry test asserts every empty value is blank,
+`NON_BLANK_EMPTY_FIELD_VALUES` aside, and pins that exception's value as well as its name. The first
+attempt at that test fed the value back through `nonEmptyDiveFormFields`, where `revealsField`
+compares it against `EMPTY_DIVE_FORM_VALUES[key]` — the same value, so the comparison was false by
+identity and the assertion held for anything at all, including a `notes` that cleared to
+`"sabotage"`. A guard that routes its input through the rule it is guarding tests nothing; this one
+asserts the property directly.
+
 **`helium` was the third of that trio and is not exempt any more.** It sat there on the strength of
 "what a cylinder is", and that argument does not survive contact with the other two: a cylinder
 recording no volume and no oxygen says nothing at all, while one recording no helium is a cylinder

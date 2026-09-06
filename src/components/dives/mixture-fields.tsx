@@ -488,8 +488,13 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                           // wire: a file that recorded no analysis said nothing
                           // about helium, and writing a 0 for it would be the app
                           // inventing the one fact that separates nitrox from
-                          // trimix. Hiding the column writes that same `""`, never
-                          // a 0 - the hide rule must not invent the fact either.
+                          // trimix.
+                          //
+                          // *Hiding* the column does write a 0, and that is not the
+                          // same act: emptying the box is the diver declining to
+                          // answer, while hiding it is them saying they dive air and
+                          // nitrox - which is the claim that made the column hideable.
+                          // See "A hidden helium is `0`, not blank" in DECISIONS.md.
                           const raw = e.target.value;
                           field.onChange(raw === "" ? "" : parseFloat(raw));
                         }}
