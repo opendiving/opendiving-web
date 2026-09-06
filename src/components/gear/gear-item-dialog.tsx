@@ -40,7 +40,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 
 // Radix's `SelectItem` can't take an empty string value, so "no type" needs a
@@ -239,10 +239,10 @@ export function GearItemDialog({
                 <FormItem>
                   <div className="flex items-center gap-2">
                     <FormControl>
-                      <Checkbox
+                      <Switch
                         id="gear-rented"
                         checked={!!field.value}
-                        onChange={(e) => field.onChange(e.target.checked)}
+                        onCheckedChange={field.onChange}
                       />
                     </FormControl>
                     <FormLabel

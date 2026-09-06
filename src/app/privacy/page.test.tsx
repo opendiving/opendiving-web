@@ -128,7 +128,7 @@ describe.each([
     renderPage({ google });
 
     expect(
-      screen.getByRole("checkbox", {
+      screen.getByRole("switch", {
         name: /remember display preferences on this device/i,
       }),
     ).toBeInTheDocument();

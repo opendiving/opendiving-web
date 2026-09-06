@@ -316,7 +316,7 @@ describe("SpeciesMultiSelect", () => {
     // The picker can now leave the page while a resolve is in flight: hiding
     // Species from the Fields dialog, or applying a preset that hides it, unmounts
     // it. Nothing else would ever report `false` again, so the card's submit button
-    // stayed on "Adding species..." until a reload - a form wedged by a checkbox.
+    // stayed on "Adding species..." until a reload - a form wedged by a switch.
     const onPendingChange = vi.fn();
     resolveSpecies.mockReturnValue(new Promise(() => {}));
     const { unmount } = render(

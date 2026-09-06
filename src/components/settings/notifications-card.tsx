@@ -12,7 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { FormApiError } from "@/components/ui/form-api-error";
 
@@ -55,12 +55,11 @@ export function NotificationsCard() {
       </CardHeader>
       <CardContent>
         <div className="flex items-start gap-3">
-          <Checkbox
+          <Switch
             id="gear-service-emails"
-            className="mt-1"
             checked={enabled}
             disabled={isSaving}
-            onChange={(e) => handleChange(e.target.checked)}
+            onCheckedChange={handleChange}
           />
           <div>
             <Label

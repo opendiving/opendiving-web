@@ -136,7 +136,7 @@ function NewDivePageContent() {
   //
   // **Keyed on `user.uuid`, not on `user`.** Persisting a Fields toggle folds the new
   // hidden set into the auth context, which replaces the `user` object - and with
-  // that object in this dependency list, ticking a checkbox would re-run the prefill
+  // that object in this dependency list, flipping a switch would re-run the prefill
   // on a clean form: refetching the last dive and re-stamping `start_time` with
   // `nowStartTime()`. The invariant is that persisting a toggle never resets the
   // form, re-runs this effect or refetches the last dive, and the uuid is what it
