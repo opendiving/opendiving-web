@@ -6,7 +6,7 @@ import { InviteRequestForm } from "./invite-request-form";
 // What the hero shows on an instance that is not taking registrations, and the
 // three things that make it correct: one success state whatever the API stored,
 // the API's own message on anything else, and a way through to `/signin` for the
-// three people who have one.
+// two people who have one.
 const { requestInvite } = vi.hoisted(() => ({ requestInvite: vi.fn() }));
 
 vi.mock("@/lib/api/invitations", () => ({
@@ -99,16 +99,22 @@ describe("InviteRequestForm", () => {
     await waitFor(() => expect(requestInvite).not.toHaveBeenCalled());
   });
 
-  // Named for all three people it is for. The operator setting a fresh instance
-  // up is the one that is easy to drop and the one the install docs send here:
-  // their first sign-in is what creates the first account, so a line addressed
-  // only to returning members would strand them.
-  it("points every audience with a way in at /signin", () => {
+  // Two audiences have a way in - a member with an account and a stranger holding
+  // an invitation - and the line names both before it sends them to `/signin`.
+  // It used to name a third, the operator "setting this instance up", and no
+  // longer does: that audience exists for one moment, before the first account
+  // is created, and the install and troubleshooting docs already send the
+  // operator to Sign In for it. A clause on every stranger's screen for a
+  // one-time reader was the wrong place to say it.
+  it("points members and invitees at /signin", () => {
     render(<InviteRequestForm />);
 
     const link = screen.getByRole("link", { name: /sign in/i });
     expect(link).toHaveAttribute("href", "/signin");
-    expect(document.body.textContent).toContain("setting this instance up");
+    expect(document.body.textContent).toContain(
+      "Have an account or an invitation?",
+    );
+    expect(document.body.textContent).not.toContain("setting this instance up");
   });
 
   // No passkey ceremony, no Google button, no `webauthn` autofill hint: this is
