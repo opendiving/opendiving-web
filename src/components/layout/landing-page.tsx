@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useRedirectIfAuthenticated } from "@/hooks/useRedirectIfAuthenticated";
-import { useRegistrationMode } from "@/hooks/useRegistrationMode";
+import { useInstanceConfig } from "@/hooks/useInstanceConfig";
 import { AuthForm } from "@/components/auth/auth-form";
 import { InviteRequestForm } from "@/components/auth/invite-request-form";
 import { Fish, Anchor, ArrowRight, HardDriveDownload } from "lucide-react";
@@ -35,12 +35,12 @@ const SELF_HOSTING_URL = "https://github.com/opendiving/opendiving";
 export function LandingPage() {
   const { isAuthenticated, isLoading } = useRedirectIfAuthenticated();
   // Under the same gate as the auth bootstrap below, and that is the point: the
-  // hero must never paint one form and then swap it for the other. Both requests
-  // start on mount and run in parallel, so waiting for this one costs nothing the
-  // auth check was not already costing.
-  const { mode, isLoading: isModeLoading } = useRegistrationMode();
+  // hero must never paint one form and then swap it for the other, nor one voice
+  // and then the other. Both requests start on mount and run in parallel, so
+  // waiting for this one costs nothing the auth check was not already costing.
+  const { config, isLoading: isConfigLoading } = useInstanceConfig();
 
-  if (isLoading || isAuthenticated || isModeLoading) {
+  if (isLoading || isAuthenticated || isConfigLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -90,10 +90,22 @@ export function LandingPage() {
                 request form - still reaches `/signin`, which is unchanged in both
                 modes.
 
-                An unknown mode renders the sign-in form. A landing page has to
-                work on an instance whose API is briefly down, and `/signin` is
-                the answer that is right on any instance; it is also what the axe
-                scan sees, since that job runs the web with no API at all.
+                An unknown config renders the sign-in form. A landing page has
+                to work on an instance whose API is briefly down, and `/signin`
+                is the answer that is right on any instance; it is also what the
+                axe scan sees, since that job runs the web with no API at all.
+
+                Which voice the request form speaks in is the second thing here
+                that depends on the instance, and the only copy in the app that
+                knows who runs it. `project_operated: true` means the OpenDiving
+                project operates this copy, and the form invites the visitor onto
+                a waitlist in the project's own voice. Anything else - `false`, a
+                `/config` from an API that predates the field, no `/config` at
+                all - gets the generic copy, which is true of every instance.
+                The asymmetry is the rule: a self-hoster's hero must never say
+                "we'll notify you" on the project's behalf, so nothing short of
+                the API answering `true` earns that voice. It picks copy and
+                only copy - the mode alone decides which form is here.
 
                 What the swap costs, accepted deliberately: `AuthForm` is the only
                 mount of the conditional passkey ceremony and of the passkey and
@@ -101,7 +113,15 @@ export function LandingPage() {
                 them. A returning member takes Sign In and has all three on
                 `/signin`, one tap away. */}
             <div className="flex justify-center">
-              {mode === "invite" ? <InviteRequestForm /> : <AuthForm />}
+              {config?.registration_mode === "invite" ? (
+                <InviteRequestForm
+                  variant={
+                    config.project_operated === true ? "waitlist" : "generic"
+                  }
+                />
+              ) : (
+                <AuthForm />
+              )}
             </div>
           </div>
 
