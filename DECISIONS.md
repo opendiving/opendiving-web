@@ -1428,10 +1428,13 @@ gear dialog, the gear list's "Show archived", the notification preference, the d
 objection on `/privacy` and `/settings`, and the invite queue's two selection controls.
 
 **Five of the six were a setting being flipped**, which is what a switch is for and what the app had
-started saying everywhere else - the Fields dialog is nine of them - so two visual languages for one
-idea was the thing to remove. The primitive's own justification had also quietly expired: the
-argument for a native input was that it costs no dependency, but `@radix-ui/react-switch` is already
-one, so keeping `Checkbox` bought a second control rather than a smaller install.
+started saying everywhere else - the Fields dialog alone is twenty-five of them, one per
+`DIVE_FORM_FIELD_REGISTRY` entry plus one per `DIVE_FORM_ALWAYS_ON_FIELDS` entry - so two visual
+languages for one idea was the thing to remove. (That said "nine" in the first draft, which is the
+size of the Gas mixtures group and not the dialog. Recount from those two arrays rather than from
+this sentence.) The primitive's own justification had also quietly expired: the argument for a
+native input was that it costs no dependency, but `@radix-ui/react-switch` is already one, so
+keeping `Checkbox` bought a second control rather than a smaller install.
 
 `Switch` takes `checked`/`onCheckedChange`, not `checked`/`onChange`, so every call site changed
 shape rather than just its import. Radix's `Root` renders `<button type="button">`;
@@ -15271,9 +15274,12 @@ than on a field and governs _two_ hideable keys: it renders only while the secti
 
 The controls were checkboxes and are now `@radix-ui/react-switch`. A switch is the right shape for a
 row that says "this field is on my form" — a state you leave set rather than a selection you submit
-— and it is the first Radix primitive `ui/` has needed for a control that has no native element,
-which is why `ui/checkbox.tsx` stays a plain `<input>` beside it. The two are not drop-in for one
-another: `checked`/`onCheckedChange` against `checked`/`onChange`.
+— and it was the first Radix primitive `ui/` had needed for a control with no native element to
+wrap. It kept `ui/checkbox.tsx` company for one release only: the six controls still on that
+primitive were the same shape as these, and "Every boolean in the app is a switch" above is where
+they followed and the file went. The two were never drop-in for one another —
+`checked`/`onCheckedChange` against `checked`/`onChange` — which is what made that a real conversion
+rather than an import swap.
 
 **On is `bg-teal`, not shadcn's `bg-primary`.** `--primary` is near-black in light and mid-grey in
 dark — the trap `map-picker.tsx` and `locations-map.tsx` already carry a comment about — so the
