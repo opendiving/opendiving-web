@@ -17,9 +17,7 @@ import { apiClient } from "./client";
  *
  * `current` is resolved from the requesting access token rather than from the
  * row, so it is the one field that varies by *credential* rather than by account
- * - which is why this response is never cached anywhere. An access token minted
- * before sessions existed names none, and for its remaining minutes every row
- * comes back `false` rather than one coming back wrongly.
+ * - which is why this response is never cached anywhere.
  */
 export interface UserSession {
   uuid: string;
@@ -69,9 +67,10 @@ export const sessionsAPI = {
    * offers no revoke control on it, so the 409 is a backstop rather than
    * something a diver should be able to reach.
    *
-   * The device it signs out keeps working until its access token expires - an
-   * operator setting, half an hour by default: what a revoked session loses is
-   * the ability to refresh, not the token it is already holding.
+   * It takes hold at once. The API resolves the session behind an access token
+   * on every authenticated request, so the device is refused on its next call:
+   * the token it is already holding buys it nothing, and the refresh cookie it
+   * would have renewed with is dead alongside it.
    */
   async revokeSession(uuid: string): Promise<void> {
     await apiClient.delete(`/user/session/${uuid}`);

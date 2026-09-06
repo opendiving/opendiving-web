@@ -43,10 +43,11 @@ const LIST_FAILED = "Couldn't load your signed-in devices.";
  * here would be a worse logout than the one already in the menu. The API answers
  * 409 for it, but that is a backstop rather than the design.
  *
- * Revoking ends a device's ability to *refresh*, not the access token it is
- * already holding: that device keeps working until that token expires. How long
- * that is, is an operator setting, so the copy here says "a short while" rather
- * than naming a number this repo cannot see.
+ * Revoking takes hold at once. The API resolves the session behind an access
+ * token on every authenticated request, so a revoked device is refused on its
+ * next call rather than for as long as the token it is already holding lasts -
+ * which is why both dialogs here say "immediately" flatly instead of hedging
+ * around an access-token lifetime this repo cannot see.
  */
 export function SessionsCard() {
   const { toast } = useToast();
@@ -85,8 +86,7 @@ export function SessionsCard() {
 
   const { deletingId, pendingId, requestDelete, cancelDelete, confirmDelete } =
     useDeleteResource((uuid: string) => sessionsAPI.revokeSession(uuid), {
-      successMessage:
-        "That device can no longer stay signed in to your account.",
+      successMessage: "That device has been signed out of your account.",
       errorMessage: "Couldn't sign that device out. Please try again.",
       onDeleted: refresh,
     });
@@ -94,9 +94,8 @@ export function SessionsCard() {
   const sessions = list.status === "ready" ? list.sessions : [];
   const pendingSession = sessions.find((one) => one.uuid === pendingId);
   // The button is offered against what is actually there rather than against a
-  // count: an access token minted before sessions existed marks nothing current,
-  // and `sessions.length > 1` would hide the button from the one caller whose
-  // single listed row genuinely is another device.
+  // count: this asks the question the button answers - is there another device -
+  // where `sessions.length > 1` only approximates it from the row count.
   const hasOthers = sessions.some((one) => !one.current);
 
   const revokeOthers = async () => {
@@ -237,7 +236,7 @@ export function SessionsCard() {
         title="Sign this device out"
         description={
           pendingSession
-            ? `${deviceNameForUserAgent(pendingSession.user_agent)} (${pendingSession.ip}) will have to sign in again. It can keep working for a short while first, until the token it is already holding runs out.`
+            ? `${deviceNameForUserAgent(pendingSession.user_agent)} (${pendingSession.ip}) will have to sign in again. It loses access immediately, on its very next request.`
             : undefined
         }
         confirmText="Sign out"
@@ -249,7 +248,7 @@ export function SessionsCard() {
         open={confirmingOthers}
         onOpenChange={(open) => !isRevokingOthers && setConfirmingOthers(open)}
         title="Sign out other sessions"
-        description="Every other browser and app will have to sign in again. This one stays signed in. Each of them can keep working for a short while first, until the token it is already holding runs out."
+        description="Every other browser and app will have to sign in again. This one stays signed in. Each of them loses access immediately, on its very next request."
         confirmText="Sign them out"
         isLoading={isRevokingOthers}
         onConfirm={() => void revokeOthers()}

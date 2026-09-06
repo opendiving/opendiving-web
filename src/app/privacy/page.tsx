@@ -1012,10 +1012,11 @@ export default function PrivacyPage() {
               using &ldquo;Sign out other sessions&rdquo; there, or &mdash; on
               an account with an improbable number of devices signed in at once
               &mdash; this copy dropping the least recently used one to make
-              room. In each of those the browser can keep working a little
-              longer on the short-lived token described below, which runs out on
-              its own, and is then signed out. A spent cookie turning up again
-              is treated as a stolen session rather than as a retry.
+              room. In each of those the browser is signed out at once: the
+              short-lived token described below stops being accepted from the
+              same instant, so the next thing that browser asks this server for
+              sends it to the sign-in page. A spent cookie turning up again is
+              treated as a stolen session rather than as a retry.
             </p>
             <p className="text-foreground mb-4">
               The token that actually authorises each request is deliberately

@@ -217,8 +217,8 @@ describe("SessionsCard", () => {
     });
 
     // Nothing to sign out but this browser, so nothing to offer. The button is
-    // gated on there actually being another row rather than on a count, because
-    // an access token minted before sessions existed marks nothing current.
+    // gated on there actually being another row - is there another device - and
+    // not on a count, which only approximates that question.
     it("is not offered when this device is the only one signed in", async () => {
       mocks.listSessions.mockImplementation(async () => [thisDevice()]);
       render(<SessionsCard />);
