@@ -40,6 +40,10 @@ const RESEND_COOLDOWN_SECONDS = 30;
 
 const CODE_LENGTH = 6;
 
+// The one verify failure that says nothing at all about the digits typed: it is
+// the endpoint's per-IP limit answering before the code was ever looked at.
+const HTTP_TOO_MANY_REQUESTS = 429;
+
 // The "a link is on its way" half of `AuthForm`, and the one screen where the code
 // from that same email can be typed.
 //
@@ -148,7 +152,15 @@ export function CheckEmailCard({
       // another of the five attempts the API allows - six digits retyped over a
       // wrong six would exhaust the row before the last one landed. Retyping into
       // an empty field costs exactly one.
-      restartCodeEntry();
+      //
+      // A 429 is the exception, because it spent no attempt: the limiter answered
+      // before the code was read, so these digits are as good as they ever were
+      // and making the diver re-read six of them out of the email is work for
+      // nothing. They stay, and Enter is what sends them again once the window
+      // passes - see the hint below.
+      const status = (err as { response?: { status?: number } })?.response
+        ?.status;
+      if (status !== HTTP_TOO_MANY_REQUESTS) restartCodeEntry();
     }
   };
 
@@ -202,7 +214,20 @@ export function CheckEmailCard({
             <OneTimePasswordFieldInput key={index} index={index} />
           ))}
         </OneTimePasswordField>
-        {isVerifying ? (
+        {/* Rendered unconditionally, because `aria-describedby` above names it:
+            swapping it out for the status line below would leave that pointing
+            at nothing for as long as a request is in flight. */}
+        <p id="signin-code-hint" className="text-xs text-muted-foreground">
+          {codeError && isCodeComplete
+            ? // Only reachable after a 429, the one failure that leaves the
+              // digits in place. Auto-submit fires on a *change* of value, so
+              // the same six digits cannot resend themselves and there is no
+              // button to press - Enter inside the field is the gesture, and
+              // nothing else on screen would tell the diver that.
+              "Press Enter to send the same code again."
+            : "Useful when you're reading the email on another device."}
+        </p>
+        {isVerifying && (
           // The only sign anything is happening, now that there is no button to
           // put a spinner in. `role="status"` so it is announced rather than only
           // seen.
@@ -212,10 +237,6 @@ export function CheckEmailCard({
           >
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
             Checking your code...
-          </p>
-        ) : (
-          <p id="signin-code-hint" className="text-xs text-muted-foreground">
-            Useful when you&apos;re reading the email on another device.
           </p>
         )}
         {codeError && (

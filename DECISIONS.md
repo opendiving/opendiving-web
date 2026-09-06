@@ -8842,14 +8842,22 @@ times.
 - **A rejected code is emptied out of the boxes, and that is not tidiness.** Auto-submit fires on
   every _change_ to a full field, so a wrong code left on screen turns each keystroke of the
   correction into another of the five attempts the API allows — retyping six digits over a wrong six
-  exhausts the row before the last one lands. Emptying makes a retype cost exactly one attempt. The
-  cost of the choice is that a 429 clears a code that may well have been right, and it is still the
-  better trade: the diver has the email open, and the alternative silently spends the budget that
-  the whole `request_id` design exists to protect.
+  exhausts the row before the last one lands. Emptying makes a retype cost exactly one attempt.
+- **A 429 is the exception, and it is the status that decides.** The per-IP limiter answers before
+  the code is read, so no attempt was spent and the digits on screen are as good as they ever were;
+  emptying them would send the diver back to the email to re-read six digits over a failure that was
+  never about them. Every other failure clears. The consequence is a gesture that has to be spelled
+  out: auto-submit fires on a _change_ of value, so six unchanged digits cannot resend themselves
+  and there is no button to press. Enter inside the field is the only thing that works, and the hint
+  under the field says so in that state — the hint is load-bearing here, not decoration.
 - **Clearing has to move focus with it.** Radix leaves focus in box six, and its roving-focus rule
   only bounds which box is _tabbable_ — a digit typed into a focused box six of an empty code is
   written to position six, which reads as a broken field. `restartCodeEntry` empties the value and
   focuses the first input, and both the resend path and the failure path go through it.
+
+The hint is rendered unconditionally for a second reason: `aria-describedby` on the group names it,
+and swapping it out for the in-flight status line — which an earlier draft did — leaves that
+reference dangling for as long as a request is out.
 
 **The in-flight state is `readOnly`, not `disabled`.** With the button gone, freezing the field is
 the only thing that says a request is out — and `disabled` on the Radix root drops focus out of the
