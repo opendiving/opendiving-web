@@ -1725,9 +1725,9 @@ describe("loading a gear set onto a form with Weight hidden", () => {
 describe("hiding the species picker while it is still resolving a pick", () => {
   it("leaves the save button usable", async () => {
     // The picker reports a pending catalog resolve to the card, and the card
-    // disables the submit on it. Unmounting it - by unchecking Species, or by
+    // disables the submit on it. Unmounting it - by switching Species off, or by
     // applying a preset that hides it - used to leave that report stuck at true and
-    // the button on "Adding species..." until a reload: a form wedged by a checkbox.
+    // the button on "Adding species..." until a reload: a form wedged by a switch.
     vi.mocked(speciesAPI.searchSpecies).mockResolvedValue({
       results: [
         {

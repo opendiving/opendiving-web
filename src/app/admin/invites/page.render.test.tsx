@@ -67,7 +67,7 @@ beforeEach(() => {
   removeInviteRequests.mockResolvedValue({ removed: 1 });
 });
 
-// Renders the queue, ticks the named addresses, and presses one of the two
+// Renders the queue, switches on the named addresses, and presses one of the two
 // action buttons through its confirmation.
 const act = async (action: "Send invitations" | "Remove", emails: string[]) => {
   render(<AdminInvitesPage />);
@@ -75,7 +75,7 @@ const act = async (action: "Send invitations" | "Remove", emails: string[]) => {
 
   for (const email of emails) {
     await userEvent.click(
-      screen.getByRole("checkbox", { name: `Select ${email}` }),
+      screen.getByRole("switch", { name: `Select ${email}` }),
     );
   }
   await userEvent.click(screen.getByRole("button", { name: action }));
@@ -149,17 +149,17 @@ describe("the invite queue", () => {
     render(<AdminInvitesPage />);
     await screen.findByText("first@example.com");
 
-    const all = screen.getByRole("checkbox", {
+    const all = screen.getByRole("switch", {
       name: "Select every request on this page",
     });
     await userEvent.click(all);
     expect(
-      screen.getByRole("checkbox", { name: "Select first@example.com" }),
+      screen.getByRole("switch", { name: "Select first@example.com" }),
     ).toBeChecked();
 
     await userEvent.click(all);
     expect(
-      screen.getByRole("checkbox", { name: "Select first@example.com" }),
+      screen.getByRole("switch", { name: "Select first@example.com" }),
     ).not.toBeChecked();
   });
 });
@@ -208,7 +208,7 @@ describe("sending invitations", () => {
 
     await waitFor(() => expect(listInviteRequests).toHaveBeenCalledTimes(2));
     expect(
-      screen.getByRole("checkbox", { name: "Select first@example.com" }),
+      screen.getByRole("switch", { name: "Select first@example.com" }),
     ).not.toBeChecked();
     expect(
       screen.getByRole("button", { name: "Send invitations" }),
@@ -232,7 +232,7 @@ describe("sending invitations", () => {
       ),
     );
     expect(
-      screen.getByRole("checkbox", { name: "Select first@example.com" }),
+      screen.getByRole("switch", { name: "Select first@example.com" }),
     ).toBeChecked();
   });
 });

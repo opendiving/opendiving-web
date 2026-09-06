@@ -3,7 +3,7 @@
 import { useId, useSyncExternalStore } from "react";
 import { useTheme } from "next-themes";
 
-import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import {
   isOptedOut,
@@ -54,12 +54,7 @@ export function DeviceMemorySwitch() {
   return (
     <div className="rounded-lg border border-border bg-muted/40 p-4 not-prose">
       <div className="flex items-start gap-3">
-        <Checkbox
-          id={id}
-          className="mt-1"
-          checked={optedOut}
-          onChange={(event) => handleChange(event.target.checked)}
-        />
+        <Switch id={id} checked={optedOut} onCheckedChange={handleChange} />
         <div>
           <Label htmlFor={id} className="cursor-pointer font-normal">
             Don&rsquo;t remember display preferences on this device

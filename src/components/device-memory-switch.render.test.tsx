@@ -19,7 +19,7 @@ import { memoryStorage, useStorage } from "@/test/memory-storage";
 // as it does in a browser. That is the assertion below.
 
 const theSwitch = () =>
-  screen.getByRole("checkbox", {
+  screen.getByRole("switch", {
     name: /remember display preferences on this device/i,
   });
 
@@ -70,7 +70,7 @@ describe("DeviceMemorySwitch", () => {
       </>,
     );
 
-    const [onPrivacy, onSettings] = screen.getAllByRole("checkbox");
+    const [onPrivacy, onSettings] = screen.getAllByRole("switch");
     expect(onPrivacy).not.toBeChecked();
     expect(onSettings).not.toBeChecked();
 

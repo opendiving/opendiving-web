@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { CountBadge } from "@/components/ui/count-badge";
 import { TableRowsSkeleton } from "@/components/ui/table-skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { PaginationFooter } from "@/components/ui/pagination-footer";
 import { ServiceStatusBadge } from "@/components/gear/service-status-badge";
@@ -81,10 +81,10 @@ export function GearItemsCard({
           <span>Your Gear</span>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <Checkbox
+              <Switch
                 id="show-archived"
                 checked={showArchived}
-                onChange={(e) => onShowArchivedChange(e.target.checked)}
+                onCheckedChange={onShowArchivedChange}
               />
               <Label
                 htmlFor="show-archived"
@@ -103,7 +103,7 @@ export function GearItemsCard({
             <div className="text-muted-foreground mb-4">
               {showArchived
                 ? "No gear yet. Add your first piece of kit to start tracking what you dive with!"
-                : "No active gear. Add a piece of kit, or tick “Show archived” to see gear you've retired."}
+                : "No active gear. Add a piece of kit, or turn on “Show archived” to see gear you've retired."}
             </div>
             <Button onClick={onCreate}>
               <Plus className="h-4 w-4 mr-2" />
