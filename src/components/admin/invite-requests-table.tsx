@@ -1,7 +1,7 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -32,13 +32,15 @@ interface InviteRequestsTableProps {
  * Keyed and selected by address throughout, because that is all a request has -
  * the rows carry no identifier of their own.
  *
- * **The select-all is a switch, so it has no partial state to draw.** A checkbox
- * had one - `indeterminate`, set on the DOM node - and a switch cannot: ARIA
- * gives `role="switch"` two states and forbids `aria-checked="mixed"`. Nothing is
- * lost, because that dash was always the second channel for it: the page prints
- * "N addresses selected" in an `aria-live` region directly above this table, which
- * is both more precise than "some" and the only one of the two a screen reader
- * announced as it changed.
+ * **Checkboxes, not switches, and this is the one table in the app that says so.**
+ * A row here is picked for a batch that is about to be submitted, not a setting
+ * left flipped, and multi-select is canonically a checkbox. The select-all needs
+ * the third state on top of that: `indeterminate` for a partial selection, which
+ * `role="switch"` cannot express - ARIA gives it two states and forbids
+ * `aria-checked="mixed"`. A native checkbox exposes the mixed state to assistive
+ * tech as well as drawing the dash, so it is a channel of its own; the page's
+ * "N addresses selected" `aria-live` region above this table is the complement,
+ * announced as the selection changes rather than when the box is reached.
  *
  * `has_account` earns a marker rather than a filter or a hidden row. The public
  * request form cannot tell whether an address already has an account (it must
@@ -57,6 +59,9 @@ export function InviteRequestsTable({
   const allSelected =
     requests.length > 0 &&
     requests.every((request) => selected.includes(request.email));
+  const someSelected = requests.some((request) =>
+    selected.includes(request.email),
+  );
 
   if (!isLoading && requests.length === 0) {
     return (
@@ -71,10 +76,15 @@ export function InviteRequestsTable({
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="w-14">
-            <Switch
+          <TableHead className="w-10">
+            <Checkbox
+              // The tri-state has to be set on the DOM node - `indeterminate` is
+              // a property, not an attribute, so React will not render it.
+              ref={(node) => {
+                if (node) node.indeterminate = someSelected && !allSelected;
+              }}
               checked={allSelected}
-              onCheckedChange={onToggleAll}
+              onChange={(event) => onToggleAll(event.target.checked)}
               aria-label="Select every request on this page"
             />
           </TableHead>
@@ -90,9 +100,11 @@ export function InviteRequestsTable({
         {requests.map((request) => (
           <TableRow key={request.email}>
             <TableCell>
-              <Switch
+              <Checkbox
                 checked={selected.includes(request.email)}
-                onCheckedChange={(next) => onToggle(request.email, next)}
+                onChange={(event) =>
+                  onToggle(request.email, event.target.checked)
+                }
                 // Named per row: a screen reader's controls list is flat, and a
                 // page of identical "Select"es names nothing.
                 aria-label={`Select ${request.email}`}
