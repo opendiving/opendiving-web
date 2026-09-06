@@ -8843,21 +8843,23 @@ times.
   every _change_ to a full field, so a wrong code left on screen turns each keystroke of the
   correction into another of the five attempts the API allows — retyping six digits over a wrong six
   exhausts the row before the last one lands. Emptying makes a retype cost exactly one attempt.
-- **A 429 is the exception, and it is the status that decides.** The per-IP limiter answers before
-  the code is read, so no attempt was spent and the digits on screen are as good as they ever were;
-  emptying them would send the diver back to the email to re-read six digits over a failure that was
-  never about them. Every other failure clears. The consequence is a gesture that has to be spelled
-  out: auto-submit fires on a _change_ of value, so six unchanged digits cannot resend themselves
-  and there is no button to press. Enter inside the field is the only thing that works, and the hint
-  under the field says so in that state — the hint is load-bearing here, not decoration.
+  **Every failure clears, and a 429 is not an exception.** A rate-limited attempt was refused by the
+  per-IP limiter before the code was read, so it spent nothing and those digits were arguably still
+  good — which is the case for branching on the status and keeping them. It was built that way and
+  then taken back out, because keeping them costs more than it saves: six unchanged digits cannot
+  resend themselves (auto-submit needs a _change_ of value) and there is no button, so the only
+  gesture left is Enter inside the field, which nothing on screen conveys without a second
+  conditional hint to teach it. One rule that always holds beats a second state that has to be
+  explained, and the diver has the email open in front of them either way.
 - **Clearing has to move focus with it.** Radix leaves focus in box six, and its roving-focus rule
   only bounds which box is _tabbable_ — a digit typed into a focused box six of an empty code is
   written to position six, which reads as a broken field. `restartCodeEntry` empties the value and
   focuses the first input, and both the resend path and the failure path go through it.
 
-The hint is rendered unconditionally for a second reason: `aria-describedby` on the group names it,
-and swapping it out for the in-flight status line — which an earlier draft did — leaves that
-reference dangling for as long as a request is out.
+The hint under the field is rendered unconditionally, and that is load-bearing: `aria-describedby`
+on the group names it, so swapping it out for the in-flight status line — which an earlier draft did
+— leaves that reference dangling for as long as a request is out. The status line is rendered
+_beside_ it instead.
 
 **The in-flight state is `readOnly`, not `disabled`.** With the button gone, freezing the field is
 the only thing that says a request is out — and `disabled` on the Radix root drops focus out of the

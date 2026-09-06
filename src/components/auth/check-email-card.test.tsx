@@ -196,39 +196,10 @@ describe("CheckEmailCard", () => {
     // diver does next, retype or resend, they can do it from here.
     codeBoxes().forEach((box) => expect(box).not.toHaveAttribute("readonly"));
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
-  });
-
-  // The limiter answered before the code was read, so no attempt was spent and
-  // the digits are as good as they ever were. Emptying them here would send the
-  // diver back to the email to re-read six digits for a failure that was never
-  // about them.
-  it("keeps the digits when the limiter is what refused", async () => {
-    verifyEmailCode.mockRejectedValue({
-      response: {
-        status: 429,
-        data: { detail: "Too many requests. Please try again later." },
-      },
-    });
-    const user = renderCard();
-
-    await typeCode(user, "481052");
-    await screen.findByText("Too many requests. Please try again later.");
-
-    expect(typedCode()).toBe("481052");
-    // Auto-submit fires on a change of value, so six unchanged digits cannot
-    // resend themselves and there is no button - the hint has to name the one
-    // gesture that works.
-    expect(
-      screen.getByText(/press enter to send the same code again/i),
-    ).toBeInTheDocument();
-
-    // And it does work: Enter inside the field submits the form directly.
-    verifyEmailCode.mockResolvedValue({ status: "authenticated" });
-    await user.click(codeBoxes()[5]);
-    await user.keyboard("{Enter}");
-
-    expect(verifyEmailCode).toHaveBeenCalledTimes(2);
-    expect(verifyEmailCode).toHaveBeenLastCalledWith("req-1", "481052");
+    // Cleared like any other failure. A 429 spent no attempt, so these digits
+    // were arguably still good - but the field empties on every rejection
+    // rather than branching on a status code, and the email is still open.
+    expect(typedCode()).toBe("");
   });
 
   // The second of the four doors an uninvited address can reach on an instance
