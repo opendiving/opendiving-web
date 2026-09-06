@@ -15508,14 +15508,15 @@ breaks the day the host moves: silently, in the direction of a page that has sto
 the project without anyone changing a line.
 
 **No waitlist copy unless the API said `true`.** The landing page compares against the literal.
-`false`, a `/config` from an API that predates the field and so has no such key, and no `/config` at
-all — the failed-fetch case — all render the generic voice, exactly as an unknown mode already
-renders the sign-in form. The asymmetry is deliberate: the generic voice is true everywhere, so an
+`false`, and a `/config` from an API that predates the field and so has no such key, both render the
+generic voice. No `/config` at all — the failed-fetch case — never reaches the question: an unknown
+config renders the sign-in form, as the hero section above already records, so no request form is on
+screen in any voice. The asymmetry is deliberate: the generic voice is true everywhere, so an
 instance the project runs that is shown it by mistake loses a pitch; the waitlist voice is true on
 one instance, so a self-hoster's page shown it by mistake says "we" for a party that is not there.
-`landing-page.render.test.tsx` stages all three fallbacks by name, and pins that the field picks
-copy and only copy — on an `open`-mode instance it changes nothing, since there is no request form
-for it to reword.
+`landing-page.render.test.tsx` stages all three by name — the first two as the generic voice, the
+third as the sign-in form — and pins that the field picks copy and only copy — on an `open`-mode
+instance it changes nothing, since there is no request form for it to reword.
 
 **The variant is a prop, not a hook read inside the form.** `landing-page.tsx` is the one place that
 decides, from one fetch; the form renders either voice from a literal, so both are pinned in

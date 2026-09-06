@@ -99,13 +99,15 @@ export function LandingPage() {
                 that depends on the instance, and the only copy in the app that
                 knows who runs it. `project_operated: true` means the OpenDiving
                 project operates this copy, and the form invites the visitor onto
-                a waitlist in the project's own voice. Anything else - `false`, a
-                `/config` from an API that predates the field, no `/config` at
-                all - gets the generic copy, which is true of every instance.
-                The asymmetry is the rule: a self-hoster's hero must never say
-                "we'll notify you" on the project's behalf, so nothing short of
-                the API answering `true` earns that voice. It picks copy and
-                only copy - the mode alone decides which form is here.
+                a waitlist in the project's own voice. Anything else - `false`,
+                or a `/config` from an API that predates the field - gets the
+                generic copy, which is true of every instance; with no `/config`
+                at all the question never arises, since the sign-in form is what
+                an unknown config renders, as above. The asymmetry is the rule:
+                a self-hoster's hero must never say "we'll notify you" on the
+                project's behalf, so nothing short of the API answering `true`
+                earns that voice. It picks copy and only copy - the mode alone
+                decides which form is here.
 
                 What the swap costs, accepted deliberately: `AuthForm` is the only
                 mount of the conditional passkey ceremony and of the passkey and
