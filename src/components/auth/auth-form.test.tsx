@@ -155,6 +155,62 @@ async function runOutCooldown() {
   vi.useRealTimers();
 }
 
+describe("AuthForm heading", () => {
+  // The landing page's hero introduces the form itself, so a heading inside the
+  // card would only say the same thing twice one level down.
+  it("renders no heading when the page didn't ask for one", async () => {
+    render(<AuthForm redirectTo={null} />);
+
+    await screen.findByLabelText("Email");
+    expect(
+      screen.queryByRole("heading", { name: /sign in/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  // `/signin` is one of the few chrome-free routes that does not already fail
+  // axe's `page-has-heading-one`, and moving its heading into the card is what
+  // could have cost it that - so the level is asserted, not just the text.
+  it("makes the title the page's h1 when one is given", async () => {
+    render(
+      <AuthForm redirectTo={null} title="Sign in" description="No password." />,
+    );
+
+    const heading = await screen.findByRole("heading", { name: "Sign in" });
+    expect(heading.tagName).toBe("H1");
+    expect(screen.getByText("No password.")).toBeInTheDocument();
+  });
+
+  // And it has to survive the swap. `CheckEmailCard` replaces this component
+  // outright, so without the level travelling with it the page would lose its
+  // only `h1` the moment a link went out.
+  it("hands the h1 on to the card that replaces it", async () => {
+    const user = userEvent.setup();
+    render(<AuthForm redirectTo={null} title="Sign in" />);
+
+    await user.type(screen.getByLabelText("Email"), "diver@example.com");
+    await user.click(screen.getByRole("button", { name: /^sign in$/i }));
+
+    const heading = await screen.findByRole("heading", {
+      name: "Check your email",
+    });
+    expect(heading.tagName).toBe("H1");
+  });
+
+  // On the landing page it stays an `h3`, nested under the hero's own `h1`.
+  it("leaves that card an h3 where the page has its own heading", async () => {
+    const user = userEvent.setup();
+    render(<AuthForm redirectTo={null} />);
+
+    await user.type(screen.getByLabelText("Email"), "diver@example.com");
+    await user.click(screen.getByRole("button", { name: /^sign in$/i }));
+
+    const heading = await screen.findByRole("heading", {
+      name: "Check your email",
+    });
+    expect(heading.tagName).toBe("H3");
+  });
+});
+
 describe("AuthForm", () => {
   it("remembers where the diver was headed when requesting a link", async () => {
     await requestLink("/dives/abc");

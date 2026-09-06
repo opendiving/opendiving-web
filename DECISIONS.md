@@ -8872,6 +8872,32 @@ The boxes are `flex-1 min-w-0` rather than a fixed width. Six 40px boxes and the
 width overflows by 40px on the one screen this card is most likely to be read on. Sharing the row
 instead, the boxes come out 33px wide there and 57px on a desktop, and neither needs a breakpoint.
 
+### `/signin`'s heading moved inside the card, and the level had to travel with it
+
+The page used to open with an `h1` "Sign in" and a muted line above `AuthForm`'s card. Both now sit
+_inside_ the card, in the same icon/heading/blurb block `CheckEmailCard` opens with — so the page
+reads as one object, and the header does not jump out of the layout the moment a link goes out and
+one card is swapped for the other.
+
+**`AuthForm` renders that block only when a page passes `title`.** The landing page mounts the same
+component in its hero, which already introduces the form; a heading inside the card there would say
+the same thing again one level down. So the block is opt-in rather than default, and `/signin` is
+its only caller.
+
+**The level is the part that is easy to get wrong, and it is not cosmetic.** "The chrome-free routes
+had no `<main>`" below records the state of the axe sweep: `/auth/verify`, `/settings/confirm-email`
+and `/onboarding` all fail `page-has-heading-one` with no `<h1>` at all, and `/signin` is explicitly
+one of the clean ones. Rendering the card's heading at `CheckEmailCard`'s `h3` would have quietly
+joined it to that list — the page has no other heading.
+
+So the heading is an `h1` here, sized by the classes rather than by the level, exactly the trade
+`CardTitle`'s `as` prop documents. And it has to survive the swap: `CheckEmailCard` **replaces**
+`AuthForm` rather than rendering inside it, so without a `titleAs` prop threaded through, `/signin`
+would lose its only `h1` the second a link was sent — the one state a scan of the URL never sees. It
+defaults to `h3`, which is what the landing page needs, and `AuthForm` passes `h1` when it was given
+a title of its own. `auth-form.test.tsx` asserts the tag name in all four combinations, since
+nothing about the rendered page looks different when this is wrong.
+
 ### A 401 from a sign-in endpoint must not go down the refresh path
 
 Found by typing a wrong code at the local stack rather than by reading the diff: the card showed

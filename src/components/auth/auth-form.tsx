@@ -15,7 +15,7 @@ import { rememberPostAuthRedirect } from "@/lib/auth-redirect";
 import { cn } from "@/lib/utils";
 import { CheckEmailCard } from "./check-email-card";
 import { GoogleAuthButton } from "./google-auth-button";
-import { ArrowRight, KeyRound } from "lucide-react";
+import { ArrowRight, KeyRound, LogIn } from "lucide-react";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { StatusMessage } from "@/components/ui/status-message";
 
@@ -25,6 +25,17 @@ interface AuthFormProps {
   // somewhere specific before being bounced to `/signin` (see `useAuthGuard`).
   // Defaults to `/dashboard` at each of the entry points that consume it.
   redirectTo?: string | null;
+  // The card's own heading, for a page whose whole content this form *is* -
+  // `/signin`. Omitted on the landing page, where the hero already introduces it
+  // and a second heading inside the card would only repeat the section above.
+  //
+  // Passing one also makes the heading an `h1`, here and on the "check your
+  // email" card this swaps to: on `/signin` these are the page's only heading,
+  // and that page is one of the few chrome-free routes that does not already
+  // fail axe's `page-has-heading-one`. Keeping it that way is the whole reason
+  // the level is not just hardcoded.
+  title?: string;
+  description?: string;
 }
 
 // What the "check your email" card needs, and the reason it is one value rather
@@ -50,7 +61,12 @@ interface SentLink {
 // round trip through an inbox. On an `invite`-mode instance the hero holds the
 // request form instead and this one is not mounted there, so `/signin` is where
 // the ceremony arms - see `components/layout/landing-page.tsx`.
-export function AuthForm({ className, redirectTo }: AuthFormProps) {
+export function AuthForm({
+  className,
+  redirectTo,
+  title,
+  description,
+}: AuthFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState<SentLink | null>(null);
   const { requestEmailLink } = useAuth();
@@ -111,6 +127,7 @@ export function AuthForm({ className, redirectTo }: AuthFormProps) {
     return (
       <CheckEmailCard
         className={className}
+        titleAs={title ? "h1" : "h3"}
         email={sent.email}
         requestId={sent.requestId}
         redirectTo={redirectTo}
@@ -127,6 +144,21 @@ export function AuthForm({ className, redirectTo }: AuthFormProps) {
         className,
       )}
     >
+      {title && (
+        // The same block `CheckEmailCard` opens with, so the card the diver is
+        // looking at keeps its shape across the swap rather than growing a header
+        // the moment a link goes out.
+        <div className="mb-6 text-center">
+          <LogIn className="mx-auto mb-3 h-10 w-10 text-primary" />
+          {/* `h1`, sized like `CheckEmailCard`'s `h3` - the level is about where
+              this sits on the page, not how big it looks. See the prop comment. */}
+          <h1 className="text-lg font-semibold text-foreground">{title}</h1>
+          {description && (
+            <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+          )}
+        </div>
+      )}
+
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {error && <StatusMessage variant="error">{error}</StatusMessage>}
 

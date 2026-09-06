@@ -46,16 +46,19 @@ function SignInContent() {
 
   return (
     <StandaloneShell>
-      <div className="mb-6 text-center">
-        <h1 className="text-2xl font-bold text-foreground">Sign in</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {next
+      {/* Inside the card rather than above it, so this page reads as one object
+          and not as a heading with a form under it - and so the header does not
+          jump out of the layout the moment `AuthForm` swaps itself for the
+          "check your email" card, which opens with the same block. */}
+      <AuthForm
+        redirectTo={next}
+        title="Sign in"
+        description={
+          next
             ? "You need to be signed in to view that page."
-            : "Enter your email and we'll send you a sign-in link. No password needed."}
-        </p>
-      </div>
-
-      <AuthForm redirectTo={next} />
+            : "Enter your email and we'll send you a sign-in link. No password needed."
+        }
+      />
 
       <div className="mt-8 text-center text-sm text-muted-foreground">
         <p>

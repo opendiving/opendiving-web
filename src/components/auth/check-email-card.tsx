@@ -15,6 +15,12 @@ import { StatusMessage } from "@/components/ui/status-message";
 
 interface CheckEmailCardProps {
   className?: string;
+  // The heading level for "Check your email". `h3` suits the landing page, where
+  // this card swaps in under the hero's own `h1`; `/signin` passes `h1`, because
+  // there this card *replaces* the only heading the page has (see `AuthForm`).
+  // Only the tag changes - the size is carried by the classes, the same trade
+  // `CardTitle`'s `as` makes.
+  titleAs?: "h1" | "h3";
   // The address the email just went to, shown back to the diver so a typo is
   // obvious before they go looking in the wrong inbox.
   email: string;
@@ -50,6 +56,7 @@ const CODE_LENGTH = 6;
 // whichever is used first consumes it and the other stops working.
 export function CheckEmailCard({
   className,
+  titleAs: Title = "h3",
   email,
   requestId,
   redirectTo,
@@ -161,9 +168,9 @@ export function CheckEmailCard({
       )}
     >
       <MailCheck className="mx-auto mb-3 h-10 w-10 text-primary" />
-      <h3 className="text-lg font-semibold text-foreground">
+      <Title className="text-lg font-semibold text-foreground">
         Check your email
-      </h3>
+      </Title>
       <p className="mt-1 text-sm text-muted-foreground">
         We sent a sign-in link and a six-digit code to{" "}
         <span className="font-medium text-foreground">{email}</span>. Either one
