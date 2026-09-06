@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CheckEmailCard } from "./check-email-card";
 
@@ -44,7 +44,6 @@ const typedCode = () =>
   codeBoxes()
     .map((box) => (box as HTMLInputElement).value)
     .join("");
-const verifyButton = () => screen.getByRole("button", { name: /^verify$/i });
 
 // Focus walks itself from box to box as digits land, so the whole code is typed
 // into whichever box has focus at the time rather than into a named one.
@@ -72,7 +71,6 @@ describe("CheckEmailCard", () => {
     const user = renderCard("/dives/abc");
 
     await typeCode(user, "481052");
-    await user.click(verifyButton());
 
     expect(verifyEmailCode).toHaveBeenCalledWith("req-1", "481052");
     // In-tab, so the destination is the prop - not the `localStorage` value that
@@ -89,7 +87,6 @@ describe("CheckEmailCard", () => {
     const user = renderCard("/dives/abc");
 
     await typeCode(user, "481052");
-    await user.click(verifyButton());
 
     expect(router.push).toHaveBeenCalledWith("/onboarding");
   });
@@ -107,7 +104,6 @@ describe("CheckEmailCard", () => {
     const user = renderCard("/dives/abc");
 
     await typeCode(user, "481052");
-    await user.click(verifyButton());
 
     expect(router.push).toHaveBeenCalledWith("/restore");
   });
@@ -120,7 +116,6 @@ describe("CheckEmailCard", () => {
     const user = renderCard("//evil.example");
 
     await typeCode(user, "481052");
-    await user.click(verifyButton());
 
     expect(router.push).toHaveBeenCalledWith("/dashboard");
   });
@@ -137,7 +132,6 @@ describe("CheckEmailCard", () => {
     await user.paste("481 052");
 
     expect(typedCode()).toBe("481052");
-    await user.click(verifyButton());
     expect(verifyEmailCode).toHaveBeenCalledWith("req-1", "481052");
   });
 
@@ -152,20 +146,19 @@ describe("CheckEmailCard", () => {
     expect(typedCode()).toBe("481");
   });
 
-  // Five wrong attempts kill the code server-side, so a half-typed one must not be
-  // submittable at all.
-  it("won't submit before all six digits are in", async () => {
+  // Five wrong attempts kill the code server-side, and there is no longer a
+  // disabled button standing between a half-typed code and the API - the sixth
+  // digit is what submits, so nothing may go out before it lands.
+  it("sends nothing until all six digits are in", async () => {
     const user = renderCard();
 
     await typeCode(user, "4810");
 
-    expect(verifyButton()).toBeDisabled();
-    await user.keyboard("52");
-    expect(verifyButton()).toBeEnabled();
+    expect(verifyEmailCode).not.toHaveBeenCalled();
   });
 
-  // Enter inside the field submits the form directly - it never touches the
-  // button, so the button being disabled is not what stops a short code here.
+  // Enter submits the form too, straight from the field, so it needs the same
+  // guard rather than relying on the auto-submit path's own completeness check.
   it("won't submit a short code on Enter either", async () => {
     const user = renderCard();
 
@@ -173,16 +166,6 @@ describe("CheckEmailCard", () => {
     await user.keyboard("{Enter}");
 
     expect(verifyEmailCode).not.toHaveBeenCalled();
-  });
-
-  it("submits a complete code on Enter", async () => {
-    verifyEmailCode.mockResolvedValue({ status: "authenticated" });
-    const user = renderCard();
-
-    await typeCode(user, "481052");
-    await user.keyboard("{Enter}");
-
-    expect(verifyEmailCode).toHaveBeenCalledWith("req-1", "481052");
   });
 
   // The API's own wording rather than this component's fallback, which matters
@@ -203,15 +186,16 @@ describe("CheckEmailCard", () => {
     const user = renderCard();
 
     await typeCode(user, "000000");
-    await user.click(verifyButton());
 
     expect(
       await screen.findByText("Too many requests. Please try again later."),
     ).toBeInTheDocument();
     expect(router.push).not.toHaveBeenCalled();
-    // And the form is live again rather than stuck mid-verify - whatever the diver
-    // does next, retype or resend, they can do it from here.
-    expect(verifyButton()).toBeEnabled();
+    // And the field is live again rather than stuck mid-verify - whatever the
+    // diver does next, retype or resend, they can do it from here.
+    codeBoxes().forEach((box) => expect(box).not.toHaveAttribute("readonly"));
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(typedCode()).toBe("");
   });
 
   // The second of the four doors an uninvited address can reach on an instance
@@ -231,11 +215,58 @@ describe("CheckEmailCard", () => {
     const user = renderCard();
 
     await typeCode(user, "123456");
-    await user.click(verifyButton());
 
     expect(
       await screen.findByText(/hasn't been invited to this instance yet/i),
     ).toBeInTheDocument();
     expect(router.push).not.toHaveBeenCalled();
+  });
+
+  // With no button there is no spinner slot, and a diver who typed six digits and
+  // saw nothing change would type them again. The status line is the whole
+  // affordance, and `readOnly` is what stops a seventh keystroke landing mid-flight.
+  it("says it is checking while the request is out", async () => {
+    let settle: (outcome: { status: string }) => void = () => {};
+    verifyEmailCode.mockReturnValue(
+      new Promise((resolve) => {
+        settle = resolve;
+      }),
+    );
+    const user = renderCard();
+
+    await typeCode(user, "481052");
+
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      /checking your code/i,
+    );
+    codeBoxes().forEach((box) => expect(box).toHaveAttribute("readonly"));
+
+    await act(async () => settle({ status: "authenticated" }));
+    expect(router.push).toHaveBeenCalledWith("/dashboard");
+  });
+
+  // The expensive half of having no submit button. Auto-submit fires on every
+  // change to a full field, so a rejected code left in the boxes would turn each
+  // keystroke of the correction into another of the five attempts the API allows.
+  // Emptying it makes a retype cost one attempt instead of six.
+  it("empties the boxes after a rejection so a retype costs one attempt", async () => {
+    verifyEmailCode.mockRejectedValue({
+      response: { data: { detail: "That code is invalid." } },
+    });
+    const user = renderCard();
+
+    await typeCode(user, "000000");
+    await screen.findByText("That code is invalid.");
+
+    expect(verifyEmailCode).toHaveBeenCalledTimes(1);
+    expect(typedCode()).toBe("");
+    // And the caret is back where the next digit belongs. Left on box six, the
+    // next thing typed lands in position six of an empty code.
+    expect(codeBoxes()[0]).toHaveFocus();
+
+    // Retyping is one further attempt, not one per digit.
+    await user.keyboard("000001");
+    expect(verifyEmailCode).toHaveBeenCalledTimes(2);
+    expect(verifyEmailCode).toHaveBeenLastCalledWith("req-1", "000001");
   });
 });

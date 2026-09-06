@@ -201,7 +201,6 @@ describe("AuthForm", () => {
     await screen.findByText("Link resent - check your email.");
 
     await typeCode(user, "481052");
-    await user.click(screen.getByRole("button", { name: /^verify$/i }));
 
     expect(verifyEmailCode).toHaveBeenCalledWith("req-2", "481052");
   });

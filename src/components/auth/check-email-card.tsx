@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
 import {
   OneTimePasswordField,
   OneTimePasswordFieldInput,
@@ -11,8 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { destinationForOutcome } from "@/lib/auth-redirect";
 import { cn } from "@/lib/utils";
-import { MailCheck } from "lucide-react";
-import { ButtonSpinner } from "@/components/ui/button-spinner";
+import { Loader2, MailCheck } from "lucide-react";
 import { StatusMessage } from "@/components/ui/status-message";
 
 interface CheckEmailCardProps {
@@ -69,6 +67,16 @@ export function CheckEmailCard({
   const [isVerifying, setIsVerifying] = useState(false);
   const { verifyEmailCode } = useAuth();
   const router = useRouter();
+  const codeFieldRef = useRef<HTMLDivElement>(null);
+
+  // Puts the caret back in the first box after the value is emptied. Without it
+  // focus stays wherever it was - box six, most likely - and Radix will happily
+  // write the next digit typed there into position six of an otherwise empty
+  // code, which looks like the field is broken.
+  const restartCodeEntry = () => {
+    setCode("");
+    codeFieldRef.current?.querySelector("input")?.focus();
+  };
 
   // Ticks `cooldown` down to zero, one second at a time. Scheduling the next tick
   // from inside the timeout callback (rather than an interval tied to mount) means
@@ -91,7 +99,7 @@ export function CheckEmailCard({
       // A resend supersedes the previous request row, so whatever was half-typed
       // is a code for an email that no longer signs anyone in - clearing it beats
       // letting the diver submit it and be told it's invalid.
-      setCode("");
+      restartCodeEntry();
       setCodeError(null);
       setResendMessage("Link resent - check your email.");
       setCooldown(RESEND_COOLDOWN_SECONDS);
@@ -108,11 +116,10 @@ export function CheckEmailCard({
 
   const handleVerify = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    // Not just the Verify button's `disabled` restated: Enter inside the code field
-    // is a Radix affordance that calls `requestSubmit()` directly, so an incomplete
-    // code reaches this handler without ever going near the button. The API allows
-    // five wrong attempts before the code dies, and a half-typed submission would
-    // spend one of them for nothing.
+    // The only gate there is. Nothing on screen can be disabled to stop a short
+    // code any more - the field submits itself, and Enter submits it too - so this
+    // is what keeps a half-typed code from spending one of the five attempts the
+    // API allows before the code dies.
     if (!isCodeComplete || isVerifying) return;
 
     setIsVerifying(true);
@@ -135,6 +142,13 @@ export function CheckEmailCard({
         getApiErrorMessage(err, "Couldn't check that code. Please try again."),
       );
       setIsVerifying(false);
+      // Emptied rather than left on screen, and that is the price of having no
+      // submit button. Auto-submit fires on every change to a full field, so a
+      // rejected code that stays put turns each keystroke of the correction into
+      // another of the five attempts the API allows - six digits retyped over a
+      // wrong six would exhaust the row before the last one landed. Retyping into
+      // an empty field costs exactly one.
+      restartCodeEntry();
     }
   };
 
@@ -155,16 +169,71 @@ export function CheckEmailCard({
         signs you in - they expire in 30 minutes and can only be used once.
       </p>
 
-      {resendMessage && (
-        <StatusMessage variant="success" className="mt-4">
-          {resendMessage}
-        </StatusMessage>
-      )}
-      {resendError && (
-        <StatusMessage variant="error">{resendError}</StatusMessage>
-      )}
+      <form onSubmit={handleVerify} className="mt-6 space-y-3 text-left">
+        {/* A `<span>` rather than the `Label` component: the field below is a
+            `role="group"` of six inputs, not one control, so there is nothing for
+            `htmlFor` to point at. `aria-labelledby` names the group instead, and
+            each box keeps its own "Character N of 6" label from Radix. */}
+        <span
+          id="signin-code-label"
+          className="block text-sm font-medium leading-none"
+        >
+          Enter the code from the email
+        </span>
+        <OneTimePasswordField
+          ref={codeFieldRef}
+          aria-labelledby="signin-code-label"
+          aria-describedby="signin-code-hint"
+          value={code}
+          onValueChange={setCode}
+          // Submits itself once the sixth digit lands, so there is no Verify
+          // button to press. `handleVerify` is what holds a short code back.
+          autoSubmit
+          // Not `disabled`: that drops focus out of the group, and getting it
+          // back after a rejection is the diver's problem to solve with a mouse.
+          // `readOnly` freezes the digits in place and leaves the caret where
+          // they left it.
+          readOnly={isVerifying}
+        >
+          {Array.from({ length: CODE_LENGTH }, (_, index) => (
+            // `index` is passed rather than left to the collection to work out, so
+            // the boxes are ordered on the server render too and nothing reshuffles
+            // at hydration.
+            <OneTimePasswordFieldInput key={index} index={index} />
+          ))}
+        </OneTimePasswordField>
+        {isVerifying ? (
+          // The only sign anything is happening, now that there is no button to
+          // put a spinner in. `role="status"` so it is announced rather than only
+          // seen.
+          <p
+            role="status"
+            className="flex items-center gap-2 text-xs text-muted-foreground"
+          >
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            Checking your code...
+          </p>
+        ) : (
+          <p id="signin-code-hint" className="text-xs text-muted-foreground">
+            Useful when you&apos;re reading the email on another device.
+          </p>
+        )}
+        {codeError && (
+          <StatusMessage variant="error">{codeError}</StatusMessage>
+        )}
+      </form>
 
-      <div className="mt-4 flex flex-col items-center gap-2">
+      <div className="mt-6 flex flex-col items-center gap-2 border-t pt-4">
+        {resendMessage && (
+          <StatusMessage variant="success" className="mb-2 w-full text-left">
+            {resendMessage}
+          </StatusMessage>
+        )}
+        {resendError && (
+          <StatusMessage variant="error" className="mb-2 w-full text-left">
+            {resendError}
+          </StatusMessage>
+        )}
         <button
           type="button"
           onClick={handleResend}
@@ -185,58 +254,6 @@ export function CheckEmailCard({
           Use a different email
         </button>
       </div>
-
-      <form
-        onSubmit={handleVerify}
-        className="mt-6 space-y-3 border-t pt-4 text-left"
-      >
-        {/* A `<span>` rather than the `Label` component: the field below is a
-            `role="group"` of six inputs, not one control, so there is nothing for
-            `htmlFor` to point at. `aria-labelledby` names the group instead, and
-            each box keeps its own "Character N of 6" label from Radix. */}
-        <span
-          id="signin-code-label"
-          className="block text-sm font-medium leading-none"
-        >
-          Or enter the code from the email
-        </span>
-        <OneTimePasswordField
-          aria-labelledby="signin-code-label"
-          aria-describedby="signin-code-hint"
-          value={code}
-          onValueChange={setCode}
-        >
-          {Array.from({ length: CODE_LENGTH }, (_, index) => (
-            // `index` is passed rather than left to the collection to work out, so
-            // the boxes are ordered on the server render too and nothing reshuffles
-            // at hydration.
-            <OneTimePasswordFieldInput key={index} index={index} />
-          ))}
-        </OneTimePasswordField>
-        {/* Held closed until all six digits are in, for the same reason
-            `handleVerify` re-checks: a wrong attempt is one of five. */}
-        <Button
-          type="submit"
-          variant="outline"
-          className="w-full"
-          disabled={!isCodeComplete || isVerifying}
-        >
-          {isVerifying ? (
-            <div className="flex items-center space-x-2">
-              <ButtonSpinner />
-              <span>Verifying...</span>
-            </div>
-          ) : (
-            "Verify"
-          )}
-        </Button>
-        <p id="signin-code-hint" className="text-xs text-muted-foreground">
-          Useful when you&apos;re reading the email on another device.
-        </p>
-        {codeError && (
-          <StatusMessage variant="error">{codeError}</StatusMessage>
-        )}
-      </form>
     </div>
   );
 }

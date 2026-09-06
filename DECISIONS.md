@@ -8789,8 +8789,10 @@ same moment.
   truncates that paste to `481 05` _before_ any `onChange` normalizer sees it, silently losing the
   last digit. That input is gone now (see below) and Radix handles the paste at the group, but the
   ordering is the lesson: sanitize, then bound, never the other way round.
-- **_Verify_ stays disabled until all six digits are in.** Not tidiness: the API allows five wrong
+- **Nothing goes out before all six digits are in.** Not tidiness: the API allows five wrong
   attempts before it nulls the code, and a half-typed submission would spend one of them on nothing.
+  This used to be a disabled _Verify_ button; the button is gone (see below) and the check now lives
+  in `handleVerify`, which is the only place left that can hold a short code back.
 
 **Routing is by the `redirectTo` prop — not through `localStorage`.** The mechanisms in "The
 destination round-trips through `lib/auth-redirect.ts`" above split on whether the flow leaves the
@@ -8831,15 +8833,29 @@ times.
   `getAllByRole("textbox", { name: /^Character \d of 6$/ })` — `getByLabelText(/enter the code/i)`
   matches nothing now, and it used to match the whole field, so two files' worth of tests had to
   learn the difference.
-- **Enter submits the form directly.** The primitive calls `form.requestSubmit()` on Enter, which
-  never touches the Verify button — so the button's `disabled` is no longer what stops a short code,
-  and `handleVerify` re-checks `isCodeComplete` itself. Without that check the Enter path spends one
-  of five attempts on four digits, which is the precise thing the disabled button existed to
-  prevent.
-- **`autoSubmit` is deliberately off.** Radix will fire the form the instant the sixth character
-  lands, and for the same five-attempt reason that is the wrong trade here: it removes the moment
-  where a diver who mistyped a digit can see six filled boxes and fix one before spending an
-  attempt. A code is not a password field where the cost of a wrong guess is a retry.
+- **There is no submit button, and two separate paths reach `handleVerify`.** `autoSubmit` fires the
+  form the instant the sixth character lands, and Enter anywhere in the group calls
+  `form.requestSubmit()` too. Neither goes near a button, so a `disabled` attribute can no longer
+  hold a short code back and `handleVerify`'s own `isCodeComplete` check is the whole guard.
+  Deleting it looks safe — auto-submit only fires on a full field — and it is not: the Enter path
+  spends one of five attempts on four digits.
+- **A rejected code is emptied out of the boxes, and that is not tidiness.** Auto-submit fires on
+  every _change_ to a full field, so a wrong code left on screen turns each keystroke of the
+  correction into another of the five attempts the API allows — retyping six digits over a wrong six
+  exhausts the row before the last one lands. Emptying makes a retype cost exactly one attempt. The
+  cost of the choice is that a 429 clears a code that may well have been right, and it is still the
+  better trade: the diver has the email open, and the alternative silently spends the budget that
+  the whole `request_id` design exists to protect.
+- **Clearing has to move focus with it.** Radix leaves focus in box six, and its roving-focus rule
+  only bounds which box is _tabbable_ — a digit typed into a focused box six of an empty code is
+  written to position six, which reads as a broken field. `restartCodeEntry` empties the value and
+  focuses the first input, and both the resend path and the failure path go through it.
+
+**The in-flight state is `readOnly`, not `disabled`.** With the button gone, freezing the field is
+the only thing that says a request is out — and `disabled` on the Radix root drops focus out of the
+group entirely, so a rejected code leaves the diver reaching for the mouse to get back to boxes they
+were already in. `readOnly` freezes the digits and keeps the caret. A `role="status"` line under the
+field carries the spinner the button used to.
 
 The boxes are `flex-1 min-w-0` rather than a fixed width. Six 40px boxes and their gaps come to
 280px; measured in a 320px viewport, the card is 288px wide and its content box 240px — so a fixed
