@@ -12419,7 +12419,11 @@ Two smaller calls in the same card:
 - **"Sign out other sessions" is gated on `sessions.some((one) => !one.current)`, not on
   `sessions.length > 1`.** An access token minted before server-side sessions existed carries no
   session id, so nothing on the list comes back marked current — and the count test would then hide
-  the button from the one caller whose single listed row genuinely _is_ another device.
+  the button from the one caller whose single listed row genuinely _is_ another device. That premise
+  has since gone: once the API resolves a session on every authenticated request (see the
+  operator-setting note further down this file), a token naming none cannot reach this list at all.
+  The gate stays as written anyway, because it asks the button's own question directly where a row
+  count only approximates it.
 - **The toast reports the count out of the response body and can do it no other way.** The
   confirmation fires before the request, so the dialog never knew how many rows there were to end;
   the API returns the number it actually revoked, and that is the only honest source for the

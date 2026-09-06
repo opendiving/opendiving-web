@@ -17,9 +17,7 @@ import { apiClient } from "./client";
  *
  * `current` is resolved from the requesting access token rather than from the
  * row, so it is the one field that varies by *credential* rather than by account
- * - which is why this response is never cached anywhere. An access token minted
- * before sessions existed names none, and for its remaining minutes every row
- * comes back `false` rather than one coming back wrongly.
+ * - which is why this response is never cached anywhere.
  */
 export interface UserSession {
   uuid: string;

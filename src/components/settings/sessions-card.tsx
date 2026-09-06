@@ -94,9 +94,8 @@ export function SessionsCard() {
   const sessions = list.status === "ready" ? list.sessions : [];
   const pendingSession = sessions.find((one) => one.uuid === pendingId);
   // The button is offered against what is actually there rather than against a
-  // count: an access token minted before sessions existed marks nothing current,
-  // and `sessions.length > 1` would hide the button from the one caller whose
-  // single listed row genuinely is another device.
+  // count: this asks the question the button answers - is there another device -
+  // where `sessions.length > 1` only approximates it from the row count.
   const hasOthers = sessions.some((one) => !one.current);
 
   const revokeOthers = async () => {
