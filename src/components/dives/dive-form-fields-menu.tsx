@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Settings, SlidersHorizontal } from "lucide-react";
+import { Check, ChevronDown, Settings, SlidersHorizontal } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -83,8 +83,14 @@ export function DiveFormFieldsMenu({
             aria-label={rows === null ? undefined : `Fields: ${label}`}
             className="inline-flex items-center gap-1.5 rounded border px-2 py-1 text-xs leading-none text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <SlidersHorizontal className="h-3.5 w-3.5" />
+            {/* Sliders, then the state, then the chevron: what the control is about,
+                what it currently says, and last the mark that it opens - which is
+                where a menu button conventionally carries it. `aria-hidden` on both
+                icons, since the trigger is named by `aria-label` and Radix has
+                already said `haspopup`. */}
+            <SlidersHorizontal className="h-3.5 w-3.5" aria-hidden />
             {label}
+            <ChevronDown className="h-3.5 w-3.5" aria-hidden />
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-[12rem]">
