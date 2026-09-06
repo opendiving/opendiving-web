@@ -263,14 +263,28 @@ describe("AuthForm", () => {
 
   // The code in the previous email no longer signs anyone in, so leaving it typed
   // would only lead the diver into spending one of five attempts on it.
+  //
+  // Four digits, not six, and that is the whole point of the case. Six auto-submit
+  // the instant the last one lands, which leaves the card mid-verify - so a resend
+  // arriving on a *complete* code is a state no diver types their way into, and a
+  // test that used one would be asserting against a card that had already signed
+  // in. Half-typed is the only way the boxes are still full of a dead code when
+  // the resend lands, which is why this is the case worth pinning.
   it("clears a half-typed code when the link is resent", async () => {
     const user = await requestLink(null);
 
-    await typeCode(user, "481052");
+    await typeCode(user, "4810");
+    // Both halves of "the resend is what cleared it": the digits really are in
+    // the boxes first, and nothing went out - so the failure path, which also
+    // clears, cannot be what empties them below.
+    expect(typedCode()).toBe("4810");
+    expect(verifyEmailCode).not.toHaveBeenCalled();
+
     await runOutCooldown();
     await user.click(screen.getByRole("button", { name: /^resend link$/i }));
 
     await waitFor(() => expect(typedCode()).toBe(""));
+    expect(verifyEmailCode).not.toHaveBeenCalled();
   });
 });
 

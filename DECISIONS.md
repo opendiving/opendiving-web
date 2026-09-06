@@ -8825,14 +8825,17 @@ the controlled `value` prop alike, which is exactly what `normalizeCode` was for
 marked `data-1p-ignore`/`data-lpignore` so a password manager offers the code once instead of six
 times.
 
-**Three things about it that are not obvious from the outside:**
+**Four things about it that are not obvious from the outside:**
 
 - **The root is a group, so `<Label htmlFor>` has nothing to point at.** The visible text is a
   `<span id="signin-code-label">` and the group takes `aria-labelledby`; each box gets its own
   "Character N of 6" from Radix. Anything reaching for this field in a test wants
-  `getAllByRole("textbox", { name: /^Character \d of 6$/ })` — `getByLabelText(/enter the code/i)`
-  matches nothing now, and it used to match the whole field, so two files' worth of tests had to
-  learn the difference.
+  `getAllByRole("textbox", { name: /^Character \d of 6$/ })`. `getByLabelText(/enter the code/i)`
+  used to hand back the field itself, and the trap is that it still resolves rather than throwing:
+  Testing Library's `queryAllByLabelText` collects any element carrying `aria-labelledby`, form
+  control or not, so it now returns the `role="group"` div — which nothing can be typed into. A
+  query that fails by returning the wrong element is worse than one that fails loudly, and it is why
+  two files' worth of tests had to learn the difference.
 - **There is no submit button, and two separate paths reach `handleVerify`.** `autoSubmit` fires the
   form the instant the sixth character lands, and Enter anywhere in the group calls
   `form.requestSubmit()` too. Neither goes near a button, so a `disabled` attribute can no longer
