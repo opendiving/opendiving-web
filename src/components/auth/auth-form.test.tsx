@@ -112,6 +112,26 @@ async function requestLink(redirectTo: string | null) {
   return user;
 }
 
+// The code field is six single-character inputs in a `role="group"` (Radix's
+// one-time-password field), so there is no one element to type into or read back
+// - focus walks itself from box to box as digits land. `check-email-card.test.tsx`
+// holds the behaviour; these two only need the digits in and the value back out.
+const codeBoxes = () =>
+  screen.getAllByRole("textbox", { name: /^Character \d of 6$/ });
+
+const typedCode = () =>
+  codeBoxes()
+    .map((box) => (box as HTMLInputElement).value)
+    .join("");
+
+async function typeCode(
+  user: ReturnType<typeof userEvent.setup>,
+  digits: string,
+) {
+  await user.click(codeBoxes()[0]);
+  await user.keyboard(digits);
+}
+
 // Runs out the 30s resend cooldown without waiting 30 seconds.
 //
 // Two awkward constraints meet here. Testing Library's async helpers don't
@@ -180,7 +200,7 @@ describe("AuthForm", () => {
     await user.click(screen.getByRole("button", { name: /^resend link$/i }));
     await screen.findByText("Link resent - check your email.");
 
-    await user.type(screen.getByLabelText(/enter the code/i), "481052");
+    await typeCode(user, "481052");
     await user.click(screen.getByRole("button", { name: /^verify$/i }));
 
     expect(verifyEmailCode).toHaveBeenCalledWith("req-2", "481052");
@@ -191,13 +211,11 @@ describe("AuthForm", () => {
   it("clears a half-typed code when the link is resent", async () => {
     const user = await requestLink(null);
 
-    await user.type(screen.getByLabelText(/enter the code/i), "481052");
+    await typeCode(user, "481052");
     await runOutCooldown();
     await user.click(screen.getByRole("button", { name: /^resend link$/i }));
 
-    await waitFor(() =>
-      expect(screen.getByLabelText(/enter the code/i)).toHaveValue(""),
-    );
+    await waitFor(() => expect(typedCode()).toBe(""));
   });
 });
 

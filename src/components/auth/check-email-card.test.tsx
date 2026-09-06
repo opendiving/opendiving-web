@@ -35,15 +35,43 @@ function renderCard(redirectTo: string | null = null) {
   return user;
 }
 
-const codeInput = () => screen.getByLabelText(/enter the code/i);
+// The code is six single-character inputs in a `role="group"`, so there is no one
+// element to address. Radix labels each box "Character N of 6"; the group carries
+// the visible "Or enter the code" text as its own name.
+const codeBoxes = () =>
+  screen.getAllByRole("textbox", { name: /^Character \d of 6$/ });
+const typedCode = () =>
+  codeBoxes()
+    .map((box) => (box as HTMLInputElement).value)
+    .join("");
 const verifyButton = () => screen.getByRole("button", { name: /^verify$/i });
 
+// Focus walks itself from box to box as digits land, so the whole code is typed
+// into whichever box has focus at the time rather than into a named one.
+async function typeCode(
+  user: ReturnType<typeof userEvent.setup>,
+  digits: string,
+) {
+  await user.click(codeBoxes()[0]);
+  await user.keyboard(digits);
+}
+
 describe("CheckEmailCard", () => {
+  // The group is what carries the visible label; `htmlFor` has nothing to point
+  // at once the field is six inputs rather than one.
+  it("names the whole group with the visible label", () => {
+    renderCard();
+
+    expect(
+      screen.getByRole("group", { name: /enter the code from the email/i }),
+    ).toBeInTheDocument();
+  });
+
   it("verifies the typed code against the request that produced it", async () => {
     verifyEmailCode.mockResolvedValue({ status: "authenticated" });
     const user = renderCard("/dives/abc");
 
-    await user.type(codeInput(), "481052");
+    await typeCode(user, "481052");
     await user.click(verifyButton());
 
     expect(verifyEmailCode).toHaveBeenCalledWith("req-1", "481052");
@@ -60,7 +88,7 @@ describe("CheckEmailCard", () => {
     });
     const user = renderCard("/dives/abc");
 
-    await user.type(codeInput(), "481052");
+    await typeCode(user, "481052");
     await user.click(verifyButton());
 
     expect(router.push).toHaveBeenCalledWith("/onboarding");
@@ -78,7 +106,7 @@ describe("CheckEmailCard", () => {
     });
     const user = renderCard("/dives/abc");
 
-    await user.type(codeInput(), "481052");
+    await typeCode(user, "481052");
     await user.click(verifyButton());
 
     expect(router.push).toHaveBeenCalledWith("/restore");
@@ -91,7 +119,7 @@ describe("CheckEmailCard", () => {
     verifyEmailCode.mockResolvedValue({ status: "authenticated" });
     const user = renderCard("//evil.example");
 
-    await user.type(codeInput(), "481052");
+    await typeCode(user, "481052");
     await user.click(verifyButton());
 
     expect(router.push).toHaveBeenCalledWith("/dashboard");
@@ -99,17 +127,29 @@ describe("CheckEmailCard", () => {
 
   // The email prints the code as "481 052", so the obvious thing a diver does -
   // select it and paste - must not send a space to the API and spend one of the
-  // five attempts on a formatting difference.
-  it("drops the space out of a pasted code", async () => {
+  // five attempts on a formatting difference. The paste lands on one box and has
+  // to fill all six.
+  it("spreads a pasted code across the boxes, space and all", async () => {
     verifyEmailCode.mockResolvedValue({ status: "authenticated" });
     const user = renderCard();
 
-    await user.click(codeInput());
+    await user.click(codeBoxes()[0]);
     await user.paste("481 052");
 
-    expect(codeInput()).toHaveValue("481052");
+    expect(typedCode()).toBe("481052");
     await user.click(verifyButton());
     expect(verifyEmailCode).toHaveBeenCalledWith("req-1", "481052");
+  });
+
+  // Letters never reach the value at all - the field is numeric, so a diver who
+  // starts typing before noticing the code is digits only isn't left with a
+  // half-filled box that looks right.
+  it("ignores anything that isn't a digit", async () => {
+    const user = renderCard();
+
+    await typeCode(user, "4a8b1c");
+
+    expect(typedCode()).toBe("481");
   });
 
   // Five wrong attempts kill the code server-side, so a half-typed one must not be
@@ -117,11 +157,32 @@ describe("CheckEmailCard", () => {
   it("won't submit before all six digits are in", async () => {
     const user = renderCard();
 
-    await user.type(codeInput(), "4810");
+    await typeCode(user, "4810");
 
     expect(verifyButton()).toBeDisabled();
-    await user.type(codeInput(), "52");
+    await user.keyboard("52");
     expect(verifyButton()).toBeEnabled();
+  });
+
+  // Enter inside the field submits the form directly - it never touches the
+  // button, so the button being disabled is not what stops a short code here.
+  it("won't submit a short code on Enter either", async () => {
+    const user = renderCard();
+
+    await typeCode(user, "4810");
+    await user.keyboard("{Enter}");
+
+    expect(verifyEmailCode).not.toHaveBeenCalled();
+  });
+
+  it("submits a complete code on Enter", async () => {
+    verifyEmailCode.mockResolvedValue({ status: "authenticated" });
+    const user = renderCard();
+
+    await typeCode(user, "481052");
+    await user.keyboard("{Enter}");
+
+    expect(verifyEmailCode).toHaveBeenCalledWith("req-1", "481052");
   });
 
   // The API's own wording rather than this component's fallback, which matters
@@ -141,7 +202,7 @@ describe("CheckEmailCard", () => {
     });
     const user = renderCard();
 
-    await user.type(codeInput(), "000000");
+    await typeCode(user, "000000");
     await user.click(verifyButton());
 
     expect(
@@ -169,7 +230,7 @@ describe("CheckEmailCard", () => {
     });
     const user = renderCard();
 
-    await user.type(codeInput(), "123456");
+    await typeCode(user, "123456");
     await user.click(verifyButton());
 
     expect(

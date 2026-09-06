@@ -8784,10 +8784,11 @@ same moment.
 
 **Two small traps in the input itself:**
 
-- **No `maxLength`.** The email prints the code as `481 052`, so the obvious gesture is to select
-  and paste it — and `maxLength={6}` truncates that paste to `481 05` _before_ any `onChange`
-  normalizer sees it, silently losing the last digit. The normalizer alone (strip non-digits, slice
-  to six) does the whole job.
+- **Nothing may truncate a paste before it is sanitized.** The email prints the code as `481 052`,
+  so the obvious gesture is to select and paste it — and a `maxLength={6}` on a single text input
+  truncates that paste to `481 05` _before_ any `onChange` normalizer sees it, silently losing the
+  last digit. That input is gone now (see below) and Radix handles the paste at the group, but the
+  ordering is the lesson: sanitize, then bound, never the other way round.
 - **_Verify_ stays disabled until all six digits are in.** Not tidiness: the API allows five wrong
   attempts before it nulls the code, and a half-typed submission would spend one of them on nothing.
 
@@ -8805,6 +8806,45 @@ about. The passkey ceremony is the in-tab sibling to point at instead.
 `authAPI`'s three hand-rolled "capture the access token if this outcome carries one" blocks became
 one `captureSession` helper on the way past, since the code path would have been a fourth identical
 copy.
+
+### The code field is Radix's one-time-password field, not one text input
+
+`CheckEmailCard` renders `@radix-ui/react-one-time-password-field` — six single-character inputs in
+a `role="group"` — through a thin styled wrapper in `components/ui/one-time-password-field.tsx`. It
+replaced a single `<Input>` with a hand-written `normalizeCode` (strip non-digits, slice to six) and
+`tracking-[0.3em]`.
+
+**What the primitive buys is the pile of small behaviours that input never had.** Focus walks
+forward as each digit lands and back on Backspace, arrow keys move between boxes, Delete and cut
+close the gap rather than leaving a hole, a paste anywhere in the group fills all six, and
+`validationType="numeric"` drops whitespace and non-digits on every path in — typing, pasting and
+the controlled `value` prop alike, which is exactly what `normalizeCode` was for. It also keeps
+`autoComplete="one-time-code"` working: only the current tab stop carries it, and the other five are
+marked `data-1p-ignore`/`data-lpignore` so a password manager offers the code once instead of six
+times.
+
+**Three things about it that are not obvious from the outside:**
+
+- **The root is a group, so `<Label htmlFor>` has nothing to point at.** The visible text is a
+  `<span id="signin-code-label">` and the group takes `aria-labelledby`; each box gets its own
+  "Character N of 6" from Radix. Anything reaching for this field in a test wants
+  `getAllByRole("textbox", { name: /^Character \d of 6$/ })` — `getByLabelText(/enter the code/i)`
+  matches nothing now, and it used to match the whole field, so two files' worth of tests had to
+  learn the difference.
+- **Enter submits the form directly.** The primitive calls `form.requestSubmit()` on Enter, which
+  never touches the Verify button — so the button's `disabled` is no longer what stops a short code,
+  and `handleVerify` re-checks `isCodeComplete` itself. Without that check the Enter path spends one
+  of five attempts on four digits, which is the precise thing the disabled button existed to
+  prevent.
+- **`autoSubmit` is deliberately off.** Radix will fire the form the instant the sixth character
+  lands, and for the same five-attempt reason that is the wrong trade here: it removes the moment
+  where a diver who mistyped a digit can see six filled boxes and fix one before spending an
+  attempt. A code is not a password field where the cost of a wrong guess is a retry.
+
+The boxes are `flex-1 min-w-0` rather than a fixed width. Six 40px boxes and their gaps come to
+280px; measured in a 320px viewport, the card is 288px wide and its content box 240px — so a fixed
+width overflows by 40px on the one screen this card is most likely to be read on. Sharing the row
+instead, the boxes come out 33px wide there and 57px on a desktop, and neither needs a breakpoint.
 
 ### A 401 from a sign-in endpoint must not go down the refresh path
 

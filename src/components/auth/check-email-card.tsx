@@ -3,8 +3,10 @@
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  OneTimePasswordField,
+  OneTimePasswordFieldInput,
+} from "@/components/ui/one-time-password-field";
 import { useAuth } from "@/contexts/AuthContext";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { destinationForOutcome } from "@/lib/auth-redirect";
@@ -39,14 +41,6 @@ interface CheckEmailCardProps {
 const RESEND_COOLDOWN_SECONDS = 30;
 
 const CODE_LENGTH = 6;
-
-// The email prints the code spaced - "481 052" - so a paste carries a space, and
-// anything that isn't a digit is dropped rather than rejected. Note what is *not*
-// here: a `maxLength` on the input would truncate that same paste to "481 05"
-// before this ever ran, losing the last digit.
-function normalizeCode(value: string): string {
-  return value.replace(/\D/g, "").slice(0, CODE_LENGTH);
-}
 
 // The "a link is on its way" half of `AuthForm`, and the one screen where the code
 // from that same email can be typed.
@@ -114,6 +108,11 @@ export function CheckEmailCard({
 
   const handleVerify = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    // Not just the Verify button's `disabled` restated: Enter inside the code field
+    // is a Radix affordance that calls `requestSubmit()` directly, so an incomplete
+    // code reaches this handler without ever going near the button. The API allows
+    // five wrong attempts before the code dies, and a half-typed submission would
+    // spend one of them for nothing.
     if (!isCodeComplete || isVerifying) return;
 
     setIsVerifying(true);
@@ -189,41 +188,49 @@ export function CheckEmailCard({
 
       <form
         onSubmit={handleVerify}
-        className="mt-6 space-y-2 border-t pt-4 text-left"
+        className="mt-6 space-y-3 border-t pt-4 text-left"
       >
-        <Label htmlFor="signin-code">Or enter the code from the email</Label>
-        <div className="flex gap-2">
-          <Input
-            id="signin-code"
-            type="text"
-            inputMode="numeric"
-            // Lets a browser that can read the code out of the email offer it,
-            // rather than making the diver switch apps to copy six digits.
-            autoComplete="one-time-code"
-            placeholder="000000"
-            value={code}
-            onChange={(event) => setCode(normalizeCode(event.target.value))}
-            className="tracking-[0.3em]"
-          />
-          {/* Held closed until all six digits are in: the API allows five wrong
-              attempts before the code dies, and a half-typed submission would
-              spend one of them for nothing. */}
-          <Button
-            type="submit"
-            variant="outline"
-            disabled={!isCodeComplete || isVerifying}
-          >
-            {isVerifying ? (
-              <div className="flex items-center space-x-2">
-                <ButtonSpinner />
-                <span>Verifying...</span>
-              </div>
-            ) : (
-              "Verify"
-            )}
-          </Button>
-        </div>
-        <p className="text-xs text-muted-foreground">
+        {/* A `<span>` rather than the `Label` component: the field below is a
+            `role="group"` of six inputs, not one control, so there is nothing for
+            `htmlFor` to point at. `aria-labelledby` names the group instead, and
+            each box keeps its own "Character N of 6" label from Radix. */}
+        <span
+          id="signin-code-label"
+          className="block text-sm font-medium leading-none"
+        >
+          Or enter the code from the email
+        </span>
+        <OneTimePasswordField
+          aria-labelledby="signin-code-label"
+          aria-describedby="signin-code-hint"
+          value={code}
+          onValueChange={setCode}
+        >
+          {Array.from({ length: CODE_LENGTH }, (_, index) => (
+            // `index` is passed rather than left to the collection to work out, so
+            // the boxes are ordered on the server render too and nothing reshuffles
+            // at hydration.
+            <OneTimePasswordFieldInput key={index} index={index} />
+          ))}
+        </OneTimePasswordField>
+        {/* Held closed until all six digits are in, for the same reason
+            `handleVerify` re-checks: a wrong attempt is one of five. */}
+        <Button
+          type="submit"
+          variant="outline"
+          className="w-full"
+          disabled={!isCodeComplete || isVerifying}
+        >
+          {isVerifying ? (
+            <div className="flex items-center space-x-2">
+              <ButtonSpinner />
+              <span>Verifying...</span>
+            </div>
+          ) : (
+            "Verify"
+          )}
+        </Button>
+        <p id="signin-code-hint" className="text-xs text-muted-foreground">
           Useful when you&apos;re reading the email on another device.
         </p>
         {codeError && (
