@@ -2,20 +2,23 @@
 
 import { useEffect, useState } from "react";
 
-import { configAPI, type RegistrationMode } from "@/lib/api/config";
+import { configAPI, type InstanceConfig } from "@/lib/api/config";
 
-interface RegistrationModeState {
+interface InstanceConfigState {
   // `null` means "not known" - either the fetch is still in flight or it failed.
-  // It is deliberately not defaulted to a mode here: the one caller has a safe
-  // answer for an unknown mode (show the sign-in form, which works on any
+  // It is deliberately not defaulted to a config here: the one caller has a safe
+  // answer for an unknown one (the sign-in form, in the copy that is true of any
   // instance) and that decision belongs at the call site rather than hidden
   // behind a default nobody can see.
-  mode: RegistrationMode | null;
+  config: InstanceConfig | null;
   isLoading: boolean;
 }
 
 /**
- * Whether this instance lets anyone register or hands out invitations.
+ * What `GET /config` says about this instance: whether it lets anyone register
+ * or hands out invitations, and whether the OpenDiving project is the one
+ * running it. Handed back whole rather than field by field, so a caller that
+ * needs two of its facts makes one request and decides from one answer.
  *
  * Read from the API rather than from this container's environment - see
  * `lib/api/config.ts` for why - and read once per mount rather than cached here:
@@ -24,13 +27,13 @@ interface RegistrationModeState {
  * browser storage for it; every key this app writes has to be registered and
  * named on `/privacy` §10, and a value this cheap to fetch does not earn one.
  *
- * A failure resolves to `null`, not to a mode. The landing page must still work
- * on an instance whose API is briefly down, and the form it shows for an unknown
- * mode is the sign-in form.
+ * A failure resolves to `null`, not to a config. The landing page must still work
+ * on an instance whose API is briefly down, and what it shows for an unknown
+ * config is the sign-in form - the answer that is right on any instance.
  */
-export function useRegistrationMode(): RegistrationModeState {
-  const [state, setState] = useState<RegistrationModeState>({
-    mode: null,
+export function useInstanceConfig(): InstanceConfigState {
+  const [state, setState] = useState<InstanceConfigState>({
+    config: null,
     isLoading: true,
   });
 
@@ -42,12 +45,11 @@ export function useRegistrationMode(): RegistrationModeState {
     configAPI
       .getInstanceConfig()
       .then((config) => {
-        if (active)
-          setState({ mode: config.registration_mode, isLoading: false });
+        if (active) setState({ config, isLoading: false });
       })
       .catch((error: unknown) => {
         console.error("Couldn't read this instance's configuration.", error);
-        if (active) setState({ mode: null, isLoading: false });
+        if (active) setState({ config: null, isLoading: false });
       });
 
     return () => {

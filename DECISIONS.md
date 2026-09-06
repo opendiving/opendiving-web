@@ -14314,6 +14314,11 @@ self-hosters run.
 
 ## The landing hero holds one of two forms, and the API is what says which
 
+**`useRegistrationMode` is `useInstanceConfig` since 2026-09-07**, when the same fetch started
+carrying `project_operated` and the hook began handing the body back whole rather than one field of
+it. Everything below about what it does and does not do still holds under the new name; the field
+itself is under "The request form speaks in two voices" at the end of this file.
+
 The API gained a registration mode - `open`, where any verified address gets an account, and
 `invite`, where only an invited one does - and the landing page has to show a different form for
 each. On an `invite` instance a sign-in form in the hero is an invitation to fail: a stranger types
@@ -14366,9 +14371,9 @@ an `open`-mode instance - the feature is absent there, not idle - and the card m
 predates their features. So the settings grid loses a cell with no web-side knowledge of anything,
 and there is no second place for the mode to be wrong.
 
-This is deliberately _not_ `useRegistrationMode`. The card would then have two sources for one fact
-and could render itself against a mode the API disagrees with; the 404 is the API telling it
-directly, on the request it was going to make anyway.
+This is deliberately _not_ `useRegistrationMode` (now `useInstanceConfig`). The card would then have
+two sources for one fact and could render itself against a mode the API disagrees with; the 404 is
+the API telling it directly, on the request it was going to make anyway.
 
 Three smaller calls inside it, recorded because each had an obvious alternative:
 
@@ -15453,3 +15458,82 @@ cylinder, not of one.
 per key, in form order — the empty value per key that the hide rule writes, and the groups the dive
 form's own comment-introduced blocks make. Keeping them together is what lets one test assert the
 vocabulary is complete _and_ that every key has a row, an empty value and a group the panel renders.
+
+## The request form speaks in two voices, and only `GET /config` can pick the second
+
+`GET /config` gained `project_operated` beside `registration_mode`: `true` where the OpenDiving
+project itself operates the instance, `false` — the default, and what every self-hosted install
+answers — everywhere else. `InviteRequestForm` gained a `variant` to match. `generic` is the copy
+the form has always had ("Request an invite", "whoever runs it can invite you", "Request received")
+and stays the default; `waitlist` is "Get early access", "Join the waitlist for a chance to be among
+the first to try OpenDiving. We'll notify you when your spot is ready. Just that, no spam.", a "Join
+the waitlist" button and a "You're on the list" success state. The landing page chooses, and chooses
+`waitlist` only when the config it fetched says `project_operated: true`.
+
+**This is the first copy in the app that knows the project runs a particular instance**, and what
+allows it is already on `/privacy`: "where the project does run a copy, it is that copy's operator
+as well, and every commitment this page makes of the operator is one it makes in that role". The
+generic voice is what "The landing hero holds one of two forms" made `InviteRequestForm` say, on the
+rule that every sentence has to be true of a household instance as well as a hosted one — no "beta",
+no "we", no promise that an invitation is coming. That rule still holds of the default. The waitlist
+voice is the project speaking as an operator, on a copy where it is one, and its two promises are
+answered for separately: "we'll notify you" is backed by the API, which emails an invitation to an
+address the moment it is invited, so the notification _is_ the invitation; "no spam" is the
+operator's promise, and nothing in the app enforces it. Keep branches of this kind to copy
+selection, and route every one of them through this one field — a second way of knowing who runs the
+instance is a second place for a self-hoster's page to start speaking for the project.
+
+**Variants in code, not operator-configurable text.** The obvious alternative was a setting an
+operator could fill with their own blurb, and it fails four ways:
+
+- It is not one string. The heading, the blurb, the button and the success state move together, and
+  the generic success state — "whoever runs this instance decides who is invited, and when" —
+  contradicts a heading that promised "we'll notify you". Four independently settable strings is
+  four ways to assemble two operators speaking at once.
+- Prose in an env var escapes review. Every claim on the landing page goes through this repo's
+  review and its render tests ("The landing page can only claim what the instance can back up"); an
+  operator-supplied paragraph goes through neither.
+- Markdown from an operator variable is a rendering and sanitisation surface — `react/no-danger` is
+  an error here for a reason — bought for one heading and one paragraph.
+- Nobody but the project would set it. The generic copy is already right for a self-hoster, so the
+  configurability would exist for one operator, who can ship its copy in code.
+
+**The fact comes from `GET /config`, not from a web env var and not from the hostname.** The
+endpoint exists for exactly this: a fact the page has to have before its first paint. The landing
+page already waits for it under the auth gate, so the second field rides on a request already in
+flight and costs no paint. A web-side mirror of a server fact is the cost this repo has paid once
+already with the Google client id — "The landing hero holds one of two forms" spells the three
+arguments out, and all three apply unchanged. Sniffing the hostname was the other shortcut, and it
+breaks the day the host moves: silently, in the direction of a page that has stopped speaking for
+the project without anyone changing a line.
+
+**No waitlist copy unless the API said `true`.** The landing page compares against the literal.
+`false`, and a `/config` from an API that predates the field and so has no such key, both render the
+generic voice. No `/config` at all — the failed-fetch case — never reaches the question: an unknown
+config renders the sign-in form, as the hero section above already records, so no request form is on
+screen in any voice. The asymmetry is deliberate: the generic voice is true everywhere, so an
+instance the project runs that is shown it by mistake loses a pitch; the waitlist voice is true on
+one instance, so a self-hoster's page shown it by mistake says "we" for a party that is not there.
+`landing-page.render.test.tsx` stages all three by name — the first two as the generic voice, the
+third as the sign-in form — and pins that the field picks copy and only copy — on an `open`-mode
+instance it changes nothing, since there is no request form for it to reword.
+
+**The variant is a prop, not a hook read inside the form.** `landing-page.tsx` is the one place that
+decides, from one fetch; the form renders either voice from a literal, so both are pinned in
+`invite-request-form.render.test.tsx` without an API and without mocking the hook, and a second
+consumer of the form could not quietly acquire a second source for the same fact.
+
+**`useRegistrationMode` is `useInstanceConfig`, and hands the body back whole.** The landing page
+reads two facts from one answer, and a hook that returned one of them would have had it fetching
+twice or guessing the other. Nothing else about it moved: `null` when unknown or failed, one fetch
+per mount, nothing in browser storage.
+
+**The sign-in line lost "or setting this instance up", by the owner's call.** It read "Have an
+account or an invitation, or setting this instance up? Sign in", and the third clause named the
+operator whose first sign-in creates the first account. That audience exists for one moment — before
+any account exists — and the operator docs already send them to Sign In for it: the front door's
+install guide says to press Sign In and that the first account to sign in is theirs, and its
+troubleshooting page answers "The home page asks for an invite — how do I sign in?" outright. A
+clause on every stranger's screen, in both voices, for a reader who is there once and has
+instructions in hand, was the wrong place to say it. The render test that pinned the phrase now pins
+the two audiences the line still names.
