@@ -39,6 +39,7 @@ export const DIVE_FORM_FIELDS = [
   "species_uuids",
   "notes",
   "mixture.po2_limit",
+  "mixture.helium",
   "mixture.start_pressure",
   "mixture.end_pressure",
   "mixture.role",
@@ -76,20 +77,25 @@ export const MIXTURE_FORM_FIELDS = DIVE_FORM_FIELDS.filter(isMixtureField);
  * `id` and `gas_number` have no input at all - the first is stripped on submit, the
  * second round-trips untouched from an imported file.
  *
- * `volume`, `oxygen` and `helium` became blank-able when a cylinder was allowed to
- * record a mix with no vessel, and they are exempt on the substance rather than on
- * the type: they are what a cylinder *is*. A tank card that can lose all three
- * records a row with nothing in it, and "Add Mixture" would propose `DEFAULT_MIXTURE`
- * where the diver could neither see nor change it - which is the half of that change
- * the split was chosen to protect. Hiding them would also want three new members on
- * the API's own enum, since a hidden set is validated there.
+ * `volume` and `oxygen` became blank-able when a cylinder was allowed to record a mix
+ * with no vessel, and they are exempt on the substance rather than on the type: they
+ * are what a cylinder *is*. A tank card that can lose both records a row with nothing
+ * in it, and "Add Mixture" would propose `DEFAULT_MIXTURE` where the diver could
+ * neither see nor change it - which is the half of that change the split was chosen to
+ * protect.
+ *
+ * `helium` was exempt with them and is not any more. It is the one of the three a diver
+ * can be certain about without measuring: air and nitrox have none, so a logbook that
+ * never records a trimix fill is asking a question whose answer is always the same. A
+ * cylinder recording no helium is a cylinder of air; one recording no volume or oxygen
+ * says nothing at all. The API grew a `mixture.helium` member to match, since a hidden
+ * set is validated there.
  */
 export const NON_HIDEABLE_MIXTURE_SCHEMA_KEYS = [
   "id",
   "gas_number",
   "volume",
   "oxygen",
-  "helium",
 ] as const;
 
 /**
@@ -164,6 +170,7 @@ export const DIVE_FORM_FIELD_REGISTRY: readonly DiveFormFieldEntry[] = [
   { key: "species_uuids", label: "Species spotted", group: "Species" },
   { key: "notes", label: "Notes", group: "Notes" },
   { key: "mixture.po2_limit", label: "ppO₂ limit", group: "Gas mixtures" },
+  { key: "mixture.helium", label: "He", group: "Gas mixtures" },
   {
     key: "mixture.start_pressure",
     label: "Start pressure",
@@ -178,10 +185,10 @@ export const DIVE_FORM_FIELD_REGISTRY: readonly DiveFormFieldEntry[] = [
  * The inputs the Fields dialog lists as always shown, so a diver looking for "Duration"
  * finds it rather than a gap where it should be.
  *
- * Three of them are required by the create schema; the three cylinder fields are
- * exempt rather than required - see `NON_HIDEABLE_MIXTURE_SCHEMA_KEYS`. Both reasons
- * end in the same row: a switch that is on and will not move, which is the only claim
- * the panel makes about either.
+ * Three of them are required by the create schema; the two cylinder fields are exempt
+ * rather than required - see `NON_HIDEABLE_MIXTURE_SCHEMA_KEYS`. Both reasons end in
+ * the same row: a switch that is on and will not move, which is the only claim the
+ * dialog makes about either.
  */
 export const DIVE_FORM_ALWAYS_ON_FIELDS: readonly {
   label: string;
@@ -192,7 +199,6 @@ export const DIVE_FORM_ALWAYS_ON_FIELDS: readonly {
   { label: "Duration", group: "Dive info" },
   { label: "Volume", group: "Gas mixtures" },
   { label: "O₂", group: "Gas mixtures" },
-  { label: "He", group: "Gas mixtures" },
 ];
 
 /**
@@ -248,6 +254,7 @@ export const EMPTY_DIVE_FORM_VALUES: Readonly<
   species_uuids: [],
   notes: "",
   "mixture.po2_limit": "",
+  "mixture.helium": "",
   "mixture.start_pressure": "",
   "mixture.end_pressure": "",
   "mixture.role": "",

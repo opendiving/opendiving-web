@@ -15209,17 +15209,27 @@ panel.
 Optionality is measured with `safeParse(undefined)` rather than read off `.optional()`, because
 `start_time` and `duration` are built by helpers and a `.default()` accepts `undefined` too.
 
-**Three cylinder fields are exempt by name, and that is a decision rather than a technicality.**
-`id` and `gas_number` have no input at all. `volume`, `oxygen` and `helium` became blank-able when a
-cylinder was allowed to record a mix with no vessel (see "A cylinder may record a mix with no
-vessel, and three fields stopped being numbers"), so the guard would now demand they be hideable —
-and they are what a cylinder _is_. A tank card that can lose all three records a row saying nothing,
-and "Add Mixture" would go on proposing `DEFAULT_MIXTURE` where the diver could neither see nor
-change it, which is precisely the half of that change the blank/prefill split was chosen to protect.
-Hiding them would also want three new members on the API's own enum, since a hidden set is validated
-there. `NON_HIDEABLE_MIXTURE_SCHEMA_KEYS` carries the list with the reasons, the guard reads it
-rather than restating it, and a second test asserts each name is still an optional key of the
-mixture schema — so an exemption that stopped excluding anything fails rather than passing quietly.
+**Two cylinder fields are exempt by name, and that is a decision rather than a technicality.** `id`
+and `gas_number` have no input at all. `volume` and `oxygen` became blank-able when a cylinder was
+allowed to record a mix with no vessel (see "A cylinder may record a mix with no vessel, and three
+fields stopped being numbers"), so the guard would now demand they be hideable — and they are what a
+cylinder _is_. A tank card that can lose both records a row saying nothing, and "Add Mixture" would
+go on proposing `DEFAULT_MIXTURE` where the diver could neither see nor change it, which is
+precisely the half of that change the blank/prefill split was chosen to protect.
+`NON_HIDEABLE_MIXTURE_SCHEMA_KEYS` carries the list with the reasons, the guard reads it rather than
+restating it, and a second test asserts each name is still an optional key of the mixture schema —
+so an exemption that stopped excluding anything fails rather than passing quietly.
+
+**`helium` was the third of that trio and is not exempt any more.** It sat there on the strength of
+"what a cylinder is", and that argument does not survive contact with the other two: a cylinder
+recording no volume and no oxygen says nothing at all, while one recording no helium is a cylinder
+of air. It is the one of the three a diver can be certain of without measuring, so a logbook that
+never sees a trimix fill was asking a question whose answer is always zero. The API grew a
+`mixture.helium` member to match — a hidden set is validated there, so nothing on this side could
+hide it alone — and its seeded Basic and Recreational presets hide it. Existing accounts keep the
+Recreational row they were seeded with: the restore endpoint adds what is missing and never
+overwrites, which is what makes it safe to offer at any time, so an account wanting the new set
+deletes its Recreational and restores.
 
 **The keys are stored data, not labels.** A preset row and a diver's own hidden set name them, so
 renaming one is a data migration on both sides rather than a rename. The `mixture.` prefix is chosen
