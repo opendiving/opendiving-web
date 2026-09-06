@@ -37,9 +37,10 @@ interface InviteRequestsTableProps {
  * left flipped, and multi-select is canonically a checkbox. The select-all needs
  * the third state on top of that: `indeterminate` for a partial selection, which
  * `role="switch"` cannot express - ARIA gives it two states and forbids
- * `aria-checked="mixed"`. The page's "N addresses selected" `aria-live` region
- * above this table remains the channel a screen reader actually announces; the
- * dash is what a sighted operator reads.
+ * `aria-checked="mixed"`. A native checkbox exposes the mixed state to assistive
+ * tech as well as drawing the dash, so it is a channel of its own; the page's
+ * "N addresses selected" `aria-live` region above this table is the complement,
+ * announced as the selection changes rather than when the box is reached.
  *
  * `has_account` earns a marker rather than a filter or a hidden row. The public
  * request form cannot tell whether an address already has an account (it must

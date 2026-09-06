@@ -1453,10 +1453,20 @@ checkbox, in this app and in every other, and `/admin/invites` is the only place
 The tri-state is what made the difference concrete rather than a matter of taste. The select-all is
 `indeterminate` on a partial selection - on when every row is selected, dashed when only some are -
 and ARIA gives `role="switch"` two states and forbids `aria-checked="mixed"`, so as a switch it read
-as plain off while rows were selected. `/admin/invites` prints "N addresses selected" in an
-`aria-live` region directly above the table, which is more precise than "some" and is still the only
-one of the pair a screen reader announces; the dash is the sighted operator's half, and it had no
-substitute at all.
+as plain off while rows were selected.
+
+**That loss was not sighted-only, and the first draft of this section said it was.** Setting the
+`indeterminate` DOM property on a native checkbox puts the control in the mixed state in the
+accessibility tree, and a screen reader reads it out - "partially checked", or the equivalent - so
+the dash is a channel for everyone. What it is not is a channel that speaks by itself: it is heard
+when the user reaches the header box, not when a row is ticked. That is what `/admin/invites`'s "N
+addresses selected" `aria-live` region above the table is for, and the two are complementary rather
+than a pair with one silent half. The sweep's own write-up had this right with a qualifier - the
+live region was "the only one of the two a screen reader announced _as it changed_" - and the
+walk-back's first draft dropped the three italicised words in all three places it repeated the
+sentence, turning a true claim about live announcement into a false one about audibility. It was
+caught in review before it merged; the point of writing it down is that the same shortening is
+available every time one of these comments is re-flowed.
 
 Restoring the deleted `<input type="checkbox">` beat the `@radix-ui/react-checkbox` the previous
 section had nominated. `indeterminate` is a DOM property and not an attribute, so React will not
