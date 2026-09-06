@@ -55,6 +55,7 @@ export function DiveFormPresetSaveAs({
   const inputRef = useRef<HTMLInputElement>(null);
   const inputId = useId();
   const listId = useId();
+  const optionId = (index: number) => `${listId}-option-${index}`;
 
   const trimmed = name.trim();
   const existing = findByName(presets, trimmed);
@@ -126,6 +127,14 @@ export function DiveFormPresetSaveAs({
             role="combobox"
             aria-expanded={isOpen}
             aria-controls={listId}
+            // Without this the arrow keys move a highlight only a sighted diver can
+            // follow: focus never leaves the input, so a screen reader is told which
+            // row is active by this and by nothing else. Same contract as
+            // `VolumeCombobox` and `CreatableCombobox` - see "Dropdowns are navigable
+            // with Up/Down and Enter" in DECISIONS.md.
+            aria-activedescendant={
+              isOpen && activeIndex >= 0 ? optionId(activeIndex) : undefined
+            }
             aria-autocomplete="list"
             autoComplete="off"
             value={name}
@@ -166,30 +175,34 @@ export function DiveFormPresetSaveAs({
             // dialog's `overflow-y-auto` rather than floating over it - measured at
             // 65px cut off with three presets. Nothing here can outgrow that: the
             // control only ever sits at the foot of the Fields tab.
-            <ul
+            <div
               id={listId}
               role="listbox"
               className="absolute bottom-full z-50 mb-1 max-h-60 w-full overflow-auto rounded-md border bg-popover p-1 shadow-md"
             >
+              {/* Buttons directly inside the listbox, with no `<li>` between: a
+                  `<ul>` would make the listbox own `listitem`s rather than the
+                  `option`s it is declared to own. The other two dropdowns here are
+                  built the same way. */}
               {matches.map((preset, index) => (
-                <li key={preset.uuid}>
-                  <button
-                    type="button"
-                    role="option"
-                    aria-selected={index === activeIndex}
-                    onMouseDown={(event) => {
-                      event.preventDefault();
-                      pick(preset);
-                    }}
-                    className={`w-full rounded-sm px-2 py-1.5 text-left text-sm ${
-                      index === activeIndex ? "bg-accent" : ""
-                    }`}
-                  >
-                    {preset.name}
-                  </button>
-                </li>
+                <button
+                  key={preset.uuid}
+                  type="button"
+                  id={optionId(index)}
+                  role="option"
+                  aria-selected={index === activeIndex}
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                    pick(preset);
+                  }}
+                  className={`w-full rounded-sm px-2 py-1.5 text-left text-sm ${
+                    index === activeIndex ? "bg-accent" : ""
+                  }`}
+                >
+                  {preset.name}
+                </button>
               ))}
-            </ul>
+            </div>
           )}
         </div>
         <Button type="submit" disabled={disabled || trimmed.length === 0}>

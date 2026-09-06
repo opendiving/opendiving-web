@@ -14882,12 +14882,12 @@ input — and it makes "Technical", the preset that shows everything, the empty 
 
 **A preset is a snapshot, not a live profile.** Applying one copies its `hidden_fields` into the
 account's current state; toggling a field afterwards changes the state and not the preset, until the
-diver writes it back with "Update with current fields" or saves a new one. So the panel marks the
-preset whose set _equals_ the stored state and marks nothing when none does — nothing remembers
-which one was applied last, and there is nothing to go stale. This is Lightroom's model rather than
-VS Code's; the live alternative has no separate current state to store, at the price of every
-one-off "show me altitude just this once" permanently editing a preset, and of a diver who has
-deleted all their presets having nowhere to toggle into.
+diver writes it back from "Save as" under its own name. So the Fields menu marks the preset whose
+set _equals_ the stored state and marks nothing when none does — nothing remembers which one was
+applied last, and there is nothing to go stale. This is Lightroom's model rather than VS Code's; the
+live alternative has no separate current state to store, at the price of every one-off "show me
+altitude just this once" permanently editing a preset, and of a diver who has deleted all their
+presets having nowhere to toggle into.
 
 The mark is by set _equality_ against the stored state and not against the effective one, so editing
 an old technical dive under Recreational still reads "Recreational" even with its cylinders revealed
@@ -15008,9 +15008,9 @@ The invariant, and the thing the suite pins: **persisting a toggle never resets 
 the prefill or refetches the last dive.** Anything added to that dependency list later has to be a
 value, not an object.
 
-The write itself is debounced and flushed on unmount, so ticking three boxes in a row is one request
-and a diver who ticks one and leaves immediately still saved it. `SAVE_DEBOUNCE_MS` in the hook is
-the figure and the only place it is written down.
+The write itself is debounced and flushed on unmount, so flipping three switches in a row is one
+request and a diver who flips one and leaves immediately still saved it. `SAVE_DEBOUNCE_MS` in the
+hook is the figure and the only place it is written down.
 
 ## The Fields control is a menu with a dialog behind it, and neither is in the form
 
@@ -15107,10 +15107,13 @@ glance. It is why the page tests now close the dialog before asserting on a fiel
 itself moved, not just the query.
 
 **Opening focus is taken off the first control on purpose.** Radix focuses the first tabbable
-descendant, which here is a preset's "Update with current fields" — a button that overwrites a saved
-preset. Enter should not be that key on a dialog just opened, so `onOpenAutoFocus` puts focus on the
-content container instead, with `focus:outline-none` because a ring around the whole dialog reads as
-an error. `ConfirmDialog` makes the same move one step further, onto Cancel, for the same reason.
+descendant, and what that is has already changed once inside this change — it was a preset's "Update
+with current fields", a button that overwrote a saved preset, and it is the Fields tab trigger now
+that the tabs have landed. That is the argument rather than an aside: what Enter falls on is a
+consequence of the layout, so a dialog that lets DOM order decide it decides it afresh every time
+the layout moves. `onOpenAutoFocus` puts focus on the content container instead, with
+`focus:outline-none` because a ring around the whole dialog reads as an error. `ConfirmDialog` makes
+the same move one step further, onto Cancel, for the same reason.
 
 **A switch shows the _effective_ state and edits the _stored_ one.** Turning one on stores the key
 visible; turning it off stores it hidden _and_ drops it from the revealed set, so a field an edit
