@@ -112,6 +112,26 @@ async function requestLink(redirectTo: string | null) {
   return user;
 }
 
+// The code field is six single-character inputs in a `role="group"` (Radix's
+// one-time-password field), so there is no one element to type into or read back
+// - focus walks itself from box to box as digits land. `check-email-card.test.tsx`
+// holds the behaviour; these two only need the digits in and the value back out.
+const codeBoxes = () =>
+  screen.getAllByRole("textbox", { name: /^Character \d of 6$/ });
+
+const typedCode = () =>
+  codeBoxes()
+    .map((box) => (box as HTMLInputElement).value)
+    .join("");
+
+async function typeCode(
+  user: ReturnType<typeof userEvent.setup>,
+  digits: string,
+) {
+  await user.click(codeBoxes()[0]);
+  await user.keyboard(digits);
+}
+
 // Runs out the 30s resend cooldown without waiting 30 seconds.
 //
 // Two awkward constraints meet here. Testing Library's async helpers don't
@@ -134,6 +154,62 @@ async function runOutCooldown() {
   }
   vi.useRealTimers();
 }
+
+describe("AuthForm heading", () => {
+  // The landing page's hero introduces the form itself, so a heading inside the
+  // card would only say the same thing twice one level down.
+  it("renders no heading when the page didn't ask for one", async () => {
+    render(<AuthForm redirectTo={null} />);
+
+    await screen.findByLabelText("Email");
+    expect(
+      screen.queryByRole("heading", { name: /sign in/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  // `/signin` is one of the few chrome-free routes that does not already fail
+  // axe's `page-has-heading-one`, and moving its heading into the card is what
+  // could have cost it that - so the level is asserted, not just the text.
+  it("makes the title the page's h1 when one is given", async () => {
+    render(
+      <AuthForm redirectTo={null} title="Sign in" description="No password." />,
+    );
+
+    const heading = await screen.findByRole("heading", { name: "Sign in" });
+    expect(heading.tagName).toBe("H1");
+    expect(screen.getByText("No password.")).toBeInTheDocument();
+  });
+
+  // And it has to survive the swap. `CheckEmailCard` replaces this component
+  // outright, so without the level travelling with it the page would lose its
+  // only `h1` the moment a link went out.
+  it("hands the h1 on to the card that replaces it", async () => {
+    const user = userEvent.setup();
+    render(<AuthForm redirectTo={null} title="Sign in" />);
+
+    await user.type(screen.getByLabelText("Email"), "diver@example.com");
+    await user.click(screen.getByRole("button", { name: /^sign in$/i }));
+
+    const heading = await screen.findByRole("heading", {
+      name: "Check your email",
+    });
+    expect(heading.tagName).toBe("H1");
+  });
+
+  // On the landing page it stays an `h3`, nested under the hero's own `h1`.
+  it("leaves that card an h3 where the page has its own heading", async () => {
+    const user = userEvent.setup();
+    render(<AuthForm redirectTo={null} />);
+
+    await user.type(screen.getByLabelText("Email"), "diver@example.com");
+    await user.click(screen.getByRole("button", { name: /^sign in$/i }));
+
+    const heading = await screen.findByRole("heading", {
+      name: "Check your email",
+    });
+    expect(heading.tagName).toBe("H3");
+  });
+});
 
 describe("AuthForm", () => {
   it("remembers where the diver was headed when requesting a link", async () => {
@@ -180,24 +256,35 @@ describe("AuthForm", () => {
     await user.click(screen.getByRole("button", { name: /^resend link$/i }));
     await screen.findByText("Link resent - check your email.");
 
-    await user.type(screen.getByLabelText(/enter the code/i), "481052");
-    await user.click(screen.getByRole("button", { name: /^verify$/i }));
+    await typeCode(user, "481052");
 
     expect(verifyEmailCode).toHaveBeenCalledWith("req-2", "481052");
   });
 
   // The code in the previous email no longer signs anyone in, so leaving it typed
   // would only lead the diver into spending one of five attempts on it.
+  //
+  // Four digits, not six, and that is the whole point of the case. Six auto-submit
+  // the instant the last one lands, which leaves the card mid-verify - so a resend
+  // arriving on a *complete* code is a state no diver types their way into, and a
+  // test that used one would be asserting against a card that had already signed
+  // in. Half-typed is the only way the boxes are still full of a dead code when
+  // the resend lands, which is why this is the case worth pinning.
   it("clears a half-typed code when the link is resent", async () => {
     const user = await requestLink(null);
 
-    await user.type(screen.getByLabelText(/enter the code/i), "481052");
+    await typeCode(user, "4810");
+    // Both halves of "the resend is what cleared it": the digits really are in
+    // the boxes first, and nothing went out - so the failure path, which also
+    // clears, cannot be what empties them below.
+    expect(typedCode()).toBe("4810");
+    expect(verifyEmailCode).not.toHaveBeenCalled();
+
     await runOutCooldown();
     await user.click(screen.getByRole("button", { name: /^resend link$/i }));
 
-    await waitFor(() =>
-      expect(screen.getByLabelText(/enter the code/i)).toHaveValue(""),
-    );
+    await waitFor(() => expect(typedCode()).toBe(""));
+    expect(verifyEmailCode).not.toHaveBeenCalled();
   });
 });
 

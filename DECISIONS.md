@@ -8784,12 +8784,15 @@ same moment.
 
 **Two small traps in the input itself:**
 
-- **No `maxLength`.** The email prints the code as `481 052`, so the obvious gesture is to select
-  and paste it — and `maxLength={6}` truncates that paste to `481 05` _before_ any `onChange`
-  normalizer sees it, silently losing the last digit. The normalizer alone (strip non-digits, slice
-  to six) does the whole job.
-- **_Verify_ stays disabled until all six digits are in.** Not tidiness: the API allows five wrong
+- **Nothing may truncate a paste before it is sanitized.** The email prints the code as `481 052`,
+  so the obvious gesture is to select and paste it — and a `maxLength={6}` on a single text input
+  truncates that paste to `481 05` _before_ any `onChange` normalizer sees it, silently losing the
+  last digit. That input is gone now (see below) and Radix handles the paste at the group, but the
+  ordering is the lesson: sanitize, then bound, never the other way round.
+- **Nothing goes out before all six digits are in.** Not tidiness: the API allows five wrong
   attempts before it nulls the code, and a half-typed submission would spend one of them on nothing.
+  This used to be a disabled _Verify_ button; the button is gone (see below) and the check now lives
+  in `handleVerify`, which is the only place left that can hold a short code back.
 
 **Routing is by the `redirectTo` prop — not through `localStorage`.** The mechanisms in "The
 destination round-trips through `lib/auth-redirect.ts`" above split on whether the flow leaves the
@@ -8805,6 +8808,98 @@ about. The passkey ceremony is the in-tab sibling to point at instead.
 `authAPI`'s three hand-rolled "capture the access token if this outcome carries one" blocks became
 one `captureSession` helper on the way past, since the code path would have been a fourth identical
 copy.
+
+### The code field is Radix's one-time-password field, not one text input
+
+`CheckEmailCard` renders `@radix-ui/react-one-time-password-field` — six single-character inputs in
+a `role="group"` — through a thin styled wrapper in `components/ui/one-time-password-field.tsx`. It
+replaced a single `<Input>` with a hand-written `normalizeCode` (strip non-digits, slice to six) and
+`tracking-[0.3em]`.
+
+**What the primitive buys is the pile of small behaviours that input never had.** Focus walks
+forward as each digit lands and back on Backspace, arrow keys move between boxes, Delete and cut
+close the gap rather than leaving a hole, a paste anywhere in the group fills all six, and
+`validationType="numeric"` drops whitespace and non-digits on every path in — typing, pasting and
+the controlled `value` prop alike, which is exactly what `normalizeCode` was for. It also keeps
+`autoComplete="one-time-code"` working: only the current tab stop carries it, and the other five are
+marked `data-1p-ignore`/`data-lpignore` so a password manager offers the code once instead of six
+times.
+
+**Four things about it that are not obvious from the outside:**
+
+- **The root is a group, so `<Label htmlFor>` has nothing to point at.** The visible text is a
+  `<span id="signin-code-label">` and the group takes `aria-labelledby`; each box gets its own
+  "Character N of 6" from Radix. Anything reaching for this field in a test wants
+  `getAllByRole("textbox", { name: /^Character \d of 6$/ })`. `getByLabelText(/enter the code/i)`
+  used to hand back the field itself, and the trap is that it still resolves rather than throwing:
+  Testing Library's `queryAllByLabelText` collects any element carrying `aria-labelledby`, form
+  control or not, so it now returns the `role="group"` div — which nothing can be typed into. A
+  query that fails by returning the wrong element is worse than one that fails loudly, and it is why
+  two files' worth of tests had to learn the difference.
+- **There is no submit button, and two separate paths reach `handleVerify`.** `autoSubmit` fires the
+  form the instant the sixth character lands, and Enter anywhere in the group calls
+  `form.requestSubmit()` too. Neither goes near a button, so a `disabled` attribute can no longer
+  hold a short code back and `handleVerify`'s own `isCodeComplete` check is the whole guard.
+  Deleting it looks safe — auto-submit only fires on a full field — and it is not: the Enter path
+  spends one of five attempts on four digits.
+- **A rejected code is emptied out of the boxes, and that is not tidiness.** Auto-submit fires on
+  every _change_ to a full field, so a wrong code left on screen turns each keystroke of the
+  correction into another of the five attempts the API allows — retyping six digits over a wrong six
+  exhausts the row before the last one lands. Emptying makes a retype cost exactly one attempt.
+  **Every failure clears, and a 429 is not an exception.** A rate-limited attempt was refused by the
+  per-IP limiter before the code was read, so it spent nothing and those digits were arguably still
+  good — which is the case for branching on the status and keeping them. It was built that way and
+  then taken back out, because keeping them costs more than it saves: six unchanged digits cannot
+  resend themselves (auto-submit needs a _change_ of value) and there is no button, so the only
+  gesture left is Enter inside the field, which nothing on screen conveys without a second
+  conditional hint to teach it. One rule that always holds beats a second state that has to be
+  explained, and the diver has the email open in front of them either way.
+- **Clearing has to move focus with it.** Radix leaves focus in box six, and its roving-focus rule
+  only bounds which box is _tabbable_ — a digit typed into a focused box six of an empty code is
+  written to position six, which reads as a broken field. `restartCodeEntry` empties the value and
+  focuses the first input, and both the resend path and the failure path go through it.
+
+The hint under the field is rendered unconditionally, and that is load-bearing: `aria-describedby`
+on the group names it, so swapping it out for the in-flight status line — which an earlier draft did
+— leaves that reference dangling for as long as a request is out. The status line is rendered
+_beside_ it instead.
+
+**The in-flight state is `readOnly`, not `disabled`.** With the button gone, freezing the field is
+the only thing that says a request is out — and `disabled` on the Radix root drops focus out of the
+group entirely, so a rejected code leaves the diver reaching for the mouse to get back to boxes they
+were already in. `readOnly` freezes the digits and keeps the caret. A `role="status"` line under the
+field carries the spinner the button used to.
+
+The boxes are `flex-1 min-w-0` rather than a fixed width. Six 40px boxes and their gaps come to
+280px; measured in a 320px viewport, the card is 288px wide and its content box 240px — so a fixed
+width overflows by 40px on the one screen this card is most likely to be read on. Sharing the row
+instead, the boxes come out 33px wide there and 57px on a desktop, and neither needs a breakpoint.
+
+### `/signin`'s heading moved inside the card, and the level had to travel with it
+
+The page used to open with an `h1` "Sign in" and a muted line above `AuthForm`'s card. Both now sit
+_inside_ the card, in the same icon/heading/blurb block `CheckEmailCard` opens with — so the page
+reads as one object, and the header does not jump out of the layout the moment a link goes out and
+one card is swapped for the other.
+
+**`AuthForm` renders that block only when a page passes `title`.** The landing page mounts the same
+component in its hero, which already introduces the form; a heading inside the card there would say
+the same thing again one level down. So the block is opt-in rather than default, and `/signin` is
+its only caller.
+
+**The level is the part that is easy to get wrong, and it is not cosmetic.** "The chrome-free routes
+had no `<main>`" below records the state of the axe sweep: `/auth/verify`, `/settings/confirm-email`
+and `/onboarding` all fail `page-has-heading-one` with no `<h1>` at all, and `/signin` is explicitly
+one of the clean ones. Rendering the card's heading at `CheckEmailCard`'s `h3` would have quietly
+joined it to that list — the page has no other heading.
+
+So the heading is an `h1` here, sized by the classes rather than by the level, exactly the trade
+`CardTitle`'s `as` prop documents. And it has to survive the swap: `CheckEmailCard` **replaces**
+`AuthForm` rather than rendering inside it, so without a `titleAs` prop threaded through, `/signin`
+would lose its only `h1` the second a link was sent — the one state a scan of the URL never sees. It
+defaults to `h3`, which is what the landing page needs, and `AuthForm` passes `h1` when it was given
+a title of its own. `auth-form.test.tsx` asserts the tag name in all four combinations, since
+nothing about the rendered page looks different when this is wrong.
 
 ### A 401 from a sign-in endpoint must not go down the refresh path
 

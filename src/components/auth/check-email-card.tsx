@@ -1,20 +1,26 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  OneTimePasswordField,
+  OneTimePasswordFieldInput,
+} from "@/components/ui/one-time-password-field";
 import { useAuth } from "@/contexts/AuthContext";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { destinationForOutcome } from "@/lib/auth-redirect";
 import { cn } from "@/lib/utils";
-import { MailCheck } from "lucide-react";
-import { ButtonSpinner } from "@/components/ui/button-spinner";
+import { Loader2, MailCheck } from "lucide-react";
 import { StatusMessage } from "@/components/ui/status-message";
 
 interface CheckEmailCardProps {
   className?: string;
+  // The heading level for "Check your email". `h3` suits the landing page, where
+  // this card swaps in under the hero's own `h1`; `/signin` passes `h1`, because
+  // there this card *replaces* the only heading the page has (see `AuthForm`).
+  // Only the tag changes - the size is carried by the classes, the same trade
+  // `CardTitle`'s `as` makes.
+  titleAs?: "h1" | "h3";
   // The address the email just went to, shown back to the diver so a typo is
   // obvious before they go looking in the wrong inbox.
   email: string;
@@ -40,14 +46,6 @@ const RESEND_COOLDOWN_SECONDS = 30;
 
 const CODE_LENGTH = 6;
 
-// The email prints the code spaced - "481 052" - so a paste carries a space, and
-// anything that isn't a digit is dropped rather than rejected. Note what is *not*
-// here: a `maxLength` on the input would truncate that same paste to "481 05"
-// before this ever ran, losing the last digit.
-function normalizeCode(value: string): string {
-  return value.replace(/\D/g, "").slice(0, CODE_LENGTH);
-}
-
 // The "a link is on its way" half of `AuthForm`, and the one screen where the code
 // from that same email can be typed.
 //
@@ -58,6 +56,7 @@ function normalizeCode(value: string): string {
 // whichever is used first consumes it and the other stops working.
 export function CheckEmailCard({
   className,
+  titleAs: Title = "h3",
   email,
   requestId,
   redirectTo,
@@ -75,6 +74,16 @@ export function CheckEmailCard({
   const [isVerifying, setIsVerifying] = useState(false);
   const { verifyEmailCode } = useAuth();
   const router = useRouter();
+  const codeFieldRef = useRef<HTMLDivElement>(null);
+
+  // Puts the caret back in the first box after the value is emptied. Without it
+  // focus stays wherever it was - box six, most likely - and Radix will happily
+  // write the next digit typed there into position six of an otherwise empty
+  // code, which looks like the field is broken.
+  const restartCodeEntry = () => {
+    setCode("");
+    codeFieldRef.current?.querySelector("input")?.focus();
+  };
 
   // Ticks `cooldown` down to zero, one second at a time. Scheduling the next tick
   // from inside the timeout callback (rather than an interval tied to mount) means
@@ -97,7 +106,7 @@ export function CheckEmailCard({
       // A resend supersedes the previous request row, so whatever was half-typed
       // is a code for an email that no longer signs anyone in - clearing it beats
       // letting the diver submit it and be told it's invalid.
-      setCode("");
+      restartCodeEntry();
       setCodeError(null);
       setResendMessage("Link resent - check your email.");
       setCooldown(RESEND_COOLDOWN_SECONDS);
@@ -114,6 +123,10 @@ export function CheckEmailCard({
 
   const handleVerify = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    // The only gate there is. Nothing on screen can be disabled to stop a short
+    // code any more - the field submits itself, and Enter submits it too - so this
+    // is what keeps a half-typed code from spending one of the five attempts the
+    // API allows before the code dies.
     if (!isCodeComplete || isVerifying) return;
 
     setIsVerifying(true);
@@ -136,6 +149,14 @@ export function CheckEmailCard({
         getApiErrorMessage(err, "Couldn't check that code. Please try again."),
       );
       setIsVerifying(false);
+      // Emptied rather than left on screen, whatever the failure was, and that is
+      // the price of having no submit button. Auto-submit fires on every change to
+      // a full field, so a rejected code that stays put turns each keystroke of
+      // the correction into another of the five attempts the API allows - six
+      // digits retyped over a wrong six would exhaust the row before the last one
+      // landed. Retyping into an empty field costs exactly one, and the diver has
+      // the email open in front of them either way.
+      restartCodeEntry();
     }
   };
 
@@ -147,25 +168,82 @@ export function CheckEmailCard({
       )}
     >
       <MailCheck className="mx-auto mb-3 h-10 w-10 text-primary" />
-      <h3 className="text-lg font-semibold text-foreground">
+      <Title className="text-lg font-semibold text-foreground">
         Check your email
-      </h3>
+      </Title>
       <p className="mt-1 text-sm text-muted-foreground">
         We sent a sign-in link and a six-digit code to{" "}
         <span className="font-medium text-foreground">{email}</span>. Either one
         signs you in - they expire in 30 minutes and can only be used once.
       </p>
 
-      {resendMessage && (
-        <StatusMessage variant="success" className="mt-4">
-          {resendMessage}
-        </StatusMessage>
-      )}
-      {resendError && (
-        <StatusMessage variant="error">{resendError}</StatusMessage>
-      )}
+      <form onSubmit={handleVerify} className="mt-6 space-y-3 text-left">
+        {/* A `<span>` rather than the `Label` component: the field below is a
+            `role="group"` of six inputs, not one control, so there is nothing for
+            `htmlFor` to point at. `aria-labelledby` names the group instead, and
+            each box keeps its own "Character N of 6" label from Radix. */}
+        <span
+          id="signin-code-label"
+          className="block text-sm font-medium leading-none"
+        >
+          Enter the code from the email
+        </span>
+        <OneTimePasswordField
+          ref={codeFieldRef}
+          aria-labelledby="signin-code-label"
+          aria-describedby="signin-code-hint"
+          value={code}
+          onValueChange={setCode}
+          // Submits itself once the sixth digit lands, so there is no Verify
+          // button to press. `handleVerify` is what holds a short code back.
+          autoSubmit
+          // Not `disabled`: that drops focus out of the group, and getting it
+          // back after a rejection is the diver's problem to solve with a mouse.
+          // `readOnly` freezes the digits in place and leaves the caret where
+          // they left it.
+          readOnly={isVerifying}
+        >
+          {Array.from({ length: CODE_LENGTH }, (_, index) => (
+            // `index` is passed rather than left to the collection to work out, so
+            // the boxes are ordered on the server render too and nothing reshuffles
+            // at hydration.
+            <OneTimePasswordFieldInput key={index} index={index} />
+          ))}
+        </OneTimePasswordField>
+        {/* Rendered unconditionally, because `aria-describedby` above names it:
+            swapping it out for the status line below would leave that pointing
+            at nothing for as long as a request is in flight. */}
+        <p id="signin-code-hint" className="text-xs text-muted-foreground">
+          Useful when you&apos;re reading the email on another device.
+        </p>
+        {isVerifying && (
+          // The only sign anything is happening, now that there is no button to
+          // put a spinner in. `role="status"` so it is announced rather than only
+          // seen.
+          <p
+            role="status"
+            className="flex items-center gap-2 text-xs text-muted-foreground"
+          >
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            Checking your code...
+          </p>
+        )}
+        {codeError && (
+          <StatusMessage variant="error">{codeError}</StatusMessage>
+        )}
+      </form>
 
-      <div className="mt-4 flex flex-col items-center gap-2">
+      <div className="mt-6 flex flex-col items-center gap-2 border-t pt-4">
+        {resendMessage && (
+          <StatusMessage variant="success" className="mb-2 w-full text-left">
+            {resendMessage}
+          </StatusMessage>
+        )}
+        {resendError && (
+          <StatusMessage variant="error" className="mb-2 w-full text-left">
+            {resendError}
+          </StatusMessage>
+        )}
         <button
           type="button"
           onClick={handleResend}
@@ -186,50 +264,6 @@ export function CheckEmailCard({
           Use a different email
         </button>
       </div>
-
-      <form
-        onSubmit={handleVerify}
-        className="mt-6 space-y-2 border-t pt-4 text-left"
-      >
-        <Label htmlFor="signin-code">Or enter the code from the email</Label>
-        <div className="flex gap-2">
-          <Input
-            id="signin-code"
-            type="text"
-            inputMode="numeric"
-            // Lets a browser that can read the code out of the email offer it,
-            // rather than making the diver switch apps to copy six digits.
-            autoComplete="one-time-code"
-            placeholder="000000"
-            value={code}
-            onChange={(event) => setCode(normalizeCode(event.target.value))}
-            className="tracking-[0.3em]"
-          />
-          {/* Held closed until all six digits are in: the API allows five wrong
-              attempts before the code dies, and a half-typed submission would
-              spend one of them for nothing. */}
-          <Button
-            type="submit"
-            variant="outline"
-            disabled={!isCodeComplete || isVerifying}
-          >
-            {isVerifying ? (
-              <div className="flex items-center space-x-2">
-                <ButtonSpinner />
-                <span>Verifying...</span>
-              </div>
-            ) : (
-              "Verify"
-            )}
-          </Button>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Useful when you&apos;re reading the email on another device.
-        </p>
-        {codeError && (
-          <StatusMessage variant="error">{codeError}</StatusMessage>
-        )}
-      </form>
     </div>
   );
 }
