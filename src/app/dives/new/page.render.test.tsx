@@ -1444,12 +1444,22 @@ describe("the preset list", () => {
     await openPresetsTab();
 
     await screen.findByText("Recreational");
+    // The pencil turns the row's name into a field and itself into a tick, so the
+    // rename is typed where the old name was.
     await userEvent.click(
-      screen.getAllByRole("button", { name: /^rename$/i })[0],
+      screen.getByRole("button", { name: 'Rename "Recreational"' }),
     );
-    const field = screen.getByLabelText(/new name/i);
+    const field = screen.getByRole("textbox", {
+      name: 'New name for "Recreational"',
+    });
+    expect(field).toHaveValue("Recreational");
     await userEvent.clear(field);
-    await userEvent.type(field, "Tropics{Enter}");
+    await userEvent.type(field, "Tropics");
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: 'Save the new name for "Recreational"',
+      }),
+    );
 
     await waitFor(() =>
       expect(presets.diveFormPresetsAPI.updatePreset).toHaveBeenCalledWith(
@@ -1459,6 +1469,35 @@ describe("the preset list", () => {
     );
     expect(await screen.findByText("Tropics")).toBeInTheDocument();
     expect(screen.queryByText("Recreational")).not.toBeInTheDocument();
+  });
+
+  it("leaves the row alone when the rename is cancelled", async () => {
+    // Delete becomes Cancel while a row is being edited: a delete button beside a
+    // half-typed rename is one mis-click from destroying the row being renamed.
+    render(<NewDivePage />);
+    await screen.findByLabelText(/duration/i);
+    await openFieldsPanel();
+    await openPresetsTab();
+
+    await screen.findByText("Recreational");
+    await userEvent.click(
+      screen.getByRole("button", { name: 'Rename "Recreational"' }),
+    );
+    expect(
+      screen.queryByRole("button", { name: 'Delete "Recreational"' }),
+    ).not.toBeInTheDocument();
+
+    await userEvent.type(
+      screen.getByRole("textbox", { name: 'New name for "Recreational"' }),
+      "Tropics",
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: 'Stop renaming "Recreational"' }),
+    );
+
+    expect(presets.diveFormPresetsAPI.updatePreset).not.toHaveBeenCalled();
+    expect(screen.getByText("Recreational")).toBeInTheDocument();
+    expect(screen.queryByText("Tropics")).not.toBeInTheDocument();
   });
 
   it("confirms before deleting, and leaves the form's fields alone", async () => {
@@ -1473,7 +1512,7 @@ describe("the preset list", () => {
 
     await screen.findByText("Recreational");
     await userEvent.click(
-      screen.getAllByRole("button", { name: /^delete$/i })[0],
+      screen.getByRole("button", { name: 'Delete "Recreational"' }),
     );
 
     expect(
@@ -1481,9 +1520,9 @@ describe("the preset list", () => {
     ).toBeInTheDocument();
     expect(presets.diveFormPresetsAPI.deletePreset).not.toHaveBeenCalled();
 
-    await userEvent.click(
-      screen.getByRole("button", { name: /^delete$/i, hidden: false }),
-    );
+    // The row's own control is named after the preset, so this is unambiguously
+    // the confirmation's button.
+    await userEvent.click(screen.getByRole("button", { name: /^delete$/i }));
 
     await waitFor(() =>
       expect(presets.diveFormPresetsAPI.deletePreset).toHaveBeenCalledWith(

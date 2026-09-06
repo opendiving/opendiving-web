@@ -74,8 +74,11 @@ export function DiveFormPresetSaveAs({
   };
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    // Escape closes the list *and*, because Radix's dialog takes it in the capture
+    // phase on `document`, the Configure dialog around it. That cannot be stopped
+    // from here and is not worth fighting: the list is a suggestion, the dialog is
+    // the thing Escape is for, and nothing typed here is persisted until Save.
     if (event.key === "Escape" && isOpen) {
-      event.preventDefault();
       close();
       return;
     }

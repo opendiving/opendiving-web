@@ -15039,6 +15039,22 @@ one are the same acts whether or not its set happens to equal what is on the for
 only invited the reading that the marked row was somehow protected. The menu keeps the mark, where
 it answers what the diver is about to pick from.
 
+**A row renames in place.** The pencil turns the name into a field and itself into a tick, so the
+new name is typed where the old one was rather than in a prompt below a list the diver then has to
+find their row in again. Delete becomes Cancel for as long as that lasts, which is two things at
+once: a delete button beside a half-typed rename is one mis-click from destroying the row being
+edited, and without the swap there is no pointer way out of the edit. Both are icons with a `title`
+and an `aria-label` naming the preset — the shape `GearItemsCard` already uses for its per-row
+actions — and saving an unchanged name is skipped rather than spent on a `PATCH` that stores what is
+already there.
+
+**Escape belongs to the dialog, and cannot be taken back.** Cancelling the rename with it looks
+obvious and does not work: Radix's dialog listens for Escape on `document` in the _capture_ phase,
+so it has already decided to close before any handler on the field runs, and `stopPropagation` from
+there is too late. A test proved it before the comment did. The same applies to the "Save as"
+suggestion list, which closes with the dialog around it — the list is a suggestion, Escape is for
+the dialog, and nothing typed in either is persisted until Save.
+
 **Saving is one control at the foot of the Fields tab, not a button per preset row.** "Save as" is a
 name with the account's presets on a dropdown and a single Save: a name matching nothing creates, a
 name matching something replaces that preset's fields. It replaced two controls that were the same
