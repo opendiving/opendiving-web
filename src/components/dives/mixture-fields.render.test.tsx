@@ -40,7 +40,7 @@ function Harness({
 }: {
   mixtures: DiveFormValues["mixtures"];
   maxDepth: number | null;
-  // The per-cylinder keys this form is *not* showing, as the Fields panel would
+  // The per-cylinder keys this form is *not* showing, as the Fields dialog would
   // have it. Given as the hidden set rather than as a predicate so a test reads the
   // way the stored preference does.
   hidden?: DiveFormFieldKey[];
@@ -600,6 +600,23 @@ describe("MixtureFields under a hidden set", () => {
     expect(screen.queryByLabelText(/^role$/i)).not.toBeInTheDocument();
     expect(screen.queryByLabelText(/ppO₂ limit/i)).not.toBeInTheDocument();
     // The card is still a card: what the cylinder holds never hides.
+    expect(screen.getAllByLabelText(/O₂ \(%\)/)).toHaveLength(2);
+    expect(screen.getAllByLabelText(/volume/i)).toHaveLength(2);
+  });
+
+  it("takes the He box off every tank card, and leaves the rest of the mix", () => {
+    // The gate the "He is hideable" change added. `volume` and `oxygen` stay - they
+    // are still exempt, on the ground that a cylinder recording neither says nothing
+    // at all, while one recording no helium is a cylinder of air.
+    render(
+      <Harness
+        mixtures={[AIR, AIR]}
+        maxDepth={20}
+        hidden={["mixture.helium"]}
+      />,
+    );
+
+    expect(screen.queryByLabelText(/He \(%\)/)).not.toBeInTheDocument();
     expect(screen.getAllByLabelText(/O₂ \(%\)/)).toHaveLength(2);
     expect(screen.getAllByLabelText(/volume/i)).toHaveLength(2);
   });

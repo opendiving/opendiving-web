@@ -98,7 +98,7 @@ export const diveFormPresetsAPI = {
 /**
  * Fetches every page of an account's dive form presets.
  *
- * The Fields panel is a list of names to pick from rather than a list view, and an
+ * The Fields menu is a list of names to pick from rather than a list view, and an
  * account has a handful of presets, so paging it would buy nothing - the same
  * reasoning as `fetchAllGearSets`, which the panel's own dropdown neighbour uses.
  */

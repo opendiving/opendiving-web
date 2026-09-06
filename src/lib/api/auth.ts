@@ -30,7 +30,7 @@ export interface User {
   // cannot talk to anyway (`PATCH /user` would 422 on the settings card's own field).
   units: UnitSystem;
   // Which dive-form fields this diver keeps hidden, in the API's canonical order
-  // (form order, duplicates collapsed) - so the Fields panel decides which preset
+  // (form order, duplicates collapsed) - so the Fields surfaces decide which preset
   // matches by comparing this list element by element.
   //
   // Not optional, for the same reason as `units` directly above and unlike
@@ -97,7 +97,7 @@ export interface UpdateProfileData {
   username?: string;
   gear_service_emails?: boolean;
   units?: UnitSystem;
-  // Replaced wholesale - there is no "hide one more" verb, because the Fields panel
+  // Replaced wholesale - there is no "hide one more" verb, because the Fields dialog
   // holds the whole set and sends it. Any order is accepted and stored canonically;
   // this client sends the canonical form anyway so what it holds and what came back
   // cannot differ. An explicit `null` is a 422.

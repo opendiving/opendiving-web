@@ -7,6 +7,7 @@ import {
   DIVE_FORM_FIELD_REGISTRY,
   EMPTY_DIVE_FORM_VALUES,
   MIXTURE_FIELD_PREFIX,
+  NON_BLANK_EMPTY_FIELD_VALUES,
   NON_HIDEABLE_MIXTURE_SCHEMA_KEYS,
   canonicalHiddenFields,
   diveFormFieldsWithErrors,
@@ -33,7 +34,7 @@ describe("the vocabulary is the form's own optional fields", () => {
   //
   // What this fails on is the case worth failing on: a new optional input added to
   // the dive form and not registered here. It cannot be hidden, it has no row in the
-  // Fields panel, and nothing else in the suite would notice.
+  // Fields dialog, and nothing else in the suite would notice.
 
   it("holds every optional top-level field of the create schema, and no others", () => {
     const optional = optionalKeysOf(
@@ -104,8 +105,8 @@ describe("the panel's registry", () => {
   });
 
   it("gives every group at least one row", () => {
-    // A group with nothing in it would render an empty heading. "Date and time" is
-    // the one carried only by its always-on rows, which is why both lists count.
+    // A group with nothing in it would render an empty heading, and a group can be
+    // carried entirely by its always-on rows, which is why both lists count.
     for (const group of DIVE_FORM_FIELD_GROUPS) {
       const rows =
         DIVE_FORM_FIELD_REGISTRY.filter((entry) => entry.group === group)
@@ -116,13 +117,39 @@ describe("the panel's registry", () => {
     }
   });
 
-  it("gives every key an empty value", () => {
+  it("gives every key a blank empty value, or a named exception", () => {
+    // Deliberately *not* fed back through `nonEmptyDiveFormFields`: `revealsField`
+    // compares the value against `EMPTY_DIVE_FORM_VALUES[key]`, so handing it that
+    // same value makes the comparison false by identity and the assertion true
+    // whatever the table holds. This asserts the property directly instead - an
+    // empty value the reveal rule would call non-empty is a key that puts itself
+    // back on screen the moment a stored dive holds one.
     for (const key of DIVE_FORM_FIELDS) {
       expect(EMPTY_DIVE_FORM_VALUES).toHaveProperty(key);
+      if (key in NON_BLANK_EMPTY_FIELD_VALUES) {
+        expect(EMPTY_DIVE_FORM_VALUES[key], key).toBe(
+          NON_BLANK_EMPTY_FIELD_VALUES[key],
+        );
+        continue;
+      }
       expect(isNonEmptyFieldValue(EMPTY_DIVE_FORM_VALUES[key]), key).toBe(
         false,
       );
     }
+  });
+
+  it("still reveals an end pressure of 0, which is a drained cylinder", () => {
+    // The other side of the same rule: `mixture.end_pressure` clears to `""`, so a
+    // stored `0` differs from its empty value and is a reading worth showing.
+    expect(
+      nonEmptyDiveFormFields({ mixtures: [{ end_pressure: 0 }] }),
+    ).toContain("mixture.end_pressure");
+    expect(nonEmptyDiveFormFields({ mixtures: [{ helium: 0 }] })).not.toContain(
+      "mixture.helium",
+    );
+    expect(nonEmptyDiveFormFields({ mixtures: [{ helium: 30 }] })).toContain(
+      "mixture.helium",
+    );
   });
 });
 

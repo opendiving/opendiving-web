@@ -271,7 +271,7 @@ export interface MixtureFieldsProps<TFieldValues extends MixtureFieldsValues> {
   fieldArray: MixtureFieldArray;
   // Which per-cylinder inputs this form renders. A hidden one is left out of every
   // tank card, and its stored value is untouched by that. Defaults to "all of them"
-  // so a caller with no Fields panel behind it - the render tests - gets the whole
+  // so a caller with no Fields dialog behind it - the render tests - gets the whole
   // card.
   isVisible?: (key: DiveFormFieldKey) => boolean;
 }
@@ -467,36 +467,44 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
               )}
             />
 
-            <FormField
-              control={control}
-              name={`mixtures.${index}.helium` as Path<TFieldValues>}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>He (%)</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      max="100"
-                      {...field}
-                      value={field.value ?? ""}
-                      onChange={(e) => {
-                        // `""` on an emptied box, for the reason O₂ above gives.
-                        // Blank is not 0 % helium here any more than it is on the
-                        // wire: a file that recorded no analysis said nothing
-                        // about helium, and writing a 0 for it would be the app
-                        // inventing the one fact that separates nitrox from
-                        // trimix.
-                        const raw = e.target.value;
-                        field.onChange(raw === "" ? "" : parseFloat(raw));
-                      }}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {isVisible("mixture.helium") && (
+              <FormField
+                control={control}
+                name={`mixtures.${index}.helium` as Path<TFieldValues>}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>He (%)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        {...field}
+                        value={field.value ?? ""}
+                        onChange={(e) => {
+                          // `""` on an emptied box, for the reason O₂ above gives.
+                          // Blank is not 0 % helium here any more than it is on the
+                          // wire: a file that recorded no analysis said nothing
+                          // about helium, and writing a 0 for it would be the app
+                          // inventing the one fact that separates nitrox from
+                          // trimix.
+                          //
+                          // *Hiding* the column does write a 0, and that is not the
+                          // same act: emptying the box is the diver declining to
+                          // answer, while hiding it is them saying they dive air and
+                          // nitrox - which is the claim that made the column hideable.
+                          // See "A hidden helium is `0`, not blank" in DECISIONS.md.
+                          const raw = e.target.value;
+                          field.onChange(raw === "" ? "" : parseFloat(raw));
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             {isVisible("mixture.start_pressure") && (
               <FormField

@@ -184,10 +184,82 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
 
   return (
     <>
-      {/* Basic Information, Trip & Course. Three fields in a two-column grid, so
-          the Course row keeps the same column width, gap and label rhythm as
-          every other row in this form - a third column here would make this the
-          one row shaped differently from the rest. */}
+      {/* Trip & Course, a pair in a two-column grid so each keeps the same column
+          width, gap and label rhythm as every other row in this form.
+
+          Guarded, and that guard is load-bearing now that Dive number has moved
+          out from under it: with both of these hidden the grid would render empty
+          and leave the form's `space-y-6` gap between the card's top and the dive
+          site, which reads as a field that failed to load. */}
+      {(isVisible("trip_uuid") || isVisible("course_uuid")) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {isVisible("trip_uuid") && (
+            <FormField
+              control={control}
+              name={"trip_uuid" as Path<TFieldValues>}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Trip</FormLabel>
+                  <FormControl>
+                    <TripCombobox
+                      userId={userId}
+                      value={field.value}
+                      onChange={field.onChange}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
+
+          {isVisible("course_uuid") && (
+            <FormField
+              control={control}
+              name={"course_uuid" as Path<TFieldValues>}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Course</FormLabel>
+                  <FormControl>
+                    <CourseCombobox
+                      userId={userId}
+                      value={field.value}
+                      onChange={field.onChange}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
+        </div>
+      )}
+
+      {/* Dive Site(s) */}
+      {isVisible("dive_site_uuids") && (
+        <FormField
+          control={control}
+          name={"dive_site_uuids" as Path<TFieldValues>}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Dive site(s)</FormLabel>
+              <FormControl>
+                <DiveSiteMultiSelect
+                  userId={userId}
+                  value={field.value ?? []}
+                  knownSites={knownDiveSites}
+                  onChange={field.onChange}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      )}
+
+      {/* Dive number. In a two-column grid holding one field, so it keeps the
+          column width every other row has - full width would make the form's one
+          always-present field its widest. */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <FormField
           control={control}
@@ -223,69 +295,7 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
             </FormItem>
           )}
         />
-
-        {isVisible("trip_uuid") && (
-          <FormField
-            control={control}
-            name={"trip_uuid" as Path<TFieldValues>}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Trip</FormLabel>
-                <FormControl>
-                  <TripCombobox
-                    userId={userId}
-                    value={field.value}
-                    onChange={field.onChange}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
-
-        {isVisible("course_uuid") && (
-          <FormField
-            control={control}
-            name={"course_uuid" as Path<TFieldValues>}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Course</FormLabel>
-                <FormControl>
-                  <CourseCombobox
-                    userId={userId}
-                    value={field.value}
-                    onChange={field.onChange}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
       </div>
-
-      {/* Dive Site(s) */}
-      {isVisible("dive_site_uuids") && (
-        <FormField
-          control={control}
-          name={"dive_site_uuids" as Path<TFieldValues>}
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Dive site(s)</FormLabel>
-              <FormControl>
-                <DiveSiteMultiSelect
-                  userId={userId}
-                  value={field.value ?? []}
-                  knownSites={knownDiveSites}
-                  onChange={field.onChange}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-      )}
 
       {/* Date and Time */}
       <FormField
@@ -406,7 +416,9 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
         </div>
       )}
 
-      {/* Temperature & Visibility */}
+      {/* Environment: temperature & visibility. Half of the "Environment"
+          group the Fields dialog lists; the water/altitude block below is the
+          other half, kept a separate row because it hides on its own fields. */}
       {(isVisible("bottom_temperature") || isVisible("visibility")) && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {isVisible("bottom_temperature") && (
@@ -495,7 +507,7 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
         </div>
       )}
 
-      {/* Water & Altitude - what the water was and where it was, which the
+      {/* Environment: water & altitude - what the water was and where it was, which the
           computer treats as calibration settings and the log treats as facts
           about the dive. They sit under the readings above rather than with the
           gear because they are observations, not choices carried in. */}

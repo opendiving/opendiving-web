@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import EditDivePage from "./page";
 import { divesAPI, type Dive } from "@/lib/api/dives";
@@ -152,8 +152,25 @@ beforeEach(() => {
   });
 });
 
-const openFieldsPanel = () =>
-  userEvent.click(screen.getByRole("button", { name: /fields/i }));
+// The Fields control is a menu now, and the switches live behind its last entry.
+const openFieldsPanel = async () => {
+  await userEvent.click(screen.getByRole("button", { name: /fields/i }));
+  await userEvent.click(
+    await screen.findByRole("menuitem", { name: /configure/i }),
+  );
+};
+
+// Configure is a modal dialog, so the form behind it is `aria-hidden` while it is
+// open: anything asserting on a field has to shut it first. That is the interaction
+// itself, not a testing detail - a diver sees a hidden field go only once they are
+// back on the form.
+const closeFieldsPanel = () => userEvent.keyboard("{Escape}");
+
+/**
+ * The Configure dialog, for queries that would otherwise also match the menu's own
+ * trigger - which is labelled with the preset the stored set matches.
+ */
+const inFieldsPanel = () => within(screen.getByRole("dialog"));
 
 const saveChanges = () =>
   userEvent.click(screen.getByRole("button", { name: /save changes/i }));
@@ -174,7 +191,7 @@ describe("a dive whose fields the diver keeps hidden", () => {
     );
 
     await openFieldsPanel();
-    expect(screen.getByRole("checkbox", { name: /^notes$/i })).toBeChecked();
+    expect(screen.getByRole("switch", { name: /^notes$/i })).toBeChecked();
     expect(
       screen.getByText(/shown because it holds a value/i),
     ).toBeInTheDocument();
@@ -197,9 +214,10 @@ describe("a dive whose fields the diver keeps hidden", () => {
     );
 
     await openFieldsPanel();
-    await userEvent.click(screen.getByRole("checkbox", { name: /^notes$/i }));
-    // Role-scoped from here: the panel's own "Notes" checkbox answers to the label
-    // too, and it stays on the page after the field goes.
+    await userEvent.click(screen.getByRole("switch", { name: /^notes$/i }));
+    await closeFieldsPanel();
+    // Role-scoped from here: the dialog's own "Notes" switch answers to the label
+    // too, and it stays mounted after the field goes.
     await waitFor(() =>
       expect(
         screen.queryByRole("textbox", { name: /^notes$/i }),
@@ -291,16 +309,21 @@ describe("a dive whose fields the diver keeps hidden", () => {
       ),
     );
 
+    const weightSwitch = () =>
+      screen.getByRole("switch", { name: /^weight$/i });
+
     await openFieldsPanel();
-    const weightBox = () => screen.getByRole("checkbox", { name: /^weight$/i });
-    await userEvent.click(weightBox());
+    await userEvent.click(weightSwitch());
+    await closeFieldsPanel();
     await waitFor(() =>
       expect(
         screen.queryByRole("spinbutton", { name: /^weight/i }),
       ).not.toBeInTheDocument(),
     );
 
-    await userEvent.click(weightBox());
+    await openFieldsPanel();
+    await userEvent.click(weightSwitch());
+    await closeFieldsPanel();
     await waitFor(() =>
       expect(screen.getByRole("spinbutton", { name: /^weight/i })).toHaveValue(
         8,

@@ -14977,12 +14977,12 @@ input — and it makes "Technical", the preset that shows everything, the empty 
 
 **A preset is a snapshot, not a live profile.** Applying one copies its `hidden_fields` into the
 account's current state; toggling a field afterwards changes the state and not the preset, until the
-diver writes it back with "Update with current fields" or saves a new one. So the panel marks the
-preset whose set _equals_ the stored state and marks nothing when none does — nothing remembers
-which one was applied last, and there is nothing to go stale. This is Lightroom's model rather than
-VS Code's; the live alternative has no separate current state to store, at the price of every
-one-off "show me altitude just this once" permanently editing a preset, and of a diver who has
-deleted all their presets having nowhere to toggle into.
+diver writes it back from "Save as" under its own name. So the Fields menu marks the preset whose
+set _equals_ the stored state and marks nothing when none does — nothing remembers which one was
+applied last, and there is nothing to go stale. This is Lightroom's model rather than VS Code's; the
+live alternative has no separate current state to store, at the price of every one-off "show me
+altitude just this once" permanently editing a preset, and of a diver who has deleted all their
+presets having nowhere to toggle into.
 
 The mark is by set _equality_ against the stored state and not against the effective one, so editing
 an old technical dive under Recreational still reads "Recreational" even with its cylinders revealed
@@ -15028,9 +15028,9 @@ no-op. The write is whatever sets the value (`setValue` for a scalar, `replace` 
 list) and the record beside it is what carries the meaning.
 
 **The cylinder list is governed as one value.** For `mixtures` the "value" is the whole list, and
-the five per-cylinder keys are columns of it, so a diver who has typed into any tank keeps every
-column of that list, hidden or not. Per-cell bookkeeping is the obvious alternative and it is worse:
-it would let hiding a column empty it in the tank next to the one being edited.
+the per-cylinder keys are columns of it, so a diver who has typed into any tank keeps every column
+of that list, hidden or not. Per-cell bookkeeping is the obvious alternative and it is worse: it
+would let hiding a column empty it in the tank next to the one being edited.
 
 The form-level `isDirty` reads true after a show-fill, and that costs nothing. The prefill's own
 bail-out has already run by then, and `useSuggestedDiveNumber` guards on the field-level
@@ -15088,7 +15088,7 @@ dependencies, a caller passing an inline function would make it run on every ren
 
 The new-dive page's prefill effect used to list `user` in its dependencies, and every settings card
 in this app persists by calling `updateProfile` and then `refreshUser()` — which replaces the
-context's `user` object outright. Wire the Fields panel up that way and ticking a checkbox re-runs
+context's `user` object outright. Wire the Fields dialog up that way and flipping a switch re-runs
 the prefill on a clean form: refetching the last dive and re-stamping `start_time` with
 `nowStartTime()`, under a diver who was halfway through the form.
 
@@ -15103,38 +15103,130 @@ The invariant, and the thing the suite pins: **persisting a toggle never resets 
 the prefill or refetches the last dive.** Anything added to that dependency list later has to be a
 value, not an object.
 
-The write itself is debounced and flushed on unmount, so ticking three boxes in a row is one request
-and a diver who ticks one and leaves immediately still saved it. `SAVE_DEBOUNCE_MS` in the hook is
-the figure and the only place it is written down.
+The write itself is debounced and flushed on unmount, so flipping three switches in a row is one
+request and a diver who flips one and leaves immediately still saved it. `SAVE_DEBOUNCE_MS` in the
+hook is the figure and the only place it is written down.
 
-## The Fields control is not in a label row, and the panel is not in the form
+## The Fields control is a menu with a dialog behind it, and neither is in the form
 
-Two placements, each avoiding a trap this repo has already paid for.
+Three placements, each avoiding a trap this repo has already paid for.
 
 **The control is positioned into the card's title row, not laid out in it.** A `flex` row would give
 the button a say in the header's height, and the header has to occupy the same vertical space with
 the control as without it. `EntryUnitLabelRow` documents the mechanism at length and this is the
 same one: `relative` on the title's wrapper, `absolute inset-y-0 right-0` on the control, so nothing
-here needs to know how tall a button is. It is a disclosure — `type="button"`, `aria-expanded`,
-`aria-controls` — because the default type inside this card's `<form>` submits.
+here needs to know how tall a button is. It is `type="button"` because the default type inside this
+card's `<form>` submits.
 
 **A per-field hide control was rejected outright**, because it would sit in the label row, which is
 the exact place "The toggle sits in the label row without being laid out in it, and both halves of
-that were bugs" is about. One control on the card adds nothing to any label row, and it is where the
-presets have to live anyway.
+that were bugs" is about. One control on the card adds nothing to any label row.
 
-**The panel renders between the header and the card content, outside the `<form>`.** Nothing in it
-is a form control of the dive, and a submit raised inside it — the name prompt's Enter — would
-otherwise reach `handleSubmit` through the React tree even though the DOM has no nested form ("A
-dialog's submit event bubbles into the form that opened it"). The name prompt still goes through
-`dialogFormSubmit` on top of that: it is one call, and it keeps the invariant true if the panel ever
-moves.
+**Menu and dialog split by what they do.** The menu lists the account's presets and applying one is
+a single click from the card; Configure — the last entry, with a cog — opens a dialog holding the
+switches and the preset _management_. Apply deliberately does not appear in the dialog as well: a
+second way to do the quick thing would put it behind two clicks and a modal.
 
-**A checkbox shows the _effective_ state and edits the _stored_ one.** Checking stores the key
-visible; unchecking stores it hidden _and_ drops it from the revealed set, so a field an edit load
-put on screen can still be put away from the panel that offered the box. A key visible only because
-it was revealed says so beside its label. The per-cylinder boxes keep their state but are disabled
-while the Gas Mixtures section is off screen, since there is nothing on screen for them to govern.
+**The dialog is two tabs, Fields first and default**, because that is what a diver opens it for.
+Presets is the housekeeping tab — rename, delete, restore the three seeded defaults — and nothing on
+it changes what the form shows. It carries **no mark for the current preset**: renaming and deleting
+one are the same acts whether or not its set happens to equal what is on the form, and a check there
+only invited the reading that the marked row was somehow protected. The menu keeps the mark, where
+it answers what the diver is about to pick from.
+
+**A failed save is a toast, not only an inline message.** `visibility.saveError` renders inside
+Configure, and that was the whole surface back when applying a preset meant clicking Apply on an
+always-open panel that showed it a few lines below. It is not enough now: picking a preset from the
+menu closes the menu, and a switch flipped in Configure can be followed by shutting the dialog
+before the 400 ms debounce fires — either way the `PATCH /user` fails with nothing mounted to say
+so, and the message ambushes the diver the next time they open Configure, reading as an error about
+whatever they are doing then. The toast is raised in `useDiveFormVisibility`'s own `flush`, which is
+the one place that knows a save failed regardless of which surface caused it, and it is also the
+only report that fires per _failure_: `setSaveError` with an identical string re-renders nothing, so
+a second failure worded the same as the first would otherwise be silent.
+
+**A row renames in place.** The pencil turns the name into a field and itself into a tick, so the
+new name is typed where the old one was rather than in a prompt below a list the diver then has to
+find their row in again. Delete becomes Cancel for as long as that lasts, which is two things at
+once: a delete button beside a half-typed rename is one mis-click from destroying the row being
+edited, and without the swap there is no pointer way out of the edit. Both are icons with a `title`
+and an `aria-label` naming the preset — the shape `GearItemsCard` already uses for its per-row
+actions — and saving an unchanged name is skipped rather than spent on a `PATCH` that stores what is
+already there.
+
+**Escape belongs to the dialog, and cannot be taken back.** Cancelling the rename with it looks
+obvious and does not work: Radix's dialog listens for Escape on `document` in the _capture_ phase,
+so it has already decided to close before any handler on the field runs, and `stopPropagation` from
+there is too late. A test proved it before the comment did. The same applies to the "Save as"
+suggestion list, which closes with the dialog around it — the list is a suggestion, Escape is for
+the dialog, and nothing typed in either is persisted until Save.
+
+**Saving is one control at the foot of the Fields tab, not a button per preset row.** "Save as" is a
+name with the account's presets on a dropdown and a single Save: a name matching nothing creates, a
+name matching something replaces that preset's fields. It replaced two controls that were the same
+act under two names — a "Save current fields as a preset" button and a per-row "Update with current
+fields" that scaled with the list — and it sits with the switches because the thing being saved is
+on screen above it, which a preset row never was. The line under the field says which of the two the
+button is about to do, so an overwrite is read before it happens rather than discovered after.
+Matching is case-insensitive because that is how the API compares names: "recreational" taking the
+create branch would come back a 422.
+
+**It is written out rather than reaching for `CreatableCombobox`.** That component commits on blur —
+unmatched text with no `onCreate` resolves to `clear`, and the effect syncing text from the selected
+id then empties the field — so typing a new name and _clicking_ Save would wipe the name before the
+click landed. A field that holds what was typed until a separate button is pressed is the opposite
+contract, and 700 lines of blur-commit reasoning is the wrong thing to fight. Its list opens
+**upward**: the row is the last thing in a dialog that scrolls its own content, and a list dropping
+below the input is clipped by `overflow-y-auto` rather than floating over it — measured at 65px cut
+off with three presets.
+
+**Two presets can hold the same set**, since saving the current fields under a second name is all it
+takes. Every matching row is marked, on both surfaces; the trigger has to name _one_ and takes the
+first. It says which set is on the form, not which row put it there — and nothing downstream
+remembers a preset anyway.
+
+**The trigger is labelled with the state, not with the control's name** — the preset the stored
+hidden set matches, or "Custom" when it matches none. That is the same set-equality comparison the
+dialog marks a row with, so the two cannot disagree, and it answers on the card the question a diver
+opens the menu to ask. The accessible name keeps "Fields" in front of it (`Fields: Technical`),
+which is what stops the control from being unfindable by what it does and satisfies Label in Name.
+"Custom" is a label only and never a menu row: there is nothing to apply, and an unpickable row
+among pickable ones is a trap.
+
+**The label is what forces the preset fetch to be eager.** The old inline panel fetched on first
+open — a diver who never opened it paid nothing. The trigger cannot be painted without the list, so
+`useDiveFormPresets` now fetches on mount. A button reading "Fields" until first opened and
+"Technical" afterwards is worse than one small request, and the hook is shared by the menu and the
+dialog precisely so it stays one.
+
+**Neither is inside the `<form>`.** Nothing in either is a form control of the dive, and a submit
+raised inside one — the name prompt's Enter — would otherwise reach `handleSubmit` through the React
+tree even though the DOM has no nested form ("A dialog's submit event bubbles into the form that
+opened it"). The name prompt goes through `dialogFormSubmit` on top of that: it is one call, and it
+keeps the invariant true wherever the dialog ends up.
+
+**The dialog is modal, and that costs the live preview.** With the inline panel a diver toggled a
+switch and watched the field appear behind it; a modal `aria-hidden`s the page, so the effect is
+visible on closing. Accepted rather than worked around with `modal={false}`: a settings dialog that
+does not block is the odder thing, and every switch persists immediately, so nothing is lost but the
+glance. It is why the page tests now close the dialog before asserting on a field — the interaction
+itself moved, not just the query.
+
+**Opening focus is taken off the first control on purpose.** Radix focuses the first tabbable
+descendant, and what that is has already changed once inside this change — it was a preset's "Update
+with current fields", a button that overwrote a saved preset, and it is the Fields tab trigger now
+that the tabs have landed. That is the argument rather than an aside: what Enter falls on is a
+consequence of the layout, so a dialog that lets DOM order decide it decides it afresh every time
+the layout moves. `onOpenAutoFocus` puts focus on the content container instead, with
+`focus:outline-none` because a ring around the whole dialog reads as an error. `ConfirmDialog` makes
+the same move one step further, onto Cancel, for the same reason.
+
+**A switch shows the _effective_ state and edits the _stored_ one.** Turning one on stores the key
+visible; turning it off stores it hidden _and_ drops it from the revealed set, so a field an edit
+load put on screen can still be put away from the dialog that offered the switch. A key visible only
+because it was revealed says so beside its label. The per-cylinder switches keep their state but are
+disabled while the Gas Mixtures section is off screen, since there is nothing on screen for them to
+govern.
 
 **Hiding a field must not strand an entry-unit toggle.** Depth's toggle follows the first _visible_
 depth field, so `avg_depth` carries it when `max_depth` is hidden and the form has no depth control
@@ -15144,6 +15236,76 @@ was rejected: it costs a diver who logs only maximum depth the choice. Pressure 
 dimension with a rule of its own, because its one toggle lives in the Gas Mixtures header rather
 than on a field and governs _two_ hideable keys: it renders only while the section is on screen
 **and** at least one of the two pressure boxes is visible.
+
+## The Fields dialog is switches, and it is the sections that share the columns
+
+The controls were checkboxes and are now `@radix-ui/react-switch`. A switch is the right shape for a
+row that says "this field is on my form" — a state you leave set rather than a selection you submit
+— and it is the first Radix primitive `ui/` has needed for a control that has no native element,
+which is why `ui/checkbox.tsx` stays a plain `<input>` beside it. The two are not drop-in for one
+another: `checked`/`onCheckedChange` against `checked`/`onChange`.
+
+**On is `bg-teal`, not shadcn's `bg-primary`.** `--primary` is near-black in light and mid-grey in
+dark — the trap `map-picker.tsx` and `locations-map.tsx` already carry a comment about — so the
+shipped default renders on and off as two shades of grey with nothing to say which is which. Teal is
+the accent this app gives the settled state, the same fill the calendar's selected day and the
+default button take. Off is `bg-muted-foreground` rather than shadcn's `bg-input` for the mirror
+reason: `--input` sits nine percentage points from `--background` in both themes, so the
+`bg-background` thumb would sit on a track it barely separates from, and thumb position is half of
+what a switch says.
+
+**The always-shown rows are switches too — on, disabled, and labelled like any other row.** They
+were a muted line reading "Duration — always shown". Dropping the note and the muting means the
+control is the only thing carrying the claim, which in turn means those switches have to be _named_
+rather than `aria-hidden`: rows a sighted diver sees and a screen-reader user does not are worse
+than the duplication. The duplication is real and was already the panel's condition — the page now
+has a second "Duration" and "Start time" beside the form's own, which is why `page.render.test.tsx`
+reaches those two by role rather than by label.
+
+**Section switches were built and then removed.** One switch per group, on when any field in the
+group was on, toggling every field at once — it worked, and the owner cut it. Recorded because the
+reasoning that made it look right (ARIA forbids `aria-checked="mixed"` on `role="switch"`, so a
+part-on section had to read as one or the other) is the reasoning anyone rebuilding it will hit
+again: the honest answer for a group control here is not a switch.
+
+**Within a section every row sits in one left-hand column**, group heading included, with the
+hierarchy carried by the heading's own type rather than by indentation. From `md` up it is the
+_sections_ that are dealt into two columns, not the rows: a group still reads as one list top to
+bottom rather than as a pair of half-lists to scan across. CSS multi-column rather than a grid,
+because the sections differ wildly in height — one row under Species, nine under Gas mixtures — and
+a grid makes every row as tall as its tallest cell and leaves the short sections in holes.
+`break-inside-avoid` is the part that matters: it is what stops a section being split down the
+middle of itself, which is the one thing this layout must never do. The margin is per-section rather
+than `space-y-*` on the parent, since a top margin at the head of a column misaligns it against the
+other.
+
+**A group is a run of adjacent form blocks, never part of one and never a reordering.** That
+invariant is what makes a diver looking for a field in the dialog find it where they would look for
+it on the form, and it is the thing to preserve when either side moves. Three groups currently span
+more than one block, because the form's rows are finer-grained than a diver's idea of the subject: a
+block is a row, and a row exists where a set of fields has to appear and disappear together, while a
+heading exists where a diver would go looking. "Trip, course & site" covers the trip/course pair and
+the dive site below it; "Dive info" covers the dive number, the date-and-time row and the depth
+pair; "Environment" covers the temperature/visibility row and the water/altitude one. Splitting any
+of them into a heading per row would offer more choices than there are decisions to make.
+
+The rule has already been restated wrongly once — as "one block per group, with Environment as the
+exception" — and was false again within a day, so `DIVE_FORM_FIELD_GROUPS`' own doc states the run
+rule rather than a count, and the exceptions are named there in one place.
+
+**`mixtures` leads its group rather than following the always-on cylinder columns.** It is the
+switch that decides whether the Gas Mixtures section is on the form at all, and every other row
+under that heading is downstream of it — the always-on columns as much as the per-cylinder ones the
+dialog disables while it is off. Listing it mid-registry put the reason those rows were unavailable
+below the rows it explains. `LEADING_GROUP_FIELD` in the dialog carries the exception rather than
+the registry, which stays in form order for the completeness guard's sake; a test pins the whole
+order for that section, so a field added to the group cannot quietly land above it.
+
+None of that is written with a count any more, and the reason is this branch: helium moved from the
+always-on rows to the hideable ones, and every "three always-on … five per-cylinder" in the tree —
+two here, one on the component, one above a test assertion that already listed six — went stale in
+the same commit, having been true when each was written. A count in prose is a second copy of a list
+that nothing keeps in step, and the test is the copy that fails when it is wrong.
 
 ## `DIVE_FORM_FIELDS` is a fifth hand-kept vocabulary mirror, guarded from both ends
 
@@ -15166,17 +15328,58 @@ panel.
 Optionality is measured with `safeParse(undefined)` rather than read off `.optional()`, because
 `start_time` and `duration` are built by helpers and a `.default()` accepts `undefined` too.
 
-**Three cylinder fields are exempt by name, and that is a decision rather than a technicality.**
-`id` and `gas_number` have no input at all. `volume`, `oxygen` and `helium` became blank-able when a
-cylinder was allowed to record a mix with no vessel (see "A cylinder may record a mix with no
-vessel, and three fields stopped being numbers"), so the guard would now demand they be hideable —
-and they are what a cylinder _is_. A tank card that can lose all three records a row saying nothing,
-and "Add Mixture" would go on proposing `DEFAULT_MIXTURE` where the diver could neither see nor
-change it, which is precisely the half of that change the blank/prefill split was chosen to protect.
-Hiding them would also want three new members on the API's own enum, since a hidden set is validated
-there. `NON_HIDEABLE_MIXTURE_SCHEMA_KEYS` carries the list with the reasons, the guard reads it
-rather than restating it, and a second test asserts each name is still an optional key of the
-mixture schema — so an exemption that stopped excluding anything fails rather than passing quietly.
+**Two cylinder fields are exempt by name, and that is a decision rather than a technicality.** `id`
+and `gas_number` have no input at all. `volume` and `oxygen` became blank-able when a cylinder was
+allowed to record a mix with no vessel (see "A cylinder may record a mix with no vessel, and three
+fields stopped being numbers"), so the guard would now demand they be hideable — and they are what a
+cylinder _is_. A tank card that can lose both records a row saying nothing, and "Add Mixture" would
+go on proposing `DEFAULT_MIXTURE` where the diver could neither see nor change it, which is
+precisely the half of that change the blank/prefill split was chosen to protect.
+`NON_HIDEABLE_MIXTURE_SCHEMA_KEYS` carries the list with the reasons, the guard reads it rather than
+restating it, and a second test asserts each name is still an optional key of the mixture schema —
+so an exemption that stopped excluding anything fails rather than passing quietly.
+
+**A hidden helium is `0`, not blank, and that is the whole of what makes hiding it safe.** Every
+other mixture column clears to `""` — "not recorded" — and helium was written that way to match,
+which was wrong twice over. `gasName` and `isNameableMix` refuse to name a mix whose helium is
+unknown (see "a gas whose helium content is unknown cannot be told apart from air"), so every
+cylinder logged under Basic or Recreational would have lost its "Air"/"EAN32" and its MOD on the
+dive detail page. And the two ways a cylinder reaches the list disagreed: a carried one went through
+the hide rule and got `""` → `null`, while "Add Mixture" takes `DEFAULT_MIXTURE` whole and kept its
+`0` — two rows of one dive, one nameable and one not, in a column neither was showing. Hiding He is
+the diver saying they dive air and nitrox, which is the argument that made it hideable at all; the
+value it clears to has to be the zero that claim implies.
+
+**Which then broke the reveal rule, in the direction that matters.** `isNonEmptyFieldValue` counts
+`0` as a value on purpose — an end pressure of 0 is a drained cylinder — so an air dive's stored
+`helium: 0` would have revealed the column on every edit load, and hiding He would have lasted until
+the diver opened one of their own dives. The rule is now that **a key does not reveal itself by
+holding what hiding it writes**: non-empty _and_ different from that key's own empty value. It reads
+as a no-op for every other key, whose empty values are `null`/`""`/`[]` and already fail the first
+half — `mixture.end_pressure` still reveals on a stored `0`, because its empty value is `""`. That
+per-key empty value is what carries the distinction, which is why it is a map rather than one
+sentinel.
+
+**And the exception is a named list, because the guard for it kept being written without teeth.** An
+empty value the reveal rule would call non-empty is normally a mistake — the key puts itself back on
+screen the moment a stored dive holds one — so the registry test asserts every empty value is blank,
+`NON_BLANK_EMPTY_FIELD_VALUES` aside, and pins that exception's value as well as its name. The first
+attempt at that test fed the value back through `nonEmptyDiveFormFields`, where `revealsField`
+compares it against `EMPTY_DIVE_FORM_VALUES[key]` — the same value, so the comparison was false by
+identity and the assertion held for anything at all, including a `notes` that cleared to
+`"sabotage"`. A guard that routes its input through the rule it is guarding tests nothing; this one
+asserts the property directly.
+
+**`helium` was the third of that trio and is not exempt any more.** It sat there on the strength of
+"what a cylinder is", and that argument does not survive contact with the other two: a cylinder
+recording no volume and no oxygen says nothing at all, while one recording no helium is a cylinder
+of air. It is the one of the three a diver can be certain of without measuring, so a logbook that
+never sees a trimix fill was asking a question whose answer is always zero. The API grew a
+`mixture.helium` member to match — a hidden set is validated there, so nothing on this side could
+hide it alone — and its seeded Basic and Recreational presets hide it. Existing accounts keep the
+Recreational row they were seeded with: the restore endpoint adds what is missing and never
+overwrites, which is what makes it safe to offer at any time, so an account wanting the new set
+deletes its Recreational and restores.
 
 **The keys are stored data, not labels.** A preset row and a diver's own hidden set name them, so
 renaming one is a data migration on both sides rather than a rename. The `mixture.` prefix is chosen
