@@ -110,33 +110,40 @@ export function DiveFormFieldSwitches({
   };
 
   return (
-    <div className="space-y-6">
+    // Two columns from `md` up, and it is the *sections* that are dealt into them:
+    // a section's own switches stay stacked, so a group still reads as one list top
+    // to bottom rather than as a pair of half-lists to scan across.
+    //
+    // CSS multi-column rather than a grid, because the sections are wildly different
+    // heights - one row under "Species", nine under "Gas mixtures" - and a grid would
+    // make every row as tall as its tallest cell and leave the short sections sitting
+    // in holes. Multi-column packs by height instead. `break-inside-avoid` is what
+    // stops a section being split down the middle of itself, which is the one thing
+    // this layout must never do; the margin is per-section rather than `space-y-*` on
+    // the parent, since a top margin at the head of a column would misalign it.
+    <div className="md:columns-2 md:gap-8">
       {DIVE_FORM_FIELD_GROUPS.map((group) => {
         const { leading, fields, alwaysOn } = rowsFor(group);
         if (leading.length + fields.length + alwaysOn.length === 0) return null;
 
         return (
-          <fieldset key={group} className="space-y-3">
+          <fieldset
+            key={group}
+            className="mb-6 space-y-3 break-inside-avoid last:mb-0"
+          >
             <legend className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               {group}
             </legend>
-            {/* Two columns from `md` up. The rows are a switch and a short label, so
-                one column per row leaves most of the dialog empty and makes the list
-                long enough to scroll past what a diver came to change. Flows
-                row-major, which keeps the reading order the form's order - the whole
-                point of the grouping. */}
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              {leading.map(fieldRow)}
-              {alwaysOn.map(({ entry, id: rowId }) => (
-                <div key={rowId} className="flex items-center gap-2">
-                  <Switch id={rowId} checked disabled />
-                  <Label htmlFor={rowId} className="font-normal">
-                    {entry.label}
-                  </Label>
-                </div>
-              ))}
-              {fields.map(fieldRow)}
-            </div>
+            {leading.map(fieldRow)}
+            {alwaysOn.map(({ entry, id: rowId }) => (
+              <div key={rowId} className="flex items-center gap-2">
+                <Switch id={rowId} checked disabled />
+                <Label htmlFor={rowId} className="font-normal">
+                  {entry.label}
+                </Label>
+              </div>
+            ))}
+            {fields.map(fieldRow)}
           </fieldset>
         );
       })}
