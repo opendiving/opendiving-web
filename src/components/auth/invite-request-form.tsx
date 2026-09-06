@@ -148,14 +148,8 @@ export function InviteRequestForm({ className }: InviteRequestFormProps) {
         </>
       )}
 
-      {/* Named for all three people who need it, and the third is the reason this
-          line is not just "Already have an account?". On a fresh instance nobody
-          has an account and nobody has been invited: the operator's own first
-          sign-in is what creates the first account, and the install docs tell
-          them to use the Sign in button. A line that only addressed returning
-          members would send them looking for a page that does not exist. */}
       <p className="mt-6 text-center text-sm text-muted-foreground">
-        Have an account or an invitation, or setting this instance up?{" "}
+        Have an account or an invitation?{" "}
         <Link href="/signin" className="underline underline-offset-4">
           Sign in
         </Link>
