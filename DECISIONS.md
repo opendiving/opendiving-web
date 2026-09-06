@@ -1419,37 +1419,52 @@ keeps them". That is the same shape of untruth this section exists to remove, on
 it went the same way. "Either way" is doing real work; a future edit that reattaches the clause to
 either verb reintroduces the claim. Pinned by a test.
 
-## Every boolean in the app is a switch
+## The invite queue selects with checkboxes, and everything else is a switch
 
-`ui/checkbox.tsx` is gone. It was a styled `<input type="checkbox">` - deliberately not a Radix
-primitive, on the reasoning that a native input keeps focus, keyboard and screen-reader behaviour
-for free - and by the time `ui/switch.tsx` arrived it had six call sites: "Rented, not owned" in the
-gear dialog, the gear list's "Show archived", the notification preference, the device-memory
-objection on `/privacy` and `/settings`, and the invite queue's two selection controls.
+`ui/checkbox.tsx` was a styled `<input type="checkbox">` - deliberately not a Radix primitive, on
+the reasoning that a native input keeps focus, keyboard and screen-reader behaviour for free - and
+by the time `ui/switch.tsx` arrived it had six call sites: "Rented, not owned" in the gear dialog,
+the gear list's "Show archived", the notification preference, the device-memory objection on
+`/privacy` and `/settings`, and the invite queue's two selection controls.
 
 **Five of the six were a setting being flipped**, which is what a switch is for and what the app had
 started saying everywhere else - the Fields dialog alone is twenty-five of them, one per
 `DIVE_FORM_FIELD_REGISTRY` entry plus one per `DIVE_FORM_ALWAYS_ON_FIELDS` entry - so two visual
 languages for one idea was the thing to remove. (That said "nine" in the first draft, which is the
 size of the Gas mixtures group and not the dialog. Recount from those two arrays rather than from
-this sentence.) The primitive's own justification had also quietly expired: the argument for a
-native input was that it costs no dependency, but `@radix-ui/react-switch` is already one, so
-keeping `Checkbox` bought a second control rather than a smaller install.
+this sentence.) Those five converted and stayed converted. `Switch` takes
+`checked`/`onCheckedChange`, not `checked`/`onChange`, so each call site changed shape rather than
+just its import; Radix's `Root` renders `<button type="button">`, and `<label htmlFor>` still names
+it, because `button` is a labelable element.
 
-`Switch` takes `checked`/`onCheckedChange`, not `checked`/`onChange`, so every call site changed
-shape rather than just its import. Radix's `Root` renders `<button type="button">`;
-`<label htmlFor>` still names it, because `button` is a labelable element.
+**The sixth went with them for exactly one release, and came back.** The sweep took the invite
+queue's row and select-all controls too, deleted the primitive, and wrote itself up here as "every
+boolean in the app is a switch" - a rule stated over a count of call sites rather than over what
+they meant. The section conceded in its own last paragraph that multi-select is canonically a
+checkbox and named the way back; the walk-back followed one commit later, and this is that section
+rewritten rather than a second one arguing with it.
 
-**The sixth was the cost, and it is one control's tri-state.** The invite queue's select-all was an
-`indeterminate` checkbox: on when every row was selected, dashed when only some were. ARIA gives
-`role="switch"` two states and forbids `aria-checked="mixed"`, so that dash has no equivalent and
-the switch reads as off on a partial selection. What makes it affordable is that the dash was always
-the second channel: `/admin/invites` prints "N addresses selected" in an `aria-live` region directly
-above the table, which is more precise than "some" and is the only one of the pair a screen reader
-ever announced. The row switches themselves are the weaker half of the trade - multi-select is
-canonically a checkbox - and if the queue ever grows a case where "some" has to be visible in the
-header itself, `@radix-ui/react-checkbox` for that one table is the way back, not a second general
-primitive.
+**The line is selection against setting, not one control against another.** A switch is a state you
+leave set: it takes effect where it sits, and the page has nothing further to do about it. A row in
+the invite queue is picked for a batch that is about to be submitted - the operator ticks several
+and then presses Send invitations or Remove, and the ticks mean nothing until they do. That is a
+checkbox, in this app and in every other, and `/admin/invites` is the only place the app has one.
+
+The tri-state is what made the difference concrete rather than a matter of taste. The select-all is
+`indeterminate` on a partial selection - on when every row is selected, dashed when only some are -
+and ARIA gives `role="switch"` two states and forbids `aria-checked="mixed"`, so as a switch it read
+as plain off while rows were selected. `/admin/invites` prints "N addresses selected" in an
+`aria-live` region directly above the table, which is more precise than "some" and is still the only
+one of the pair a screen reader announces; the dash is the sighted operator's half, and it had no
+substitute at all.
+
+Restoring the deleted `<input type="checkbox">` beat the `@radix-ui/react-checkbox` the previous
+section had nominated. `indeterminate` is a DOM property and not an attribute, so React will not
+render it either way and the header box sets it through a `ref` callback - one line against a new
+dependency, a check icon and a dash icon to style. The dependency argument that retired the
+primitive ("`@radix-ui/react-switch` is already installed, so keeping `Checkbox` buys a second
+control rather than a smaller install") does not run in reverse: the second control is the point
+here, and the native input is the one that costs nothing.
 
 ## A dialog's submit event bubbles into the form that opened it
 
@@ -3258,22 +3273,24 @@ What made it worth fixing centrally rather than per component is where it had al
 base rule prevents, so the four local patches came out with it.
 
 The selector is Tailwind's own documented v4-compat snippet, widened to the native controls that had
-accumulated patches (`select`, and file inputs):
+accumulated patches (`select`, and checkbox/file inputs):
 
 ```css
 button:not(:disabled),
 [role="button"]:not(:disabled),
 select:not(:disabled),
-input[type="file"]:not(:disabled) {
+input:where([type="checkbox"], [type="file"]):not(:disabled) {
   cursor: pointer;
 }
 ```
 
-It listed `[type="checkbox"]` and `[type="radio"]` too, until "Every boolean in the app is a switch"
-above removed the last checkbox and left both matching nothing - radio never had a call site at all.
-A switch is a `<button>`, so it is covered by the first line. Radix's switch does render a hidden
-`<input type="checkbox">` inside a form, for native submission, but it is `pointer-events: none` and
-invisible, so no cursor rule could ever reach it.
+`[type="radio"]` was listed too and never had a call site, so it came out. `[type="checkbox"]` had a
+rounder trip: the sweep described in "The invite queue selects with checkboxes, and everything else
+is a switch" above removed the last checkbox and the clause with it, and the walk-back one commit
+later put both back. A switch is a `<button>`, so it is covered by the first line either way -
+Radix's switch does render a hidden `<input type="checkbox">` inside a form, for native submission,
+but it is `pointer-events: none` and invisible, so no cursor rule could ever reach it. The clause
+earns its place on the invite queue's boxes alone.
 
 Two things keep it from being blunt. **It lives in `@layer base`**, so every `cursor-*` utility
 outranks it - which is what leaves Radix's menu and listbox items alone. Those carry an explicit
@@ -15275,11 +15292,11 @@ than on a field and governs _two_ hideable keys: it renders only while the secti
 The controls were checkboxes and are now `@radix-ui/react-switch`. A switch is the right shape for a
 row that says "this field is on my form" — a state you leave set rather than a selection you submit
 — and it was the first Radix primitive `ui/` had needed for a control with no native element to
-wrap. It kept `ui/checkbox.tsx` company for one release only: the six controls still on that
-primitive were the same shape as these, and "Every boolean in the app is a switch" above is where
-they followed and the file went. The two were never drop-in for one another —
-`checked`/`onCheckedChange` against `checked`/`onChange` — which is what made that a real conversion
-rather than an import swap.
+wrap. Five of the six controls left on `ui/checkbox.tsx` were the same shape as these and followed
+them over; the sixth, the invite queue's selection, is a selection rather than a setting and is a
+checkbox still. "The invite queue selects with checkboxes, and everything else is a switch" above is
+that whole arc. The two primitives were never drop-in for one another — `checked`/`onCheckedChange`
+against `checked`/`onChange` — which is what made that a real conversion rather than an import swap.
 
 **On is `bg-teal`, not shadcn's `bg-primary`.** `--primary` is near-black in light and mid-grey in
 dark — the trap `map-picker.tsx` and `locations-map.tsx` already carry a comment about — so the

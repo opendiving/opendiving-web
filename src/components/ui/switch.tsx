@@ -5,15 +5,16 @@ import * as SwitchPrimitive from "@radix-ui/react-switch";
 
 import { cn } from "@/lib/utils";
 
-// The app's only boolean control. A switch has no native element, so `role="switch"`
-// with its checked state, keyboard handling and disabled semantics is the whole of
-// what Radix buys here. `Root` renders `<button type="button">`, which is the guard
-// every control on a card whose content is a `<form>` needs anyway.
+// Every boolean *setting* in the app. A switch has no native element, so
+// `role="switch"` with its checked state, keyboard handling and disabled semantics is
+// the whole of what Radix buys here. `Root` renders `<button type="button">`, which is
+// the guard every control on a card whose content is a `<form>` needs anyway.
 //
-// There is no `ui/checkbox.tsx` any more: it was a styled `<input type="checkbox">`
-// and every one of its six call sites was a setting being flipped, which is what a
-// switch is for. See "Every boolean in the app is a switch" in `DECISIONS.md` for
-// the one thing that cost.
+// `ui/checkbox.tsx` is the other half, and only the other half: the invite queue's
+// selection boxes, where rows are picked for a batch rather than left flipped. See
+// "The invite queue selects with checkboxes, and everything else is a switch" in
+// `DECISIONS.md`. The two are not drop-in for one another - this one takes
+// `checked`/`onCheckedChange`, that one `checked`/`onChange`.
 //
 // On is `bg-teal` and not shadcn's `bg-primary`, for the reason `map-picker.tsx` and
 // `locations-map.tsx` already carry: `--primary` is near-black in light and mid-grey in

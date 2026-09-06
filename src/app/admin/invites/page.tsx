@@ -106,7 +106,7 @@ export default function AdminInvitesPage() {
       await refetch();
     } catch (error) {
       // The selection survives, so the operator can retry the same batch
-      // without switching it all back on.
+      // without ticking it all again.
       setPendingAction(null);
       toast({
         title: "Error",
@@ -168,11 +168,11 @@ export default function AdminInvitesPage() {
             </Button>
             <span
               className="text-sm text-muted-foreground self-center"
-              // Flipping a row's switch is a pointer gesture with no announcement
-              // of its own, so the running total is spoken as it changes. It is
-              // also what stands in for the select-all's lost `indeterminate`
-              // state, so this region is load-bearing rather than a nicety - see
-              // "Every boolean in the app is a switch" in DECISIONS.md.
+              // Ticking a row is a pointer gesture with no announcement of its
+              // own, so the running total is spoken as it changes. It is the only
+              // one of the two channels a screen reader announces - the select-all's
+              // `indeterminate` dash is read by sighted operators alone - so this
+              // region is load-bearing rather than a nicety.
               aria-live="polite"
             >
               {count === 0 ? "Nothing selected" : `${addresses} selected`}
