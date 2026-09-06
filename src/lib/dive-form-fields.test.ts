@@ -12,7 +12,6 @@ import {
   canonicalHiddenFields,
   diveFormFieldsWithErrors,
   hiddenFieldsEqual,
-  isMixtureField,
   isNonEmptyFieldValue,
   nonEmptyDiveFormFields,
 } from "./dive-form-fields";

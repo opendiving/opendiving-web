@@ -1213,8 +1213,8 @@ describe("the Fields control", () => {
   });
 
   it("leads the gas section with the switch that governs it", async () => {
-    // `mixtures` sits mid-registry, after the three always-on cylinder columns it
-    // decides the fate of and before the five per-cylinder ones the panel disables
+    // `mixtures` sits mid-registry, after the always-on cylinder columns it decides
+    // the fate of and before the per-cylinder ones the dialog disables
     // while it is off. Listing it in that order would put the reason those rows are
     // unavailable below the rows it explains.
     render(<NewDivePage />);

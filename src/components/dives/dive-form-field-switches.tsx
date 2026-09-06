@@ -18,8 +18,8 @@ import type { DiveFormVisibility } from "@/hooks/useDiveFormVisibility";
  *
  * Only `mixtures` does. It is the switch that decides whether the Gas Mixtures section
  * is on the form at all, and every other row in that group is downstream of it - the
- * three always-on cylinder columns as much as the five per-cylinder ones, which this
- * list disables outright while it is off. Listing it after them would put the reason
+ * always-on cylinder columns as much as the per-cylinder ones, which this list disables
+ * outright while it is off. Listing it after them would put the reason
  * they are unavailable below the rows it explains. It is the form's own order too: the
  * section exists before any cylinder in it does.
  *

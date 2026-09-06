@@ -14933,9 +14933,9 @@ no-op. The write is whatever sets the value (`setValue` for a scalar, `replace` 
 list) and the record beside it is what carries the meaning.
 
 **The cylinder list is governed as one value.** For `mixtures` the "value" is the whole list, and
-the five per-cylinder keys are columns of it, so a diver who has typed into any tank keeps every
-column of that list, hidden or not. Per-cell bookkeeping is the obvious alternative and it is worse:
-it would let hiding a column empty it in the tank next to the one being edited.
+the per-cylinder keys are columns of it, so a diver who has typed into any tank keeps every column
+of that list, hidden or not. Per-cell bookkeeping is the obvious alternative and it is worse: it
+would let hiding a column empty it in the tank next to the one being edited.
 
 The form-level `isDirty` reads true after a show-fill, and that costs nothing. The prefill's own
 bail-out has already run by then, and `useSuggestedDiveNumber` guards on the field-level
@@ -15200,12 +15200,17 @@ rule rather than a count, and the exceptions are named there in one place.
 
 **`mixtures` leads its group rather than following the always-on cylinder columns.** It is the
 switch that decides whether the Gas Mixtures section is on the form at all, and every other row
-under that heading is downstream of it — the three always-on columns as much as the five
-per-cylinder ones the dialog disables while it is off. Listing it mid-registry put the reason those
-rows were unavailable below the rows it explains. `LEADING_GROUP_FIELD` in the dialog carries the
-exception rather than the registry, which stays in form order for the completeness guard's sake; a
-test pins the whole nine-row order for that section, so a field added to the group cannot quietly
-land above it.
+under that heading is downstream of it — the always-on columns as much as the per-cylinder ones the
+dialog disables while it is off. Listing it mid-registry put the reason those rows were unavailable
+below the rows it explains. `LEADING_GROUP_FIELD` in the dialog carries the exception rather than
+the registry, which stays in form order for the completeness guard's sake; a test pins the whole
+order for that section, so a field added to the group cannot quietly land above it.
+
+None of that is written with a count any more, and the reason is this branch: helium moved from the
+always-on rows to the hideable ones, and every "three always-on … five per-cylinder" in the tree —
+two here, one on the component, one above a test assertion that already listed six — went stale in
+the same commit, having been true when each was written. A count in prose is a second copy of a list
+that nothing keeps in step, and the test is the copy that fails when it is wrong.
 
 ## `DIVE_FORM_FIELDS` is a fifth hand-kept vocabulary mirror, guarded from both ends
 
