@@ -10,11 +10,11 @@ them into trips, and keep your gear service history and c-cards in one place.
 
 Cloud dive logs come and go — Movescount, Deepblu, Diveboard — and when they go, years of dive
 history go with them. OpenDiving is built on a different premise: the app is AGPL-licensed, the data
-sits in a plain Postgres database, and every dive keeps the original dive-computer export it was
-imported from, downloadable at any time. Self-hosting isn't a feature here; it's the guarantee
-behind the rest — anyone can run this software, one click hands the whole log back in open formats,
-and the app reads its own DiveJSON straight back in, so no shutdown, acquisition, or paywall can
-ever take your logbook with it.
+sits in a plain Postgres database, and a dive logged from a dive-computer file keeps that file
+alongside it, downloadable at any time. Self-hosting isn't a feature here; it's the guarantee behind
+the rest — anyone can run this software, one click hands the whole log back in open formats, and it
+reads a logbook back in from DiveJSON, UDDF, Subsurface, FIT or a Suunto export, so no shutdown,
+acquisition, or paywall can ever take your logbook with it.
 
 **This repository is the web app — one component of the stack.** The project itself, and everything
 about running it, lives at **[opendiving/opendiving](https://github.com/opendiving/opendiving)**:
@@ -62,13 +62,18 @@ components together. Start there if you want to run OpenDiving rather than work 
   sides of every c-card. [DiveJSON](https://divejson.org) is the open dive-log interchange format
   this project maintains, and this app is its reference implementation. A data-ownership log without
   an exit door is a contradiction.
-- **Logbook import** — and a door that only opens outwards is half a promise, so the DiveJSON
-  document and the archive read straight back in: move a logbook between instances, or restore one
-  from a backup. You see a full report of what it would do — new records, ones already present,
-  dives it would bring back from deletion, and anything it could not represent — before a single row
-  is written. Records you already have are matched rather than duplicated, and a dive you deleted
-  returns under its own identity. The archive additionally restores the dive-computer files and
-  c-card scans, which the bare document names by digest but does not carry.
+- **Logbook import** — and a door that only opens outwards is half a promise, so a whole logbook
+  reads straight back in: the **DiveJSON** document and the **archive**, and — through the
+  [DiveJSON converter](https://github.com/divejson/divejson-py) — **UDDF**, a **Subsurface** `.ssrf`
+  save file, a **FIT** logbook and a **Suunto app** export, plus a `.zip` whose files are all one of
+  those, which is how a watch's account export arrives. Move a logbook between instances, restore
+  one from a backup, or bring years of history out of something else. You see a full report of what
+  it would do — new records, ones already present, dives it would bring back from deletion, and
+  anything it could not represent — before a single row is written, and a converted file also gets a
+  report of what the conversion could not carry. Records you already have are matched rather than
+  duplicated, and a dive you deleted returns under its own identity. The archive additionally
+  restores the dive-computer files and c-card scans, which the bare document names by digest but
+  does not carry.
 - **Passwordless sign-in** — email magic links or Google; no passwords stored, ever.
 - **Dark mode & responsive** — works on the boat, in the dive shop, and on your desk.
 
@@ -80,9 +85,9 @@ components together. Start there if you want to run OpenDiving rather than work 
 
 Roadmap items, roughly in priority order — contributions welcome:
 
-- **More importers** — Subsurface XML and UDDF (which also covers Apple Watch dives via Oceanic+'s
-  UDDF export), then Shearwater Cloud exports; a pluggable importer layer so every format someone is
-  stranded with is a migration path in. Longer term,
+- **More importers** — Shearwater Cloud exports, when a database is in hand to write the reader
+  against. UDDF, Subsurface, FIT and the Suunto app's JSON already import, through the DiveJSON
+  converter, and a new format is an adapter there rather than a change here. Longer term,
   [libdivecomputer](https://www.libdivecomputer.org/) for direct hardware support.
 - **Statistics** — depth/time records, dives per year, sites map.
 - **Sharing** — public link to a dive or trip.
@@ -96,15 +101,15 @@ Honest answers to "why not X":
 - **[Subsurface](https://subsurface-divelog.org/)** — the open-source reference, with unmatched
   dive-computer support and a full deco planner. It's desktop-first with no web app or self-hostable
   server; OpenDiving is the server-shaped complement — a modern web UI, API-first, reachable from
-  any browser, and self-hostable on a box of your own. Use Subsurface to download from cables; a
-  Subsurface import is high on the roadmap so both can hold the same log.
+  any browser, and self-hostable on a box of your own. Use Subsurface to download from cables and
+  import its save file or its UDDF export here, so both can hold the same log.
 - **[Submersion](https://submersion.app/) / [Bubbletrail](https://bubbletrail.app/)** — excellent
   newer open-source _apps_: local-first, on-device databases, Bluetooth downloads. OpenDiving is the
   server-shaped alternative: one instance behind every browser and every family member, with an API
   — and yours to run on the household server if that is where you want it.
 - **Vendor clouds (Shearwater, Garmin, Suunto, Oceanic+)** — where dives are born, not where they
-  should live. OpenDiving imports their exports and keeps the original file forever, so switching
-  computers never splits your history.
+  should live. OpenDiving imports their exports — one dive at a time, with the original file kept
+  alongside it, or a whole logbook at once — so switching computers never splits your history.
 
 ## Self-hosting
 

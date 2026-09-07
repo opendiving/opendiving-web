@@ -14627,6 +14627,11 @@ and `lib/download.test.ts` use the extension as a generic attachment filename in
 is roadmap copy about the import direction, which this change does not touch. Classifying the sweep
 per line rather than per file is what keeps those three intact.
 
+The third of those is gone — the roadmap line lost its import clause when UDDF and Subsurface import
+shipped (see "A sentence about what one format lacks is a claim about all of them"). The two
+`Content-Disposition` fixtures are untouched and the rule above is why: they are still not
+export-format sites, and a per-file sweep would still be wrong about them.
+
 ## An unknown UTC offset is a third state, and `new Date()` used to silently invent one
 
 Logbook import gave `Dive.start_time` a shape it had never had: no offset at all. The format admits
@@ -14728,13 +14733,25 @@ walk performed there would have confirmed nothing.
 
 ## The logbook import card renders a plan, not a result, and the two are one shape
 
-Import is two calls — `POST /import/divejson/preview`, then `POST /import/divejson` with the same
-file and the preview's `token` — and `DataImportCard` renders the report from each through one
+Import is two calls — `POST /import/logbook/preview`, then `POST /import/logbook` with the same file
+and the preview's `token` — and `DataImportCard` renders the report from each through one
 `ImportReportView`. That is deliberate rather than incidental: a preview a diver approved and the
 result they got back are only worth comparing if they look the same, which is the same reasoning
 behind the API modelling both as one `ImportReport`. The file is held in state beside the token
 because apply needs both; the API re-hashes the body and refuses a token minted for other bytes, so
 sending the token alone would fail against a real server and pass against a lax mock.
+
+**The one-shape rule now covers four sections, not three**, and the fourth is the one that most
+wanted an exception. "About the original file" renders `ImportReport.conversion`, which the API puts
+on the report rather than on the preview for exactly this reason: the result panel is what stays on
+screen after an import, and a diver told at preview that their computer's gas mixes could not be
+carried should still be told afterwards. It is the only section a native DiveJSON upload does not
+get at all — `conversion` is `null` there, and a heading saying nothing was lost would be a claim
+about a conversion that never happened.
+
+**Those routes were `/import/divejson/*` until the API learned to convert.** They are gone rather
+than aliased; the old names survive in this file and nowhere else in this repository, which is what
+a decision log is for.
 
 **`restored` gets its own column and is never folded into `created`.** The four counts are disjoint
 on the wire precisely so a diver restoring a backup can see how much of it actually came back —
@@ -14766,7 +14783,7 @@ forward-compatibility stance `certificationAgencyLabel` takes for an unknown age
 `collectionLabel` for an unknown collection: a build that predates a note type should render it
 plainly, not invent alarm about a sentence it cannot interpret.
 
-## A sentence about what one format lacks is a claim about all of them, and import made that bite twice
+## A sentence about what one format lacks is a claim about all of them, and import keeps proving it
 
 The change that added a fourth export row learned this the hard way — the UDDF row's "ride in the
 archive instead" and the CSV row's "ships inside the archive" were claims about DiveJSON written
@@ -14787,6 +14804,35 @@ two importers that genuinely are still to come and never claimed import in gener
 made it safe to keep is that the page now says elsewhere that DiveJSON and the archive read back in;
 without that, the line would have been the only thing on the page about import and would have read
 as the whole story. Narrow it by shipping one of the two, never by softening it.
+
+**Both of those judgements have since been overtaken, and by the only thing that was allowed to
+overturn them: shipping.** The API now reads any format its `divejson` converter reads — UDDF, a
+Subsurface `.ssrf`, a FIT logbook and the Suunto app's JSON, plus a `.zip` whose files are all one
+of those — so the sentence above lost its import clause outright rather than being narrowed. There
+was never an intermediate state to narrow through: both importers it named arrived in the same
+release, because both are adapters in one converter rather than two pieces of work here. The export
+card's rows moved the same way: three of the four say they come back now, and only the CSV is
+silent.
+
+**The comment that did the reasoning was itself the thing that went stale**, in both places, which
+is the sharpest form this hazard takes. The landing page's three-up strip carried "only DiveJSON and
+the archive import, so a round-trip claim spanning all four would be false of UDDF and CSV", and
+`EXPORT_ROWS` carried "two of the four also come back … 'brings it back' on every row would promise
+a UDDF and a CSV import that do not exist". Each was a correct warning about claims made in prose,
+and each was a claim about UDDF that a change one repository away falsified without touching this
+file. Both now say what they say and say when they last had to be corrected; a rationale comment
+naming a format is copy, and belongs in the sweep with the rest.
+
+**`app/privacy/` produced two more, and the split between them is the useful part.** §2.3's and
+§4.6's "a DiveJSON document" and "A DiveJSON file" are now just "a logbook file", and both were
+reachable from the format sweep — the page is one of the twenty-two files it returns. The two that
+were not are the ones worth naming. §6.1's rights list said "Bring a logbook back in, **from a file
+this app exported**", a provenance claim that stopped being true the moment the endpoint read a file
+this app never wrote; and §2.1's Dive-Computer Files entry, already corrected once for the archive,
+went stale again for the opposite reason — it promises the file is kept alongside the dive, which is
+true of the dive form and false of a FIT logbook imported whole, since a converted upload stores no
+source file at all. Neither contains a format name, so neither is reachable from the sweep at the
+top of this section. The directory probe below found both, on the round after the one that added it.
 
 **`app/privacy/` is the blind spot, and it is eleven claims rather than the one an export sweep
 finds.** Not one of them names a format, which is exactly why `git grep -niwE "uddf|three"` reaches
@@ -14830,6 +14876,45 @@ about `DataExportCard`'s rows, which this change does not touch — the import c
 of that card, not a fifth row in it. The fourth-row change updated that number rather than deleting
 it, and a `-w three` sweep no longer matches the comment at all, which is how an earlier reading
 concluded it was gone. Read it before assuming either.
+
+## The import picker mirrors the converter's formats, and everything else about them is tolerant
+
+`LOGBOOK_IMPORT_ACCEPT` is computed from `LOGBOOK_IMPORT_SOURCE_EXTENSIONS`, a
+`Record<ImportSourceFormat, readonly string[]>`, so a format added to the union without an extension
+stops the file compiling instead of quietly disappearing from the file dialog — `DIVE_FILE_ACCEPT`'s
+pin, on the other import surface. `logbook-import.test.ts` restates the map as an independent
+literal `satisfies` the same `Record`, which is what catches an edit to the map itself rather than
+to the union.
+
+**That is the only lockstep part, and deliberately so.** This is not a sixth hand-kept vocabulary
+mirror in the sense of `GAS_ROLES` or `DIVE_FORM_FIELDS`, where both sides move in one change and a
+test asserts they are equal. The API derives its format list from `divejson.read_formats()` on every
+call, that library is a pinned dependency, and the pin moves by a Renovate bump with nothing in
+either repository changing — so a reader can reach a diver's import card before any word for it
+exists here. Three places absorb that, and each of them was designed for it rather than hardened
+after the fact:
+
+- **`conversion.format` renders through `importSourceLabel`, which falls back to the id.** A
+  `Record<ImportSourceFormat, string>` lookup would put `undefined file, converted to DiveJSON 1.0`
+  in the card header the day a new reader ships. `suunto_xml` is the next one due and will arrive
+  exactly this way.
+- **`conversion.groups[].kind` is an opaque string, never a union.** The API says so in the field's
+  own description and keeps it that way for the same reason: its converter's kind set grew from
+  three to four while this card was being built. `conversionKindTone` reads an unfamiliar kind as
+  information rather than as a warning — `noteIsWarning`'s stance, for the same argument — and
+  `conversionKindLabel` de-snakes it rather than rendering a blank badge.
+- **The picker is the one thing that does not widen on its own**, which is the accepted cost. A
+  format the API gains is unpickable here until its extension is added. It is still importable
+  inside a `.zip`, since a zip whose members are all one source format is read as one logbook and
+  `.zip` was always offered, so the gap is inconvenience rather than a wall.
+
+**Nothing in the browser parses a dive file, and the grouping is not done here either.** The API
+groups conversion findings by `(kind, message)` through the converter's own `grouped()`; a second
+grouping in this repository would be a new mirror of a rule that already has one implementation,
+which is the trade "Air consumption is the API's number" settles the same way. What this side owns
+is presentation: the badge, the tone, the "8 places — dive/0, dive/1, dive/2 and 5 more" line whose
+"and N more" is `count` minus the three `wheres` the API sends, and the sentence that admits the
+list is a prefix when it capped the groups.
 
 ## A fixture meaning "in the future" is derived, never written down
 
