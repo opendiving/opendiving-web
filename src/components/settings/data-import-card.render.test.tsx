@@ -2,12 +2,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DataImportCard } from "./data-import-card";
-import type { ImportPreview, ImportReport } from "@/lib/api/logbook-import";
+import type {
+  ConversionReport,
+  ImportPreview,
+  ImportReport,
+} from "@/lib/api/logbook-import";
 
 // What only a render can reach: that a preview is shown and nothing is written
 // until the diver says so, that `restored` survives to the screen as its own
-// figure, that a truncated note list admits it is a prefix, and that a bare
-// document's uncontained files read as the expected case rather than as damage.
+// figure, that a truncated note list admits it is a prefix, that a bare
+// document's uncontained files read as the expected case rather than as damage,
+// and that the conversion section renders for preview and result alike, is
+// absent for a native document, and survives a kind and a format this build has
+// never seen.
 // The two calls behind it are thin `FormData` posts; the presentation helpers are
 // pinned in `lib/logbook-import.test.ts`.
 const mocks = vi.hoisted(() => ({
@@ -33,6 +40,9 @@ function report(overrides: Partial<ImportReport> = {}): ImportReport {
     files: { referenced: 0, restored: 0, not_contained: 0, skipped: 0 },
     notes: [],
     notes_truncated: 0,
+    // Null by default: the ordinary upload is a DiveJSON document the API read
+    // as-is, and the conversion block exists only when something was converted.
+    conversion: null,
     ...overrides,
   };
 }
@@ -49,8 +59,30 @@ function preview(overrides: Partial<ImportPreview> = {}): ImportPreview {
   };
 }
 
+function conversion(
+  overrides: Partial<ConversionReport> = {},
+): ConversionReport {
+  return {
+    format: "ssrf",
+    converter: { name: "divejson", version: "0.3.0" },
+    groups: [
+      {
+        kind: "dropped",
+        message: "Visibility is a star rating here, not a distance.",
+        count: 8,
+        wheres: ["dive/0", "dive/1", "dive/2"],
+      },
+    ],
+    groups_truncated: 0,
+    ...overrides,
+  };
+}
+
 const documentFile = () =>
   new File(["{}"], "logbook.divejson", { type: "application/vnd.dive+json" });
+
+const sourceFile = () =>
+  new File(["<divelog/>"], "subsurface.ssrf", { type: "" });
 
 async function choose(file: File) {
   const input = document.querySelector<HTMLInputElement>('input[type="file"]');
@@ -189,6 +221,137 @@ describe("the logbook import card", () => {
       ),
     );
     expect(mocks.preview).not.toHaveBeenCalled();
+  });
+
+  it("names the diver's own file in the header, and says what conversion cost", async () => {
+    mocks.preview.mockResolvedValue(
+      preview({
+        // What the API actually sends for a converted upload: the document's own
+        // markers describe the converter's output, and only `conversion` names
+        // the file the diver picked.
+        format: "divejson",
+        version: "1.0",
+        generator: { name: "divejson convert", version: "0.3.0" },
+        conversion: conversion(),
+      }),
+    );
+
+    render(<DataImportCard />);
+    await choose(sourceFile());
+
+    expect(
+      await screen.findByText(
+        /Subsurface file, converted to DiveJSON 1\.0 by divejson convert 0\.3\.0/i,
+      ),
+    ).toBeVisible();
+
+    expect(
+      screen.getByRole("heading", { name: /about the original file/i }),
+    ).toBeVisible();
+    expect(screen.getByText(/star rating here, not a distance/i)).toBeVisible();
+    // The kind as a badge, and the count with three of its paths - the count is
+    // the complete figure and the paths are a pointer into the source file.
+    expect(screen.getByText("Dropped")).toBeVisible();
+    expect(
+      screen.getByText("8 places — dive/0, dive/1, dive/2 and 5 more"),
+    ).toBeVisible();
+  });
+
+  it("keeps the conversion section on the result, not only on the preview", async () => {
+    // `conversion` is on `ImportReport` rather than on `ImportPreview` for this:
+    // the result panel is what stays on screen, and a diver told at preview that
+    // their computer's gas mixes could not be carried should still be told after.
+    mocks.preview.mockResolvedValue(preview({ conversion: conversion() }));
+    mocks.apply.mockResolvedValue(report({ conversion: conversion() }));
+
+    render(<DataImportCard />);
+    await choose(sourceFile());
+    await screen.findByRole("heading", { name: /about the original file/i });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /import this logbook/i }),
+    );
+
+    await screen.findByRole("heading", { name: /^imported$/i });
+    expect(
+      screen.getByRole("heading", { name: /about the original file/i }),
+    ).toBeVisible();
+    expect(screen.getByText(/star rating here, not a distance/i)).toBeVisible();
+  });
+
+  it("shows no conversion section at all for a native document", async () => {
+    // Not an empty section saying nothing was lost: `conversion` is null here
+    // because nothing was converted, and a heading would be a claim about a
+    // conversion that never happened.
+    mocks.preview.mockResolvedValue(preview());
+
+    render(<DataImportCard />);
+    await choose(documentFile());
+    await screen.findByText(/nothing has been written yet/i);
+
+    expect(
+      screen.queryByRole("heading", { name: /about the original file/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("renders a kind and a format from a newer converter rather than breaking", async () => {
+    // Reachable with nothing in this repository changing: the API derives its
+    // format list from a pinned converter, and that pin moves by dependency
+    // bump. An unknown kind reads as information, never as alarm, and an
+    // unknown format renders as its id rather than as `undefined`.
+    //
+    // A `.zip` is the file here on purpose. It is the route by which a format
+    // the picker does not yet offer actually reaches this card: a zip whose
+    // members are all one source format is read as one logbook, and `.zip` is
+    // offered from day one.
+    mocks.preview.mockResolvedValue(
+      preview({
+        generator: null,
+        conversion: conversion({
+          format: "suunto_xml",
+          converter: { name: "divejson", version: "0.4.0" },
+          groups: [
+            {
+              kind: "stretched",
+              message: "The sample cadence was normalised.",
+              count: 2,
+              wheres: [],
+            },
+          ],
+        }),
+      }),
+    );
+
+    render(<DataImportCard />);
+    await choose(
+      new File(["PK\x03\x04"], "dives.zip", { type: "application/zip" }),
+    );
+
+    expect(
+      await screen.findByText(
+        /suunto_xml file, converted to DiveJSON 1\.0 by divejson 0\.4\.0/i,
+      ),
+    ).toBeVisible();
+
+    const finding = screen.getByText(/sample cadence was normalised/i);
+    expect(finding).toBeVisible();
+    expect(finding.className).not.toMatch(/destructive|amber/);
+    expect(screen.getByText("Stretched")).toBeVisible();
+    expect(screen.getByText("2 places")).toBeVisible();
+  });
+
+  it("says the findings list is a prefix when the API capped it", async () => {
+    mocks.preview.mockResolvedValue(
+      preview({ conversion: conversion({ groups_truncated: 3 }) }),
+    );
+
+    render(<DataImportCard />);
+    await choose(sourceFile());
+
+    const line = await screen.findByText(/3 further findings are not shown/i);
+    expect(line).toBeVisible();
+    // The record counts are not truncated, only the list of findings is.
+    expect(line.textContent).toMatch(/record counts above are complete/i);
   });
 
   it("clears a previous report before previewing a new file", async () => {

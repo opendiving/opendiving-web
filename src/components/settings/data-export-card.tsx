@@ -43,25 +43,30 @@ interface ExportRow {
 // DiveJSON leads because it is the complete one and the app's own format; the two lossy
 // rows below it are for handing to something else.
 //
-// Two of the four also come *back* - DiveJSON and the archive, through the import card
-// below this one - and each of those rows says so. The other two deliberately do not, and
-// that asymmetry is the point: a sentence about what one format can do is read as a claim
-// about the ones beside it, so "brings it back" on every row would promise a UDDF and a
-// CSV import that do not exist.
+// Three of the four also come *back* - DiveJSON, UDDF and the archive, through the import
+// card below this one, which reads every format the API's converter reads. The CSV row
+// deliberately stays silent, and that asymmetry is the point: a sentence about what one
+// format can do is read as a claim about the ones beside it, so "brings it back" on every
+// row would promise a CSV import that does not exist.
+//
+// This comment said "two of the four" and named UDDF as one of the two that could not
+// come back, which was true until the API grew a converter and then was not. That is the
+// ordinary way this card's copy goes wrong - see "A sentence about what one format lacks
+// is a claim about all of them" in DECISIONS.md.
 const EXPORT_ROWS: ExportRow[] = [
   {
     format: "divejson",
     icon: FileJson,
     title: "DiveJSON",
     description:
-      "Your whole logbook in one file: every dive with its full sample profile, cylinders, sites, trips, courses, marine life, gear with its service history and your c-card records — everything in the account except the uploaded files themselves, which it names by digest. DiveJSON is the open dive-log format this project maintains, and this app is its reference implementation — so this is also the file the import card below reads back in.",
+      "Your whole logbook in one file: every dive with its full sample profile, cylinders, sites, trips, courses, marine life, gear with its service history and your c-card records — everything in the account except the uploaded files themselves, which it names by digest. DiveJSON is the open dive-log format this project maintains, and this app is its reference implementation — so this is the one that comes back with nothing lost.",
   },
   {
     format: "uddf",
     icon: FileCode,
     title: "UDDF",
     description:
-      "Every dive with its sites, trips, gases, cylinders, gear and full sample profile, in the open format Subsurface, MacDive and divelogs.de import. This is the file to hand another program — gear sets, service history, your courses and your c-cards have no slot in it, and ride in the DiveJSON and the archive instead.",
+      "Every dive with its sites, trips, gases, cylinders, gear and full sample profile, in the open format Subsurface, MacDive and divelogs.de import. This is the file to hand another program, and the import card below reads it back too — gear sets, service history, your courses and your c-cards have no slot in it, and ride in the DiveJSON and the archive instead.",
   },
   {
     format: "csv",

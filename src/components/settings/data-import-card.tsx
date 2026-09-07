@@ -15,6 +15,7 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { getApiErrorMessage } from "@/lib/api/error";
 import {
+  importSourceLabel,
   logbookImportAPI,
   LOGBOOK_IMPORT_ACCEPT,
   MAX_IMPORT_ARCHIVE_SIZE,
@@ -25,18 +26,41 @@ import {
 import {
   collectionLabel,
   collectionRowIsEmpty,
+  conversionKindLabel,
+  conversionKindTone,
+  conversionWhereSentence,
   fileRestoreHint,
+  importSourceSentence,
   importTotals,
   noteIsWarning,
+  truncatedConversionSentence,
   truncatedNotesSentence,
 } from "@/lib/logbook-import";
 
 // A zip is the archive, anything else is treated as a bare document. Only used to
 // pick which client-side size ceiling to check against - the API decides what the
-// bytes actually are, and a `.zip` that isn't one comes back as a 415.
+// bytes actually are, and a `.zip` that isn't one comes back as a 415. A `.fit`,
+// an `.ssrf` or a UDDF lands in the document bucket, which is the API's own rule:
+// whatever shape a logbook arrives in, at most a document's worth of it becomes
+// one logbook in memory.
 function isArchiveUpload(file: File): boolean {
   return /\.zip$/i.test(file.name) || file.type === "application/zip";
 }
+
+// The row colour per finding kind, and the badge beside it. Only `dropped` is a
+// loss and only `dropped` is amber; the rest explain rather than warn, and an
+// unfamiliar kind lands on `neutral` - see `conversionKindTone`.
+const CONVERSION_TONE_CLASSES = {
+  warning: {
+    row: "text-amber-700 dark:text-amber-500",
+    badge: "border-amber-600/40 text-amber-700 dark:text-amber-500",
+  },
+  neutral: { row: "text-foreground", badge: "border-border text-foreground" },
+  muted: {
+    row: "text-muted-foreground",
+    badge: "border-border/60 text-muted-foreground",
+  },
+} as const;
 
 function formatMegabytes(bytes: number): string {
   return `${Math.round(bytes / (1024 * 1024))} MB`;
@@ -45,7 +69,9 @@ function formatMegabytes(bytes: number): string {
 // The report both responses carry, rendered identically for the plan and for the
 // result. Deliberately one component: a preview the diver approved and the result
 // they got back are only worth comparing if they look the same, which is the same
-// reason the API models them as one shape.
+// reason the API models them as one shape. All four sections obey that, the
+// conversion one included - it is on `ImportReport` rather than on the preview
+// precisely so the panel that stays on screen afterwards still carries it.
 //
 // Everything here is a *persistent* element rather than a toast. A logbook import
 // can return hundreds of notes about individual dives, and the diver has to still
@@ -62,6 +88,10 @@ function ImportReportView({
   const rows = report.collections.filter((row) => !collectionRowIsEmpty(row));
   const truncated = truncatedNotesSentence(report.notes_truncated);
   const hint = fileRestoreHint(report, archive);
+  const conversion = report.conversion;
+  const conversionTruncated = truncatedConversionSentence(
+    conversion?.groups_truncated ?? 0,
+  );
 
   return (
     <div className="space-y-4">
@@ -191,6 +221,52 @@ function ImportReportView({
           )}
         </div>
       )}
+
+      {/* The fourth section, and the only one a native DiveJSON upload does not
+          get: `conversion` is null there, and a heading saying nothing was lost
+          would be a claim about a conversion that never happened. */}
+      {conversion && (
+        <div>
+          <h3 className="text-sm font-medium">About the original file</h3>
+          {conversion.groups.length === 0 ? (
+            <p className="text-sm text-muted-foreground mt-2">
+              Everything in this {importSourceLabel(conversion.format)} file
+              came across.
+            </p>
+          ) : (
+            <ul className="mt-2 space-y-2 max-h-64 overflow-y-auto">
+              {conversion.groups.map((group, index) => {
+                const tone =
+                  CONVERSION_TONE_CLASSES[conversionKindTone(group.kind)];
+                return (
+                  // Indexed for the same reason the notes list is: a group is
+                  // identified by its `(kind, message)` pair and nothing else,
+                  // and the list is rebuilt wholesale from each response.
+                  <li
+                    key={`${group.kind}-${index}`}
+                    className={`text-sm ${tone.row}`}
+                  >
+                    <span
+                      className={`inline-flex items-center rounded border px-1.5 py-0.5 mr-2 text-xs font-medium align-[1px] ${tone.badge}`}
+                    >
+                      {conversionKindLabel(group.kind)}
+                    </span>
+                    {group.message}
+                    <span className="block text-xs text-muted-foreground mt-0.5">
+                      {conversionWhereSentence(group)}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {conversionTruncated && (
+            <p className="text-sm text-muted-foreground mt-2 italic">
+              {conversionTruncated}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -234,7 +310,10 @@ export function DataImportCard() {
       if (file.size > limit) {
         toast({
           title: "File too large",
-          description: `${isArchiveUpload(file) ? "Archives" : "DiveJSON documents"} must be ${formatMegabytes(limit)} or smaller.`,
+          // Not "DiveJSON documents": the document bucket is what a `.fit` and
+          // an `.ssrf` get too, and naming one format in a refusal about all of
+          // them is how this card's copy has gone wrong before.
+          description: `${isArchiveUpload(file) ? "Archives" : "Logbook files"} must be ${formatMegabytes(limit)} or smaller.`,
           variant: "destructive",
         });
         return;
@@ -254,7 +333,11 @@ export function DataImportCard() {
         title: "Could not read that file",
         description: getApiErrorMessage(
           error,
-          "The file could not be read as a DiveJSON logbook. Please check it and try again.",
+          // The fallback only shows when the API sent no `detail` of its own,
+          // and its own 415 lists the formats this build reads - which is why
+          // this one names none: a list written here would be a second copy of
+          // one that moves with the API's converter pin.
+          "The file could not be read as a logbook. Please check it and try again.",
         ),
         variant: "destructive",
       });
@@ -306,22 +389,30 @@ export function DataImportCard() {
           Bring a Logbook In
         </CardTitle>
         <CardDescription>
-          Read a DiveJSON file back into this account — a backup you took here,
-          or a logbook exported from another copy of OpenDiving. You see exactly
-          what it would do before anything is written.
+          Read a logbook back into this account — a backup you took here, a
+          logbook from another copy of OpenDiving, or an export from Subsurface,
+          a dive computer or the Suunto app. You see exactly what it would do
+          before anything is written.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="rounded-lg border border-dashed p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-muted/40">
           <div className="min-w-0">
+            {/* The formats this sentence names are the ones
+                `LOGBOOK_IMPORT_ACCEPT` offers, and the pairing is the point: a
+                file the picker greys out has no business being listed here, and
+                a format offered without being named reads as unsupported. */}
             <p className="font-medium text-sm">
-              Choose a .divejson file or a .zip archive
+              Choose a .divejson, .uddf, .ssrf, .fit or .json file, or a .zip
             </p>
             <p className="text-sm text-muted-foreground">
-              The archive restores your dive-computer files and certification
-              scans as well; the bare document restores everything else. Records
-              already in your logbook are matched rather than duplicated, and a
-              dive you deleted comes back under its own identity.
+              Anything that is not DiveJSON already is converted on the way in,
+              and you are told what the conversion could not carry. A .zip is
+              either a full OpenDiving archive — which restores your
+              dive-computer files and certification scans as well — or a folder
+              of dive-computer files, read as one logbook. Records already in
+              your logbook are matched rather than duplicated, and a dive you
+              deleted comes back under its own identity.
             </p>
           </div>
           <div>
@@ -360,17 +451,14 @@ export function DataImportCard() {
               <h3 className="font-medium">
                 Ready to import {pending.file.name}
               </h3>
+              {/* `importSourceSentence` reads `conversion` before `format` and
+                  `generator`, which on a converted upload describe the document
+                  the API ended up reading rather than the file just named above
+                  it - "divejson 1.0, written by divejson convert" about
+                  somebody's `.ssrf`. */}
               <p className="text-sm text-muted-foreground mt-1">
-                {pending.preview.archive ? "Archive" : "Document"} in{" "}
-                {pending.preview.format} {pending.preview.version}
-                {pending.preview.generator?.name
-                  ? `, written by ${pending.preview.generator.name}${
-                      pending.preview.generator.version
-                        ? ` ${pending.preview.generator.version}`
-                        : ""
-                    }`
-                  : ""}
-                . Nothing has been written yet.
+                {importSourceSentence(pending.preview)} Nothing has been written
+                yet.
               </p>
             </div>
 

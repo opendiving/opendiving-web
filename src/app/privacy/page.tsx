@@ -99,11 +99,12 @@ export default function PrivacyPage() {
                 conditions, gas mixes, species seen, and your notes
               </li>
               <li>
-                <strong>Dive-Computer Files:</strong> When you import a dive
-                from a dive computer, the exported file itself is kept alongside
+                <strong>Dive-Computer Files:</strong> When you fill a dive in
+                from a dive-computer file, that file itself is kept alongside
                 the dive &mdash; one per dive, under the filename it arrived
                 with. Importing a full archive puts those same files back, since
-                it carries them
+                it carries them; a logbook imported in any other format leaves
+                no file here, whatever it was written by
               </li>
               <li>
                 <strong>Equipment Data:</strong> Diving equipment details and
@@ -247,10 +248,10 @@ export default function PrivacyPage() {
                 picked
               </li>
               <li>
-                Coordinates carried in a logbook you import &mdash; a DiveJSON
-                document can record where a dive entered and left the water,
-                where a dive site is, and where a trip went, and those are
-                written as the file gives them
+                Coordinates carried in a logbook you import &mdash; a logbook
+                file can record where a dive entered and left the water, where a
+                dive site is, and where a trip went, and those are written as
+                the file gives them
               </li>
             </ul>
             <p className="text-foreground mb-4">
@@ -455,7 +456,7 @@ export default function PrivacyPage() {
             </p>
             <p className="text-foreground mb-4">
               Importing a logbook does the same thing without a picker being
-              involved at all. A DiveJSON file can name marine life this copy of
+              involved at all. A logbook file can name marine life this copy of
               OpenDiving has never seen, and those species are looked up before
               the import is written &mdash; the same two registers, the same
               request, carrying the species&rsquo; number and nothing about you.
@@ -715,8 +716,9 @@ export default function PrivacyPage() {
               </li>
               <li>Export everything you have entered</li>
               <li>
-                Bring a logbook back in, from a file this app exported &mdash;
-                seeing what it would do before anything is written
+                Bring a logbook back in &mdash; a file this app exported, or one
+                from a dive computer or another program, seeing what it would do
+                before anything is written
               </li>
               <li>Delete your account and everything attached to it</li>
             </ul>

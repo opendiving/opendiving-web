@@ -1,15 +1,80 @@
 import { apiClient } from "./client";
 
 /**
- * What a `.divejson` document or `.zip` archive may be offered to the import as.
+ * A format the API's converter reads, as the converter itself names it.
  *
- * Both spellings of each, because the picker matches on either and a browser that
- * knows neither extension sends `application/octet-stream` for the document. The
- * API re-checks the bytes regardless, and its check is the one that counts - this
- * only keeps the file dialog from showing a diver every file they own.
+ * These are `divejson.read_formats()` ids at the release the API pins, not a
+ * closed vocabulary: the pin moves by dependency bump with no change here, so a
+ * `conversion.format` outside this union is an ordinary event rather than an
+ * error. Everything that renders one goes through `importSourceLabel`, which
+ * falls back to the id - the `diveParserLabel` stance, not the lockstep one the
+ * hand-kept enum mirrors take.
  */
-export const LOGBOOK_IMPORT_ACCEPT =
-  ".divejson,.zip,application/vnd.dive+json,application/zip";
+export type ImportSourceFormat = "uddf" | "ssrf" | "fit" | "suunto_json";
+
+/**
+ * Which file extensions offer each converted format in the picker.
+ *
+ * `Record<ImportSourceFormat, ...>`, so widening the union without offering an
+ * extension stops this file compiling rather than silently greying a format out
+ * of the file dialog - the `DIVE_FILE_ACCEPT` pin's reasoning, one surface over.
+ *
+ * Each entry mirrors that adapter's own `suffixes` in the converter, which is
+ * why a UDDF file named `.xml` is not offered and `.json` - the Suunto app's
+ * export, and broad - is. Acceptance itself is decided API-side by sniffing the
+ * bytes; this list only decides what the dialog greys out.
+ */
+export const LOGBOOK_IMPORT_SOURCE_EXTENSIONS: Record<
+  ImportSourceFormat,
+  readonly string[]
+> = {
+  uddf: [".uddf"],
+  ssrf: [".ssrf"],
+  fit: [".fit"],
+  suunto_json: [".json"],
+};
+
+/** What to call each converted format on screen. */
+const IMPORT_SOURCE_LABELS: Record<ImportSourceFormat, string> = {
+  uddf: "UDDF",
+  ssrf: "Subsurface",
+  fit: "FIT",
+  suunto_json: "Suunto app JSON",
+};
+
+/**
+ * A source format's display name, tolerating one this build has never heard of.
+ *
+ * The fallback is the whole point rather than defensiveness: the API's format
+ * list is derived from its pinned converter on every call, that pin moves by
+ * dependency bump alone, and a `Record` lookup would render `undefined` in the
+ * card header the day a new reader ships. Showing `suunto_xml` is worse than a
+ * label and far better than a blank - the same trade `diveParserLabel` makes.
+ */
+export function importSourceLabel(format: string): string {
+  const labels: Record<string, string> = IMPORT_SOURCE_LABELS;
+  return labels[format] ?? format;
+}
+
+/**
+ * What may be offered to the logbook import: the app's own two, and every
+ * dive-computer format the API converts.
+ *
+ * Computed from `LOGBOOK_IMPORT_SOURCE_EXTENSIONS` rather than written out, so
+ * the picker cannot end up offering fewer formats than the union declares. Both
+ * spellings of the native pair, because the picker matches on either and a
+ * browser that knows neither extension sends `application/octet-stream` for the
+ * document. The API re-checks the bytes regardless, and its check is the one
+ * that counts - this only keeps the file dialog from showing a diver every file
+ * they own.
+ */
+export const LOGBOOK_IMPORT_ACCEPT = [
+  ".divejson",
+  ".zip",
+  ...Object.values(LOGBOOK_IMPORT_SOURCE_EXTENSIONS).flat(),
+  "application/vnd.dive+json",
+  "application/zip",
+].join(",");
 
 /**
  * The client-side size ceilings, mirroring the API's own 413s.
@@ -18,6 +83,11 @@ export const LOGBOOK_IMPORT_ACCEPT =
  * archive, which legitimately carries every dive-computer file and certification
  * scan in the account. Checked here so a diver on a slow connection is not made
  * to upload 400 MB before being told no.
+ *
+ * The document number is the ceiling for a `.fit` or an `.ssrf` too: whatever
+ * shape a logbook arrives in, at most a document's worth of source becomes one
+ * in-memory logbook, so the API gives a converted upload the same bucket. Only
+ * a `.zip` gets the archive one.
  */
 export const MAX_IMPORT_DOCUMENT_SIZE = 100 * 1024 * 1024; // 100 MB
 export const MAX_IMPORT_ARCHIVE_SIZE = 500 * 1024 * 1024; // 500 MB
@@ -97,6 +167,58 @@ export interface ImportFileReport {
   skipped: number;
 }
 
+/** What converted the upload, so a report can be attributed to a version of it. */
+export interface ConversionConverter {
+  name: string;
+  version: string;
+}
+
+/**
+ * One thing the conversion could not carry, and everywhere it came up.
+ *
+ * `kind` is **an opaque string, not a union**, and the API guarantees it will
+ * stay one. Its converter's kind set grew from three to four while this card was
+ * being built, and the pin that decides which set a build sees moves by a
+ * dependency bump with nothing here changing - so a kind this app has never seen
+ * can arrive between one deploy and the next. `conversionKindTone` renders an
+ * unfamiliar one as plain information, the `noteIsWarning` stance.
+ */
+export interface ConversionNoteGroup {
+  /** `absent`, `inferred`, `resolved` or `dropped` at the time of writing. */
+  kind: string;
+  /** One sentence, ready to render. */
+  message: string;
+  /** How many places raised this, which may be more than `wheres` lists. */
+  count: number;
+  /** Up to three paths into the source document, e.g. `dive/0/tankdata/1`. */
+  wheres: string[];
+}
+
+/**
+ * What converting a non-DiveJSON upload could not carry. `null` for a native one.
+ *
+ * Grouped by the API rather than here, and by `(kind, message)`: one source habit
+ * makes one finding per record - eight dives with no UTC offset are eight
+ * findings - and grouping in the browser would be a second implementation of a
+ * rule that already has one.
+ */
+export interface ConversionReport {
+  /**
+   * The format the upload was read as, **as the converter names it** - so an id
+   * rather than a label, and not necessarily an `ImportSourceFormat` this build
+   * knows. Render it through `importSourceLabel`.
+   */
+  format: string;
+  converter: ConversionConverter;
+  /** Findings grouped by kind and message, in first-seen order. */
+  groups: ConversionNoteGroup[];
+  /**
+   * Groups beyond the API's cap that are **not** in `groups`. Non-zero means the
+   * list above is a prefix; the per-group counts stay complete either way.
+   */
+  groups_truncated: number;
+}
+
 /** The body of both responses: the same shape whether it is a plan or a result. */
 export interface ImportReport {
   /** One entry per envelope collection, in the envelope's own order. */
@@ -113,6 +235,15 @@ export interface ImportReport {
    * only the note list that is truncated.
    */
   notes_truncated: number;
+  /**
+   * What the conversion could not carry, or `null` when the upload was already
+   * DiveJSON.
+   *
+   * On the report rather than on the preview alone, so the panel that stays on
+   * screen after an import still tells a diver what their computer's export lost
+   * on the way in - the same reason preview and result are one shape at all.
+   */
+  conversion: ConversionReport | null;
 }
 
 /** What produced the document, if it said. */
@@ -121,12 +252,21 @@ export interface ImportGenerator {
   version: string | null;
 }
 
-/** What `POST /import/divejson/preview` returns. Nothing has been written. */
+/** What `POST /import/logbook/preview` returns. Nothing has been written. */
 export interface ImportPreview extends ImportReport {
-  /** The document's own `format` marker, e.g. `divejson`. */
+  /**
+   * The **imported document's** own `format` marker, e.g. `divejson` - which for
+   * a converted upload is the converter's output rather than the file the diver
+   * picked. What that file was is `conversion.format`, and any header naming the
+   * source has to read that first.
+   */
   format: string;
-  /** The document's declared version, e.g. `1.0`. */
+  /** The imported document's declared version, e.g. `1.0`. */
   version: string;
+  /**
+   * What produced the imported document, if it said. On a converted upload this
+   * is the converter (`divejson convert`), not whatever wrote the diver's file.
+   */
   generator: ImportGenerator | null;
   /** Whether this upload was a container carrying the stored files. */
   archive: boolean;
@@ -138,11 +278,18 @@ export interface ImportPreview extends ImportReport {
   token: string;
 }
 
-/** What `POST /import/divejson` returns. Everything in it has been committed. */
+/** What `POST /import/logbook` returns. Everything in it has been committed. */
 export type ImportResult = ImportReport;
 
 /**
- * Logbook import: reading a DiveJSON document back into the account that owns it.
+ * Logbook import: reading a logbook into the account that will hold it.
+ *
+ * The API takes a DiveJSON document, this app's full-export archive, or any
+ * dive-computer format its converter reads - UDDF, Subsurface `.ssrf`, FIT and
+ * the Suunto app's JSON at the release it pins - plus a `.zip` whose files are
+ * all one of those, which is how a watch's account export arrives. Anything not
+ * DiveJSON already is converted API-side and the report says what that cost;
+ * nothing in the browser parses a dive file.
  *
  * **One import is two calls**, and they share a rate limit - the API allows 20 an
  * hour per user across both. Preview writes nothing and hands back a `token`;
@@ -162,6 +309,9 @@ export const logbookImportAPI = {
   /**
    * Plan the import and report what it would do. Writes nothing.
    *
+   * Takes the file whatever format it is in - the API sniffs the bytes, converts
+   * what needs converting and reports both halves in one `ImportPreview`.
+   *
    * The `Content-Type` header is explicitly cleared so the browser sets the
    * `multipart/form-data; boundary=...` it alone can compute - the shared client
    * defaults to `application/json`, which would make the API see no file at all.
@@ -171,7 +321,7 @@ export const logbookImportAPI = {
     formData.append("file", file);
 
     const response = await apiClient.post<ImportPreview>(
-      "/import/divejson/preview",
+      "/import/logbook/preview",
       formData,
       { headers: { "Content-Type": undefined } },
     );
@@ -191,7 +341,7 @@ export const logbookImportAPI = {
     formData.append("token", token);
 
     const response = await apiClient.post<ImportResult>(
-      "/import/divejson",
+      "/import/logbook",
       formData,
       { headers: { "Content-Type": undefined } },
     );

@@ -2,13 +2,20 @@ import { describe, expect, it } from "vitest";
 import {
   collectionLabel,
   collectionRowIsEmpty,
+  conversionKindLabel,
+  conversionKindTone,
+  conversionWhereSentence,
   fileRestoreHint,
+  importSourceSentence,
   importTotals,
   noteIsWarning,
+  truncatedConversionSentence,
   truncatedNotesSentence,
 } from "./logbook-import";
 import type {
+  ConversionNoteGroup,
   ImportCollectionReport,
+  ImportPreview,
   ImportReport,
 } from "@/lib/api/logbook-import";
 
@@ -32,6 +39,9 @@ function report(overrides: Partial<ImportReport> = {}): ImportReport {
     files: { referenced: 0, restored: 0, not_contained: 0, skipped: 0 },
     notes: [],
     notes_truncated: 0,
+    // Null by default: the ordinary upload is a DiveJSON document the API read
+    // as-is, and the conversion block exists only when something was converted.
+    conversion: null,
     ...overrides,
   };
 }
@@ -206,5 +216,174 @@ describe("fileRestoreHint", () => {
         false,
       ),
     ).toContain("This file is");
+  });
+});
+
+function group(
+  overrides: Partial<ConversionNoteGroup> = {},
+): ConversionNoteGroup {
+  return {
+    kind: "dropped",
+    message: "Visibility is a star rating here and has no metric equivalent.",
+    count: 1,
+    wheres: ["dive/0"],
+    ...overrides,
+  };
+}
+
+describe("conversionKindLabel", () => {
+  it("names each kind the converter emits today", () => {
+    expect(conversionKindLabel("absent")).toBe("Not recorded");
+    expect(conversionKindLabel("inferred")).toBe("Worked out");
+    expect(conversionKindLabel("resolved")).toBe("Resolved");
+    expect(conversionKindLabel("dropped")).toBe("Dropped");
+  });
+
+  it("de-snakes a kind this build has never heard of", () => {
+    // The API sends `kind` as an opaque string deliberately: its converter's
+    // kind set grew from three to four mid-feature, and the pin deciding which
+    // set a build sees moves with no change here. A blank badge would be worse
+    // than the raw word.
+    expect(conversionKindLabel("partially_carried")).toBe("Partially carried");
+  });
+});
+
+describe("conversionKindTone", () => {
+  it("is a warning only where the source recorded something that was lost", () => {
+    expect(conversionKindTone("dropped")).toBe("warning");
+  });
+
+  it("keeps the converter's own working plain, and an absence quietest", () => {
+    // `inferred` and `resolved` are the converter explaining itself rather than
+    // reporting a loss, and `absent` is a property of the file: the source never
+    // recorded the thing at all.
+    expect(conversionKindTone("inferred")).toBe("neutral");
+    expect(conversionKindTone("resolved")).toBe("neutral");
+    expect(conversionKindTone("absent")).toBe("muted");
+  });
+
+  it("reads a kind from a newer converter as information, not alarm", () => {
+    // The `noteIsWarning` stance, and reachable without anyone touching this
+    // repository - which is the whole reason it is here.
+    expect(conversionKindTone("stretched")).toBe("neutral");
+  });
+});
+
+describe("conversionWhereSentence", () => {
+  it("says how many places raised it, and where three of them were", () => {
+    expect(
+      conversionWhereSentence(
+        group({ count: 15, wheres: ["dive/0", "dive/1", "dive/2"] }),
+      ),
+    ).toBe("15 places — dive/0, dive/1, dive/2 and 12 more");
+  });
+
+  it("does not claim more when it listed all of them", () => {
+    expect(
+      conversionWhereSentence(
+        group({ count: 2, wheres: ["dive/0", "dive/3"] }),
+      ),
+    ).toBe("2 places — dive/0, dive/3");
+  });
+
+  it("does not say '1 places'", () => {
+    expect(conversionWhereSentence(group({ count: 1 }))).toBe(
+      "1 place — dive/0",
+    );
+  });
+
+  it("says the count alone when the converter named no path", () => {
+    expect(conversionWhereSentence(group({ count: 4, wheres: [] }))).toBe(
+      "4 places",
+    );
+  });
+});
+
+describe("truncatedConversionSentence", () => {
+  it("says nothing when every finding is on screen", () => {
+    expect(truncatedConversionSentence(0)).toBeNull();
+  });
+
+  it("says how many are missing, and that the record counts are not", () => {
+    const sentence = truncatedConversionSentence(7)!;
+    expect(sentence).toContain("7 further findings are not shown");
+    expect(sentence).toContain("record counts above are complete");
+  });
+
+  it("does not say '1 further findings'", () => {
+    expect(truncatedConversionSentence(1)).toContain(
+      "1 further finding is not shown",
+    );
+  });
+});
+
+describe("importSourceSentence", () => {
+  function preview(overrides: Partial<ImportPreview> = {}): ImportPreview {
+    return {
+      ...report(),
+      format: "divejson",
+      version: "1.0",
+      generator: { name: "OpenDiving", version: "0.4.0" },
+      archive: false,
+      token: "tok-1",
+      ...overrides,
+    };
+  }
+
+  it("names the diver's own file, not the document the API ended up reading", () => {
+    // The load-bearing case. `format`, `version` and `generator` all describe
+    // the converter's output on this path, so a header built from them tells a
+    // diver who uploaded a Subsurface save file that they uploaded DiveJSON.
+    expect(
+      importSourceSentence(
+        preview({
+          generator: { name: "divejson convert", version: "0.3.0" },
+          conversion: {
+            format: "ssrf",
+            converter: { name: "divejson", version: "0.3.0" },
+            groups: [],
+            groups_truncated: 0,
+          },
+        }),
+      ),
+    ).toBe(
+      "Subsurface file, converted to DiveJSON 1.0 by divejson convert 0.3.0.",
+    );
+  });
+
+  it("names an unrecognised format by its id rather than rendering a blank", () => {
+    // A reader the API's converter gained after this build was cut. The
+    // sentence gets terser, never wrong - and never `undefined file`.
+    expect(
+      importSourceSentence(
+        preview({
+          generator: null,
+          conversion: {
+            format: "suunto_xml",
+            converter: { name: "divejson", version: "0.4.0" },
+            groups: [],
+            groups_truncated: 0,
+          },
+        }),
+      ),
+    ).toBe("suunto_xml file, converted to DiveJSON 1.0 by divejson 0.4.0.");
+  });
+
+  it("describes a native document as the document it is", () => {
+    expect(importSourceSentence(preview())).toBe(
+      "Document in divejson 1.0, written by OpenDiving 0.4.0.",
+    );
+  });
+
+  it("describes the full archive as an archive", () => {
+    expect(importSourceSentence(preview({ archive: true }))).toBe(
+      "Archive in divejson 1.0, written by OpenDiving 0.4.0.",
+    );
+  });
+
+  it("says nothing about a generator a document did not declare", () => {
+    expect(importSourceSentence(preview({ generator: null }))).toBe(
+      "Document in divejson 1.0.",
+    );
   });
 });

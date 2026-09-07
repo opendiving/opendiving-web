@@ -238,8 +238,15 @@ export function LandingPage() {
                     • DiveJSON, UDDF, CSV or a complete archive, on demand
                   </li>
                   {/* The half that makes the export more than a download: a copy
-                      you cannot read back is a copy in name only. */}
-                  <li>• DiveJSON and the archive import straight back in</li>
+                      you cannot read back is a copy in name only. The list is
+                      what the API's converter reads plus this app's own two,
+                      and it is spelled out rather than summarised because the
+                      claim a diver is checking is whether *their* file is on
+                      it. */}
+                  <li>
+                    • DiveJSON, UDDF, Subsurface, FIT, Suunto and the full
+                    archive read back in
+                  </li>
                   <li>• No trackers and no analytics</li>
                   <li>• Passwordless sign-in; no passwords stored</li>
                 </ul>
@@ -267,21 +274,26 @@ export function LandingPage() {
           <p className="text-lg">
             Movescount, Deepblu, Diveboard — cloud dive logs come and go, and
             when they go, years of dive history go with them. OpenDiving keeps
-            the original dive-computer file behind every imported dive, hands
-            the whole log back in open formats on one click, reads its own
-            DiveJSON straight back in, and is AGPL licensed so anyone can keep
-            running it. There is no company here whose shutdown takes your
-            logbook with it — and if the instance you are on ever goes away,
-            your export still opens in something else, or moves into a copy of
-            this one.
+            the dive-computer file you upload to a dive alongside it, hands the
+            whole log back in open formats on one click, reads a logbook back in
+            — its own DiveJSON, UDDF, a Subsurface save file, a FIT or a Suunto
+            export — and is AGPL licensed so anyone can keep running it. There
+            is no company here whose shutdown takes your logbook with it — and
+            if the instance you are on ever goes away, your export still opens
+            in something else, or moves into a copy of this one.
           </p>
           <div className="mt-10 grid gap-4 text-sm font-medium sm:grid-cols-3">
             <div>AGPL-3.0, server side included</div>
             <div>No trackers, no analytics</div>
-            {/* Four formats out, and deliberately not "and back": only DiveJSON
-                and the archive import, so a round-trip claim spanning all four
-                would be false of UDDF and CSV. The paragraph above carries the
-                import half, naming the format it is actually true of. */}
+            {/* Four formats out, and still deliberately not "and back": three of
+                the four come back now, but a round-trip claim spanning all four
+                would be false of the CSV. The paragraph above carries the import
+                half, naming the formats it is actually true of.
+
+                This comment read "only DiveJSON and the archive import … false
+                of UDDF and CSV" until the API grew a converter, which is the
+                hazard it exists to describe happening to itself: a claim about
+                what one format cannot do is a claim about every other one. */}
             <div>DiveJSON, UDDF, CSV or a full archive, one click</div>
           </div>
         </div>
@@ -299,15 +311,15 @@ export function LandingPage() {
             your domain. The images are prebuilt for amd64 and arm64, so a
             Raspberry Pi runs the same bytes as a VPS.
           </p>
-          {/* Re-judged when logbook import shipped, and kept: the two importers
-              it names are still genuinely to come, and it never claimed import in
-              general was. What made it safe to keep is that the page now says
-              elsewhere that DiveJSON and the archive read back in - without that,
-              a reader could take this line for the whole story on import. Narrow
-              it further only by shipping one of these two, never by softening it. */}
+          {/* The import clause is gone because both importers it named shipped
+              together: the API reads UDDF and Subsurface from the day its
+              converter landed, so there was never a state in which one of the
+              two was still to come. That is the only way this line was ever
+              allowed to narrow - by shipping, never by softening - and the
+              standing rule holds for what is left of it. */}
           <p className="text-muted-foreground mb-8">
-            Still to come: Subsurface and UDDF import, depth and time
-            statistics, and public links for a dive or a trip. The{" "}
+            Still to come: depth and time statistics, and public links for a
+            dive or a trip. The{" "}
             <a
               href={ROADMAP_URL}
               target="_blank"
