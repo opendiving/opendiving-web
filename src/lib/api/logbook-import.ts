@@ -18,9 +18,11 @@ export type ImportSourceFormat = "uddf" | "ssrf" | "fit" | "suunto_json";
  * `Record<ImportSourceFormat, ...>`, so widening the union without offering an
  * extension stops this file compiling rather than silently greying a format out
  * of the file dialog - the `DIVE_FILE_ACCEPT` pin's reasoning, one surface over.
- * `.json` is the Suunto app's export and is deliberately broad: acceptance is
- * decided API-side by sniffing the bytes, and this list only decides what the
- * dialog shows.
+ *
+ * Each entry mirrors that adapter's own `suffixes` in the converter, which is
+ * why a UDDF file named `.xml` is not offered and `.json` - the Suunto app's
+ * export, and broad - is. Acceptance itself is decided API-side by sniffing the
+ * bytes; this list only decides what the dialog greys out.
  */
 export const LOGBOOK_IMPORT_SOURCE_EXTENSIONS: Record<
   ImportSourceFormat,
