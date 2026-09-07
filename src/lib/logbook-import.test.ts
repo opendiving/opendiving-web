@@ -32,6 +32,9 @@ function report(overrides: Partial<ImportReport> = {}): ImportReport {
     files: { referenced: 0, restored: 0, not_contained: 0, skipped: 0 },
     notes: [],
     notes_truncated: 0,
+    // Null by default: the ordinary upload is a DiveJSON document the API read
+    // as-is, and the conversion block exists only when something was converted.
+    conversion: null,
     ...overrides,
   };
 }
