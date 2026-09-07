@@ -1,7 +1,7 @@
 # OpenDiving Web
 
-**A dive log built to outlive every vendor. Your dives, your data — original files kept, open
-formats, and yours to self-host.**
+**A dive log built to outlive every vendor. Your dives, your data — vendor exports in, open formats
+out, everything in one click. Yours to self-host.**
 
 OpenDiving is an open-source logbook for scuba divers — recreational and technical: log dives with
 multi-tank gas mixtures (nitrox and trimix), import dives straight from your dive computer's export

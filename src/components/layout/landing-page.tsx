@@ -274,13 +274,13 @@ export function LandingPage() {
           <p className="text-lg">
             Movescount, Deepblu, Diveboard — cloud dive logs come and go, and
             when they go, years of dive history go with them. OpenDiving keeps
-            the original dive-computer file behind every imported dive, hands
-            the whole log back in open formats on one click, reads a logbook
-            back in — its own DiveJSON, UDDF, a Subsurface save file, a FIT or a
-            Suunto export — and is AGPL licensed so anyone can keep running it.
-            There is no company here whose shutdown takes your logbook with it —
-            and if the instance you are on ever goes away, your export still
-            opens in something else, or moves into a copy of this one.
+            the dive-computer file you upload to a dive alongside it, hands the
+            whole log back in open formats on one click, reads a logbook back in
+            — its own DiveJSON, UDDF, a Subsurface save file, a FIT or a Suunto
+            export — and is AGPL licensed so anyone can keep running it. There
+            is no company here whose shutdown takes your logbook with it — and
+            if the instance you are on ever goes away, your export still opens
+            in something else, or moves into a copy of this one.
           </p>
           <div className="mt-10 grid gap-4 text-sm font-medium sm:grid-cols-3">
             <div>AGPL-3.0, server side included</div>

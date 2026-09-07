@@ -8314,7 +8314,7 @@ replacements, and the shape of the page follows from it:
 
 - **The band that held the fake stats now carries the argument they were standing in for.** It is
   the same coloured section, and the vendor-shutdown case (Movescount, Deepblu, Diveboard; AGPL; the
-  original dive-computer file kept behind every import) is what the numbers were there to imply. The
+  dive-computer file you upload to a dive kept with it) is what the numbers were there to imply. The
   three facts under it — the licence, no trackers, the export formats — are the only figures left,
   and each one is a `grep` away. Note the contrast constraint documented under `--coral-solid` (the
   section survives, the token does not) still applies to this band: full `text-primary-foreground`,
@@ -13627,9 +13627,13 @@ change it, self-host it freely" was already in the capability register and is un
 Postgres database", "a modern web UI on your own box", "one instance, every browser and family
 member, one backup" — each of those says where the bytes physically sit, which is only knowable to
 whoever runs the copy. The durable form of the same promise is the one the export already carries:
-the original dive-computer file is kept, the whole log comes back out in open formats on demand, and
-that holds on anybody's hardware. Where the deployment genuinely is the subject — the _Self-hosting_
-README section, the _Run your own_ landing section, the install links — nothing changed.
+the dive-computer file you upload to a dive is kept with it, the whole log comes back out in open
+formats on demand, and that holds on anybody's hardware. Where the deployment genuinely is the
+subject — the _Self-hosting_ README section, the _Run your own_ landing section, the install links —
+nothing changed. (That first clause read "the original dive-computer file is kept" until logbook
+import shipped, which is the correction the section below is about: this one governs what the
+tagline and the metadata may promise, so leaving it would have been the sentence a future rewrite
+restored the sweeping claim from.)
 
 **`SECURITY.md` was the one outside the marketing files, and the one that mattered most.** It opened
 "OpenDiving is self-hosted software" and told a reporter that "this project's maintainers have no
@@ -14915,6 +14919,61 @@ which is the trade "Air consumption is the API's number" settles the same way. W
 is presentation: the badge, the tone, the "8 places — dive/0, dive/1, dive/2 and 5 more" line whose
 "and N more" is `count` minus the three `wheres` the API sends, and the sentence that admits the
 list is a prefix when it capped the groups.
+
+## "The original file is kept" is a claim about an upload to a dive, not about an import
+
+Seven sentences here promised the imported file back, and logbook import falsified all seven at
+once. A logbook the API reads through its DiveJSON converter — UDDF, a Subsurface `.ssrf`, a FIT
+logbook, the Suunto app's JSON — is converted once and then discarded: the converter emits no files
+at all, so a converted upload is never an archive however it arrived, the plan notes every file the
+document _names_ but does not carry, and the only dive-file row the importer writes is on the
+full-export archive path, which carries the bytes beside the document. A diver who imports a zip of
+per-dive FIT files gets every dive and none of the FITs.
+
+The natural way to write any of the seven is the sweeping way — "every dive keeps the file it was
+imported from" — which read as true only while a bare file could not be a logbook. Three were caught
+while their surrounding prose was being rewritten anyway (`README.md`'s opening paragraph and its
+vendor-clouds bullet, and `privacy/page.tsx`'s §2.1 entry, which the directory probe under the
+section above reaches) and now read as a claim about a file uploaded **to a dive**, the only path
+that stores one. **The other four survived every probe this change ran**, and that is the part worth
+keeping:
+
+- **The tagline** — `README.md`'s first line.
+- **The page metadata, twice** — `layout.tsx`'s `description` and its Twitter card. The widest-reach
+  copy in the repository, and the surface a sweep forgets is copy at all, exactly as the metadata
+  paragraph under _Self-hosting is a capability, not the product's identity_ warned.
+- **The landing page's "Built to outlive the vendor" band** — "keeps the original dive-computer file
+  behind every imported dive", in the very sentence this change taught to say that a logbook reads
+  back in. Those two clauses contradicted each other inside one sentence, which is as close as this
+  hazard comes to announcing itself.
+
+**The tagline dropped the promise rather than qualifying it.** "The files you upload to a dive are
+kept" is accurate and reads as a caveat, which is not what a stranger should meet first; the
+paragraphs below have room to say _which_ files and a first line does not. The slot went to the
+import side instead — "vendor exports in, open formats out, everything in one click" — which is true
+and is what this change actually shipped. That clause is **adopted verbatim from the front door's
+own tagline**, which reached the same conclusion first, so the two repositories say it in the same
+words; only the sentence around it differs, since the front door continues "and this repository is
+the install" where this one ends at "Yours to self-host". The Twitter card is a different shape
+again — it ends "and yours to take out at any time" — so it took the same claim re-fitted rather
+than the fragment pasted, and both metadata strings keep their ASCII `" - "` where the READMEs use
+an em dash. **Punctuation is per file; only the claim travels.**
+
+**Anchor the probe on the noun, because a verb-and-noun probe cannot survive JSX.** The obvious
+sweep pairs the promise with its object — `keeps|kept|stored` near `file` — and it finds every one
+of these in `README.md` and misses the landing page's, because Prettier wrapped that sentence
+between "OpenDiving keeps" and "the original dive-computer file behind every imported dive" and
+`git grep` reads lines. Prose inside a component is wrapped at whatever column the JSX nesting
+leaves, so no line-oriented pattern spanning more than a few words is safe there. What survives a
+wrap is the noun phrase, so the probe is
+`git grep -niE "(original|dive-computer|source) files?" -- src README.md` — around forty hits, most
+of them `lib/` identifiers you skim past, and it reaches all seven. Treat seven as a floor on the
+usual grounds.
+
+Several hits are correct as written and must stay: the README's _Dive-computer import_ bullet, the
+landing page's **Computer Import** card, and the import card's _About the original file_ heading are
+all about the per-dive form upload or about the report on the file just handed over. A card that is
+genuinely about the path where the file really is kept is what this sweep must not flatten.
 
 ## A fixture meaning "in the future" is derived, never written down
 

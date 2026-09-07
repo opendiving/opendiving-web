@@ -42,8 +42,15 @@ export function generateMetadata(): Metadata {
     // instance, and "a self-hosted dive log" is a claim about the reader's server that the
     // reader may well not be the one running. See "Self-hosting is a capability, not the
     // product's identity" in DECISIONS.md.
+    //
+    // It also no longer promises the imported file back. A logbook the API
+    // converts is read once and discarded, so the promise is true only of a file
+    // uploaded to a dive - a qualifier the README's body has room for and a
+    // one-line pitch does not. See "'The original file is kept' is a claim about
+    // an upload to a dive" in DECISIONS.md; the front door's README carries the
+    // replacement clause verbatim.
     description:
-      "A dive log built to outlive every vendor. Your dives, your data - original files kept, open formats, and yours to self-host.",
+      "A dive log built to outlive every vendor. Your dives, your data - vendor exports in, open formats out, everything in one click. Yours to self-host.",
     applicationName: "OpenDiving",
     openGraph: {
       type: "website",
@@ -57,7 +64,7 @@ export function generateMetadata(): Metadata {
       card: "summary_large_image",
       title: "OpenDiving - a dive log built to outlive every vendor",
       description:
-        "An open-source logbook for scuba divers. Your dives, your data - original files kept, in open formats, and yours to take out at any time.",
+        "An open-source logbook for scuba divers. Your dives, your data - vendor exports in, open formats, and yours to take out at any time.",
     },
   };
 }
