@@ -63,6 +63,12 @@ function IconTooltip({
   side?: React.ComponentPropsWithoutRef<typeof TooltipContent>["side"];
   align?: React.ComponentPropsWithoutRef<typeof TooltipContent>["align"];
 }) {
+  // Set in the capture phase, so it is already true by the time a child's own
+  // `onPointerDown` runs. Radix keeps the same flag and sets it in *its*
+  // `onPointerDown`, which `Slot` runs after the child's - too late for the
+  // child below.
+  const isPressed = React.useRef(false);
+
   return (
     // The provider lives here rather than once in the root layout so the
     // component is self-sufficient: Radix throws without one, and a shared
@@ -80,6 +86,36 @@ function IconTooltip({
         <TooltipTrigger
           asChild
           aria-label={label}
+          // A press is not a request for a hint. The drag handles in the
+          // multiselects focus themselves from their own `onPointerDown`
+          // (`hooks/useDragSort.ts`, because the `preventDefault` there
+          // suppresses the browser's own focus and the Up/Down keys need it),
+          // and focus opens a hint with no delay - so grabbing a handle raised
+          // the chip and left it hanging over the rows for the whole drag,
+          // anchored where the handle used to be. Radix guards this case itself
+          // and cannot win here: `Slot` runs the child's handler first, so the
+          // focus lands while Radix's own flag is still false.
+          //
+          // Vetoing Radix's focus handler is what works. `composeEventHandlers`
+          // skips its own half when the first has called `preventDefault`, and
+          // a focus event is not cancelable, so this suppresses the open and
+          // nothing else. Refusing the open from `onOpenChange` instead is what
+          // it looks like it should be, and is wrong: Radix tells the provider
+          // a tooltip opened before it asks us, so the veto leaves the delay
+          // window open and the next hover opens instantly.
+          onFocus={(event) => {
+            if (isPressed.current) event.preventDefault();
+          }}
+          onPointerDownCapture={() => {
+            isPressed.current = true;
+            document.addEventListener(
+              "pointerup",
+              () => {
+                isPressed.current = false;
+              },
+              { once: true },
+            );
+          }}
           // Radix points `aria-describedby` at the content whenever the tooltip
           // is open, which for a hint that repeats the name verbatim makes a
           // screen reader announce it twice. Passing the key explicitly as

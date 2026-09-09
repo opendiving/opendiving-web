@@ -15726,12 +15726,12 @@ scroller. Its positioning is inline `style` attributes, which the CSP already al
 
 **The provider is per `IconTooltip`, not one in the root layout.** Radix throws without a
 `Tooltip.Provider` ancestor, and a shared one would mean every page, dialog and component test that
-renders an icon button has to remember to supply it — this repo renders components directly in ~170
-test files with no shared wrapper, so that is 170 chances to forget and a confusing throw when
-somebody does. What the local provider costs is `skipDelayDuration` grouping: moving the pointer
-from one row action to the next re-waits the delay instead of opening instantly. At 300ms that is a
-fair price, and 300ms is itself a departure from Radix's 700ms default, which is tuned for tooltips
-that decorate an already-labelled control rather than ones carrying the only words.
+renders an icon button has to remember to supply it — 88 of this repo's test files render a
+component directly, none through a shared wrapper, so that is 88 chances to forget and a confusing
+throw when somebody does. What the local provider costs is `skipDelayDuration` grouping: moving the
+pointer from one row action to the next re-waits the delay instead of opening instantly. At 300ms
+that is a fair price, and 300ms is itself a departure from Radix's 700ms default, which is tuned for
+tooltips that decorate an already-labelled control rather than ones carrying the only words.
 
 **The trigger's `aria-describedby` is suppressed.** Radix points it at the open content, so a screen
 reader would announce the name and then the identical description — "Delete dive #12, button, Delete
@@ -15757,6 +15757,25 @@ Two things it deliberately does not do. A **disabled** button shows no hint: `bu
 element around every disabled control, which the previous paragraph just ruled out. And **touch has
 no hover at all** — Radix ignores touch pointers on purpose, since a tooltip that opens on tap would
 fire alongside the tap it is describing. Neither is a regression: both were already silent.
+
+**A press is not a request for a hint, and Radix's own guard cannot enforce that here.** The
+multiselects' drag handles focus themselves from their own `onPointerDown` — `hooks/useDragSort.ts`
+calls `preventDefault` there, which suppresses the browser's focus, and the handle needs focus for
+the Up/Down keys that are the gesture's keyboard half. Focus opens a hint with no delay, so grabbing
+a handle raised the longest chip in the app and left it hanging over the rows being reordered,
+anchored where the handle was before the drag started; the pointer never leaves the handle during a
+drag, so nothing closed it either. Radix keeps a flag for exactly this and sets it in its own
+`onPointerDown`, which `Slot` runs _after_ the child's — so the focus lands while Radix still
+believes no button is pressed.
+
+`IconTooltip` sets the same flag in the capture phase, where it is already true by the time the
+child's handler runs, and uses it to veto Radix's focus handler with `preventDefault`:
+`composeEventHandlers` skips its own half when the first has prevented, and a focus event is not
+cancelable, so this suppresses the open and nothing else. **Refusing the open from `onOpenChange`
+instead does not work**, which is worth writing down because it is the obvious shape and it half
+works: Radix tells the provider a tooltip opened _before_ it asks the consumer, so vetoing there
+leaves the chip down but the delay window open, and the next hover opens instantly. The test that
+caught it is the one that moves the pointer after the press, not the one that checks the press.
 
 **Inside a dialog, the first Escape closes the hint and not the dialog.** An open `Tooltip.Content`
 is a Radix dismissable layer, and it stacks above the dialog's own; only the highest layer registers

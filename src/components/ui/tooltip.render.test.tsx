@@ -112,3 +112,52 @@ describe("a hint inside a dialog", () => {
     );
   });
 });
+
+// The multiselect drag handles focus themselves from their own `onPointerDown`,
+// and focus opens a hint with no delay - so without a guard, grabbing a handle
+// raised the chip and left it there for the whole drag, over the rows being
+// reordered. `Slot` runs the child's handler before Radix's own, which is why
+// Radix's identical guard cannot catch this one.
+describe("a hint on a control that focuses itself on pointer-down", () => {
+  const DragHandle = () => (
+    <IconTooltip label="Reorder Blue Hole, position 1 of 3">
+      <button
+        type="button"
+        onPointerDown={(event) => {
+          event.preventDefault();
+          event.currentTarget.focus();
+        }}
+      >
+        <Trash2 className="h-4 w-4" />
+      </button>
+    </IconTooltip>
+  );
+
+  it("stays shut through the press and after it", async () => {
+    render(<DragHandle />);
+    const handle = screen.getByRole("button", {
+      name: "Reorder Blue Hole, position 1 of 3",
+    });
+
+    fireEvent.pointerDown(handle);
+    expect(handle).toHaveFocus();
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+
+    fireEvent.pointerUp(document);
+    fireEvent.pointerMove(handle);
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+  });
+
+  it("still opens when the same control is reached by keyboard", async () => {
+    render(<DragHandle />);
+    const handle = screen.getByRole("button", {
+      name: "Reorder Blue Hole, position 1 of 3",
+    });
+
+    fireEvent.focus(handle);
+
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      "Reorder Blue Hole, position 1 of 3",
+    );
+  });
+});
