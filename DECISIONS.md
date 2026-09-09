@@ -15377,10 +15377,10 @@ a second failure worded the same as the first would otherwise be silent.
 new name is typed where the old one was rather than in a prompt below a list the diver then has to
 find their row in again. Delete becomes Cancel for as long as that lasts, which is two things at
 once: a delete button beside a half-typed rename is one mis-click from destroying the row being
-edited, and without the swap there is no pointer way out of the edit. Both are icons with a `title`
-and an `aria-label` naming the preset — the shape `GearItemsCard` already uses for its per-row
-actions — and saving an unchanged name is skipped rather than spent on a `PATCH` that stores what is
-already there.
+edited, and without the swap there is no pointer way out of the edit. Both are icons in an
+`IconTooltip` naming the preset — the shape `GearItemsCard` already uses for its per-row actions —
+and saving an unchanged name is skipped rather than spent on a `PATCH` that stores what is already
+there.
 
 **Escape belongs to the dialog, and cannot be taken back.** Cancelling the rename with it looks
 obvious and does not work: Radix's dialog listens for Escape on `document` in the _capture_ phase,
@@ -15762,18 +15762,26 @@ fire alongside the tap it is describing. Neither is a regression: both were alre
 is a Radix dismissable layer, and it stacks above the dialog's own; only the highest layer registers
 the Escape listener, so while a chip is open the dialog's is torn down. Tabbing to a dialog's close
 cross opens the hint instantly — `onFocus` bypasses the delay — so that is a real change in how a
-keyboard reaches a dialog's exit, and it applies to every `IconTooltip` inside one: the cross, the
-mixture rows' bins, the certification card's remove, the map picker's zoom.
+keyboard reaches a dialog's exit, and it applies to every `IconTooltip` inside one — the cross is in
+every dialog by construction, and the preset rows' pencil and bin, the certification card's remove
+and the map picker's zoom are each inside one too. Which those are is a question to answer by
+looking rather than from this list: the first draft of this sentence named the mixture rows' bins,
+which are on the dive form and have never been in a dialog at all.
 
 It is kept rather than worked around, because it is the tooltip pattern's own behaviour — the ARIA
 APG gives Escape to the tooltip — and the two ways out are both worse. Suppressing the hint on focus
 would fix it by making the feature pointer-only, against the same APG's "hover _and_ focus";
-dropping the hint from the cross alone would leave the other three unchanged while removing it from
-the one button where it costs nothing to have. Nothing else reaches it: the dialog's listener is not
-merely outranked but unregistered, so no amount of `onEscapeKeyDown` or event ordering on the
-tooltip's side puts it back. What a diver actually pays is one extra keypress, with the chip
-vanishing in between to say why. `tooltip.render.test.tsx` pins both halves — the first Escape
-leaves the dialog open, the second closes it — so a Radix release that moves this fails there.
+dropping the hint from the cross alone would leave the rest unchanged while removing it from the one
+button where it costs nothing to have. Nothing else reaches it: the dialog's listener is not merely
+outranked but unregistered, so no amount of `onEscapeKeyDown` or event ordering on the tooltip's
+side puts it back. What a diver actually pays is one extra keypress, with the chip vanishing in
+between to say why. `tooltip.render.test.tsx` pins both halves — the first Escape leaves the dialog
+open, the second closes it — so a Radix release that moves this fails there.
+
+It narrows "Escape belongs to the dialog, and cannot be taken back" above without contradicting it.
+That section is about the Fields dialog, whose preset rows are exactly the icon buttons in question:
+Escape still cannot be made to cancel a rename, and still reaches the dialog rather than the field.
+What has changed is that a hint open on that row's pencil takes one press on its way there.
 
 The reorder handles in the multiselects keep their long names — "Reorder Blue Hole, position 1 of 3
 (primary site). Use arrow up and arrow down to move it." reads off the chip as three lines. A short
