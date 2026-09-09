@@ -15700,3 +15700,102 @@ troubleshooting page answers "The home page asks for an invite — how do I sign
 clause on every stranger's screen, in both voices, for a reader who is there once and has
 instructions in hand, was the wrong place to say it. The render test that pinned the phrase now pins
 the two audiences the line still names.
+
+## An icon button's name is now also its hover hint, and one string is both
+
+Every icon-only control in the app was named for a screen reader and silent to everybody else.
+`aria-label={`Delete ${label}`}` is the pattern the row actions, the chip crosses, the chart period
+arrows and the map zoom buttons all used, and no browser shows an `aria-label` to anyone. A pointer
+user got a trash can and a guess.
+
+`IconTooltip` (`components/ui/tooltip.tsx`) takes one `label` and produces both halves: it puts the
+string on the child as `aria-label` and shows the same string in a hover chip. **The call site
+passes one prop and must not set `aria-label` itself.** Two props would be two strings, and an icon
+button whose hint and whose announced name disagree is worse than one with no hint at all — the
+sighted user is then reading something the AT user is not, which is the failure WCAG's Label in Name
+is about. Being the same string by construction is the whole design; everything below follows from
+keeping it.
+
+`@radix-ui/react-tooltip` came back as a dependency for this. It had been dropped as unused, and
+"The chart's tooltip is one state-driven card, not a tooltip per dot" above says why the charts
+didn't want it — that reasoning ends with "it's the right tool for a button", and these are the
+buttons. What it buys over a CSS `:hover` chip is the portal: most of these buttons sit in table
+rows inside `overflow-x-auto` containers, where anything positioned in flow is clipped by the
+scroller. Its positioning is inline `style` attributes, which the CSP already allows
+(`style-src-attr 'unsafe-inline'`) — the same allowance the popover and dropdown rely on.
+
+**The provider is per `IconTooltip`, not one in the root layout.** Radix throws without a
+`Tooltip.Provider` ancestor, and a shared one would mean every page, dialog and component test that
+renders an icon button has to remember to supply it — this repo renders components directly in ~170
+test files with no shared wrapper, so that is 170 chances to forget and a confusing throw when
+somebody does. What the local provider costs is `skipDelayDuration` grouping: moving the pointer
+from one row action to the next re-waits the delay instead of opening instantly. At 300ms that is a
+fair price, and 300ms is itself a departure from Radix's 700ms default, which is tuned for tooltips
+that decorate an already-labelled control rather than ones carrying the only words.
+
+**The trigger's `aria-describedby` is suppressed.** Radix points it at the open content, so a screen
+reader would announce the name and then the identical description — "Delete dive #12, button, Delete
+dive #12". Passing `aria-describedby={undefined}` on `Tooltip.Trigger` overrides it, because the
+trigger's own props are spread after Radix's. The name is on the trigger; the chip is the sighted
+half of the same fact, and it has nothing of its own to add. `tooltip.render.test.tsx` asserts the
+attribute's absence, so a Radix upgrade that stops honouring the override fails there rather than in
+somebody's ears.
+
+The chip uses `--tooltip`/`--tooltip-foreground`, the surface the charts' hover cards already use —
+see "`--tooltip` is its own surface token, because `--popover` isn't one". It wraps at `max-w-64`
+rather than the charts' `whitespace-nowrap`: these carry a whole accessible name, and "Sign out
+Chrome on macOS" is a short one.
+
+**`IconTooltip` renders no element of its own.** `Tooltip.Root` emits nothing and the trigger is
+`asChild`, so the child button is still its parent's direct child. Several call sites depend on that
+— the combobox and date-picker crosses are absolutely positioned, the chip controls are flex
+children — and a wrapper `<span>` would have moved all of them. There is a test for it, because
+"adds no DOM" is the kind of property a later refactor breaks without noticing.
+
+Two things it deliberately does not do. A **disabled** button shows no hint: `buttonVariants` sets
+`disabled:pointer-events-none`, so there is no hover to answer, and the alternative is a wrapper
+element around every disabled control, which the previous paragraph just ruled out. And **touch has
+no hover at all** — Radix ignores touch pointers on purpose, since a tooltip that opens on tap would
+fire alongside the tap it is describing. Neither is a regression: both were already silent.
+
+The reorder handles in the multiselects keep their long names — "Reorder Blue Hole, position 1 of 3
+(primary site). Use arrow up and arrow down to move it." reads off the chip as three lines. A short
+"Drag to reorder" was the obvious alternative and is the wrong one: the accessible name has to
+contain the visible text, so shortening the chip means either shortening the name — which loses the
+keyboard instructions that name exists to give — or letting the two diverge, which is the one thing
+this component exists to prevent.
+
+### The guard is structural, and it found four buttons a manual sweep missed
+
+`components/icon-button-hints.test.ts` reads the source rather than the DOM: **a `<Button>` or
+`<button>` whose children render no words may not declare its own `aria-label`.** The failure it
+guards against is a _missing_ control, and there is nothing to query for the hint somebody forgot,
+so there is no render test to write — the shape in the source is the only thing that can be checked.
+
+It earned itself immediately. A hand-rolled scan of the tree found 55 icon buttons; the test found
+four more — the `GripVertical` drag handles in all four multiselects — because the scan's quote
+tracking treated the apostrophe in a comment ("WCAG's Label in Name") as the start of a string and
+swallowed the rest of the element. The test blanks comments before it scans, which is why it does
+not have the same blind spot, and it is a fair example of why enumerating by eye undercounts: the
+first list was wrong in the same direction every such list is wrong.
+
+The one judgement in it is "renders no words", and it is deliberately narrow. Children count as
+visible text if they contain a bare text node, or an expression that is anything other than a choice
+between JSX elements — so `{isBusy ? <Loader2 /> : <Trash2 />}` is still an icon, while `{label}`
+and `{value || placeholder}` are not. That is what leaves the three buttons whose `aria-label`
+deliberately _overrides_ visible text alone: `entry-unit-toggle`, `data-export-card` and
+`dive-form-fields-menu` each have a reason recorded above, and none of them is an icon button.
+
+### A mocked `useToast` made one card refetch forever, and it was only ever winning a race
+
+`gear-service-card.render.test.tsx` mocked `useToast` as `() => ({ toast: vi.fn() })` — a new
+function on every render. `GearServiceCard`'s mount effect lists `toast` in its dependencies, which
+is safe against the real hook (`toast` is module-level, so its identity never changes) and an
+infinite fetch-render-fetch loop against that mock. The test passed anyway, because the loaded state
+existed for one commit per iteration and the assertion kept catching it; wrapping the row buttons
+made each iteration heavier and the assertion started losing, 257 fetches deep.
+
+The fix is one `toast` for the file, not one per call. Worth recording because of how it presented:
+a card stuck on its spinner, in a test that had passed for months, in a change that touched only the
+markup of buttons the test never waits for. Nothing about "unable to find Service history" points at
+a dependency array, and the loop is invisible while it is winning.
