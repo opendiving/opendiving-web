@@ -8,6 +8,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { isFormPath } from "@/lib/return-to";
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "@/components/ui/tooltip";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { ThemeMenuItems, ThemeToggle } from "@/components/theme-toggle";
 import { DiveIcon, Logo } from "@/components/logo";
@@ -242,11 +243,16 @@ export function Header() {
           <div className="flex flex-shrink-0 items-center space-x-1 sm:space-x-3">
             {isAuthenticated && user && (
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" aria-label="Create new">
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
+                {/* The hint wraps the *menu* trigger rather than sitting
+                    inside it: two nested `asChild` slots both reach the same
+                    button, and this order is the one Radix documents. */}
+                <IconTooltip label="Create new">
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm">
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                </IconTooltip>
                 <DropdownMenuContent align="end">
                   {CREATE_ACTIONS.map((action) => {
                     const Icon = action.icon;
@@ -283,20 +289,21 @@ export function Header() {
               <>
                 {/* User dropdown */}
                 <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      className="relative h-9 w-9 rounded-full p-0"
-                      aria-label="Account menu"
-                    >
-                      <UserAvatar
-                        name={user.name}
-                        avatarSha={user.avatar_sha256}
-                        size={36}
-                        className="h-9 w-9"
-                      />
-                    </Button>
-                  </DropdownMenuTrigger>
+                  <IconTooltip label="Account menu">
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        className="relative h-9 w-9 rounded-full p-0"
+                      >
+                        <UserAvatar
+                          name={user.name}
+                          avatarSha={user.avatar_sha256}
+                          size={36}
+                          className="h-9 w-9"
+                        />
+                      </Button>
+                    </DropdownMenuTrigger>
+                  </IconTooltip>
                   <DropdownMenuContent align="end" className="w-56">
                     <div className="px-2 py-1.5 text-sm font-medium">
                       {user.name}
@@ -374,17 +381,18 @@ export function Header() {
             )}
 
             {/* Mobile menu button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="md:hidden px-2 sm:px-3"
-              aria-label={isMobileMenuOpen ? "Close menu" : "Open menu"}
-              aria-expanded={isMobileMenuOpen}
-              aria-controls="mobile-menu"
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            >
-              <Menu className="h-4 w-4" />
-            </Button>
+            <IconTooltip label={isMobileMenuOpen ? "Close menu" : "Open menu"}>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="md:hidden px-2 sm:px-3"
+                aria-expanded={isMobileMenuOpen}
+                aria-controls="mobile-menu"
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              >
+                <Menu className="h-4 w-4" />
+              </Button>
+            </IconTooltip>
           </div>
         </div>
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { IconTooltip } from "@/components/ui/tooltip";
 import { GripVertical, X } from "lucide-react";
 import {
   ComboboxSearchResult,
@@ -190,22 +191,25 @@ export function GearItemMultiSelect({
                     : undefined
                 }
               >
+                {/* The gesture's keyboard equivalent lives on this button
+                    (Up/Down), so the label has to say so - "drag to reorder"
+                    alone would be a dead end for keyboard users. */}
                 {value.length > 1 && (
-                  <button
-                    type="button"
-                    // The gesture's keyboard equivalent lives on this button
-                    // (Up/Down), so the label has to say so - "drag to reorder"
-                    // alone would be a dead end for keyboard users.
-                    aria-label={`Reorder ${label}. Use arrow up and arrow down to move it.`}
-                    disabled={disabled}
-                    // `touch-action: none` comes from `handleProps`, so every
-                    // consumer of the hook gets it rather than having to
-                    // remember the class.
-                    className="shrink-0 cursor-grab rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-50"
-                    {...handleProps(index)}
+                  <IconTooltip
+                    label={`Reorder ${label}. Use arrow up and arrow down to move it.`}
                   >
-                    <GripVertical className="h-4 w-4" />
-                  </button>
+                    <button
+                      type="button"
+                      disabled={disabled}
+                      // `touch-action: none` comes from `handleProps`, so every
+                      // consumer of the hook gets it rather than having to
+                      // remember the class.
+                      className="shrink-0 cursor-grab rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-50"
+                      {...handleProps(index)}
+                    >
+                      <GripVertical className="h-4 w-4" />
+                    </button>
+                  </IconTooltip>
                 )}
                 <span className="flex-1 truncate">
                   {label}
@@ -225,15 +229,16 @@ export function GearItemMultiSelect({
                     Archived
                   </Badge>
                 )}
-                <button
-                  type="button"
-                  aria-label={`Remove ${label}`}
-                  disabled={disabled}
-                  className="text-muted-foreground hover:text-foreground"
-                  onClick={() => removeItem(id)}
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
+                <IconTooltip label={`Remove ${label}`}>
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    className="text-muted-foreground hover:text-foreground"
+                    onClick={() => removeItem(id)}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </IconTooltip>
               </li>
             );
           })}

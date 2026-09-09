@@ -10,6 +10,7 @@ import { courseStatusBadgeVariant, courseStatusLabel } from "@/lib/course";
 import { formatTripDateRange } from "@/lib/date-time";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "@/components/ui/tooltip";
 import { CountBadge } from "@/components/ui/count-badge";
 import { Input } from "@/components/ui/input";
 import { TableRowsSkeleton } from "@/components/ui/table-skeleton";
@@ -240,37 +241,41 @@ export default function CoursesPage() {
                           which course. See DECISIONS.md, "Ten rows of 'Edit'
                           name nothing". */}
                       <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          aria-label={`View ${course.name}`}
-                          asChild
-                        >
-                          <Link href={`/courses/${course.uuid}`}>
-                            <Eye className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          aria-label={`Edit ${course.name}`}
-                          onClick={() => setEditingCourse(course)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          aria-label={`Delete ${course.name}`}
-                          onClick={() => requestDelete(course.uuid)}
-                          disabled={deletingId === course.uuid}
-                        >
-                          {deletingId === course.uuid ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-4 w-4" />
-                          )}
-                        </Button>
+                        <IconTooltip label={`View ${course.name}`}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+
+                            asChild
+                          >
+                            <Link href={`/courses/${course.uuid}`}>
+                              <Eye className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                        </IconTooltip>
+                        <IconTooltip label={`Edit ${course.name}`}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setEditingCourse(course)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </IconTooltip>
+                        <IconTooltip label={`Delete ${course.name}`}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => requestDelete(course.uuid)}
+                            disabled={deletingId === course.uuid}
+                          >
+                            {deletingId === course.uuid ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </IconTooltip>
                       </div>
                     </TableCell>
                   </TableRow>

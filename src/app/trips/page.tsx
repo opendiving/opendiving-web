@@ -7,6 +7,7 @@ import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { tripsAPI, Trip } from "@/lib/api/trips";
 import { formatTripDateRange } from "@/lib/date-time";
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "@/components/ui/tooltip";
 import { CountBadge } from "@/components/ui/count-badge";
 import { TableRowsSkeleton } from "@/components/ui/table-skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -153,37 +154,41 @@ export default function TripsPage() {
                           screen reader's controls list nothing about which trip.
                           See DECISIONS.md on the export card's Downloads. */}
                       <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          aria-label={`View ${trip.name}`}
-                          asChild
-                        >
-                          <Link href={`/trips/${trip.uuid}`}>
-                            <Eye className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          aria-label={`Edit ${trip.name}`}
-                          onClick={() => setEditingTrip(trip)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          aria-label={`Delete ${trip.name}`}
-                          onClick={() => requestDeleteTrip(trip.uuid)}
-                          disabled={deletingId === trip.uuid}
-                        >
-                          {deletingId === trip.uuid ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-4 w-4" />
-                          )}
-                        </Button>
+                        <IconTooltip label={`View ${trip.name}`}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+
+                            asChild
+                          >
+                            <Link href={`/trips/${trip.uuid}`}>
+                              <Eye className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                        </IconTooltip>
+                        <IconTooltip label={`Edit ${trip.name}`}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setEditingTrip(trip)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </IconTooltip>
+                        <IconTooltip label={`Delete ${trip.name}`}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => requestDeleteTrip(trip.uuid)}
+                            disabled={deletingId === trip.uuid}
+                          >
+                            {deletingId === trip.uuid ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </IconTooltip>
                       </div>
                     </TableCell>
                   </TableRow>

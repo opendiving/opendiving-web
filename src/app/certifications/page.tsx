@@ -19,6 +19,7 @@ import {
 } from "@/lib/certification";
 import { formatDateOnly } from "@/lib/date-time";
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "@/components/ui/tooltip";
 import { CountBadge } from "@/components/ui/count-badge";
 import { TableRowsSkeleton } from "@/components/ui/table-skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -229,35 +230,38 @@ export default function CertificationsPage() {
                             cards may share a level - see DECISIONS.md, "Ten rows
                             of 'Edit' name nothing". */}
                         <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            aria-label={`Card images for ${label}`}
-                            onClick={() => setManagingFiles(certification)}
-                          >
-                            <Images className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            aria-label={`Edit ${label}`}
-                            onClick={() => setEditing(certification)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            aria-label={`Delete ${label}`}
-                            onClick={() => requestDelete(certification.uuid)}
-                            disabled={deletingId === certification.uuid}
-                          >
-                            {deletingId === certification.uuid ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4" />
-                            )}
-                          </Button>
+                          <IconTooltip label={`Card images for ${label}`}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setManagingFiles(certification)}
+                            >
+                              <Images className="h-4 w-4" />
+                            </Button>
+                          </IconTooltip>
+                          <IconTooltip label={`Edit ${label}`}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setEditing(certification)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </IconTooltip>
+                          <IconTooltip label={`Delete ${label}`}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => requestDelete(certification.uuid)}
+                              disabled={deletingId === certification.uuid}
+                            >
+                              {deletingId === certification.uuid ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                            </Button>
+                          </IconTooltip>
                         </div>
                       </TableCell>
                     </TableRow>

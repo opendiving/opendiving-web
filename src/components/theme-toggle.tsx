@@ -5,6 +5,7 @@ import { Moon, Sun, Monitor } from "lucide-react";
 import { useTheme } from "next-themes";
 
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "@/components/ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -69,17 +70,13 @@ export function ThemeToggle({ className }: { className?: string }) {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          aria-label="Toggle theme"
-          className={className}
-        >
-          <ActiveIcon className="h-4 w-4" />
-          <span className="sr-only">Toggle theme</span>
-        </Button>
-      </DropdownMenuTrigger>
+      <IconTooltip label="Toggle theme">
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="sm" className={className}>
+            <ActiveIcon className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+      </IconTooltip>
       <DropdownMenuContent
         align="end"
         onCloseAutoFocus={(event) => event.preventDefault()}

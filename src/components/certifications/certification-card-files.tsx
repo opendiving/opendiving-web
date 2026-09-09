@@ -15,6 +15,7 @@ import {
 import { getApiErrorMessage } from "@/lib/api/error";
 import { formatFileSize } from "@/lib/format";
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "@/components/ui/tooltip";
 import { useToast } from "@/components/ui/use-toast";
 import { CertificationCardImage } from "./certification-card-image";
 
@@ -162,16 +163,17 @@ export function CertificationCardFiles({
               </Button>
 
               {file && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  disabled={isBusy}
-                  onClick={() => handleRemove(side)}
-                  aria-label={`Remove ${side} image`}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <IconTooltip label={`Remove ${side} image`}>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={isBusy}
+                    onClick={() => handleRemove(side)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </IconTooltip>
               )}
             </div>
 

@@ -13,6 +13,7 @@ import {
 } from "@/lib/date-time";
 
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "@/components/ui/tooltip";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -186,39 +187,44 @@ export default function DivesPage() {
                           "View, Edit, Delete" ten times over. Same reasoning as the
                           export card's Download buttons; see DECISIONS.md. */}
                       <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          aria-label={`View dive #${dive.dive_number}`}
-                          asChild
-                        >
-                          <Link href={`/dives/${dive.uuid}`}>
-                            <Eye className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          aria-label={`Edit dive #${dive.dive_number}`}
-                          asChild
-                        >
-                          <Link href={`/dives/${dive.uuid}/edit?from=/dives`}>
-                            <Edit className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          aria-label={`Delete dive #${dive.dive_number}`}
-                          onClick={() => requestDeleteDive(dive.uuid)}
-                          disabled={deletingId === dive.uuid}
-                        >
-                          {deletingId === dive.uuid ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-4 w-4" />
-                          )}
-                        </Button>
+                        <IconTooltip label={`View dive #${dive.dive_number}`}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+
+                            asChild
+                          >
+                            <Link href={`/dives/${dive.uuid}`}>
+                              <Eye className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                        </IconTooltip>
+                        <IconTooltip label={`Edit dive #${dive.dive_number}`}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+
+                            asChild
+                          >
+                            <Link href={`/dives/${dive.uuid}/edit?from=/dives`}>
+                              <Edit className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                        </IconTooltip>
+                        <IconTooltip label={`Delete dive #${dive.dive_number}`}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => requestDeleteDive(dive.uuid)}
+                            disabled={deletingId === dive.uuid}
+                          >
+                            {deletingId === dive.uuid ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </IconTooltip>
                       </div>
                     </TableCell>
                   </TableRow>

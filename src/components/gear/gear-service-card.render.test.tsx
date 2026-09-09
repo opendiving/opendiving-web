@@ -25,9 +25,15 @@ vi.mock("@/lib/api/gear-service", async (importOriginal) => {
   };
 });
 
-vi.mock("@/components/ui/use-toast", () => ({
-  useToast: () => ({ toast: vi.fn() }),
-}));
+// One `toast` for the whole file, not a fresh `vi.fn()` per `useToast()` call: the
+// card's mount effect lists `toast` in its dependencies, which is safe against the
+// real hook (`toast` is a module-level function) and an infinite refetch loop against
+// a mock that hands back a new one on every render. The loop is invisible while it
+// happens to lose the race to a passing assertion, which is how it went unnoticed.
+vi.mock("@/components/ui/use-toast", () => {
+  const toast = vi.fn();
+  return { useToast: () => ({ toast }) };
+});
 
 const gearItem: GearItem = {
   uuid: "item-1",

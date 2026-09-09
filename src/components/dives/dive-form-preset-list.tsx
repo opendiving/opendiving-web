@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, Edit, Loader2, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "@/components/ui/tooltip";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { dialogFormSubmit } from "@/lib/dialog-form";
@@ -105,29 +106,31 @@ export function DiveFormPresetList({ presets }: { presets: DiveFormPresets }) {
                       // cross beside this field is the way out of the rename.
                       className="h-8 min-w-0 flex-1"
                     />
-                    <Button
-                      type="submit"
-                      variant="ghost"
-                      size="sm"
-                      title="Save the new name"
-                      aria-label={`Save the new name for "${preset.name}"`}
-                      disabled={
-                        presets.isWorking || draftName.trim().length === 0
-                      }
+                    <IconTooltip
+                      label={`Save the new name for "${preset.name}"`}
                     >
-                      <Check className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      title="Cancel"
-                      aria-label={`Stop renaming "${preset.name}"`}
-                      disabled={presets.isWorking}
-                      onClick={stopEditing}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
+                      <Button
+                        type="submit"
+                        variant="ghost"
+                        size="sm"
+                        disabled={
+                          presets.isWorking || draftName.trim().length === 0
+                        }
+                      >
+                        <Check className="h-4 w-4" />
+                      </Button>
+                    </IconTooltip>
+                    <IconTooltip label={`Stop renaming "${preset.name}"`}>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={presets.isWorking}
+                        onClick={stopEditing}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </IconTooltip>
                   </form>
                 ) : (
                   <>
@@ -140,31 +143,31 @@ export function DiveFormPresetList({ presets }: { presets: DiveFormPresets }) {
                         aria-hidden
                       />
                     )}
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      title="Rename this preset"
-                      aria-label={`Rename "${preset.name}"`}
-                      disabled={presets.isWorking}
-                      onClick={() => {
-                        setDraftName(preset.name);
-                        setEditing(preset);
-                      }}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      title="Delete this preset"
-                      aria-label={`Delete "${preset.name}"`}
-                      disabled={presets.isWorking}
-                      onClick={() => setDeleting(preset)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <IconTooltip label={`Rename "${preset.name}"`}>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={presets.isWorking}
+                        onClick={() => {
+                          setDraftName(preset.name);
+                          setEditing(preset);
+                        }}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    </IconTooltip>
+                    <IconTooltip label={`Delete "${preset.name}"`}>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={presets.isWorking}
+                        onClick={() => setDeleting(preset)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </IconTooltip>
                   </>
                 )}
               </li>

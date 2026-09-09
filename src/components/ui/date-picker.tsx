@@ -5,6 +5,7 @@ import { CalendarIcon, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "@/components/ui/tooltip";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -90,14 +91,15 @@ export function DatePicker({
         </PopoverContent>
       </Popover>
       {value && !disabled && (
-        <button
-          type="button"
-          aria-label="Clear"
-          className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-          onClick={() => onChange("")}
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
+        <IconTooltip label="Clear">
+          <button
+            type="button"
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            onClick={() => onChange("")}
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </IconTooltip>
       )}
     </div>
   );
