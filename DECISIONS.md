@@ -2119,8 +2119,10 @@ now an HTML card positioned over the chart.
 **One `hovered` index for the whole chart**, not a `Tooltip.Root` per point. At a few hundred dives,
 per-dot tooltip instances are a lot of machinery for the one that can ever be open, and the same
 state drives the dot's own enlarge-and-brighten, so the lit dot and the card can't disagree the way
-a CSS `:hover` and React state would. (That's also why the app's unused `@radix-ui/react-tooltip`
-dependency stayed unused here - it's the right tool for a button, not for a scatter plot.)
+a CSS `:hover` and React state would. (That's also why `@radix-ui/react-tooltip` is not what draws
+it - it's the right tool for a button, not for a scatter plot. The dependency was dropped as unused
+after this, and came back when the icon buttons wanted it; see "An icon button's name is now also
+its hover hint, and one string is both".)
 
 **Positioned in percentages of the chart box.** The SVG scales uniformly inside a wrapper of exactly
 its size, so viewBox units map straight onto percentages and nothing has to be measured in the DOM
