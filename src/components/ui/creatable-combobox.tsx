@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from "react";
+import { IconTooltip } from "@/components/ui/tooltip";
 import { Loader2, Plus, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import type { FormControlSlotProps } from "@/components/ui/form";
@@ -713,19 +714,20 @@ export function CreatableCombobox({
         value !== undefined &&
         !disabled &&
         !isLoading && (
-          <button
-            type="button"
-            aria-label="Clear"
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={() => {
-              setInputValue("");
-              onChange(undefined);
-              inputRef.current?.focus();
-            }}
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
+          <IconTooltip label="Clear">
+            <button
+              type="button"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                setInputValue("");
+                onChange(undefined);
+                inputRef.current?.focus();
+              }}
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </IconTooltip>
         )}
       {isOpen && !isLoading && (
         <div

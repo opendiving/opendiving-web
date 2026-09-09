@@ -3,6 +3,7 @@ import { GearItem, gearItemLabel, gearTypeLabel } from "@/lib/api/gear";
 import { worstServiceStatus } from "@/lib/gear-service";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "@/components/ui/tooltip";
 import { CountBadge } from "@/components/ui/count-badge";
 import { TableRowsSkeleton } from "@/components/ui/table-skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -167,42 +168,47 @@ export function GearItemsCard({
                         of gear. See DECISIONS.md, "Ten rows of 'Edit' name
                         nothing". */}
                     <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        aria-label={`Edit ${gearItemLabel(item)}`}
-                        onClick={() => onEdit(item)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        aria-label={`${
+                      <IconTooltip label={`Edit ${gearItemLabel(item)}`}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onEdit(item)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </IconTooltip>
+                      <IconTooltip
+                        label={`${
                           item.is_archived ? "Unarchive" : "Archive"
                         } ${gearItemLabel(item)}`}
-                        disabled={isArchiving}
-                        onClick={() => onArchiveToggle(item)}
                       >
-                        {item.is_archived ? (
-                          <ArchiveRestore className="h-4 w-4" />
-                        ) : (
-                          <Archive className="h-4 w-4" />
-                        )}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        aria-label={`Delete ${gearItemLabel(item)}`}
-                        onClick={() => onDelete(item.uuid)}
-                        disabled={deletingId === item.uuid}
-                      >
-                        {deletingId === item.uuid ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-4 w-4" />
-                        )}
-                      </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={isArchiving}
+                          onClick={() => onArchiveToggle(item)}
+                        >
+                          {item.is_archived ? (
+                            <ArchiveRestore className="h-4 w-4" />
+                          ) : (
+                            <Archive className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </IconTooltip>
+                      <IconTooltip label={`Delete ${gearItemLabel(item)}`}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onDelete(item.uuid)}
+                          disabled={deletingId === item.uuid}
+                        >
+                          {deletingId === item.uuid ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </IconTooltip>
                     </div>
                   </TableCell>
                 </TableRow>

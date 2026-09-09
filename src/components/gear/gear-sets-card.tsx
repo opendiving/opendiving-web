@@ -2,6 +2,7 @@
 
 import { GearSet, gearItemLabel } from "@/lib/api/gear";
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "@/components/ui/tooltip";
 import { CountBadge } from "@/components/ui/count-badge";
 import { TableRowsSkeleton } from "@/components/ui/table-skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -112,27 +113,29 @@ export function GearSetsCard({
                         a screen reader's controls list nothing about which set.
                         See DECISIONS.md, "Ten rows of 'Edit' name nothing". */}
                     <div className="flex justify-end gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        aria-label={`Edit ${set.name}`}
-                        onClick={() => onEdit(set)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        aria-label={`Delete ${set.name}`}
-                        onClick={() => onDelete(set.uuid)}
-                        disabled={deletingId === set.uuid}
-                      >
-                        {deletingId === set.uuid ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-4 w-4" />
-                        )}
-                      </Button>
+                      <IconTooltip label={`Edit ${set.name}`}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onEdit(set)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </IconTooltip>
+                      <IconTooltip label={`Delete ${set.name}`}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onDelete(set.uuid)}
+                          disabled={deletingId === set.uuid}
+                        >
+                          {deletingId === set.uuid ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </IconTooltip>
                     </div>
                   </TableCell>
                 </TableRow>

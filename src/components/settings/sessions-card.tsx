@@ -5,6 +5,7 @@ import { Loader2, LogOut, MonitorSmartphone } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "@/components/ui/tooltip";
 import {
   Card,
   CardContent,
@@ -211,19 +212,20 @@ export function SessionsCard() {
                   item does, and a greyed-out control here would read as a
                   broken one. */}
               {!session.current && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  aria-label={`Sign out ${device}`}
-                  disabled={deletingId === session.uuid}
-                  onClick={() => requestDelete(session.uuid)}
-                >
-                  {deletingId === session.uuid ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <LogOut className="h-4 w-4" />
-                  )}
-                </Button>
+                <IconTooltip label={`Sign out ${device}`}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={deletingId === session.uuid}
+                    onClick={() => requestDelete(session.uuid)}
+                  >
+                    {deletingId === session.uuid ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <LogOut className="h-4 w-4" />
+                    )}
+                  </Button>
+                </IconTooltip>
               )}
             </div>
           );

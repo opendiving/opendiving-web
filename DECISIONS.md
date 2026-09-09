@@ -2119,8 +2119,10 @@ now an HTML card positioned over the chart.
 **One `hovered` index for the whole chart**, not a `Tooltip.Root` per point. At a few hundred dives,
 per-dot tooltip instances are a lot of machinery for the one that can ever be open, and the same
 state drives the dot's own enlarge-and-brighten, so the lit dot and the card can't disagree the way
-a CSS `:hover` and React state would. (That's also why the app's unused `@radix-ui/react-tooltip`
-dependency stayed unused here - it's the right tool for a button, not for a scatter plot.)
+a CSS `:hover` and React state would. (That's also why `@radix-ui/react-tooltip` is not what draws
+it - it's the right tool for a button, not for a scatter plot. The dependency was dropped as unused
+after this, and came back when the icon buttons wanted it; see "An icon button's name is now also
+its hover hint, and one string is both".)
 
 **Positioned in percentages of the chart box.** The SVG scales uniformly inside a wrapper of exactly
 its size, so viewBox units map straight onto percentages and nothing has to be measured in the DOM
@@ -15377,10 +15379,10 @@ a second failure worded the same as the first would otherwise be silent.
 new name is typed where the old one was rather than in a prompt below a list the diver then has to
 find their row in again. Delete becomes Cancel for as long as that lasts, which is two things at
 once: a delete button beside a half-typed rename is one mis-click from destroying the row being
-edited, and without the swap there is no pointer way out of the edit. Both are icons with a `title`
-and an `aria-label` naming the preset — the shape `GearItemsCard` already uses for its per-row
-actions — and saving an unchanged name is skipped rather than spent on a `PATCH` that stores what is
-already there.
+edited, and without the swap there is no pointer way out of the edit. Both are icons in an
+`IconTooltip` naming the preset — the shape `GearItemsCard` already uses for its per-row actions —
+and saving an unchanged name is skipped rather than spent on a `PATCH` that stores what is already
+there.
 
 **Escape belongs to the dialog, and cannot be taken back.** Cancelling the rename with it looks
 obvious and does not work: Radix's dialog listens for Escape on `document` in the _capture_ phase,
@@ -15700,3 +15702,146 @@ troubleshooting page answers "The home page asks for an invite — how do I sign
 clause on every stranger's screen, in both voices, for a reader who is there once and has
 instructions in hand, was the wrong place to say it. The render test that pinned the phrase now pins
 the two audiences the line still names.
+
+## An icon button's name is now also its hover hint, and one string is both
+
+Every icon-only control in the app was named for a screen reader and silent to everybody else.
+`aria-label={`Delete ${label}`}` is the pattern the row actions, the chip crosses, the chart period
+arrows and the map zoom buttons all used, and no browser shows an `aria-label` to anyone. A pointer
+user got a trash can and a guess.
+
+`IconTooltip` (`components/ui/tooltip.tsx`) takes one `label` and produces both halves: it puts the
+string on the child as `aria-label` and shows the same string in a hover chip. **The call site
+passes one prop and must not set `aria-label` itself.** Two props would be two strings, and an icon
+button whose hint and whose announced name disagree is worse than one with no hint at all — the
+sighted user is then reading something the AT user is not, which is the failure WCAG's Label in Name
+is about. Being the same string by construction is the whole design; everything below follows from
+keeping it.
+
+`@radix-ui/react-tooltip` came back as a dependency for this. It had been dropped as unused, and
+"The chart's tooltip is one state-driven card, not a tooltip per dot" above says why the charts
+didn't want it — that reasoning ends with "it's the right tool for a button", and these are the
+buttons. What it buys over a CSS `:hover` chip is the portal: most of these buttons sit in table
+rows inside `overflow-x-auto` containers, where anything positioned in flow is clipped by the
+scroller. Its positioning is inline `style` attributes, which the CSP already allows
+(`style-src-attr 'unsafe-inline'`) — the same allowance the popover and dropdown rely on.
+
+**The provider is per `IconTooltip`, not one in the root layout.** Radix throws without a
+`Tooltip.Provider` ancestor, and a shared one would mean every page, dialog and component test that
+renders an icon button has to remember to supply it — 88 of this repo's test files render a
+component directly, none through a shared wrapper, so that is 88 chances to forget and a confusing
+throw when somebody does. What the local provider costs is `skipDelayDuration` grouping: moving the
+pointer from one row action to the next re-waits the delay instead of opening instantly. At 300ms
+that is a fair price, and 300ms is itself a departure from Radix's 700ms default, which is tuned for
+tooltips that decorate an already-labelled control rather than ones carrying the only words.
+
+**The trigger's `aria-describedby` is suppressed.** Radix points it at the open content, so a screen
+reader would announce the name and then the identical description — "Delete dive #12, button, Delete
+dive #12". Passing `aria-describedby={undefined}` on `Tooltip.Trigger` overrides it, because the
+trigger's own props are spread after Radix's. The name is on the trigger; the chip is the sighted
+half of the same fact, and it has nothing of its own to add. `tooltip.render.test.tsx` asserts the
+attribute's absence, so a Radix upgrade that stops honouring the override fails there rather than in
+somebody's ears.
+
+The chip uses `--tooltip`/`--tooltip-foreground`, the surface the charts' hover cards already use —
+see "`--tooltip` is its own surface token, because `--popover` isn't one". It wraps at `max-w-64`
+rather than the charts' `whitespace-nowrap`: these carry a whole accessible name, and "Sign out
+Chrome on macOS" is a short one.
+
+**`IconTooltip` renders no element of its own.** `Tooltip.Root` emits nothing and the trigger is
+`asChild`, so the child button is still its parent's direct child. Several call sites depend on that
+— the combobox and date-picker crosses are absolutely positioned, the chip controls are flex
+children — and a wrapper `<span>` would have moved all of them. There is a test for it, because
+"adds no DOM" is the kind of property a later refactor breaks without noticing.
+
+Two things it deliberately does not do. A **disabled** button shows no hint: `buttonVariants` sets
+`disabled:pointer-events-none`, so there is no hover to answer, and the alternative is a wrapper
+element around every disabled control, which the previous paragraph just ruled out. And **touch has
+no hover at all** — Radix ignores touch pointers on purpose, since a tooltip that opens on tap would
+fire alongside the tap it is describing. Neither is a regression: both were already silent.
+
+**A press is not a request for a hint, and Radix's own guard cannot enforce that here.** The
+multiselects' drag handles focus themselves from their own `onPointerDown` — `hooks/useDragSort.ts`
+calls `preventDefault` there, which suppresses the browser's focus, and the handle needs focus for
+the Up/Down keys that are the gesture's keyboard half. Focus opens a hint with no delay, so grabbing
+a handle raised the longest chip in the app and left it hanging over the rows being reordered,
+anchored where the handle was before the drag started; the pointer never leaves the handle during a
+drag, so nothing closed it either. Radix keeps a flag for exactly this and sets it in its own
+`onPointerDown`, which `Slot` runs _after_ the child's — so the focus lands while Radix still
+believes no button is pressed.
+
+`IconTooltip` sets the same flag in the capture phase, where it is already true by the time the
+child's handler runs, and uses it to veto Radix's focus handler with `preventDefault`:
+`composeEventHandlers` skips its own half when the first has prevented, and a focus event is not
+cancelable, so this suppresses the open and nothing else. **Refusing the open from `onOpenChange`
+instead does not work**, which is worth writing down because it is the obvious shape and it half
+works: Radix tells the provider a tooltip opened _before_ it asks the consumer, so vetoing there
+leaves the chip down but the delay window open, and the next hover opens instantly. The test that
+caught it is the one that moves the pointer after the press, not the one that checks the press.
+
+**Inside a dialog, the first Escape closes the hint and not the dialog.** An open `Tooltip.Content`
+is a Radix dismissable layer, and it stacks above the dialog's own; only the highest layer registers
+the Escape listener, so while a chip is open the dialog's is torn down. Tabbing to a dialog's close
+cross opens the hint instantly — `onFocus` bypasses the delay — so that is a real change in how a
+keyboard reaches a dialog's exit, and it applies to every `IconTooltip` inside one — the cross is in
+every dialog by construction, and the preset rows' pencil and bin, the certification card's remove
+and the map picker's zoom are each inside one too. Which those are is a question to answer by
+looking rather than from this list: the first draft of this sentence named the mixture rows' bins,
+which are on the dive form and have never been in a dialog at all.
+
+It is kept rather than worked around, because it is the tooltip pattern's own behaviour — the ARIA
+APG gives Escape to the tooltip — and the two ways out are both worse. Suppressing the hint on focus
+would fix it by making the feature pointer-only, against the same APG's "hover _and_ focus";
+dropping the hint from the cross alone would leave the rest unchanged while removing it from the one
+button where it costs nothing to have. Nothing else reaches it: the dialog's listener is not merely
+outranked but unregistered, so no amount of `onEscapeKeyDown` or event ordering on the tooltip's
+side puts it back. What a diver actually pays is one extra keypress, with the chip vanishing in
+between to say why. `tooltip.render.test.tsx` pins both halves — the first Escape leaves the dialog
+open, the second closes it — so a Radix release that moves this fails there.
+
+It narrows "Escape belongs to the dialog, and cannot be taken back" above without contradicting it.
+That section is about the Fields dialog, whose preset rows are exactly the icon buttons in question:
+Escape still cannot be made to cancel a rename, and still reaches the dialog rather than the field.
+What has changed is that a hint open on that row's pencil takes one press on its way there.
+
+The reorder handles in the multiselects keep their long names — "Reorder Blue Hole, position 1 of 3
+(primary site). Use arrow up and arrow down to move it." reads off the chip as three lines. A short
+"Drag to reorder" was the obvious alternative and is the wrong one: the accessible name has to
+contain the visible text, so shortening the chip means either shortening the name — which loses the
+keyboard instructions that name exists to give — or letting the two diverge, which is the one thing
+this component exists to prevent.
+
+### The guard is structural, and it found four buttons a manual sweep missed
+
+`components/icon-button-hints.test.ts` reads the source rather than the DOM: **a `<Button>` or
+`<button>` whose children render no words may not declare its own `aria-label`.** The failure it
+guards against is a _missing_ control, and there is nothing to query for the hint somebody forgot,
+so there is no render test to write — the shape in the source is the only thing that can be checked.
+
+It earned itself immediately. A hand-rolled scan of the tree found 55 icon buttons; the test found
+four more — the `GripVertical` drag handles in all four multiselects — because the scan's quote
+tracking treated the apostrophe in a comment ("WCAG's Label in Name") as the start of a string and
+swallowed the rest of the element. The test blanks comments before it scans, which is why it does
+not have the same blind spot, and it is a fair example of why enumerating by eye undercounts: the
+first list was wrong in the same direction every such list is wrong.
+
+The one judgement in it is "renders no words", and it is deliberately narrow. Children count as
+visible text if they contain a bare text node, or an expression that is anything other than a choice
+between JSX elements — so `{isBusy ? <Loader2 /> : <Trash2 />}` is still an icon, while `{label}`
+and `{value || placeholder}` are not. That is what leaves the three buttons whose `aria-label`
+deliberately _overrides_ visible text alone: `entry-unit-toggle`, `data-export-card` and
+`dive-form-fields-menu` each have a reason recorded above, and none of them is an icon button.
+
+### A mocked `useToast` made one card refetch forever, and it was only ever winning a race
+
+`gear-service-card.render.test.tsx` mocked `useToast` as `() => ({ toast: vi.fn() })` — a new
+function on every render. `GearServiceCard`'s mount effect lists `toast` in its dependencies, which
+is safe against the real hook (`toast` is module-level, so its identity never changes) and an
+infinite fetch-render-fetch loop against that mock. The test passed anyway, because the loaded state
+existed for one commit per iteration and the assertion kept catching it; wrapping the row buttons
+made each iteration heavier and the assertion started losing, 257 fetches deep.
+
+The fix is one `toast` for the file, not one per call. Worth recording because of how it presented:
+a card stuck on its spinner, in a test that had passed for months, in a change that touched only the
+markup of buttons the test never waits for. Nothing about "unable to find Service history" points at
+a dependency array, and the loop is invisible while it is winning.

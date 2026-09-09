@@ -6,6 +6,7 @@ import { usePaginatedResource } from "@/hooks/usePaginatedResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "@/components/ui/tooltip";
 import { CountBadge } from "@/components/ui/count-badge";
 import { TableRowsSkeleton } from "@/components/ui/table-skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -144,37 +145,36 @@ export default function SitesPage() {
                           screen reader's controls list nothing about which site.
                           See DECISIONS.md on the export card's Downloads. */}
                       <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          aria-label={`View ${diveSite.name}`}
-                          asChild
-                        >
-                          <Link href={`/sites/${diveSite.uuid}`}>
-                            <Eye className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          aria-label={`Edit ${diveSite.name}`}
-                          onClick={() => setEditingSite(diveSite)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          aria-label={`Delete ${diveSite.name}`}
-                          onClick={() => requestDeleteDiveSite(diveSite.uuid)}
-                          disabled={deletingId === diveSite.uuid}
-                        >
-                          {deletingId === diveSite.uuid ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-4 w-4" />
-                          )}
-                        </Button>
+                        <IconTooltip label={`View ${diveSite.name}`}>
+                          <Button variant="ghost" size="sm" asChild>
+                            <Link href={`/sites/${diveSite.uuid}`}>
+                              <Eye className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                        </IconTooltip>
+                        <IconTooltip label={`Edit ${diveSite.name}`}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setEditingSite(diveSite)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </IconTooltip>
+                        <IconTooltip label={`Delete ${diveSite.name}`}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => requestDeleteDiveSite(diveSite.uuid)}
+                            disabled={deletingId === diveSite.uuid}
+                          >
+                            {deletingId === diveSite.uuid ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </IconTooltip>
                       </div>
                     </TableCell>
                   </TableRow>

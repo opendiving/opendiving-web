@@ -15,6 +15,7 @@ import {
 } from "@/lib/basemap";
 import { useConfig } from "@/contexts/ConfigContext";
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "@/components/ui/tooltip";
 import { Attribution } from "@/components/attribution";
 import { MapCanvas } from "@/components/map/map-canvas";
 
@@ -551,28 +552,30 @@ export function MapPicker({ latitude, longitude, onPick }: MapPickerProps) {
         </div>
 
         <div className="absolute left-2 top-2 z-10 flex flex-col gap-1">
-          <Button
-            type="button"
-            variant="secondary"
-            size="icon"
-            className="h-7 w-7"
-            aria-label="Zoom in"
-            disabled={zoom >= MAX_ZOOM}
-            onClick={() => zoomBy(1)}
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
-          <Button
-            type="button"
-            variant="secondary"
-            size="icon"
-            className="h-7 w-7"
-            aria-label="Zoom out"
-            disabled={zoom <= MIN_ZOOM}
-            onClick={() => zoomBy(-1)}
-          >
-            <Minus className="h-4 w-4" />
-          </Button>
+          <IconTooltip label="Zoom in">
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon"
+              className="h-7 w-7"
+              disabled={zoom >= MAX_ZOOM}
+              onClick={() => zoomBy(1)}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </IconTooltip>
+          <IconTooltip label="Zoom out">
+            <Button
+              type="button"
+              variant="secondary"
+              size="icon"
+              className="h-7 w-7"
+              disabled={zoom <= MIN_ZOOM}
+              onClick={() => zoomBy(-1)}
+            >
+              <Minus className="h-4 w-4" />
+            </Button>
+          </IconTooltip>
         </div>
       </div>
 

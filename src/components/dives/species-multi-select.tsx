@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { IconTooltip } from "@/components/ui/tooltip";
 import { GripVertical, Loader2, X } from "lucide-react";
 import {
   ComboboxItem,
@@ -437,19 +438,22 @@ export function SpeciesMultiSelect({
                     : undefined
                 }
               >
+                {/* The gesture's keyboard equivalent lives on this button
+                    (Up/Down), so the label has to say so - "drag to reorder"
+                    alone would be a dead end for keyboard users. */}
                 {value.length > 1 && (
-                  <button
-                    type="button"
-                    // The gesture's keyboard equivalent lives on this button
-                    // (Up/Down), so the label has to say so - "drag to reorder"
-                    // alone would be a dead end for keyboard users.
-                    aria-label={`Reorder ${label}, position ${index + 1} of ${value.length}. Use arrow up and arrow down to move it.`}
-                    disabled={disabled}
-                    className="shrink-0 cursor-grab rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-50"
-                    {...handleProps(index)}
+                  <IconTooltip
+                    label={`Reorder ${label}, position ${index + 1} of ${value.length}. Use arrow up and arrow down to move it.`}
                   >
-                    <GripVertical className="h-4 w-4" />
-                  </button>
+                    <button
+                      type="button"
+                      disabled={disabled}
+                      className="shrink-0 cursor-grab rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-50"
+                      {...handleProps(index)}
+                    >
+                      <GripVertical className="h-4 w-4" />
+                    </button>
+                  </IconTooltip>
                 )}
                 <span className="flex-1 truncate">
                   {label}
@@ -460,15 +464,16 @@ export function SpeciesMultiSelect({
                     </span>
                   )}
                 </span>
-                <button
-                  type="button"
-                  aria-label={`Remove ${label}`}
-                  disabled={disabled}
-                  className="shrink-0 text-muted-foreground hover:text-foreground"
-                  onClick={() => removeSpecies(id)}
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
+                <IconTooltip label={`Remove ${label}`}>
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    className="shrink-0 text-muted-foreground hover:text-foreground"
+                    onClick={() => removeSpecies(id)}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </IconTooltip>
               </li>
             );
           })}

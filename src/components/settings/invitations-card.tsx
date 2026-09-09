@@ -7,6 +7,7 @@ import { Loader2, MailPlus, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "@/components/ui/tooltip";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import {
   Card,
@@ -308,19 +309,22 @@ export function InvitationsCard() {
                 cannot be taken back - the account exists - and the API refuses
                 it with a 409; a revoked one is already revoked. */}
             {!invitation.accepted_at && !invitation.revoked_at && (
-              <Button
-                variant="ghost"
-                size="sm"
-                aria-label={`Revoke the invitation to ${invitation.email}`}
-                disabled={deletingId === invitation.uuid}
-                onClick={() => requestDelete(invitation.uuid)}
+              <IconTooltip
+                label={`Revoke the invitation to ${invitation.email}`}
               >
-                {deletingId === invitation.uuid ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Trash2 className="h-4 w-4" />
-                )}
-              </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={deletingId === invitation.uuid}
+                  onClick={() => requestDelete(invitation.uuid)}
+                >
+                  {deletingId === invitation.uuid ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                </Button>
+              </IconTooltip>
             )}
           </div>
         ))}

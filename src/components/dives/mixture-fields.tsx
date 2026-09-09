@@ -10,6 +10,7 @@ import {
   useWatch,
 } from "react-hook-form";
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "@/components/ui/tooltip";
 import { Input, inputClassName } from "@/components/ui/input";
 import {
   FormControl,
@@ -328,18 +329,20 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                 describes as "the common case for a dive logged by hand". A
                 cylinder the diver cannot take off is one they may never have
                 entered. */}
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              // Named per row, because the icon is the whole button and a form can
-              // hold several: an unlabelled one reads as "button" to a screen
-              // reader, and a constant "Remove tank" would name every row the same.
-              aria-label={`Remove tank ${index + 1}`}
-              onClick={() => remove(index)}
-            >
-              <Trash2 className="h-4 w-4 text-destructive" />
-            </Button>
+            {/* Named per row, because the icon is the whole button and a form
+                can hold several: an unlabelled one reads as "button" to a screen
+                reader, and a constant "Remove tank" would name every row the
+                same. The label is also the hover hint - see `IconTooltip`. */}
+            <IconTooltip label={`Remove tank ${index + 1}`}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => remove(index)}
+              >
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
+            </IconTooltip>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

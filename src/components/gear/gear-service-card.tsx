@@ -24,6 +24,7 @@ import { isAbortError } from "@/lib/api/client";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { formatDateOnly } from "@/lib/date-time";
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -251,50 +252,62 @@ export function GearServiceCard({
                       </div>
 
                       <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          aria-label={`Log service for ${kindAndLabel(schedule)}`}
-                          onClick={() => setLoggingFor(schedule)}
+                        <IconTooltip
+                          label={`Log service for ${kindAndLabel(schedule)}`}
                         >
-                          <ClipboardCheck className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          aria-label={`${
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setLoggingFor(schedule)}
+                          >
+                            <ClipboardCheck className="h-4 w-4" />
+                          </Button>
+                        </IconTooltip>
+                        <IconTooltip
+                          label={`${
                             schedule.is_active ? "Pause" : "Resume"
                           } ${kindAndLabel(schedule)} schedule`}
-                          disabled={isBusy}
-                          onClick={() => toggleActive(schedule)}
                         >
-                          {schedule.is_active ? (
-                            <Pause className="h-4 w-4" />
-                          ) : (
-                            <Play className="h-4 w-4" />
-                          )}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          aria-label={`Edit ${kindAndLabel(schedule)} schedule`}
-                          onClick={() => setEditingSchedule(schedule)}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={isBusy}
+                            onClick={() => toggleActive(schedule)}
+                          >
+                            {schedule.is_active ? (
+                              <Pause className="h-4 w-4" />
+                            ) : (
+                              <Play className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </IconTooltip>
+                        <IconTooltip
+                          label={`Edit ${kindAndLabel(schedule)} schedule`}
                         >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          aria-label={`Delete ${kindAndLabel(schedule)} schedule`}
-                          disabled={isBusy}
-                          onClick={() => setDeletingSchedule(schedule)}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setEditingSchedule(schedule)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </IconTooltip>
+                        <IconTooltip
+                          label={`Delete ${kindAndLabel(schedule)} schedule`}
                         >
-                          {isBusy ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-4 w-4" />
-                          )}
-                        </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={isBusy}
+                            onClick={() => setDeletingSchedule(schedule)}
+                          >
+                            {isBusy ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </IconTooltip>
                       </div>
                     </div>
                   );
@@ -356,27 +369,29 @@ export function GearServiceCard({
                       </div>
 
                       <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          aria-label={`Edit ${recordName(record)}`}
-                          onClick={() => setEditingRecord(record)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          aria-label={`Delete ${recordName(record)}`}
-                          disabled={busyUuid === record.uuid}
-                          onClick={() => setDeletingRecord(record)}
-                        >
-                          {busyUuid === record.uuid ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-4 w-4" />
-                          )}
-                        </Button>
+                        <IconTooltip label={`Edit ${recordName(record)}`}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setEditingRecord(record)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </IconTooltip>
+                        <IconTooltip label={`Delete ${recordName(record)}`}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={busyUuid === record.uuid}
+                            onClick={() => setDeletingRecord(record)}
+                          >
+                            {busyUuid === record.uuid ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </IconTooltip>
                       </div>
                     </div>
                   ))}

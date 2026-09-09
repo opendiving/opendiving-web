@@ -23,6 +23,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "@/components/ui/tooltip";
 import {
   Select,
   SelectContent,
@@ -218,16 +219,17 @@ export function DiveActivityCard() {
                 go. */}
             {scope !== "all" && (
               <div className="flex items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  disabled={previous === null}
-                  onClick={() => setAnchor(previous)}
-                  aria-label="Dive activity: previous period with dives"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
+                <IconTooltip label="Dive activity: previous period with dives">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    disabled={previous === null}
+                    onClick={() => setAnchor(previous)}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                </IconTooltip>
                 {/* The label is also the jump-to control - stepping one period at
                     a time is fine for "the season before this one" and useless
                     for reaching one several seasons back.
@@ -271,16 +273,17 @@ export function DiveActivityCard() {
                     ))}
                   </SelectContent>
                 </Select>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  disabled={next === null}
-                  onClick={() => setAnchor(next)}
-                  aria-label="Dive activity: next period with dives"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
+                <IconTooltip label="Dive activity: next period with dives">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    disabled={next === null}
+                    onClick={() => setAnchor(next)}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </IconTooltip>
               </div>
             )}
 

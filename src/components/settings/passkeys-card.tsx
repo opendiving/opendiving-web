@@ -13,6 +13,7 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { IconTooltip } from "@/components/ui/tooltip";
 import {
   Card,
   CardContent,
@@ -287,28 +288,30 @@ export function PasskeysCard() {
                   }}
                 />
                 <div className="flex gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    aria-label="Save name"
-                    disabled={isRenaming}
-                    onClick={() => void saveName()}
-                  >
-                    {isRenaming ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Check className="h-4 w-4" />
-                    )}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    aria-label="Cancel rename"
-                    disabled={isRenaming}
-                    onClick={() => setEdited(null)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
+                  <IconTooltip label="Save name">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={isRenaming}
+                      onClick={() => void saveName()}
+                    >
+                      {isRenaming ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Check className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </IconTooltip>
+                  <IconTooltip label="Cancel rename">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={isRenaming}
+                      onClick={() => setEdited(null)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </IconTooltip>
                 </div>
               </>
             ) : (
@@ -335,29 +338,31 @@ export function PasskeysCard() {
                   </p>
                 </div>
                 <div className="flex gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    aria-label={`Rename ${passkey.name}`}
-                    onClick={() =>
-                      setEdited({ uuid: passkey.uuid, name: passkey.name })
-                    }
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    aria-label={`Remove ${passkey.name}`}
-                    disabled={deletingId === passkey.uuid}
-                    onClick={() => requestDelete(passkey.uuid)}
-                  >
-                    {deletingId === passkey.uuid ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Trash2 className="h-4 w-4" />
-                    )}
-                  </Button>
+                  <IconTooltip label={`Rename ${passkey.name}`}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        setEdited({ uuid: passkey.uuid, name: passkey.name })
+                      }
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </IconTooltip>
+                  <IconTooltip label={`Remove ${passkey.name}`}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={deletingId === passkey.uuid}
+                      onClick={() => requestDelete(passkey.uuid)}
+                    >
+                      {deletingId === passkey.uuid ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </IconTooltip>
                 </div>
               </>
             )}

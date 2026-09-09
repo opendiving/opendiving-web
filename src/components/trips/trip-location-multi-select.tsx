@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { IconTooltip } from "@/components/ui/tooltip";
 import { GripVertical, X } from "lucide-react";
 import {
   ComboboxItem,
@@ -345,19 +346,22 @@ export function TripLocationMultiSelect({
                     : undefined
                 }
               >
+                {/* The gesture's keyboard equivalent lives on this button
+                    (Up/Down), so the label has to say so - "drag to reorder"
+                    alone would be a dead end for keyboard users. */}
                 {value.length > 1 && (
-                  <button
-                    type="button"
-                    // The gesture's keyboard equivalent lives on this button
-                    // (Up/Down), so the label has to say so - "drag to reorder"
-                    // alone would be a dead end for keyboard users.
-                    aria-label={`Reorder ${location.name}, position ${index + 1} of ${value.length}. Use arrow up and arrow down to move it.`}
-                    disabled={disabled}
-                    className="shrink-0 cursor-grab rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-50"
-                    {...handleProps(index)}
+                  <IconTooltip
+                    label={`Reorder ${location.name}, position ${index + 1} of ${value.length}. Use arrow up and arrow down to move it.`}
                   >
-                    <GripVertical className="h-4 w-4" />
-                  </button>
+                    <button
+                      type="button"
+                      disabled={disabled}
+                      className="shrink-0 cursor-grab rounded text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-50"
+                      {...handleProps(index)}
+                    >
+                      <GripVertical className="h-4 w-4" />
+                    </button>
+                  </IconTooltip>
                 )}
                 {/* `min-w-0` is what makes `truncate` mean anything: a flex
                     item's default `min-width: auto` is its content, and this
@@ -386,19 +390,20 @@ export function TripLocationMultiSelect({
                         " - not on the map"}
                   </span>
                 </span>
-                <button
-                  type="button"
-                  // Named per row, as in the sibling multiselects: with up to
-                  // twenty rows, a screen reader would otherwise announce
-                  // twenty identical buttons in a list whose order is the point.
-                  ref={index === value.length - 1 ? lastRemoveRef : undefined}
-                  aria-label={`Remove ${location.name}`}
-                  disabled={disabled}
-                  className="shrink-0 text-muted-foreground hover:text-foreground"
-                  onClick={() => removeLocation(index)}
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
+                {/* Named per row, as in the sibling multiselects: with up to
+                    twenty rows, a screen reader would otherwise announce twenty
+                    identical buttons in a list whose order is the point. */}
+                <IconTooltip label={`Remove ${location.name}`}>
+                  <button
+                    type="button"
+                    ref={index === value.length - 1 ? lastRemoveRef : undefined}
+                    disabled={disabled}
+                    className="shrink-0 text-muted-foreground hover:text-foreground"
+                    onClick={() => removeLocation(index)}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </IconTooltip>
               </li>
             );
           })}
