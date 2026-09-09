@@ -155,12 +155,7 @@ export default function TripsPage() {
                           See DECISIONS.md on the export card's Downloads. */}
                       <div className="flex justify-end gap-2">
                         <IconTooltip label={`View ${trip.name}`}>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-
-                            asChild
-                          >
+                          <Button variant="ghost" size="sm" asChild>
                             <Link href={`/trips/${trip.uuid}`}>
                               <Eye className="h-4 w-4" />
                             </Link>

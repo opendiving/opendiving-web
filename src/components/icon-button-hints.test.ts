@@ -55,7 +55,40 @@ const topLevelIndex = (src: string, token: string, from = 0): number => {
   return -1;
 };
 
-const stripTags = (src: string) => src.replace(/<[^>]*>/g, "");
+// Blanks out every JSX element tag while keeping offsets, so what remains is the
+// text and expressions a button actually renders. A regex cannot do this: an
+// attribute is allowed both braces and a `>` of its own (`className={cn(...)}`,
+// `onClick={() => reset()}`), so the end of a tag has to be walked for. Getting
+// this wrong is not a loud failure - a brace read out of `className={cn(...)}`
+// looks like a children expression, the button is credited with visible text,
+// and it is quietly exempted from the rule this file exists to enforce.
+const blankTags = (src: string) => {
+  const out = src.split("");
+  for (let i = 0; i < src.length; i++) {
+    // `<` is a tag only before a name, a closing slash or a fragment's `>`;
+    // `{count < 3 && …}` is a comparison and has to stay legible.
+    if (src[i] !== "<" || !/[A-Za-z/>]/.test(src[i + 1] ?? "")) continue;
+    let depth = 0;
+    let quote: string | null = null;
+    let end = i + 1;
+    for (; end < src.length; end++) {
+      const c = src[end];
+      if (quote) {
+        if (c === quote && src[end - 1] !== "\\") quote = null;
+        continue;
+      }
+      if (c === '"' || c === "'" || c === "`") quote = c;
+      else if (c === "{") depth++;
+      else if (c === "}") depth--;
+      else if (c === ">" && depth === 0) break;
+    }
+    for (let k = i; k <= Math.min(end, src.length - 1); k++) {
+      if (out[k] !== "\n") out[k] = " ";
+    }
+    i = end;
+  }
+  return out.join("");
+};
 
 // Blanks out comments while keeping every offset, so the scanners below can
 // track quotes without an apostrophe in prose ("WCAG's Label in Name") reading
@@ -70,10 +103,10 @@ const blankComments = (src: string) =>
 // Whether a branch of a conditional puts anything on screen once its JSX
 // elements are taken out. `( )` and `(\n)` do not; `("Save")` and `(count)` do.
 const branchRendersText = (src: string) =>
-  /[A-Za-z0-9"'`]/.test(stripTags(src).replace(/[()\s]/g, ""));
+  /[A-Za-z0-9"'`]/.test(blankTags(src).replace(/[()\s]/g, ""));
 
 const expressionRendersText = (expr: string): boolean => {
-  const src = stripTags(expr);
+  const src = blankTags(expr);
   const question = topLevelIndex(src, "?");
   if (question >= 0) {
     const colon = topLevelIndex(src, ":", question + 1);
@@ -109,18 +142,23 @@ const matchBrace = (src: string, start: number): number => {
 };
 
 const childrenRenderText = (inner: string): boolean => {
-  const withoutComments = blankComments(inner);
+  // Tags go first, so the only braces left are ones opening a children
+  // expression rather than an attribute's.
+  const src = blankTags(blankComments(inner));
+  let outsideExpressions = "";
 
-  for (let i = 0; i < withoutComments.length; i++) {
-    if (withoutComments[i] !== "{") continue;
-    const end = matchBrace(withoutComments, i);
-    if (expressionRendersText(withoutComments.slice(i + 1, end))) return true;
+  for (let i = 0; i < src.length; i++) {
+    if (src[i] !== "{") {
+      outsideExpressions += src[i];
+      continue;
+    }
+    const end = matchBrace(src, i);
+    if (expressionRendersText(src.slice(i + 1, end))) return true;
     i = end;
   }
 
-  // Anything left after tags and expressions are removed is a bare text node.
-  const text = stripTags(withoutComments.replace(/\{[\s\S]*?\}/g, "")).trim();
-  return text.length > 0;
+  // Anything left is a bare text node.
+  return outsideExpressions.trim().length > 0;
 };
 
 // Every `<Button …>` / `<button …>` open tag in the file, with the element's
@@ -174,6 +212,58 @@ const buttonElements = (original: string) => {
 
   return found;
 };
+
+// The rule above is only as good as this one judgement, and it is judgement made
+// by a hand-rolled scanner rather than a parser - so the cases it has to get
+// right are pinned here rather than left to whichever call sites happen to exist.
+describe("the visible-text rule", () => {
+  const icon = (children: string) => childrenRenderText(children);
+
+  it("reads a lone icon as wordless", () => {
+    expect(icon('<Trash2 className="h-4 w-4" />')).toBe(false);
+  });
+
+  it("is not fooled by braces in the icon's own attributes", () => {
+    // The scanner used to find this `{` before tags were taken out, hand
+    // `cn("h-4 w-4", danger && "text-destructive")` to the expression rule, and
+    // credit the button with words it does not render.
+    expect(
+      icon(
+        '<Trash2 className={cn("h-4 w-4", danger && "text-destructive")} />',
+      ),
+    ).toBe(false);
+    expect(icon("<KeyRound size={16} />")).toBe(false);
+  });
+
+  it("reads a choice between icons as wordless", () => {
+    expect(
+      icon(`{isBusy ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : (
+        <Trash2 className="h-4 w-4" />
+      )}`),
+    ).toBe(false);
+  });
+
+  it("reads a rendered value as words", () => {
+    expect(icon('<CalendarIcon className="mr-2 h-4 w-4" />{label}')).toBe(true);
+    expect(icon("{value || placeholder}")).toBe(true);
+    expect(icon('<Plus className="h-4 w-4 mr-2" />\n Add Schedule')).toBe(true);
+  });
+
+  it("reads a choice between words as words", () => {
+    expect(icon('{item.is_archived ? "Unarchive" : "Archive"}')).toBe(true);
+    expect(icon("{count > 0 && <span>{count}</span>}")).toBe(true);
+  });
+
+  it("ignores comments, apostrophes and all", () => {
+    expect(
+      icon(`{/* Named per row: ten "Edit"s tell a screen reader's controls
+              list nothing about which row. */}
+        <Edit className="h-4 w-4" />`),
+    ).toBe(false);
+  });
+});
 
 describe("icon buttons", () => {
   it("carry no accessible name that the hover hint does not also show", () => {

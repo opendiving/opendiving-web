@@ -188,24 +188,14 @@ export default function DivesPage() {
                           export card's Download buttons; see DECISIONS.md. */}
                       <div className="flex justify-end gap-2">
                         <IconTooltip label={`View dive #${dive.dive_number}`}>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-
-                            asChild
-                          >
+                          <Button variant="ghost" size="sm" asChild>
                             <Link href={`/dives/${dive.uuid}`}>
                               <Eye className="h-4 w-4" />
                             </Link>
                           </Button>
                         </IconTooltip>
                         <IconTooltip label={`Edit dive #${dive.dive_number}`}>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-
-                            asChild
-                          >
+                          <Button variant="ghost" size="sm" asChild>
                             <Link href={`/dives/${dive.uuid}/edit?from=/dives`}>
                               <Edit className="h-4 w-4" />
                             </Link>

@@ -31,8 +31,8 @@ import type { DiveFormPresets } from "@/hooks/useDiveFormPresets";
  * from destroying the row being edited, and without it there is no pointer way out of
  * the edit at all.
  *
- * The buttons are icons with a `title` and an `aria-label` naming the preset, which is
- * the shape `GearItemsCard` already uses for its per-row actions.
+ * The buttons are icons in an `IconTooltip` naming the preset, which is the shape
+ * `GearItemsCard` already uses for its per-row actions.
  */
 export function DiveFormPresetList({ presets }: { presets: DiveFormPresets }) {
   const [editing, setEditing] = useState<DiveFormPreset | null>(null);

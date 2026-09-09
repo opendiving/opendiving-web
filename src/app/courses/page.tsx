@@ -242,12 +242,7 @@ export default function CoursesPage() {
                           name nothing". */}
                       <div className="flex justify-end gap-2">
                         <IconTooltip label={`View ${course.name}`}>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-
-                            asChild
-                          >
+                          <Button variant="ghost" size="sm" asChild>
                             <Link href={`/courses/${course.uuid}`}>
                               <Eye className="h-4 w-4" />
                             </Link>

@@ -15758,6 +15758,23 @@ element around every disabled control, which the previous paragraph just ruled o
 no hover at all** — Radix ignores touch pointers on purpose, since a tooltip that opens on tap would
 fire alongside the tap it is describing. Neither is a regression: both were already silent.
 
+**Inside a dialog, the first Escape closes the hint and not the dialog.** An open `Tooltip.Content`
+is a Radix dismissable layer, and it stacks above the dialog's own; only the highest layer registers
+the Escape listener, so while a chip is open the dialog's is torn down. Tabbing to a dialog's close
+cross opens the hint instantly — `onFocus` bypasses the delay — so that is a real change in how a
+keyboard reaches a dialog's exit, and it applies to every `IconTooltip` inside one: the cross, the
+mixture rows' bins, the certification card's remove, the map picker's zoom.
+
+It is kept rather than worked around, because it is the tooltip pattern's own behaviour — the ARIA
+APG gives Escape to the tooltip — and the two ways out are both worse. Suppressing the hint on focus
+would fix it by making the feature pointer-only, against the same APG's "hover _and_ focus";
+dropping the hint from the cross alone would leave the other three unchanged while removing it from
+the one button where it costs nothing to have. Nothing else reaches it: the dialog's listener is not
+merely outranked but unregistered, so no amount of `onEscapeKeyDown` or event ordering on the
+tooltip's side puts it back. What a diver actually pays is one extra keypress, with the chip
+vanishing in between to say why. `tooltip.render.test.tsx` pins both halves — the first Escape
+leaves the dialog open, the second closes it — so a Radix release that moves this fails there.
+
 The reorder handles in the multiselects keep their long names — "Reorder Blue Hole, position 1 of 3
 (primary site). Use arrow up and arrow down to move it." reads off the chip as three lines. A short
 "Drag to reorder" was the obvious alternative and is the wrong one: the accessible name has to

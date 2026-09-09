@@ -146,12 +146,7 @@ export default function SitesPage() {
                           See DECISIONS.md on the export card's Downloads. */}
                       <div className="flex justify-end gap-2">
                         <IconTooltip label={`View ${diveSite.name}`}>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-
-                            asChild
-                          >
+                          <Button variant="ghost" size="sm" asChild>
                             <Link href={`/sites/${diveSite.uuid}`}>
                               <Eye className="h-4 w-4" />
                             </Link>

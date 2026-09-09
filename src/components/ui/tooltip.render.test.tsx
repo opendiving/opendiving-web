@@ -1,8 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { IconTooltip } from "@/components/ui/tooltip";
 
 // The whole point of the component is that one string is both halves of the
@@ -69,5 +75,40 @@ describe("IconTooltip", () => {
     const row = container.querySelector('[data-testid="row"]');
     expect(row?.children).toHaveLength(1);
     expect(row?.firstElementChild?.tagName).toBe("BUTTON");
+  });
+});
+
+// An open hint is a Radix dismissable layer, and it stacks on top of the dialog's.
+// Escape therefore reaches the hint and not the dialog underneath - which is the
+// tooltip pattern's own behaviour (the APG gives Escape to the tooltip) and the
+// price of a hint on the cross. It is pinned here because it is a real change in
+// how a keyboard reaches the dialog's exit, and it should fail loudly if a future
+// Radix release moves it rather than being rediscovered by a diver.
+describe("a hint inside a dialog", () => {
+  it("takes the first Escape, and the dialog closes on the second", async () => {
+    render(
+      <Dialog defaultOpen>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Log a dive</DialogTitle>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>,
+    );
+
+    const close = screen.getByRole("button", { name: "Close" });
+    fireEvent.focus(close);
+    await screen.findByRole("tooltip");
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() =>
+      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument(),
+    );
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
   });
 });
