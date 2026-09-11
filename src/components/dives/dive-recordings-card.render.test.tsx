@@ -2,7 +2,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DiveRecordingsCard } from "./dive-recordings-card";
-import type { Dive, DiveFileInfo, Recording } from "@/lib/api/dives";
+import type {
+  Dive,
+  DiveFileInfo,
+  DiveProfileInfo,
+  Recording,
+} from "@/lib/api/dives";
 
 // What this card has to get right is a set of claims about the account's
 // contents: which computers recorded the dive, which files are still held for
@@ -39,6 +44,19 @@ function file(overrides: Partial<DiveFileInfo> = {}): DiveFileInfo {
 
 function recording(overrides: Partial<Recording> = {}): Recording {
   return { uuid: "r1", ordinal: 0, files: [], ...overrides };
+}
+
+function profileInfo(
+  overrides: Partial<DiveProfileInfo> = {},
+): DiveProfileInfo {
+  return {
+    uuid: "p1",
+    duration: 3163,
+    depth_sample_count: 314,
+    provenance: "file",
+    channels: ["depth"],
+    ...overrides,
+  };
 }
 
 function dive(overrides: Partial<Dive> = {}): Dive {
@@ -130,6 +148,46 @@ describe("DiveRecordingsCard", () => {
     expect(
       within(block).queryByTestId("dive-recording-file"),
     ).not.toBeInTheDocument();
+  });
+
+  it("tells the two kinds of file-less recording apart on the profile's provenance", () => {
+    // The dive after the walk's merge, read back from the API: the Perdix's two
+    // halves folded into one recording, and beside it the converter-imported one
+    // from the same logbook import. Both have an empty `files`, so the sentences
+    // can only come from the provenance - and a diver reading the card to find
+    // out what became of their upload gets a different answer for each.
+    render(
+      <DiveRecordingsCard
+        dive={dive({
+          recordings: [
+            recording({
+              uuid: "merged",
+              ordinal: 0,
+              device: { model: "Perdix 3", serial: "D9772626" },
+              profile: profileInfo({ uuid: "p1", provenance: "merge" }),
+            }),
+            recording({
+              uuid: "imported",
+              ordinal: 1,
+              device: { brand: "Suunto", model: "Suunto Ocean" },
+              profile: profileInfo({
+                uuid: "p2",
+                provenance: "divejson_import",
+              }),
+            }),
+          ],
+        })}
+        onChanged={vi.fn()}
+      />,
+    );
+
+    const [merged, imported] = screen.getAllByTestId("dive-recording");
+    expect(
+      within(merged).getByText(/merged from two recordings/i),
+    ).toBeVisible();
+    expect(
+      within(imported).getByText(/imported through the converter/i),
+    ).toBeVisible();
   });
 
   it("offers a whole-recording delete only where there are no files to delete one by one", () => {

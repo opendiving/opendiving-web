@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import type { Dive, DiveFileInfo, Recording } from "@/lib/api/dives";
+import type {
+  Dive,
+  DiveFileInfo,
+  DiveProfileInfo,
+  Recording,
+} from "@/lib/api/dives";
 import {
   canMergeDive,
   diveFileRows,
@@ -24,6 +29,19 @@ function file(overrides: Partial<DiveFileInfo> = {}): DiveFileInfo {
 
 function recording(overrides: Partial<Recording> = {}): Recording {
   return { uuid: "r1", ordinal: 0, files: [], ...overrides };
+}
+
+function profileInfo(
+  overrides: Partial<DiveProfileInfo> = {},
+): DiveProfileInfo {
+  return {
+    uuid: "p1",
+    duration: 3163,
+    depth_sample_count: 314,
+    provenance: "file",
+    channels: ["depth"],
+    ...overrides,
+  };
 }
 
 function dive(overrides: Partial<Dive> = {}): Dive {
@@ -135,11 +153,32 @@ describe("noFileKeptSentence", () => {
     expect(noFileKeptSentence(recording({ files: [file()] }))).toBeNull();
   });
 
-  it("explains a recording with no file rather than leaving it blank", () => {
-    // What logbook import builds from a converted document, and what a merge of
-    // two such recordings leaves. First-class rather than degenerate, so the
-    // list says so in words.
-    expect(noFileKeptSentence(recording())).toMatch(/no file kept/i);
+  it("names the converter for a recording logbook import built from a document", () => {
+    expect(
+      noFileKeptSentence(
+        recording({ profile: profileInfo({ provenance: "divejson_import" }) }),
+      ),
+    ).toBe("No file kept — these samples were imported through the converter.");
+  });
+
+  it("names the merge for a recording two others were folded into", () => {
+    // The distinction the recording's own shape cannot make: a merge keeps
+    // whatever files either half had, so an empty `files` says only that
+    // neither half had one.
+    expect(
+      noFileKeptSentence(
+        recording({ profile: profileInfo({ provenance: "merge" }) }),
+      ),
+    ).toBe("No file kept — these samples were merged from two recordings.");
+  });
+
+  it("claims nothing about samples for a recording that carries none", () => {
+    // A device and nothing else - what logbook import writes for a document
+    // whose recording had no profile and no files. The two sentences above
+    // would both be false here.
+    const sentence = noFileKeptSentence(recording());
+    expect(sentence).toMatch(/no file kept/i);
+    expect(sentence).not.toMatch(/samples/i);
   });
 });
 

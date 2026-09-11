@@ -129,14 +129,25 @@ describe("DiveRecordingFiles", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("gives a recording that kept no file a row saying so", () => {
+  it("gives a recording that kept no file a row saying so, and which kind of nothing it is", () => {
     // The Perdix, imported through the converter. Skipping it would leave a
     // device silently missing from a list a diver reads to check their files
-    // are still there - which is what data loss looks like.
+    // are still there - which is what data loss looks like. The edit form is
+    // the other surface reading `noFileKeptSentence`, so the sentence it picks
+    // is pinned here as well as on the dive page's card.
     render(
       <DiveRecordingFiles
         recordings={[
-          recording({ device: { model: "Perdix 3", serial: "D9772626" } }),
+          recording({
+            device: { model: "Perdix 3", serial: "D9772626" },
+            profile: {
+              uuid: "p1",
+              duration: 3163,
+              depth_sample_count: 314,
+              provenance: "divejson_import",
+              channels: ["depth"],
+            },
+          }),
         ]}
         pending={[]}
         onRemovePending={vi.fn()}
@@ -146,7 +157,9 @@ describe("DiveRecordingFiles", () => {
 
     const [row] = screen.getAllByTestId("dive-file-row");
     expect(within(row).getByText(/Perdix 3 · D9772626/)).toBeVisible();
-    expect(within(row).getByText(/no file kept/i)).toBeVisible();
+    expect(
+      within(row).getByText(/no file kept — .*imported through the converter/i),
+    ).toBeVisible();
     // Nothing to delete individually: the file-less recording is removed from
     // the dive page's Recordings card, not from a form's file list.
     expect(

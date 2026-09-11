@@ -423,6 +423,18 @@ export interface DiveMergeResult {
   folded: boolean;
 }
 
+// Where a stored profile's samples came from. A closed vocabulary like
+// `DiveProfileEventType`, and deliberately not the API's own
+// `dive_profile.parser_key`: that column answers "can these samples be extracted
+// again" and holds a parser key or one of two sentinels, so reading it here would
+// mean hard-coding the sentinels and treating the open, growing set of parser keys
+// as the third case.
+//
+// `file` is not "this recording has files": a merge keeps whatever files either
+// half had, and those samples are still `merge`. This says what produced the
+// samples, which is why it sits on the profile rather than on the recording.
+export type DiveProfileProvenance = "file" | "divejson_import" | "merge";
+
 // What the dive detail response says about a dive's profile without carrying it:
 // enough to decide whether to render the card, what to put in its heading, and
 // which version of the series to ask for.
@@ -434,6 +446,14 @@ export interface DiveProfileInfo {
   // hand-edited.
   duration: number;
   depth_sample_count: number;
+  // Always sent: every stored profile is one of the three. It is here because a
+  // file-less recording is first-class rather than degenerate, and the two ways
+  // of being file-less are different things to say - "imported through the
+  // converter" against "merged from two recordings". Nothing else in the dive
+  // read tells them apart: `files` is empty for both. Read it through
+  // `noFileKeptSentence` (`lib/dive-recordings.ts`) rather than switching on it
+  // at a call site.
+  provenance: DiveProfileProvenance;
   // Which curves the profile carries: any of "depth", "ceiling",
   // "temperature", "pressure".
   channels: string[];
@@ -514,6 +534,14 @@ export interface DiveProfileEvent {
   label?: string | null;
 }
 
+// The drawable half of a profile, and **deliberately narrower than the recording
+// route's response**: that route serves `provenance` alongside these channels
+// (`RecordingProfileRead` in the API's `schemas/dive_profile.py`), and this
+// interface leaves it out rather than making every caller supply one. It is the
+// chart's prop type as well as a response shape - `DiveProfileChart` takes a
+// `DiveProfile` - and a chart that draws curves has no business demanding to know
+// where they came from. The app reads the provenance off `DiveProfileInfo`, on
+// the dive detail response, which is the surface that has to say it.
 export interface DiveProfile {
   // The span of the sample channels, in seconds. An event may sit past it: the
   // API leaves a marker pressed after the recorder's last sample where the file

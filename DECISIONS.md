@@ -15010,6 +15010,18 @@ landing page's **Computer Import** card, and the import card's _About the origin
 all about the per-dive form upload or about the report on the file just handed over. A card that is
 genuinely about the path where the file really is kept is what this sweep must not flatten.
 
+**§2.1 carried a _second_ falsehood, of a different shape, and this sweep's own noun probe walks
+straight past it.** Having been corrected to scope the promise to an upload, the entry still read
+"that file itself is kept alongside the dive — **one per dive**, under the filename it arrived
+with". Recordings falsified that clause and not the one above it: a dive logged off two computers
+holds two recordings, and one computer exported twice holds two files on one of them. The probe
+above cannot reach it, because it anchors on `(original|dive-computer|source) files?` and the false
+words are `one per dive` — a cardinality claim sharing no vocabulary with the claim it qualifies.
+Two rounds of sweeping this file for the promise therefore left a count beside it that had become
+untrue. **A promise and its cardinality are two claims in one sentence, and a probe aimed at either
+one is blind to the other**; when a model changes from one-of-something to many, the cardinality is
+the half to sweep for, and it is written in ordinary words no identifier grep will find.
+
 ## A fixture meaning "in the future" is derived, never written down
 
 `goodbye/page.render.test.tsx` has a case called "names the day everything is erased", and what it
@@ -16040,19 +16052,42 @@ the dead-until-known states built on it — eight tests' worth of behaviour that
 keyboard diver following the arrows lost focus on every step — to save one cheap request on a page
 that already makes several.
 
-## A recording with no files says so, and cannot yet say which kind of nothing
+## A recording with no files says so, and which kind of nothing it is
 
 A recording can carry samples and no downloadable file: it is what logbook import builds from a
 converted document, and what a merge of two such recordings leaves. That is first-class rather than
 degenerate, so `noFileKeptSentence` gives it a row of its own saying so — a device silently missing
 from a list a diver reads to check their files are still there is exactly what data loss looks like.
 
-**One sentence, where the design called for two.** Telling "imported through the converter" from
-"merged from two recordings" needs the profile's provenance. The server stores it —
-`DiveProfile.parser_key` holds a parser's key, `divejson_import` or `merge` — and **does not publish
-it**: `DiveProfileInfo` on the dive detail response carries no such member, and neither does the
-full profile payload from the recording route. So the wording is one that is true of both paths, and
-narrowing it is a job for the day that member ships.
+**Which of the two it was comes from `DiveProfileInfo.provenance`**, the `file` / `divejson_import`
+/ `merge` vocabulary the dive detail response carries on every recording's profile summary. The
+recording's own shape cannot answer it and no amount of reading it more carefully will: `files` is
+empty either way, and a merge keeps whatever files either half had, so an empty list says only that
+neither half had one.
+
+Three things about reading it. It is **the profile's fact, not the recording's** — `file` does not
+mean "this recording has files", it means these samples were read off some file, which is why it
+lives where it does. The API deliberately publishes a **closed enum** rather than its own
+`dive_profile.parser_key`: that column answers "can these samples be extracted again" and holds a
+parser key or one of two sentinels, so a client switching on it would hard-code the sentinels and
+treat the open, growing set of parser keys as the third case. And the sentence has a **fallback with
+no provenance in it**, which is not defensive padding: logbook import writes a recording for a
+document that carried a device and neither a profile nor files, and that recording has no samples to
+make either claim about. The fallback says nothing was stored to re-read it from, which is the only
+thing true of all of them.
+
+**This was one sentence until the provenance shipped**, and the earlier wording — "imported rather
+than read from a file stored here" — was chosen to be true of both paths rather than as a design
+call. `DiveProfileInfo` carried no such member at the time, so there was nothing on the wire to tell
+a converted import from a merge.
+
+`DiveProfile`, the shape the recording profile route returns, **deliberately does not mirror the
+member** even though the route sends it. That interface is also `DiveProfileChart`'s prop type, and
+a chart that draws curves has no business requiring a caller to say where they came from; the
+summary on the dive read is where the app asks, and it asks without fetching thousands of samples to
+find out. The comment on the interface says so, because an absent member otherwise reads as a member
+the route does not serve — the same confusion the API's own `DiveProfileRead` /
+`RecordingProfileRead` split produces from the other side.
 
 There is a second consequence, in `DiveRecordingsCard`: a file-less recording is the only one
 offered a whole-recording delete. Nothing else can remove it — the per-file route needs a file — so

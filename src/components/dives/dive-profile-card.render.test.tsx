@@ -31,6 +31,9 @@ function profileInfo(uuid: string) {
     uuid,
     duration: 2940,
     depth_sample_count: 314,
+    // This card draws samples and never asks where they came from, so every
+    // fixture here is the ordinary file-backed case.
+    provenance: "file" as const,
     channels: ["depth"],
   };
 }
