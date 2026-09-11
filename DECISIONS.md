@@ -16685,11 +16685,28 @@ dispatch, where `github.sha` is only the tip of whatever branch the run was laun
 not a narrow race either: the `concurrency` group queues rather than cancels, so the window is a
 whole preceding build long.
 
-That same group drops work on purpose, which is worth knowing before it looks like a bug. It holds
-one running and one _pending_ run, and a third arrival cancels the pending one - so a burst of
-merges leaves the ones in the middle unbuilt, with a cancelled Publish Image check against them. For
-a channel whose only consumer wants the tip that is the right trade: the last merge of the burst is
-the one deployed, and every commit that is built still carries its own `:sha-` tag.
+That queue drops work on purpose, which is worth knowing before it looks like a bug. A concurrency
+group holds one running and one _pending_ run, and a third arrival cancels the pending one - so a
+burst of merges leaves the ones in the middle unbuilt, with a cancelled Publish Image check against
+them. For a channel whose only consumer wants the tip that is the right trade: the last merge of the
+burst is the one deployed, and every commit that is built still carries its own `:sha-` tag.
+
+**Which is exactly why the group is no longer one group.** The same rule applied to the release path
+is not a dropped edge build but a dropped _release_, and the release ritual walks straight into it:
+`CONTRIBUTING.md` has the version bump merged to `main` and the `v` tag pushed at that commit
+immediately afterwards, so the tag run queues behind the bump merge's own edge build - and any merge
+landing while it waits would cancel it. No `X.Y.Z`, no `X.Y`, no `:latest`, no draft release, and a
+cancelled check that reads exactly like the dropped merge above. The key is therefore `edge` for a
+push to `main` and `release` for everything else, which keeps the property the single group was
+there for: nothing that can write `:latest` or a version alias runs beside anything else that can. A
+`workflow_dispatch` counts as a release even when it is launched from `main`, because the checkbox
+lets it push `:latest`.
+
+The two queues overlap on one tag and only one: `:sha-<12>`, when a release is cut at a commit
+`main` has already built. Both runs build the same commit from the same tree, so the tag ends up on
+one of two images of one source, and a digest read back by tag may belong to the other run - which
+makes it a tie rather than a race, including for the deploy, where the instance would be handed an
+equivalent build of the commit it was going to get anyway.
 
 **Publishing the image is not deploying it.** Render's image-backed services "do not automatically
 redeploy whenever a new image is associated with their assigned tag"

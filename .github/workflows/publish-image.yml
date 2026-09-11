@@ -55,12 +55,24 @@ permissions:
 # at whichever finished last. Queue rather than cancel - a cancelled push can leave the tag
 # on the older image.
 #
-# A group holds one run and one *pending* run, and a third arrival cancels the pending one,
-# so a burst of merges leaves the ones in the middle unbuilt. That is the right trade for a
-# channel whose only consumer wants the tip: each commit that is built still carries its own
-# `:sha-` tag, and the last merge of the burst is the one that ends up deployed.
+# **Two groups, split by channel**, because a group holds one run and one *pending* run and a
+# third arrival cancels the pending one. That is an acceptable loss on the edge channel - a
+# burst of merges leaves the ones in the middle unbuilt, which is the right trade for a
+# channel whose only consumer wants the tip; each commit that is built still carries its own
+# `:sha-` tag, and the last merge of the burst is the one deployed. It is not acceptable on
+# the release path, and one shared group would have imposed it there: the release ritual
+# pushes the `v*` tag straight after merging the version bump, so the tag run queues behind
+# that merge's own edge build, and any merge landing meanwhile would cancel the release
+# outright - no `X.Y.Z`, no `X.Y`, no `:latest`, no draft release, and a cancelled check
+# indistinguishable from the dropped-merge case above.
+#
+# A `workflow_dispatch` sits with the releases even when it is launched from `main`, because
+# it can be told to push `:latest`. The two groups overlap on exactly one tag, `:sha-<12>`,
+# when a release is cut at a commit `main` has already built: both runs build the same commit
+# from the same tree, so the tag lands on one of two images of one source, and a digest read
+# back by tag may be the other run's. That is a tie rather than a race.
 concurrency:
-  group: publish-image
+  group: publish-image-${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'edge' || 'release' }}
   cancel-in-progress: false
 
 env:
