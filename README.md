@@ -80,9 +80,9 @@ components together. Start there if you want to run OpenDiving rather than work 
 - **Passwordless sign-in** — email magic links or Google; no passwords stored, ever.
 - **Dark mode & responsive** — works on the boat, in the dive shop, and on your desk.
 
-|                                                                                                     |                                                                                      |
-| --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| ![A dive, with the profile charted from its dive-computer export](docs/screenshots/dive-detail.png) | ![A gear item with its service schedule and history](docs/screenshots/gear-item.png) |
+|                                                                                                        |                                                                                      |
+| ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| ![A dive, with the profile charted from its dive-computer recording](docs/screenshots/dive-detail.png) | ![A gear item with its service schedule and history](docs/screenshots/gear-item.png) |
 
 ## Planned
 
