@@ -11683,6 +11683,14 @@ two cylinders were breathed alternately or one was staged — not Suunto XML or 
 UDDF, which has no representation for it either. Three consequences follow, and all three are
 choices rather than accidents:
 
+**Read "an import" here as the dive form's file import, which is the only path this paragraph is
+about.** Logbook import is the other one, and it does carry the flag: DiveJSON has
+`cylinders[].usage`, `"parallel"` or `"staged"`, and the API writes it through onto the dive — so a
+logbook read back in restores the flag, which is the diver setting it one export earlier rather than
+a parser inventing it. Nothing else widens the claim above: none of the converter's five readers
+produces a `usage`, the Subsurface `.ssrf` the list does not name included, so no file a dive
+computer or another program wrote has ever arrived with one.
+
 - **`ParsedDiveMixture` does not gain the field.** There is no parser to produce it, so it would be
   dead weight on the parse schema.
 - **`mergeMixture` (`lib/dive-import.ts`) still has to name it**, and this is the trap. That
@@ -14943,12 +14951,12 @@ as the whole story. Narrow it by shipping one of the two, never by softening it.
 
 **Both of those judgements have since been overtaken, and by the only thing that was allowed to
 overturn them: shipping.** The API now reads any format its `divejson` converter reads — UDDF, a
-Subsurface `.ssrf`, a FIT logbook and the Suunto app's JSON, plus a `.zip` whose files are all one
-of those — so the sentence above lost its import clause outright rather than being narrowed. There
-was never an intermediate state to narrow through: both importers it named arrived in the same
-release, because both are adapters in one converter rather than two pieces of work here. The export
-card's rows moved the same way: three of the four say they come back now, and only the CSV is
-silent.
+Subsurface `.ssrf`, a FIT logbook, the Suunto app's JSON and Suunto DM5's XML, plus a `.zip` whose
+files are all one of those — so the sentence above lost its import clause outright rather than being
+narrowed. There was never an intermediate state to narrow through: both importers it named arrived
+in the same release, because both are adapters in one converter rather than two pieces of work here.
+The export card's rows moved the same way: three of the four say they come back now, and only the
+CSV is silent.
 
 **The comment that did the reasoning was itself the thing that went stale**, in both places, which
 is the sharpest form this hazard takes. The landing page's three-up strip carried "only DiveJSON and
@@ -15033,7 +15041,14 @@ after the fact:
 - **`conversion.format` renders through `importSourceLabel`, which falls back to the id.** A
   `Record<ImportSourceFormat, string>` lookup would put `undefined file, converted to DiveJSON 1.0`
   in the card header the day a new reader ships. `suunto_xml` is the next one due and will arrive
-  exactly this way.
+  exactly this way. **It did arrive that way, and then it stopped being rendered that way.** The
+  converter gained `suunto_xml` in a release the API absorbed by a version bump, this function was
+  the only thing standing between a diver and an `undefined` for that bump's lifetime, and the
+  format now has a written-out label — `"Suunto DM5 XML"`, spelled with the DM5 because the app's
+  JSON is a Suunto XML export in the loose sense too. So the prediction was right about the arrival
+  and wrong to read the fallback as where a format settles: what it buys is the interval in which a
+  label can be chosen rather than shipped in a hurry, and it is still what covers the reader after
+  this one. `importSourceLabel`'s own JSDoc now carries that episode as the argument for keeping it.
 - **`conversion.groups[].kind` is an opaque string, never a union.** The API says so in the field's
   own description and keeps it that way for the same reason: its converter's kind set grew from
   three to four while this card was being built. `conversionKindTone` reads an unfamiliar kind as
@@ -15056,11 +15071,11 @@ list is a prefix when it capped the groups.
 
 Seven sentences here promised the imported file back, and logbook import falsified all seven at
 once. A logbook the API reads through its DiveJSON converter — UDDF, a Subsurface `.ssrf`, a FIT
-logbook, the Suunto app's JSON — is converted once and then discarded: the converter emits no files
-at all, so a converted upload is never an archive however it arrived, the plan notes every file the
-document _names_ but does not carry, and the only dive-file row the importer writes is on the
-full-export archive path, which carries the bytes beside the document. A diver who imports a zip of
-per-dive FIT files gets every dive and none of the FITs.
+logbook, the Suunto app's JSON, Suunto DM5's XML — is converted once and then discarded: the
+converter emits no files at all, so a converted upload is never an archive however it arrived, the
+plan notes every file the document _names_ but does not carry, and the only dive-file row the
+importer writes is on the full-export archive path, which carries the bytes beside the document. A
+diver who imports a zip of per-dive FIT files gets every dive and none of the FITs.
 
 The natural way to write any of the seven is the sweeping way — "every dive keeps the file it was
 imported from" — which read as true only while a bare file could not be a logbook. Three were caught
@@ -16391,3 +16406,30 @@ anything you want to keep first", which is the one thing left that a diver can a
 It is a shared constant rather than the sentence written out at each call site, for this section's
 own reason: the dive list and the dive page offer the same delete two clicks apart, and the pair of
 file-delete dialogs above had already drifted far enough that one of them claimed something false.
+
+## A format list in this file outlives the sweep that catches its siblings
+
+The converter's fifth reader — Suunto's DM5 XML — went into every sentence a diver can see in one
+pass, and the sentences in this file saying the same thing did not move with them. They survived in
+two distinct ways, and only one of the two is a probe pointed at the wrong directory.
+
+- **Two lists were reachable, and were read as history.** The "reads any format its `divejson`
+  converter reads" list above and the converter list under _"'The original file is kept' is a claim
+  about an upload to a dive"_ both sit inside paragraphs that narrate a correction, which is what
+  makes them look like a record of what was true then. They are not: both are present tense about
+  what the API reads today, so both are corrected in place rather than given a superseding note. **A
+  paragraph about a sentence going stale is not itself exempt from going stale.**
+- **A prediction is invisible to every keyword probe this repository has.** "`suunto_xml` is the
+  next one due and will arrive exactly this way" names one format and no others, so a window
+  anchored on `ssrf` beside `suunto` — the only wrap-tolerant form that finds these lists at all —
+  cannot see it. That sentence is a _prediction_, which is both the shape no format-name probe can
+  reach and the shape most certain to be falsified eventually. It got the forward note, because what
+  changed is the judgement rather than the vocabulary.
+
+Two rules follow for the next reader that ships. Sweep the **whole repository**: a probe scoped
+`-- src ':!*.test.*'`, which is the shape these copy sweeps keep taking, reaches neither
+`README.md`, this file, nor `scripts/`, where a dead API route survived every `src`-scoped pass
+until someone read the script whole. And squeeze each file to one line before matching, because
+Prettier's 100-column wrap breaks these lists in the middle — `README.md`'s falls between `.ssrf`
+and the `Suunto` two entries later — so a line-oriented grep sees half a claim and matches neither
+half.
