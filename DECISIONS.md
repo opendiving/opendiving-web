@@ -8479,6 +8479,25 @@ The "One-command self-hosting" roadmap bullet was removed rather than reworded, 
 forward-dated basis: it and the new section describe one feature, and keeping both would leave the
 file promising in one place what it documents in another.
 
+**One sentence in that paragraph is forward-dated again, deliberately, and this is the record of
+it.** "It is also where the instance this project runs itself is named, for anyone who would rather
+not run one" is true of the front door only once the front door says so, and today it does not — the
+project runs an instance, but naming its address is a change over there, not here. Writing the
+pointer without the address is the whole point: this README should say _where_ that fact lives
+rather than carry a copy of it, because a URL duplicated into three repositories is a URL that goes
+wrong in two of them, and the same reasoning already sends install, configuration and release
+questions to the same place. The order is the other half. The address lands at the front door before
+any of these repositories is public, and the flip to public is what a stranger's first read depends
+on — so the window in which the sentence is ahead of itself is a window nobody outside the project
+can see, the same window the `security/advisories/new` link in `SECURITY.md` sits in. If that order
+ever inverts, this sentence is the thing to delete, not to reword.
+
+`SECURITY.md`'s "that includes the instance this project runs itself" does not depend on the same
+order and is not forward-dated. It says which targets are out of scope for active testing, and a
+reader who cannot yet name the project's own instance is not testing it; the clause exists to close
+the reading in which the project's own server is the one fair game, which the surrounding "don't
+test an instance you don't run" leaves open.
+
 ## The landing page can only claim what the instance can back up
 
 The page shipped with four headline figures — "1,000+ Active Divers", "5,000+ Logged Dives", "50+
