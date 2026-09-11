@@ -104,7 +104,8 @@ Commit it there too, on its own, with the same subject.
 - **`Gas Consumption has no year "2025" with dives`** — the account has nothing logged that year.
   Override for a one-off run with `CHART_YEAR=2024`, and change the constant only if 2025 has
   genuinely stopped being the right year for the README.
-- **`nothing below the Dive Activity card to cut at`, or a heading wait timing out** — the dashboard
-  was restructured. Update `CUT_BELOW` / the heading the walk scopes on, in the script.
+- **`cannot cut below the Dive Activity card: no card carries that heading`, or a heading wait
+  timing out** — the dashboard was restructured. Update `CUT_BELOW` / the heading the walk scopes
+  on, in the script.
 - **`No Chrome found`** — set `CHROME_PATH`. `playwright-core` drives the machine's own Chrome and
   never downloads one.
