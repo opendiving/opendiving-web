@@ -637,3 +637,20 @@ describe("the operator block", () => {
     expect(screen.getByText(pointer)).toBeInTheDocument();
   });
 });
+
+// The one fact on this page that is a date rather than a claim, and the only one nothing
+// else here would notice going stale: every other assertion in this file reads a
+// sentence, and a month is not a sentence. Pinned in both renderings because the block
+// must not be able to move it.
+describe("the date on this page", () => {
+  it.each([[false], [true]])(
+    "states the month this page was last revised, project-operated: %s",
+    async (projectOperated) => {
+      await renderPage({ google: false, projectOperated });
+
+      expect(
+        screen.getByText(/Last updated: September 2026/),
+      ).toBeInTheDocument();
+    },
+  );
+});
