@@ -9,6 +9,7 @@ import { divesAPI, Dive } from "@/lib/api/dives";
 import { tripsAPI, Trip } from "@/lib/api/trips";
 import { coursesAPI, Course } from "@/lib/api/courses";
 import { DiveNeighborNav } from "@/components/dives/dive-neighbor-nav";
+import { DiveMergeAction } from "@/components/dives/dive-merge-action";
 import { DiveDetailProvider } from "@/components/dives/dive-detail-context";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -69,10 +70,10 @@ export default function DiveDetailLayout({
   const {
     resource: dive,
     isLoading: isLoadingDive,
-    // Re-reads the dive after something on the page changes it - currently only
-    // deleting the imported file, which the dive embeds as `source_file`. It
-    // leaves `isLoadingDive` alone, so the one card that changed swaps instead of
-    // the whole page blanking into a spinner.
+    // Re-reads the dive after something on the page changes it - deleting a
+    // file or a recording, promoting one to primary, or a merge that left this
+    // dive standing. It leaves `isLoadingDive` alone, so the cards that changed
+    // swap instead of the whole page blanking into a spinner.
     refetch: refreshDive,
   } = useResource<Dive>(divesAPI.getDive, {
     enabled: !!user,
@@ -195,6 +196,11 @@ export default function DiveDetailLayout({
         nav={<DiveNeighborNav diveUuid={dive.uuid} />}
         actions={
           <>
+            {/* Before Edit rather than beside Delete: a merge is a repair to
+                what the computer recorded, which is the same kind of act as
+                editing, and the far corner belongs to the button you must not
+                miss. It renders nothing on a hand-logged dive. */}
+            <DiveMergeAction dive={dive} onMerged={refreshDive} />
             <Button variant="outline" asChild>
               <Link href={`/dives/${dive.uuid}/edit`}>
                 <Edit className="h-4 w-4 mr-2" />

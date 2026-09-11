@@ -204,7 +204,7 @@ export function LandingPage() {
                 <HardDriveDownload className="h-12 w-12 text-teal mb-4" />
                 <CardTitle>Computer Import</CardTitle>
                 <CardDescription>
-                  Upload the export, keep the original file
+                  Upload the export, keep every original file
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -212,7 +212,13 @@ export function LandingPage() {
                   <li>• FIT files from Garmin Descent and Suunto</li>
                   <li>• Suunto XML and JSON exports</li>
                   <li>• Full depth, temperature and pressure profile</li>
-                  <li>• The file you uploaded stays downloadable</li>
+                  <li>
+                    • Every file you upload stays with its recording, and stays
+                    downloadable
+                  </li>
+                  <li>
+                    • Two computers on one dive, or two logs of one — merged
+                  </li>
                 </ul>
               </CardContent>
             </Card>
@@ -244,8 +250,8 @@ export function LandingPage() {
                       claim a diver is checking is whether *their* file is on
                       it. */}
                   <li>
-                    • DiveJSON, UDDF, Subsurface, FIT, Suunto and the full
-                    archive read back in
+                    • DiveJSON, UDDF, Subsurface, FIT, Suunto&apos;s app and DM5
+                    exports, and the full archive read back in
                   </li>
                   <li>• No trackers and no analytics</li>
                   <li>• Passwordless sign-in; no passwords stored</li>
@@ -274,13 +280,14 @@ export function LandingPage() {
           <p className="text-lg">
             Movescount, Deepblu, Diveboard — cloud dive logs come and go, and
             when they go, years of dive history go with them. OpenDiving keeps
-            the dive-computer file you upload to a dive alongside it, hands the
-            whole log back in open formats on one click, reads a logbook back in
-            — its own DiveJSON, UDDF, a Subsurface save file, a FIT or a Suunto
-            export — and is AGPL licensed so anyone can keep running it. There
-            is no company here whose shutdown takes your logbook with it — and
-            if the instance you are on ever goes away, your export still opens
-            in something else, or moves into a copy of this one.
+            every dive-computer file you upload alongside the recording it came
+            from, hands the whole log back in open formats on one click, reads a
+            logbook back in — its own DiveJSON, UDDF, a Subsurface save file, a
+            FIT, or a Suunto app or DM5 export — and is AGPL licensed so anyone
+            can keep running it. There is no company here whose shutdown takes
+            your logbook with it — and if the instance you are on ever goes
+            away, your export still opens in something else, or moves into a
+            copy of this one.
           </p>
           <div className="mt-10 grid gap-4 text-sm font-medium sm:grid-cols-3">
             <div>AGPL-3.0, server side included</div>

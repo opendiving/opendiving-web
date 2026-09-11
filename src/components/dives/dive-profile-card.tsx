@@ -18,6 +18,13 @@ import {
   type DiveProfileInfo,
   divesAPI,
 } from "@/lib/api/dives";
+import {
+  diveRecordings,
+  recordingDeviceLabel,
+  recordingLabel,
+  UNNAMED_DEVICE_LABEL,
+} from "@/lib/dive-recordings";
+import { cn } from "@/lib/utils";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { useUnits } from "@/hooks/useUnits";
 import { formatDepth, type UnitSystem } from "@/lib/units";
@@ -90,20 +97,43 @@ function describeProfileContents(
 // Renders nothing when the dive has no profile - the same call as
 // `DiveSourceFileCard`, and the opposite of `GasUseCard`: a dive logged by hand
 // has no samples and never could, so there is nothing for the diver to act on
-// and nothing worth an empty state. A dive that *does* have an imported file
-// always shows this if the file carried samples.
+// and nothing worth an empty state. A dive that *does* have a recording always
+// shows this if that recording carried samples.
 //
-// Needs no `onChanged` callback. Deleting the source file deletes the profile
-// with it (see the API's `delete_dive_file`), and the page's `refreshDive`
-// already drops `dive.profile` - which unmounts this card.
+// Needs no `onChanged` callback. Deleting a recording's last file deletes the
+// recording with it (see the API's `delete_dive_file`), and the page's
+// `refreshDive` already drops it from `dive.recordings` - which re-renders this
+// card against what is left.
+//
+// **One chart, and a switcher rather than an overlay**, on a dive that two
+// computers recorded. Subsurface's arrow keys switch too: two depth traces on
+// one axis with two pressure families is a legend problem this app does not have
+// to solve, and the question a diver actually asks is "what did *this* computer
+// see", not "where do they disagree by a pixel".
 
 export function DiveProfileCard({ dive }: DiveProfileCardProps) {
   const units = useUnits();
   const [result, setResult] = useState<ProfileResult | null>(null);
   // Bumped by the retry button to re-run the effect below.
   const [attempt, setAttempt] = useState(0);
+  // Which recording's samples are on screen, by uuid rather than by index: a
+  // deletion or a promotion reorders the list, and an index would quietly point
+  // at a different device's curves afterwards.
+  const [shownUuid, setShownUuid] = useState<string | null>(null);
 
-  const info = dive.profile;
+  // Only recordings that actually carry samples: a recording whose files held
+  // none has nothing to draw, and a switcher button leading to a permanent 404
+  // is worse than not offering it.
+  const charted = diveRecordings(dive).filter(
+    (recording) => recording.profile != null,
+  );
+  // Falls back to the first charted recording - which is the primary wherever
+  // the primary has a profile - whenever the chosen one is gone.
+  const shown =
+    charted.find((recording) => recording.uuid === shownUuid) ?? charted[0];
+
+  const info = shown?.profile ?? null;
+  const recordingUuid = shown?.uuid ?? null;
   const diveUuid = dive.uuid;
   // The profile's identity as far as the browser cache is concerned - the same
   // `uuid:updated_at` pair `DiveSourceFileCard` uses, and for the same reason.
@@ -114,12 +144,16 @@ export function DiveProfileCard({ dive }: DiveProfileCardProps) {
   const version = `${info?.uuid ?? ""}:${info?.updated_at ?? ""}`;
 
   useEffect(() => {
-    if (!info) return;
+    if (!info || !recordingUuid) return;
 
     let isCurrent = true;
     const fetchProfile = async () => {
       try {
-        const data = await divesAPI.getDiveProfile(diveUuid, version);
+        const data = await divesAPI.getRecordingProfile(
+          diveUuid,
+          recordingUuid,
+          version,
+        );
         if (isCurrent) setResult({ status: "ready", profile: data });
       } catch (error) {
         console.error("Failed to fetch dive profile:", error);
@@ -139,7 +173,7 @@ export function DiveProfileCard({ dive }: DiveProfileCardProps) {
           status,
           message: getApiErrorMessage(
             error,
-            "This dive's profile couldn't be loaded.",
+            "This recording's profile couldn't be loaded.",
           ),
         });
       }
@@ -155,9 +189,9 @@ export function DiveProfileCard({ dive }: DiveProfileCardProps) {
     // `info` itself is a fresh object on every dive refetch; its `updated_at` is
     // what actually identifies the payload.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [diveUuid, version, Boolean(info), attempt]);
+  }, [diveUuid, recordingUuid, version, Boolean(info), attempt]);
 
-  if (!info) return null;
+  if (!info || !shown) return null;
 
   return (
     <Card>
@@ -171,6 +205,36 @@ export function DiveProfileCard({ dive }: DiveProfileCardProps) {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {charted.length > 1 && (
+          // A named group rather than loose buttons: these are one control with
+          // several settings, and a screen reader meeting them in the middle of
+          // a card otherwise hears a row of device names with nothing saying
+          // what choosing one does.
+          <div
+            role="group"
+            aria-label="Which recording to chart"
+            data-testid="profile-recording-switcher"
+            className="mb-4 flex flex-wrap gap-2"
+          >
+            {charted.map((recording) => {
+              const isShown = recording.uuid === shown.uuid;
+              return (
+                <Button
+                  key={recording.uuid}
+                  type="button"
+                  variant={isShown ? "secondary" : "outline"}
+                  size="sm"
+                  aria-pressed={isShown}
+                  className={cn(isShown && "font-semibold")}
+                  onClick={() => setShownUuid(recording.uuid)}
+                >
+                  {recordingDeviceLabel(recording.device) ??
+                    `${UNNAMED_DEVICE_LABEL} · ${recordingLabel(recording)}`}
+                </Button>
+              );
+            })}
+          </div>
+        )}
         {result === null ? (
           <SectionSpinner />
         ) : result.status === "ready" ? (

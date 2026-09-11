@@ -24,6 +24,7 @@ describe("LOGBOOK_IMPORT_ACCEPT", () => {
       ssrf: [".ssrf"],
       fit: [".fit"],
       suunto_json: [".json"],
+      suunto_xml: [".xml"],
     } satisfies Record<ImportSourceFormat, readonly string[]>;
 
     expect(LOGBOOK_IMPORT_SOURCE_EXTENSIONS).toEqual(extensionsByFormat);
@@ -52,6 +53,7 @@ describe("importSourceLabel", () => {
     expect(importSourceLabel("uddf")).toBe("UDDF");
     expect(importSourceLabel("ssrf")).toBe("Subsurface");
     expect(importSourceLabel("fit")).toBe("FIT");
+    expect(importSourceLabel("suunto_xml")).toBe("Suunto DM5 XML");
     expect(importSourceLabel("suunto_json")).toBe("Suunto app JSON");
   });
 
@@ -59,8 +61,12 @@ describe("importSourceLabel", () => {
     // Not defensiveness: the API derives its format list from its pinned
     // converter on every call, and that pin moves by dependency bump with no
     // change in this repository - so a reader can reach a diver's card before
-    // any label for it exists here. `suunto_xml` is the next one due.
-    expect(importSourceLabel("suunto_xml")).toBe("suunto_xml");
+    // any label for it exists here. `suunto_xml` was the last one to arrive
+    // this way and now has a label of its own, which is why this case names a
+    // format that does not exist rather than the next one anybody expects: an
+    // assertion pinned to a real upcoming id stops testing the fallback the
+    // moment that id ships, and starts failing instead.
+    expect(importSourceLabel("kraken_binary")).toBe("kraken_binary");
   });
 });
 

@@ -13,6 +13,7 @@ import {
 } from "@/lib/chart-period";
 import { formatDurationHoursMinutes } from "@/lib/date-time";
 import { gasName, hasStagedCylinder, isParallelSet } from "@/lib/dive-mixtures";
+import { primaryRecording } from "@/lib/dive-recordings";
 
 // `niceDomain` and `axisTicks` used to live here. They moved, unchanged, to
 // `lib/chart-scale.ts` once the dive profile chart needed them too - a depth
@@ -521,10 +522,19 @@ export function gasUseUnavailableReason(dive: Dive): string | null {
     // below would have sent the ones missing pressures off to fill in fields
     // that change nothing, to be met with a different refusal.
     //
-    // `profile` is on the detail response, and only the detail response - but
+    // **The primary recording's profile, and no other.** The API joins the
+    // attribution through `ordinal == 0`: gas consumption comes from the dive's
+    // own diver-editable cylinders joined to a profile's switches by
+    // `gas_number`, and a second computer's labels are mapped onto that one list
+    // when its file is attached - so there is one attribution per dive, and it
+    // belongs to the record the dive's figures were seeded from. Asking "does
+    // *any* recording have a profile" here would say the attribution exists on a
+    // dive whose primary is the hand-logged half of a merge.
+    //
+    // `recordings` is on the detail response, and only the detail response - but
     // the `mixtures` guard above has already returned for a list dive, so a
-    // missing `profile` here means the dive genuinely has none.
-    if (dive.profile == null) {
+    // missing profile here means the dive genuinely has none.
+    if (primaryRecording(dive)?.profile == null) {
       return "Gas consumption for a multi-tank dive is worked out from the gas switches in an imported dive-computer file, and this dive doesn't have one.";
     }
 

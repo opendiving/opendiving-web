@@ -194,6 +194,66 @@ export function mergeMixture(
 }
 
 /**
+ * One cylinder under the fill-only rule: everything the form already holds
+ * stays, and the file supplies only what is blank.
+ *
+ * The mirror image of `mergeMixture` above, which is file-first because it is
+ * the *first* file of a recording and that file is the best thing the form has.
+ * A second file of the same recording is not — the diver has seen the form by
+ * then, and may have corrected it — so precedence flips. The Suunto app's JSON
+ * and the same computer's FIT of one dive are the case this exists for: the FIT
+ * lands its oxygen fraction on the cylinder the JSON left blank, and touches
+ * nothing else.
+ *
+ * The pressures still move as a pair, for `mergeMixture`'s reason: a start from
+ * the file meeting an end from the form is a fill that never existed, and it
+ * either trips `diveMixtureSchema`'s `end <= start` refine or feeds a
+ * consumption figure spanning two different fills. Here that means the file's
+ * pair is taken only when the form carries **neither** side.
+ *
+ * No `MixtureImportNotes` come back, and the absence is deliberate: those
+ * sentences exist to flag a value the import *guessed* and the diver should
+ * check, and a fill that writes only into blanks has guessed nothing.
+ */
+export function fillMixture(
+  mixture: ParsedDiveMixture,
+  existing: DiveMixtureInput,
+): DiveMixtureInput {
+  // `""` is the form's cleared state and a real value on these fields, so
+  // "blank" has to mean both it and `undefined` - a `typeof` check rather than
+  // `??`, which would read `""` as present and fill nothing.
+  const keep = <TValue>(
+    current: TValue | "" | undefined,
+    fromFile: number | null | undefined,
+  ): TValue | number | "" =>
+    typeof current === "number" ||
+    (typeof current === "string" && current !== "")
+      ? (current as TValue)
+      : (fromFile ?? "");
+
+  const formHasPressures = hasPressure(existing);
+
+  return {
+    ...existing,
+    volume: keep(existing.volume, mixture.volume),
+    oxygen: keep(existing.oxygen, mixture.oxygen),
+    helium: keep(existing.helium, mixture.helium),
+    start_pressure: formHasPressures
+      ? existing.start_pressure
+      : (mixture.start_pressure ?? ""),
+    end_pressure: formHasPressures
+      ? existing.end_pressure
+      : (mixture.end_pressure ?? ""),
+    po2_limit: keep(existing.po2_limit, mixture.po2_limit),
+    gas_number:
+      typeof existing.gas_number === "number"
+        ? existing.gas_number
+        : (mixture.gas_number ?? undefined),
+    role: existing.role ? existing.role : (mixture.role ?? ""),
+  };
+}
+
+/**
  * Pairs incoming cylinders with the ones already on the form, but only when the
  * counts match exactly - the same conservative rule the API uses to pair tank
  * telemetry to gases. Position is the only signal available, and carrying a

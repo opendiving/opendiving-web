@@ -10,7 +10,8 @@ import { apiClient } from "./client";
  * falls back to the id - the `diveParserLabel` stance, not the lockstep one the
  * hand-kept enum mirrors take.
  */
-export type ImportSourceFormat = "uddf" | "ssrf" | "fit" | "suunto_json";
+export type ImportSourceFormat =
+  "uddf" | "ssrf" | "fit" | "suunto_json" | "suunto_xml";
 
 /**
  * Which file extensions offer each converted format in the picker.
@@ -21,8 +22,15 @@ export type ImportSourceFormat = "uddf" | "ssrf" | "fit" | "suunto_json";
  *
  * Each entry mirrors that adapter's own `suffixes` in the converter, which is
  * why a UDDF file named `.xml` is not offered and `.json` - the Suunto app's
- * export, and broad - is. Acceptance itself is decided API-side by sniffing the
- * bytes; this list only decides what the dialog greys out.
+ * export, and broad - is. `.xml` is offered for Suunto's DM5 export and is
+ * broad in the same way, which is now two of the five: an extension this list
+ * claims is one several unrelated formats also use.
+ *
+ * That is survivable because acceptance itself is decided API-side by sniffing
+ * the bytes; this list only decides what the dialog greys out. A `.xml` the
+ * converter does not recognise is offered by the picker and refused on upload,
+ * which is the right way round - the alternative is a diver whose real Suunto
+ * export is greyed out with nothing on screen saying why.
  */
 export const LOGBOOK_IMPORT_SOURCE_EXTENSIONS: Record<
   ImportSourceFormat,
@@ -32,6 +40,7 @@ export const LOGBOOK_IMPORT_SOURCE_EXTENSIONS: Record<
   ssrf: [".ssrf"],
   fit: [".fit"],
   suunto_json: [".json"],
+  suunto_xml: [".xml"],
 };
 
 /** What to call each converted format on screen. */
@@ -40,6 +49,10 @@ const IMPORT_SOURCE_LABELS: Record<ImportSourceFormat, string> = {
   ssrf: "Subsurface",
   fit: "FIT",
   suunto_json: "Suunto app JSON",
+  // "DM5" rather than a bare "Suunto XML": the app's JSON is also a Suunto XML
+  // export in the loose sense, and the two are different readers offered side
+  // by side in the same picker.
+  suunto_xml: "Suunto DM5 XML",
 };
 
 /**
@@ -48,8 +61,15 @@ const IMPORT_SOURCE_LABELS: Record<ImportSourceFormat, string> = {
  * The fallback is the whole point rather than defensiveness: the API's format
  * list is derived from its pinned converter on every call, that pin moves by
  * dependency bump alone, and a `Record` lookup would render `undefined` in the
- * card header the day a new reader ships. Showing `suunto_xml` is worse than a
- * label and far better than a blank - the same trade `diveParserLabel` makes.
+ * card header the day a new reader ships. Showing a bare `shearwater_db` is
+ * worse than a label and far better than a blank - the same trade
+ * `diveParserLabel` makes.
+ *
+ * **It has already happened once, which is the argument for keeping it.** The
+ * converter gained `suunto_xml` in a release the API absorbed by a version
+ * bump, and for that bump's lifetime this function was the only thing standing
+ * between a diver and an `undefined` in the import report's heading. The label
+ * for it is now written out above; the fallback is what covers the next one.
  */
 export function importSourceLabel(format: string): string {
   const labels: Record<string, string> = IMPORT_SOURCE_LABELS;
@@ -117,6 +137,15 @@ export type ImportNoteCode =
   | "species_unresolved"
   | "file_not_contained"
   | "file_skipped"
+  // The two recording outcomes, and **neither is a warning**: `noteIsWarning`
+  // leaves both as plain information, which is what they are. A recording that
+  // matched an existing dive was attached to it instead of creating a second
+  // dive, and one that matched an existing *recording* filled that recording's
+  // blanks. Both are the import doing exactly what it exists to do - the
+  // alternative in each case is a duplicate - so colouring them as problems
+  // would teach a diver to distrust a correct result.
+  | "recording_attached"
+  | "recording_filled"
   | "diver_not_applied";
 
 /** One thing the import decided, addressed to the diver. */
@@ -286,8 +315,8 @@ export type ImportResult = ImportReport;
  *
  * The API takes a DiveJSON document, this app's full-export archive, or any
  * dive-computer format its converter reads - UDDF, Subsurface `.ssrf`, FIT and
- * the Suunto app's JSON at the release it pins - plus a `.zip` whose files are
- * all one of those, which is how a watch's account export arrives. Anything not
+ * Suunto's own two, the app's JSON and DM5's XML, at the release it pins - plus
+ * a `.zip` whose files are all one of those, which is how a watch's account export arrives. Anything not
  * DiveJSON already is converted API-side and the report says what that cost;
  * nothing in the browser parses a dive file.
  *

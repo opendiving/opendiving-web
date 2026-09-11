@@ -4,6 +4,7 @@ import type {
   DiveGasUse,
   DiveMixture,
   DiveTankGasUse,
+  Recording,
 } from "@/lib/api/dives";
 import {
   bandRanges,
@@ -51,17 +52,29 @@ function dive(overrides: Partial<Dive> = {}): Dive {
   };
 }
 
-// Enough of a `DiveProfileInfo` to say "this dive was imported and a profile came
-// out of it", which is the only thing `gasUseUnavailableReason` asks of it. Without
-// one there is no `gas_attribution` column for the multi-tank derivation to read, so
+// Enough of a recording to say "this dive was imported and a profile came out of
+// it", which is the only thing `gasUseUnavailableReason` asks of it. Without one
+// there is no `gas_attribution` column for the multi-tank derivation to read, so
 // every fixture below that is *about* a later branch has to carry it.
-function profile(): NonNullable<Dive["profile"]> {
-  return {
-    uuid: "p1",
-    duration: 4300,
-    depth_sample_count: 431,
-    channels: ["depth"],
-  };
+//
+// **Ordinal 0**, because that is the only recording the API's attribution query
+// looks at: a profile on a second computer's recording does not put a
+// `gas_attribution` on the dive, and a fixture that passed with one anywhere
+// would be asserting a rule the server does not have.
+function recorded(): Recording[] {
+  return [
+    {
+      uuid: "r1",
+      ordinal: 0,
+      files: [],
+      profile: {
+        uuid: "p1",
+        duration: 4300,
+        depth_sample_count: 431,
+        channels: ["depth"],
+      },
+    },
+  ];
 }
 
 function tank(overrides: Partial<DiveTankGasUse> = {}): DiveTankGasUse {
@@ -216,7 +229,7 @@ describe("gasUseUnavailableReason", () => {
     // is nothing for the flag to add up, so the existing sentence stands.
     const reason = gasUseUnavailableReason(
       dive({
-        profile: profile(),
+        recordings: recorded(),
         mixtures: [
           mixture({ start_pressure: 200, end_pressure: 200 }),
           mixture({ id: 2, start_pressure: 150, end_pressure: 150 }),
@@ -234,7 +247,7 @@ describe("gasUseUnavailableReason", () => {
     // piece is the attribution, not anything the diver left out.
     const oneTransmitter = gasUseUnavailableReason(
       dive({
-        profile: profile(),
+        recordings: recorded(),
         mixtures: [
           mixture({ gas_number: 0 }),
           mixture({
@@ -267,7 +280,7 @@ describe("gasUseUnavailableReason", () => {
     // the same page.
     const reason = gasUseUnavailableReason(
       dive({
-        profile: profile(),
+        recordings: recorded(),
         mixtures: [
           mixture({ gas_number: 0, volume: null }),
           mixture({
@@ -295,7 +308,7 @@ describe("gasUseUnavailableReason", () => {
     // coverage shortfall, not as a refusal.
     const reason = gasUseUnavailableReason(
       dive({
-        profile: profile(),
+        recordings: recorded(),
         mixtures: [
           mixture({ gas_number: 0 }),
           mixture({
@@ -319,7 +332,7 @@ describe("gasUseUnavailableReason", () => {
     // wouldn't help.
     const reason = gasUseUnavailableReason(
       dive({
-        profile: profile(),
+        recordings: recorded(),
         mixtures: [
           mixture({ start_pressure: 200, end_pressure: 200 }),
           mixture({ id: 2, start_pressure: 150, end_pressure: 150 }),
@@ -337,7 +350,7 @@ describe("gasUseUnavailableReason", () => {
     // are needed whatever the profile turns out to hold.
     const reason = gasUseUnavailableReason(
       dive({
-        profile: profile(),
+        recordings: recorded(),
         mixtures: [
           mixture({ start_pressure: null, end_pressure: null }),
           mixture({ id: 2, start_pressure: null, end_pressure: null }),
@@ -361,7 +374,7 @@ describe("gasUseUnavailableReason", () => {
     // would have produced a partial result from the cylinder it could measure.
     const reason = gasUseUnavailableReason(
       dive({
-        profile: profile(),
+        recordings: recorded(),
         mixtures: [
           mixture(),
           mixture({ id: 2, start_pressure: null, end_pressure: null }),
@@ -400,7 +413,7 @@ describe("gasUseUnavailableReason", () => {
     expect(
       gasUseUnavailableReason(
         dive({
-          profile: profile(),
+          recordings: recorded(),
           mixtures: [
             mixture({ start_pressure: null, end_pressure: null }),
             mixture({ id: 2, start_pressure: null, end_pressure: null }),

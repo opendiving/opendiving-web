@@ -17,6 +17,16 @@ const CNS_LIMIT_PERCENT = 100;
 /**
  * Oxygen exposure and surface pressure, as the dive computer recorded them.
  *
+ * **The primary recording's, and nothing here combines two.** These columns are
+ * written from the files of the recording at ordinal 0, and promoting a different
+ * recording re-derives them from that one instead - so on a dive with two
+ * computers this card reports one machine's accounting, which is the only form
+ * it has. A merge is the case that makes this worth stating: folding a dive's two
+ * halves together leaves the readings exactly as they were rather than carrying
+ * the second half's end values across, because a `cns_end` an import filled in is
+ * not a quantity that can be added to another and the API deliberately declines
+ * to rewrite it. Nothing on this card may present the result as a total.
+ *
  * Renders nothing unless the dive carries at least one of them, which is every dive
  * logged by hand and every dive imported from a format that doesn't record them - a FIT
  * file has no surface pressure at all, and a 2026 Suunto Ocean export has none of the

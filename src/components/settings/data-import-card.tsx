@@ -391,8 +391,8 @@ export function DataImportCard() {
         <CardDescription>
           Read a logbook back into this account — a backup you took here, a
           logbook from another copy of OpenDiving, or an export from Subsurface,
-          a dive computer or the Suunto app. You see exactly what it would do
-          before anything is written.
+          a dive computer, the Suunto app or Suunto DM5. You see exactly what it
+          would do before anything is written.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -403,7 +403,8 @@ export function DataImportCard() {
                 file the picker greys out has no business being listed here, and
                 a format offered without being named reads as unsupported. */}
             <p className="font-medium text-sm">
-              Choose a .divejson, .uddf, .ssrf, .fit or .json file, or a .zip
+              Choose a .divejson, .uddf, .ssrf, .fit, .json or .xml file, or a
+              .zip
             </p>
             <p className="text-sm text-muted-foreground">
               Anything that is not DiveJSON already is converted on the way in,

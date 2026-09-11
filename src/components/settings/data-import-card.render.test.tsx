@@ -329,7 +329,7 @@ describe("the logbook import card", () => {
 
     expect(
       await screen.findByText(
-        /suunto_xml file, converted to DiveJSON 1\.0 by divejson 0\.4\.0/i,
+        /Suunto DM5 XML file, converted to DiveJSON 1\.0 by divejson 0\.4\.0/i,
       ),
     ).toBeVisible();
 

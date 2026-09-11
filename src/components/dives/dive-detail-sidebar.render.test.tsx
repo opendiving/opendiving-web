@@ -76,7 +76,7 @@ function renderSidebar(subject: Dive, course: Course | null = null) {
       dive={subject}
       trip={null}
       course={course}
-      onSourceFileChanged={vi.fn()}
+      onRecordingsChanged={vi.fn()}
     />,
   );
 }

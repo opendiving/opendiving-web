@@ -13,8 +13,8 @@ history go with them. OpenDiving is built on a different premise: the app is AGP
 sits in a plain Postgres database, and a dive logged from a dive-computer file keeps that file
 alongside it, downloadable at any time. Self-hosting isn't a feature here; it's the guarantee behind
 the rest — anyone can run this software, one click hands the whole log back in open formats, and it
-reads a logbook back in from DiveJSON, UDDF, Subsurface, FIT or a Suunto export, so no shutdown,
-acquisition, or paywall can ever take your logbook with it.
+reads a logbook back in from DiveJSON, UDDF, Subsurface, FIT, or a Suunto app or DM5 export, so no
+shutdown, acquisition, or paywall can ever take your logbook with it.
 
 **This repository is the web app — one component of the stack.** The project itself, and everything
 about running it, lives at **[opendiving/opendiving](https://github.com/opendiving/opendiving)**:
@@ -36,9 +36,12 @@ components together. Start there if you want to run OpenDiving rather than work 
 - **Dive-computer import** — upload a FIT file (Garmin Descent, Suunto Ocean/D5) or a Suunto
   XML/JSON export and the form pre-fills itself, keeping the file's own UTC offset where it records
   one (FIT and the JSON exports do; Suunto's XML carries no offset at all, so those fall back to
-  your current timezone). The original file is stored with the dive and can be re-downloaded
-  anytime; the per-sample **dive profile** (depth, temperature, tank pressure, deco ceiling, events)
-  is extracted and charted on the dive page.
+  your current timezone). Every file you upload stays with the **recording** it came from and can be
+  re-downloaded any time — a dive logged off two computers has two recordings, and one computer's
+  JSON beside its FIT is two files of one recording, each filling what the other left blank. The
+  per-sample **dive profile** (depth, temperature, tank pressure, deco ceiling, events) is extracted
+  and charted per recording, with a switcher when there is more than one. A computer that chopped
+  one dive into two logs them as two dives, and **Merge** folds them back into one.
 - **Air consumption** — SAC and RMV are derived automatically, including a **per-tank breakdown**
   across recorded gas switches on multi-tank dives, with a consumption trend chart on the dashboard.
 - **Trips** — group dives into a liveaboard or a holiday week, with location and dates.
@@ -65,15 +68,15 @@ components together. Start there if you want to run OpenDiving rather than work 
 - **Logbook import** — and a door that only opens outwards is half a promise, so a whole logbook
   reads straight back in: the **DiveJSON** document and the **archive**, and — through the
   [DiveJSON converter](https://github.com/divejson/divejson-py) — **UDDF**, a **Subsurface** `.ssrf`
-  save file, a **FIT** logbook and a **Suunto app** export, plus a `.zip` whose files are all one of
-  those, which is how a watch's account export arrives. Move a logbook between instances, restore
-  one from a backup, or bring years of history out of something else. You see a full report of what
-  it would do — new records, ones already present, dives it would bring back from deletion, and
-  anything it could not represent — before a single row is written, and a converted file also gets a
-  report of what the conversion could not carry. Records you already have are matched rather than
-  duplicated, and a dive you deleted returns under its own identity. The archive additionally
-  restores the dive-computer files and c-card scans, which the bare document names by digest but
-  does not carry.
+  save file, a **FIT** logbook, a **Suunto app** export and a **Suunto DM5** `.xml`, plus a `.zip`
+  whose files are all one of those, which is how a watch's account export arrives. Move a logbook
+  between instances, restore one from a backup, or bring years of history out of something else. You
+  see a full report of what it would do — new records, ones already present, dives it would bring
+  back from deletion, and anything it could not represent — before a single row is written, and a
+  converted file also gets a report of what the conversion could not carry. Records you already have
+  are matched rather than duplicated, and a dive you deleted returns under its own identity. The
+  archive additionally restores the dive-computer files and c-card scans, which the bare document
+  names by digest but does not carry.
 - **Passwordless sign-in** — email magic links or Google; no passwords stored, ever.
 - **Dark mode & responsive** — works on the boat, in the dive shop, and on your desk.
 
@@ -86,9 +89,10 @@ components together. Start there if you want to run OpenDiving rather than work 
 Roadmap items, roughly in priority order — contributions welcome:
 
 - **More importers** — Shearwater Cloud exports, when a database is in hand to write the reader
-  against. UDDF, Subsurface, FIT and the Suunto app's JSON already import, through the DiveJSON
-  converter, and a new format is an adapter there rather than a change here. Longer term,
-  [libdivecomputer](https://www.libdivecomputer.org/) for direct hardware support.
+  against. UDDF, Subsurface, FIT and Suunto's own two — the app's JSON and DM5's XML — already
+  import, through the DiveJSON converter, and a new format is an adapter there rather than a change
+  here. Longer term, [libdivecomputer](https://www.libdivecomputer.org/) for direct hardware
+  support.
 - **Statistics** — depth/time records, dives per year, sites map.
 - **Sharing** — public link to a dive or trip.
 - **iOS companion app** — parked until the server story is done

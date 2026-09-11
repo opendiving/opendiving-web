@@ -270,7 +270,7 @@ export interface Dive {
   // pressure; a 2026 Suunto Ocean export has none of them), and on any dive imported
   // before the backfill ran.
   //
-  // Unlike `gas_use`/`profile`/`source_file` below, these are on the list response too:
+  // Unlike `gas_use`/`recordings` below, these are on the list response too:
   // those are kept off it because each costs the hottest query an extra lookup, and
   // these are plain columns on the row being selected anyway.
   //
@@ -320,37 +320,106 @@ export interface Dive {
   user_uuid: string;
   created_at: string;
   mixtures: DiveMixture[];
-  // The dive-computer export this dive was imported from, if any.
+  // What recorded this dive, in order, and **the first is primary**. A dive has
+  // an ordered list of these rather than the single `source_file`/`profile` pair
+  // it carried before: one computer exported as JSON and again as FIT is one
+  // recording holding two files, while a second computer on the same dive is a
+  // second recording with its own device, its own start and its own profile.
+  //
+  // A client that wants "the" file or "the" profile takes `recordings[0]`'s,
+  // which is what ordinal 0 means - and `primaryRecording()` in
+  // `lib/dive-recordings.ts` is the one place that decides it, rather than an
+  // index guess repeated per card.
   //
   // Optional because this same interface backs both the list and the detail
   // response, and the API deliberately only sends it on the detail one - the
   // list is the app's hottest query and nothing in it renders this. Don't
-  // "fix" a missing value in the list by adding it server-side.
-  source_file?: DiveFileInfo | null;
+  // "fix" a missing value in the list by adding it server-side. Absent, rather
+  // than `[]`, on any detail payload the API cached before recordings existed,
+  // so read it through `?.` and default it.
+  recordings?: Recording[];
   // Set only when the dive records everything needed to derive it. For one
   // mixture that is an average depth plus both of its pressures. For several,
   // either a profile the API could attribute per cylinder - the result then
   // carries `tanks` - or every cylinder flagged `usage: "parallel"` with both
   // pressures on each, which is summed against the dive's own average depth and
-  // needs no profile at all. Optional for the same reason as `source_file` -
+  // needs no profile at all. Optional for the same reason as `recordings` -
   // it's a detail-response field, and it additionally derives from `mixtures`,
   // which the list response doesn't carry either. Use
   // `gasUseUnavailableReason()` (`lib/dive-gas.ts`) to explain a missing value
   // to the user rather than showing nothing.
   gas_use?: DiveGasUse | null;
-  // Summary of the dive's per-sample profile, if one was extracted from its
-  // imported file. Optional for the same reason as `source_file` above: the API
-  // deliberately only sends it on the detail response. The curves themselves are
-  // tens of KB and are fetched separately via `getDiveProfile`.
-  profile?: DiveProfileInfo | null;
   // What was spotted on the dive, in the order the diver listed them.
   //
-  // Optional for the same reason as `source_file` and `gas_use` above: the API
+  // Optional for the same reason as `recordings` and `gas_use` above: the API
   // sends it on the detail response only, since embedding it on the list would
   // cost the app's hottest query a lookup per row and nothing in the list draws
   // it. It is also absent - rather than `[]` - on any detail payload the API
   // cached before species existed, so read it through `?.` and default it.
   species?: SpeciesSummary[];
+}
+
+// What recorded a dive, as that device's own export named it.
+//
+// Every member is nullable because no format carries all six, and a recording
+// whose source named no computer at all reports `null` for the whole object
+// rather than six nulls - so a caller tests the object, not its members.
+//
+// Values are as the file wrote them and are never normalized: a FIT decodes its
+// maker to the lowercase `suunto` while the Suunto app's JSON writes `Suunto`.
+// Render one through `recordingDeviceLabel()` (`lib/dive-recordings.ts`) rather
+// than concatenating members at the call site.
+export interface RecordingDevice {
+  brand?: string | null;
+  model?: string | null;
+  // Opaque, as the file wrote it - never parsed, never compared numerically.
+  serial?: string | null;
+  firmware?: string | null;
+  // What the computer calls itself, as its owner set it, e.g. "Porvoo".
+  name?: string | null;
+  // The **device's** own counter, not the diver's numbering - that is the
+  // dive's `dive_number`.
+  dive_number?: number | null;
+}
+
+// One device's record of a dive: what recorded it, when it started, its files
+// and a summary of its samples.
+//
+// `files` may hold more than one legitimately - the same computer exported as
+// JSON and again as FIT is one record of one dive in two spellings, each
+// filling what the other left blank - and `profile` may be present with `files`
+// empty, which is what logbook import creates from a converted document. That
+// is first-class rather than degenerate, and the file list says so in words.
+export interface Recording {
+  uuid: string;
+  // Position among this dive's recordings; 0 is primary.
+  ordinal: number;
+  device?: RecordingDevice | null;
+  // This device's own start - not the dive's, which a second computer entering
+  // the water later legitimately differs from. Offset-less where the source
+  // recorded no offset, exactly as `Dive.start_time` is, so read it with the
+  // `formatDive*` helpers and never with `new Date(...)` and local getters.
+  started_at?: string | null;
+  // In attach order.
+  files: DiveFileInfo[];
+  // Summary of this recording's samples, or absent when it has none. The series
+  // themselves are fetched separately via `getRecordingProfile`.
+  profile?: DiveProfileInfo | null;
+  updated_at?: string | null;
+}
+
+// What `POST /dives/merge` produced.
+export interface DiveMergeResult {
+  // The surviving dive, read back whole - its recordings, cylinders and figures
+  // as merged. Always the earlier of the two.
+  dive: Dive;
+  // The dive that was merged away. It is soft-deleted and **not recoverable
+  // through the API**, so nothing should keep navigating to it.
+  removed_dive_uuid: string;
+  // True when the two turned out to be one computer's two records of one dive
+  // and were folded into a single recording, samples and all. False when they
+  // were two different computers and the recordings were appended side by side.
+  folded: boolean;
 }
 
 // What the dive detail response says about a dive's profile without carrying it:
@@ -475,9 +544,10 @@ export interface DiveProfile {
 export const DIVE_FILE_ACCEPT = ".xml,.json,.fit";
 export const MAX_DIVE_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
-// Metadata about the stored export a dive was imported from - never its bytes.
-// The file itself is fetched separately (and authenticated) via
-// `getDiveFileBlob`.
+// Metadata about one dive-computer export a recording was read from - never its
+// bytes. The file itself is fetched separately (and authenticated) via
+// `getDiveFileBlob`, which needs the file's own uuid as well as the dive's: a
+// recording can hold several files and a dive several recordings.
 export interface DiveFileInfo {
   uuid: string;
   original_filename: string;
@@ -744,21 +814,56 @@ export interface ParsedDive {
   otu_start: number | null;
   otu_end: number | null;
   surface_pressure_bar: number | null;
+  // What recorded the file, on the same all-nullable terms as everything else
+  // here, and neither a form field nor a server-side write: it is reported so a
+  // caller holding two files of one dive can say which computer each came off.
+  // `POST /dive` forbids the member, so a prefilled form cannot hand it back.
+  device?: RecordingDevice | null;
   // Proof that the API parsed this exact file for this user. Hand it back to
-  // `uploadDiveFile` along with the same `File` once the dive exists, and the
-  // export is stored against that dive. Nothing else can be attached: the API
-  // re-hashes the body it receives and compares it against this token.
+  // `attachRecordingFile` along with the same `File` once the dive exists, and
+  // the export is stored against that dive. Nothing else can be attached: the
+  // API re-hashes the body it receives and compares it against this token.
   file_token: string;
+  // Dives of the caller's this file may already belong to, nearest start first.
+  //
+  // **Offered, never applied.** The form names the dive and the device and lets
+  // the diver choose; nothing on this path attaches by itself, because a wrong
+  // match on a form is a dive the diver did not ask for with nothing on screen
+  // to refuse it. Absent on a response the API cached before matching existed,
+  // so read it through `?.` and default it.
+  matches?: ParsedDiveMatch[];
   [key: string]: unknown;
 }
 
+// A dive of the caller's that a just-parsed file might already belong to.
+//
+// `same_recording` separates the two kinds of offer. `true` means the file looks
+// like a **second export of a record that dive already has** - the same
+// computer's JSON beside its FIT - so attaching fills that recording's blanks
+// and overwrites nothing. `false` means only the start times are close, which is
+// every second computer and also every unrelated dive that began within the
+// window; there the diver is deciding whether these are two records of one dive
+// at all.
+export interface ParsedDiveMatch {
+  dive_uuid: string;
+  // The diver's own number for it, for naming it on the form.
+  dive_number: number;
+  // When the matched recording started, offset-less where its source had none.
+  started_at?: string | null;
+  // Which of that dive's recordings matched.
+  recording_uuid: string;
+  device?: RecordingDevice | null;
+  same_recording: boolean;
+}
+
 /**
- * Dive CRUD, plus dive-computer file import, profile fetching and numbering.
+ * Dive CRUD, plus dive-computer file import, recordings, profile fetching,
+ * merging and numbering.
  *
  * Two things differ from the other resources here. Updates replace the list-valued fields
  * (`mixtures`, `dive_site_uuids`, `gear_item_uuids`, `species_uuids`) wholesale rather than
  * merging, so a caller must send the full intended list. And importing a file is two steps - parse to
- * pre-fill the form, then upload against the created dive - because the diver gets to
+ * pre-fill the form, then attach against the created dive - because the diver gets to
  * correct the parsed values before anything is stored.
  */
 export const divesAPI = {
@@ -884,11 +989,19 @@ export const divesAPI = {
     return response.data;
   },
 
-  // Attach (or replace) the dive-computer export a dive was imported from.
+  // Attach a dive-computer export to a dive, and get back the recording it
+  // landed in.
   //
   // Called after the dive has been created or updated, not when the file is
   // picked: `/dive/parse` stores nothing, so a file only becomes worth keeping
   // once it has actually produced a dive.
+  //
+  // **Attaching never replaces.** The API decides where the bytes belong: an
+  // existing recording of this dive when the file passes the same-recording
+  // test - the same computer's JSON beside its FIT - else a new recording
+  // appended after the ones already there. The same bytes twice is a no-op
+  // returning the recording they are already in, and bytes stored against a
+  // *different* dive of the account are a 409 naming it.
   //
   // `fileToken` is the `file_token` from the `parseDiveFile` call for this same
   // file. Without it the API rejects the upload - it is what proves the bytes
@@ -896,26 +1009,76 @@ export const divesAPI = {
   //
   // The `Content-Type` header is explicitly cleared so the browser sets
   // `multipart/form-data` *with its own boundary* - same as `parseDiveFile`.
-  async uploadDiveFile(
+  async attachRecordingFile(
     diveUuid: string,
     file: File,
     fileToken: string,
-  ): Promise<DiveFileInfo> {
+  ): Promise<Recording> {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("file_token", fileToken);
 
-    const response = await apiClient.put(`/dive/${diveUuid}/file`, formData, {
-      headers: { "Content-Type": undefined },
+    const response = await apiClient.post(
+      `/dive/${diveUuid}/recordings`,
+      formData,
+      { headers: { "Content-Type": undefined } },
+    );
+    return response.data;
+  },
+
+  // Remove one stored file.
+  //
+  // The recording's profile - and, when it was primary, the dive's oxygen
+  // exposure readings - are re-derived server-side from whatever files are
+  // left, and deleting the last file of a file-backed recording deletes the
+  // recording too. A recording whose profile came from logbook import or from a
+  // merge survives, because no file can re-yield those samples. Re-read the
+  // dive afterwards rather than predicting any of it here.
+  async deleteDiveFile(diveUuid: string, fileUuid: string): Promise<void> {
+    await apiClient.delete(`/dive/${diveUuid}/file/${fileUuid}`);
+  },
+
+  // Delete a whole recording, files and profile with it. The first recording's
+  // deletion promotes the next.
+  async deleteRecording(
+    diveUuid: string,
+    recordingUuid: string,
+  ): Promise<void> {
+    await apiClient.delete(`/dive/${diveUuid}/recording/${recordingUuid}`);
+  },
+
+  // Move a recording to the front, which re-derives the dive's oxygen-exposure
+  // readings from it.
+  //
+  // `{ primary: true }` is the only body the API accepts - `false` is a 422,
+  // because *something* has to be primary and "make this one not primary" is
+  // not an operation. A diver who means that is promoting a different one.
+  async makeRecordingPrimary(
+    diveUuid: string,
+    recordingUuid: string,
+  ): Promise<Recording> {
+    const response = await apiClient.patch(
+      `/dive/${diveUuid}/recording/${recordingUuid}`,
+      { primary: true },
+    );
+    return response.data;
+  },
+
+  // Fold two dives into one - one computer's two records of a dive it chopped
+  // in half, or two computers' records of one dive.
+  //
+  // The two uuids are symmetric inputs: which survives is the server's answer
+  // (the earlier dive), not the caller's, and the response says which it was.
+  // The other is soft-deleted and **not recoverable through the API**, so
+  // anything holding `removed_dive_uuid` must stop pointing at it.
+  async mergeDives(diveUuids: [string, string]): Promise<DiveMergeResult> {
+    const response = await apiClient.post("/dives/merge", {
+      dive_uuids: diveUuids,
     });
     return response.data;
   },
 
-  async deleteDiveFile(diveUuid: string): Promise<void> {
-    await apiClient.delete(`/dive/${diveUuid}/file`);
-  },
-
-  // Fetch a dive's stored export as a Blob.
+  // Fetch one of a dive's stored exports as a Blob.
   //
   // This has to go through the API client rather than a plain link: the file is
   // private, the endpoint requires an `Authorization` header, and an `<a href>`
@@ -925,29 +1088,35 @@ export const divesAPI = {
   // each version of a file its own URL: the response is cached with
   // `max-age=300`, so without it the browser would keep serving the old bytes
   // for five minutes after a replace.
-  async getDiveFileBlob(diveUuid: string, version?: string): Promise<Blob> {
-    const response = await apiClient.get(`/dive/${diveUuid}/file`, {
+  async getDiveFileBlob(
+    diveUuid: string,
+    fileUuid: string,
+    version?: string,
+  ): Promise<Blob> {
+    const response = await apiClient.get(`/dive/${diveUuid}/file/${fileUuid}`, {
       responseType: "blob",
       params: version ? { v: version } : undefined,
     });
     return response.data;
   },
 
-  // Fetch a dive's per-sample profile. 404s when the dive has no imported file,
-  // or has one that carried no samples - check `dive.profile` first rather than
+  // Fetch one recording's per-sample profile. 404s when that recording carried
+  // no samples - check the recording's `profile` summary first rather than
   // calling this speculatively.
   //
   // `version` is sent as a `v` query param the API ignores, for the same reason
   // as `getDiveFileBlob`: the response is `max-age=300`, and a re-extraction
   // (after an extractor-version bump, say) would otherwise be masked by the
   // previous payload for five minutes. Pass the profile's `updated_at`.
-  async getDiveProfile(
+  async getRecordingProfile(
     diveUuid: string,
+    recordingUuid: string,
     version?: string,
   ): Promise<DiveProfile> {
-    const response = await apiClient.get(`/dive/${diveUuid}/profile`, {
-      params: version ? { v: version } : undefined,
-    });
+    const response = await apiClient.get(
+      `/dive/${diveUuid}/recording/${recordingUuid}/profile`,
+      { params: version ? { v: version } : undefined },
+    );
     return response.data;
   },
 };

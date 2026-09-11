@@ -9,7 +9,7 @@ import { formatDistance, GeoPoint, haversineMeters } from "@/lib/geo-distance";
 import { formatCoordinates } from "@/lib/validations/dive-site";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DiveSitesLabel } from "@/components/dives/dive-sites-label";
-import { DiveSourceFileCard } from "@/components/dives/dive-source-file-card";
+import { DiveRecordingsCard } from "@/components/dives/dive-recordings-card";
 import { LocationsMap } from "@/components/map/locations-map-lazy";
 import type { MappableLocation } from "@/components/map/locations-map";
 import {
@@ -37,8 +37,8 @@ interface DiveDetailSidebarProps {
   /** The training course this dive was part of, resolved the same way and with the
    * same three meanings for null. */
   course: Course | null;
-  /** Called after the source file is deleted, so the dive can be re-read. */
-  onSourceFileChanged: () => void;
+  /** Called after a recording or one of its files changes, so the dive can be re-read. */
+  onRecordingsChanged: () => void;
 }
 
 // A recorded pair as a point, or null when the dive has no fix on that side.
@@ -54,8 +54,8 @@ function fixPoint(
 }
 
 /**
- * The dive detail page's sidebar: where the dive was, what the water was like, what it was
- * imported from, and when it was logged.
+ * The dive detail page's sidebar: where the dive was, what the water was like, what
+ * recorded it, and when it was logged.
  *
  * Each card renders only when it has something to show, so a hand-logged dive with no trip
  * or conditions recorded leaves just the metadata card.
@@ -64,7 +64,7 @@ export function DiveDetailSidebar({
   dive,
   trip,
   course,
-  onSourceFileChanged,
+  onRecordingsChanged,
 }: DiveDetailSidebarProps) {
   const units = useUnits();
   const hasEnvironmentInfo =
@@ -264,8 +264,8 @@ export function DiveDetailSidebar({
         </Card>
       )}
 
-      {/* The dive-computer export this dive was imported from, if any */}
-      <DiveSourceFileCard dive={dive} onChanged={onSourceFileChanged} />
+      {/* What recorded this dive, and what the account still holds from each */}
+      <DiveRecordingsCard dive={dive} onChanged={onRecordingsChanged} />
 
       <Card>
         <CardHeader>

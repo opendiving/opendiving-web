@@ -30,7 +30,7 @@ export default function DiveDetailPage() {
         dive={dive}
         trip={trip}
         course={course}
-        onSourceFileChanged={refreshDive}
+        onRecordingsChanged={refreshDive}
       />
     </div>
   );
