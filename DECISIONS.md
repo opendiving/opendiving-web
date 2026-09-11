@@ -14636,6 +14636,17 @@ the repo's public pitch, so a removed feature left in it is a promise the app no
 
 ## The profile read shape speaks DiveJSON, and the rename came through rather than around
 
+**Superseded in its route and its export member; standing in everything else.**
+`GET /dive/{uuid}/profile` is gone — a dive has recordings, and the series come from
+`GET /dive/{uuid}/recording/{rid}/profile`, which serves `RecordingProfileRead`: this same class
+with a `provenance` member added. `ExportDive.profile` moved the same way, to
+`ExportRecording.profile`, and the summary the dive detail embeds rides on `recordings[].profile`.
+See _"A dive has recordings, and the first one is what every old single-file reading meant"_ below.
+All seven renames still hold, and so does the reason for making them — one profile vocabulary on
+both surfaces rather than two — which is what the per-recording route inherited. The rejected
+alternative further down names the old route in the subjunctive, describing the choice as it stood
+at the time; that sentence is history and reads correctly as written.
+
 The API's JSON export became DiveJSON 1.0, and `ExportDive.profile` is typed `DiveProfileRead` — the
 same class `GET /dive/{uuid}/profile` serves and the same summary `GET /dive/{uuid}` embeds. So
 making the export speak the published format changed those two read endpoints too, and this repo

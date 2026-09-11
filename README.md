@@ -88,11 +88,13 @@ components together. Start there if you want to run OpenDiving rather than work 
 
 Roadmap items, roughly in priority order — contributions welcome:
 
-- **More importers** — Shearwater Cloud exports, when a database is in hand to write the reader
-  against. UDDF, Subsurface, FIT and Suunto's own two — the app's JSON and DM5's XML — already
-  import, through the DiveJSON converter, and a new format is an adapter there rather than a change
-  here. Longer term, [libdivecomputer](https://www.libdivecomputer.org/) for direct hardware
-  support.
+- **More importers** — Shearwater Cloud's whole-database export, which keeps each dive's samples in
+  the computer's own binary log rather than in readable rows: reading it takes a dive-computer
+  parser, not a format adapter, and until there is one, Shearwater Cloud's UDDF export of the same
+  dives is the route that works. UDDF, Subsurface, FIT and Suunto's own two — the app's JSON and
+  DM5's XML — already import, through the DiveJSON converter, and a new format is an adapter there
+  rather than a change here. Longer term, [libdivecomputer](https://www.libdivecomputer.org/) for
+  direct hardware support.
 - **Statistics** — depth/time records, dives per year, sites map.
 - **Sharing** — public link to a dive or trip.
 - **iOS companion app** — parked until the server story is done
