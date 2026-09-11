@@ -5,11 +5,15 @@
   // flight, and no bot that reads this repository's files can see that. The two are not
   // substitutes.
   //
-  // **This file is inert until Renovate is enabled on the repository**: it is configuration
-  // for a bot that has to be running somewhere. Install the Mend-hosted Renovate GitHub App
-  // on the `opendiving` org (the one-time step, and free), or run it self-hosted. Until then
-  // the versions below are frozen and nothing says so - which is the failure this file exists
-  // to end. CONTRIBUTING.md, "Staying on top of CVEs", is where that step is written down.
+  // **This file is live.** The Mend-hosted Renovate GitHub App is installed on the
+  // `opendiving` org and reads this file on its next run; the **Dependency Dashboard** issue
+  // it opens on this repository is where it reports what it found and what it is holding
+  // back. A fork gets none of that - it is configuration for a bot that has to be running
+  // somewhere, so a fork either installs the app itself or runs Renovate self-hosted, and
+  // until it does the versions below are frozen and nothing says so. The app is granted
+  // per repository rather than org-wide, so a repository added to the org later has to be
+  // added to its repository list by hand or it is simply not watched. CONTRIBUTING.md,
+  // "Staying on top of CVEs", is where that sits in the contributor's view.
   //
   // This is the api repo's `.github/renovate.json5` ported, and the port is deliberate: the
   // two repos release in lockstep on one version, so a dependency policy that differs between
