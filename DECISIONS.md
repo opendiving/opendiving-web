@@ -1936,6 +1936,11 @@ the panel being looked at keeps showing what it loaded with.
 
 ## The dive form holds the imported file in page state and uploads it after saving
 
+**Superseded in its particulars, and standing in its reasoning** - see _"The dive form holds a
+*list* of pending files, and the server decides where each one lands"_ below. The callback is now
+`onFileAdded` and the page holds an array rather than one file; everything this section says about
+_when_ the upload happens, and why a failed attach is a toast rather than a rollback, is unchanged.
+
 `DiveFileImport` calls `onFileSelected(file, fileToken)` only after a _successful_ parse, and the
 page - `dives/new` and `dives/[id]/edit` - parks both in `useState` until `createDive`/`updateDive`
 resolves. The API stores nothing at parse time and there is no dive to attach to until the save
@@ -1953,6 +1958,10 @@ one file logged as two dives), a 422 means the import went stale and needs redoi
 `isSubmitting` stays true across the upload so the button doesn't re-enable mid-flight.
 
 ## The dive's source file downloads through the API client, like card images
+
+**Superseded only in its names.** `DiveSourceFileCard` is now `DiveRecordingsCard` and
+`getDiveFileBlob` takes the file's uuid as well as the dive's, a dive having several files across
+its recordings. The pattern, and every reason for it, is unchanged.
 
 `DiveSourceFileCard` fetches a Blob and clicks a synthetic `<a download>`, the same pattern as
 `certification-view-dialog.tsx` and for the same reason: the endpoint needs an `Authorization`
@@ -1978,6 +1987,10 @@ Reusing the first would blank the whole page into a spinner to swap one card, an
 called from an effect body, which is what made the split necessary as well as correct.
 
 ## `Dive.source_file` is optional because the list response never carries it
+
+**Superseded: the member is gone, and `recordings` replaces it** - see _"A dive has recordings, and
+the first one is what every old single-file reading meant"_ below. The optionality argument survives
+verbatim and now applies to `recordings`, which is why this is kept rather than deleted.
 
 The same `Dive` interface backs both `GET /dives` and `GET /dive/{uuid}`, and the API deliberately
 only sends `source_file` on the detail one - the list is its hottest query and nothing in the table
@@ -2264,6 +2277,11 @@ did caused it and there is nothing for them to do about it, so it belongs in the
 whole page.
 
 ## `Dive.profile` is optional for the same reason as `source_file`
+
+**Superseded: the member is gone.** A profile belongs to a recording now, and the summary rides on
+`recordings[].profile` - see _"A dive has recordings, and the first one is what every old
+single-file reading meant"_ below. The paragraph about integer scales and `PROFILE_CHANNELS` is
+untouched by any of that and is the reason this section is still here.
 
 Detail-response only. The API deliberately doesn't send it on the paginated list - that is the app's
 hottest query and nothing in the list renders it - so the field is optional on the shared `Dive`
@@ -15845,3 +15863,157 @@ The fix is one `toast` for the file, not one per call. Worth recording because o
 a card stuck on its spinner, in a test that had passed for months, in a change that touched only the
 markup of buttons the test never waits for. Nothing about "unable to find Service history" points at
 a dependency array, and the loop is invisible while it is winning.
+
+## A dive has recordings, and the first one is what every old single-file reading meant
+
+`Dive.source_file` and `Dive.profile` are gone. In their place is `recordings`, an ordered list in
+which **ordinal 0 is primary** — the recording whose files wrote the dive's oxygen-exposure
+readings, whose profile the chart opens on, and whose samples the app's UDDF export writes. A client
+that wants "the" file or "the" profile takes the first recording's, and `primaryRecording()` in
+`lib/dive-recordings.ts` is the one place that decides it rather than an `[0]` repeated per card.
+
+Two facts about the list are load-bearing, and both are normalized in `diveRecordings()` rather than
+trusted at the call site. It is **absent, not `[]`,** on a list row and on any detail payload the
+API cached before recordings existed — the same rule `species` already lives under, and the same
+`?.` discipline. And it is **sorted by ordinal here**, even though the API documents the order:
+every card reading `recordings[0]` as primary would otherwise be one response shape away from
+drawing the wrong device's figures, silently and plausibly.
+
+Why the shape changed at all: a dive computer's export is one machine's record of a dive, and a dive
+can have several. Two computers on one dive is the obvious case; the less obvious one is the _same_
+computer exported twice — the Suunto app's JSON beside the same watch's FIT — which is one recording
+holding two files, each filling what the other left blank. Flattening either into one `source_file`
+meant the second upload replaced the first, which is how a diver lost a file by attaching one.
+
+The paired sections above (`Dive.source_file` / `Dive.profile` is optional) are kept because their
+optionality argument transferred to `recordings` word for word.
+
+## The dive form holds a _list_ of pending files, and the server decides where each one lands
+
+Both dive pages hold `PendingDiveFile[]` — id, `File`, token, device label — and attach them after
+the save, in pick order and **one at a time**. Serially rather than with `Promise.all`, and that is
+not caution: the API decides per file whether it joins a recording this dive already has or starts a
+new one, so two attaches racing would make "the recording this dive already has" depend on which
+request the server happened to see first.
+
+The client never says which recording a file belongs to, and there is no prop to make it. That
+question is answered by the same-recording test, which compares device, start, sampled span and the
+device's own counter — server-side, over the bytes, on rules the browser has no access to. The one
+thing the client decides is what to do about a match against a _different_ dive, which is a question
+for the diver (`DiveFileImport`'s match dialog) rather than for either machine.
+
+`onDeleteStored` is the asymmetric half. A pending file is removed locally with no dialog —
+unpicking a file is the diver correcting themselves — while a stored one is deleted immediately,
+behind a confirm, because it is already on the server and there is nothing for a save to confirm or
+for Cancel to undo.
+
+### Deleting a stored file re-reads the dive without `useResource`'s `refetch`
+
+The edit page calls `divesAPI.getDive` and `setResource` by hand after a delete. `refetch` looks
+like the obvious call and is wrong here: it re-runs `onLoaded`, which on that page is
+`resetFromDive` → `form.reset(values)` — so a diver who had retyped a depth and then removed a file
+would have watched the edit vanish, with no error and nothing to blame.
+
+What has to update is the file list, which reads `dive.recordings`, and the server may well have
+changed more of it than the one row: the recording's profile is re-derived from whatever files are
+left, the recording itself goes when its last file does, and the dive's exposure readings follow the
+primary. None of that is predicted here — re-reading is cheaper than a second implementation of
+rules the server already has.
+
+## A second file of one recording fills the form, and never overwrites it
+
+`applyParsedDiveToForm` takes a mode. `"prefill"` is the first file of a dive and writes everything
+it carries; `"fill-only"` is every later one and writes only fields the form has left empty. The
+caller picks it from two signals: a file picked while another is already pending or stored, or a
+parse the API reported as a same-recording match on the dive being edited.
+
+**This is the only place the rule can hold for `avg_depth` and `duration`.** Every other field a
+second file touches is filled server-side at attach, under the API's own NULL-only rule — but those
+two are the form's, and no attach or import path writes them at all. Without the mode, importing a
+computer's FIT after its JSON would quietly replace an average depth of 10.74 with the FIT's 9.49,
+and a duration of 3051 with 3474: the same machine's second telling of numbers the diver has been
+looking at, and may have corrected.
+
+Emptiness is `isDiveFormFieldEmpty`, and two of its cases are the ones a `!= null` guard gets wrong.
+A number input the diver cleared reads back as **`NaN`**, not `undefined`. And **`0` is a reading**
+— a freedive that surfaced logs `max_depth` 0 — so falsiness is not the test.
+
+Cylinders go through `fillMixture` (`lib/dive-import.ts`), the mirror of `mergeMixture`: form first,
+file into the blanks. The pressures still move as a pair for `mergeMixture`'s reason — a start from
+the file meeting an end from the form is a fill that never existed — so the file's pair is taken
+only when the form carries neither side. A file describing a **different number of cylinders
+replaces nothing at all**: position is the only pairing signal there is, and carrying a stage
+bottle's readings onto a back gas is worse than leaving a blank. A form with no cylinders takes the
+file's whole, which is filling by definition.
+
+No `MixtureImportNotes` come back from a fill. Those sentences exist to flag a value the import
+_guessed_, and a write that only ever lands in a blank has guessed nothing — a note here would send
+a diver to check a field nothing touched.
+
+## A blank cylinder member survives an attach, and the card must not assume otherwise
+
+Attaching a second file of one recording fills the dive's blank mixture columns from it, but the
+join is **all-or-nothing**: the two files must describe the same number of cylinders and agree on
+every fraction both of them record, or nothing is filled at all. So a dive whose `oxygen` was NULL
+before the second file can legitimately still be NULL after it.
+
+`DiveMixturesCard` renders that correctly and always did — `mixture.oxygen != null` through
+`RecordedCell`, and `gasName` returns null on the same input so the badge stays empty with it. It is
+written down because the attach path is a new way to arrive at the state and the natural assumption
+about it is wrong: a diver who uploads a FIT expecting it to supply the oxygen the JSON lacked may
+well see the cell still empty, and that is the join declining rather than the UI failing.
+
+## One chart and a switcher, never two curves on one axis
+
+`DiveProfileCard` draws one recording at a time, with a button per recording above the chart on a
+dive that has more than one. Subsurface's arrow keys switch too, and the reason generalizes: two
+depth traces on one axis with two pressure families each is a legend problem, and the question a
+diver actually asks is "what did _this_ computer see", not "where do the two disagree by a pixel".
+
+The selection is held **by uuid, not by index**. Deleting a recording or promoting another reorders
+the list, and an index would quietly point at a different device's curves under an unchanged-looking
+button. It falls back to the first charted recording whenever the chosen one is gone.
+
+Only recordings that actually carry samples get a button. A recording whose files held none answers
+404 permanently at `GET /dive/{uuid}/recording/{rid}/profile`, so offering one is a dead end with a
+device name on it.
+
+## Merge offers the two neighbours, and says what it does not combine
+
+`DiveMergeAction` sits in the dive page header and offers exactly the dives from
+`GET /dive/{uuid}/neighbors`. A dive computer that surfaced for a few minutes logs one dive as two
+_consecutive_ ones, and a second computer's record of one dive sits in the same place — so the
+candidates are by construction never more than one step away, and a free-form dive picker would be a
+search for something adjacent.
+
+It renders nothing on a dive with no recording. The API refuses to merge a hand-entered dive —
+Subsurface's own rule — and an action that can only 422 is not an action.
+
+Two things the dialog has to say, because the natural reading of "merge" is that everything comes
+along. **Which dive survives is the server's answer**, not the caller's: the earlier of the two by
+the same clock rule the match gates use, so this navigates to whatever came back rather than
+assuming it stayed put — the losing uuid is soft-deleted and stops resolving, and a page that sat
+still would 404 on its next reload. And **the oxygen-exposure readings are not combined.** CNS and
+OTU are the device's own running accounting rather than a per-dive quantity that can be added up,
+and the API deliberately leaves them as they are rather than rewriting a `cns_end` an import had
+filled in.
+
+## A recording with no files says so, and cannot yet say which kind of nothing
+
+A recording can carry samples and no downloadable file: it is what logbook import builds from a
+converted document, and what a merge of two such recordings leaves. That is first-class rather than
+degenerate, so `noFileKeptSentence` gives it a row of its own saying so — a device silently missing
+from a list a diver reads to check their files are still there is exactly what data loss looks like.
+
+**One sentence, where the design called for two.** Telling "imported through the converter" from
+"merged from two recordings" needs the profile's provenance. The server stores it —
+`DiveProfile.parser_key` holds a parser's key, `divejson_import` or `merge` — and **does not publish
+it**: `DiveProfileInfo` on the dive detail response carries no such member, and neither does the
+full profile payload from the recording route. So the wording is one that is true of both paths, and
+narrowing it is a job for the day that member ships.
+
+There is a second consequence, in `DiveRecordingsCard`: a file-less recording is the only one
+offered a whole-recording delete. Nothing else can remove it — the per-file route needs a file — so
+without that button a converter-imported or merged recording would be permanent. Where there _are_
+files, deleting them one at a time is the smaller action and the server removes the recording with
+the last of them.

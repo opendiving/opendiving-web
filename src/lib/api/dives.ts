@@ -321,10 +321,11 @@ export interface Dive {
   created_at: string;
   mixtures: DiveMixture[];
   // What recorded this dive, in order, and **the first is primary**. A dive has
-  // an ordered list of these rather than the single `source_file`/`profile` pair
-  // it carried before: one computer exported as JSON and again as FIT is one
+  // an ordered list of these rather than the one stored file and one profile it
+  // carried before: one computer exported as JSON and again as FIT is one
   // recording holding two files, while a second computer on the same dive is a
   // second recording with its own device, its own start and its own profile.
+  // `DECISIONS.md` has the whole argument, and names the two retired members.
   //
   // A client that wants "the" file or "the" profile takes `recordings[0]`'s,
   // which is what ordinal 0 means - and `primaryRecording()` in
