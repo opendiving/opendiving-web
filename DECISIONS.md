@@ -14337,9 +14337,11 @@ and neither next to anything that explains it.
 
 **They are now a pager on the title's own line**, immediately after `Dive #2` and at the opposite
 end of that row from Edit and Delete: `‹ Previous` and `Next ›` as two `outline`/`sm` buttons, the
-same visual vocabulary the log list's `PaginationFooter` already uses for the same idea. `h-9` on
-those controls is exactly what `text-3xl` sets as a line box, so the pair sits level with the
-heading with nothing nudged into place.
+same visual vocabulary the log list's Previous/Next footer used at the time for the same idea. (That
+footer is gone — the lists load on scroll now, and its replacement is a single `outline`/`sm`
+button, so this pager is the only prev/next control left in the app. The borrowing is why it looks
+the way it does, not a pairing to keep in step.) `h-9` on those controls is exactly what `text-3xl`
+sets as a line box, so the pair sits level with the heading with nothing nudged into place.
 
 **It went to the back link's row first, and that was wrong for a reason worth writing down.** That
 row was empty and cannot wrap, which is what recommended it — but right-aligning the pair there

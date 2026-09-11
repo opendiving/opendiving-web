@@ -92,10 +92,12 @@ export default function GearPage() {
     errorMessage: "Failed to load gear sets. Please try again.",
   });
 
-  // Deleting an item can change what a set contains, so both lists are read
-  // again. The sets list genuinely needs re-reading rather than a row dropped:
-  // the item that went was a member of an unknown number of sets, and each of
-  // those rows now names one fewer.
+  // For the two paths that change an item without removing it - archiving, which
+  // moves the row in or out of the filtered list, and a save, which can create a
+  // row that belongs anywhere in it. Neither can be applied in place, and both
+  // can change what a set names, so both lists are read again. The delete path
+  // does *not* come through here; it drops its own row and re-reads only the
+  // sets.
   const refetchAll = useCallback(() => {
     reloadItems();
     reloadSets();
