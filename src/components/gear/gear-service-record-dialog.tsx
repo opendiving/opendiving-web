@@ -15,10 +15,9 @@ import {
   SERVICE_KINDS,
   serviceKindLabel,
   type GearServiceRecord,
-  type GearServiceSchedule,
+  type GearServiceScheduleSummary,
   type ServiceKind,
 } from "@/lib/api/gear-service";
-import type { GearItem } from "@/lib/api/gear";
 import { todayIsoDate } from "@/lib/gear-service";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { dialogFormSubmit } from "@/lib/dialog-form";
@@ -27,6 +26,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
@@ -50,12 +50,21 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 
 interface GearServiceRecordDialogProps {
-  gearItem: GearItem;
+  // The item the service belongs to. Its uuid is all this dialog needs of it, and taking
+  // only that is what lets the dashboard's service-due card open it from a row that
+  // carries an item's identity without ever having fetched the item.
+  gearItemUuid: string;
+  // How to name that item, when the surface that opened this can't. The gear detail page
+  // is titled with the item already, so it passes nothing; the dashboard's card spans
+  // every item a diver owns, and a bare "Log Service" there would not say which one.
+  gearItemLabel?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   // The rule this service satisfies, when the dialog was opened from one. Prefills the
-  // type and label; the API infers the same link server-side when it isn't sent.
-  schedule?: GearServiceSchedule | null;
+  // type and label; the API infers the same link server-side when it isn't sent. The
+  // summary rather than the full schedule, because the three fields read here - uuid,
+  // kind, label - are all the dashboard's due entry can offer.
+  schedule?: GearServiceScheduleSummary | null;
   // Pass an existing record to edit it; omit to log a new one.
   record?: GearServiceRecord | null;
   onSaved: () => void;
@@ -65,7 +74,8 @@ interface GearServiceRecordDialogProps {
 // reminder; logging without one is still useful (a hydro stamp on a cylinder you never
 // set a reminder for) and simply stands on its own in the history.
 export function GearServiceRecordDialog({
-  gearItem,
+  gearItemUuid,
+  gearItemLabel,
   open,
   onOpenChange,
   schedule,
@@ -120,7 +130,7 @@ export function GearServiceRecordDialog({
         });
       } else {
         await gearServiceAPI.createRecord({
-          gear_item_uuid: gearItem.uuid,
+          gear_item_uuid: gearItemUuid,
           kind: data.kind,
           label: data.label || undefined,
           serviced_on: data.serviced_on,
@@ -151,6 +161,9 @@ export function GearServiceRecordDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{isEdit ? "Edit Service" : "Log Service"}</DialogTitle>
+          {gearItemLabel && (
+            <DialogDescription>{gearItemLabel}</DialogDescription>
+          )}
         </DialogHeader>
 
         <Form {...form}>

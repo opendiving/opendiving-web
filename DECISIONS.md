@@ -1830,6 +1830,62 @@ the bucketing happens client-side, through the same `serviceStatus()` every othe
 The gear _list_ needs no extra request at all: `GET /gear-items` embeds each item's schedules
 (`item.service`), and the badge is derived from those.
 
+### And it logs the service too, without leaving the dashboard
+
+Each row carries the same icon-only `ClipboardCheck` "log service" button as the gear detail card's
+schedule rows, opening the same `GearServiceRecordDialog`. Reaching a due regulator used to mean the
+dashboard row, then the gear page, then the card - three clicks to record something the dashboard
+had just told you about.
+
+**The row stopped being a single `Link`.** A `<button>` inside an `<a>` is invalid HTML, and a click
+on it would navigate as well as open the dialog, so the row is now a flex container holding the link
+and the button as siblings. The link keeps the `justify-between` that _"And the dashboard puts the
+chip last, where the rows align"_ is about, so the chips still line up down the card - one button
+width in from the card edge now, which is the one visible cost: they no longer line up with
+`CertificationExpiryCard`'s chips on the card below, which has no trailing button. Within-card
+alignment is what that section claims and it still holds.
+
+The row is `items-start` rather than `items-center`, which only shows below `sm`: there the link
+wraps its chip onto a second line, and the button then sits level with the item name instead of
+floating between the two. Same alignment as the gear detail card's schedule rows, and identical on a
+desktop row, where both halves are one line tall.
+
+**The button is named after the item as well as the schedule.**
+`Log service for Service (First stage)` is unique on a page about one regulator; this list spans
+every item a diver owns, so it says `Log service for Visual inspection on Faber 12L`. Two rows of
+one item (a cylinder's inspection and its hydro) and two items of one kind (a diver with two
+regulators) both occur, and neither half alone separates all of them -
+`service-due-card.render.test.tsx` renders exactly that four-row case. `serviceKindAndLabel` moved
+out of `gear-service-card.tsx` and into `lib/api/gear-service.ts` beside `serviceKindLabel` so the
+two surfaces can't drift into phrasing the same schedule two ways.
+
+**`GearServiceRecordDialog` takes `gearItemUuid`, not a `GearItem`.** It only ever read `.uuid`, and
+a dashboard row carries `gear_item_uuid` without the item having been fetched - so the alternative
+was inventing a `GearItem`-shaped object out of a due entry. It also grew an optional
+`gearItemLabel`, rendered as the dialog's description: the gear detail page is already titled with
+the item and passes nothing, but a bare "Log Service" opened from a card spanning every item names
+nothing at all. Same reasoning as `Card images — {name}` on the certifications page. Its `schedule`
+prop widened from `GearServiceSchedule` to `GearServiceScheduleSummary`, which is what the three
+fields it reads (uuid, kind, label) actually need and all a due entry can offer.
+
+**The view of the entry passed to that dialog is memoised, and that is a correctness fix rather than
+a performance one.** The dialog resets its form in an effect keyed on `schedule`, so a
+`scheduleFromDueEntry(...)` built during render hands it a new object identity on every render of
+the card and wipes half-typed notes. `useMemo` on the entry is what stops that.
+
+**The dialog is mounted only while a row is being logged**, unlike the gear detail card's two, which
+sit permanently with `open={x !== null}`. That card is about one item and has a subject even while
+closed; this one has none until a row is picked. The cost is the exit animation, which is skipped
+when the dialog unmounts on close - the same trade the certifications page's file dialog already
+makes.
+
+**The fetch became a `.then()` chain in a `useCallback`** so the post-save refetch and the mount
+fetch are one code path. Not `async`/`await`: `react-hooks/set-state-in-effect` is an error in this
+config, and it reads an awaited call in an effect body as a synchronous `setState`. The effect still
+owns the cancel flag; the refetch passes none, because a diver watching for a save's result has
+nothing to cancel against. Logging the last due service empties the list and the card disappears,
+which is the correct outcome and not a bug to guard against.
+
 ## The gear reminder toggle lives in its own settings card, and saves on change
 
 `NotificationsCard` is factored out like `EmailChangeCard` rather than being bolted onto the profile
