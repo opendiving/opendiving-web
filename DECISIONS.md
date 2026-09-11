@@ -1844,6 +1844,11 @@ chips still line up down the card - one button width in from the card edge now, 
 visible cost: they no longer line up with `CertificationExpiryCard`'s chips on the card below, which
 has no trailing button. Within-card alignment is what that section claims and it still holds.
 
+The row is `items-start` rather than `items-center`, which only shows below `sm`: there the link
+wraps its chip onto a second line, and the button then sits level with the item name instead of
+floating between the two. Same alignment as the gear detail card's schedule rows, and identical on a
+desktop row, where both halves are one line tall.
+
 **The button is named after the item as well as the schedule.**
 `Log service for Service (First stage)` is unique on a page about one regulator; this list spans
 every item a diver owns, so it says `Log service for Visual inspection on Faber 12L`. Two rows of

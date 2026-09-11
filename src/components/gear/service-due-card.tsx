@@ -123,7 +123,12 @@ export function ServiceDueCard({ userId }: ServiceDueCardProps) {
             // an anchor is invalid, and a click on it would navigate as well as open
             // the dialog. The link keeps the row's own `justify-between`, so the chips
             // still line up down the card - one button width in from the edge now.
-            <div key={entry.schedule_uuid} className="flex items-center gap-2">
+            //
+            // `items-start` matches the gear detail card's schedule rows, and only
+            // shows below `sm`, where the link wraps its badge onto a second line: the
+            // action then sits level with the item name rather than floating between
+            // the two lines.
+            <div key={entry.schedule_uuid} className="flex items-start gap-2">
               <Link
                 href={`/gear/${entry.gear_item_uuid}`}
                 className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-4 gap-y-1 hover:underline"
