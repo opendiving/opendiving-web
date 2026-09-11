@@ -300,29 +300,36 @@ Then render `layout/standalone-shell.tsx` rather than hand-rolling the centered 
 where the app's `<main>` lives, and that component is where the chrome-free half of the app keeps
 its own. See "The chrome-free routes had no `<main>`" at the end of this file.
 
-## Shared list-page pattern: `useAuthGuard` + `usePaginatedResource` + `useDeleteResource`
+## Shared list-page pattern: `useAuthGuard` + `useInfiniteResource` + `useDeleteResource`
 
 The dives/trips/dive-sites list pages (`app/dives/page.tsx`, `app/trips/page.tsx`,
 `app/sites/page.tsx`) used to each hand-roll the same ~100 lines: an auth-redirect effect,
 fetch-on-mount + pagination state, a native `confirm()` + delete + toast + refetch flow, and a
 "Showing X to Y of Z" footer. That's now factored into three hooks plus two shared components - any
-new paginated/deletable resource list should reuse them rather than re-deriving the pattern:
+new list of a deletable resource should reuse them rather than re-deriving the pattern:
 
 - `hooks/useAuthGuard.ts` - redirects to `/signin` once the auth check settles and the user isn't
   signed in (mirrors `useRedirectIfAuthenticated` for the opposite case: public-only pages
   redirecting _signed-in_ users away).
-- `hooks/usePaginatedResource.ts` - takes a
-  `(page, perPage) => Promise<{data, total_count, has_more}>` fetcher and returns
-  `items`/`isLoading`/`totalCount`/`currentPage`/`hasMore`/`fetchPage`/ `refetch`. Pair with
-  `components/ui/pagination-footer.tsx` (`<PaginationFooter />`) for the "Showing X to Y of Z" +
-  Previous/Next UI - it renders nothing if everything fits on one page.
+- `hooks/useInfiniteResource.ts` - takes a
+  `(page, perPage) => Promise<{data, total_count, has_more}>` fetcher and a `keyOf`, and returns
+  `items`/`isLoading`/`isLoadingMore`/`totalCount`/`hasMore`/`loadFailed`/`loadMore`/`reload`/
+  `removeItem`/`applySaved`. Pages accumulate rather than replace. Pair with
+  `components/ui/load-more-trigger.tsx` (`<LoadMoreTrigger />`), whose button is also the
+  load-on-scroll sentinel - it renders nothing if everything fits on one page.
 - `hooks/useDeleteResource.ts` - takes a `(id) => Promise<...>` delete function and returns
   `deletingId`/`pendingId`/`requestDelete`/ `cancelDelete`/`confirmDelete`. Pair with
   `components/ui/confirm-dialog.tsx` (`<ConfirmDialog open={pendingId !== null} ... />`) instead of
   the blocking native `confirm()` - it's stylable, testable, and doesn't freeze the tab.
 
-Wire `usePaginatedResource`'s `refetch` as `useDeleteResource`'s `onDeleted` so a successful delete
-refreshes the current page.
+Wire `useInfiniteResource`'s `removeItem` as `useDeleteResource`'s `onDeleted`, which is handed the
+id that went, so the row disappears without the list collapsing back to its first page. Reach for
+`reload` only when a delete changes rows other than its own. **Why `removeItem` rather than a
+refetch, and why the cursor moves with it, is the section at the end of this file - read it before
+changing any of this.** This paragraph used to say "wire `refetch` ... so a successful delete
+refreshes the current page", and was still saying it after both `usePaginatedResource` and
+`PaginationFooter` were deleted: a prescriptive section is the one a reader lands on first and the
+last one a change remembers to update.
 
 ## Access token lives in memory only, never in `localStorage`
 
@@ -2995,8 +3002,8 @@ that is true now.
 `PaginatedResponse<T>` lived in `hooks/usePaginatedResource.ts` - a layer _above_ `lib/api/`.
 Nothing in `lib/api/` will import upwards from `hooks/`, so all eight modules declared their own
 identical copy instead. It now lives in `lib/api/client.ts`, beside the client that produces it, and
-the eight are type aliases over it. `hooks/usePaginatedResource.ts` re-exports it for the pages that
-import the type alongside the hook.
+the eight are type aliases over it. `hooks/useInfiniteResource.ts` (which is where that hook lives
+now) re-exports it for the pages that import the type alongside the hook.
 
 Seven create/edit dialogs each kept their own `apiError` state and cleared it inside the effect that
 resets the form - each carrying its own copy of the `react-hooks/set-state-in-effect` disable.
@@ -6898,7 +6905,7 @@ Two things were considered and left out. A GitHub-style top progress bar is the 
 but it is a _signal_, not a fix — GitHub's reads well because the old page stays on screen
 underneath it, and until these pages stopped blanking a bar would only have sat above the same
 flash. And nothing here caches: returning to `/dives` still refetches and still shows skeleton rows,
-where a stale-while-revalidate layer under `usePaginatedResource` would show the previous rows
+where a stale-while-revalidate layer under `useInfiniteResource` would show the previous rows
 immediately and never enter a loading state at all. Both are worth doing; neither is worth doing
 before the layout stops moving.
 
@@ -12110,11 +12117,13 @@ git grep -nEi 'list pages?|detail pages?' -- src/
 **That second pattern has a hole, and this repo demonstrated it.** Until the de-counting above,
 `hooks/usePaginatedResource.ts` read "for the dives/trips/sites list" / "pages" across a line break,
 and the grep never matched the one file whose whole job is list-page pagination. The rewording
-happens to have pulled "the list pages" back onto a single line, so it matches today - but nothing
-holds it there, and the next edit that lengthens that sentence reopens the hole silently. Any
-multi-word pattern over comment prose has this exposure, and comment prose is wrapped by definition.
-So a clean second sweep is suggestive, never conclusive; the first sweep is the one to lean on for
-coverage, because a single word cannot straddle a line break.
+pulled "the list pages" back onto a single line, which closed it at the time - but nothing held it
+there, and the next edit that lengthened the sentence would have reopened the hole silently. (That
+file is gone: the lists load on scroll now and the hook is `hooks/useInfiniteResource.ts`. The
+demonstration stands on its own; the file is no longer there to re-check it against.) Any multi-word
+pattern over comment prose has this exposure, and comment prose is wrapped by definition. So a clean
+second sweep is suggestive, never conclusive; the first sweep is the one to lean on for coverage,
+because a single word cannot straddle a line break.
 
 **What is deliberately _not_ swept: this file.** Its own counts - "the four `[id]` detail pages",
 "all eight modules", "seven create/edit dialogs" - record what a particular change faced at the time
@@ -12162,11 +12171,12 @@ to surface.
 **The courses list is the first list page with a search box**, because the API's `GET /courses` is
 the first list endpoint the app calls that takes a `search`. The wiring is two states, not one: the
 input's own value, and the debounced term the fetcher closes over. That matters because the fetcher
-is `usePaginatedResource`'s `fetchFn`, so changing the term changes the callback's identity and the
-hook re-fetches from page 1 - which is the behaviour wanted (page 3 of the unfiltered list is not a
-page of the filtered one) and is why the term must not change on every keystroke. The empty state
-splits too: "no courses match that name" is a different statement from "no courses yet", and only
-the second one offers a create button.
+is `useInfiniteResource`'s `fetchFn`, so changing the term changes the callback's identity and the
+hook throws away every page it has loaded and reads the new query from the first - which is the
+behaviour wanted (rows of the unfiltered list are not rows of the filtered one, however many are
+already on screen) and is why the term must not change on every keystroke. The empty state splits
+too: "no courses match that name" is a different statement from "no courses yet", and only the
+second one offers a create button.
 
 **A dive's course is not inherited from the last dive, unlike its trip.** `/dives/new` prefills the
 trip from the most recent dive because a second dive is usually on the same trip. A course ends,
@@ -14386,9 +14396,11 @@ and neither next to anything that explains it.
 
 **They are now a pager on the title's own line**, immediately after `Dive #2` and at the opposite
 end of that row from Edit and Delete: `‹ Previous` and `Next ›` as two `outline`/`sm` buttons, the
-same visual vocabulary the log list's `PaginationFooter` already uses for the same idea. `h-9` on
-those controls is exactly what `text-3xl` sets as a line box, so the pair sits level with the
-heading with nothing nudged into place.
+same visual vocabulary the log list's Previous/Next footer used at the time for the same idea. (That
+footer is gone — the lists load on scroll now, and its replacement is a single `outline`/`sm`
+button, so this pager is the only prev/next control left in the app. The borrowing is why it looks
+the way it does, not a pairing to keep in step.) `h-9` on those controls is exactly what `text-3xl`
+sets as a line box, so the pair sits level with the heading with nothing nudged into place.
 
 **It went to the back link's row first, and that was wrong for a reason worth writing down.** That
 row was empty and cannot wrap, which is what recommended it — but right-aligning the pair there
@@ -16513,3 +16525,128 @@ shape that fits both.
 every width above it, so without an explicit reset the brand block would span three of the four
 columns at desktop and push the link columns off the grid — the failure is silent in the class list
 and shows up only in a browser at 768px, where all four children have to sit on one row.
+
+## The lists load on scroll, and a delete no longer collapses the one you are reading
+
+Every Previous/Next footer in the app is gone. `usePaginatedResource` became `useInfiniteResource` —
+pages accumulate instead of replacing — and `PaginationFooter` became `LoadMoreTrigger`. Both old
+names are deleted rather than kept as aliases: a hook called "paginated" over a UI with no pages is
+the kind of stale name this file exists to complain about.
+
+**The button is the sentinel, not a `<div>` next to one.** Auto-load on scroll has nothing to tab to
+and nothing to announce, so a list with rows past the first page simply ends for anyone not using a
+mouse. Making the focusable control the observed element costs nothing — a pointer user never sees
+it fire, because the observer's 400px `rootMargin` asks for the next page while the button is still
+below the fold — and everyone else gets a real control. The progress line above it is a live region
+for the matching reason: appended rows move no focus and change no URL, so nothing else would say
+anything happened.
+
+**A failed page has to latch, or the sentinel becomes a retry loop.** This is the one that does not
+announce itself. A request that fails leaves `hasMore` true and clears the spinner — which is
+precisely what a page that _succeeded_ looks like from the trigger's side — so the effect that pulls
+the next page when the previous one lands re-fires the instant the failure settles, and goes on
+firing for as long as the trigger sits on screen. The result is an unbounded request loop at network
+speed with one `destructive` toast per iteration, and because `TOAST_LIMIT` is 1 the diver sees a
+single error toast that never clears rather than anything that looks like a storm. `loadFailed`
+stops the auto-fire and turns the button into "Try again"; the latch lives in the hook and is
+consulted by the trigger rather than enforced inside `loadMore`, because a retry the diver asked for
+has to go through and `loadMore` is the one path both of them take. Every attempt clears it, and
+`nextPage` is only advanced by a response that actually arrived, so the retry asks for the page that
+failed rather than the one after it.
+
+**A delete drops its row locally, and that is half a fix.** Re-reading from page one would yank the
+ground out from under a reader who had scrolled: everything above them vanishes and the page shrinks
+mid-read. The other half is less obvious. Offsets below the deleted row all shift up by one, so the
+next page boundary moves with them, and asking for the page after the last one fetched skips
+whichever row slid across it — the silent-truncation shape that "my oldest certification stopped
+appearing" comes in. `removeItem` therefore re-derives the cursor from what is left on screen
+(`floor(items.length / itemsPerPage) + 1`), which asks for the page that now _contains_ the
+boundary; the dedup discards the rows already shown. That dedup is required rather than
+belt-and-braces for the same reason it is in `fetchAllPages` and the invitations card, and `keyOf`
+is a required option because of it — an invite request has no `uuid`, its identity is the address.
+
+`applySaved` is the same instinct for the other direction: an edited row is swapped in place with no
+request at all, and only a row the loaded window has never seen falls back to re-reading. **It steps
+the cursor back a page for the same reason `removeItem` re-derives it**, and that is the half worth
+remembering, because an edit looks like it cannot move anything. Every list here is ordered by a
+column the edit dialog can change — dive sites by name, trips and courses by start date,
+certifications by the date certified — so a rename re-sorts the row on the server. Move it later
+than the loaded window and everything after its old slot shifts up one offset, and the page after
+the last one fetched steps straight over whichever row slid across the boundary. The dedup catches
+only the opposite direction.
+
+**That rewind is derived from what is loaded, not decremented**, and the difference is a call site
+that does not look like an edit. The certifications page runs `applySaved` on every card-image
+upload and every removal, so swapping both sides of a card fires it twice with no scroll in between
+— and a change to a stored file cannot re-sort anything. A decrement compounds across those, walking
+the cursor back a page per call and spending the next scroll re-reading pages that append nothing;
+`floor(loaded / perPage)` gives the same answer however many times it is asked. What the swap
+deliberately does _not_ do is re-sort what is on screen: the row keeps its old position with its new
+contents until something reloads the list, because putting it where it now belongs means reading the
+list again — the jump the function exists to avoid. `keyOf` and the in-flight guard both live in
+refs, not state — the first because an inline arrow at a call site would otherwise restart the fetch
+on every render (`useResource`'s `onLoaded` has this exact problem and this exact fix), the second
+because an `IntersectionObserver` can deliver two entries before a render lands in between, and
+state would still read "idle" for the second.
+
+**The scoped dive lists were silently truncating, and that is what this change actually fixed.** The
+five detail pages — trip, dive site, gear item, course, species — rendered `RecentDivesCard` with
+`limit={100}` meaning "all of them", and the API clamps `items_per_page` to 100. A diver past that
+number was shown a list that looked complete and was not. The prop is now a `complete` boolean with
+no number in it to get wrong; the dashboard's preview keeps its "View All Dives" button and is the
+one caller that does not set it.
+
+**The gear sets card waits until the reader is near it.** It sits below the gear list and reads as
+its continuation, so gating its first fetch on `useNearViewport` is what makes the two lists on
+`/gear` load in the order they are read rather than the lower one fetching a page nobody has
+scrolled to. For most divers that is still on mount — ten gear items leaves the card on screen
+immediately. Merging the two into one list was considered and rejected: it would cost the Gear Sets
+heading, its count badge, its own New button and its different columns, and the geometry already
+sequences them for free.
+
+**The admin queue stopped clearing its selection, and that reset was load-bearing twice over.** The
+reason it existed was that turning a page carried the ticked addresses off screen, and sending
+invitations the operator can no longer see is worth guarding against. Loading more only appends, so
+that half has nothing left to guard.
+
+The half nobody had written down is the batch cap. Both routes reject more than a hundred addresses
+with a 422 rather than sending part of the batch, and this page never had to say so: selection was
+per page, a page was ten rows, and the page's own docstring named that as the reason it could skip
+repeating the number. A queue that accumulates as you scroll takes the ceiling away silently — a
+select-all after eleven pages is a request that cannot succeed, and because the failure path
+deliberately keeps the selection so the operator can retry, the retry fails identically. So the
+guarantee is now stated: `MAX_SELECTED` in the page, mirroring `MAX_ADDRESSES_PER_BATCH` in the
+API's invitation schema.
+
+The select-all box decides from the **selection**, not from its own `checked`, and that is a second
+trap inside the first. Past the cap the box can never render checked — `allSelected` asks whether
+every loaded row is selected, and the cap guarantees it is not — while a native checkbox negates its
+own checkedness on click and ignores `indeterminate` entirely. So a box rendered unchecked reports
+`checked === true` on every click, and a handler that trusted it re-selected the same hundred
+forever, with no way back to an empty selection but a hundred individual unticks. The header box is
+the control that clears everything, which is what its own table test has always said; reading the
+selection is what keeps that true in the one state the cap exists for.
+
+The cap is enforced on the **selection** rather than on the buttons, which is the part worth
+arguing. Disabling an action over an oversized selection is the shape that first suggests itself and
+the worse one: the refusal lands after all the ticking, and the only way out is to untick by hand.
+Instead select-all takes the first hundred and the live region says so, and a tick past the cap
+simply does not take. The queue reloads after every action, so working a long queue a batch at a
+time is the flow — which is what the per-page selection amounted to anyway, by accident.
+
+### What the two test lanes can and cannot say about this
+
+`vitest.setup.ts` installs an `IntersectionObserver` (`src/test/intersection.ts`) because
+`new IntersectionObserver` throws outright in jsdom — every page rendering a list would fail on
+mount rather than at an assertion. It reports nothing until a test calls `reveal()`, which is the
+honest default and makes the call a statement about the scenario: the reader has scrolled to the end
+of the list, or far enough down `/gear` to reach the sets card. `gear/page.render.test.tsx` needs
+exactly that, and is the one existing test the deferral above changed.
+
+The browser lane holds that the trigger stays quiet far below the fold and fires on a scroll to the
+end. **It cannot hold the `rootMargin`, and no test in this repository can.** That lane runs each
+test inside an iframe, and an implicit-root observer's expanded rect is clipped by every intervening
+scroll container, the iframe boundary included — measured: with the trigger 20px below the fold
+nothing fires, and it fires only once genuinely on screen. That is the harness rather than the
+component, since the app is not in an iframe. A margin regression would therefore be invisible to
+the whole suite and is a browser walk to catch.

@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
-import { usePaginatedResource } from "@/hooks/usePaginatedResource";
+import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { divesAPI, Dive } from "@/lib/api/dives";
 import { DELETE_DIVE_CONFIRMATION } from "@/lib/dive-recordings";
@@ -24,7 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { PaginationFooter } from "@/components/ui/pagination-footer";
+import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Plus, Eye, Edit, Trash2, Loader2 } from "lucide-react";
 import Link from "next/link";
@@ -57,15 +57,18 @@ export default function DivesPage() {
   const {
     items: dives,
     isLoading: isLoadingDives,
+    isLoadingMore,
     totalCount,
-    currentPage,
     itemsPerPage,
     hasMore,
-    fetchPage: fetchDivesPage,
-    refetch,
-  } = usePaginatedResource<Dive>(fetchDives, {
+    loadFailed,
+    loadMore,
+    reload,
+    removeItem,
+  } = useInfiniteResource<Dive>(fetchDives, {
     enabled: !!user,
     errorMessage: "Failed to load dives. Please try again.",
+    keyOf: (dive) => dive.uuid,
   });
 
   const {
@@ -79,8 +82,12 @@ export default function DivesPage() {
     confirmMessage: DELETE_DIVE_CONFIRMATION,
     successMessage: "Dive deleted successfully.",
     errorMessage: "Failed to delete dive. Please try again.",
-    onDeleted: () => {
-      refetch();
+    // The row goes locally rather than by re-reading: a diver who has scrolled
+    // several pages in should not have the list collapse back to the first one
+    // under them. The numbering line above the table is re-read, because the
+    // number the deleted dive held is now a gap and that line says so.
+    onDeleted: (id) => {
+      removeItem(id);
       reloadNumbering();
     },
   });
@@ -125,7 +132,7 @@ export default function DivesPage() {
           <DiveNumberingStatus
             enabled={!!user}
             reloadToken={numberingToken}
-            onRenumbered={refetch}
+            onRenumbered={reload}
           />
 
           {!isLoadingDives && dives.length === 0 ? (
@@ -223,14 +230,15 @@ export default function DivesPage() {
             </Table>
           )}
 
-          <PaginationFooter
-            currentPage={currentPage}
-            itemsPerPage={itemsPerPage}
-            totalCount={totalCount}
+          <LoadMoreTrigger
             hasMore={hasMore}
-            isLoading={isLoadingDives}
+            isLoading={isLoadingMore}
+            hasFailed={loadFailed}
+            loadedCount={dives.length}
+            totalCount={totalCount}
+            itemsPerPage={itemsPerPage}
             itemLabel="dives"
-            onPageChange={fetchDivesPage}
+            onLoadMore={loadMore}
           />
         </CardContent>
       </Card>

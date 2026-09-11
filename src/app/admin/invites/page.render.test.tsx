@@ -150,7 +150,7 @@ describe("the invite queue", () => {
     await screen.findByText("first@example.com");
 
     const all = screen.getByRole("checkbox", {
-      name: "Select every request on this page",
+      name: "Select a batch of requests, or clear the selection",
     });
     await userEvent.click(all);
     expect(
@@ -161,6 +161,93 @@ describe("the invite queue", () => {
     expect(
       screen.getByRole("checkbox", { name: "Select first@example.com" }),
     ).not.toBeChecked();
+  });
+
+  // The queue accumulates as the operator scrolls, and both batch routes reject
+  // more than a hundred addresses outright rather than sending part of the
+  // batch. Selection used to be held under that ceiling for free, by being
+  // cleared on every page turn; loading on scroll is what removed the page turn.
+  describe("the hundred-address batch cap", () => {
+    const many = Array.from({ length: 130 }, (_, i) =>
+      request({ email: `diver${i}@example.com` }),
+    );
+
+    beforeEach(() => {
+      listInviteRequests.mockImplementation(async () => page(many));
+    });
+
+    it("selects at most a full batch, not every row on screen", async () => {
+      render(<AdminInvitesPage />);
+      await screen.findByText("diver0@example.com");
+
+      await userEvent.click(
+        screen.getByRole("checkbox", {
+          name: "Select a batch of requests, or clear the selection",
+        }),
+      );
+
+      expect(
+        await screen.findByText(
+          "100 addresses selected - the most one batch can hold",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("checkbox", { name: "Select diver99@example.com" }),
+      ).toBeChecked();
+      expect(
+        screen.getByRole("checkbox", { name: "Select diver100@example.com" }),
+      ).not.toBeChecked();
+    });
+
+    // The header box can never render *checked* past the cap - `allSelected`
+    // asks whether every loaded row is selected, and the cap guarantees it is
+    // not. A native checkbox negates its own checkedness on click and ignores
+    // `indeterminate`, so it reports `checked === true` every time; a handler
+    // that trusted that would re-select the same hundred forever.
+    it("still clears the selection once the cap has been hit", async () => {
+      render(<AdminInvitesPage />);
+      await screen.findByText("diver0@example.com");
+
+      const all = screen.getByRole("checkbox", {
+        name: "Select a batch of requests, or clear the selection",
+      });
+      await userEvent.click(all);
+      expect(
+        screen.getByText(
+          "100 addresses selected - the most one batch can hold",
+        ),
+      ).toBeInTheDocument();
+
+      await userEvent.click(all);
+
+      expect(screen.getByText("Nothing selected")).toBeInTheDocument();
+      expect(
+        screen.getByRole("checkbox", { name: "Select diver0@example.com" }),
+      ).not.toBeChecked();
+    });
+
+    it("refuses to tick one past the cap", async () => {
+      render(<AdminInvitesPage />);
+      await screen.findByText("diver0@example.com");
+
+      await userEvent.click(
+        screen.getByRole("checkbox", {
+          name: "Select a batch of requests, or clear the selection",
+        }),
+      );
+      await userEvent.click(
+        screen.getByRole("checkbox", { name: "Select diver120@example.com" }),
+      );
+
+      expect(
+        screen.getByRole("checkbox", { name: "Select diver120@example.com" }),
+      ).not.toBeChecked();
+      expect(
+        screen.getByText(
+          "100 addresses selected - the most one batch can hold",
+        ),
+      ).toBeInTheDocument();
+    });
   });
 });
 

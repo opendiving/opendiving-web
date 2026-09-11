@@ -9,7 +9,7 @@ import { TableRowsSkeleton } from "@/components/ui/table-skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { PaginationFooter } from "@/components/ui/pagination-footer";
+import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
 import { ServiceStatusBadge } from "@/components/gear/service-status-badge";
 import {
   Table,
@@ -31,11 +31,14 @@ import {
 interface GearItemsCardProps {
   items: GearItem[];
   isLoading: boolean;
+  /** True while a further page is in flight, as opposed to the first. */
+  isLoadingMore: boolean;
+  /** True when the last attempt failed, stopping the load-on-scroll. */
+  hasFailed: boolean;
   totalCount: number;
-  currentPage: number;
   itemsPerPage: number;
   hasMore: boolean;
-  onPageChange: (page: number) => void;
+  onLoadMore: () => void;
   showArchived: boolean;
   onShowArchivedChange: (value: boolean) => void;
   onCreate: () => void;
@@ -58,11 +61,12 @@ interface GearItemsCardProps {
 export function GearItemsCard({
   items,
   isLoading,
+  isLoadingMore,
+  hasFailed,
   totalCount,
-  currentPage,
   itemsPerPage,
   hasMore,
-  onPageChange,
+  onLoadMore,
   showArchived,
   onShowArchivedChange,
   onCreate,
@@ -217,14 +221,15 @@ export function GearItemsCard({
           </Table>
         )}
 
-        <PaginationFooter
-          currentPage={currentPage}
-          itemsPerPage={itemsPerPage}
-          totalCount={totalCount}
+        <LoadMoreTrigger
           hasMore={hasMore}
-          isLoading={isLoading}
+          isLoading={isLoadingMore}
+          hasFailed={hasFailed}
+          loadedCount={items.length}
+          totalCount={totalCount}
+          itemsPerPage={itemsPerPage}
           itemLabel="gear items"
-          onPageChange={onPageChange}
+          onLoadMore={onLoadMore}
         />
       </CardContent>
     </Card>

@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback } from "react";
 import Link from "next/link";
 import { divesAPI, Dive } from "@/lib/api/dives";
+import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { DiveSitesLabel } from "@/components/dives/dive-sites-label";
 import {
   formatDiveDateTime,
@@ -17,12 +18,18 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ListRowsSkeleton } from "@/components/ui/skeleton";
+import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
 import { Plus, Clock, ArrowDownToLine } from "lucide-react";
 import { DiveIcon } from "@/components/logo";
 import { useUnits } from "@/hooks/useUnits";
 import { formatDepth } from "@/lib/units";
 
 const RECENT_DIVES_COUNT = 5;
+
+// The page size for the scoped lists on the detail pages. Ten, like the other
+// list pages, rather than the API's 100-row ceiling: the rows are links a reader
+// scans, and a first paint of ten arrives sooner than one of a hundred.
+const DIVES_PER_PAGE = 10;
 
 export interface RecentDivesCardProps {
   userId: string;
@@ -41,9 +48,14 @@ export interface RecentDivesCardProps {
   // Only show dives that recorded this species. When omitted, shows dives
   // regardless of what was spotted.
   speciesId?: string;
-  // Maximum number of dives to fetch/display. Defaults to 5 for the
-  // dashboard's "recent dives" use case.
-  limit?: number;
+  // Show every dive in scope, a page at a time as the reader scrolls, rather
+  // than the dashboard's fixed preview of the latest few.
+  //
+  // The detail pages used to ask for this with `limit={100}`, meaning "all of
+  // them" - and the API clamps `items_per_page` to 100, so a diver past that
+  // number was shown a list that looked complete and was not. There is no
+  // number to get wrong now.
+  complete?: boolean;
   title?: string;
   description?: string;
   // Href/label for the header's "view all" button. Pass `null` to hide it
@@ -67,7 +79,7 @@ export function RecentDivesCard({
   gearItemId,
   courseId,
   speciesId,
-  limit = RECENT_DIVES_COUNT,
+  complete = false,
   title = "Recent Dives",
   description = "Your latest underwater adventures",
   viewAllHref = "/dives",
@@ -77,36 +89,42 @@ export function RecentDivesCard({
   newDiveHref = "/dives/new",
   newDiveLabel = "Log Your First Dive",
 }: RecentDivesCardProps) {
-  const [recentDives, setRecentDives] = useState<Dive[]>([]);
   const units = useUnits();
-  const [isLoadingDives, setIsLoadingDives] = useState(true);
 
-  useEffect(() => {
-    const fetchRecentDives = async () => {
-      if (!userId) return;
+  const fetchDives = useCallback(
+    (page: number, perPage: number) =>
+      divesAPI.getDives(
+        userId,
+        page,
+        perPage,
+        tripId,
+        diveSiteId,
+        gearItemId,
+        courseId,
+        speciesId,
+      ),
+    [userId, tripId, diveSiteId, gearItemId, courseId, speciesId],
+  );
 
-      try {
-        setIsLoadingDives(true);
-        const response = await divesAPI.getDives(
-          userId,
-          1,
-          limit,
-          tripId,
-          diveSiteId,
-          gearItemId,
-          courseId,
-          speciesId,
-        );
-        setRecentDives(response.data);
-      } catch (error) {
-        console.error("Failed to fetch recent dives:", error);
-      } finally {
-        setIsLoadingDives(false);
-      }
-    };
-
-    fetchRecentDives();
-  }, [userId, tripId, diveSiteId, gearItemId, courseId, speciesId, limit]);
+  // The preview asks for its few rows once and stops; a complete list pages
+  // through in tens. `hasMore` is forced false for the preview so the trigger
+  // below renders nothing - the header's "View All Dives" button is where that
+  // card's "more" lives, and offering both would be two answers to one question.
+  const {
+    items: recentDives,
+    isLoading: isLoadingDives,
+    isLoadingMore,
+    totalCount,
+    itemsPerPage,
+    hasMore,
+    loadFailed,
+    loadMore,
+  } = useInfiniteResource<Dive>(fetchDives, {
+    keyOf: (dive) => dive.uuid,
+    enabled: !!userId,
+    itemsPerPage: complete ? DIVES_PER_PAGE : RECENT_DIVES_COUNT,
+    errorMessage: "Failed to load dives. Please try again.",
+  });
 
   return (
     <Card>
@@ -132,12 +150,11 @@ export function RecentDivesCard({
       </CardHeader>
       <CardContent>
         {isLoadingDives ? (
-          // Capped at `RECENT_DIVES_COUNT`, not just `limit`: on the dashboard
-          // the two are the same and the placeholder is exactly right, while
-          // a detail page scoping dives to one record passes a large limit
-          // for "all of them", where the real count isn't knowable up front and
-          // a few rows is a better guess than the whole cap.
-          <ListRowsSkeleton rows={Math.min(limit, RECENT_DIVES_COUNT)} />
+          // `RECENT_DIVES_COUNT` either way: on the dashboard it is exactly
+          // the preview's size, and on a detail page the real count isn't
+          // knowable up front, where a few rows is a better guess than a
+          // screen of them.
+          <ListRowsSkeleton rows={RECENT_DIVES_COUNT} />
         ) : recentDives.length === 0 ? (
           <div className="text-center py-12">
             <DiveIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -202,6 +219,17 @@ export function RecentDivesCard({
             ))}
           </div>
         )}
+
+        <LoadMoreTrigger
+          hasMore={complete && hasMore}
+          isLoading={isLoadingMore}
+          hasFailed={loadFailed}
+          loadedCount={recentDives.length}
+          totalCount={totalCount}
+          itemsPerPage={itemsPerPage}
+          itemLabel="dives"
+          onLoadMore={loadMore}
+        />
       </CardContent>
     </Card>
   );

@@ -6,7 +6,7 @@ import { IconTooltip } from "@/components/ui/tooltip";
 import { CountBadge } from "@/components/ui/count-badge";
 import { TableRowsSkeleton } from "@/components/ui/table-skeleton";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PaginationFooter } from "@/components/ui/pagination-footer";
+import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
 import {
   Table,
   TableBody,
@@ -22,11 +22,14 @@ import { formatWeight } from "@/lib/units";
 interface GearSetsCardProps {
   sets: GearSet[];
   isLoading: boolean;
+  /** True while a further page is in flight, as opposed to the first. */
+  isLoadingMore: boolean;
+  /** True when the last attempt failed, stopping the load-on-scroll. */
+  hasFailed: boolean;
   totalCount: number;
-  currentPage: number;
   itemsPerPage: number;
   hasMore: boolean;
-  onPageChange: (page: number) => void;
+  onLoadMore: () => void;
   onCreate: () => void;
   onEdit: (set: GearSet) => void;
   deletingId: string | null;
@@ -42,11 +45,12 @@ interface GearSetsCardProps {
 export function GearSetsCard({
   sets,
   isLoading,
+  isLoadingMore,
+  hasFailed,
   totalCount,
-  currentPage,
   itemsPerPage,
   hasMore,
-  onPageChange,
+  onLoadMore,
   onCreate,
   onEdit,
   deletingId,
@@ -144,14 +148,15 @@ export function GearSetsCard({
           </Table>
         )}
 
-        <PaginationFooter
-          currentPage={currentPage}
-          itemsPerPage={itemsPerPage}
-          totalCount={totalCount}
+        <LoadMoreTrigger
           hasMore={hasMore}
-          isLoading={isLoading}
+          isLoading={isLoadingMore}
+          hasFailed={hasFailed}
+          loadedCount={sets.length}
+          totalCount={totalCount}
+          itemsPerPage={itemsPerPage}
           itemLabel="gear sets"
-          onPageChange={onPageChange}
+          onLoadMore={onLoadMore}
         />
       </CardContent>
     </Card>

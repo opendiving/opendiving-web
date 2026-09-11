@@ -47,7 +47,7 @@ export function DiveNumberingStatus({
 
   useEffect(() => {
     // Deliberate fetch-on-mount pattern (the state update happens after the
-    // network await), suppressed the same way as in `usePaginatedResource` -
+    // network await), suppressed the same way as in `useInfiniteResource` -
     // see the note there on this rule's false positive.
     if (enabled) {
       // eslint-disable-next-line react-hooks/set-state-in-effect

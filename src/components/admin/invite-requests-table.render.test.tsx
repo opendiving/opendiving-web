@@ -48,7 +48,7 @@ describe("the invite requests table", () => {
     draw({ selected: ["first@example.com"] });
 
     const all = screen.getByRole("checkbox", {
-      name: "Select every request on this page",
+      name: "Select a batch of requests, or clear the selection",
     }) as HTMLInputElement;
     expect(all.indeterminate).toBe(true);
     expect(all.checked).toBe(false);
@@ -58,7 +58,7 @@ describe("the invite requests table", () => {
     draw({ selected: ["first@example.com", "second@example.com"] });
 
     const all = screen.getByRole("checkbox", {
-      name: "Select every request on this page",
+      name: "Select a batch of requests, or clear the selection",
     }) as HTMLInputElement;
     expect(all.checked).toBe(true);
     expect(all.indeterminate).toBe(false);

@@ -161,9 +161,9 @@ export default function CourseDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <RecentDivesCard
+            complete
             userId={user?.uuid ?? ""}
             courseId={course.uuid}
-            limit={100}
             title="Dives on this Course"
             description="All dives logged as part of this course"
             viewAllHref={null}

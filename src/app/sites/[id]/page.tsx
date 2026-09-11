@@ -136,9 +136,9 @@ export default function DiveSiteDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <RecentDivesCard
+            complete
             userId={user?.uuid ?? ""}
             diveSiteId={diveSite.uuid}
-            limit={100}
             title="Dives at this Site"
             description="All dives logged at this dive site"
             viewAllHref={null}

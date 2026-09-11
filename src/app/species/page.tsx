@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Fish, Search } from "lucide-react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
-import { usePaginatedResource } from "@/hooks/usePaginatedResource";
+import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { speciesAPI, SpeciesLifeListEntry } from "@/lib/api/species";
 import {
   speciesDisplayName,
@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { CountBadge } from "@/components/ui/count-badge";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PaginationFooter } from "@/components/ui/pagination-footer";
+import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
 import { PageSpinner } from "@/components/ui/page-spinner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SpeciesThumbnail } from "@/components/species/species-thumbnail";
@@ -135,17 +135,20 @@ export default function SpeciesPage() {
   );
 
   // Changing the search term changes this callback's identity, which is what
-  // sends `usePaginatedResource` back to page 1 for the new query - a page 3 of
-  // the unfiltered list is not a page of the filtered one.
+  // makes `useInfiniteResource` throw away every page it has loaded and read the
+  // new query from the first - rows of the unfiltered list are not rows of the
+  // filtered one, however many of them are already on screen.
   const {
     items: species,
     isLoading: isLoadingSpecies,
+    isLoadingMore,
     totalCount,
-    currentPage,
     itemsPerPage,
     hasMore,
-    fetchPage,
-  } = usePaginatedResource<SpeciesLifeListEntry>(fetchSpecies, {
+    loadFailed,
+    loadMore,
+  } = useInfiniteResource<SpeciesLifeListEntry>(fetchSpecies, {
+    keyOf: (entry) => entry.uuid,
     enabled: !!user,
     itemsPerPage: SPECIES_PER_PAGE,
     errorMessage: "Failed to load your species. Please try again.",
@@ -249,14 +252,15 @@ export default function SpeciesPage() {
             </div>
           )}
 
-          <PaginationFooter
-            currentPage={currentPage}
-            itemsPerPage={itemsPerPage}
-            totalCount={totalCount}
+          <LoadMoreTrigger
             hasMore={hasMore}
-            isLoading={isLoadingSpecies}
+            isLoading={isLoadingMore}
+            hasFailed={loadFailed}
+            loadedCount={species.length}
+            totalCount={totalCount}
+            itemsPerPage={itemsPerPage}
             itemLabel="species"
-            onPageChange={fetchPage}
+            onLoadMore={loadMore}
           />
         </CardContent>
       </Card>
