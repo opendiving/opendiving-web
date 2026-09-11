@@ -11,8 +11,14 @@ export function Footer() {
   return (
     <footer className="bg-muted text-foreground py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid md:grid-cols-4 gap-8">
-          <div>
+        {/* Three tiers, not two. Below `sm:` everything stacks; from `md:` up the brand
+            block is the first of four equal columns. Between the two - the tablet widths
+            this footer used to spend four stacked rows on - the three link columns share
+            a row and the brand block spans it: the links would fit four-up at 640px, but
+            the sentence under the wordmark drops to four lines in a quarter of that width.
+            `md:col-span-1` is the reset - without it the span carries on up. */}
+        <div className="grid sm:grid-cols-3 md:grid-cols-4 gap-8">
+          <div className="sm:col-span-3 md:col-span-1">
             <div className="flex items-center space-x-2 mb-4">
               <Logo className="h-6 w-6 text-coral" />
               <span className="text-lg font-semibold">OpenDiving</span>
