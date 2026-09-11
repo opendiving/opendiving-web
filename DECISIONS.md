@@ -16672,6 +16672,25 @@ enter the version block, and `inputs.latest` is empty on a push event. `edge` is
 self-hosters and nothing in this repository points at it; it exists so that one instance can follow
 `main`.
 
+**Adding the trigger changed what `ref:` had to be, and that is the part a reading would have
+missed.** The checkout step was `ref: ${{ inputs.ref || github.ref }}`, exact for as long as the
+only push trigger was a tag: `refs/tags/v0.4.0` resolves to one commit and keeps resolving to it. On
+a `main` push `github.ref` is a _branch_, and `actions/checkout` resolves a branch to its tip when
+the job runs rather than to the commit that triggered the run - while every SHA in the job is read
+back out of the working tree afterwards. A run triggered by one merge and started after the next had
+landed would therefore have built, tagged, labelled and deployed the later commit while reporting
+green against the earlier one, which would have got no `:sha-` image at all. `github.sha` is the
+triggering event's own commit and is what the fallback now names; `inputs.ref` still wins on a
+dispatch, where `github.sha` is only the tip of whatever branch the run was launched from. This is
+not a narrow race either: the `concurrency` group queues rather than cancels, so the window is a
+whole preceding build long.
+
+That same group drops work on purpose, which is worth knowing before it looks like a bug. It holds
+one running and one _pending_ run, and a third arrival cancels the pending one - so a burst of
+merges leaves the ones in the middle unbuilt, with a cancelled Publish Image check against them. For
+a channel whose only consumer wants the tip that is the right trade: the last merge of the burst is
+the one deployed, and every commit that is built still carries its own `:sha-` tag.
+
 **Publishing the image is not deploying it.** Render's image-backed services "do not automatically
 redeploy whenever a new image is associated with their assigned tag"
 ([deploying an image](https://render.com/docs/deploy-an-image)), so `:edge` moving is invisible to
