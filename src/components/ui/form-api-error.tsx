@@ -5,8 +5,14 @@ interface FormApiErrorProps {
   className?: string;
 }
 
-// The form-level "the API said no" line - the refusal that arrives after a submit,
-// as opposed to the per-field validation `FormMessage` carries.
+// The form-level refusal line - what came back after a submit, as opposed to the
+// per-field validation `FormMessage` carries.
+//
+// Usually "the API said no", which is where it started and what every call site
+// but one passes it. The dive form also hands it the browser's own reason for
+// cancelling a submit (`lib/form-validity.ts`), which belongs here for the same
+// reason: it arrives at the same moment, blocks the same action, and needs the
+// same live region to be heard.
 //
 // Rendered unconditionally and `sr-only` until there is something to say, which is
 // the whole point of the component existing: a live region that mounts *together
