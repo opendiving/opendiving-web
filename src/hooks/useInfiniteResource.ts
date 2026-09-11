@@ -204,9 +204,11 @@ export function useInfiniteResource<T>(
    *
    * An edit swaps the row in place, which costs no request and - the point -
    * leaves a diver who had scrolled several pages in exactly where they were. A
-   * create is not in the loaded window by definition, so it falls back to
-   * reading the list again from the first page, where a newest-first list puts
-   * it.
+   * create is not in the loaded window by definition, so there is nothing to
+   * swap and it falls back to reading the list again. Where the new row then
+   * lands is up to the ordering rather than to this: none of these lists is
+   * newest-first, so a site named late in the alphabet or a trip dated years ago
+   * is somewhere further down, and the reader scrolls to it like any other row.
    *
    * The cursor steps back a page for the same reason `removeItem` re-derives
    * it, and is re-derived rather than decremented for the same reason too.
