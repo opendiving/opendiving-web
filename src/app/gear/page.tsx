@@ -2,7 +2,8 @@
 
 import { useCallback, useState } from "react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
-import { usePaginatedResource } from "@/hooks/usePaginatedResource";
+import { useInfiniteResource } from "@/hooks/useInfiniteResource";
+import { useNearViewport } from "@/hooks/useNearViewport";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { gearAPI, gearItemLabel, GearItem, GearSet } from "@/lib/api/gear";
 import { getApiErrorMessage } from "@/lib/api/error";
@@ -50,36 +51,53 @@ export default function GearPage() {
   const {
     items: gearItems,
     isLoading: isLoadingItems,
+    isLoadingMore: isLoadingMoreItems,
     totalCount: itemsTotal,
-    currentPage: itemsPage,
     itemsPerPage: itemsPerPage,
     hasMore: itemsHaveMore,
-    fetchPage: fetchItemsPage,
-    refetch: refetchItems,
-  } = usePaginatedResource<GearItem>(fetchGearItems, {
+    loadMore: loadMoreItems,
+    reload: reloadItems,
+    removeItem: dropItem,
+  } = useInfiniteResource<GearItem>(fetchGearItems, {
+    keyOf: (item) => item.uuid,
     enabled: !!user,
     errorMessage: "Failed to load gear. Please try again.",
+  });
+
+  // The sets card sits below the gear list and reads as its continuation, so it
+  // waits until the diver is close to it before asking for anything. For most
+  // divers that is still on mount - ten gear items leaves the card on screen
+  // straight away - and for one with a few hundred it is what makes the two
+  // lists load in the order they are read, rather than the lower one fetching a
+  // page nobody has scrolled to yet.
+  const [setsCardRef, setsCardIsNear] = useNearViewport<HTMLDivElement>({
+    once: true,
   });
 
   const {
     items: gearSets,
     isLoading: isLoadingSets,
+    isLoadingMore: isLoadingMoreSets,
     totalCount: setsTotal,
-    currentPage: setsPage,
     itemsPerPage: setsPerPage,
     hasMore: setsHaveMore,
-    fetchPage: fetchSetsPage,
-    refetch: refetchSets,
-  } = usePaginatedResource<GearSet>(fetchGearSets, {
-    enabled: !!user,
+    loadMore: loadMoreSets,
+    reload: reloadSets,
+    removeItem: dropSet,
+  } = useInfiniteResource<GearSet>(fetchGearSets, {
+    keyOf: (set) => set.uuid,
+    enabled: !!user && setsCardIsNear,
     errorMessage: "Failed to load gear sets. Please try again.",
   });
 
-  // Deleting an item can change what a set contains, so both lists are refreshed.
+  // Deleting an item can change what a set contains, so both lists are read
+  // again. The sets list genuinely needs re-reading rather than a row dropped:
+  // the item that went was a member of an unknown number of sets, and each of
+  // those rows now names one fewer.
   const refetchAll = useCallback(() => {
-    refetchItems();
-    refetchSets();
-  }, [refetchItems, refetchSets]);
+    reloadItems();
+    reloadSets();
+  }, [reloadItems, reloadSets]);
 
   const {
     deletingId: deletingItemId,
@@ -93,7 +111,13 @@ export default function GearPage() {
       "Deleting removes this gear from your dives and gear sets. To keep it in your log and its service history, archive it instead. Either way, its service reminders stop.",
     successMessage: "Gear deleted successfully.",
     errorMessage: "Failed to delete gear. Please try again.",
-    onDeleted: refetchAll,
+    // Its own row goes locally, so the diver keeps their place in a long gear
+    // list - but the sets below are re-read, because the item that went was a
+    // member of an unknown number of them and each now names one fewer.
+    onDeleted: (id) => {
+      dropItem(id);
+      reloadSets();
+    },
   });
 
   const {
@@ -108,7 +132,9 @@ export default function GearPage() {
       "Are you sure you want to delete this gear set? The gear in it, and the dives it was used on, are not affected.",
     successMessage: "Gear set deleted successfully.",
     errorMessage: "Failed to delete gear set. Please try again.",
-    onDeleted: refetchSets,
+    // Only the set's own row changes, so it goes locally and the diver keeps
+    // their place - unlike deleting an *item*, which rewrites sets above.
+    onDeleted: dropSet,
   });
 
   const toggleArchived = async (item: GearItem) => {
@@ -181,11 +207,11 @@ export default function GearPage() {
       <GearItemsCard
         items={gearItems}
         isLoading={isLoadingItems}
+        isLoadingMore={isLoadingMoreItems}
         totalCount={itemsTotal}
-        currentPage={itemsPage}
         itemsPerPage={itemsPerPage}
         hasMore={itemsHaveMore}
-        onPageChange={fetchItemsPage}
+        onLoadMore={loadMoreItems}
         showArchived={showArchived}
         onShowArchivedChange={setShowArchived}
         onCreate={() => setEditingItem(undefined)}
@@ -196,19 +222,21 @@ export default function GearPage() {
         onDelete={requestDeleteItem}
       />
 
-      <GearSetsCard
-        sets={gearSets}
-        isLoading={isLoadingSets}
-        totalCount={setsTotal}
-        currentPage={setsPage}
-        itemsPerPage={setsPerPage}
-        hasMore={setsHaveMore}
-        onPageChange={fetchSetsPage}
-        onCreate={() => setEditingSet(undefined)}
-        onEdit={setEditingSet}
-        deletingId={deletingSetId}
-        onDelete={requestDeleteSet}
-      />
+      <div ref={setsCardRef}>
+        <GearSetsCard
+          sets={gearSets}
+          isLoading={isLoadingSets}
+          isLoadingMore={isLoadingMoreSets}
+          totalCount={setsTotal}
+          itemsPerPage={setsPerPage}
+          hasMore={setsHaveMore}
+          onLoadMore={loadMoreSets}
+          onCreate={() => setEditingSet(undefined)}
+          onEdit={setEditingSet}
+          deletingId={deletingSetId}
+          onDelete={requestDeleteSet}
+        />
+      </div>
 
       <GearItemDialog
         userId={user?.uuid ?? ""}
@@ -223,7 +251,7 @@ export default function GearPage() {
         open={editingSet !== null}
         onOpenChange={(open) => !open && setEditingSet(null)}
         gearSet={editingSet}
-        onSaved={refetchSets}
+        onSaved={reloadSets}
       />
 
       <ConfirmDialog

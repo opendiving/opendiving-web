@@ -111,9 +111,9 @@ export default function SpeciesDetailPage() {
               the same shape the trip, site, gear and course pages use, which is
               what a life-list row leads to instead of a filtered /dives. */}
           <RecentDivesCard
+            complete
             userId={user?.uuid ?? ""}
             speciesId={species.uuid}
-            limit={100}
             title={`Dives with ${displayName}`}
             description="Every dive you logged this species on"
             viewAllHref={null}

@@ -1,6 +1,10 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterEach, vi } from "vitest";
+import {
+  clearIntersectionObservers,
+  installIntersectionObserverStub,
+} from "./src/test/intersection";
 
 // Testing Library's own auto-cleanup only runs when it detects a global `afterEach`,
 // which it does under Vitest - but registering it explicitly means a component test
@@ -29,6 +33,14 @@ window.ResizeObserver = class {
   unobserve() {}
   disconnect() {}
 };
+
+// Same reason, one layer up: `LoadMoreTrigger` observes its button so a list
+// pulls its next page in as the diver scrolls, and `new IntersectionObserver`
+// throws outright in jsdom. The stub reports nothing until a test says the
+// reader has scrolled there - see `src/test/intersection.ts` for why that is the
+// honest default and how to ask for the other answer.
+installIntersectionObserverStub();
+afterEach(clearIntersectionObservers);
 
 // Radix's popper measures with these; jsdom reports zeroes and warns without them.
 Element.prototype.scrollIntoView = vi.fn();

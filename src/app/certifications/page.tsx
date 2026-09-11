@@ -3,7 +3,7 @@
 import { useCallback, useState } from "react";
 import { Edit, Images, Loader2, Plus, Trash2 } from "lucide-react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
-import { usePaginatedResource } from "@/hooks/usePaginatedResource";
+import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import {
   certificationsAPI,
@@ -38,7 +38,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { PaginationFooter } from "@/components/ui/pagination-footer";
+import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { PageSpinner } from "@/components/ui/page-spinner";
 import { CertificationDialog } from "@/components/certifications/certification-dialog";
@@ -70,13 +70,15 @@ export default function CertificationsPage() {
   const {
     items: certifications,
     isLoading,
+    isLoadingMore,
     totalCount,
-    currentPage,
     itemsPerPage,
     hasMore,
-    fetchPage,
-    refetch,
-  } = usePaginatedResource<Certification>(fetchCertifications, {
+    loadMore,
+    removeItem,
+    applySaved,
+  } = useInfiniteResource<Certification>(fetchCertifications, {
+    keyOf: (certification) => certification.uuid,
     enabled: !!user,
     errorMessage: "Failed to load certifications. Please try again.",
   });
@@ -90,8 +92,8 @@ export default function CertificationsPage() {
       managingFiles.uuid,
     );
     setManagingFiles(updated);
-    refetch();
-  }, [managingFiles, refetch]);
+    applySaved(updated);
+  }, [managingFiles, applySaved]);
 
   const {
     deletingId,
@@ -105,7 +107,10 @@ export default function CertificationsPage() {
       "Are you sure you want to delete this certification? The card images stored with it are permanently deleted too.",
     successMessage: "Certification deleted successfully.",
     errorMessage: "Failed to delete certification. Please try again.",
-    onDeleted: refetch,
+    // The row goes locally rather than by re-reading the pages around it: a
+    // diver who has scrolled several pages in should not have the list
+    // collapse back to the first one under them.
+    onDeleted: removeItem,
   });
 
   if (isAuthLoading || !isAuthenticated) {
@@ -271,14 +276,14 @@ export default function CertificationsPage() {
             </Table>
           )}
 
-          <PaginationFooter
-            currentPage={currentPage}
-            itemsPerPage={itemsPerPage}
-            totalCount={totalCount}
+          <LoadMoreTrigger
             hasMore={hasMore}
-            isLoading={isLoading}
+            isLoading={isLoadingMore}
+            loadedCount={certifications.length}
+            totalCount={totalCount}
+            itemsPerPage={itemsPerPage}
             itemLabel="certifications"
-            onPageChange={fetchPage}
+            onLoadMore={loadMore}
           />
         </CardContent>
       </Card>
@@ -290,7 +295,7 @@ export default function CertificationsPage() {
           onOpenChange={(open) => !open && setEditing(null)}
           certification={editing}
           onSaved={(saved) => {
-            refetch();
+            applySaved(saved);
             // A brand-new certification has no card images yet, and adding them is
             // the whole point - so go straight on to the upload step rather than
             // making the diver find the button.

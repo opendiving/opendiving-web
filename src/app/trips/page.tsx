@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
-import { usePaginatedResource } from "@/hooks/usePaginatedResource";
+import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { tripsAPI, Trip } from "@/lib/api/trips";
 import { formatTripDateRange } from "@/lib/date-time";
@@ -19,7 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { PaginationFooter } from "@/components/ui/pagination-footer";
+import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
 import { DeleteWithReassignDialog } from "@/components/dives/delete-with-reassign-dialog";
 import { TripDialog } from "@/components/trips/trip-dialog";
 import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
@@ -47,13 +47,15 @@ export default function TripsPage() {
   const {
     items: trips,
     isLoading: isLoadingTrips,
+    isLoadingMore,
     totalCount,
-    currentPage,
     itemsPerPage,
     hasMore,
-    fetchPage: fetchTripsPage,
-    refetch,
-  } = usePaginatedResource<Trip>(fetchTrips, {
+    loadMore,
+    removeItem,
+    applySaved,
+  } = useInfiniteResource<Trip>(fetchTrips, {
+    keyOf: (trip) => trip.uuid,
     enabled: !!user,
     errorMessage: "Failed to load trips. Please try again.",
   });
@@ -67,7 +69,10 @@ export default function TripsPage() {
   } = useDeleteResource(tripsAPI.deleteTrip, {
     successMessage: DELETED_MESSAGE,
     errorMessage: "Failed to delete trip. Please try again.",
-    onDeleted: refetch,
+    // The row goes locally rather than by re-reading the pages around it: a
+    // diver who has scrolled several pages in should not have the list
+    // collapse back to the first one under them.
+    onDeleted: removeItem,
   });
 
   if (isAuthLoading) {
@@ -192,14 +197,14 @@ export default function TripsPage() {
             </Table>
           )}
 
-          <PaginationFooter
-            currentPage={currentPage}
-            itemsPerPage={itemsPerPage}
-            totalCount={totalCount}
+          <LoadMoreTrigger
             hasMore={hasMore}
-            isLoading={isLoadingTrips}
+            isLoading={isLoadingMore}
+            loadedCount={trips.length}
+            totalCount={totalCount}
+            itemsPerPage={itemsPerPage}
             itemLabel="trips"
-            onPageChange={fetchTripsPage}
+            onLoadMore={loadMore}
           />
         </CardContent>
       </Card>
@@ -209,7 +214,7 @@ export default function TripsPage() {
         open={editingTrip !== null}
         onOpenChange={(open) => !open && setEditingTrip(null)}
         trip={editingTrip}
-        onSaved={refetch}
+        onSaved={applySaved}
       />
 
       <DeleteWithReassignDialog

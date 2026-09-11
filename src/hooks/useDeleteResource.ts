@@ -13,7 +13,10 @@ interface UseDeleteResourceOptions {
   // delete passes it to `confirmDelete` instead - see `successOverride`.
   successMessage: string;
   errorMessage: string;
-  onDeleted: () => void | Promise<void>;
+  // Handed the id that was deleted, so a list can drop that one row instead of
+  // re-reading the pages around it. Callers with nothing to do with it - the
+  // detail pages, which navigate away - simply take no argument.
+  onDeleted: (id: string) => void | Promise<void>;
 }
 
 /**
@@ -65,7 +68,7 @@ export function useDeleteResource(
         description: successOverride ?? successMessage,
       });
 
-      await onDeleted();
+      await onDeleted(id);
     } catch (error) {
       console.error(errorMessage, error);
       toast({

@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
-import { usePaginatedResource } from "@/hooks/usePaginatedResource";
+import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { PaginationFooter } from "@/components/ui/pagination-footer";
+import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
 import { DeleteWithReassignDialog } from "@/components/dives/delete-with-reassign-dialog";
 import { DiveSiteDialog } from "@/components/sites/dive-site-dialog";
 import { Plus, Eye, Edit, Trash2, Loader2 } from "lucide-react";
@@ -47,13 +47,15 @@ export default function SitesPage() {
   const {
     items: diveSites,
     isLoading: isLoadingDiveSites,
+    isLoadingMore,
     totalCount,
-    currentPage,
     itemsPerPage,
     hasMore,
-    fetchPage: fetchDiveSitesPage,
-    refetch,
-  } = usePaginatedResource<DiveSite>(fetchDiveSites, {
+    loadMore,
+    removeItem,
+    applySaved,
+  } = useInfiniteResource<DiveSite>(fetchDiveSites, {
+    keyOf: (site) => site.uuid,
     enabled: !!user,
     errorMessage: "Failed to load dive sites. Please try again.",
   });
@@ -67,7 +69,10 @@ export default function SitesPage() {
   } = useDeleteResource(diveSitesAPI.deleteDiveSite, {
     successMessage: DELETED_MESSAGE,
     errorMessage: "Failed to delete dive site. Please try again.",
-    onDeleted: refetch,
+    // The row goes locally rather than by re-reading the pages around it: a
+    // diver who has scrolled several pages in should not have the list
+    // collapse back to the first one under them.
+    onDeleted: removeItem,
   });
 
   if (isAuthLoading) {
@@ -183,14 +188,14 @@ export default function SitesPage() {
             </Table>
           )}
 
-          <PaginationFooter
-            currentPage={currentPage}
-            itemsPerPage={itemsPerPage}
-            totalCount={totalCount}
+          <LoadMoreTrigger
             hasMore={hasMore}
-            isLoading={isLoadingDiveSites}
+            isLoading={isLoadingMore}
+            loadedCount={diveSites.length}
+            totalCount={totalCount}
+            itemsPerPage={itemsPerPage}
             itemLabel="dive sites"
-            onPageChange={fetchDiveSitesPage}
+            onLoadMore={loadMore}
           />
         </CardContent>
       </Card>
@@ -200,7 +205,7 @@ export default function SitesPage() {
         open={editingSite !== null}
         onOpenChange={(open) => !open && setEditingSite(null)}
         diveSite={editingSite}
-        onSaved={refetch}
+        onSaved={applySaved}
       />
 
       <DeleteWithReassignDialog

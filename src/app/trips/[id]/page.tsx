@@ -155,9 +155,9 @@ export default function TripDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           <RecentDivesCard
+            complete
             userId={user?.uuid ?? ""}
             tripId={trip.uuid}
-            limit={100}
             title="Dives in this Trip"
             description="All dives logged as part of this trip"
             viewAllHref={null}

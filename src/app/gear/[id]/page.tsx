@@ -179,9 +179,9 @@ export default function GearItemDetailPage() {
           />
 
           <RecentDivesCard
+            complete
             userId={user?.uuid ?? ""}
             gearItemId={gearItem.uuid}
-            limit={100}
             title="Dives with this Gear"
             description="Every dive this item was used on"
             viewAllHref={null}

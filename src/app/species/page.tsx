@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Fish, Search } from "lucide-react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
-import { usePaginatedResource } from "@/hooks/usePaginatedResource";
+import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { speciesAPI, SpeciesLifeListEntry } from "@/lib/api/species";
 import {
   speciesDisplayName,
@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { CountBadge } from "@/components/ui/count-badge";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PaginationFooter } from "@/components/ui/pagination-footer";
+import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
 import { PageSpinner } from "@/components/ui/page-spinner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SpeciesThumbnail } from "@/components/species/species-thumbnail";
@@ -140,12 +140,13 @@ export default function SpeciesPage() {
   const {
     items: species,
     isLoading: isLoadingSpecies,
+    isLoadingMore,
     totalCount,
-    currentPage,
     itemsPerPage,
     hasMore,
-    fetchPage,
-  } = usePaginatedResource<SpeciesLifeListEntry>(fetchSpecies, {
+    loadMore,
+  } = useInfiniteResource<SpeciesLifeListEntry>(fetchSpecies, {
+    keyOf: (entry) => entry.uuid,
     enabled: !!user,
     itemsPerPage: SPECIES_PER_PAGE,
     errorMessage: "Failed to load your species. Please try again.",
@@ -249,14 +250,14 @@ export default function SpeciesPage() {
             </div>
           )}
 
-          <PaginationFooter
-            currentPage={currentPage}
-            itemsPerPage={itemsPerPage}
-            totalCount={totalCount}
+          <LoadMoreTrigger
             hasMore={hasMore}
-            isLoading={isLoadingSpecies}
+            isLoading={isLoadingMore}
+            loadedCount={species.length}
+            totalCount={totalCount}
+            itemsPerPage={itemsPerPage}
             itemLabel="species"
-            onPageChange={fetchPage}
+            onLoadMore={loadMore}
           />
         </CardContent>
       </Card>

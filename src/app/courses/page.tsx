@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
-import { usePaginatedResource } from "@/hooks/usePaginatedResource";
+import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { coursesAPI, Course } from "@/lib/api/courses";
 import { certificationAgencyLabel } from "@/lib/api/certifications";
@@ -23,7 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { PaginationFooter } from "@/components/ui/pagination-footer";
+import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { CourseDialog } from "@/components/courses/course-dialog";
 import { Plus, Eye, Edit, Trash2, Loader2, Search } from "lucide-react";
@@ -73,13 +73,15 @@ export default function CoursesPage() {
   const {
     items: courses,
     isLoading: isLoadingCourses,
+    isLoadingMore,
     totalCount,
-    currentPage,
     itemsPerPage,
     hasMore,
-    fetchPage: fetchCoursesPage,
-    refetch,
-  } = usePaginatedResource<Course>(fetchCourses, {
+    loadMore,
+    removeItem,
+    applySaved,
+  } = useInfiniteResource<Course>(fetchCourses, {
+    keyOf: (course) => course.uuid,
     enabled: !!user,
     errorMessage: "Failed to load courses. Please try again.",
   });
@@ -99,7 +101,10 @@ export default function CoursesPage() {
       "Are you sure you want to delete this course? The dives and certifications on it are kept, but they will no longer name it.",
     successMessage: "Course deleted successfully.",
     errorMessage: "Failed to delete course. Please try again.",
-    onDeleted: refetch,
+    // The row goes locally rather than by re-reading the pages around it: a
+    // diver who has scrolled several pages in should not have the list
+    // collapse back to the first one under them.
+    onDeleted: removeItem,
   });
 
   if (isAuthLoading) {
@@ -279,14 +284,14 @@ export default function CoursesPage() {
             </Table>
           )}
 
-          <PaginationFooter
-            currentPage={currentPage}
-            itemsPerPage={itemsPerPage}
-            totalCount={totalCount}
+          <LoadMoreTrigger
             hasMore={hasMore}
-            isLoading={isLoadingCourses}
+            isLoading={isLoadingMore}
+            loadedCount={courses.length}
+            totalCount={totalCount}
+            itemsPerPage={itemsPerPage}
             itemLabel="courses"
-            onPageChange={fetchCoursesPage}
+            onLoadMore={loadMore}
           />
         </CardContent>
       </Card>
@@ -296,7 +301,7 @@ export default function CoursesPage() {
         open={editingCourse !== null}
         onOpenChange={(open) => !open && setEditingCourse(null)}
         course={editingCourse}
-        onSaved={refetch}
+        onSaved={applySaved}
       />
 
       <ConfirmDialog

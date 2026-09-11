@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
+import { reveal } from "@/test/intersection";
 import userEvent from "@testing-library/user-event";
 import GearPage from "./page";
 import { gearAPI, type GearItem, type GearSet } from "@/lib/api/gear";
@@ -8,7 +9,7 @@ import { gearAPI, type GearItem, type GearSet } from "@/lib/api/gear";
 // load-bearing rather than tidiness: the real `AuthContext` holds it in state, so it
 // keeps one identity across renders, and this page's two fetch callbacks list `user`
 // in their dependencies. A mock handing back a fresh `user` per render gives
-// `usePaginatedResource` a new `fetchFn` every time, and its fetch-on-mount effect
+// `useInfiniteResource` a new `fetchFn` every time, and its fetch-on-mount effect
 // re-runs on every render the fetch itself causes. See "The new-dive render test was
 // in a loop with itself" in DECISIONS.md, and "reads the gear list once" below.
 //
@@ -204,6 +205,10 @@ describe("gear row actions name their row", () => {
     vi.mocked(gearAPI.getGearSets).mockResolvedValue(page([gearSet()]));
 
     render(<GearPage />);
+    // The sets card asks for nothing until the reader is near it - it sits below
+    // the gear list and reads as its continuation. Nothing here is on screen in
+    // jsdom, so the scroll has to be stated.
+    await act(async () => reveal());
     await screen.findByText("Warm water rig");
 
     expect(

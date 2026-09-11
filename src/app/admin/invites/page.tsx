@@ -2,14 +2,14 @@
 
 import { useCallback, useState } from "react";
 import { Mail, Trash2 } from "lucide-react";
-import { usePaginatedResource } from "@/hooks/usePaginatedResource";
+import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { adminAPI, type AdminInviteRequest } from "@/lib/api/admin";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { CountBadge } from "@/components/ui/count-badge";
-import { PaginationFooter } from "@/components/ui/pagination-footer";
+import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
 import { useToast } from "@/components/ui/use-toast";
 import { InviteRequestsTable } from "@/components/admin/invite-requests-table";
 import { summarizeInvitationOutcomes } from "@/components/admin/invitation-outcomes";
@@ -40,7 +40,7 @@ export default function AdminInvitesPage() {
   );
   const [isActing, setIsActing] = useState(false);
 
-  // No dependencies, so the fetch-on-mount effect in `usePaginatedResource` runs
+  // No dependencies, so the fetch-on-mount effect in `useInfiniteResource` runs
   // once: the admin layout above has already resolved the user, and this page
   // reads nothing off it. See "A shared mock response object hides a render
   // loop" in DECISIONS.md for what a per-render callback would cost here.
@@ -53,23 +53,18 @@ export default function AdminInvitesPage() {
   const {
     items: requests,
     isLoading,
+    isLoadingMore,
     totalCount,
-    currentPage,
     itemsPerPage,
     hasMore,
-    fetchPage,
-    refetch,
-  } = usePaginatedResource<AdminInviteRequest>(fetchRequests, {
+    loadMore,
+    reload,
+  } = useInfiniteResource<AdminInviteRequest>(fetchRequests, {
+    // No uuid on an invite request - the address is the identity, on this side
+    // and on the API's.
+    keyOf: (request) => request.email,
     errorMessage: "Failed to load the invite queue. Please try again.",
   });
-
-  const goToPage = (page: number) => {
-    // Cleared with the page, not kept across it: the buttons act on addresses,
-    // and a selection carried off screen would send invitations the operator
-    // can no longer see.
-    setSelected([]);
-    fetchPage(page);
-  };
 
   const toggle = (email: string, checked: boolean) =>
     setSelected((current) =>
@@ -103,7 +98,10 @@ export default function AdminInvitesPage() {
       }
       setSelected([]);
       setPendingAction(null);
-      await refetch();
+      // The whole queue again rather than a row at a time: a batch invites or
+      // removes an arbitrary set of rows, and the operator's selection has just
+      // been cleared anyway, so there is no scroll position worth preserving.
+      await reload();
     } catch (error) {
       // The selection survives, so the operator can retry the same batch
       // without ticking it all again.
@@ -189,14 +187,19 @@ export default function AdminInvitesPage() {
             onToggleAll={toggleAll}
           />
 
-          <PaginationFooter
-            currentPage={currentPage}
-            itemsPerPage={itemsPerPage}
-            totalCount={totalCount}
+          {/* No selection reset here, unlike the Previous/Next footer this
+              replaced: that cleared the ticks because a page turn carried the
+              selected addresses off screen, and sending invitations the operator
+              can no longer see is the thing it was guarding against. Loading
+              more only appends, so everything ticked stays visible. */}
+          <LoadMoreTrigger
             hasMore={hasMore}
-            isLoading={isLoading}
+            isLoading={isLoadingMore}
+            loadedCount={requests.length}
+            totalCount={totalCount}
+            itemsPerPage={itemsPerPage}
             itemLabel="requests"
-            onPageChange={goToPage}
+            onLoadMore={loadMore}
           />
         </CardContent>
       </Card>
