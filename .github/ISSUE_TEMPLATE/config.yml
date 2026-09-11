@@ -4,8 +4,8 @@ contact_links:
     url: https://github.com/opendiving/opendiving-web/security/advisories/new
     about: Report it privately. That opens an advisory only the maintainers can see; please do not open a public issue for something exploitable.
   - name: Question, idea, or show and tell
-    url: https://github.com/opendiving/opendiving-api/discussions
-    about: Discussions live in the opendiving-api repository and cover the whole project, this app included.
+    url: https://github.com/opendiving/opendiving/discussions
+    about: Discussions live in the opendiving/opendiving repository and cover the whole project, this app included.
   - name: This is really an API bug
     url: https://github.com/opendiving/opendiving-api/issues/new/choose
     about: Authentication, stored data, dive imports and the worker all live in opendiving-api. Not sure which side it is on? File it here and we will route it.
