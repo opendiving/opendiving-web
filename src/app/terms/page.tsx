@@ -1,5 +1,15 @@
 import Link from "next/link";
 import { Metadata } from "next";
+import { projectOperatesThisInstance } from "@/lib/api/config.server";
+import {
+  OperatorAnswer,
+  OperatorBlock,
+} from "@/components/legal/operator-block";
+import {
+  BUILD_IDENTITY_PATH,
+  PROJECT_OPERATOR,
+  PROJECT_SOURCE_URL,
+} from "@/lib/operator";
 
 export const metadata: Metadata = {
   title: "Terms of Service",
@@ -21,7 +31,19 @@ export const metadata: Metadata = {
 // anything — the headings separate the roles, which is the only separation the
 // liability shield needs, and it holds whether one party or two are standing in
 // them. See "The terms page has two speakers" in DECISIONS.md.
-export default function TermsPage() {
+//
+// Belt and braces, for the reason `privacy/page.tsx` gives at the same export: nothing
+// here is prerendered today, and a prerender would bake a failed read of the API into
+// the published image.
+export const dynamic = "force-dynamic";
+
+export default async function TermsPage() {
+  // The one thing on this page that depends on the instance, and it adds a block
+  // rather than rewording a section: nothing short of the API answering `true` earns
+  // it, so a self-hosted copy - including one whose API is briefly down - renders these
+  // Terms exactly as they have always read.
+  const projectOperated = await projectOperatesThisInstance();
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div className="bg-card rounded-lg shadow-sm p-8">
@@ -29,8 +51,93 @@ export default function TermsPage() {
           <h1 className="text-3xl font-bold text-foreground mb-2">
             Terms of Service
           </h1>
-          <p className="text-muted-foreground">Last updated: August 2026</p>
+          <p className="text-muted-foreground">Last updated: September 2026</p>
         </div>
+
+        {projectOperated && (
+          <OperatorBlock
+            intro={
+              <>
+                The sections below leave several things to the operator of the
+                copy you are reading, because the software cannot decide them.
+                On this copy the operator has, and these are the answers. Each
+                names the section it belongs to; nothing here narrows what those
+                sections say.
+              </>
+            }
+          >
+            <OperatorAnswer question="The governing law — §12">
+              {PROJECT_OPERATOR.jurisdiction}. That is where the operator named
+              above primarily operates the Service, which is what §12 points at.
+            </OperatorAnswer>
+            <OperatorAnswer question="What this copy costs, and who may register — §2, §3">
+              Nothing, and only people who have been invited. This copy is in a
+              closed beta: it is free of charge, there is no paid tier, and
+              registration needs an invitation, which is the state §3&rsquo;s
+              second paragraph describes.
+            </OperatorAnswer>
+            <OperatorAnswer question="What is promised about availability — §8">
+              Nothing, and §8 stands exactly as written. This is a beta: the
+              operator may change it, take it down for maintenance, or stop
+              running it, and no uptime is promised.
+            </OperatorAnswer>
+            <OperatorAnswer question="What happens to your data if the beta ends — §8, §11">
+              You are told before anything is deleted. The operator will email
+              the address on each account, and the export in Settings &mdash;
+              the one §6 says needs nobody&rsquo;s permission &mdash; keeps
+              working for at least 30 days from that message. Accounts and
+              everything in them are deleted once that window closes, the same
+              way §11 and the Privacy Policy&rsquo;s §7 describe a deletion you
+              ask for yourself.
+            </OperatorAnswer>
+            <OperatorAnswer question="The source of what is running here — §7, AGPLv3 section 13">
+              §7 says that offer is the operator&rsquo;s to make. Here it is.
+              The complete source of the version running on this copy is
+              available on request from{" "}
+              <a
+                href={`mailto:${PROJECT_OPERATOR.contactEmail}`}
+                className="underline hover:text-muted-foreground"
+              >
+                {PROJECT_OPERATOR.contactEmail}
+              </a>
+              , and, once the project&rsquo;s repositories are published, at{" "}
+              <a
+                href={PROJECT_SOURCE_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="underline hover:text-muted-foreground"
+              >
+                github.com/opendiving
+              </a>
+              . The request is the route that does not depend on that, which is
+              why it is written first. Which build is running is not a guess:{" "}
+              <code className="rounded bg-muted px-1 py-0.5 font-mono text-sm">
+                {BUILD_IDENTITY_PATH}
+              </code>{" "}
+              reports a{" "}
+              <code className="rounded bg-muted px-1 py-0.5 font-mono text-sm">
+                commit
+              </code>{" "}
+              beside its{" "}
+              <code className="rounded bg-muted px-1 py-0.5 font-mono text-sm">
+                version
+              </code>
+              , and the commit is what identifies the source, because images are
+              published on every change to the project&rsquo;s main branch as
+              well as on a release and so share one version between them. A{" "}
+              <code className="rounded bg-muted px-1 py-0.5 font-mono text-sm">
+                commit
+              </code>{" "}
+              reading{" "}
+              <code className="rounded bg-muted px-1 py-0.5 font-mono text-sm">
+                unknown
+              </code>{" "}
+              means a build that did not come from the project&rsquo;s own
+              publishing, and then the request above is the way to get the
+              source.
+            </OperatorAnswer>
+          </OperatorBlock>
+        )}
 
         <div className="prose max-w-none">
           <section className="mb-8">
@@ -326,6 +433,14 @@ export default function TermsPage() {
               including where the project runs this copy, and so owes it as
               operator. The project publishes its own source publicly, and that
               is not necessarily what is running here.
+              {projectOperated && (
+                <>
+                  {" "}
+                  On this copy the offer is made, under{" "}
+                  <em>Who runs this copy</em> at the top of this page, along
+                  with what identifies the build running here.
+                </>
+              )}
             </p>
             <p className="text-foreground mb-4">
               The licence text ships with the software and is the authority on
@@ -362,6 +477,14 @@ export default function TermsPage() {
               This copy of OpenDiving is provided as-is by its operator, who is
               responsible for its operation and for the data it holds. The
               operator may replace this paragraph with its own terms.
+              {projectOperated && (
+                <>
+                  {" "}
+                  This copy&rsquo;s operator has not replaced it, and has said
+                  under <em>Who runs this copy</em> what it promises about
+                  availability and what happens to your data if this beta ends.
+                </>
+              )}
             </p>
           </section>
 
@@ -450,6 +573,14 @@ export default function TermsPage() {
               the laws of the jurisdiction where the operator of this copy
               primarily operates the Service, without regard to conflict of law
               provisions.
+              {projectOperated && (
+                <>
+                  {" "}
+                  On this copy that is {PROJECT_OPERATOR.jurisdiction}, named
+                  with the operator under <em>Who runs this copy</em> at the top
+                  of this page.
+                </>
+              )}
             </p>
           </section>
 
@@ -481,13 +612,21 @@ export default function TermsPage() {
               the repository.
             </p>
             <p className="text-foreground mb-4">
-              There is deliberately no project address printed here. A question
-              about your own account belongs to whoever runs this copy, and the
-              contact page above is how to reach them &mdash; on a copy the
-              project runs itself, that page reaches the project in the role
-              that can act. Sent to the author instead, such a question reaches
-              people who cannot. How quickly the operator of this copy answers,
-              and whether they do, is theirs to say rather than this
+              There is deliberately no project address printed here.{" "}
+              {projectOperated && (
+                <>
+                  None, that is, for the project as the software&rsquo;s author:
+                  the address under <em>Who runs this copy</em> belongs to this
+                  copy&rsquo;s operator, which is the role that can act on what
+                  follows.{" "}
+                </>
+              )}
+              A question about your own account belongs to whoever runs this
+              copy, and the contact page above is how to reach them &mdash; on a
+              copy the project runs itself, that page reaches the project in the
+              role that can act. Sent to the author instead, such a question
+              reaches people who cannot. How quickly the operator of this copy
+              answers, and whether they do, is theirs to say rather than this
               page&rsquo;s.
             </p>
           </section>
@@ -496,8 +635,8 @@ export default function TermsPage() {
         <div className="mt-8 pt-8 border-t border-border">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted-foreground">
-              These Terms are effective as of August 2026 and apply to this copy
-              of OpenDiving.
+              These Terms are effective as of September 2026 and apply to this
+              copy of OpenDiving.
             </p>
             <Link
               href="/"

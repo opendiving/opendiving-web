@@ -16749,3 +16749,95 @@ a clean skip rather than a red check. The scan's issue body had to learn the dif
 to `main`, so an OS-package finding clears itself and an npm one needs only the bump merged. Before
 the first release there is no `v` tag to name at all, and the remedy text would otherwise have read
 `ref` = `v`.
+
+## The legal pages name the operator where the project runs the copy, and only there
+
+"The author and the operator are two roles, and one party may hold both" above conditioned every
+absolute on `/privacy` and `/terms` so that a copy the OpenDiving project runs itself would not be
+described by a page claiming the project runs nothing. That made the pages _correct_ on such a copy
+and left them _incomplete_ on it: almost every question a reader has about a deployment - where the
+data sits, whether the disks are encrypted, who has administrative access, what backups exist, which
+jurisdiction governs, where the AGPLv3 section 13 source can be had - is answered with "whoever runs
+this copy", because the software genuinely cannot know. On a copy the project runs, it can.
+
+**The mechanism is a block, not a rewrite.** Both pages grow one unnumbered `<section>` -
+`components/legal/operator-block.tsx` - above section 1, carrying the operator's identity and one
+answer per question, each labelled with the sections that ask it. Nothing else on either page
+changes except short pointers from the sections that would otherwise dangle. Three reasons for that
+shape rather than conditionally rewording the thirty-odd sentences that defer to an operator:
+
+- **The numbering is load-bearing.** "The numbering in §4 is load-bearing, and §4.8 has changed
+  hands" records what it costs to move a number; the privacy page cites its own sections from its
+  own prose and the terms page cites them too. A block outside the numbering points _into_ it and
+  moves nothing.
+- **One source for each fact.** A conditional clause inside §4.3 and another inside §8 is the same
+  fact written twice, which is the shape every stale-prose section in this file is about.
+- **The self-hosted rendering stays byte-identical**, which is the invariant that matters most here:
+  a self-hoster's privacy policy must not gain a sentence about Render, or a person's name, or an
+  address. Nothing in the block can leak into it, because the block is either rendered whole or not
+  rendered at all.
+
+**The switch is `project_operated` from `GET /config` and nothing else.** "The request form speaks
+in two voices, and only `GET /config` can pick the second" made that field the single channel by
+which any copy in this app may know who runs the instance, and said in as many words that a second
+way of knowing is a second place for a self-hoster's page to start speaking for the project. These
+are Server Components, so they cannot use the client hook: `lib/api/config.server.ts` asks the API
+container directly at `API_INTERNAL_URL`, the same address `lib/api-proxy.ts` resolves for the
+browser's own calls. Every outcome other than the API answering `true` - `false`, an API too old to
+carry the field, a timeout, a refused connection, a body that is not JSON - is `false`, with no
+error path out of the function at all. That is what keeps a self-hosted copy whose API is down
+rendering its legal pages unchanged rather than failing them, and it is the same asymmetry the
+landing hero runs on: the wrong answer in this direction costs a project-run instance a paragraph,
+and in the other direction it names a stranger as a self-hoster's data controller.
+
+**Both pages set `dynamic = "force-dynamic"`.** Redundant today, because the root layout reads
+`headers()` for the CSP nonce and nothing in this app is prerendered. It is stated anyway because of
+what a prerender would do to _this_ read: the published image is built in CI with no API to ask, so
+the failed answer would be baked in for the life of the image, and the page would be permanently
+wrong in the direction nobody would notice.
+
+**The identity is three constants and deliberately has no postal address.** `lib/operator.ts` holds
+the operator's name, an email address and the jurisdiction, as code rather than as settable
+variables - the four arguments in "The request form speaks in two voices" apply unchanged, and
+nobody but the project would ever set them. The missing postal address is the operator's own
+decision, taken knowing that it leaves a German Impressum incomplete; it is not an oversight and not
+a placeholder waiting to be filled.
+
+**What the block reports rather than promises.** The encryption-at-rest answer is the providers'
+statements, cited as theirs: Render's documentation says its Postgres databases are encrypted at
+rest with AES-256, covering primaries, replicas and all backups
+(<https://render.com/docs/postgresql-creating-connecting>, fetched 2026-09-12), and Cloudflare's
+says every object in R2, metadata included, is encrypted at rest with AES-256
+(<https://developers.cloudflare.com/r2/reference/data-security/>, fetched 2026-09-12). Both were
+read with `curl` as well as through a summarising fetch, because a summariser has fabricated a claim
+about one of these vendors' docs before. Retention figures come from the same places - request logs
+7 days, database point-in-time recovery 3 days - and the arithmetic the block shows is what makes
+§7's "within 30 days" true on this deployment: a 14-day grace period plus a 3-day recovery window
+is 17.
+
+**Two answers the block carries that no grep for `operator` would have found.** Neither sentence
+contains the word, which is the lesson "The author and the operator are two roles" already recorded
+about sweeping these pages:
+
+- The privacy page's §1, §11 and §12 invite a reader to check every claim against public source.
+  That invitation is not open while the project's repositories are private, so the block answers it
+  with the route that works either way - the standing source offer on the Terms page.
+- The terms page's §13 says "There is deliberately no project address printed here", which stops
+  being true the moment the block prints one. The block's own paragraph scopes it: what is still not
+  printed is an address for the project as the software's _author_, and the one on the page belongs
+  to this copy's operator, in the role that can act. The privacy page's equivalent sentence was
+  already role-scoped and needed nothing.
+
+**The "unchanged" half is tested as absences, not as a snapshot.** The natural guard is a DOM
+snapshot of the self-hosted rendering, and it was rejected: these pages render to tens of kilobytes
+of HTML, every copy edit would churn the snapshot, and a diff nobody reads is a guard nobody keeps.
+`app/privacy/page.test.tsx` and `app/terms/page.test.tsx` instead assert that the rendering carries
+none of the strings only the block can produce - the providers, the basemap and geocoder the pages
+otherwise leave unnamed, and the operator's own three facts - so a leak fails with the name of the
+string that leaked. The presence half is asserted question by question, because an answer silently
+dropped is the failure that would otherwise reach a reader.
+
+**Both pages are `async` now**, which is what makes `render(<PrivacyPage />)` render a promise and
+find an empty page. Their tests call `render(await PrivacyPage())`. The terms page had no test at
+all before this; a page with one rendering is a page review reads, and the second rendering is the
+one review cannot see.
