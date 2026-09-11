@@ -40,6 +40,24 @@ export function serviceKindLabel(
   return SERVICE_KIND_LABELS[kind as ServiceKind] ?? kind;
 }
 
+/**
+ * The kind, plus the free-text label when there is one. This is the pair the API itself
+ * keys a schedule by - a logged service with no schedule attached is matched to "the one
+ * schedule matching (item, kind, label)" - and it is what every service list leads with
+ * on screen, so it is what a diver would use to say which row they mean.
+ *
+ * Shared rather than repeated: it names the icon-only row controls on both the gear
+ * detail card and the dashboard's service-due card, and two copies of the phrasing is
+ * how the same button ends up announced two different ways.
+ */
+export function serviceKindAndLabel(entry: {
+  kind: string;
+  label?: string | null;
+}): string {
+  const kind = serviceKindLabel(entry.kind) ?? entry.kind;
+  return entry.label ? `${kind} (${entry.label})` : kind;
+}
+
 // The compact shape embedded in a `GearItem`, so the gear list can badge "service due"
 // without a request per row.
 //

@@ -15,6 +15,7 @@ import type { GearItem } from "@/lib/api/gear";
 import {
   fetchAllServiceRecords,
   gearServiceAPI,
+  serviceKindAndLabel,
   serviceKindLabel,
   type GearServiceRecord,
   type GearServiceSchedule,
@@ -42,20 +43,11 @@ interface GearServiceCardProps {
   onChanged: () => void;
 }
 
-// The kind, plus the free-text label when there is one. This is the pair the API itself
-// keys a schedule by - a logged service with no schedule attached is matched to "the one
-// schedule matching (item, kind, label)" - and it is what both lists lead with on screen,
-// so it is what a diver would use to say which row they mean.
-function kindAndLabel(entry: { kind: string; label?: string | null }): string {
-  const kind = serviceKindLabel(entry.kind) ?? entry.kind;
-  return entry.label ? `${kind} (${entry.label})` : kind;
-}
-
 // A history entry repeats its kind every time the work is redone, so the date is the half
 // that separates one from the next - "the visual inspection in March". It is also what
 // keeps a record's controls apart from the schedule's, both lists sitting on one card.
 function recordName(record: GearServiceRecord): string {
-  return `${kindAndLabel(record)} on ${formatDateOnly(record.serviced_on)}`;
+  return `${serviceKindAndLabel(record)} on ${formatDateOnly(record.serviced_on)}`;
 }
 
 // Service schedules and history for one gear item. Sits above the dive list on the gear
@@ -253,7 +245,7 @@ export function GearServiceCard({
 
                       <div className="flex gap-1">
                         <IconTooltip
-                          label={`Log service for ${kindAndLabel(schedule)}`}
+                          label={`Log service for ${serviceKindAndLabel(schedule)}`}
                         >
                           <Button
                             variant="ghost"
@@ -266,7 +258,7 @@ export function GearServiceCard({
                         <IconTooltip
                           label={`${
                             schedule.is_active ? "Pause" : "Resume"
-                          } ${kindAndLabel(schedule)} schedule`}
+                          } ${serviceKindAndLabel(schedule)} schedule`}
                         >
                           <Button
                             variant="ghost"
@@ -282,7 +274,7 @@ export function GearServiceCard({
                           </Button>
                         </IconTooltip>
                         <IconTooltip
-                          label={`Edit ${kindAndLabel(schedule)} schedule`}
+                          label={`Edit ${serviceKindAndLabel(schedule)} schedule`}
                         >
                           <Button
                             variant="ghost"
@@ -293,7 +285,7 @@ export function GearServiceCard({
                           </Button>
                         </IconTooltip>
                         <IconTooltip
-                          label={`Delete ${kindAndLabel(schedule)} schedule`}
+                          label={`Delete ${serviceKindAndLabel(schedule)} schedule`}
                         >
                           <Button
                             variant="ghost"
@@ -411,7 +403,7 @@ export function GearServiceCard({
       />
 
       <GearServiceRecordDialog
-        gearItem={gearItem}
+        gearItemUuid={gearItem.uuid}
         open={loggingFor !== null}
         onOpenChange={(open) => !open && setLoggingFor(null)}
         schedule={loggingFor}
@@ -419,7 +411,7 @@ export function GearServiceCard({
       />
 
       <GearServiceRecordDialog
-        gearItem={gearItem}
+        gearItemUuid={gearItem.uuid}
         open={editingRecord !== null}
         onOpenChange={(open) => !open && setEditingRecord(null)}
         record={editingRecord}
