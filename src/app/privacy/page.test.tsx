@@ -624,6 +624,28 @@ describe("the operator block", () => {
     expect(block).toHaveTextContent(/Sixteen/);
   });
 
+  // Four sections invite the reader to check this page against public source, and that
+  // invitation is not open while the repositories are private. §5 is the one that reads as
+  // a bullet rather than as a section-length invitation, which is how it was missed when
+  // this answer was first written as "§1, §11, §12" - so it is named here by its own words.
+  it("covers every section that sends the reader to public source, §5 included", async () => {
+    await renderPage({ google: false, projectOperated: true });
+
+    const block = screen
+      .getByRole("heading", { name: /Who runs this copy/ })
+      .closest("section")!;
+
+    expect(block).toHaveTextContent(/§1, §5, §11, §12/);
+    expect(block).toHaveTextContent(
+      /the source is public, so these claims can be checked/,
+    );
+    // `toHaveTextContent` reads rendered text, so the entity is already a curly
+    // apostrophe by the time it is matched - hence the character rather than `&rsquo;`.
+    expect(block).toHaveTextContent(
+      /open the moment the project’s repositories are published/,
+    );
+  });
+
   // The sections whose own prose would otherwise dangle. Each gets one pointer, and the
   // pointer is what makes the block findable from the paragraph that needs it.
   it.each([

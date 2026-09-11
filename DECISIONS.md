@@ -16932,9 +16932,16 @@ from its clock.
 contains the word, which is the lesson "The author and the operator are two roles" already recorded
 about sweeping these pages:
 
-- The privacy page's §1, §11 and §12 invite a reader to check every claim against public source.
-  That invitation is not open while the project's repositories are private, so the block answers it
-  with the route that works either way - the standing source offer on the Terms page.
+- The privacy page's §1, §5, §11 and §12 invite a reader to check every claim against public source,
+  and the terms page's §7 states the publication as a present fact ("The project publishes its own
+  source publicly"). Neither is open while the project's repositories are private, so the block
+  answers the privacy four with the route that works either way - the standing source offer on the
+  Terms page - and §7's own project-operated clause says the public repositories it speaks of are
+  still to come. Enumerating these by eye is what got them wrong the first time: the set was written
+  as §1, §11 and §12, and review found §5's _Open to review_ bullet and §7's sentence making the
+  same claim in different words.
+  `git grep -i "source is public\|publishes its own source\|read the code"` across both pages is the
+  derivation, not a reading of the section list.
 - The terms page's §13 says "There is deliberately no project address printed here", which stops
   being true the moment the block prints one. The block's own paragraph scopes it: what is still not
   printed is an address for the project as the software's _author_, and the one on the page belongs

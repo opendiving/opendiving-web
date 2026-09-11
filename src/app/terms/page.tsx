@@ -438,7 +438,9 @@ export default async function TermsPage() {
                   {" "}
                   On this copy the offer is made, under{" "}
                   <em>Who runs this copy</em> at the top of this page, along
-                  with what identifies the build running here.
+                  with what identifies the build running here. The public
+                  repositories this section speaks of are still to come, which
+                  is why that offer leads with the request rather than the link.
                 </>
               )}
             </p>

@@ -136,11 +136,13 @@ export default async function PrivacyPage() {
               recovery window above is the longest a copy of it can survive in a
               backup after that. Seventeen days at the outside.
             </OperatorAnswer>
-            <OperatorAnswer question="How to check any of this against the source — §1, §11, §12">
-              Those three sections invite you to read the code rather than trust
-              this page, and that invitation is open the moment the
-              project&rsquo;s repositories are published. Before then the route
-              that works is the operator&rsquo;s: the{" "}
+            <OperatorAnswer question="How to check any of this against the source — §1, §5, §11, §12">
+              Those four sections invite you to read the code rather than trust
+              this page &mdash; §5 puts it as{" "}
+              <em>the source is public, so these claims can be checked</em>{" "}
+              &mdash; and that invitation is open the moment the project&rsquo;s
+              repositories are published. Before then the route that works is
+              the operator&rsquo;s: the{" "}
               <Link
                 href="/terms"
                 className="underline hover:text-muted-foreground"
