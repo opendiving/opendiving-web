@@ -335,3 +335,112 @@ describe("a dive whose fields the diver keeps hidden", () => {
     expect(vi.mocked(divesAPI.updateDive).mock.calls[0][1].weight).toBe(8);
   });
 });
+
+// The bug this file's `storedDive` could never have caught: every fixture in the
+// suite carried a depth a diver would type. An imported one does not.
+//
+// `2.70000029` is a float32 artefact the UDDF reader really produces and the API
+// really stores - `avg_depth` is a `Float` column with no rounding anywhere on the
+// way in, deliberately, because the reading belongs to the diver's computer rather
+// than to us. Against `step="0.01"` that is a `stepMismatch`, and the browser
+// cancels the submit before `handleSubmit` runs: no request, no message, no field
+// marked invalid. The fix is that no `Float`-backed box declares a step at all.
+describe("a dive whose depth carries more precision than a step would allow", () => {
+  const IMPORTED_AVG_DEPTH = 2.70000029;
+
+  it("saves an imported average depth untouched", async () => {
+    vi.mocked(divesAPI.getDive).mockResolvedValue(
+      storedDive({ max_depth: 31.10000038, avg_depth: IMPORTED_AVG_DEPTH }),
+    );
+
+    render(<EditDivePage />);
+
+    const box = await screen.findByRole("spinbutton", {
+      name: /^average depth/i,
+    });
+    // Shown at its own precision, which is the pass-through metric entry has
+    // always been - the step was the only thing standing between that and a save.
+    expect(box).toHaveValue(IMPORTED_AVG_DEPTH);
+    expect((box as HTMLInputElement).validity.stepMismatch).toBe(false);
+
+    await saveChanges();
+
+    await waitFor(() => expect(divesAPI.updateDive).toHaveBeenCalled());
+    expect(vi.mocked(divesAPI.updateDive).mock.calls[0][1].avg_depth).toBe(
+      IMPORTED_AVG_DEPTH,
+    );
+  });
+
+  it("saves a weight that is not a whole half-kilo", async () => {
+    // What a diver who enters in pounds already stores: 13 lb commits 5.9 kg, and
+    // `step="0.5"` refused it the moment they switched the toggle back to metric.
+    vi.mocked(divesAPI.getDive).mockResolvedValue(storedDive({ weight: 5.9 }));
+
+    render(<EditDivePage />);
+
+    await waitFor(() =>
+      expect(screen.getByRole("spinbutton", { name: /^weight/i })).toHaveValue(
+        5.9,
+      ),
+    );
+
+    await saveChanges();
+
+    await waitFor(() => expect(divesAPI.updateDive).toHaveBeenCalled());
+    expect(vi.mocked(divesAPI.updateDive).mock.calls[0][1].weight).toBe(5.9);
+  });
+});
+
+// The worse half of the same bug, and the half that outlives any one `step`: a form
+// the browser refuses to submit has to say so. `bottom_temperature` is what proves
+// it, because it is the one box whose native bounds the Zod schema does not mirror -
+// so nothing else on the page would have drawn a message either.
+describe("a submit the browser refuses", () => {
+  // `FormApiError` is a live region that is always mounted and `sr-only` until it
+  // has something to say, so what is asserted is the text arriving in it.
+  const saveIsBlocked = () => screen.findByText(/would not submit this form/i);
+
+  it("says which field it refused, instead of doing nothing", async () => {
+    // A Fahrenheit reading that landed in a Celsius column - the shape a bad
+    // conversion leaves behind, and 78.8 is over the box's own 50 °C ceiling.
+    vi.mocked(divesAPI.getDive).mockResolvedValue(
+      storedDive({ bottom_temperature: 78.8 }),
+    );
+
+    render(<EditDivePage />);
+    await waitFor(() =>
+      expect(
+        screen.getByRole("spinbutton", { name: /^bottom temperature/i }),
+      ).toHaveValue(78.8),
+    );
+
+    await saveChanges();
+
+    const alert = await saveIsBlocked();
+    expect(alert).toHaveTextContent(/bottom temperature/i);
+    expect(divesAPI.updateDive).not.toHaveBeenCalled();
+  });
+
+  it("clears the message once the value is one the browser accepts", async () => {
+    vi.mocked(divesAPI.getDive).mockResolvedValue(
+      storedDive({ bottom_temperature: 78.8 }),
+    );
+
+    render(<EditDivePage />);
+    const box = await screen.findByRole("spinbutton", {
+      name: /^bottom temperature/i,
+    });
+
+    await saveChanges();
+    await saveIsBlocked();
+
+    await userEvent.clear(box);
+    await userEvent.type(box, "26.5");
+    await saveChanges();
+
+    await waitFor(() => expect(divesAPI.updateDive).toHaveBeenCalled());
+    expect(
+      screen.queryByText(/would not submit this form/i),
+    ).not.toBeInTheDocument();
+  });
+});

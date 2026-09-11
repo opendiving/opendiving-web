@@ -364,7 +364,6 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                       <UnitNumberInput
                         dimension="depth"
                         units={entryUnits("depth")}
-                        step="0.01"
                         min={0}
                         placeholderValue={30.52}
                         className="pl-9"
@@ -398,7 +397,6 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                       <UnitNumberInput
                         dimension="depth"
                         units={entryUnits("depth")}
-                        step="0.01"
                         min={0}
                         placeholderValue={18.24}
                         className="pl-9"
@@ -446,7 +444,6 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                       <UnitNumberInput
                         dimension="temperature"
                         units={entryUnits("temperature")}
-                        step="0.01"
                         min={-50}
                         max={50}
                         placeholderValue={22.5}
@@ -489,7 +486,6 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                       <UnitNumberInput
                         dimension="visibility"
                         units={entryUnits("visibility")}
-                        step="1"
                         min={0}
                         placeholderValue={15}
                         className="pl-9"
@@ -578,7 +574,6 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                       <UnitNumberInput
                         dimension="altitude"
                         units={entryUnits("altitude")}
-                        step="1"
                         // Not Visibility's `min={0}`, which this box otherwise
                         // copies: the Dead Sea is below sea level and admitting it
                         // is the whole reason the API's bound is -450 rather than 0.
@@ -691,7 +686,6 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                         <UnitNumberInput
                           dimension="weight"
                           units={entryUnits("weight")}
-                          step="0.5"
                           min={0}
                           placeholderValue={6}
                           className="pl-9"

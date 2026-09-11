@@ -13,7 +13,7 @@ import {
 
 export interface UnitNumberInputProps extends Omit<
   React.InputHTMLAttributes<HTMLInputElement>,
-  "value" | "onChange" | "min" | "max" | "type" | "placeholder"
+  "value" | "onChange" | "min" | "max" | "type" | "placeholder" | "step"
 > {
   /** Which measurement this box holds, which is what decides its unit and its parsing. */
   dimension: EntryDimension;
@@ -71,7 +71,6 @@ export const UnitNumberInput = React.forwardRef<
     min,
     max,
     placeholderValue,
-    step,
     onBlur,
     ...props
   },
@@ -150,10 +149,20 @@ export const UnitNumberInput = React.forwardRef<
     <Input
       ref={ref}
       type="number"
-      // Whole imperial units, because that is what the box displays: a diver
-      // stepping a depth in feet gets 99, 100, 101, not 99.99. Metric keeps
-      // whatever the caller declared, which is the API's own precision.
-      step={units === "imperial" ? 1 : step}
+      // Derived from the dimension, never passed in, because `step` is a native
+      // *constraint* and not just a spinner increment: a value that is not a
+      // multiple of it makes the box `stepMismatch` and the browser cancels the
+      // submit. A caller declaring one was declaring a precision on the column
+      // behind it, and the two disagreed - see DECISIONS.md, "`step` is a claim
+      // about the column".
+      //
+      // Whole units in imperial, because that is what the box displays: a diver
+      // stepping a depth in feet gets 99, 100, 101, not 99.99. In metric it is
+      // the same question `isIntegerDimension` already answers for parsing and
+      // committing just above - whole for an `Integer` column, unconstrained for
+      // a `Float` one, which is every depth, temperature, pressure and weight
+      // the importers can write at full precision.
+      step={units === "imperial" || isIntegerDimension(dimension) ? 1 : "any"}
       min={min == null ? undefined : displayBound(min, dimension, units, "min")}
       max={max == null ? undefined : displayBound(max, dimension, units, "max")}
       placeholder={

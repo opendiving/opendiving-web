@@ -16180,3 +16180,85 @@ offered a whole-recording delete. Nothing else can remove it — the per-file ro
 without that button a converter-imported or merged recording would be permanent. Where there _are_
 files, deleting them one at a time is the smaller action and the server removes the recording with
 the last of them.
+
+## `step` is a claim about the column, and a wrong one cancels the save in silence
+
+An `<input type="number" step="0.01">` does not merely step by a hundredth. It declares that every
+value the box may hold is a multiple of one, and the browser enforces it: a value that is not makes
+the control `stepMismatch`, and submitting the form is cancelled outright. So `step` is only ever
+correct when the storage behind the field has that precision, and `avg_depth` is a `Float` column
+that nothing rounds.
+
+The value that found it is `2.70000029` — a float32 artefact the UDDF reader really produces,
+carried faithfully through the API because a depth reading belongs to the diver's computer rather
+than to us (`schemas/parsed_dive.py` bounds these two fields and deliberately does not round them).
+Opening that dive's edit form and pressing **Save Changes** did nothing at all: no request, no
+toast, no message, no field marked invalid. `step="0.01"` is older than any of the import work — it
+came in with the original dive form — and had simply never met data it disagreed with.
+
+**Every `Float`-backed box was making the same false claim**, and two of them were reachable without
+importing anything:
+
+- `weight` was the worst, at `step="0.5"`, which is _coarser_ than what the app itself writes. A
+  diver entering in pounds commits 13 lb as 5.9 kg, and the moment they flip that dimension's toggle
+  back to metric the box holds 5.9 against a half-kilo step and the form stops saving. The model's
+  own comment says as much — `Float`, "because pound-based weights don't convert to whole kilos".
+- Any metric field, mid-word. `UnitNumberInput` keeps a draft of what is being typed and only rounds
+  to two decimals on _commit_, so "30.526" is what the DOM holds while the caret is still in it.
+  Clicking **Save** without leaving the box is a `stepMismatch` — and on macOS Safari and Firefox
+  clicking a `<button>` does not blur, which is the same quirk the draft's `units` guard already
+  exists for.
+- The four mixture numbers, whose `step="0.01"` was set to match the API's own 2-decimal rounding.
+  Only the two Suunto parsers round; FIT passes `float(oxygen)` through untouched, and so does
+  logbook import.
+
+**The fix is that no caller declares a step.** `UnitNumberInput` derives it from the dimension —
+whole units in imperial, because that is what the box displays, and otherwise the same question
+`isIntegerDimension` already answers for parsing and committing two lines above: `1` for the two
+`Integer` columns, `"any"` for every `Float` one. Those two had to agree and nothing made them; a
+caller declaring a step was a caller declaring a column type it could not see. The prop is gone from
+the interface rather than merely unused, so a site still passing one is a compile error rather than
+a value silently ignored — which is what proved all nine had been swept, and caught the three left
+behind in the render tests. `oxygen` and `helium` are plain `<Input>`s, not an entry dimension, and
+carry `step="any"` themselves; their `min`/`max` stay, because 0–100 is a fact about a percentage.
+
+What the spinner loses is real and accepted: the arrows now move by 1 rather than by 0.5 or 0.01.
+Nobody nudges a depth by a centimetre, and a box that refuses to save is worse than one whose arrows
+are coarse — half-kilos are still typeable, which is all `step="0.5"` was ever buying.
+
+**Rejected: rounding for display, or normalising in the API.** Both move the damage rather than fix
+it. `UnitNumberInput` shows a metric value through untouched on purpose, so an imported reading
+stays legible as the reading it is until the diver edits it, and rounding it in the box would make
+merely opening a form rewrite a value nobody touched. Rounding on the way in would throw the
+computer's own figure away permanently, for a display concern, in a service whose entire premise is
+outliving the vendor that wrote the file. `formatDepth` already trims _display_ to two decimals
+everywhere the number is read rather than edited, which is where that belongs.
+
+### The silent half is the worse half, and it outlives any one step
+
+A wrong `step` is one bug; a form that refuses to submit and says nothing is the shape of all of
+them. Native constraint validation runs before any React handler, so `handleSubmit` is never called
+— neither its valid callback nor the `handleInvalid` one that reveals hidden fields — and
+react-hook-form is never told anything happened. The browser does focus the first refused control
+and draw a bubble over it, but that bubble is not in the DOM, vanishes on the next keystroke, and is
+shown _only_ where the control can take focus; the submit is cancelled either way.
+
+So the dive form is `noValidate` and asks the question itself. `describeBlockedSubmit`
+(`lib/form-validity.ts`) reads `validity.valid` off each control — not `checkValidity()`, which
+fires an `invalid` event at every one as a side effect — names the first refusal by the `<label>`
+the diver is reading, and quotes the browser's own message for it, which is the only part that says
+what about the value was wrong. `reportValidity()` is still called afterwards, so the focus and the
+bubble are unchanged where they already worked. The message renders through `FormApiError`, which is
+the live region this needs and already solves the announce-on-mount problem.
+
+Two things the tests must respect. The wording of `validationMessage` **differs by engine** — jsdom
+says "Constraints not satisfied" where Chromium spells out the two nearest valid values — so nothing
+asserts on its text. And a `<label for>` resolves against the whole document, so a fixture reusing
+an id has its label silently claimed by an earlier test's form still sitting in `document.body`.
+
+`bottom_temperature` is what the regression test uses, because it is the one box whose native bounds
+the Zod schema does not mirror: a Fahrenheit reading that landed in a Celsius column is over the
+input's own 50 °C ceiling and nothing else on the page would have drawn a message either. **The
+other forms in the app still leave this to the browser.** They are one `<form>` each and the same
+two lines would do it; the dive form is where the failure was reported and where the imported values
+land.

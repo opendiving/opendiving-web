@@ -446,7 +446,14 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                   <FormControl>
                     <Input
                       type="number"
-                      step="0.01"
+                      // `any`, not the API's own two decimals: `oxygen` is a
+                      // `Float` column and only the two Suunto parsers round to
+                      // it, so a FIT analysis arrives at whatever precision the
+                      // computer recorded. A `step` finer than the data is a
+                      // constraint that cancels the save - see DECISIONS.md,
+                      // "`step` is a claim about the column". `min`/`max` stay:
+                      // 0-100 is a fact about a percentage.
+                      step="any"
                       min="0"
                       max="100"
                       {...field}
@@ -480,7 +487,8 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                     <FormControl>
                       <Input
                         type="number"
-                        step="0.01"
+                        // `any`, for the reason O₂ above gives.
+                        step="any"
                         min="0"
                         max="100"
                         {...field}
@@ -526,7 +534,6 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                       <UnitNumberInput
                         dimension="pressure"
                         units={pressureUnits}
-                        step="0.01"
                         min={0}
                         emptyValue=""
                         {...field}
@@ -553,7 +560,6 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                       <UnitNumberInput
                         dimension="pressure"
                         units={pressureUnits}
-                        step="0.01"
                         min={0}
                         emptyValue=""
                         {...field}

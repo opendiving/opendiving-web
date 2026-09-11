@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { UseFormReturn } from "react-hook-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form } from "@/components/ui/form";
+import { FormApiError } from "@/components/ui/form-api-error";
 import { DiveFileImport } from "@/components/dives/dive-file-import";
 import {
   DiveFormFields,
@@ -20,6 +21,7 @@ import {
   diveFormFieldsWithErrors,
   type DiveFormFieldKey,
 } from "@/lib/dive-form-fields";
+import { describeBlockedSubmit } from "@/lib/form-validity";
 import type { DiveFormVisibility } from "@/hooks/useDiveFormVisibility";
 
 export interface DiveFormCardProps<TFieldValues extends DiveFormValues> {
@@ -123,6 +125,34 @@ export function DiveFormCard<TFieldValues extends DiveFormValues>({
     reveal(keys);
   };
 
+  // The other half of the same defect, and the half nothing here could see.
+  //
+  // `handleInvalid` above covers a *resolver* rejection. The browser's own
+  // constraint validation runs earlier than that and cancels the submit outright:
+  // `handleSubmit` is never called, so neither callback fires and the dive form
+  // has nothing to render. `noValidate` on the `<form>` below moves that decision
+  // here, where the refusal can be both reported and shown.
+  //
+  // A value the diver never typed is what makes this reachable rather than
+  // theoretical - an imported `avg_depth` of 2.70000029 is a `stepMismatch` the
+  // moment the box declares a step, and the form would simply stop saving. The
+  // steps themselves are fixed (see `UnitNumberInput`); this is here so the next
+  // constraint that disagrees with the data says so instead of going quiet.
+  const [blockedSubmit, setBlockedSubmit] = useState<string | null>(null);
+  const submit = form.handleSubmit(onSubmit, handleInvalid);
+  const handleSubmitEvent = (event: FormEvent<HTMLFormElement>) => {
+    const element = event.currentTarget;
+    const blocked = describeBlockedSubmit(element);
+    setBlockedSubmit(blocked);
+    if (blocked === null) return submit(event);
+
+    event.preventDefault();
+    // Unchanged where it already worked: this is what focuses the first refused
+    // field and draws the browser's bubble over it. The message above is what
+    // survives when it doesn't.
+    element.reportValidity();
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -143,7 +173,11 @@ export function DiveFormCard<TFieldValues extends DiveFormValues>({
       <CardContent>
         <Form {...form}>
           <form
-            onSubmit={form.handleSubmit(onSubmit, handleInvalid)}
+            // The browser no longer cancels this submit on its own - see
+            // `handleSubmitEvent`, which asks it the same question and reports
+            // the answer rather than leaving the diver with a dead button.
+            noValidate
+            onSubmit={handleSubmitEvent}
             className="space-y-6"
           >
             {/* Import from dive computer file */}
@@ -176,6 +210,10 @@ export function DiveFormCard<TFieldValues extends DiveFormValues>({
               onSpeciesPendingChange={setIsResolvingSpecies}
               diveNumberNotice={diveNumberNotice}
             />
+
+            {/* Above the buttons, so a refusal is on screen next to the control
+                that produced it rather than off the top of a long form. */}
+            <FormApiError error={blockedSubmit} />
 
             <DiveFormActions
               cancelHref={cancelHref}
