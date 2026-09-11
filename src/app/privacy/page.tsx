@@ -1,7 +1,12 @@
 import Link from "next/link";
 import { Metadata } from "next";
 import { runtimeConfig } from "@/lib/runtime-config";
+import { projectOperatesThisInstance } from "@/lib/api/config.server";
 import { DeviceMemorySwitch } from "@/components/device-memory-switch";
+import {
+  OperatorAnswer,
+  OperatorBlock,
+} from "@/components/legal/operator-block";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
@@ -21,15 +26,28 @@ function StorageKey({ name }: { name: string }) {
   );
 }
 
+// Belt and braces, in the shape `app/api/v1/[...path]/route.ts` uses the same export:
+// the root layout already reads `headers()` for the CSP nonce, so nothing in this app is
+// prerendered today. What makes it worth stating here is the consequence if that ever
+// changed. `projectOperatesThisInstance` asks the API, and the published image is built
+// in CI with no API to ask, so a prerender would bake in the failed answer - a
+// project-run instance whose privacy policy names nobody - for the life of the image.
+export const dynamic = "force-dynamic";
+
 // This page is a Server Component and stays one; §10.3's switch is its only
 // client island. The island renders a stable server-side state and resolves the
 // real one after hydration, which is what every storage consumer here does.
-export default function PrivacyPage() {
+export default async function PrivacyPage() {
   // Read here rather than in a client component for the reason `/contact` reads it
   // here: this is a Server Component, so the instance's configuration is legible
   // without shipping it to the browser. The Google section below exists only where
   // an instance has Google sign-in turned on.
   const { googleClientId } = runtimeConfig();
+  // The second thing about this instance the page renders differently, and the only
+  // other one. Nothing short of the API answering `true` earns the operator block, on
+  // the same asymmetry the landing hero's two voices run on: a page that names a person
+  // who never touched the reader's machine is the expensive direction to be wrong in.
+  const projectOperated = await projectOperatesThisInstance();
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -38,8 +56,111 @@ export default function PrivacyPage() {
           <h1 className="text-3xl font-bold text-foreground mb-2">
             Privacy Policy
           </h1>
-          <p className="text-muted-foreground">Last updated: August 2026</p>
+          <p className="text-muted-foreground">Last updated: September 2026</p>
         </div>
+
+        {projectOperated && (
+          <OperatorBlock
+            intro={
+              <>
+                Most of the questions a reader has about a deployment are left
+                to the operator below, because the software cannot know them. On
+                this copy it can, and these are the answers. Each names the
+                sections it belongs to.
+              </>
+            }
+          >
+            <OperatorAnswer question="Where this copy runs — §4.3, §8">
+              On Render, in its Frankfurt region, in Germany. Every part of this
+              instance is there: the app, the API, the background worker, the
+              Postgres database and the short-lived counter store §2.2
+              describes. There is no second site and nothing is copied to one.
+            </OperatorAnswer>
+            <OperatorAnswer question="Where uploaded files are kept — §4.3, §8">
+              In Cloudflare R2, created under Cloudflare&rsquo;s EU
+              jurisdiction, which is its setting for keeping objects within the
+              European Union. That covers the dive-computer files kept with a
+              dive, certification card images, profile pictures, and the species
+              photographs §4.6 says this copy downloads.
+            </OperatorAnswer>
+            <OperatorAnswer question="How email is sent — §4.3, §6.3">
+              Through Resend, with delivery routed through its EU region.
+              Resend&rsquo;s own documentation says that account data, including
+              email metadata, logs and API records, is stored in the United
+              States regardless, so the record that a message went to your
+              address is held there even though the message itself is not sent
+              from there.
+            </OperatorAnswer>
+            <OperatorAnswer question="Which basemap and which geocoder — §4.4, §4.5">
+              The basemap is OpenFreeMap, at{" "}
+              <code className="rounded bg-muted px-1 py-0.5 font-mono text-sm">
+                tiles.openfreemap.org
+              </code>
+              , which is the third-party provider §4.4 is about and the one
+              §10.4 says the map lettering comes from. Place names come from
+              OpenStreetMap&rsquo;s Nominatim, asked by this server rather than
+              by your browser, exactly as §4.5 describes.
+            </OperatorAnswer>
+            <OperatorAnswer question="Whether traffic is encrypted in transit — §5">
+              Yes. TLS terminates at Render&rsquo;s edge and a plain HTTP
+              request is redirected to HTTPS; inside the deployment the app, the
+              API and the worker reach the database and each other over
+              Render&rsquo;s private network rather than across the internet.
+            </OperatorAnswer>
+            <OperatorAnswer question="Whether the disks are encrypted at rest — §5">
+              Both providers say so, and this is their statement reported rather
+              than a promise this page makes. Render&rsquo;s documentation says
+              its Postgres databases are encrypted at rest with AES-256, and
+              that this covers primary instances, replicas and all backups.
+              Cloudflare&rsquo;s says every object stored in R2, its metadata
+              included, is encrypted at rest with AES-256, automatically and
+              with nothing to configure.
+            </OperatorAnswer>
+            <OperatorAnswer question="Who has administrative access — §5">
+              The operator named above, and the operations staff of the
+              providers named here — Render, Cloudflare and Resend — who can
+              reach the systems their own services run on, as any
+              provider&rsquo;s can. No other person holds an administrative
+              account on this copy.
+            </OperatorAnswer>
+            <OperatorAnswer question="What logs and backups exist, and for how long — §2.2, §5, §7">
+              Render keeps this instance&rsquo;s request logs — the server logs
+              §2.2 opens with — for 7 days. The database has point-in-time
+              recovery covering the last 3 days, which is the whole of what
+              §7&rsquo;s &ldquo;a deletion cannot reach into a backup already
+              written&rdquo; caveat means here.
+            </OperatorAnswer>
+            <OperatorAnswer question="That deletion finishes inside the 30 days §7 promises — §7">
+              It does, with room to spare. Deleting an account starts a 14-day
+              grace period, after which the data is destroyed; the 3-day
+              recovery window above is the longest a copy of it can survive in a
+              backup after that. Seventeen days at the outside.
+            </OperatorAnswer>
+            <OperatorAnswer question="How to check any of this against the source — §1, §5, §11, §12">
+              Those four sections invite you to read the code rather than trust
+              this page &mdash; §5 puts it as{" "}
+              <em>the source is public, so these claims can be checked</em>{" "}
+              &mdash; and that invitation is open the moment the project&rsquo;s
+              repositories are published. Before then the route that works is
+              the operator&rsquo;s: the{" "}
+              <Link
+                href="/terms"
+                className="underline hover:text-muted-foreground"
+              >
+                Terms
+              </Link>{" "}
+              carry a standing offer of the complete source of the version
+              running on this copy, on request from the address above, and name
+              what identifies that version.
+            </OperatorAnswer>
+            <OperatorAnswer question="The minimum age on this copy — §9">
+              Sixteen. §9 gives the software&rsquo;s floor of 13; Germany sets
+              16 as the age at which a person can agree to this kind of service
+              on their own, under Article 8 of the GDPR, and this copy follows
+              the higher of the two.
+            </OperatorAnswer>
+          </OperatorBlock>
+        )}
 
         <div className="prose max-w-none">
           <section className="mb-8">
@@ -689,6 +810,13 @@ export default function PrivacyPage() {
               they belong to whoever runs this one. The self-hosting
               documentation tells operators how to get the first of them right;
               it cannot make them.
+              {projectOperated && (
+                <>
+                  {" "}
+                  On this copy all four are answered rather than declined, under{" "}
+                  <em>Who runs this copy</em> at the top of this page.
+                </>
+              )}
             </p>
           </section>
 
@@ -957,6 +1085,16 @@ export default function PrivacyPage() {
               it does &mdash; the operator is who can tell you, and section 13
               says how to ask. If you run the copy yourself, the answer is your
               own machine.
+              {projectOperated && (
+                <>
+                  {" "}
+                  On this copy you need ask nobody: <em>
+                    Who runs this copy
+                  </em>{" "}
+                  at the top of this page names the region the database and the
+                  files sit in.
+                </>
+              )}
             </p>
           </section>
 
@@ -974,6 +1112,14 @@ export default function PrivacyPage() {
               Divers between 13 and 18 should have a parent&rsquo;s agreement
               before using the Service, particularly given what it is a log of.
             </p>
+            {projectOperated && (
+              <p className="text-foreground mb-4">
+                Those two sentences are the software&rsquo;s floor, and an
+                operator may be held to a higher one. This copy is: its minimum
+                age is 16, for the reason given under{" "}
+                <em>Who runs this copy</em> at the top of this page.
+              </p>
+            )}
           </section>
 
           <section className="mb-8">
@@ -1303,6 +1449,16 @@ export default function PrivacyPage() {
               </Link>{" "}
               is how this copy offers to reach them.
             </p>
+            {projectOperated && (
+              <p className="text-foreground mb-4">
+                On this copy they are named rather than described:{" "}
+                <em>Who runs this copy</em> at the top of this page gives the
+                operator&rsquo;s name and an address that reaches them, so a
+                request need not go through the contact page at all. That
+                address is the operator&rsquo;s, in the role that can act on it
+                &mdash; which leaves the next paragraph exactly as it stands.
+              </p>
+            )}
             <p className="text-foreground mb-4">
               Two things this page will not do, both deliberately. It will not
               print an address belonging to the OpenDiving project as the
