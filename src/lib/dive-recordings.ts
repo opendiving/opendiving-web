@@ -145,6 +145,32 @@ const DIVE_IS_UNTOUCHED =
   "The dive itself stays, with everything you typed on it.";
 
 /**
+ * The confirmation before deleting a whole dive, shared by the list page and the
+ * detail page — the case `DIVE_IS_UNTOUCHED` exists to rule out.
+ *
+ * **It names the files because they are the only part of this that is genuinely
+ * gone.** The dive row is soft-deleted, but `delete_files_for_dive` hard-deletes
+ * every recording of it, and the cascade takes their profiles and their files
+ * with them and unlinks the stored blobs (`erase_dive` in the API's
+ * `api/v1/dives.py`). So "This action cannot be undone", which is all this used
+ * to say, was attached to the reversible half of the action while the
+ * irreversible half went unmentioned.
+ *
+ * **It carries no counts, and that is what lets both pages say it.** The detail
+ * page holds `dive.recordings` and could say how many recordings and files go;
+ * `GET /dives` deliberately omits them, each costing a query, so the list page
+ * could not. One prompt that is true of every dive beats a file-aware one on the
+ * detail page and a vaguer one two clicks away on the list — the same
+ * conclusion the certification delete reached, which names the card images
+ * stored with it without counting them either.
+ *
+ * "Any" rather than "its" for the files, so the sentence stays true of a dive
+ * logged by hand, which has neither a recording nor a file.
+ */
+export const DELETE_DIVE_CONFIRMATION =
+  "Are you sure you want to delete this dive? Its recordings and any dive-computer files you imported are permanently deleted too — download anything you want to keep first.";
+
+/**
  * Why this recording would survive losing its last file, as a clause, or `null`
  * when it would not survive it.
  *

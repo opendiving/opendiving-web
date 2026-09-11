@@ -16359,10 +16359,22 @@ description. Both strings are now derived from the row, so the `pending ? … : 
 elsewhere in the app would have the heading fall back to the neutral "Delete this file?" as the
 dialog closed — the wrong half of the very distinction this exists to draw.
 
-One understatement of the same family is left standing, deliberately. **Deleting a dive hard-deletes
-its recordings and their files** (`erase_dive`, and see the API's `DECISIONS.md`), while the dive
-row itself is only flagged — so the imported files are the unrecoverable part of an action whose
-confirmation says only "This action cannot be undone". Saying so needs the dive's recordings, and
-`GET /dives` does not carry them: the list page could not make the claim the detail page could, and
-one dialog that names the files while the identical one two clicks away does not is worse than
-neither.
+One understatement of the same family stood for a while, and **the way out of it on 2026-09-11 was
+to drop the counts**. **Deleting a dive hard-deletes its recordings and their files** (`erase_dive`
+→ `delete_files_for_dive`, and see the API's `DECISIONS.md`), while the dive row itself is only
+flagged — so the imported files are the unrecoverable part of an action whose confirmation said only
+"This action cannot be undone". What blocked saying so was the assumption that saying it needed the
+dive's recordings, which `GET /dives` deliberately omits at a query apiece: the list page could not
+make the claim the detail page could, and one dialog that names the files while the identical one
+two clicks away does not is worse than neither.
+
+The claim worth making never needed a count. `DELETE_DIVE_CONFIRMATION` in `lib/dive-recordings.ts`
+names the recordings and the files without saying how many, which is true of every dive and so
+identical on both pages — and the certification delete had already settled that shape, naming "the
+card images stored with it" without counting those either. It says "any dive-computer files you
+imported" rather than "its", so it stays true of a dive logged by hand, and it ends on "download
+anything you want to keep first", which is the one thing left that a diver can act on.
+
+It is a shared constant rather than the sentence written out at each call site, for this section's
+own reason: the dive list and the dive page offer the same delete two clicks apart, and the pair of
+file-delete dialogs above had already drifted far enough that one of them claimed something false.
