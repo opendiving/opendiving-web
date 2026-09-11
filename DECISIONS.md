@@ -16433,3 +16433,27 @@ until someone read the script whole. And squeeze each file to one line before ma
 Prettier's 100-column wrap breaks these lists in the middle — `README.md`'s falls between `.ssrf`
 and the `Suunto` two entries later — so a line-oriented grep sees half a claim and matches neither
 half.
+
+## The footer's link columns get a row of their own at tablet widths
+
+`layout/footer.tsx` was `grid md:grid-cols-4 gap-8` — four equal columns from 768px up, and one
+stacked column below it. That is two tiers for a layout that wants three. Between 640px and 767px
+the footer spent four full-width rows on content that fits comfortably side by side, so the tablet
+range got the phone layout purely because nothing had been written for it.
+
+The third tier is `sm:grid-cols-3 md:grid-cols-4` with `sm:col-span-3 md:col-span-1` on the brand
+block: the three `nav` landmarks share a row from 640px and the brand block spans it above them.
+Measured in Chrome at 640px, the three columns come out 176px each and nothing wraps — the widest
+label in the footer is `Code of Conduct` at 113.1px.
+
+**The brand block is why the row is three columns rather than four, and it is not the link labels.**
+A `sm:grid-cols-4` would leave 124px per column at 640px, which those same 113.1px labels still
+clear; the sentence under the wordmark is what suffers. At 124px it lays out over four 20px lines,
+against one line when it spans the row — so a four-way split would buy a tidier grid by turning the
+one piece of prose in the footer into a narrow stack. Three columns plus a spanning block is the
+shape that fits both.
+
+`md:col-span-1` is not redundant with the default. `col-span-3` applied at `sm:` stays applied at
+every width above it, so without an explicit reset the brand block would span three of the four
+columns at desktop and push the link columns off the grid — the failure is silent in the class list
+and shows up only in a browser at 768px, where all four children have to sit on one row.
