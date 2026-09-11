@@ -5,6 +5,7 @@ import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { usePaginatedResource } from "@/hooks/usePaginatedResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { divesAPI, Dive } from "@/lib/api/dives";
+import { DELETE_DIVE_CONFIRMATION } from "@/lib/dive-recordings";
 import { DiveSitesLabel } from "@/components/dives/dive-sites-label";
 import { DiveNumberingStatus } from "@/components/dives/dive-numbering-status";
 import {
@@ -75,8 +76,7 @@ export default function DivesPage() {
     cancelDelete: cancelDeleteDive,
     confirmDelete: confirmDeleteDive,
   } = useDeleteResource(divesAPI.deleteDive, {
-    confirmMessage:
-      "Are you sure you want to delete this dive? This action cannot be undone.",
+    confirmMessage: DELETE_DIVE_CONFIRMATION,
     successMessage: "Dive deleted successfully.",
     errorMessage: "Failed to delete dive. Please try again.",
     onDeleted: () => {

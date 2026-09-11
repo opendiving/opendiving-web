@@ -8,6 +8,7 @@ import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { divesAPI, Dive } from "@/lib/api/dives";
 import { tripsAPI, Trip } from "@/lib/api/trips";
 import { coursesAPI, Course } from "@/lib/api/courses";
+import { DELETE_DIVE_CONFIRMATION } from "@/lib/dive-recordings";
 import { DiveNeighborNav } from "@/components/dives/dive-neighbor-nav";
 import { DiveMergeAction } from "@/components/dives/dive-merge-action";
 import { DiveDetailProvider } from "@/components/dives/dive-detail-context";
@@ -96,8 +97,7 @@ export default function DiveDetailLayout({
   });
 
   const del = useDeleteResource(divesAPI.deleteDive, {
-    confirmMessage:
-      "Are you sure you want to delete this dive? This action cannot be undone.",
+    confirmMessage: DELETE_DIVE_CONFIRMATION,
     successMessage: "Dive deleted successfully.",
     errorMessage: "Failed to delete dive. Please try again.",
     onDeleted: () => router.push("/dives"),

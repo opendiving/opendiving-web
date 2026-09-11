@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { act, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import DiveDetailLayout from "./layout";
 import { useDiveDetail } from "@/components/dives/dive-detail-context";
 import type { Dive } from "@/lib/api/dives";
@@ -274,5 +275,31 @@ describe("DiveDetailLayout's neighbour reload token", () => {
 
     await waitFor(() => expect(last(navTokens.seen)).not.toBe(before));
     expect(last(navTokens.seen)).toBe(last(merge.tokens));
+  });
+});
+
+describe("the dive delete confirmation", () => {
+  it("names the files that deleting the dive destroys", async () => {
+    // The dive row is only soft-deleted, but its recordings and every stored
+    // dive-computer file are hard-deleted and their blobs unlinked - so the
+    // files are the part of this a diver cannot get back, and the prompt used
+    // to say nothing but "This action cannot be undone". The claim is asserted
+    // here rather than against the constant because what can regress is the
+    // wiring: the string reaches the dialog through `useDeleteResource`'s
+    // `confirmMessage`, and a page that stopped passing it would still render a
+    // perfectly plausible dialog with no description at all.
+    dive.current = makeDive();
+
+    render(
+      <DiveDetailLayout>
+        <div />
+      </DiveDetailLayout>,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent(/dive-computer files you imported/);
+    expect(dialog).toHaveTextContent(/permanently deleted/);
   });
 });
