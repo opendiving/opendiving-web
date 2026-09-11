@@ -16433,3 +16433,72 @@ until someone read the script whole. And squeeze each file to one line before ma
 Prettier's 100-column wrap breaks these lists in the middle — `README.md`'s falls between `.ssrf`
 and the `Suunto` two entries later — so a line-oriented grep sees half a claim and matches neither
 half.
+
+## The lists load on scroll, and a delete no longer collapses the one you are reading
+
+Every Previous/Next footer in the app is gone. `usePaginatedResource` became `useInfiniteResource` —
+pages accumulate instead of replacing — and `PaginationFooter` became `LoadMoreTrigger`. Both old
+names are deleted rather than kept as aliases: a hook called "paginated" over a UI with no pages is
+the kind of stale name this file exists to complain about.
+
+**The button is the sentinel, not a `<div>` next to one.** Auto-load on scroll has nothing to tab to
+and nothing to announce, so a list with rows past the first page simply ends for anyone not using a
+mouse. Making the focusable control the observed element costs nothing — a pointer user never sees
+it fire, because the observer's 400px `rootMargin` asks for the next page while the button is still
+below the fold — and everyone else gets a real control. The progress line above it is a live region
+for the matching reason: appended rows move no focus and change no URL, so nothing else would say
+anything happened.
+
+**A delete drops its row locally, and that is half a fix.** Re-reading from page one would yank the
+ground out from under a reader who had scrolled: everything above them vanishes and the page shrinks
+mid-read. The other half is less obvious. Offsets below the deleted row all shift up by one, so the
+next page boundary moves with them, and asking for the page after the last one fetched skips
+whichever row slid across it — the silent-truncation shape that "my oldest certification stopped
+appearing" comes in. `removeItem` therefore re-derives the cursor from what is left on screen
+(`floor(items.length / itemsPerPage) + 1`), which asks for the page that now _contains_ the
+boundary; the dedup discards the rows already shown. That dedup is required rather than
+belt-and-braces for the same reason it is in `fetchAllPages` and the invitations card, and `keyOf`
+is a required option because of it — an invite request has no `uuid`, its identity is the address.
+
+`applySaved` is the same instinct for the other direction: an edited row is swapped in place with no
+request at all, and only a row the loaded window has never seen falls back to re-reading. `keyOf`
+and the in-flight guard both live in refs, not state — the first because an inline arrow at a call
+site would otherwise restart the fetch on every render (`useResource`'s `onLoaded` has this exact
+problem and this exact fix), the second because an `IntersectionObserver` can deliver two entries
+before a render lands in between, and state would still read "idle" for the second.
+
+**The scoped dive lists were silently truncating, and that is what this change actually fixed.** The
+five detail pages — trip, dive site, gear item, course, species — rendered `RecentDivesCard` with
+`limit={100}` meaning "all of them", and the API clamps `items_per_page` to 100. A diver past that
+number was shown a list that looked complete and was not. The prop is now a `complete` boolean with
+no number in it to get wrong; the dashboard's preview keeps its "View All Dives" button and is the
+one caller that does not set it.
+
+**The gear sets card waits until the reader is near it.** It sits below the gear list and reads as
+its continuation, so gating its first fetch on `useNearViewport` is what makes the two lists on
+`/gear` load in the order they are read rather than the lower one fetching a page nobody has
+scrolled to. For most divers that is still on mount — ten gear items leaves the card on screen
+immediately. Merging the two into one list was considered and rejected: it would cost the Gear Sets
+heading, its count badge, its own New button and its different columns, and the geometry already
+sequences them for free.
+
+**The admin queue stopped clearing its selection.** That reset existed because turning a page
+carried the ticked addresses off screen, and sending invitations the operator can no longer see is
+worth guarding against. Loading more only appends, so the guard has nothing left to guard.
+
+### What the two test lanes can and cannot say about this
+
+`vitest.setup.ts` installs an `IntersectionObserver` (`src/test/intersection.ts`) because
+`new IntersectionObserver` throws outright in jsdom — every page rendering a list would fail on
+mount rather than at an assertion. It reports nothing until a test calls `reveal()`, which is the
+honest default and makes the call a statement about the scenario: the reader has scrolled to the end
+of the list, or far enough down `/gear` to reach the sets card. `gear/page.render.test.tsx` needs
+exactly that, and is the one existing test the deferral above changed.
+
+The browser lane holds that the trigger stays quiet far below the fold and fires on a scroll to the
+end. **It cannot hold the `rootMargin`, and no test in this repository can.** That lane runs each
+test inside an iframe, and an implicit-root observer's expanded rect is clipped by every intervening
+scroll container, the iframe boundary included — measured: with the trigger 20px below the fold
+nothing fires, and it fires only once genuinely on screen. That is the harness rather than the
+component, since the app is not in an iframe. A margin regression would therefore be invisible to
+the whole suite and is a browser walk to catch.
