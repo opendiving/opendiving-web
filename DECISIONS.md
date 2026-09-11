@@ -2946,8 +2946,8 @@ that is true now.
 `PaginatedResponse<T>` lived in `hooks/usePaginatedResource.ts` - a layer _above_ `lib/api/`.
 Nothing in `lib/api/` will import upwards from `hooks/`, so all eight modules declared their own
 identical copy instead. It now lives in `lib/api/client.ts`, beside the client that produces it, and
-the eight are type aliases over it. `hooks/usePaginatedResource.ts` re-exports it for the pages that
-import the type alongside the hook.
+the eight are type aliases over it. `hooks/useInfiniteResource.ts` (which is where that hook lives
+now) re-exports it for the pages that import the type alongside the hook.
 
 Seven create/edit dialogs each kept their own `apiError` state and cleared it inside the effect that
 resets the form - each carrying its own copy of the `react-hooks/set-state-in-effect` disable.
@@ -6849,7 +6849,7 @@ Two things were considered and left out. A GitHub-style top progress bar is the 
 but it is a _signal_, not a fix — GitHub's reads well because the old page stays on screen
 underneath it, and until these pages stopped blanking a bar would only have sat above the same
 flash. And nothing here caches: returning to `/dives` still refetches and still shows skeleton rows,
-where a stale-while-revalidate layer under `usePaginatedResource` would show the previous rows
+where a stale-while-revalidate layer under `useInfiniteResource` would show the previous rows
 immediately and never enter a loading state at all. Both are worth doing; neither is worth doing
 before the layout stops moving.
 
@@ -12061,11 +12061,13 @@ git grep -nEi 'list pages?|detail pages?' -- src/
 **That second pattern has a hole, and this repo demonstrated it.** Until the de-counting above,
 `hooks/usePaginatedResource.ts` read "for the dives/trips/sites list" / "pages" across a line break,
 and the grep never matched the one file whose whole job is list-page pagination. The rewording
-happens to have pulled "the list pages" back onto a single line, so it matches today - but nothing
-holds it there, and the next edit that lengthens that sentence reopens the hole silently. Any
-multi-word pattern over comment prose has this exposure, and comment prose is wrapped by definition.
-So a clean second sweep is suggestive, never conclusive; the first sweep is the one to lean on for
-coverage, because a single word cannot straddle a line break.
+pulled "the list pages" back onto a single line, which closed it at the time - but nothing held it
+there, and the next edit that lengthened the sentence would have reopened the hole silently. (That
+file is gone: the lists load on scroll now and the hook is `hooks/useInfiniteResource.ts`. The
+demonstration stands on its own; the file is no longer there to re-check it against.) Any multi-word
+pattern over comment prose has this exposure, and comment prose is wrapped by definition. So a clean
+second sweep is suggestive, never conclusive; the first sweep is the one to lean on for coverage,
+because a single word cannot straddle a line break.
 
 **What is deliberately _not_ swept: this file.** Its own counts - "the four `[id]` detail pages",
 "all eight modules", "seven create/edit dialogs" - record what a particular change faced at the time
@@ -12113,11 +12115,12 @@ to surface.
 **The courses list is the first list page with a search box**, because the API's `GET /courses` is
 the first list endpoint the app calls that takes a `search`. The wiring is two states, not one: the
 input's own value, and the debounced term the fetcher closes over. That matters because the fetcher
-is `usePaginatedResource`'s `fetchFn`, so changing the term changes the callback's identity and the
-hook re-fetches from page 1 - which is the behaviour wanted (page 3 of the unfiltered list is not a
-page of the filtered one) and is why the term must not change on every keystroke. The empty state
-splits too: "no courses match that name" is a different statement from "no courses yet", and only
-the second one offers a create button.
+is `useInfiniteResource`'s `fetchFn`, so changing the term changes the callback's identity and the
+hook throws away every page it has loaded and reads the new query from the first - which is the
+behaviour wanted (rows of the unfiltered list are not rows of the filtered one, however many are
+already on screen) and is why the term must not change on every keystroke. The empty state splits
+too: "no courses match that name" is a different statement from "no courses yet", and only the
+second one offers a create button.
 
 **A dive's course is not inherited from the last dive, unlike its trip.** `/dives/new` prefills the
 trip from the most recent dive because a second dive is usually on the same trip. A course ends,
@@ -16507,11 +16510,20 @@ belt-and-braces for the same reason it is in `fetchAllPages` and the invitations
 is a required option because of it — an invite request has no `uuid`, its identity is the address.
 
 `applySaved` is the same instinct for the other direction: an edited row is swapped in place with no
-request at all, and only a row the loaded window has never seen falls back to re-reading. `keyOf`
-and the in-flight guard both live in refs, not state — the first because an inline arrow at a call
-site would otherwise restart the fetch on every render (`useResource`'s `onLoaded` has this exact
-problem and this exact fix), the second because an `IntersectionObserver` can deliver two entries
-before a render lands in between, and state would still read "idle" for the second.
+request at all, and only a row the loaded window has never seen falls back to re-reading. **It steps
+the cursor back a page for the same reason `removeItem` re-derives it**, and that is the half worth
+remembering, because an edit looks like it cannot move anything. Every list here is ordered by a
+column the edit dialog can change — dive sites by name, trips and courses by start date,
+certifications by the date certified — so a rename re-sorts the row on the server. Move it later
+than the loaded window and everything after its old slot shifts up one offset, and the page after
+the last one fetched steps straight over whichever row slid across the boundary. The dedup catches
+only the opposite direction. What the swap deliberately does _not_ do is re-sort what is on screen:
+the row keeps its old position with its new contents until something reloads the list, because
+putting it where it now belongs means reading the list again — the jump the function exists to
+avoid. `keyOf` and the in-flight guard both live in refs, not state — the first because an inline
+arrow at a call site would otherwise restart the fetch on every render (`useResource`'s `onLoaded`
+has this exact problem and this exact fix), the second because an `IntersectionObserver` can deliver
+two entries before a render lands in between, and state would still read "idle" for the second.
 
 **The scoped dive lists were silently truncating, and that is what this change actually fixed.** The
 five detail pages — trip, dive site, gear item, course, species — rendered `RecentDivesCard` with

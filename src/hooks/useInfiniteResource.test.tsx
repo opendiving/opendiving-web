@@ -38,6 +38,16 @@ function ledger(total = 30, perPage = 10) {
     dropServerSide: (uuid: string) => {
       rows = rows.filter((row) => row.uuid !== uuid);
     },
+    /**
+     * Simulates an edit that changes the column the server sorts by, moving the
+     * row to `to` in the order. Every list here is sorted by something an edit
+     * dialog can change - a dive site's name, a trip's start date.
+     */
+    moveServerSide: (uuid: string, to: number) => {
+      const row = rows.find((one) => one.uuid === uuid)!;
+      const without = rows.filter((one) => one.uuid !== uuid);
+      rows = [...without.slice(0, to), row, ...without.slice(to)];
+    },
   };
 }
 
@@ -243,6 +253,34 @@ describe("useInfiniteResource", () => {
         uuid: "r15",
         name: "renamed",
       });
+    });
+
+    // The mirror of `removeItem`'s rewind, and the reason `applySaved` touches
+    // the cursor at all. A rename that sorts the row *later* than the loaded
+    // window pulls everything after its old slot up one offset, so asking for
+    // the page after the last one fetched steps straight over whichever row
+    // slid across the boundary - and nothing ever shows it again. The dedup
+    // only catches the opposite direction.
+    it("does not skip the row an edit pushed across the page boundary", async () => {
+      const { fetchFn, moveServerSide } = ledger(30);
+      const { result } = renderHook(() =>
+        useInfiniteResource<Row>(fetchFn, { keyOf }),
+      );
+
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+      await act(() => result.current.loadMore());
+      expect(result.current.items).toHaveLength(20);
+
+      // `r4` is renamed to something that sorts last; `r20` slides down into
+      // the window the list has already read.
+      moveServerSide("r4", 29);
+      act(() => result.current.applySaved({ uuid: "r4" }));
+      await act(() => result.current.loadMore());
+
+      expect(result.current.items.map(keyOf)).toContain("r20");
+      expect(new Set(result.current.items.map(keyOf)).size).toBe(
+        result.current.items.length,
+      );
     });
 
     it("reads the list again for a row it has never seen", async () => {
