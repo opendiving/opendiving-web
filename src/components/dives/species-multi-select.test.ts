@@ -9,7 +9,12 @@ import type {
   SpeciesSearchResult,
 } from "@/lib/api/species";
 
-const WORMS = "World Register of Marine Species (marinespecies.org)";
+// Pinned to what the API actually sends. The WoRMS credit carries a markdown
+// link and a plain `(CC BY)` run after it; `mapSpeciesResults` only dedupes
+// these strings, so the shape matters here solely as a reminder that it is
+// `Attribution` and not this function that has to cope with it.
+const WORMS =
+  "[World Register of Marine Species](https://www.marinespecies.org) (CC BY)";
 const WIKIDATA = "Wikidata (CC0)";
 
 function result(overrides: Partial<SpeciesSearchResult> = {}) {

@@ -47,7 +47,8 @@ const LOCAL: SpeciesSearchResult = {
   status: "accepted",
   matched_name: null,
   source: "catalog",
-  attribution: "World Register of Marine Species (marinespecies.org)",
+  attribution:
+    "[World Register of Marine Species](https://www.marinespecies.org) (CC BY)",
 };
 
 // Upstream only, so picking it has to resolve first.
@@ -444,9 +445,18 @@ describe("SpeciesMultiSelect", () => {
     render(<Field />);
     await openMenu();
 
-    expect(
-      screen.getByText(/World Register of Marine Species/),
-    ).toBeInTheDocument();
+    // The WoRMS credit arrives as a markdown link now, so the assertion is on
+    // the anchor rather than on text: printing the string raw would put
+    // `[World Register of Marine Species](https://...)` under the field, which
+    // is a passing `getByText` and a broken credit line.
+    const worms = screen.getByRole("link", {
+      name: "World Register of Marine Species",
+    });
+    expect(worms).toHaveAttribute("href", "https://www.marinespecies.org");
+    // The licence rides along as a plain run after the link, which is the half
+    // `parseAttribution` would drop if it matched whole strings instead of
+    // splitting them.
+    expect(screen.getByText(/\(CC BY\)/)).toBeInTheDocument();
     expect(screen.getByText(/Wikidata \(CC0\)/)).toBeInTheDocument();
   });
 
