@@ -179,10 +179,15 @@ type RecordingOutcome = "keeps files" | "keeps samples only" | "removed";
  * rather than a silence, because nothing in the row a diver clicked says which
  * one they are looking at.
  *
- * Where the recording *is* primary there are three answers and the difference
+ * Where the recording *is* primary there are four answers and the difference
  * between them is the whole point of this module: the readings are re-read from
  * what the recording keeps, re-read from whichever recording takes over as
- * primary, or cleared outright because nothing is left to read them from.
+ * primary, or cleared outright because nothing is left to read them from -
+ * either because no recording is left, **or because the one that takes over
+ * holds no files of its own**. `refresh_tech_scalars` reads the new primary's
+ * files and writes every reading it does not find as null, and
+ * `renumber_ordinals` promotes in ordinal order without skipping a file-less
+ * recording, so "another recording exists" is not the question.
  */
 function exposureSentence(
   recording: Recording,
@@ -200,9 +205,22 @@ function exposureSentence(
     // the readings off - which is what "nothing here can re-derive them" means.
     return "The dive's oxygen-exposure readings came off this recording's files, and are cleared with the last of them.";
   }
-  return recordings.some((other) => other.uuid !== recording.uuid)
+  // Which recording takes over: the lowest ordinal among the rest. By ordinal
+  // and not by position, because the edit form hands its list over unsorted.
+  const successor = recordings.reduce<Recording | null>(
+    (next, other) =>
+      other.uuid === recording.uuid ||
+      (next !== null && next.ordinal <= other.ordinal)
+        ? next
+        : other,
+    null,
+  );
+  if (successor === null) {
+    return "It is the dive's only recording, so the dive's oxygen-exposure readings are cleared — nothing is left to read them from.";
+  }
+  return successor.files.length > 0
     ? "It is the recording shown by default, so the next one takes over and the dive's oxygen-exposure readings are re-read from that instead."
-    : "It is the dive's only recording, so the dive's oxygen-exposure readings are cleared — nothing is left to read them from.";
+    : "It is the recording shown by default, so the next one takes over — and it holds no file, so the dive's oxygen-exposure readings are cleared.";
 }
 
 function sentences(...parts: (string | null)[]): string {

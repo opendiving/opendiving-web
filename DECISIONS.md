@@ -16110,11 +16110,23 @@ endpoint does one of three things depending on what the recording is left holdin
   ones no file could produce again — a merge's or a converted document's. Same shape a converter
   import creates; see "A recording with no files says so, and which kind of nothing it is".
 
-All three then re-run `refresh_tech_scalars`, which rewrites the dive's oxygen-exposure readings
-**outright** from whatever is primary afterwards. On a dive whose primary recording just lost its
-figures, that is a CNS and an OTU disappearing off the page — which is exactly how this was found: a
-Suunto recording holding a JSON and a FIT, the FIT deleted with no surprises, then the JSON deleted
-and the recording, the charted profile and the dive's exposure figures all moved at once.
+The dive's oxygen-exposure readings move on all three, by two different routes, and **outright** on
+both — the point of the rewrite is to stop claiming a reading the dive no longer has evidence for.
+Where the recording keeps files, `_rederive_recording` rewrites them from what is left, and only
+when that recording is ordinal 0: a _secondary_ recording keeping files leaves the dive's readings
+alone entirely, having returned before it reaches them. Where the last file goes,
+`refresh_tech_scalars` rewrites them from whichever recording is primary _afterwards_ — which may be
+a different one, or none. On a dive whose primary recording just lost its figures, that is a CNS and
+an OTU disappearing off the page, which is exactly how this was found: a Suunto recording holding a
+JSON and a FIT, the FIT deleted with no surprises, then the JSON deleted and the recording, the
+charted profile and the dive's exposure figures all moved at once.
+
+**"Another recording exists" is not the question the copy can ask**, and asking it was this change's
+own first bug. `renumber_ordinals` promotes in ordinal order and does not skip a recording for
+holding no files, and `refresh_tech_scalars` writes every reading it cannot find on the new
+primary's files as null — so a file-less recording promoted into ordinal 0 clears the dive's
+readings just as thoroughly as having no recording at all. The sentence therefore turns on whether
+the recording that takes over holds a file, not on whether it is there.
 
 **The title carries the difference, not only the description.** "Delete this file?" over a dialog
 that is about to remove the recording is asking about the smaller of two actions, and a diver who

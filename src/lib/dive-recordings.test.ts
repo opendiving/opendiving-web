@@ -332,6 +332,44 @@ describe("deleteFileConfirmation", () => {
     expect(description).toContain("The dive itself stays");
   });
 
+  it("does not promise a handover to a recording with no file to read", () => {
+    // `renumber_ordinals` promotes in ordinal order without skipping a file-less
+    // recording, and `refresh_tech_scalars` then finds nothing on it - so the
+    // readings are cleared exactly as if no recording were left, and the
+    // reassuring sentence would be the one lie this whole change exists to stop.
+    const suunto = recording({ files: [suuntoJson] });
+    const imported = recording({
+      uuid: "r2",
+      ordinal: 1,
+      files: [],
+      profile: profileInfo({ provenance: "divejson_import" }),
+    });
+    const { title, description } = deleteFileConfirmation(
+      [suunto, imported],
+      "sj",
+    );
+
+    expect(title).toBe("Delete this file and its recording?");
+    expect(description).toContain("the next one takes over");
+    expect(description).toContain("it holds no file");
+    expect(description).toContain("are cleared");
+    expect(description).not.toContain("re-read from that instead");
+  });
+
+  it("finds the recording that takes over by ordinal, not by list position", () => {
+    // The edit form passes `dive.recordings` straight through, unsorted, so the
+    // successor is not simply the next entry in the array.
+    const suunto = recording({ files: [suuntoJson] });
+    const third = recording({ uuid: "r3", ordinal: 2, files: [] });
+    const second = recording({ uuid: "r2", ordinal: 1, files: [perdixFile] });
+    const { description } = deleteFileConfirmation(
+      [third, suunto, second],
+      "sj",
+    );
+
+    expect(description).toContain("re-read from that instead");
+  });
+
   it("says the readings are cleared when nothing is left to read them from", () => {
     const suunto = recording({ files: [suuntoJson] });
     const { title, description } = deleteFileConfirmation([suunto], "sj");
