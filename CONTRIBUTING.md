@@ -213,6 +213,13 @@ The product's own release is a third tag, cut in
 its workflow refuses to publish unless both exist at that version, which is the check no
 per-repository workflow is in a position to make.
 
+A merge to `main` is not nothing, though. It publishes `:edge` and `:sha-<12>` — no `:latest`, no
+version alias — and then calls a Render deploy hook, which is how the project's own hosted instance
+follows `main`. That channel is deliberately not a release: it never moves a tag anyone is pinned
+to, so it is invisible to a self-hoster, and `edge` is not a tag you are asked to follow. A missing
+deploy hook is a notice and a green build, not a failure, so a fork publishes the image and deploys
+nothing.
+
 This repo's part is small: bump `version` in `package.json` in its own PR, titled
 `chore: release v0.4.0`, then tag that bump commit and push the tag. The tag push runs **Publish
 Image**, which compares the tag against the manifest and fails the build if they disagree — so
@@ -244,23 +251,29 @@ one applies is the split below.
 
 **The published image.** `.github/workflows/vulnerability-scan.yml` scans the newest release every
 morning with Trivy — its `X.Y.Z`, `X.Y`, bare major and `latest`, which are one image under four
-names, resolved to a digest so it is scanned once. It reports HIGH and CRITICAL findings in both
-halves of that image: the Alpine packages that come from `node:24-alpine`, and the npm packages
-`npm ci` installed into `.next/standalone`. This is the job that closes the loop with the rebuild
-above, because the case it catches is a release that was clean the day it shipped and grew a CVE
-three weeks later, with no PR in flight and nobody looking.
+names, resolved to a digest so it is scanned once — and `edge` alongside it, which is the image the
+project's own instance is running and the only one that exists before the first release is cut. It
+reports HIGH and CRITICAL findings in both halves of each image: the Alpine packages that come from
+`node:24-alpine`, and the npm packages `npm ci` installed into `.next/standalone`. This is the job
+that closes the loop with the rebuild above, because the case it catches is a release that was clean
+the day it shipped and grew a CVE three weeks later, with no PR in flight and nobody looking.
 
 **The alert is a GitHub issue** labelled `image-cve`, and you are the one who acts on it. The body
-names the exact `v` tag to dispatch at and splits the findings by what actually fixes them, because
-the two are not the same remedy:
+splits the findings by what actually fixes them, because they are not the same remedy — and where a
+release is involved it names the exact `v` tag to dispatch at:
 
-- **OS package** — the rebuild above. One dispatch recomputes every alias the scan covers, which is
-  why the scan covers exactly those and no more.
+- **OS package** — the rebuild above. One dispatch recomputes every release alias the scan covers,
+  which is why the scan covers exactly those and no more.
 - **npm package** — _not_ fixable by a rebuild at any tag. That version comes from the
   `package-lock.json` committed at the tag, and the rebuild checks that tag out and runs `npm ci`
   against it, so it reinstalls the identical version no matter how many bumps have since landed on
   `main`. Merge the bump and **cut a new patch release** — the ordinary flow above, not the in-place
   rebuild.
+
+Rows on `edge` are neither of those, and no dispatch moves that tag — only a push to `main` does.
+`edge` is rebuilt off `main`'s own tree, so an OS-package finding there clears itself on the next
+merge and an npm one needs the bump merged and nothing else. If nothing is due to merge and it
+cannot wait, an empty commit on `main` is the whole of the rebuild.
 
 One issue, edited in place for as long as the finding persists, so a CVE that takes upstream a
 fortnight to patch does not generate a fortnight of notifications. The workflow closes it once a
@@ -317,8 +330,9 @@ worktree — the container needs the files, and `--dry-run=extract` writes nothi
 - **Any release but the newest.** This is the scan agreeing with [SECURITY.md](SECURITY.md): nothing
   is backported, so the supported version is the latest release. A dispatch only ever repoints the
   aliases of the version it names, so scanning `0.2` would produce an alert with no supported move
-  attached, recurring forever. The four aliases that _are_ scanned are every form in which someone
-  can be pinned to the supported release.
+  attached, recurring forever. The four release aliases that _are_ scanned are every form in which
+  someone can be pinned to the supported release; `edge` is scanned beside them and is not one of
+  them.
 - **The `linux/arm64` image**, on the assumption that it installs the same Alpine packages as
   `linux/amd64` and resolves the same lockfile. If that ever stops holding, the scan step is where a
   `--platform` pass goes.

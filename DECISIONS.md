@@ -8361,8 +8361,10 @@ correct for an instance that moved the port.
 
 ## The image builds once per architecture, and a `v*` tag is checked against `package.json`
 
-`.github/workflows/publish-image.yml` publishes `ghcr.io/opendiving/opendiving-web`. Its shape is
-decided by four things.
+`.github/workflows/publish-image.yml` publishes `ghcr.io/opendiving/opendiving-web`. Its release
+path — a `v*` tag push, and the dispatch that rebuilds one — is shaped by four things. The edge
+channel that publishes on a merge to `main` arrived later and has its own section, "A merge to
+`main` publishes `:edge`, and something has to tell Render".
 
 - **Native runners, not QEMU.** `linux/amd64` and `linux/arm64` build on `ubuntu-latest` and
   `ubuntu-24.04-arm` respectively, each pushing an untagged image and reporting its digest; a
@@ -8950,15 +8952,18 @@ answer:
 - **It skips cleanly when nothing has been published**, which is not hypothetical here — `v0.2.0` is
   still ahead of both repositories, so on the day this merges the scheduled job logs a skip and goes
   green. A check that is red from the day it lands is a check somebody turns off.
-- **Only the newest release is scanned.** `SECURITY.md` is what settles this rather than a judgement
-  call in a workflow: nothing is backported and the supported version is the latest release, so the
-  scan set _is_ the supported surface, and the four aliases it covers (`X.Y.Z`, `X.Y`, the bare
-  major from 1.0.0, `latest` — one image under four names) are every form in which someone can be
-  pinned to it. Widening it is one line shorter and strictly worse: a dispatch only ever repoints
-  the aliases of the version it names, so a finding on an older minor would survive every rebuild,
-  return on the next morning's scan, and — because a never-rebuilt image keeps accruing _new_
-  advisories — open a fresh issue each time the previous was closed. Widening the scan means first
-  widening the support policy, and that is a decision in `SECURITY.md`.
+- **Only the newest release is scanned, and `edge` beside it.** `SECURITY.md` is what settles the
+  release half rather than a judgement call in a workflow: nothing is backported and the supported
+  version is the latest release, so that part of the scan set _is_ the supported surface, and the
+  four aliases it covers (`X.Y.Z`, `X.Y`, the bare major from 1.0.0, `latest` — one image under four
+  names) are every form in which someone can be pinned to it. `edge` is in the set for a different
+  reason and by a later change — it is the image the project's own instance runs, and for now the
+  only published image at all; the section on the edge channel has the rest. Widening the release
+  half is one line shorter and strictly worse: a dispatch only ever repoints the aliases of the
+  version it names, so a finding on an older minor would survive every rebuild, return on the next
+  morning's scan, and — because a never-rebuilt image keeps accruing _new_ advisories — open a fresh
+  issue each time the previous was closed. Widening the scan means first widening the support
+  policy, and that is a decision in `SECURITY.md`.
 
 **The tracking issue is public, and `SECURITY.md` says not to open public issues for
 vulnerabilities. Both are right**, and `SECURITY.md` now says where the line is so that the next
@@ -16650,3 +16655,97 @@ scroll container, the iframe boundary included — measured: with the trigger 20
 nothing fires, and it fires only once genuinely on screen. That is the harness rather than the
 component, since the app is not in an iframe. A margin regression would therefore be invisible to
 the whole suite and is a browser walk to catch.
+
+## A merge to `main` publishes `:edge`, and something has to tell Render
+
+The workflow had two ways in - a `v*` tag push and a `workflow_dispatch` - and its header gave the
+reason there was no third: self-hosters consume releases as events, and a version minted per merge
+trains people onto `:latest` instead of reading what changed. That reasoning was right about
+releases and was being used to rule out something else. A hosted instance has to run _something_,
+and what it should run is `main`.
+
+So a push to `main` now builds too, and publishes exactly two names: `:edge` and the `:sha-<12>`
+every build already pushed. Never `:latest`, never `X.Y.Z` or `X.Y`. The release path's alias set is
+what somebody out there is pinned to, and a merge must not be able to move it - which the code gets
+for free rather than by a check, because `main` is neither a tag push nor `v`-shaped and so cannot
+enter the version block, and `inputs.latest` is empty on a push event. `edge` is not offered to
+self-hosters and nothing in this repository points at it; it exists so that one instance can follow
+`main`.
+
+**Adding the trigger changed what `ref:` had to be, and that is the part a reading would have
+missed.** The checkout step was `ref: ${{ inputs.ref || github.ref }}`, exact for as long as the
+only push trigger was a tag: `refs/tags/v0.4.0` resolves to one commit and keeps resolving to it. On
+a `main` push `github.ref` is a _branch_, and `actions/checkout` resolves a branch to its tip when
+the job runs rather than to the commit that triggered the run - while every SHA in the job is read
+back out of the working tree afterwards. A run triggered by one merge and started after the next had
+landed would therefore have built, tagged, labelled and deployed the later commit while reporting
+green against the earlier one, which would have got no `:sha-` image at all. `github.sha` is the
+triggering event's own commit and is what the fallback now names; `inputs.ref` still wins on a
+dispatch, where `github.sha` is only the tip of whatever branch the run was launched from. This is
+not a narrow race either: the `concurrency` group queues rather than cancels, so the window is a
+whole preceding build long.
+
+That queue drops work on purpose, which is worth knowing before it looks like a bug. A concurrency
+group holds one running and one _pending_ run, and a third arrival cancels the pending one - so a
+burst of merges leaves the ones in the middle unbuilt, with a cancelled Publish Image check against
+them. For a channel whose only consumer wants the tip that is the right trade: the last merge of the
+burst is the one deployed, and every commit that is built still carries its own `:sha-` tag.
+
+**Which is exactly why the group is no longer one group.** The same rule applied to the release path
+is not a dropped edge build but a dropped _release_, and the release ritual walks straight into it:
+`CONTRIBUTING.md` has the version bump merged to `main` and the `v` tag pushed at that commit
+immediately afterwards, so the tag run queues behind the bump merge's own edge build - and any merge
+landing while it waits would cancel it. No `X.Y.Z`, no `X.Y`, no `:latest`, no draft release, and a
+cancelled check that reads exactly like the dropped merge above. The key is therefore `edge` for a
+push to `main` and `release` for everything else, which keeps the property the single group was
+there for: nothing that can write `:latest` or a version alias runs beside anything else that can. A
+`workflow_dispatch` counts as a release even when it is launched from `main`, because the checkbox
+lets it push `:latest`.
+
+The two queues overlap on one tag and only one: `:sha-<12>`, when a release is cut at a commit
+`main` has already built. Both runs build the same commit from the same tree, so the tag ends up on
+one of two images of one source, and a digest read back by tag may belong to the other run - which
+makes it a tie rather than a race, including for the deploy, where the instance would be handed an
+equivalent build of the commit it was going to get anyway.
+
+**Publishing the image is not deploying it.** Render's image-backed services "do not automatically
+redeploy whenever a new image is associated with their assigned tag"
+([deploying an image](https://render.com/docs/deploy-an-image)), so `:edge` moving is invisible to
+them. A [Deploy Hook](https://render.com/docs/deploy-hooks) is the trigger, and it is handed
+`imgURL` with the **digest** this run built rather than the `:edge` tag - two merges in quick
+succession are queued by the `concurrency` group but the tag still ends up naming the later one, and
+"deploy the bytes this run produced" is the only reading of the request with a stable meaning. The
+digest is read back off the `:sha-` tag for the same reason: `:edge` is shared and `:sha-<12>` is
+this commit's alone.
+
+**The hooks come from one comma-separated secret, `RENDER_DEPLOY_HOOKS`, and its absence is a
+supported state.** This repository needs exactly one hook. The name is plural and the value
+comma-separated because the api repo's copy of this workflow needs two - one image is deployed there
+as both the api and its worker - and a scalar here would have to be widened the first time the two
+files were kept in step. A fork has no secret, and neither does this repository until somebody sets
+one, so an absent secret prints a notice and the job goes green. A default-branch build that is red
+for everyone who cannot hold the secret is a build people stop reading, which costs more than the
+deploy it is failing to report. A secret that is _set_ but parses to no hook is the opposite case
+and fails loudly: that is a typo, not a fork.
+
+Three things in that loop are less obvious than they look. Each hook is passed to `::add-mask::`
+before use: GitHub masks the whole secret in logs, but one hook sliced out of a comma-separated
+value is a substring and is not masked, so a `curl` error line could print a working deploy URL into
+a log that is public the day this repository is. And the whitespace a pasted secret may carry is
+stripped with `tr -d ' \t\r'` rather than `tr -d '[:space:]'` - that class includes the newlines the
+list has just been split on, and deleting it would hand the whole list back as a single hook. The
+array itself is safe under `set -u`, because `mapfile` with no input leaves it empty rather than
+unset — the opposite of `declare -A`, whose trap is in "The scan that matters runs on a schedule,
+and it replaced the audit that ran on every PR" above. Verified on bash 5.3, the same way that one
+was.
+
+**`edge` also joins the daily vulnerability scan, ahead of its early exit.** That scan derives its
+targets from `git tag -l 'v*'` and returned before building the alias list when there were none -
+correct while the only published images were releases, and exactly wrong now: for the whole period
+before the first release, `edge` is the only published image there is, and appending it after that
+exit would have left it unreachable. The early exit is now "no tags _and_ no `edge`", which is still
+a clean skip rather than a red check. The scan's issue body had to learn the difference too, because
+`edge` is the one target whose remedy is not a dispatch at a `v` tag: it is rebuilt by the next push
+to `main`, so an OS-package finding clears itself and an npm one needs only the bump merged. Before
+the first release there is no `v` tag to name at all, and the remedy text would otherwise have read
+`ref` = `v`.

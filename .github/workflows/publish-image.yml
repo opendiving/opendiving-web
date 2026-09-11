@@ -1,12 +1,17 @@
 name: Publish Image
 
-# Two ways in, and they mean different things.
+# Three ways in, and they mean different things.
+#
+# A push to `main` is the edge channel: a merge builds `:edge` and `:sha-<12>`, and
+# nothing else. Never `:latest` and never a version alias - those belong to the release path
+# below, and a version minted per merge would train self-hosters onto `:latest` instead of
+# reading what changed, which is the reason releases stay events they consume deliberately.
+# `edge` is what the project's own hosted instance runs and nothing a self-hoster is asked to
+# follow; the `deploy` job is what tells that instance a new digest exists.
 #
 # A `v*` tag push is the release path: it publishes the whole alias set for that version
 # and opens a draft release. Tags are cut deliberately - by hand, after bumping
-# `package.json`, which the guard below insists on - and that is why there is no
-# `push: branches:` trigger: self-hosters consume releases as events, and a version per
-# merge trains people onto `:latest` instead of reading what changed.
+# `package.json`, which the guard below insists on.
 #
 # `workflow_dispatch` is everything else: a staging build off a branch, or rebuilding an
 # already-released version because its base image grew a CVE. That second case is why a
@@ -20,6 +25,7 @@ name: Publish Image
 # launched from `main` costs nothing.
 on:
   push:
+    branches: [main]
     tags: ["v*"]
   workflow_dispatch:
     inputs:
@@ -44,11 +50,29 @@ permissions:
   contents: read
   packages: write
 
-# Two runs pushing different commits can otherwise race over a shared tag (`:latest`, or
-# the same `tag` typed twice) and leave it pointing at whichever finished last. Queue
-# rather than cancel - a cancelled push can leave the tag on the older image.
+# Two runs pushing different commits can otherwise race over a shared tag (`:edge` on two
+# merges in quick succession, `:latest`, or the same `tag` typed twice) and leave it pointing
+# at whichever finished last. Queue rather than cancel - a cancelled push can leave the tag
+# on the older image.
+#
+# **Two groups, split by channel**, because a group holds one run and one *pending* run and a
+# third arrival cancels the pending one. That is an acceptable loss on the edge channel - a
+# burst of merges leaves the ones in the middle unbuilt, which is the right trade for a
+# channel whose only consumer wants the tip; each commit that is built still carries its own
+# `:sha-` tag, and the last merge of the burst is the one deployed. It is not acceptable on
+# the release path, and one shared group would have imposed it there: the release ritual
+# pushes the `v*` tag straight after merging the version bump, so the tag run queues behind
+# that merge's own edge build, and any merge landing meanwhile would cancel the release
+# outright - no `X.Y.Z`, no `X.Y`, no `:latest`, no draft release, and a cancelled check
+# indistinguishable from the dropped-merge case above.
+#
+# A `workflow_dispatch` sits with the releases even when it is launched from `main`, because
+# it can be told to push `:latest`. The two groups overlap on exactly one tag, `:sha-<12>`,
+# when a release is cut at a commit `main` has already built: both runs build the same commit
+# from the same tree, so the tag lands on one of two images of one source, and a digest read
+# back by tag may be the other run's. That is a tie rather than a race.
 concurrency:
-  group: publish-image
+  group: publish-image-${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'edge' || 'release' }}
   cancel-in-progress: false
 
 env:
@@ -92,14 +116,25 @@ jobs:
 
       - uses: actions/checkout@v7
         with:
-          # On a tag push `inputs.ref` is empty and this falls through to the tag itself.
-          ref: ${{ inputs.ref || github.ref }}
+          # On any push - a `v*` tag or `main` - `inputs.ref` is empty and this falls through
+          # to `github.sha`, which is that event's own commit.
+          #
+          # Deliberately not `github.ref`, which was here until `main` became a trigger and was
+          # harmless only while it wasn't. On a tag push it names the tag and resolves to one
+          # commit forever; on a `main` push it is a *branch*, and `actions/checkout` resolves
+          # a branch to its tip when the job runs rather than to the commit that triggered the
+          # run. Every SHA below is read out of the working tree, so a run for c1 that starts
+          # after c2 has merged would build, tag, label and deploy c2 while reporting against
+          # c1 - and c1 would get no `:sha-` image at all. The `concurrency` queue above makes
+          # that window a whole preceding build long.
+          ref: ${{ inputs.ref || github.sha }}
           persist-credentials: false
 
-      # `github.sha` is NOT the commit being built: on a manual run it is the tip of
-      # whichever branch the workflow file was launched from. Every SHA below therefore
-      # comes from the working tree after checkout, which also pins a moving `ref` (a
-      # branch name) to the exact commit this image was built from.
+      # On a `workflow_dispatch` `github.sha` is NOT the commit being built: it is the tip of
+      # whichever branch the workflow file was launched from, and `inputs.ref` is what names
+      # the commit. Every SHA below therefore comes from the working tree after checkout, which
+      # also pins a moving `ref` (a branch name typed into the input) to the exact commit this
+      # image was built from.
       - name: Work out tags and labels
         id: meta
         env:
@@ -110,6 +145,7 @@ jobs:
           EXTRA_TAG: ${{ inputs.tag }}
           PUSH_LATEST: ${{ inputs.latest }}
           IS_TAG_PUSH: ${{ github.ref_type == 'tag' && github.event_name == 'push' }}
+          IS_MAIN_PUSH: ${{ github.ref == 'refs/heads/main' && github.event_name == 'push' }}
         run: |
           set -euo pipefail
 
@@ -166,6 +202,16 @@ jobs:
             if [ "$IS_TAG_PUSH" = "true" ]; then
               PUSH_LATEST=true
             fi
+          fi
+
+          # The edge channel, and the whole of it: `:edge` beside the `:sha-` tag every build
+          # already pushes. `main` cannot reach the version block above - it is neither a tag
+          # push nor `v`-shaped - and `inputs.latest` is empty on a push event, so a merge
+          # publishes these two names and no other. That is deliberate rather than incidental:
+          # a self-hoster pinned to `:latest` or to `0.1` must never be moved by a merge, and
+          # the alias sets that carry them are the release path's to compute.
+          if [ "$IS_MAIN_PUSH" = "true" ]; then
+            TAGS="${TAGS}"$'\n'"${IMAGE}:edge"
           fi
 
           # The extra tag is for names like `staging`. A version typed into it would be
@@ -312,6 +358,8 @@ jobs:
   merge:
     needs: [prepare, build]
     runs-on: ubuntu-latest
+    outputs:
+      digest: ${{ steps.digest.outputs.digest }}
 
     steps:
       - name: Download the digests
@@ -369,13 +417,25 @@ jobs:
 
           docker buildx imagetools create "${ARGS[@]}" "${SOURCES[@]}"
 
-      - name: Summarise what was pushed
+      # Read back off the `:sha-` tag rather than off `:edge`, which several runs share: by
+      # the time `deploy` asks, `:edge` may already name a later merge, and the point of
+      # handing Render a digest is that it deploys the bytes this run built.
+      - name: Read the manifest digest back
+        id: digest
         env:
-          TAGS: ${{ needs.prepare.outputs.tags }}
           SHA: ${{ needs.prepare.outputs.sha }}
         run: |
           set -euo pipefail
           DIGEST="$(docker buildx imagetools inspect "${IMAGE}:sha-${SHA:0:12}" --format '{{.Manifest.Digest}}')"
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+
+      - name: Summarise what was pushed
+        env:
+          TAGS: ${{ needs.prepare.outputs.tags }}
+          SHA: ${{ needs.prepare.outputs.sha }}
+          DIGEST: ${{ steps.digest.outputs.digest }}
+        run: |
+          set -euo pipefail
           {
             echo "## Pushed"
             echo
@@ -383,6 +443,85 @@ jobs:
             echo
             printf '%s\n' "$TAGS" | sed 's/^/- `/; s/$/`/'
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # Publishing `:edge` is not by itself a deploy. Render's image-backed services "do not
+  # automatically redeploy whenever a new image is associated with their assigned tag"
+  # (render.com/docs/deploy-an-image), so something has to tell them, and that is a Deploy
+  # Hook (render.com/docs/deploy-hooks). It is handed `imgURL` with the digest this run just
+  # built rather than `:edge`, because the tag may have moved on by the time the service
+  # pulls and "deploy what this run produced" is the only version of this with a meaning.
+  #
+  # `RENDER_DEPLOY_HOOKS` is comma-separated and this repository needs exactly one entry; the
+  # plural shape is shared with the api repo, where one image is deployed as two services.
+  # **Absent is a supported state**: a fork has no hook, and neither does this repository until
+  # somebody sets one, so absent prints a notice and goes green. A default-branch build that is
+  # red for everyone who cannot hold the secret is a build people learn to ignore, which costs
+  # more than the deploy it is failing to report. A secret that is set but holds no hook is the
+  # other case and fails loudly - that is a typo, not a fork.
+  deploy:
+    needs: merge
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    # Nothing here reads the repository or the registry; it makes one outbound call. A
+    # job-level block replaces the workflow-level one rather than adding to it, so this drops
+    # the `packages: write` the build jobs need.
+    permissions: {}
+
+    steps:
+      - name: Deploy the digest
+        env:
+          HOOKS: ${{ secrets.RENDER_DEPLOY_HOOKS }}
+          DIGEST: ${{ needs.merge.outputs.digest }}
+        run: |
+          set -euo pipefail
+
+          # An empty digest would be asked for as `…opendiving-web@`, which Render would take
+          # as a deploy of nothing in particular. `merge` cannot produce one without failing
+          # first, so this is a guard against a future edit rather than against today's code.
+          if [ -z "$DIGEST" ]; then
+            echo "::error::The merge job reported no manifest digest - refusing to deploy."
+            exit 1
+          fi
+          IMG="${IMAGE}@${DIGEST}"
+
+          if [ -z "$HOOKS" ]; then
+            echo "::notice::RENDER_DEPLOY_HOOKS is not set - published ${IMG} and deployed nothing."
+            exit 0
+          fi
+
+          # `tr -d` takes the whitespace the secret may have been pasted with, and names the
+          # characters rather than using `[:space:]` - that class includes the newlines this
+          # list is split on, so deleting it would collapse every hook into one. `grep -v` then
+          # drops the empty entry a trailing comma leaves, with `|| true` because grep exits 1
+          # when it matches nothing, which is the "secret set to whitespace" case the check
+          # below is there to report.
+          #
+          # `mapfile` with no input leaves an *empty* array rather than an unset one, so the
+          # test below is safe under the `set -u` above - unlike `declare -A`, which does not,
+          # and whose version of this bug is the one `vulnerability-scan.yml` carries a comment
+          # about. Verified on bash 5.3.
+          mapfile -t HOOK_LIST < <(printf '%s\n' "$HOOKS" | tr ',' '\n' | tr -d ' \t\r' | grep -v '^$' || true)
+
+          if [ "${#HOOK_LIST[@]}" -eq 0 ]; then
+            echo "::error::RENDER_DEPLOY_HOOKS is set but contains no hook URL."
+            exit 1
+          fi
+
+          for HOOK in "${HOOK_LIST[@]}"; do
+            # The whole secret is masked in the log; one hook sliced out of it is a *substring*
+            # and is not, so curl's own error line would print a working deploy URL into a log
+            # that is public the day this repository is. Mask each one before it is used.
+            echo "::add-mask::$HOOK"
+            # `--get --data-urlencode` appends `imgURL` to the hook's own query string with the
+            # right separator and escapes the `@` and `:` in the digest; the hook takes a GET.
+            # `-f` is what turns a 401 or a deleted service into a red job rather than a green
+            # one that deployed nothing, and the body is dropped because the only thing worth
+            # reporting is whether it was accepted.
+            curl -fsS --retry 3 --max-time 30 \
+              --get --data-urlencode "imgURL=${IMG}" "$HOOK" -o /dev/null
+          done
+
+          echo "Asked ${#HOOK_LIST[@]} deploy hook(s) for \`${IMG}\`." >> "$GITHUB_STEP_SUMMARY"
 
   # A release exists for the notes, not for the artifacts - self-hosters install from the
   # bundle the product repo (`opendiving/opendiving`) attaches to its own release, and this
