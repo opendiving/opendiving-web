@@ -9705,6 +9705,16 @@ privacy page, the `crypto-js` dependency, the `d=404` probe on every mount, and 
 variable that a released artifact would then have to keep documenting. Nothing is deployed anywhere
 yet, so there is no window in which somebody depends on it.
 
+**Dated: "Nothing is deployed anywhere yet" was true when this was written and stopped being true on
+2026-09-12.** The project has operated an instance of its own since that day, and `project_operated`
+on `GET /config` is the one channel by which anything in this app knows it — see _"The request form
+speaks in two voices, and only `GET /config` can pick the second"_. The sentence stays because what
+it was arguing survives the date: that instance follows `:edge` off `main`, so it has never served a
+build that offered Gravatar at all, and there is still no window in which anybody depended on the
+flag. What the date changes is the next removal of this shape rather than this one. A feature taken
+out from here on comes out of a copy that has divers' data on it, so "nobody depends on it" is now
+something to establish rather than to read off the absence of a deployment.
+
 What went with it, in one list, because the pieces were spread further than anyone expects: two
 helpers and the hashing import in `lib/utils.ts`; `checkImageExists` beside them, whose only
 consumer had become its own test; `crypto-js` and `@types/crypto-js` from `package.json`;
@@ -14811,6 +14821,20 @@ was rejected because the cost is permanent rather than one-off — the project w
 vocabularies on two surfaces forever, and every later profile change would have to be made twice.
 Translating at the export boundary buys nothing here: there is nowhere this is deployed, so a
 read-contract break costs one PR in each repo and no migration for anybody.
+
+**Dated: "there is nowhere this is deployed" was true when this was written and stopped being true
+on 2026-09-12.** The project has operated an instance of its own since that day; `project_operated`
+on `GET /config` is how anything in this app knows it, and _"The request form speaks in two voices,
+and only `GET /config` can pick the second"_ has the field. The rejection stands and so does the
+reasoning behind it — two profile vocabularies cost forever where a break costs once, and that
+comparison never depended on there being nowhere to deploy. What the date changes is the "once". The
+two repos deploy independently, each publishing its own `:edge` off its own `main` and poking its
+own Render hook (see _"A merge to `main` publishes `:edge`, and something has to tell Render"_), so
+the two halves of a cross-repo read-contract break now land on that instance minutes apart in an
+order nobody chose, and whichever arrives first is reading the other side's old shape until the
+second one does. A break of this kind is something to sequence now, and to weigh against what a
+diver mid-session sees while the window is open. None of which touches the change recorded here: it
+shipped before that instance existed.
 
 **Two of the seven renamed for internal consistency, not because the format asked.**
 `DiveProfileInfo.duration` is an app response shape and `DiveGasUse.duration` is the denominator of
