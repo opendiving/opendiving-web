@@ -113,7 +113,7 @@ jobs:
           # a branch to its tip when the job runs rather than to the commit that triggered the
           # run. Every SHA below is read out of the working tree, so a run for c1 that starts
           # after c2 has merged would build, tag, label and deploy c2 while reporting against
-          # c1 - and c1 would get no `:sha-` image at all. The `concurrency` queue below makes
+          # c1 - and c1 would get no `:sha-` image at all. The `concurrency` queue above makes
           # that window a whole preceding build long.
           ref: ${{ inputs.ref || github.sha }}
           persist-credentials: false

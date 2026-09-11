@@ -8363,8 +8363,8 @@ correct for an instance that moved the port.
 
 `.github/workflows/publish-image.yml` publishes `ghcr.io/opendiving/opendiving-web`. Its release
 path — a `v*` tag push, and the dispatch that rebuilds one — is shaped by four things. The edge
-channel that publishes on every merge to `main` arrived later and has its own section, "Every merge
-to `main` publishes `:edge`, and something has to tell Render".
+channel that publishes on a merge to `main` arrived later and has its own section, "A merge to
+`main` publishes `:edge`, and something has to tell Render".
 
 - **Native runners, not QEMU.** `linux/amd64` and `linux/arm64` build on `ubuntu-latest` and
   `ubuntu-24.04-arm` respectively, each pushing an untagged image and reporting its digest; a
@@ -16656,7 +16656,7 @@ nothing fires, and it fires only once genuinely on screen. That is the harness r
 component, since the app is not in an iframe. A margin regression would therefore be invisible to
 the whole suite and is a browser walk to catch.
 
-## Every merge to `main` publishes `:edge`, and something has to tell Render
+## A merge to `main` publishes `:edge`, and something has to tell Render
 
 The workflow had two ways in - a `v*` tag push and a `workflow_dispatch` - and its header gave the
 reason there was no third: self-hosters consume releases as events, and a version minted per merge
