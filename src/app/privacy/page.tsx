@@ -101,10 +101,11 @@ export default function PrivacyPage() {
               <li>
                 <strong>Dive-Computer Files:</strong> When you fill a dive in
                 from a dive-computer file, that file itself is kept alongside
-                the dive &mdash; one per dive, under the filename it arrived
-                with. Importing a full archive puts those same files back, since
-                it carries them; a logbook imported in any other format leaves
-                no file here, whatever it was written by
+                the dive &mdash; on the recording it came from, under the
+                filename it arrived with, and a dive keeps every one you upload.
+                Importing a full archive puts those same files back, since it
+                carries them; a logbook imported in any other format leaves no
+                file here, whatever it was written by
               </li>
               <li>
                 <strong>Equipment Data:</strong> Diving equipment details and

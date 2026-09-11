@@ -15010,6 +15010,18 @@ landing page's **Computer Import** card, and the import card's _About the origin
 all about the per-dive form upload or about the report on the file just handed over. A card that is
 genuinely about the path where the file really is kept is what this sweep must not flatten.
 
+**§2.1 carried a _second_ falsehood, of a different shape, and this sweep's own noun probe walks
+straight past it.** Having been corrected to scope the promise to an upload, the entry still read
+"that file itself is kept alongside the dive — **one per dive**, under the filename it arrived
+with". Recordings falsified that clause and not the one above it: a dive logged off two computers
+holds two recordings, and one computer exported twice holds two files on one of them. The probe
+above cannot reach it, because it anchors on `(original|dive-computer|source) files?` and the false
+words are `one per dive` — a cardinality claim sharing no vocabulary with the claim it qualifies.
+Two rounds of sweeping this file for the promise therefore left a count beside it that had become
+untrue. **A promise and its cardinality are two claims in one sentence, and a probe aimed at either
+one is blind to the other**; when a model changes from one-of-something to many, the cardinality is
+the half to sweep for, and it is written in ordinary words no identifier grep will find.
+
 ## A fixture meaning "in the future" is derived, never written down
 
 `goodbye/page.render.test.tsx` has a case called "names the day everything is erased", and what it
