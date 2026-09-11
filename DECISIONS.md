@@ -3380,8 +3380,7 @@ this section claimed a clean cut until someone decoded both PNGs rather than tru
 claim cost a review round: a reviewer read it, compared it to the image, and reported a regression
 that a validator then refuted, because the clipping was never a regression at all. It also
 prescribed the fix - a `CUT_BELOW` entry naming the profile card - and when that entry was finally
-worth adding it named a different card; see _"The dive shot is ranked by recordings, and cut below
-them"_ below.
+worth adding it named a different card; see _"The dive shot is ranked by recordings"_ below.
 
 **The dashboard measures its own cut, because a written-down height goes stale quietly.** It was on
 1086 too, back when consumption was its only chart and that was where the card ended. Dive activity
@@ -3394,10 +3393,14 @@ it said.
 
 Worse, the figure is not portable. Measuring 1564 in one Chromium and shooting in the Chrome
 `playwright-core` drives produced a 3px sliver of the Recent Dives card along the bottom edge - the
-same page, laid out four pixels apart. So `cutBelow()` reads the top of the row _after_ the named
-card out of the page being photographed, moments before the shutter, and that is the frame height.
-`CUT_BELOW` names the card; nobody maintains a number. Any page can opt in the same way, and the
-gear page is the one that still carries a literal, because 1086 has never moved for it.
+same page, laid out four pixels apart. So `cutBelow()` measures the page being photographed, moments
+before the shutter, and that is the frame height. `CUT_BELOW` names a card; nobody maintains a
+number. Any page can opt in the same way, and the gear page is the one that still carries a literal,
+because 1086 has never moved for it.
+
+**What it measures is a seam across the whole page, not the named card's own bottom edge**, and the
+distinction is invisible until a shot cuts on a page with two columns - see _"A cut that cannot
+slice a card"_ below for the frame it produced when it wasn't.
 
 **`deviceScaleFactor: 2`**, because a 1x screenshot of a dark UI looks muddy on the displays most
 people read a README on. Every image in `docs/screenshots/` is therefore twice its frame - a
@@ -3458,7 +3461,7 @@ the browser's.
 `npm install`, for a script only a maintainer runs. `playwright-core` is the driver alone and takes
 an `executablePath`, so it uses the Chrome already on the machine.
 
-### The dive shot is ranked by recordings, and cut below them
+### The dive shot is ranked by recordings
 
 The picker used to take the first of the 30 most recent dives for which `GET /dive/{uuid}/profile`
 answered — a route that no longer exists, since a dive stopped having one profile and started having
@@ -3484,14 +3487,62 @@ behind. A shot nobody asked for is still silent — that is what `wanted()` is f
 is the one this script keeps re-teaching: an image generator that degrades quietly produces a README
 that is wrong for a week, and the only symptom is a line of output nobody reads.
 
-**The frame therefore ends below the _Recordings_ card**, via `CUT_BELOW["dive-detail"]` — the
-mechanism the dashboard already uses, and the first time a shot cuts on a card in the _sidebar_
-rather than in the main column. That card sits below the site and the environment, and the old 1086
-ended three pixels above it: the subject could be picked perfectly and the image would still show
-nothing of what it was retaken for. The cut lands on that card's boundary and part-way down the gas
-consumption card beside it, which is the trade this section's parent already rules on — cutting at
-the end of _a_ card matters more than the exact number, and more than the shots agreeing on one. The
-dive image is taller than the gear image next to it in the README table as a result.
+**The frame therefore has to reach the _Recordings_ card**, via `CUT_BELOW["dive-detail"]` — the
+mechanism the dashboard already uses. That card sits below the site and the environment in the
+sidebar, and the old 1086 ended three pixels above it: the subject could be picked perfectly and the
+image would still show nothing of what it was retaken for. The entry names the card the image exists
+_for_, not the card that comes out last; where the frame actually ends is the subsection below.
+
+**The committed image is of a dive with one recording, and shows no profile switcher.** That is not
+a regression and not a missing card. `DiveProfileCard` draws the switcher only once a _second_
+recording of the same dive has a profile, and no dive in the log these images come from has one, so
+the ranking above settled for the best available and photographed it honestly. Shooting a different
+account instead is not the way out: all three README images are one product tour, and a set taken
+from two logs is a defect that has been caught here before. A retake against a log that does hold a
+two-computer dive will grow a control above the chart that this image does not have — check that
+before reading its absence as a regression.
+
+### A cut that cannot slice a card
+
+`cutBelow()` was one line — the top of the named card's next sibling — and was right for as long as
+every shot cut on the dashboard, which is one column. The first shot to cut on the dive page came
+out with a sentence sliced through the middle of a line of text: _"These figures cover 35min of the
+1h 12min the dive computer recorded - the rest couldn't be assigned"_, and then a horizontal slice
+of the words _"to a cylinder."_ under it.
+
+**A sibling's top is a coordinate in one column.** _Recordings_ is a card in the narrow sidebar, the
+card after it is another sidebar card, and the main column beside them was part-way down the gas
+consumption card at the same height. Nothing about the anchor was wrong — the review round that
+chose it checked that a card always follows it and that the main column carries no competing heading
+there, and both are true. The mechanism simply had no notion of a second column, so no anchor in the
+sidebar could have produced a clean frame.
+
+**So the cut is the first height below the anchor at which no card is still open** — every card that
+begins above it also ends above it — which is a property of the frame rather than of the card that
+named it, and holds however the page is laid out or ordered. The gap between rows comes from the
+anchor's own neighbour, on either side: reading it off the card _below_ used to be the only option
+and refused an anchor at the foot of its column outright, even where the far column ran on past it.
+
+**It has to iterate.** Sweeping once over the cards open at the anchor's bottom is the obvious
+version and is still wrong here: on this page it lands part-way into the sidebar card _under_ the
+anchor, which was not open at the anchor's bottom and so was never in the sweep. Taking that one in
+reaches into the main column's next card, and only the third pass settles. Each pass that moves the
+cut has found a card the one before it could not see, so the loop is bounded by the number of cards.
+
+**The frame that comes out can be a long way below the card that named it.** The committed image
+runs 624px past the bottom of the _Recordings_ card it is anchored on, because those two columns
+finish together in exactly one place below it — it is two thirds of the page, and taller than both
+the hero and the gear image beside it in the README table. That is the trade the parent section
+above already rules on: cutting where nothing is sliced matters more than the exact number, and more
+than the shots agreeing on one. The alternative was to cut _above_ the offending card, which would
+drop the anchor out of the frame and defeat the shot.
+
+**The dashboard is unmoved, deliberately.** Its cards finish together at the anchor already, so the
+loop settles on the first pass at exactly the height the single line returned — and the loop is
+_seeded_ from the neighbour's top where there is one, rather than recomputed from the anchor's
+bottom plus the gap, so that path stays arithmetically identical rather than merely close. 3px is
+the difference between a clean edge and a sliver of the next card, per the section above.
+`dashboard.png` was not re-shot at all, so it is byte-for-byte the file that was already committed.
 
 ### `visit()` fails loudly when a navigation lands on `/signin`
 

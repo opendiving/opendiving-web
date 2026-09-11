@@ -130,10 +130,10 @@ Committing the regenerated files over there is a separate, manual step.
 
 Every shot uses one width, and the year the two dashboard charts are parked on is a constant beside
 it at the top of `scripts/screenshots.mjs`. No dimension is a round number — 1024 is `lg`, where the
-detail pages stop stacking their sidebar, and the heights either end below a named card, measured in
-the page moments before the shutter, or carry a literal for a page whose layout has never moved — so
-read the comments there before changing them, and see [DECISIONS.md](DECISIONS.md) for the rest of
-the reasoning.
+detail pages stop stacking their sidebar, and the heights are either measured in the page moments
+before the shutter, at the first line past a named card where no card is cut through, or a literal
+for a page whose layout has never moved — so read the comments there before changing them, and see
+[DECISIONS.md](DECISIONS.md) for the rest of the reasoning.
 
 ## Design expectations
 

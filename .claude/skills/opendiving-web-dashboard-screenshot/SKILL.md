@@ -45,9 +45,10 @@ Everything the shot needs is a constant in `scripts/screenshots.mjs`, with the r
 - **1024px wide**, Tailwind's `lg`, at `deviceScaleFactor: 2` → the PNG lands at 2048 wide.
 - **Dark mode**, `reducedMotion: "reduce"`.
 - **Height is measured in the page, not written down** — `CUT_BELOW.dashboard` names the _Dive
-  Activity_ card and `cutBelow()` reads the top of the row after it moments before the shutter. That
-  is what makes the frame cover the header and both chart cards and end on a card boundary. Two
-  hand-measured heights went stale within one afternoon; don't add a third.
+  Activity_ card, and `cutBelow()` finds the first height past it at which no card is still open,
+  moments before the shutter. On this page that is the row below the anchor and nothing further, so
+  the frame covers the header and both chart cards and ends on a card boundary. Two hand-measured
+  heights went stale within one afternoon; don't add a third.
 - **Both cards on Year / 2025**, from the single `CHART_YEAR` constant — the two cards showing the
   same period is the point, since they read as a pair.
 
