@@ -283,6 +283,33 @@ describe("useInfiniteResource", () => {
       );
     });
 
+    // The certifications page calls this once per card-image upload *and* once
+    // per removal, so swapping both sides of a card fires it twice with no
+    // scroll in between - and a stored file cannot re-sort anything. A cursor
+    // that decremented would walk back one page per call and spend the next
+    // scroll re-reading pages that append nothing.
+    it("rewinds the same one page however many saves it takes", async () => {
+      const { fetchFn } = ledger(30);
+      const { result } = renderHook(() =>
+        useInfiniteResource<Row>(fetchFn, { keyOf }),
+      );
+
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+      await act(() => result.current.loadMore());
+
+      act(() => result.current.applySaved({ uuid: "r4" }));
+      act(() => result.current.applySaved({ uuid: "r4" }));
+      act(() => result.current.applySaved({ uuid: "r7" }));
+
+      fetchFn.mockClear();
+      await act(() => result.current.loadMore());
+
+      // Page 2, not page 1 three rewinds back - and the one after it next.
+      expect(fetchFn).toHaveBeenCalledExactlyOnceWith(2, 10);
+      await act(() => result.current.loadMore());
+      expect(fetchFn).toHaveBeenLastCalledWith(3, 10);
+    });
+
     it("reads the list again for a row it has never seen", async () => {
       const { fetchFn } = ledger();
       const { result } = renderHook(() =>

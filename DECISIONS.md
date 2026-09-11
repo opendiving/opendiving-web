@@ -16517,13 +16517,21 @@ column the edit dialog can change — dive sites by name, trips and courses by s
 certifications by the date certified — so a rename re-sorts the row on the server. Move it later
 than the loaded window and everything after its old slot shifts up one offset, and the page after
 the last one fetched steps straight over whichever row slid across the boundary. The dedup catches
-only the opposite direction. What the swap deliberately does _not_ do is re-sort what is on screen:
-the row keeps its old position with its new contents until something reloads the list, because
-putting it where it now belongs means reading the list again — the jump the function exists to
-avoid. `keyOf` and the in-flight guard both live in refs, not state — the first because an inline
-arrow at a call site would otherwise restart the fetch on every render (`useResource`'s `onLoaded`
-has this exact problem and this exact fix), the second because an `IntersectionObserver` can deliver
-two entries before a render lands in between, and state would still read "idle" for the second.
+only the opposite direction.
+
+**That rewind is derived from what is loaded, not decremented**, and the difference is a call site
+that does not look like an edit. The certifications page runs `applySaved` on every card-image
+upload and every removal, so swapping both sides of a card fires it twice with no scroll in between
+— and a change to a stored file cannot re-sort anything. A decrement compounds across those, walking
+the cursor back a page per call and spending the next scroll re-reading pages that append nothing;
+`floor(loaded / perPage)` gives the same answer however many times it is asked. What the swap
+deliberately does _not_ do is re-sort what is on screen: the row keeps its old position with its new
+contents until something reloads the list, because putting it where it now belongs means reading the
+list again — the jump the function exists to avoid. `keyOf` and the in-flight guard both live in
+refs, not state — the first because an inline arrow at a call site would otherwise restart the fetch
+on every render (`useResource`'s `onLoaded` has this exact problem and this exact fix), the second
+because an `IntersectionObserver` can deliver two entries before a render lands in between, and
+state would still read "idle" for the second.
 
 **The scoped dive lists were silently truncating, and that is what this change actually fixed.** The
 five detail pages — trip, dive site, gear item, course, species — rendered `RecentDivesCard` with

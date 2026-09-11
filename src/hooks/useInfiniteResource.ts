@@ -209,7 +209,7 @@ export function useInfiniteResource<T>(
    * it.
    *
    * The cursor steps back a page for the same reason `removeItem` re-derives
-   * it. Every list here is ordered by a column the edit dialog can change - dive
+   * it, and is re-derived rather than decremented for the same reason too. Every list here is ordered by a column the edit dialog can change - dive
    * sites by name, trips and courses by start date, certifications by the date
    * certified - so a rename or a re-dated trip *moves* the row in the server's
    * order. Move it later than the loaded window and everything after its old
@@ -217,7 +217,14 @@ export function useInfiniteResource<T>(
    * skips whichever row slid across the boundary, permanently. Re-reading the
    * previous page covers a shift of one row in either direction and the dedup in
    * `load` absorbs the repeats; the cost is one overlapping request on the next
-   * scroll, and only after an edit.
+   * scroll, however many edits it follows.
+   *
+   * That last part is why this is computed from what is loaded rather than
+   * decremented. A decrement compounds, and the calls are not always one per
+   * edit: the certifications page runs this on every card-image upload and
+   * removal, so swapping both sides of a card fires it twice with no scroll in
+   * between - and a change to a stored file cannot re-sort anything. Derived,
+   * the answer is the same however many times it is asked.
    *
    * What it does not do is re-sort what is already on screen: the row keeps its
    * old position, with its new contents, until something reloads the list. That
@@ -237,9 +244,9 @@ export function useInfiniteResource<T>(
       const next = [...itemsRef.current];
       next[index] = saved;
       commitItems(next);
-      nextPage.current = Math.max(1, nextPage.current - 1);
+      nextPage.current = Math.max(1, Math.floor(next.length / itemsPerPage));
     },
-    [commitItems, reload],
+    [commitItems, reload, itemsPerPage],
   );
 
   useEffect(() => {
