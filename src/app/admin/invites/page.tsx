@@ -57,6 +57,7 @@ export default function AdminInvitesPage() {
     totalCount,
     itemsPerPage,
     hasMore,
+    loadFailed,
     loadMore,
     reload,
   } = useInfiniteResource<AdminInviteRequest>(fetchRequests, {
@@ -195,6 +196,7 @@ export default function AdminInvitesPage() {
           <LoadMoreTrigger
             hasMore={hasMore}
             isLoading={isLoadingMore}
+            hasFailed={loadFailed}
             loadedCount={requests.length}
             totalCount={totalCount}
             itemsPerPage={itemsPerPage}

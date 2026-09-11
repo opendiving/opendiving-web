@@ -356,6 +356,65 @@ describe("useInfiniteResource", () => {
     );
   });
 
+  // The flag the trigger reads to stop auto-loading. A failed page leaves
+  // `hasMore` true and clears the spinner - indistinguishable from a page that
+  // landed - so without this the list would re-request at network speed for as
+  // long as the trigger stayed on screen.
+  describe("loadFailed", () => {
+    it("is raised by a failed page and cleared by the next attempt", async () => {
+      let failNext = false;
+      const { fetchFn } = ledger();
+      const flaky = vi.fn(async (page: number, size: number) => {
+        if (failNext) throw new Error("500");
+        return fetchFn(page, size);
+      });
+      const { result } = renderHook(() =>
+        useInfiniteResource(flaky, { keyOf }),
+      );
+
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+      expect(result.current.loadFailed).toBe(false);
+
+      failNext = true;
+      await act(() => result.current.loadMore());
+
+      expect(result.current.loadFailed).toBe(true);
+      // Untouched, which is exactly why the latch has to exist.
+      expect(result.current.hasMore).toBe(true);
+      expect(result.current.isLoadingMore).toBe(false);
+      expect(result.current.items).toHaveLength(10);
+
+      failNext = false;
+      await act(() => result.current.loadMore());
+
+      expect(result.current.loadFailed).toBe(false);
+      expect(result.current.items).toHaveLength(20);
+    });
+
+    // The retry must not skip the page that failed - `nextPage` is only
+    // advanced by a response that actually arrived.
+    it("re-requests the page that failed, not the one after it", async () => {
+      let failNext = false;
+      const { fetchFn } = ledger();
+      const flaky = vi.fn(async (page: number, size: number) => {
+        if (failNext) throw new Error("500");
+        return fetchFn(page, size);
+      });
+      const { result } = renderHook(() =>
+        useInfiniteResource(flaky, { keyOf }),
+      );
+
+      await waitFor(() => expect(result.current.isLoading).toBe(false));
+      failNext = true;
+      await act(() => result.current.loadMore());
+      failNext = false;
+      await act(() => result.current.loadMore());
+
+      expect(flaky.mock.calls.map(([page]) => page)).toEqual([1, 2, 2]);
+      expect(result.current.items.map(keyOf)).toContain("r10");
+    });
+  });
+
   it("waits for `enabled` before fetching", async () => {
     const { fetchFn } = ledger();
     const { rerender } = renderHook(

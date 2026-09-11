@@ -33,6 +33,7 @@ function renderTrigger() {
       <LoadMoreTrigger
         hasMore
         isLoading={false}
+        hasFailed={false}
         loadedCount={10}
         totalCount={100}
         itemsPerPage={10}

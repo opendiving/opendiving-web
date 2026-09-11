@@ -300,29 +300,36 @@ Then render `layout/standalone-shell.tsx` rather than hand-rolling the centered 
 where the app's `<main>` lives, and that component is where the chrome-free half of the app keeps
 its own. See "The chrome-free routes had no `<main>`" at the end of this file.
 
-## Shared list-page pattern: `useAuthGuard` + `usePaginatedResource` + `useDeleteResource`
+## Shared list-page pattern: `useAuthGuard` + `useInfiniteResource` + `useDeleteResource`
 
 The dives/trips/dive-sites list pages (`app/dives/page.tsx`, `app/trips/page.tsx`,
 `app/sites/page.tsx`) used to each hand-roll the same ~100 lines: an auth-redirect effect,
 fetch-on-mount + pagination state, a native `confirm()` + delete + toast + refetch flow, and a
 "Showing X to Y of Z" footer. That's now factored into three hooks plus two shared components - any
-new paginated/deletable resource list should reuse them rather than re-deriving the pattern:
+new list of a deletable resource should reuse them rather than re-deriving the pattern:
 
 - `hooks/useAuthGuard.ts` - redirects to `/signin` once the auth check settles and the user isn't
   signed in (mirrors `useRedirectIfAuthenticated` for the opposite case: public-only pages
   redirecting _signed-in_ users away).
-- `hooks/usePaginatedResource.ts` - takes a
-  `(page, perPage) => Promise<{data, total_count, has_more}>` fetcher and returns
-  `items`/`isLoading`/`totalCount`/`currentPage`/`hasMore`/`fetchPage`/ `refetch`. Pair with
-  `components/ui/pagination-footer.tsx` (`<PaginationFooter />`) for the "Showing X to Y of Z" +
-  Previous/Next UI - it renders nothing if everything fits on one page.
+- `hooks/useInfiniteResource.ts` - takes a
+  `(page, perPage) => Promise<{data, total_count, has_more}>` fetcher and a `keyOf`, and returns
+  `items`/`isLoading`/`isLoadingMore`/`totalCount`/`hasMore`/`loadFailed`/`loadMore`/`reload`/
+  `removeItem`/`applySaved`. Pages accumulate rather than replace. Pair with
+  `components/ui/load-more-trigger.tsx` (`<LoadMoreTrigger />`), whose button is also the
+  load-on-scroll sentinel - it renders nothing if everything fits on one page.
 - `hooks/useDeleteResource.ts` - takes a `(id) => Promise<...>` delete function and returns
   `deletingId`/`pendingId`/`requestDelete`/ `cancelDelete`/`confirmDelete`. Pair with
   `components/ui/confirm-dialog.tsx` (`<ConfirmDialog open={pendingId !== null} ... />`) instead of
   the blocking native `confirm()` - it's stylable, testable, and doesn't freeze the tab.
 
-Wire `usePaginatedResource`'s `refetch` as `useDeleteResource`'s `onDeleted` so a successful delete
-refreshes the current page.
+Wire `useInfiniteResource`'s `removeItem` as `useDeleteResource`'s `onDeleted`, which is handed the
+id that went, so the row disappears without the list collapsing back to its first page. Reach for
+`reload` only when a delete changes rows other than its own. **Why `removeItem` rather than a
+refetch, and why the cursor moves with it, is the section at the end of this file - read it before
+changing any of this.** This paragraph used to say "wire `refetch` ... so a successful delete
+refreshes the current page", and was still saying it after both `usePaginatedResource` and
+`PaginationFooter` were deleted: a prescriptive section is the one a reader lands on first and the
+last one a change remembers to update.
 
 ## Access token lives in memory only, never in `localStorage`
 
@@ -16448,6 +16455,19 @@ it fire, because the observer's 400px `rootMargin` asks for the next page while 
 below the fold — and everyone else gets a real control. The progress line above it is a live region
 for the matching reason: appended rows move no focus and change no URL, so nothing else would say
 anything happened.
+
+**A failed page has to latch, or the sentinel becomes a retry loop.** This is the one that does not
+announce itself. A request that fails leaves `hasMore` true and clears the spinner — which is
+precisely what a page that _succeeded_ looks like from the trigger's side — so the effect that pulls
+the next page when the previous one lands re-fires the instant the failure settles, and goes on
+firing for as long as the trigger sits on screen. The result is an unbounded request loop at network
+speed with one `destructive` toast per iteration, and because `TOAST_LIMIT` is 1 the diver sees a
+single error toast that never clears rather than anything that looks like a storm. `loadFailed`
+stops the auto-fire and turns the button into "Try again"; the latch lives in the hook and is
+consulted by the trigger rather than enforced inside `loadMore`, because a retry the diver asked for
+has to go through and `loadMore` is the one path both of them take. Every attempt clears it, and
+`nextPage` is only advanced by a response that actually arrived, so the retry asks for the page that
+failed rather than the one after it.
 
 **A delete drops its row locally, and that is half a fix.** Re-reading from page one would yank the
 ground out from under a reader who had scrolled: everything above them vanishes and the page shrinks

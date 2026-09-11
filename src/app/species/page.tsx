@@ -135,8 +135,9 @@ export default function SpeciesPage() {
   );
 
   // Changing the search term changes this callback's identity, which is what
-  // sends `usePaginatedResource` back to page 1 for the new query - a page 3 of
-  // the unfiltered list is not a page of the filtered one.
+  // makes `useInfiniteResource` throw away every page it has loaded and read the
+  // new query from the first - rows of the unfiltered list are not rows of the
+  // filtered one, however many of them are already on screen.
   const {
     items: species,
     isLoading: isLoadingSpecies,
@@ -144,6 +145,7 @@ export default function SpeciesPage() {
     totalCount,
     itemsPerPage,
     hasMore,
+    loadFailed,
     loadMore,
   } = useInfiniteResource<SpeciesLifeListEntry>(fetchSpecies, {
     keyOf: (entry) => entry.uuid,
@@ -253,6 +255,7 @@ export default function SpeciesPage() {
           <LoadMoreTrigger
             hasMore={hasMore}
             isLoading={isLoadingMore}
+            hasFailed={loadFailed}
             loadedCount={species.length}
             totalCount={totalCount}
             itemsPerPage={itemsPerPage}

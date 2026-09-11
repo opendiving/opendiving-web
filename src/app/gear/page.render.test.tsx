@@ -220,7 +220,7 @@ describe("gear row actions name their row", () => {
   });
 });
 
-// The page's fetch callbacks close over `user`, and `usePaginatedResource` fetches
+// The page's fetch callbacks close over `user`, and `useInfiniteResource` fetches
 // from an effect keyed on the callback - so anything that gives `user` a new identity
 // per render puts the effect in a loop with the fetch it started.
 //

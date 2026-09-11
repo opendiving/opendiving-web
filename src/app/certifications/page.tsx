@@ -74,6 +74,7 @@ export default function CertificationsPage() {
     totalCount,
     itemsPerPage,
     hasMore,
+    loadFailed,
     loadMore,
     removeItem,
     applySaved,
@@ -279,6 +280,7 @@ export default function CertificationsPage() {
           <LoadMoreTrigger
             hasMore={hasMore}
             isLoading={isLoadingMore}
+            hasFailed={loadFailed}
             loadedCount={certifications.length}
             totalCount={totalCount}
             itemsPerPage={itemsPerPage}

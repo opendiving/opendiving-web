@@ -51,6 +51,7 @@ export default function SitesPage() {
     totalCount,
     itemsPerPage,
     hasMore,
+    loadFailed,
     loadMore,
     removeItem,
     applySaved,
@@ -191,6 +192,7 @@ export default function SitesPage() {
           <LoadMoreTrigger
             hasMore={hasMore}
             isLoading={isLoadingMore}
+            hasFailed={loadFailed}
             loadedCount={diveSites.length}
             totalCount={totalCount}
             itemsPerPage={itemsPerPage}

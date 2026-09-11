@@ -10,7 +10,7 @@ import {
 // load-bearing rather than tidiness: the real `AuthContext` holds it in state, so it
 // keeps one identity across renders, and this page's fetch callback lists `user` in
 // its dependencies. A mock handing back a fresh `user` per render gives
-// `usePaginatedResource` a new `fetchFn` every time, and its fetch-on-mount effect
+// `useInfiniteResource` a new `fetchFn` every time, and its fetch-on-mount effect
 // re-runs on every render the fetch itself causes. See "The new-dive render test was
 // in a loop with itself" in DECISIONS.md, and "reads the certification list once"
 // below.
@@ -111,7 +111,7 @@ describe("certification row actions name their row", () => {
   });
 });
 
-// The page's fetch callback closes over `user`, and `usePaginatedResource` fetches
+// The page's fetch callback closes over `user`, and `useInfiniteResource` fetches
 // from an effect keyed on the callback - so anything that gives `user` a new identity
 // per render puts the effect in a loop with the fetch it started.
 //

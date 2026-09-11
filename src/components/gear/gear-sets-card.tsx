@@ -24,6 +24,8 @@ interface GearSetsCardProps {
   isLoading: boolean;
   /** True while a further page is in flight, as opposed to the first. */
   isLoadingMore: boolean;
+  /** True when the last attempt failed, stopping the load-on-scroll. */
+  hasFailed: boolean;
   totalCount: number;
   itemsPerPage: number;
   hasMore: boolean;
@@ -44,6 +46,7 @@ export function GearSetsCard({
   sets,
   isLoading,
   isLoadingMore,
+  hasFailed,
   totalCount,
   itemsPerPage,
   hasMore,
@@ -148,6 +151,7 @@ export function GearSetsCard({
         <LoadMoreTrigger
           hasMore={hasMore}
           isLoading={isLoadingMore}
+          hasFailed={hasFailed}
           loadedCount={sets.length}
           totalCount={totalCount}
           itemsPerPage={itemsPerPage}

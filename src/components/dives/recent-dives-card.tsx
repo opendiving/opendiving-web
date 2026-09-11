@@ -117,6 +117,7 @@ export function RecentDivesCard({
     totalCount,
     itemsPerPage,
     hasMore,
+    loadFailed,
     loadMore,
   } = useInfiniteResource<Dive>(fetchDives, {
     keyOf: (dive) => dive.uuid,
@@ -222,6 +223,7 @@ export function RecentDivesCard({
         <LoadMoreTrigger
           hasMore={complete && hasMore}
           isLoading={isLoadingMore}
+          hasFailed={loadFailed}
           loadedCount={recentDives.length}
           totalCount={totalCount}
           itemsPerPage={itemsPerPage}

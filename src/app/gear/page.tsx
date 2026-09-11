@@ -55,6 +55,7 @@ export default function GearPage() {
     totalCount: itemsTotal,
     itemsPerPage: itemsPerPage,
     hasMore: itemsHaveMore,
+    loadFailed: itemsFailed,
     loadMore: loadMoreItems,
     reload: reloadItems,
     removeItem: dropItem,
@@ -81,6 +82,7 @@ export default function GearPage() {
     totalCount: setsTotal,
     itemsPerPage: setsPerPage,
     hasMore: setsHaveMore,
+    loadFailed: setsFailed,
     loadMore: loadMoreSets,
     reload: reloadSets,
     removeItem: dropSet,
@@ -208,6 +210,7 @@ export default function GearPage() {
         items={gearItems}
         isLoading={isLoadingItems}
         isLoadingMore={isLoadingMoreItems}
+        hasFailed={itemsFailed}
         totalCount={itemsTotal}
         itemsPerPage={itemsPerPage}
         hasMore={itemsHaveMore}
@@ -227,6 +230,7 @@ export default function GearPage() {
           sets={gearSets}
           isLoading={isLoadingSets}
           isLoadingMore={isLoadingMoreSets}
+          hasFailed={setsFailed}
           totalCount={setsTotal}
           itemsPerPage={setsPerPage}
           hasMore={setsHaveMore}

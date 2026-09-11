@@ -61,6 +61,7 @@ export default function DivesPage() {
     totalCount,
     itemsPerPage,
     hasMore,
+    loadFailed,
     loadMore,
     reload,
     removeItem,
@@ -232,6 +233,7 @@ export default function DivesPage() {
           <LoadMoreTrigger
             hasMore={hasMore}
             isLoading={isLoadingMore}
+            hasFailed={loadFailed}
             loadedCount={dives.length}
             totalCount={totalCount}
             itemsPerPage={itemsPerPage}

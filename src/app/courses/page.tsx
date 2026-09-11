@@ -68,8 +68,9 @@ export default function CoursesPage() {
   );
 
   // Changing the search term changes this callback's identity, which is what
-  // sends `usePaginatedResource` back to page 1 for the new query - a page 3 of
-  // the unfiltered list is not a page of the filtered one.
+  // makes `useInfiniteResource` throw away every page it has loaded and read the
+  // new query from the first - rows of the unfiltered list are not rows of the
+  // filtered one, however many of them are already on screen.
   const {
     items: courses,
     isLoading: isLoadingCourses,
@@ -77,6 +78,7 @@ export default function CoursesPage() {
     totalCount,
     itemsPerPage,
     hasMore,
+    loadFailed,
     loadMore,
     removeItem,
     applySaved,
@@ -287,6 +289,7 @@ export default function CoursesPage() {
           <LoadMoreTrigger
             hasMore={hasMore}
             isLoading={isLoadingMore}
+            hasFailed={loadFailed}
             loadedCount={courses.length}
             totalCount={totalCount}
             itemsPerPage={itemsPerPage}

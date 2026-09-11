@@ -9,6 +9,8 @@ interface LoadMoreTriggerProps {
   hasMore: boolean;
   /** True while the next page is in flight. */
   isLoading: boolean;
+  /** True when the last attempt failed. Stops the auto-load; see below. */
+  hasFailed: boolean;
   /** How many rows are on screen now. */
   loadedCount: number;
   totalCount: number;
@@ -31,12 +33,20 @@ interface LoadMoreTriggerProps {
  * the fold) and everyone else has a real button. The progress line is a live
  * region for the same reason: appended rows are otherwise a silent change.
  *
+ * `hasFailed` is what keeps a failing API from turning the sentinel into a
+ * retry loop. A failed page leaves `hasMore` true and clears the spinner, which
+ * is indistinguishable from a page that landed, so the effect below would
+ * re-fire the instant it settled and go on doing so for as long as the trigger
+ * stayed on screen. The auto-load stops while it is set and the button - which
+ * exists anyway, for the keyboard - becomes the retry.
+ *
  * Renders nothing for a list that fits on one page, which is what the
  * Previous/Next footer this replaced did.
  */
 export function LoadMoreTrigger({
   hasMore,
   isLoading,
+  hasFailed,
   loadedCount,
   totalCount,
   itemsPerPage,
@@ -46,11 +56,13 @@ export function LoadMoreTrigger({
   const [sentinelRef, isNear] = useNearViewport<HTMLDivElement>();
 
   useEffect(() => {
-    if (isNear && hasMore && !isLoading) onLoadMore();
+    if (isNear && hasMore && !isLoading && !hasFailed) onLoadMore();
     // Re-runs when `isLoading` settles, so a page that lands without pushing the
     // button back off screen - a short page, or a tall viewport - pulls the next
     // one straight after it instead of stalling until the diver scrolls again.
-  }, [isNear, hasMore, isLoading, onLoadMore]);
+    // `hasFailed` is what stops that same re-fire from becoming a retry loop
+    // when the page didn't land at all.
+  }, [isNear, hasMore, isLoading, hasFailed, onLoadMore]);
 
   if (totalCount === 0) return null;
   if (!hasMore && loadedCount <= itemsPerPage) return null;
@@ -75,6 +87,8 @@ export function LoadMoreTrigger({
                 <ButtonSpinner />
                 Loading...
               </span>
+            ) : hasFailed ? (
+              "Try again"
             ) : (
               `Load more ${itemLabel}`
             )}

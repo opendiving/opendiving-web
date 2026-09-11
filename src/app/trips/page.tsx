@@ -51,6 +51,7 @@ export default function TripsPage() {
     totalCount,
     itemsPerPage,
     hasMore,
+    loadFailed,
     loadMore,
     removeItem,
     applySaved,
@@ -200,6 +201,7 @@ export default function TripsPage() {
           <LoadMoreTrigger
             hasMore={hasMore}
             isLoading={isLoadingMore}
+            hasFailed={loadFailed}
             loadedCount={trips.length}
             totalCount={totalCount}
             itemsPerPage={itemsPerPage}

@@ -33,6 +33,8 @@ interface GearItemsCardProps {
   isLoading: boolean;
   /** True while a further page is in flight, as opposed to the first. */
   isLoadingMore: boolean;
+  /** True when the last attempt failed, stopping the load-on-scroll. */
+  hasFailed: boolean;
   totalCount: number;
   itemsPerPage: number;
   hasMore: boolean;
@@ -60,6 +62,7 @@ export function GearItemsCard({
   items,
   isLoading,
   isLoadingMore,
+  hasFailed,
   totalCount,
   itemsPerPage,
   hasMore,
@@ -221,6 +224,7 @@ export function GearItemsCard({
         <LoadMoreTrigger
           hasMore={hasMore}
           isLoading={isLoadingMore}
+          hasFailed={hasFailed}
           loadedCount={items.length}
           totalCount={totalCount}
           itemsPerPage={itemsPerPage}

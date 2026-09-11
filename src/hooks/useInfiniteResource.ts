@@ -55,6 +55,22 @@ export function useInfiniteResource<T>(
   const [totalCount, setTotalCount] = useState(0);
   const [hasMore, setHasMore] = useState(false);
 
+  // Whether the last attempt failed, and the reason it is state the *trigger*
+  // reads rather than something handled in here.
+  //
+  // A failed page leaves `hasMore` true and clears `isLoadingMore`, which is
+  // indistinguishable from a page that succeeded - so an auto-loading trigger
+  // sitting on screen re-fires the moment the spinner clears, and a list whose
+  // API is down becomes an unbounded request loop at network speed. One
+  // `destructive` toast per iteration, and with `TOAST_LIMIT = 1` that reads to
+  // the diver as one error toast that never clears rather than as a storm.
+  //
+  // Latching here rather than inside `loadMore` is deliberate: a retry the diver
+  // asked for must still go through, and `loadMore` is the one path both the
+  // trigger and its button take. `LoadMoreTrigger` stops auto-firing while this
+  // is set and turns its button into "Try again"; every attempt clears it.
+  const [loadFailed, setLoadFailed] = useState(false);
+
   // `items` again, readable synchronously. Every mutation below is computed from
   // the previous list in an event or async callback, never during a render, so a
   // ref is the honest source for "what is on screen right now" - a functional
@@ -90,6 +106,7 @@ export function useInfiniteResource<T>(
       isFetching.current = true;
 
       try {
+        setLoadFailed(false);
         if (append) setIsLoadingMore(true);
         else setIsLoading(true);
 
@@ -122,6 +139,7 @@ export function useInfiniteResource<T>(
         nextPage.current = page + 1;
       } catch (error) {
         if (latestRequest.current !== requestId) return;
+        setLoadFailed(true);
         console.error(errorMessage, error);
         toast({
           title: "Error",
@@ -223,6 +241,7 @@ export function useInfiniteResource<T>(
     totalCount,
     itemsPerPage,
     hasMore,
+    loadFailed,
     loadMore,
     reload,
     removeItem,
