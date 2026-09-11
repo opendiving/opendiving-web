@@ -294,11 +294,16 @@ otherwise never move at all. Routine updates arrive in one batch on Monday morni
 vulnerability-driven one ignores the schedule and is titled `fix(deps):`, so it lands in the Fixes
 section of the release notes rather than among the chores.
 
-> **Renovate has to be enabled once, by hand, and until it is that file does nothing.** Install the
-> [Renovate GitHub App](https://github.com/apps/renovate) on the `opendiving` org — it reads
-> `.github/renovate.json5` on its next run and needs no further setup — or run it self-hosted on a
-> schedule with a PAT. One install covers both repositories. Nothing in either repository can do it,
-> and nothing warns you it hasn't been done, which is why it is written here.
+> **Renovate is running, and the
+> [Dependency Dashboard](https://github.com/opendiving/opendiving-web/issues/190) issue is where it
+> reports.** The Mend-hosted [Renovate GitHub App](https://github.com/apps/renovate) is installed on
+> the `opendiving` org and reads `.github/renovate.json5` on its next run, so a change to that file
+> takes effect without anyone enabling anything. It is granted per repository, not org-wide: a
+> repository added to the org later has to be added to the app's repository list by hand, and
+> nothing warns you it hasn't been. **A fork inherits none of this** — the config file travels with
+> the code and the bot does not, so a fork installs the app on its own account or runs Renovate
+> self-hosted on a schedule with a PAT, and until it does the pins here are frozen and nothing says
+> so.
 
 One thing Renovate will not do on its own is move Node. `.nvmrc`, `engines.node` in `package.json`
 and the two `Dockerfile` base tags are all reachable to it; `node-version:` in `ci.yml` and

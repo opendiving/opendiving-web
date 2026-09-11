@@ -8479,6 +8479,25 @@ The "One-command self-hosting" roadmap bullet was removed rather than reworded, 
 forward-dated basis: it and the new section describe one feature, and keeping both would leave the
 file promising in one place what it documents in another.
 
+**One sentence in that paragraph is forward-dated again, deliberately, and this is the record of
+it.** "It is also where the instance this project runs itself is named, for anyone who would rather
+not run one" is true of the front door only once the front door says so, and today it does not — the
+project runs an instance, but naming its address is a change over there, not here. Writing the
+pointer without the address is the whole point: this README should say _where_ that fact lives
+rather than carry a copy of it, because a URL duplicated into three repositories is a URL that goes
+wrong in two of them, and the same reasoning already sends install, configuration and release
+questions to the same place. The order is the other half. The address lands at the front door before
+any of these repositories is public, and the flip to public is what a stranger's first read depends
+on — so the window in which the sentence is ahead of itself is a window nobody outside the project
+can see, the same window the `security/advisories/new` link in `SECURITY.md` sits in. If that order
+ever inverts, this sentence is the thing to delete, not to reword.
+
+`SECURITY.md`'s "that includes the instance this project runs itself" does not depend on the same
+order and is not forward-dated. It says which targets are out of scope for active testing, and a
+reader who cannot yet name the project's own instance is not testing it; the clause exists to close
+the reading in which the project's own server is the one fair game, which the surrounding "don't
+test an instance you don't run" leaves open.
+
 ## The landing page can only claim what the instance can back up
 
 The page shipped with four headline figures — "1,000+ Active Divers", "5,000+ Logged Dives", "50+
@@ -8673,13 +8692,16 @@ these jobs push, fetch a second ref, or use git at all after the checkout step.
 `fetch-depth: 0` on the `code-quality` checkout stays. The two inputs are independent — the full
 history is still fetched, just without the credential kept afterwards.
 
-One step here would want more than read, and it is commented out: "Comment PR with quality report"
-calls `issues.createComment` and needs `pull-requests: write`. Reviving it means a block on that job
-rather than a wider workflow-level one — and the job would have to re-state `contents: read`
-alongside, because a job-level `permissions:` block _replaces_ the workflow's rather than adding to
-it. `pr-title.yml` is the worked example: `permissions: {}` at the top, and the labelling job asking
-for exactly the two scopes it uses. The commented-out `dependency-review` job needs nothing extra;
-`contents: read` is what that action reads the PR's dependency diff with.
+The rule that outlives any one step: a step that writes anything back — a PR comment, a label, a
+check run — needs a block on **its own job** rather than a wider workflow-level one, and that job
+has to re-state `contents: read` alongside whatever it is asking for, because a job-level
+`permissions:` block _replaces_ the workflow's rather than adding to it. `pr-title.yml` is the
+worked example: `permissions: {}` at the top, and the labelling job asking for exactly the two
+scopes it uses. Two commented-out blocks used to illustrate this from inside `code-quality.yml` — a
+"Comment PR with quality report" step calling `issues.createComment`, which would have wanted
+`pull-requests: write`, and a `dependency-review` job, which would have wanted nothing beyond
+`contents: read`. Both were deleted in the pre-publication sweep; see "Dead commented-out blocks
+came out before the repository went public" below.
 
 The api repo's `linting.yml`, `tests.yml` and `type-checking.yml` had the same gap, and have since
 been given the same two lines — the same way its `publish-image.yml` and `pr-title.yml` already
@@ -8714,12 +8736,23 @@ it from the deleted one. Don't add a third by pattern-matching on this one; `con
 in `CODE_OF_CONDUCT.md` carries conduct reports and nothing else.
 
 Two near misses, for anyone tempted to revisit them. The app's own contact form has a `security`
-category in `CONTACT_CATEGORIES`, but it only exists on a _running instance_ and there is no hosted
-instance of this project — `SECURITY.md` mentions it only as the thing a self-hoster's own users
-would use to reach _that_ operator. And the file briefly had no mailbox at all, offering "open an
-issue saying only that you have a security report" as the fallback for a reporter without a GitHub
-account: that was incoherent, since filing an issue needs an account just as much. A second channel
-that shares the first one's precondition is not a second channel.
+category in `CONTACT_CATEGORIES`, but it only exists on a _running instance_, so `SECURITY.md`
+mentions it only as the thing a self-hoster's own users would use to reach _that_ operator. And the
+file briefly had no mailbox at all, offering "open an issue saying only that you have a security
+report" as the fallback for a reporter without a GitHub account: that was incoherent, since filing
+an issue needs an account just as much. A second channel that shares the first one's precondition is
+not a second channel.
+
+**Amended: the first of those said "and there is no hosted instance of this project", which stopped
+being true.** The project runs an instance of its own now — `CONTRIBUTING.md` and
+`publish-image.yml` both say so, `:edge` being what it follows — and on that one instance the
+contact form's `security` category reaches the maintainers rather than a stranger. It is still not a
+third security channel and should not be advertised as one: it is an unauthenticated public form
+posting through the API to whatever address that instance configured, with none of the privacy
+guarantees an advisory thread has. What changes is only the reasoning — the category is unfit for
+the job, not merely pointed at somebody else. `SECURITY.md`'s two channels are the two channels, on
+every instance including this project's, and its out-of-scope clause is the sentence that says the
+project's own server is a target like any other rather than a testing ground.
 
 **No supported-versions table and no SLA.** The boilerplate template wants a matrix of version
 ranges with ticks and crosses, and this project has one release line: `publish-image.yml` publishes
@@ -8949,9 +8982,10 @@ answer:
   does fail loudly in the one case that would otherwise look like good news: release tags exist but
   no image alias resolves, which is a broken login or a missing package rather than an absence of
   releases.
-- **It skips cleanly when nothing has been published**, which is not hypothetical here — `v0.2.0` is
-  still ahead of both repositories, so on the day this merges the scheduled job logs a skip and goes
-  green. A check that is red from the day it lands is a check somebody turns off.
+- **It skips cleanly when nothing has been published**, which is not hypothetical here — neither
+  repository has ever cut a release, and the first one will be `v0.1.0`, so on the day this merges
+  the scheduled job logs a skip and goes green. A check that is red from the day it lands is a check
+  somebody turns off.
 - **Only the newest release is scanned, and `edge` beside it.** `SECURITY.md` is what settles the
   release half rather than a judgement call in a workflow: nothing is backported and the supported
   version is the latest release, so that part of the scan set _is_ the supported surface, and the
@@ -9989,24 +10023,34 @@ behaviour and nothing else's.
 **There is no dive-computer or format-support form in this repository.** Parsing lives in
 opendiving-api and so does that funnel, sample files and privacy warning included.
 
-`config.yml` sends questions to **opendiving-api's Discussions**, not to a Discussions space of this
-repository's own. One space covers the product; a diver with a question has no reason to know which
-half of it their question is about, and one space is searchable where two are a coin toss. Half of
-that reasoning has since been overtaken: it also said the self-hosting and troubleshooting docs the
-asker had been reading lived over there, and they do not any more — they are in
-`opendiving/opendiving` (see "The install lives in the product repository"). Which repository should
-host the one Discussions space is now an open question and an owner's, not a thing to settle by
-editing a contact link. The third contact link is the mirror of the one-space reasoning for bugs:
-authentication, stored data, imports and the worker are all the API's, so a reporter who already
-knows that skips a round-trip, and one who does not is told to file here anyway rather than being
-made to choose correctly.
+`config.yml` sends questions to **the product repository's Discussions** — `opendiving/opendiving` —
+not to a Discussions space of this repository's own. The one-space half of the original reasoning
+stands: a diver with a question has no reason to know which half of the product it is about, and one
+space is searchable where two are a coin toss. What moved is _which_ repository holds it. The link
+pointed at opendiving-api because that was where the self-hosting and troubleshooting docs the asker
+had been reading lived, and they do not any more — they are in `opendiving/opendiving` (see "The
+install lives in the product repository"), which is also the repository a stranger meets first: it
+carries the install, the configuration reference and the release that ties the components together,
+and both component repos' READMEs already send people there. Operator questions were therefore
+already routing to a repository that had no Discussions space, while the space that did exist sat on
+the half of the stack fewest askers can name. opendiving-api was the alternative and was rejected on
+exactly that: keeping it would have meant a product whose front door and whose conversation are two
+different repositories, and would have made the API repo's Discussions the de-facto product forum
+for questions that are mostly about running it. Announcements and release threads belong beside the
+release, too, which only the front door cuts. The third contact link is the mirror of the one-space
+reasoning for bugs: authentication, stored data, imports and the worker are all the API's, so a
+reporter who already knows that skips a round-trip, and one who does not is told to file here anyway
+rather than being made to choose correctly.
 
-Two of those URLs 404 today, deliberately. Private vulnerability reporting and Discussions are both
-switches that only exist on a public repository, and they get flipped in the same sitting as the
-flip to public. Writing the links now means the forms are correct on the day it happens rather than
-a to-do that surfaces from a stranger's confusion; the alternative — links added later — is the one
-that gets forgotten. The security link's wording tracks [SECURITY.md](SECURITY.md), which names that
-same URL as the primary channel.
+Two of those URLs 404 for a stranger today, deliberately, and for two different reasons. Discussions
+_are_ on, on the front door — the feature works on a private repository in an organisation — so that
+link is live and merely invisible until the repositories are public. Private vulnerability reporting
+is the one that genuinely does not exist yet: it is a switch GitHub offers only on a public
+repository, and it gets flipped in the same sitting as the flip to public. Writing both links now
+means the forms are correct on the day that happens rather than a to-do that surfaces from a
+stranger's confusion; the alternative — links added later — is the one that gets forgotten. The
+security link's wording tracks [SECURITY.md](SECURITY.md), which names that same URL as the primary
+channel.
 
 `blank_issues_enabled` stays `true`. Forcing every report through a form buys triage a solo
 maintainer does not need, and the things it would wall out — a typo, a question that turned out to
@@ -11684,9 +11728,10 @@ has to see the objection already recorded, or its next-themes rewrite lands and 
 outside it.** `lib/api/client.ts` and `lib/api/auth.ts` wrote it to `localStorage` until the change
 recorded under _"Access token lives in memory only, never in `localStorage`"_, and it carries no
 prefix, so prefix clearing cannot reach it. **The ground for leaving it is population, not harm**:
-this app has never been public and has never been deployed anywhere, so the only browser that ever
-held one is the maintainer's own, and no self-hoster can acquire one because that change predates
-every release. The maintainer clears theirs by hand, once. The rejected alternative — a named legacy
+that change predates every release _and_ the project's own hosted instance, which follows `:edge`
+off `main` and so has never served a build that wrote the key — so the only browser that ever held
+one is the maintainer's own, and neither a self-hoster nor a visitor to the project's instance can
+acquire one. The maintainer clears theirs by hand, once. The rejected alternative — a named legacy
 list alongside the prefix — is technically cheap and would not have tripped check (1), whose pattern
 only matches prefixed strings, but it reopens the enumeration the prefix rule exists to close and
 carries a list forever to serve a population of one. Recorded rather than left implicit because
@@ -14034,9 +14079,26 @@ where it came from — the tree itself is what gets published, so anything in it
 definition, and a stock licence that allows use in a product almost never allows that. Two of the
 three entries then left in `NOTICE.md` (there are four now, svgsilh having joined them) survive
 precisely because their terms do allow it: MapLibre's 3-Clause BSD, and a trademark used under
-Google's own branding guidelines. The third, the OpenFreeMap styles, is the one still open — the
-vendored copies carry no licence metadata at all, so nobody here has read the terms they travel
-under, and that is worth settling before the repository goes public.
+Google's own branding guidelines. The third, the OpenFreeMap styles, was the one still open — the
+vendored copies carry no licence metadata at all, so nobody here had read the terms they travel
+under. **Settled before the repository went public, and they stay**: the styles come from
+`hyperknot/openfreemap-styles` (MIT, © 2023 Zsolt Ero), Liberty forked from `maputnik/osm-liberty`
+and Dark from `openmaptiles/dark-matter-gl-style`, each carrying a **3-Clause BSD** licence on the
+style JSON and **CC BY** on the design, with the sprite built from the CC0 Maki icon set. Every one
+of those permits redistribution; the BSD conditions are reproduced in `NOTICE.md` because JSON has
+nowhere to carry them, and CC BY is discharged by the credit `lib/basemap.ts` renders on the map. So
+this is the case the rule above is _not_ about — third-party material whose terms genuinely allow it
+to live here — and the only reason it looked like the other kind was the missing metadata.
+
+**A file with no licence header is not a file with no licence**, which is the transferable half.
+Three checks settled it and none of them was reading the vendored copy: the upstream repository's
+`LICENSE.md`, the fork chain named in its `README.md` (four of the five OpenFreeMap styles are
+abandoned upstream forks, so the terms are two repositories away from the one you downloaded from),
+and a byte-comparison of what is in the tree against what the upstream host serves today — the
+styles are `tiles.openfreemap.org/styles/{liberty,dark}` unchanged but for the `sprite` URL, and all
+four sprite files are identical to `sprites/ofm_f384/`. That last one is what makes the licence
+finding _about these files_ rather than about files with the same name. Do it at vendoring time; the
+provenance rule in the next paragraph is the same lesson from the direction where it went wrong.
 
 **Provenance has to be recorded when the artwork lands, because it cannot be recovered later.** The
 reef component's docstring said "Path data unmodified from the source artwork" and named no source;
@@ -16749,3 +16811,39 @@ a clean skip rather than a red check. The scan's issue body had to learn the dif
 to `main`, so an OS-package finding clears itself and an npm one needs only the bump merged. Before
 the first release there is no `v` tag to name at all, and the remedy text would otherwise have read
 `ref` = `v`.
+
+## Dead commented-out blocks came out before the repository went public
+
+`code-quality.yml` carried three of them — a Snyk step, a "Comment PR with quality report" step and
+a whole `dependency-review` job — and `src/components/layout/coming-soon.tsx` was a component
+nothing had ever imported. All four are deleted. The reasoning is not tidiness: a commented-out
+block is a claim about intent that nobody maintains, and a stranger reading it cannot tell a
+deliberate hold from an abandoned experiment. The Snyk step was the sharpest case — it was the
+repository's only `@master` reference, so a security scanner that would have run unpinned
+third-party code sat in the tree looking like a considered decision, needing only someone to
+uncomment it and add a token.
+
+**Deleting is cheaper than keeping, because git already keeps it** — and the thing a comment loses
+that history does not is maintenance. Renovate's `github-actions` manager skips any line whose first
+non-space character is `#` before it looks for a `uses:` at all, so every action pin inside one of
+these blocks was invisible to the one bot in this repository whose job is to move pins — a
+commented-out step is not a held step, it is an unwatched one. `actions/github-script@v9` and
+`actions/dependency-review-action@v5` happened to still be current when they were deleted, which is
+luck rather than upkeep: the longer a block sits, the more of it has to be re-checked by hand before
+it can run, and by then rewriting it against the current action is the cheaper half of the job
+anyway. Retrieving the text from history costs one `git log -S` and hands it over with a date
+attached, which is the part that decides whether it is still worth having.
+
+Only one of the three is coming back, and not by uncommenting. A live dependency-review job is a
+public-repository thing anyway — the action reads GitHub's advisory data for the PR's dependency
+diff — so it arrives as its own change once the flip happens, written against the current action.
+Nothing replaces the Snyk step or the PR-comment step: `vulnerability-scan.yml` watches the
+published image and `.github/renovate.json5` watches the manifests, which is the coverage Snyk was
+gesturing at, and a quality report that is a PR comment rather than a failing check is a thing
+people learn to scroll past.
+
+The permissions rationale at the top of `code-quality.yml` used to explain itself through the
+commented-out comment step ("reviving it means giving that job a block of its own"). That was a true
+rule attached to a dead example, so it now states the rule directly; `pr-title.yml` is the live
+worked example and the section "`ci.yml` and `code-quality.yml` run on a read-only token, with
+nothing left in `.git/config`" above has the detail.

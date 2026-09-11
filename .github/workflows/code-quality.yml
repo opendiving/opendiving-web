@@ -15,10 +15,9 @@ on:
 # `persist-credentials: false` on each checkout is the other half - without it the token
 # is left behind in `.git/config`, in the same workspace all of that runs in.
 #
-# The commented-out "Comment PR with quality report" step is the one thing here that would
-# want more than read. Reviving it means giving that job a block of its own - `contents:
-# read` plus `pull-requests: write` - because a job-level block replaces this one rather
-# than adding to it.
+# A step that wanted to write anything back - a PR comment, a label, a check run - would
+# need a job-level block of its own rather than an addition here, since a job-level
+# `permissions:` replaces this one instead of merging with it.
 permissions:
   contents: read
 
@@ -75,14 +74,6 @@ jobs:
       - name: Check for circular dependencies
         run: npx --yes madge@8.0.0 --circular --extensions ts,tsx,js,jsx src/ || true
 
-      # - name: Security scan with Snyk
-      #   uses: snyk/actions/node@master
-      #   continue-on-error: true
-      #   env:
-      #     SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-      #   with:
-      #     args: --severity-threshold=high
-
       - name: Upload ESLint report
         uses: actions/upload-artifact@v7
         if: always()
@@ -90,53 +81,6 @@ jobs:
           name: eslint-report
           path: eslint-report.json
           retention-days: 30
-
-      # - name: Comment PR with quality report
-      #   if: github.event_name == 'pull_request'
-      #   uses: actions/github-script@v9
-      #   with:
-      #     script: |
-      #       const fs = require('fs');
-      #       try {
-      #         const eslintReport = JSON.parse(fs.readFileSync('eslint-report.json', 'utf8'));
-      #         const errorCount = eslintReport.reduce((sum, file) => sum + file.errorCount, 0);
-      #         const warningCount = eslintReport.reduce((sum, file) => sum + file.warningCount, 0);
-
-      #         const comment = `## Code Quality Report 📊
-
-      #         **ESLint Results:**
-      #         - ❌ Errors: ${errorCount}
-      #         - ⚠️ Warnings: ${warningCount}
-
-      #         **Build Status:** ✅ Passed
-      #         **Type Check:** ✅ Passed
-
-      #         Full details available in the [Actions tab](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}).
-      #         `;
-
-      #         github.rest.issues.createComment({
-      #           issue_number: context.issue.number,
-      #           owner: context.repo.owner,
-      #           repo: context.repo.repo,
-      #           body: comment
-      #         });
-      #       } catch (error) {
-      #         console.log('Could not create quality report comment:', error.message);
-      #       }
-
-  # dependency-review:
-  #   runs-on: ubuntu-latest
-  #   if: github.event_name == 'pull_request'
-
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v7
-
-  #     - name: Dependency Review
-  #       uses: actions/dependency-review-action@v5
-  #       with:
-  #         fail-on-severity: moderate
-  #         allow-licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, 0BSD
 
   accessibility-check:
     runs-on: ubuntu-latest
