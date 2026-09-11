@@ -179,15 +179,16 @@ type RecordingOutcome = "keeps files" | "keeps samples only" | "removed";
  * rather than a silence, because nothing in the row a diver clicked says which
  * one they are looking at.
  *
- * Where the recording *is* primary there are four answers and the difference
- * between them is the whole point of this module: the readings are re-read from
- * what the recording keeps, re-read from whichever recording takes over as
- * primary, or cleared outright because nothing is left to read them from -
- * either because no recording is left, **or because the one that takes over
- * holds no files of its own**. `refresh_tech_scalars` reads the new primary's
- * files and writes every reading it does not find as null, and
- * `renumber_ordinals` promotes in ordinal order without skipping a file-less
- * recording, so "another recording exists" is not the question.
+ * Where the recording *is* primary there are five answers and the difference
+ * between them is the whole point of this module. Two re-read the readings -
+ * from the files this recording keeps, or from whichever recording takes over
+ * as primary. **Three clear them**, and they are three because the readings are
+ * cleared whenever no file is left under ordinal 0, however it got that way:
+ * this recording survived its last file, no recording is left at all, or the
+ * one that takes over holds no files of its own. `refresh_tech_scalars` reads
+ * the new primary's files and writes every reading it does not find as null,
+ * and `renumber_ordinals` promotes in ordinal order without skipping a
+ * file-less recording, so "another recording exists" is not the question.
  */
 function exposureSentence(
   recording: Recording,
