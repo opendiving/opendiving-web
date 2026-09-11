@@ -3371,17 +3371,17 @@ for everything, and no reason to special-case the hero on that axis.
 **Height is per page, and the cut lands on a card boundary rather than a round figure.** Cutting at
 the _end_ of a card matters more than the exact number, and more than the three shots agreeing: a
 frame that stops just shy of finishing a card reads as an off-by-one, while one that stops well
-inside a card the reader can see continues reads as a page that goes on. 1086 clears the dive page's
-profile chart and the sidebar column beside it, and ends the gear page below its service history.
+inside a card the reader can see continues reads as a page that goes on. 1086 ends the gear page
+below its service history; the other two frames are measured in the page rather than written down.
 
-**It does not, however, land on a boundary on the dive page, and that sentence used to claim it
-did.** The frame runs past the profile card and stops part-way through the glyphs of the _Gas
-Consumption_ heading below it - true on `main` as much as on any branch, and checked by decoding
-both PNGs rather than by eye. The wrong claim cost a review round: a reviewer read it, compared it
-to the image, and reported a regression that a validator then refuted, because the clipping was
-never a regression at all. The real fix, if the edge is ever worth tidying, is a `CUT_BELOW` entry
-for `dive-detail` naming the profile card - the mechanism `dashboard` already uses - and never
-another hand-measured number.
+**The dive page carried 1086 too, and did not land on a boundary with it.** The frame ran past the
+profile card and stopped part-way through the glyphs of the _Gas Consumption_ heading below it - and
+this section claimed a clean cut until someone decoded both PNGs rather than trusting it. The wrong
+claim cost a review round: a reviewer read it, compared it to the image, and reported a regression
+that a validator then refuted, because the clipping was never a regression at all. It also
+prescribed the fix - a `CUT_BELOW` entry naming the profile card - and when that entry was finally
+worth adding it named a different card; see _"The dive shot is ranked by recordings, and cut below
+them"_ below.
 
 **The dashboard measures its own cut, because a written-down height goes stale quietly.** It was on
 1086 too, back when consumption was its only chart and that was where the card ended. Dive activity
@@ -3396,8 +3396,8 @@ Worse, the figure is not portable. Measuring 1564 in one Chromium and shooting i
 `playwright-core` drives produced a 3px sliver of the Recent Dives card along the bottom edge - the
 same page, laid out four pixels apart. So `cutBelow()` reads the top of the row _after_ the named
 card out of the page being photographed, moments before the shutter, and that is the frame height.
-`CUT_BELOW` names the card; nobody maintains a number. Any page can opt in the same way, and the two
-that still carry a literal do so because 1086 has never moved.
+`CUT_BELOW` names the card; nobody maintains a number. Any page can opt in the same way, and the
+gear page is the one that still carries a literal, because 1086 has never moved for it.
 
 **`deviceScaleFactor: 2`**, because a 1x screenshot of a dark UI looks muddy on the displays most
 people read a README on. Every image in `docs/screenshots/` is therefore twice its frame - a
@@ -3432,13 +3432,13 @@ already said. What's left is the two pages that show something you cannot descri
 profile charted out of a dive-computer export, and a gear item's service schedule with its history
 under it.
 
-**Nothing about the account is hardcoded.** The dive is whichever of the 30 most recent carries an
-imported profile (only `GET /dive/{uuid}` says whether one exists, hence the probing), and the gear
-item is whichever has the most service tracked on it. Those queries reuse the access token lifted
-off the app's own requests via a Playwright `request` listener. The two alternatives are both worse:
-verifying a second magic link server-side runs into the three-per-email-per-fifteen-minutes limit
-within a single retake, and calling `/auth/refresh` from the page rotates the cookie out from under
-the app.
+**Nothing about the account is hardcoded.** The dive is whichever of the 30 most recent has the most
+recordings carrying samples (only `GET /dive/{uuid}` says, hence the probing - see the subsection
+below), and the gear item is whichever has the most service tracked on it. Those queries reuse the
+access token lifted off the app's own requests via a Playwright `request` listener. The two
+alternatives are both worse: verifying a second magic link server-side runs into the
+three-per-email-per-fifteen-minutes limit within a single retake, and calling `/auth/refresh` from
+the page rotates the cookie out from under the app.
 
 **The clock is pinned to 09:00, so the dashboard greets the same way every retake.** The heading
 reads "Good morning/afternoon/evening" off `new Date().getHours()` (see _"The heading greets by time
@@ -3457,6 +3457,41 @@ the browser's.
 **`playwright-core`, not `playwright`.** The full package downloads ~130MB of browsers on every
 `npm install`, for a script only a maintainer runs. `playwright-core` is the driver alone and takes
 an `executablePath`, so it uses the Chrome already on the machine.
+
+### The dive shot is ranked by recordings, and cut below them
+
+The picker used to take the first of the 30 most recent dives for which `GET /dive/{uuid}/profile`
+answered — a route that no longer exists, since a dive stopped having one profile and started having
+recordings. `get()` returns `null` on any non-OK response, so the loop matched nothing, the subject
+came back `null`, and the run printed a warning and **exited zero**. The image it was there to
+retake went on showing a dive page from before the recordings UI for as long as nobody looked.
+
+Two things came out of that, and only one of them is about this script.
+
+**The subject is ranked, not filtered, and the rank is how many of the dive's recordings carry
+samples.** Two of those is the picture worth having — the _Recordings_ card lists both computers and
+`DiveProfileCard` puts its switcher above the chart, neither of which a single-computer dive shows —
+but a log whose dives each came off one computer is the ordinary case rather than a failed search,
+and one of those is an honest photograph of the same page. Zero is the only disqualifier: the
+profile card renders nothing without samples, so the page would come out flat. Ranking costs a
+request per candidate with no early exit, because `recordings` is deliberately absent from the dive
+_list_ schema (the list page draws none of it) and the best candidate is not known until the last
+has been read.
+
+**A requested shot with no subject now throws instead of warning**, before the first shutter press,
+so a run that cannot produce everything it was asked for leaves no half-updated set of images
+behind. A shot nobody asked for is still silent — that is what `wanted()` is for. The general lesson
+is the one this script keeps re-teaching: an image generator that degrades quietly produces a README
+that is wrong for a week, and the only symptom is a line of output nobody reads.
+
+**The frame therefore ends below the _Recordings_ card**, via `CUT_BELOW["dive-detail"]` — the
+mechanism the dashboard already uses, and the first time a shot cuts on a card in the _sidebar_
+rather than in the main column. That card sits below the site and the environment, and the old 1086
+ended three pixels above it: the subject could be picked perfectly and the image would still show
+nothing of what it was retaken for. The cut lands on that card's boundary and part-way down the gas
+consumption card beside it, which is the trade this section's parent already rules on — cutting at
+the end of _a_ card matters more than the exact number, and more than the shots agreeing on one. The
+dive image is taller than the gear image next to it in the README table as a result.
 
 ### `visit()` fails loudly when a navigation lands on `/signin`
 
