@@ -312,7 +312,6 @@ export function GearSetDialog({
                       <UnitNumberInput
                         dimension="weight"
                         units={weightUnits}
-                        step="0.5"
                         min={0}
                         placeholderValue={6}
                         className="pl-9"

@@ -158,22 +158,38 @@ describe("UnitNumberInput in metric", () => {
     expect(box().value).toBe("18.288");
   });
 
-  it("keeps the caller's step, bounds and placeholder", () => {
+  it("keeps the caller's bounds and placeholder", () => {
     render(
       <Harness
         dimension="temperature"
         units="metric"
-        step="0.01"
         min={-50}
         max={50}
         placeholderValue={22.5}
       />,
     );
 
-    expect(box().step).toBe("0.01");
     expect(box().min).toBe("-50");
     expect(box().max).toBe("50");
     expect(box().placeholder).toBe("e.g. 22.5");
+  });
+
+  // `step` is not among them, and that is the point: it is a native *constraint*,
+  // so anything finer than the column behind it makes a stored value unsavable
+  // with no message anywhere. A `Float` column has no such precision to declare.
+  it("leaves a float dimension unconstrained", () => {
+    render(<Harness dimension="depth" units="metric" initial={2.70000029} />);
+
+    expect(box().step).toBe("any");
+    expect(box().validity.stepMismatch).toBe(false);
+  });
+
+  // The two `Integer` columns, where whole numbers *are* the contract - the same
+  // answer `isIntegerDimension` gives the parsing and the commit just beside it.
+  it("steps an integer dimension by one", () => {
+    render(<Harness dimension="visibility" units="metric" initial={15} />);
+
+    expect(box().step).toBe("1");
   });
 
   // The one deliberate change on the metric side, and invisible for anything typed
@@ -181,14 +197,7 @@ describe("UnitNumberInput in metric", () => {
   // temperature box already did and its float siblings didn't.
   it("rounds entry to two decimals", async () => {
     const onCommit = vi.fn();
-    render(
-      <Harness
-        dimension="depth"
-        units="metric"
-        step="0.01"
-        onCommit={onCommit}
-      />,
-    );
+    render(<Harness dimension="depth" units="metric" onCommit={onCommit} />);
 
     await userEvent.type(box(), "30.526");
 
@@ -301,7 +310,7 @@ describe("UnitNumberInput when the entry units change under it", () => {
 
   it("leaves the draft alone when the units have not moved", async () => {
     render(
-      <Harness dimension="depth" units="metric" step="0.01" />, //
+      <Harness dimension="depth" units="metric" />, //
     );
 
     await userEvent.type(box(), "30.526");
