@@ -1839,10 +1839,11 @@ had just told you about.
 
 **The row stopped being a single `Link`.** A `<button>` inside an `<a>` is invalid HTML, and a click
 on it would navigate as well as open the dialog, so the row is now a flex container holding the link
-and the button as siblings. The link keeps the `justify-between` the section above is about, so the
-chips still line up down the card - one button width in from the card edge now, which is the one
-visible cost: they no longer line up with `CertificationExpiryCard`'s chips on the card below, which
-has no trailing button. Within-card alignment is what that section claims and it still holds.
+and the button as siblings. The link keeps the `justify-between` that _"And the dashboard puts the
+chip last, where the rows align"_ is about, so the chips still line up down the card - one button
+width in from the card edge now, which is the one visible cost: they no longer line up with
+`CertificationExpiryCard`'s chips on the card below, which has no trailing button. Within-card
+alignment is what that section claims and it still holds.
 
 The row is `items-start` rather than `items-center`, which only shows below `sm`: there the link
 wraps its chip onto a second line, and the button then sits level with the item name instead of
