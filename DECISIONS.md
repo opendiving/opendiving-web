@@ -16130,7 +16130,10 @@ failure one field along. The copy says "the figures the dive computer recorded" 
 of them: a dive whose computer logged no position must not be warned about losing one, and the
 sentence about what stays — everything the diver typed — is what draws the line that matters.
 
-Two questions the copy cannot ask, both of which it asked first and got wrong.
+Two questions the copy cannot ask, both of which it asked first and got wrong. `figuresSentence` in
+`lib/dive-recordings.ts` states the rule they violate instead of counting its own branches — that
+count was written down and went stale twice in three commits, once for each case the function grew,
+which is the shape of a fact that should never have been a number.
 
 **"Does another recording exist?"** `renumber_ordinals` promotes in ordinal order and does not skip
 a recording for holding no files, and `refresh_tech_scalars` writes every figure it cannot find on

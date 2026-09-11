@@ -183,31 +183,30 @@ const COMPUTER_FIGURES = "the figures the dive computer recorded";
 /**
  * What the figures the dive computer recorded do, as a sentence.
  *
- * **Only the primary recording's files write them**, so for most of what a diver
- * can do to a secondary recording the honest answer is that nothing moves - and
- * that is worth a clause rather than a silence, because nothing in the row they
- * clicked says which one they are looking at.
+ * **One rule sits under every branch**: the dive's figures are whatever ordinal
+ * 0 holds files for once the deletion is through. `refresh_tech_scalars` re-reads
+ * the primary recording's files and writes every figure it does not find as
+ * null, so an empty ordinal 0 clears them however it came to be empty - this
+ * recording survived its own last file, the recording promoted in its place
+ * holds none, or there is nothing left to promote. `renumber_ordinals` promotes
+ * in ordinal order without skipping a file-less recording, so "is another
+ * recording there" is not the question; "does whoever is primary afterwards hold
+ * a file" is.
  *
- * Where the recording *is* primary there are five answers. Two re-read the
- * figures - from the files this recording keeps, or from whichever recording
- * takes over as primary. **Three clear them**, and they are three because the
- * figures are cleared whenever no file is left under ordinal 0, however it got
- * that way: this recording survived its last file, no recording is left at all,
- * or the one that takes over holds no files of its own. `refresh_tech_scalars`
- * reads the new primary's files and writes every figure it does not find as
- * null, and `renumber_ordinals` promotes in ordinal order without skipping a
- * file-less recording, so "another recording exists" is not the question.
+ * **A secondary recording is not the no-op it looks like**, which is why this
+ * takes the outcome and not just the ordinal. Only `keeps files` returns before
+ * the figures are touched (`_rederive_recording`); removing a secondary
+ * recording, or emptying one, runs `refresh_tech_scalars` over the *untouched*
+ * primary. That re-reads the same files to the same values - unless the primary
+ * holds no files at all, which is what a converted logbook import creates, and
+ * then a deletion elsewhere on the dive clears figures the document supplied.
  *
- * **A secondary recording is not always the no-op it looks like**, which is the
- * sixth answer and the reason this takes the outcome rather than just the
- * ordinal. Only `keeps files` returns before the figures are touched
- * (`_rederive_recording`); removing a secondary recording, or emptying one, runs
- * `refresh_tech_scalars` over the *unchanged* primary. That re-reads the same
- * files to the same values - unless the primary holds no files at all, which is
- * what a converted logbook import creates, and then it clears figures the
- * document itself supplied.
+ * **No count of the branches here, deliberately.** One was stated and went wrong
+ * twice in three commits, each time because the function grew a case; the rule
+ * above is what a reader needs to check a branch against, and unlike a total it
+ * cannot be made stale by adding one.
  */
-function exposureSentence(
+function figuresSentence(
   recording: Recording,
   recordings: Recording[],
   outcome: RecordingOutcome,
@@ -266,7 +265,7 @@ function sentences(...parts: (string | null)[]): string {
  * profile and samples included; or the recording survives file-less because its
  * samples came from a merge or a converted document and no file could produce
  * them again. Each also moves the dive's own readings differently - see
- * `exposureSentence`.
+ * `figuresSentence`.
  *
  * Takes the dive's whole recording list rather than the one recording, so that
  * "is this the last file", "is this the recording shown by default" and "is
@@ -312,7 +311,7 @@ export function deleteFileConfirmation(
         : "Delete this file?",
     description: sentences(
       fileSentence,
-      exposureSentence(recording, recordings, outcome),
+      figuresSentence(recording, recordings, outcome),
       outcome === "removed" ? DIVE_IS_UNTOUCHED : null,
     ),
   };
@@ -347,7 +346,7 @@ export function deleteRecordingConfirmation(
       recording.files.length > 0
         ? "The recording, its profile, its samples and every file it holds are permanently deleted."
         : "The recording, its profile and its samples are permanently deleted.",
-      exposureSentence(recording, recordings, "removed"),
+      figuresSentence(recording, recordings, "removed"),
       DIVE_IS_UNTOUCHED,
     ),
   };
