@@ -255,9 +255,11 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
   // `describeMixtureImport`.
   const [importNote, setImportNote] = useState<string | null>(null);
   // A parsed file whose bytes look like they belong to a dive that already
-  // exists, waiting for the diver to say which. Owner decision 3's choice: this
-  // path never attaches by itself, because a wrong match on a form is a dive the
-  // diver did not ask for with nothing on screen to refuse it.
+  // exists, waiting for the diver to say which. **This path never attaches by
+  // itself**, whatever the match says: a wrong match on a form is a dive the
+  // diver did not ask for with nothing on screen to refuse it. Logbook import
+  // is the opposite case and does attach automatically, because its preview is
+  // already the confirmation step and its test is far stricter than this one.
   const [offer, setOffer] = useState<MatchOffer | null>(null);
   const [isAttaching, setIsAttaching] = useState(false);
 
@@ -267,10 +269,11 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
   //
   // The first file of a dive is the form's best information and writes
   // everything it carries. Every later one - a second computer, or this
-  // computer's other export - fills blanks only, which is how decision 4's
-  // first-file-wins rule reaches `avg_depth` and `duration`: those two are the
-  // form's own and no server-side attach or import path writes them, so if it
-  // does not hold here it holds nowhere.
+  // computer's other export - fills blanks only, which is how first-file-wins
+  // reaches `avg_depth` and `duration`: those two are the form's own and no
+  // server-side attach or import path writes them, so if the rule does not hold
+  // here it holds nowhere. `DECISIONS.md`, *"A second file of one recording
+  // fills the form, and never overwrites it"*, has the whole argument.
   const hasFileAlready = pending.length > 0 || recordings.length > 0;
 
   // Applies a parsed file to the form and hands it to the page to attach on

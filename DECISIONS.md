@@ -4893,6 +4893,13 @@ consumer kept rendering the old meaning for the new figure, in a file this branc
 
 ## No profile, no attribution — and that is 18 of the 19 multi-gas dives
 
+**Superseded in one sentence only.** `Dive.profile` is gone: the guard this section documents now
+reads `primaryRecording(dive)?.profile == null`, and it is **the primary recording's** profile
+deliberately — the API joins its gas attribution through `ordinal == 0`, so a profile on a second
+computer's recording puts no `gas_attribution` on the dive. See _"A dive has recordings, and the
+first one is what every old single-file reading meant"_ below. Everything else here — why the branch
+exists, and the corpus figure behind it — is unchanged.
+
 `gas_attribution` is a column _on_ `dive_profile`. A dive without a profile therefore cannot reach
 the multi-tank derivation whatever the diver types, and `gasUseUnavailableReason` tests that before
 anything else.

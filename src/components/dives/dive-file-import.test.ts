@@ -353,9 +353,11 @@ describe("applyParsedDiveToForm in fill-only mode", () => {
   });
 
   it("fills a blank cylinder member without touching the ones that are filled", () => {
-    // Decision 4's worked example, on the form: the JSON's cylinder 0 has
-    // pressures and no oxygen, the FIT's has the oxygen. The pressures stay the
-    // JSON's - the file's would be a second fill's figures against the first's.
+    // The case the whole rule was designed around, on the form: the Suunto
+    // app's JSON gives cylinder 0 its pressures and no oxygen fraction, and the
+    // same computer's FIT of the same dive has the fraction. The FIT's oxygen
+    // lands; the pressures stay the JSON's, because the FIT's would be a second
+    // fill's figures read against the first's.
     const replaced: DiveMixtureInput[][] = [];
     const { form } = formHoldingValues({}, [
       onForm({ start_pressure: 205.11, end_pressure: 91.55, oxygen: "" }),
