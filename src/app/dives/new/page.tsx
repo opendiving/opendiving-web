@@ -16,6 +16,7 @@ import {
 import { useMixtureFieldArray } from "@/components/dives/mixture-fields";
 import { useDiveFormVisibility } from "@/hooks/useDiveFormVisibility";
 import { DiveFormCard } from "@/components/dives/dive-form-card";
+import type { PendingDiveFile } from "@/components/dives/dive-recording-files";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageSpinner } from "@/components/ui/page-spinner";
 import { useToast } from "@/components/ui/use-toast";
@@ -36,12 +37,12 @@ function NewDivePageContent() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // The imported file is held here until the dive exists - `/dive/parse` stores
-  // nothing, and there is no dive to attach it to until `onSubmit` succeeds.
-  const [sourceFile, setSourceFile] = useState<{
-    file: File;
-    token: string;
-  } | null>(null);
+  // The imported files are held here until the dive exists - `/dive/parse`
+  // stores nothing, and there is no dive to attach them to until `onSubmit`
+  // succeeds. A list rather than one file: a dive logged off two computers has
+  // two recordings, and the same computer's JSON beside its FIT is two files of
+  // one recording. The API decides which is which when each is attached.
+  const [pendingFiles, setPendingFiles] = useState<PendingDiveFile[]>([]);
 
   // Allow pre-selecting a trip/dive site/course via ?trip_uuid=... /
   // ?dive_site_uuid=... / ?course_uuid=..., e.g. when logging a dive from a
@@ -319,12 +320,16 @@ function NewDivePageContent() {
 
       const created = await divesAPI.createDive(diveData);
 
-      if (sourceFile) {
+      // In pick order, and one at a time rather than in parallel: the API
+      // decides per file whether it joins a recording already on this dive or
+      // starts a new one, and two attaches racing would make "the recording
+      // this dive already has" depend on which request the server saw first.
+      for (const item of pendingFiles) {
         try {
-          await divesAPI.uploadDiveFile(
+          await divesAPI.attachRecordingFile(
             created.uuid,
-            sourceFile.file,
-            sourceFile.token,
+            item.file,
+            item.token,
           );
         } catch (error) {
           // Deliberately non-fatal. The dive exists and is correct; keeping the
@@ -338,7 +343,7 @@ function NewDivePageContent() {
           // twice) and a 422 (the import expired). Both are worth reading.
           console.error("Failed to attach the dive file:", error);
           toast({
-            title: "Dive logged, but the file wasn't attached",
+            title: `Dive logged, but ${item.file.name} wasn't attached`,
             description: getApiErrorMessage(
               error,
               "You can attach it from the dive's edit page.",
@@ -394,7 +399,11 @@ function NewDivePageContent() {
         cancelHref={returnTo.href}
         submittingLabel="Logging Dive..."
         submitLabel="Log Dive"
-        onFileSelected={(file, token) => setSourceFile({ file, token })}
+        onFileAdded={(item) => setPendingFiles((files) => [...files, item])}
+        pendingFiles={pendingFiles}
+        onRemovePendingFile={(id) =>
+          setPendingFiles((files) => files.filter((item) => item.id !== id))
+        }
         diveNumberNotice={diveNumberNotice}
       />
     </div>

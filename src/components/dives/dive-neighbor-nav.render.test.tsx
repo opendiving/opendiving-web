@@ -213,6 +213,40 @@ describe("DiveNeighborNav", () => {
     }
   });
 
+  it("re-reads when the page bumps its reload token, with the uuid unchanged", async () => {
+    // A merge this dive survived soft-deletes the dive it absorbed, and the
+    // absorbed dive is one of the two this pager is pointing at - but the uuid
+    // on screen does not change, so nothing about the dive can tell this
+    // component to look again. Without the token the left arrow stays live and
+    // aimed at a dive that no longer resolves: one click, a failed load, and
+    // the diver is bounced to `/dives` with an error about a dive they never
+    // asked for.
+    vi.mocked(divesAPI.getDiveNeighbors).mockResolvedValueOnce(neighbors());
+    vi.mocked(divesAPI.getDiveNeighbors).mockResolvedValue(
+      neighbors({
+        previous: {
+          uuid: "older-still-uuid",
+          dive_number: 10,
+          start_time: "2021-04-02T09:00:00+02:00",
+        },
+      }),
+    );
+
+    const { rerender } = render(
+      <DiveNeighborNav diveUuid="current-uuid" reloadToken={0} />,
+    );
+    await screen.findByRole("link", { name: /previous dive: #11/i });
+
+    rerender(<DiveNeighborNav diveUuid="current-uuid" reloadToken={1} />);
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole("link", { name: /previous dive: #10/i }),
+      ).toHaveAttribute("href", "/dives/older-still-uuid"),
+    );
+    expect(divesAPI.getDiveNeighbors).toHaveBeenCalledTimes(2);
+  });
+
   it("never aims the pager at the dive that was just navigated away from", async () => {
     // Following one of these links swaps the uuid on a component that stays
     // mounted. Held as plain state, the old dive's neighbours would still be on

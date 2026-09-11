@@ -60,7 +60,7 @@ export interface ProfileChannel {
   // cost: a two-sample channel splits into two runs of one, which draw nothing,
   // and a channel with nothing drawable is not plotted at all. Paid for the
   // ceiling; not paid for depth, where it would replace a two-point line with
-  // "this dive's imported file recorded no samples to plot" over a dive that
+  // "this recording's file recorded no samples to plot" over a dive that
   // recorded two.
   //
   // Coincides with `dashed` today and says something different: that one is how

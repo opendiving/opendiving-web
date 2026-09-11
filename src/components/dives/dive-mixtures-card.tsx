@@ -251,7 +251,19 @@ export function DiveMixturesCard({ dive }: DiveMixturesCardProps) {
                     }
                   />
                   {/* Deliberately unrounded, matching the API's 2-decimal precision -
-                      see DECISIONS.md. The gas badge is the rounded shorthand. */}
+                      see DECISIONS.md. The gas badge is the rounded shorthand.
+
+                      **A blank here survives an attach, and that is not a bug to
+                      route around.** Attaching a second file of one recording -
+                      a computer's FIT beside its JSON - fills a cylinder's empty
+                      members from it, but the join is all-or-nothing: the two
+                      files must describe the same number of cylinders and agree
+                      on every fraction both of them record, or nothing is
+                      filled. So a dive whose oxygen was blank before the second
+                      file can legitimately still be blank after it, and this
+                      cell has to say "not recorded" rather than assume the fill
+                      landed. `gasName` returns null on the same input, so the
+                      badge stays empty with it. */}
                   <RecordedCell
                     value={mixture.oxygen != null ? `${mixture.oxygen}%` : null}
                   />

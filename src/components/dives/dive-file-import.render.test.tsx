@@ -23,6 +23,14 @@ vi.mock("@/components/ui/use-toast", () => ({
   useToast: () => ({ toast: vi.fn() }),
 }));
 
+// The component pushes a route when the diver accepts a match against another
+// dive. Nothing in this file exercises that path, but `useRouter` throws
+// outright without a mounted app router, so the hook has to resolve to
+// something for the component to render at all.
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
 const { divesAPI } = await import("@/lib/api/dives");
 
 // Typed rather than `unknown[]` + `as never`: a field added to `ParsedDive` should break

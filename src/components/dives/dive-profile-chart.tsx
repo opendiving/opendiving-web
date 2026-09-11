@@ -260,8 +260,8 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
     //
     // On a measured channel that same strictness buys nothing and costs a lot: a
     // gap there means "not recorded", two samples are still two readings, and
-    // filtering them out would leave a depth-only dive rendering "this dive's
-    // imported file recorded no samples to plot" over a profile that has two.
+    // filtering them out would leave a depth-only dive rendering "this
+    // recording's file recorded no samples to plot" over a profile that has two.
     const runs = (t: number[], channel: ProfileChannel) => {
       const tolerance = readoutTolerance(t);
       const cut = channel.gapsAreMeaningful ? tolerance : gapThreshold(t);
@@ -411,7 +411,7 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
   if (channels.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        This dive&apos;s imported file recorded no samples to plot.
+        This recording&apos;s file recorded no samples to plot.
       </p>
     );
   }

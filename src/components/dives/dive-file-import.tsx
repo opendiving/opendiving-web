@@ -1,30 +1,40 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { FieldPathValue, Path, UseFormReturn } from "react-hook-form";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useToast } from "@/components/ui/use-toast";
 import {
   divesAPI,
-  DiveFileInfo,
   DIVE_FILE_ACCEPT,
   MAX_DIVE_FILE_SIZE,
   ParsedDive,
+  ParsedDiveMatch,
+  Recording,
 } from "@/lib/api/dives";
 import {
+  formatDiveStartTime,
   formatDurationForForm,
   normalizeParsedStartTime,
 } from "@/lib/date-time";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { DiveFormValues } from "@/components/dives/dive-form-fields";
+import {
+  DiveRecordingFiles,
+  type PendingDiveFile,
+} from "@/components/dives/dive-recording-files";
 import { DiveMixtureInput } from "@/lib/validations/dive";
 import {
   describeMixtureImport,
   existingMixtureFor,
+  fillMixture,
   mergeMixture,
   mixtureImportNotes,
   type MixtureImportNotes,
 } from "@/lib/dive-import";
+import { recordingDeviceLabel } from "@/lib/dive-recordings";
 import { Loader2, Upload } from "lucide-react";
 
 // Applies the fields parsed from a dive-computer export file onto a dive
@@ -67,6 +77,39 @@ function getDiveFormMixtures<TFieldValues extends DiveFormValues>(
   return mixtures ?? [];
 }
 
+// Whether a form field is still empty, and so free for a fill-only import to
+// write. `0` is a recorded reading and not an absence - a freedive to the
+// surface logs `max_depth` 0 - so this is deliberately not falsiness.
+function isDiveFormFieldEmpty<
+  TFieldValues extends DiveFormValues,
+  TName extends keyof DiveFormValues & string,
+>(form: UseFormReturn<TFieldValues>, name: TName): boolean {
+  const value = form.getValues(name as unknown as Path<TFieldValues>);
+  if (value == null) return true;
+  if (typeof value === "string") return value.trim() === "";
+  // A number input the diver cleared reads back as `NaN` rather than as
+  // `undefined`, which is the one non-obvious empty state on this form.
+  if (typeof value === "number") return Number.isNaN(value);
+  return false;
+}
+
+/**
+ * How a parsed file is written onto the form.
+ *
+ * `"prefill"` is the first file of a recording: it writes every field the file
+ * carries, which is what makes importing a dive computer's export worth doing.
+ *
+ * `"fill-only"` is every later file — one the API reported as a second export of
+ * a recording the dive already has, or one picked while another is already
+ * pending or stored — and it writes only fields the form has left empty. That is
+ * how "a second file of one recording fills, never overwrites" reaches
+ * `avg_depth` and `duration`: those two are the form's own, and no attach or
+ * import path on the server ever writes them, so if the rule did not hold here
+ * it would not hold anywhere. A diver who has just corrected a depth does not
+ * lose the correction to the same computer's second spelling of the same dive.
+ */
+export type ParsedDiveApplyMode = "prefill" | "fill-only";
+
 export function applyParsedDiveToForm<TFieldValues extends DiveFormValues>(
   form: UseFormReturn<TFieldValues>,
   parsed: ParsedDive,
@@ -79,32 +122,38 @@ export function applyParsedDiveToForm<TFieldValues extends DiveFormValues>(
   // instance's `fields` when the new array is shorter - see DECISIONS.md),
   // and plain `form.setValue("mixtures", ...)` has the same problem.
   replaceMixtures: (mixtures: DiveMixtureInput[]) => void,
+  mode: ParsedDiveApplyMode = "prefill",
 ): MixtureImportNotes {
-  if (parsed.dive_number != null) {
+  // One gate for all seven scalar fields below, so "fill-only" cannot be
+  // honoured by six of them and forgotten by the seventh.
+  const writes = <TName extends keyof DiveFormValues & string>(name: TName) =>
+    mode === "prefill" || isDiveFormFieldEmpty(form, name);
+
+  if (parsed.dive_number != null && writes("dive_number")) {
     setDiveFormValue(form, "dive_number", parsed.dive_number);
   }
   const normalizedStartTime = parsed.start_time
     ? normalizeParsedStartTime(parsed.start_time)
     : undefined;
-  if (normalizedStartTime) {
+  if (normalizedStartTime && writes("start_time")) {
     setDiveFormValue(form, "start_time", normalizedStartTime);
   }
-  if (parsed.duration != null) {
+  if (parsed.duration != null && writes("duration")) {
     setDiveFormValue(form, "duration", formatDurationForForm(parsed.duration));
   }
-  if (parsed.max_depth != null) {
+  if (parsed.max_depth != null && writes("max_depth")) {
     setDiveFormValue(form, "max_depth", parsed.max_depth);
   }
-  if (parsed.avg_depth != null) {
+  if (parsed.avg_depth != null && writes("avg_depth")) {
     setDiveFormValue(form, "avg_depth", parsed.avg_depth);
   }
-  if (parsed.bottom_temperature != null) {
+  if (parsed.bottom_temperature != null && writes("bottom_temperature")) {
     setDiveFormValue(form, "bottom_temperature", parsed.bottom_temperature);
   }
   // No "guessed field" note for this one, unlike the mixtures below: the
   // computer's own salinity setting is either in the file or it isn't, and
   // nothing here invents a plausible value for an absent one.
-  if (parsed.water_type != null) {
+  if (parsed.water_type != null && writes("water_type")) {
     setDiveFormValue(form, "water_type", parsed.water_type);
   }
   if (parsed.mixtures.length === 0) {
@@ -112,6 +161,29 @@ export function applyParsedDiveToForm<TFieldValues extends DiveFormValues>(
   }
 
   const existing = getDiveFormMixtures(form);
+
+  if (mode === "fill-only") {
+    // A second file may fill a cylinder the form already has; it may not
+    // reshape the list. Position is the only pairing signal there is, so a file
+    // describing a different number of cylinders has nothing to say about which
+    // of the form's rows its readings belong to - `existingMixtureFor`'s rule,
+    // applied to the whole list rather than per row, because here the list on
+    // screen is the one to preserve. A form with no cylinders at all takes the
+    // file's, which fills rather than overwrites by definition.
+    if (existing.length === 0) {
+      replaceMixtures(
+        parsed.mixtures.map((mixture) => mergeMixture(mixture).value),
+      );
+    } else if (existing.length === parsed.mixtures.length) {
+      replaceMixtures(
+        parsed.mixtures.map((mixture, index) =>
+          fillMixture(mixture, existing[index]),
+        ),
+      );
+    }
+    return { guessed: {}, keptPressures: false, discardedPressures: false };
+  }
+
   const merged = parsed.mixtures.map((mixture, index) =>
     mergeMixture(
       mixture,
@@ -129,11 +201,15 @@ export interface DiveFileImportProps<TFieldValues extends DiveFormValues> {
   // `applyParsedDiveToForm` doc comment above for why a separate instance
   // created here wouldn't work.
   replaceMixtures: (mixtures: DiveMixtureInput[]) => void;
-  // Called only after a *successful* parse, with the file and the token proving
-  // the API parsed it. The page holds both and uploads them once the dive has
-  // been saved - see `divesAPI.uploadDiveFile`. A failed parse applied nothing
-  // to the form, so there is nothing to attach and this isn't called.
-  onFileSelected?: (file: File, fileToken: string) => void;
+  // Called only after a *successful* parse, with a file the page should hold
+  // until the dive has been saved - see `divesAPI.attachRecordingFile`. A failed
+  // parse applied nothing to the form, so there is nothing to attach and this
+  // isn't called.
+  //
+  // More than one file can be waiting: a diver logging one dive off two
+  // computers, or the same computer's JSON beside its FIT, picks each in turn
+  // and every one of them is attached on save.
+  onFileAdded?: (pending: PendingDiveFile) => void;
   // Raised the moment a parsed file has been written onto the form, before the
   // toast. The dive form uses it to put every field the file filled in back on
   // screen when the diver has it hidden - an imported cylinder volume the parser
@@ -141,22 +217,36 @@ export interface DiveFileImportProps<TFieldValues extends DiveFormValues> {
   // deliberately visibility-blind: it sets whatever the file carries, which is the
   // owner's import rule for free.
   onValuesApplied?: () => void;
-  // The export already stored against this dive, on the edit form. Purely
-  // informational: it tells the diver what importing again would replace.
-  attachedFile?: DiveFileInfo | null;
+  // The files this dive already holds, on the edit form. Empty on the create
+  // form, where nothing is stored until the dive exists.
+  recordings?: Recording[];
+  // Files parsed on this form and not yet attached, held by the page.
+  pending?: PendingDiveFile[];
+  onRemovePending?: (id: string) => void;
+  // Deletes one stored file. Edit form only, and immediate - the file is already
+  // on the server, so there is nothing for a save to confirm.
+  onDeleteStored?: (fileUuid: string) => Promise<void>;
+  // The dive being edited, so a match against *this* dive can be told from a
+  // match against another one. Absent on the create form, where every match is
+  // another dive by definition.
+  diveUuid?: string;
 }
 
 export function DiveFileImport<TFieldValues extends DiveFormValues>({
   form,
   replaceMixtures,
-  onFileSelected,
+  onFileAdded,
   onValuesApplied,
-  attachedFile,
+  recordings = [],
+  pending = [],
+  onRemovePending,
+  onDeleteStored,
+  diveUuid,
 }: DiveFileImportProps<TFieldValues>) {
   const { toast } = useToast();
+  const router = useRouter();
   const [isParsingFile, setIsParsingFile] = useState(false);
-  const [pendingFileName, setPendingFileName] = useState<string | null>(null);
-  // What the import had to guess, shown next to the file name rather than in the
+  // What the import had to guess, shown next to the file list rather than in the
   // toast: the toast is gone in seconds, and this is exactly the thing the diver
   // has to still be able to see while fixing it.
   //
@@ -164,8 +254,57 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
   // file and never changes after import, so there is nothing to re-derive. See
   // `describeMixtureImport`.
   const [importNote, setImportNote] = useState<string | null>(null);
+  // A parsed file whose bytes look like they belong to a dive that already
+  // exists, waiting for the diver to say which. **This path never attaches by
+  // itself**, whatever the match says: a wrong match on a form is a dive the
+  // diver did not ask for with nothing on screen to refuse it. Logbook import
+  // is the opposite case and does attach automatically, because its preview is
+  // already the confirmation step and its test is far stricter than this one.
+  const [offer, setOffer] = useState<MatchOffer | null>(null);
+  const [isAttaching, setIsAttaching] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Whether a newly parsed file is allowed to overwrite what is on the form.
+  //
+  // The first file of a dive is the form's best information and writes
+  // everything it carries. Every later one - a second computer, or this
+  // computer's other export - fills blanks only, which is how first-file-wins
+  // reaches `avg_depth` and `duration`: those two are the form's own and no
+  // server-side attach or import path writes them, so if the rule does not hold
+  // here it holds nowhere. `DECISIONS.md`, *"A second file of one recording
+  // fills the form, and never overwrites it"*, has the whole argument.
+  const hasFileAlready = pending.length > 0 || recordings.length > 0;
+
+  // Applies a parsed file to the form and hands it to the page to attach on
+  // save. Shared by the ordinary path and by "Log as a new dive", which is the
+  // same thing after the diver has refused a match.
+  const acceptParsedFile = (file: File, parsed: ParsedDive) => {
+    const sameRecording = (parsed.matches ?? []).some(
+      (match) => match.same_recording && match.dive_uuid === diveUuid,
+    );
+    const notes = applyParsedDiveToForm(
+      form,
+      parsed,
+      replaceMixtures,
+      hasFileAlready || sameRecording ? "fill-only" : "prefill",
+    );
+    onValuesApplied?.();
+    onFileAdded?.({
+      id: pendingFileId(),
+      file,
+      token: parsed.file_token,
+      deviceLabel: recordingDeviceLabel(parsed.device),
+    });
+    setImportNote(describeMixtureImport(notes));
+
+    toast({
+      title: "Dive file parsed",
+      description:
+        "Form fields have been filled in from the uploaded file. Please review before saving.",
+    });
+  };
+
   const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -185,17 +324,20 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
 
       setIsParsingFile(true);
       const parsed: ParsedDive = await divesAPI.parseDiveFile(file);
-      const notes = applyParsedDiveToForm(form, parsed, replaceMixtures);
-      onValuesApplied?.();
-      onFileSelected?.(file, parsed.file_token);
-      setPendingFileName(file.name);
-      setImportNote(describeMixtureImport(notes));
 
-      toast({
-        title: "Dive file parsed",
-        description:
-          "Form fields have been filled in from the uploaded file. Please review before saving.",
-      });
+      // A match on a dive the diver is not looking at is the one case that
+      // stops and asks. A match on *this* dive is not a question - the file
+      // belongs here, which is what the form is already doing - it only decides
+      // that the write fills rather than overwrites, above.
+      const elsewhere = (parsed.matches ?? []).filter(
+        (match) => match.dive_uuid !== diveUuid,
+      );
+      if (elsewhere.length > 0) {
+        setOffer({ file, parsed, match: elsewhere[0] });
+        return;
+      }
+
+      acceptParsedFile(file, parsed);
     } catch (error) {
       console.error("Failed to parse dive file:", error);
 
@@ -215,72 +357,161 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
     }
   };
 
+  // "Attach there": the file joins the dive it matched, right now, and the diver
+  // goes to look at it. Nothing on this form is saved - the dive they were
+  // filling in is the one this file turned out not to be.
+  const attachToMatch = async () => {
+    if (!offer) return;
+    try {
+      setIsAttaching(true);
+      await divesAPI.attachRecordingFile(
+        offer.match.dive_uuid,
+        offer.file,
+        offer.parsed.file_token,
+      );
+      toast({
+        title: "File attached",
+        description: `Added to dive #${offer.match.dive_number}.`,
+      });
+      setOffer(null);
+      router.push(`/dives/${offer.match.dive_uuid}`);
+    } catch (error) {
+      console.error("Failed to attach the dive file:", error);
+      toast({
+        title: "Error",
+        description: getApiErrorMessage(
+          error,
+          "Failed to attach the file to that dive. Please try again.",
+        ),
+        variant: "destructive",
+      });
+    } finally {
+      setIsAttaching(false);
+    }
+  };
+
   return (
-    <div className="rounded-lg border border-dashed p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-muted/40">
-      <div>
-        <p className="font-medium text-sm">Import from a dive computer file</p>
-        <p className="text-sm text-muted-foreground">
-          Upload a dive log export — a FIT file from a Garmin Descent or Suunto
-          computer, or a Suunto XML or JSON export — to automatically fill in
-          the fields below.
-        </p>
-        {pendingFileName ? (
-          <p className="text-sm text-muted-foreground mt-1">
-            Will be attached when you save:{" "}
-            <span className="font-medium">{pendingFileName}</span>
-          </p>
-        ) : attachedFile ? (
-          <p className="text-sm text-muted-foreground mt-1">
-            Attached:{" "}
-            <span className="font-medium">
-              {attachedFile.original_filename}
-            </span>{" "}
-            &mdash; importing another file will replace it.
-          </p>
-        ) : null}
-        {/* Rendered unconditionally and `sr-only` until there is something to say: a
-            `role="status"` region that mounts together with its text is typically not
-            announced at all, since screen readers register it on insertion and read
-            *subsequent* changes. The text is computed once at import and never changes
-            afterwards, so this announces exactly once - see `describeMixtureImport`. */}
-        <p
-          role="status"
-          className={
-            importNote
-              ? "text-sm text-amber-700 dark:text-amber-500 mt-1"
-              : "sr-only"
-          }
-        >
-          {importNote}
-        </p>
-      </div>
-      <div>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept={DIVE_FILE_ACCEPT}
-          className="hidden"
-          onChange={handleFileSelected}
+    <div className="rounded-lg border border-dashed p-4 bg-muted/40">
+      {offer && (
+        <ConfirmDialog
+          open
+          onOpenChange={(open) => !open && setOffer(null)}
+          title="This file may already have a dive"
+          description={describeMatch(offer.match)}
+          confirmText="Attach there"
+          variant="default"
+          isLoading={isAttaching}
+          secondaryAction={{
+            label: "Log as a new dive",
+            onClick: () => {
+              const { file, parsed } = offer;
+              setOffer(null);
+              acceptParsedFile(file, parsed);
+            },
+          }}
+          onConfirm={attachToMatch}
         />
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={isParsingFile}
-        >
-          {isParsingFile ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Parsing...
-            </>
-          ) : (
-            <>
-              <Upload className="h-4 w-4 mr-2" />
-              Upload Dive File
-            </>
-          )}
-        </Button>
+      )}
+
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-medium text-sm">
+            Import from a dive computer file
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Upload a dive log export — a FIT file from a Garmin Descent or
+            Suunto computer, or a Suunto XML or JSON export — to fill in the
+            fields below. Upload one per computer that recorded this dive, or
+            one computer&apos;s second export alongside its first.
+          </p>
+          {/* Rendered unconditionally and `sr-only` until there is something to say: a
+              `role="status"` region that mounts together with its text is typically not
+              announced at all, since screen readers register it on insertion and read
+              *subsequent* changes. The text is computed once at import and never changes
+              afterwards, so this announces exactly once - see `describeMixtureImport`. */}
+          <p
+            role="status"
+            className={
+              importNote
+                ? "text-sm text-amber-700 dark:text-amber-500 mt-1"
+                : "sr-only"
+            }
+          >
+            {importNote}
+          </p>
+        </div>
+        <div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={DIVE_FILE_ACCEPT}
+            className="hidden"
+            onChange={handleFileSelected}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isParsingFile}
+          >
+            {isParsingFile ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Parsing...
+              </>
+            ) : (
+              <>
+                <Upload className="h-4 w-4 mr-2" />
+                Upload Dive File
+              </>
+            )}
+          </Button>
+        </div>
       </div>
+
+      <DiveRecordingFiles
+        recordings={recordings}
+        pending={pending}
+        onRemovePending={(id) => onRemovePending?.(id)}
+        onDeleteStored={onDeleteStored}
+      />
     </div>
   );
+}
+
+// A parsed file the API matched against an existing dive, and the match it is
+// being offered against. Only the nearest is offered: the list is ordered by
+// start, and a second-best candidate is a question nobody can answer better
+// than the first.
+interface MatchOffer {
+  file: File;
+  parsed: ParsedDive;
+  match: ParsedDiveMatch;
+}
+
+// What the match dialog says. Names the dive and the device, because those are
+// the two things that make the offer checkable - "a dive nearby" is not
+// something a diver can agree or disagree with.
+function describeMatch(match: ParsedDiveMatch): string {
+  const device = recordingDeviceLabel(match.device);
+  const when = match.started_at
+    ? formatDiveStartTime(match.started_at)
+    : "an unrecorded time";
+
+  return match.same_recording
+    ? `Dive #${match.dive_number} already has a recording from ${device ?? "the same computer"}, starting ${when}. Attaching adds this file to that recording and fills in whatever it left blank — nothing already recorded is overwritten.`
+    : `Dive #${match.dive_number} started around the same time (${when}${device ? `, recorded by ${device}` : ""}). Attaching adds this file to that dive as a second recording.`;
+}
+
+// `crypto.randomUUID` is available in every browser this app supports and in
+// jsdom, but not over plain HTTP on a LAN address - a self-hoster's first
+// look at the app from another machine. The counter is the fallback, and is
+// only ever a key within one form's lifetime.
+let pendingFileCounter = 0;
+function pendingFileId(): string {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  pendingFileCounter += 1;
+  return `pending-${pendingFileCounter}`;
 }

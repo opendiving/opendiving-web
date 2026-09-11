@@ -12,7 +12,8 @@ import {
 import { DiveFormActions } from "@/components/dives/dive-form-actions";
 import { DiveFormFieldsMenu } from "@/components/dives/dive-form-fields-menu";
 import { MixtureFieldArray } from "@/components/dives/mixture-fields";
-import { DiveFileInfo, DiveSiteSummary } from "@/lib/api/dives";
+import { DiveSiteSummary, Recording } from "@/lib/api/dives";
+import type { PendingDiveFile } from "@/components/dives/dive-recording-files";
 import { GearItemSummary } from "@/lib/api/gear";
 import { SpeciesSummary } from "@/lib/api/species";
 import {
@@ -35,11 +36,17 @@ export interface DiveFormCardProps<TFieldValues extends DiveFormValues> {
   cancelHref: string;
   submittingLabel: string;
   submitLabel: string;
-  // Passed straight through to `DiveFileImport`. The page, not this card, owns
-  // the picked file: it can only be uploaded once the dive exists, which is
-  // after `onSubmit` resolves.
-  onFileSelected?: (file: File, fileToken: string) => void;
-  attachedFile?: DiveFileInfo | null;
+  // All five passed straight through to `DiveFileImport`. The page, not this
+  // card, owns the picked files: they can only be attached once the dive
+  // exists, which is after `onSubmit` resolves.
+  onFileAdded?: (pending: PendingDiveFile) => void;
+  pendingFiles?: PendingDiveFile[];
+  onRemovePendingFile?: (id: string) => void;
+  onDeleteStoredFile?: (fileUuid: string) => Promise<void>;
+  recordings?: Recording[];
+  // The dive being edited, so the import can tell a match against it from a
+  // match against some other dive. Absent when creating.
+  diveUuid?: string;
   // The dive's existing sites, when editing - see `DiveFormFields`.
   knownDiveSites?: DiveSiteSummary[];
   knownGearItems?: GearItemSummary[];
@@ -64,8 +71,12 @@ export function DiveFormCard<TFieldValues extends DiveFormValues>({
   cancelHref,
   submittingLabel,
   submitLabel,
-  onFileSelected,
-  attachedFile,
+  onFileAdded,
+  pendingFiles,
+  onRemovePendingFile,
+  onDeleteStoredFile,
+  recordings,
+  diveUuid,
   knownDiveSites,
   knownGearItems,
   knownSpecies,
@@ -139,8 +150,12 @@ export function DiveFormCard<TFieldValues extends DiveFormValues>({
             <DiveFileImport
               form={form}
               replaceMixtures={mixtureFieldArray.replace}
-              onFileSelected={onFileSelected}
-              attachedFile={attachedFile}
+              onFileAdded={onFileAdded}
+              pending={pendingFiles}
+              onRemovePending={onRemovePendingFile}
+              onDeleteStored={onDeleteStoredFile}
+              recordings={recordings}
+              diveUuid={diveUuid}
               // One of the four moments a value arrives from outside the diver's
               // typing: whatever the file filled in is on screen, whether or not the
               // stored set hides it, and it counts as the diver's from here on.

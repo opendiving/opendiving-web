@@ -149,6 +149,13 @@ describe("noteIsWarning", () => {
         "record_remapped_references_stay",
         "diver_not_applied",
         "file_not_contained",
+        // The two recording outcomes. A file that matched a dive already in the
+        // account was attached to it rather than creating a second one, and a
+        // file that matched an existing recording filled that recording's
+        // blanks - in both cases the alternative was a duplicate, so the note
+        // is reporting the import working, not falling short.
+        "recording_attached",
+        "recording_filled",
       ].some(noteIsWarning),
     ).toBe(false);
   });
@@ -354,19 +361,24 @@ describe("importSourceSentence", () => {
   it("names an unrecognised format by its id rather than rendering a blank", () => {
     // A reader the API's converter gained after this build was cut. The
     // sentence gets terser, never wrong - and never `undefined file`.
+    //
+    // A made-up id rather than a real upcoming one. This case used to name
+    // `suunto_xml`, which then shipped a label and turned a test of the
+    // fallback into a test of the lookup beside it - so the id here is one
+    // nothing will ever claim.
     expect(
       importSourceSentence(
         preview({
           generator: null,
           conversion: {
-            format: "suunto_xml",
+            format: "kraken_binary",
             converter: { name: "divejson", version: "0.4.0" },
             groups: [],
             groups_truncated: 0,
           },
         }),
       ),
-    ).toBe("suunto_xml file, converted to DiveJSON 1.0 by divejson 0.4.0.");
+    ).toBe("kraken_binary file, converted to DiveJSON 1.0 by divejson 0.4.0.");
   });
 
   it("describes a native document as the document it is", () => {

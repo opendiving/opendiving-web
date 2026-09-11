@@ -8,6 +8,7 @@ import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useResource } from "@/hooks/useResource";
 import { useReturnTo } from "@/hooks/useReturnTo";
 import { divesAPI, Dive } from "@/lib/api/dives";
+import type { PendingDiveFile } from "@/components/dives/dive-recording-files";
 import {
   buildDiveUpdate,
   diveToFormValues,
@@ -39,13 +40,12 @@ function EditDivePageContent() {
   const router = useRouter();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // Uploaded after the edit is saved rather than when the file is picked, so
+  // Attached after the edit is saved rather than when the file is picked, so
   // that importing a file and then cancelling the edit doesn't silently change
-  // the dive's stored export.
-  const [sourceFile, setSourceFile] = useState<{
-    file: File;
-    token: string;
-  } | null>(null);
+  // what the dive holds. A list, for the reason the create page's is one: a dive
+  // can gain a second computer's recording and a second file of an existing one
+  // in the same edit.
+  const [pendingFiles, setPendingFiles] = useState<PendingDiveFile[]>([]);
 
   const form = useForm<DiveUpdateInput>({
     resolver: zodResolver(diveUpdateSchema),
@@ -103,6 +103,7 @@ function EditDivePageContent() {
   const {
     id: diveId,
     resource: dive,
+    setResource: setDive,
     isLoading: isLoadingDive,
   } = useResource<Dive>(divesAPI.getDive, {
     enabled: !!user,
@@ -110,6 +111,44 @@ function EditDivePageContent() {
     redirectTo: "/dives",
     onLoaded: resetFromDive,
   });
+
+  // Deleting a stored file happens now, not on save: the file is already on the
+  // server, so there is nothing for a save to confirm and nothing for Cancel to
+  // undo. The dialog in `DiveRecordingFiles` is the confirmation.
+  //
+  // **Re-read and `setDive`, deliberately not `useResource`'s `refetch`.** That
+  // one re-runs `onLoaded`, which here is `resetFromDive` - so a diver who had
+  // retyped a depth and then removed a file would have watched the edit vanish.
+  // What has to update is the file list, which reads `dive.recordings`, and the
+  // server may well have changed more of it than the one row: the recording's
+  // profile is re-derived from whatever files are left, the recording itself
+  // goes when its last file does, and the dive's exposure readings follow the
+  // primary. Predicting any of that here would be a second implementation of
+  // rules that already have one.
+  const deleteStoredFile = useCallback(
+    async (fileUuid: string) => {
+      if (!diveId) return;
+      try {
+        await divesAPI.deleteDiveFile(diveId, fileUuid);
+        setDive(await divesAPI.getDive(diveId));
+        toast({
+          title: "File deleted",
+          description: "The file was removed from this dive.",
+        });
+      } catch (error) {
+        console.error("Failed to delete the dive file:", error);
+        toast({
+          title: "Error",
+          description: getApiErrorMessage(
+            error,
+            "Failed to delete the file. Please try again.",
+          ),
+          variant: "destructive",
+        });
+      }
+    },
+    [diveId, setDive, toast],
+  );
 
   // Back/Cancel return to wherever the edit was started from - the dive list, a
   // trip, an explicit `?from=` - falling back to the dive itself.
@@ -128,20 +167,19 @@ function EditDivePageContent() {
 
       await divesAPI.updateDive(diveId, updateData);
 
-      if (sourceFile) {
+      // Serially and in pick order, for the reason the create page gives: the
+      // API decides per file which recording it joins, and racing two attaches
+      // would make that depend on request arrival order.
+      for (const item of pendingFiles) {
         try {
-          await divesAPI.uploadDiveFile(
-            diveId,
-            sourceFile.file,
-            sourceFile.token,
-          );
+          await divesAPI.attachRecordingFile(diveId, item.file, item.token);
         } catch (error) {
           // Non-fatal, for the same reason as on the new-dive page: the edit
           // itself succeeded, and losing the attachment is a much smaller cost
           // than failing a save the diver already made.
           console.error("Failed to attach the dive file:", error);
           toast({
-            title: "Dive updated, but the file wasn't attached",
+            title: `Dive updated, but ${item.file.name} wasn't attached`,
             description: getApiErrorMessage(
               error,
               "Try importing the file again.",
@@ -228,8 +266,14 @@ function EditDivePageContent() {
         cancelHref={returnTo.href}
         submittingLabel="Saving..."
         submitLabel="Save Changes"
-        onFileSelected={(file, token) => setSourceFile({ file, token })}
-        attachedFile={dive.source_file}
+        onFileAdded={(item) => setPendingFiles((files) => [...files, item])}
+        pendingFiles={pendingFiles}
+        onRemovePendingFile={(id) =>
+          setPendingFiles((files) => files.filter((item) => item.id !== id))
+        }
+        onDeleteStoredFile={deleteStoredFile}
+        recordings={dive.recordings ?? []}
+        diveUuid={dive.uuid}
         // The dive already carries its sites' names, so the picker doesn't have
         // to look them up again just to label the rows it starts out with.
         knownDiveSites={dive.dive_sites}

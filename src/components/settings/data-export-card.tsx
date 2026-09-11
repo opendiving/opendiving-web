@@ -59,14 +59,14 @@ const EXPORT_ROWS: ExportRow[] = [
     icon: FileJson,
     title: "DiveJSON",
     description:
-      "Your whole logbook in one file: every dive with its full sample profile, cylinders, sites, trips, courses, marine life, gear with its service history and your c-card records — everything in the account except the uploaded files themselves, which it names by digest. DiveJSON is the open dive-log format this project maintains, and this app is its reference implementation — so this is the one that comes back with nothing lost.",
+      "Your whole logbook in one file: every dive with every recording that made it — each one's device, its files and its full sample profile — plus cylinders, sites, trips, courses, marine life, gear with its service history and your c-card records. Everything in the account except the uploaded files themselves, which it names by digest. DiveJSON is the open dive-log format this project maintains, and this app is its reference implementation — so this is the one that comes back with nothing lost.",
   },
   {
     format: "uddf",
     icon: FileCode,
     title: "UDDF",
     description:
-      "Every dive with its sites, trips, gases, cylinders, gear and full sample profile, in the open format Subsurface, MacDive and divelogs.de import. This is the file to hand another program, and the import card below reads it back too — gear sets, service history, your courses and your c-cards have no slot in it, and ride in the DiveJSON and the archive instead.",
+      "Every dive with its sites, trips, gases, cylinders, gear and sample profile, in the open format Subsurface, MacDive and divelogs.de import. A dive recorded by two computers writes one profile here — the recording shown by default — because a UDDF dive carries one set of samples; the DiveJSON and the archive carry them all. This is the file to hand another program, and the import card below reads it back too — gear sets, service history, your courses and your c-cards have no slot in it, and ride in the DiveJSON and the archive instead.",
   },
   {
     format: "csv",
@@ -80,7 +80,7 @@ const EXPORT_ROWS: ExportRow[] = [
     icon: FileArchive,
     title: "Full archive",
     description:
-      "Everything, as a zip: the DiveJSON, the UDDF, the full CSV set, every dive-computer file you imported and both sides of every certification card. This is the one to keep as a backup — it is also the only download that can put those files back, since the import card below can restore bytes it actually carries. Those card scans are personal documents, so treat the file as one.",
+      "Everything, as a zip: the DiveJSON, the UDDF, the full CSV set, every dive-computer file you uploaded — each under the recording it belongs to — and both sides of every certification card. This is the one to keep as a backup — it is also the only download that can put those files back, since the import card below can restore bytes it actually carries. Those card scans are personal documents, so treat the file as one.",
   },
 ];
 
