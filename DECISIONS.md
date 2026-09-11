@@ -16290,15 +16290,16 @@ endpoint does one of three things depending on what the recording is left holdin
   import creates; see "A recording with no files says so, and which kind of nothing it is".
 
 The dive's figures move on all three, by two different routes, and **outright** on both — the point
-of the rewrite is to stop claiming a reading the dive no longer has evidence for. Where the
-recording keeps files, `_rederive_recording` rewrites them from what is left, and only when that
-recording is ordinal 0: a _secondary_ recording keeping files leaves them alone entirely, having
-returned before it reaches them. Where the last file goes, `refresh_tech_scalars` rewrites them from
-whichever recording is primary _afterwards_ — which may be a different one, or none. On a dive whose
-primary recording just lost its figures, that is a CNS and an OTU disappearing off the page, which
-is exactly how this was found: a Suunto recording holding a JSON and a FIT, the FIT deleted with no
-surprises, then the JSON deleted and the recording, the charted profile and the dive's exposure
-figures all moved at once.
+of the rewrite is to stop claiming a reading the dive no longer has evidence for. Both are gated on
+the deletion having reached ordinal 0. Where the recording keeps files, `_rederive_recording`
+rewrites them from what is left, and only when that recording is ordinal 0: a _secondary_ recording
+keeping files leaves them alone entirely, having returned before it reaches them. Where the last
+file goes, `refresh_tech_scalars` rewrites them from whichever recording is primary _afterwards_ —
+which may be a different one, or none — and returns without writing at all when the deletion was a
+secondary's, on a `touched_primary` its callers answer. On a dive whose primary recording just lost
+its figures, that is a CNS and an OTU disappearing off the page, which is exactly how this was
+found: a Suunto recording holding a JSON and a FIT, the FIT deleted with no surprises, then the JSON
+deleted and the recording, the charted profile and the dive's exposure figures all moved at once.
 
 **"Figures", not "oxygen-exposure readings"**, though CNS and OTU are what the report was about.
 `refresh_tech_scalars` writes every field of the API's `DiveTechScalars` — the two exposure clocks,
@@ -16320,14 +16321,25 @@ the new primary's files as null — so a file-less recording promoted into ordin
 figures just as thoroughly as having no recording at all. The sentence turns on whether the
 recording that takes over holds a file, not on whether it is there.
 
-**"Is this recording the primary one?"** A secondary recording looks like a no-op and is one only
-while it `keeps files`: that is the path through `_rederive_recording`, which returns before the
-figures for any ordinal but 0. Removing a secondary recording, or emptying one, runs
-`refresh_tech_scalars` over the _untouched_ primary — normally a re-read to the same values, and a
-clearing when that primary holds no files, because a converted logbook import writes its document's
-CNS onto the dive row beside a recording with nothing to re-read it from. The API guards exactly
-this in `POST /dives/merge` and its own `DECISIONS.md` says why; the two delete routes do not, so
-the copy has to. Deleting one recording can therefore clear figures that came from another.
+**"Is this recording the primary one?"** — which for one release was answered wrongly, and by the
+copy rather than by the API. A secondary recording looks like a no-op, and while it `keeps files` it
+is one: that is the path through `_rederive_recording`, which returns before the figures for any
+ordinal but 0. Removing a secondary recording, or emptying one, ran `refresh_tech_scalars` over the
+_untouched_ primary instead — normally a re-read to the same values, and a clearing when that
+primary held no files, because a converted logbook import writes its document's CNS onto the dive
+row beside a recording with nothing to re-read it from. So deleting one recording could clear
+figures that came from another, and the dialog said so: _the recording shown by default is a
+different one and holds no file, so the figures the dive computer recorded are re-read from it and
+come back empty_.
+
+That sentence is gone, because the API stopped doing it (opendiving/opendiving-api#164, and see _"A
+deletion re-derives the dive's readings only where it touched the primary recording"_ there).
+`refresh_tech_scalars` now takes a `touched_primary` its callers answer and returns without writing
+when it is false — the guard `POST /dives/merge` already had. A secondary deletion is the no-op it
+looks like, on every outcome, and `figuresSentence` needs neither the primary's file count nor the
+outcome to say so. **The branch was right for the behaviour it described**; what it documented was a
+defect, and describing a defect accurately keeps it. The copy is not where a data-loss hazard gets
+handled — it is where a diver finds out about one that is meant to be there.
 
 **The title carries the difference, not only the description.** "Delete this file?" over a dialog
 that is about to remove the recording is asking about the smaller of two actions, and a diver who

@@ -412,11 +412,13 @@ describe("deleteFileConfirmation", () => {
     );
   });
 
-  it("does not call a secondary deletion a no-op when the primary holds no file", () => {
-    // Removing a secondary recording re-runs `refresh_tech_scalars` over the
-    // untouched primary, which is only a no-op while that primary has files to
-    // re-read. A converted import has none, and the figures the document
-    // supplied go with the unrelated deletion.
+  it("still calls a secondary deletion a no-op when the primary holds no file", () => {
+    // The one case the API had to be fixed for rather than described: a
+    // converted logbook import writes its document's figures onto the dive
+    // beside a file-less primary, and `refresh_tech_scalars` used to re-read
+    // that primary - finding nothing - on a deletion that never touched it. It
+    // now takes a `touched_primary` and returns without writing, so this is the
+    // no-op it looks like and the copy says so.
     const imported = recording({
       files: [],
       profile: profileInfo({ provenance: "divejson_import" }),
@@ -424,8 +426,7 @@ describe("deleteFileConfirmation", () => {
     const perdix = recording({ uuid: "r2", ordinal: 1, files: [perdixFile] });
     const { description } = deleteFileConfirmation([imported, perdix], "pf");
 
-    expect(description).toContain("come back empty");
-    expect(description).not.toContain("left alone");
+    expect(description).toContain("are left alone");
   });
 
   it("calls a secondary deletion a no-op while the primary still has files", () => {
@@ -438,8 +439,9 @@ describe("deleteFileConfirmation", () => {
   });
 
   it("leaves the figures alone when a secondary merely loses one of its files", () => {
-    // `_rederive_recording` returns before the figures for any recording that
-    // is not ordinal 0, so this path is untouched whatever the primary holds.
+    // The same answer by a second route: `_rederive_recording` returns before
+    // the figures for any recording that is not ordinal 0, so this path never
+    // reached the rewrite even before it learnt to refuse one.
     const imported = recording({
       files: [],
       profile: profileInfo({ provenance: "divejson_import" }),
@@ -493,6 +495,21 @@ describe("deleteRecordingConfirmation", () => {
     expect(deleteRecordingConfirmation([imported], "r1").description).toContain(
       "the dive's only recording",
     );
+  });
+
+  it("leaves the figures alone for a recording that is not the one shown by default", () => {
+    // The whole-recording route's half of the API's `touched_primary`: removing
+    // a second computer's recording says nothing about figures the primary - or
+    // a document - put on the dive.
+    const imported = recording({
+      files: [],
+      profile: profileInfo({ provenance: "divejson_import" }),
+    });
+    const perdix = recording({ uuid: "r2", ordinal: 1, files: [perdixFile] });
+
+    expect(
+      deleteRecordingConfirmation([imported, perdix], "r2").description,
+    ).toContain("are left alone");
   });
 
   it("covers the files a recording holds rather than assuming it holds none", () => {

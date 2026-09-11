@@ -183,23 +183,20 @@ const COMPUTER_FIGURES = "the figures the dive computer recorded";
 /**
  * What the figures the dive computer recorded do, as a sentence.
  *
- * **One rule sits under every branch**: the dive's figures are whatever ordinal
- * 0 holds files for once the deletion is through. `refresh_tech_scalars` re-reads
- * the primary recording's files and writes every figure it does not find as
- * null, so an empty ordinal 0 clears them however it came to be empty - this
- * recording survived its own last file, the recording promoted in its place
- * holds none, or there is nothing left to promote. `renumber_ordinals` promotes
- * in ordinal order without skipping a file-less recording, so "is another
- * recording there" is not the question; "does whoever is primary afterwards hold
- * a file" is.
- *
- * **A secondary recording is not the no-op it looks like**, which is why this
- * takes the outcome and not just the ordinal. Only `keeps files` returns before
- * the figures are touched (`_rederive_recording`); removing a secondary
- * recording, or emptying one, runs `refresh_tech_scalars` over the *untouched*
- * primary. That re-reads the same files to the same values - unless the primary
- * holds no files at all, which is what a converted logbook import creates, and
- * then a deletion elsewhere on the dive clears figures the document supplied.
+ * **One rule sits under every branch**: the figures move only where the deletion
+ * reached the recording shown by default, and then they become whatever that
+ * slot holds files for once it is through. A deletion elsewhere on the dive is a
+ * no-op - the API's `refresh_tech_scalars` takes a `touched_primary` and returns
+ * without writing when it is false, precisely so that emptying a second
+ * computer's recording cannot clear figures a converted logbook import wrote
+ * onto the dive beside a file-less primary. Where the deletion *does* reach
+ * ordinal 0, that rewrite is outright: every figure it does not find on the
+ * primary's files is written null, so an empty ordinal 0 clears them however it
+ * came to be empty - this recording survived its own last file, the recording
+ * promoted in its place holds none, or there is nothing left to promote.
+ * `renumber_ordinals` promotes in ordinal order without skipping a file-less
+ * recording, so "is another recording there" is not the question; "does whoever
+ * is primary afterwards hold a file" is.
  *
  * **No count of the branches here, deliberately.** One was stated and went wrong
  * twice in three commits, each time because the function grew a case; the rule
@@ -211,20 +208,8 @@ function figuresSentence(
   recordings: Recording[],
   outcome: RecordingOutcome,
 ): string {
-  // Whether a recording has anything to read the figures off. Asked of whoever
-  // is primary afterwards: the untouched one when a secondary is being deleted,
-  // and the successor when the primary is.
-  const holdsFiles = (candidate: Recording | undefined) =>
-    candidate !== undefined && candidate.files.length > 0;
-
   if (recording.ordinal !== 0) {
-    if (
-      outcome === "keeps files" ||
-      holdsFiles(recordings.find((other) => other.ordinal === 0))
-    ) {
-      return `Another recording is the one shown by default, so ${COMPUTER_FIGURES} are left alone.`;
-    }
-    return `The recording shown by default is a different one and holds no file, so ${COMPUTER_FIGURES} are re-read from it and come back empty.`;
+    return `Another recording is the one shown by default, so ${COMPUTER_FIGURES} are left alone.`;
   }
   if (outcome === "keeps files") {
     return `This recording also writes ${COMPUTER_FIGURES}, so those are re-read along with it.`;
@@ -247,7 +232,7 @@ function figuresSentence(
   if (successor === undefined) {
     return `It is the dive's only recording, so ${COMPUTER_FIGURES} are cleared — nothing is left to read them from.`;
   }
-  return holdsFiles(successor)
+  return successor.files.length > 0
     ? `It is the recording shown by default, so the next one takes over and ${COMPUTER_FIGURES} are re-read from that instead.`
     : `It is the recording shown by default, so the next one takes over — and it holds no file, so ${COMPUTER_FIGURES} are cleared.`;
 }
