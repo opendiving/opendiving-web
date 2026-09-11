@@ -16,6 +16,8 @@ import {
 } from "@/lib/api/dives";
 import { getApiErrorMessage } from "@/lib/api/error";
 import {
+  deleteFileConfirmation,
+  deleteRecordingConfirmation,
   diveRecordings,
   noFileKeptSentence,
   recordingDeviceLabel,
@@ -159,23 +161,23 @@ export function DiveRecordingsCard({
 
   return (
     <>
-      <ConfirmDialog
-        open={removal !== null}
-        onOpenChange={(open) => !open && setRemoval(null)}
-        title={
-          removal?.kind === "recording"
-            ? "Delete this recording?"
-            : "Delete this file?"
-        }
-        description={
-          removal?.kind === "recording"
-            ? "The recording, its profile and any files it holds will be permanently deleted. This cannot be undone, and the dive itself is unaffected."
-            : "The file will be permanently deleted, and this recording's profile is re-read from whatever files are left. This cannot be undone, and the dive itself is unaffected."
-        }
-        confirmText="Delete"
-        isLoading={isRemoving}
-        onConfirm={confirmRemoval}
-      />
+      {/* Mounted only while a removal is pending, so the strings are derived
+          from it rather than from a nullable one. Both routes say what else
+          goes: a file deletion can take the recording, the primary slot and the
+          dive's readings with it, and a recording deletion moves the last two -
+          none of which "the dive itself is unaffected" covered. */}
+      {removal && (
+        <ConfirmDialog
+          open
+          onOpenChange={(open) => !open && setRemoval(null)}
+          {...(removal.kind === "recording"
+            ? deleteRecordingConfirmation(recordings, removal.recording.uuid)
+            : deleteFileConfirmation(recordings, removal.file.uuid))}
+          confirmText="Delete"
+          isLoading={isRemoving}
+          onConfirm={confirmRemoval}
+        />
+      )}
 
       <Card>
         <CardHeader>

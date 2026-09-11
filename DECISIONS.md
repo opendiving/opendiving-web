@@ -16094,3 +16094,61 @@ offered a whole-recording delete. Nothing else can remove it — the per-file ro
 without that button a converter-imported or merged recording would be permanent. Where there _are_
 files, deleting them one at a time is the smaller action and the server removes the recording with
 the last of them.
+
+## Deleting a file is three different actions, and the confirmation says which
+
+The Trash icon beside a stored file runs one endpoint, `DELETE /dive/{uuid}/file/{fid}`, and that
+endpoint does one of three things depending on what the recording is left holding
+(`delete_dive_file` in the API's `services/dive_files.py`):
+
+- **The recording keeps its other files.** Its profile is re-derived from them, which is the case
+  the copy used to describe and the only one it described.
+- **The recording's last file goes, and the recording goes with it** — profile, samples and all, by
+  the FK cascade in `delete_recording`. Then `renumber_ordinals` closes the gap, so if it was
+  ordinal 0 the _next_ recording becomes primary and the dive charts a different profile by default.
+- **The recording's last file goes and the recording survives, file-less**, when its samples are
+  ones no file could produce again — a merge's or a converted document's. Same shape a converter
+  import creates; see "A recording with no files says so, and which kind of nothing it is".
+
+All three then re-run `refresh_tech_scalars`, which rewrites the dive's oxygen-exposure readings
+**outright** from whatever is primary afterwards. On a dive whose primary recording just lost its
+figures, that is a CNS and an OTU disappearing off the page — which is exactly how this was found: a
+Suunto recording holding a JSON and a FIT, the FIT deleted with no surprises, then the JSON deleted
+and the recording, the charted profile and the dive's exposure figures all moved at once.
+
+**The title carries the difference, not only the description.** "Delete this file?" over a dialog
+that is about to remove the recording is asking about the smaller of two actions, and a diver who
+reads the heading and clicks — which is most of them — never learns otherwise. So the heading
+becomes "Delete this file and its recording?" in exactly the case where the recording goes, and the
+description then says which recording takes over and what happens to the dive's readings.
+
+`deleteFileConfirmation` and `deleteRecordingConfirmation` in `lib/dive-recordings.ts` decide it,
+and both take the dive's **whole recording list** rather than the one recording. "Is this the last
+file", "is this the one shown by default" and "is there another to take over" are three questions
+about the list, and answering them at the call sites would mean answering them twice — the dive
+page's recordings card and the file list on both dive forms offer the same deletion, and they had
+already drifted to the extent that one of them claimed "the dive itself is unaffected".
+
+That claim was the second thing wrong here, on the whole-recording route. The dive _row_ is
+untouched — it is soft-deleted only by its own delete, and the recordings are what get hard-deleted
+— but its oxygen-exposure readings follow the primary recording, so removing that recording moves
+them. The sentence now says the dive keeps everything the diver typed, which is the true half, and
+the readings get a sentence of their own.
+
+**A recording that is not primary gets that sentence too, saying nothing moves.** It reads like
+padding and is not: the row a diver clicked looks identical either way, and a confirmation that
+mentions the dive's readings only when they are at risk teaches nothing until the first time it
+matters. The same reason the file list gives a file-less recording a row instead of skipping it.
+
+The dialogs are mounted only while a deletion is pending, rather than kept mounted with a nullable
+description. Both strings are now derived from the row, so the `pending ? … : undefined` idiom used
+elsewhere in the app would have the heading fall back to the neutral "Delete this file?" as the
+dialog closed — the wrong half of the very distinction this exists to draw.
+
+One understatement of the same family is left standing, deliberately. **Deleting a dive hard-deletes
+its recordings and their files** (`erase_dive`, and see the API's `DECISIONS.md`), while the dive
+row itself is only flagged — so the imported files are the unrecoverable part of an action whose
+confirmation says only "This action cannot be undone". Saying so needs the dive's recordings, and
+`GET /dives` does not carry them: the list page could not make the claim the detail page could, and
+one dialog that names the files while the identical one two clicks away does not is worse than
+neither.
