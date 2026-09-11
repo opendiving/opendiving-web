@@ -95,7 +95,7 @@ function describeProfileContents(
 // page.
 //
 // Renders nothing when the dive has no profile - the same call as
-// `DiveSourceFileCard`, and the opposite of `GasUseCard`: a dive logged by hand
+// `DiveRecordingsCard`, and the opposite of `GasUseCard`: a dive logged by hand
 // has no samples and never could, so there is nothing for the diver to act on
 // and nothing worth an empty state. A dive that *does* have a recording always
 // shows this if that recording carried samples.
@@ -136,7 +136,7 @@ export function DiveProfileCard({ dive }: DiveProfileCardProps) {
   const recordingUuid = shown?.uuid ?? null;
   const diveUuid = dive.uuid;
   // The profile's identity as far as the browser cache is concerned - the same
-  // `uuid:updated_at` pair `DiveSourceFileCard` uses, and for the same reason.
+  // `uuid:updated_at` pair `DiveRecordingsCard` uses, and for the same reason.
   // `uuid` alone would not be enough if a row were ever updated in place, and
   // `updated_at` alone would not be enough here at all: re-extraction is a
   // delete-then-insert, so a re-extracted profile is a *new row* with a fresh

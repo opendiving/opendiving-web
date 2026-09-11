@@ -2261,6 +2261,14 @@ above normal jitter and below any dropout worth showing; `MIN_GAP_SECONDS` keeps
 
 ## The profile card fetches on mount and needs no `onChanged`
 
+**Superseded in its names, standing in its argument.** `dive.profile` is now the shown recording's
+`profile` summary, `DiveSourceFileCard` is `DiveRecordingsCard`, and the series come from
+`GET /dive/{uuid}/recording/{rid}/profile` — see _"A dive has recordings, and the first one is what
+every old single-file reading meant"_ and _"One chart and a switcher, never two curves on one axis"_
+below. The `onChanged` reasoning transferred intact: deleting a recording's last file deletes the
+recording, and `refreshDive` drops it from `dive.recordings`, which re-renders this card against
+what is left.
+
 `DiveProfileCard` renders nothing when `dive.profile` is absent - the same call as
 `DiveSourceFileCard`, and the opposite of `GasUseCard`. A dive logged by hand has no samples and
 never could, so there is nothing for the diver to act on and nothing worth an empty state; a missing

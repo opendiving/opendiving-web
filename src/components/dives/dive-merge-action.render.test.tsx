@@ -169,4 +169,58 @@ describe("DiveMergeAction", () => {
     await waitFor(() => expect(onMerged).toHaveBeenCalled());
     expect(router.push).not.toHaveBeenCalled();
   });
+
+  it("re-reads the neighbours after a merge it survived", async () => {
+    // Nothing else can re-run that fetch: the dive's uuid is the same string
+    // and it still has recordings, so a refetched dive is a new object with
+    // identical effect dependencies. Left stale, the dialog goes on offering
+    // the dive it just absorbed - soft-deleted, and a second merge onto it
+    // fails with the generic toast - while the dive that is now genuinely
+    // adjacent never appears. Repairing a three-part split needs two merges in
+    // a row, so this is the ordinary case rather than a corner.
+    vi.mocked(divesAPI.mergeDives).mockResolvedValue(
+      mergeResult({
+        dive: dive({ uuid: "part-2" }),
+        removed_dive_uuid: "part-1",
+      }),
+    );
+    // What the server says once part 1 is gone: a different dive is adjacent.
+    vi.mocked(divesAPI.getDiveNeighbors).mockResolvedValueOnce({
+      previous,
+      next: null,
+    });
+    vi.mocked(divesAPI.getDiveNeighbors).mockResolvedValue({
+      previous: {
+        uuid: "part-0",
+        dive_number: 0,
+        start_time: "2026-09-08T14:02:00",
+      },
+      next: null,
+    });
+
+    render(<DiveMergeAction dive={dive()} onMerged={vi.fn()} />);
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /merge/i }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: /#1, Sep 8, 2026/ }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Merge" }));
+
+    await waitFor(() =>
+      expect(divesAPI.getDiveNeighbors).toHaveBeenCalledTimes(2),
+    );
+
+    // The absorbed dive is gone from the offer, and the newly adjacent one is in it.
+    await userEvent.click(
+      await screen.findByRole("button", { name: /merge/i }),
+    );
+    expect(
+      screen.getByRole("button", { name: /#0, Sep 8, 2026/ }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: /#1, Sep 8, 2026/ }),
+    ).not.toBeInTheDocument();
+  });
 });
