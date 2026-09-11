@@ -7,6 +7,8 @@ import type {
 } from "@/lib/api/dives";
 import {
   canMergeDive,
+  deleteFileConfirmation,
+  deleteRecordingConfirmation,
   diveFileRows,
   diveRecordings,
   noFileKeptSentence,
@@ -276,5 +278,236 @@ describe("canMergeDive", () => {
 
   it("offers the action as soon as a computer recorded the dive", () => {
     expect(canMergeDive(dive({ recordings: [recording()] }))).toBe(true);
+  });
+});
+
+// The Suunto that exported one dive twice, plus a second computer beside it -
+// the shape the understated copy was found on. `suunto` holds a JSON and a FIT
+// and is shown by default; `perdix` is the one that takes over when it goes.
+const suuntoJson = file({ uuid: "sj", original_filename: "dive.json" });
+const suuntoFit = file({ uuid: "sf", original_filename: "dive.fit" });
+const perdixFile = file({ uuid: "pf", original_filename: "perdix.uddf" });
+
+describe("deleteFileConfirmation", () => {
+  it("keeps the plain title while the recording keeps other files", () => {
+    const suunto = recording({ files: [suuntoJson, suuntoFit] });
+    const { title, description } = deleteFileConfirmation([suunto], "sf");
+
+    expect(title).toBe("Delete this file?");
+    expect(description).toContain("re-read from the files it keeps");
+    // The one recording there is writes the dive's readings, so they move with
+    // it even though the recording itself survives.
+    expect(description).toContain("re-read along with it");
+  });
+
+  it("says the readings are left alone for a recording that does not write them", () => {
+    // The Perdix's last file, so its recording goes - but it is not the one
+    // shown by default, and the dive's readings are the Suunto's either way.
+    const suunto = recording({ files: [suuntoJson, suuntoFit] });
+    const perdix = recording({ uuid: "r2", ordinal: 1, files: [perdixFile] });
+    const { title, description } = deleteFileConfirmation(
+      [suunto, perdix],
+      "pf",
+    );
+
+    expect(title).toBe("Delete this file and its recording?");
+    expect(description).toContain("the whole recording goes with it");
+    expect(description).toContain("are left alone");
+  });
+
+  it("says the recording goes, and which one takes over, on the last file", () => {
+    // The reported case exactly: the Suunto's FIT is already gone, deleting its
+    // JSON takes the recording, and the Perdix becomes the charted profile.
+    const suunto = recording({ files: [suuntoJson] });
+    const perdix = recording({ uuid: "r2", ordinal: 1, files: [perdixFile] });
+    const { title, description } = deleteFileConfirmation(
+      [suunto, perdix],
+      "sj",
+    );
+
+    expect(title).toBe("Delete this file and its recording?");
+    expect(description).toContain("the whole recording goes with it");
+    expect(description).toContain("the next one takes over");
+    expect(description).toContain("re-read from that instead");
+    expect(description).toContain("The dive itself stays");
+  });
+
+  it("does not promise a handover to a recording with no file to read", () => {
+    // `renumber_ordinals` promotes in ordinal order without skipping a file-less
+    // recording, and `refresh_tech_scalars` then finds nothing on it - so the
+    // readings are cleared exactly as if no recording were left, and the
+    // reassuring sentence would be the one lie this whole change exists to stop.
+    const suunto = recording({ files: [suuntoJson] });
+    const imported = recording({
+      uuid: "r2",
+      ordinal: 1,
+      files: [],
+      profile: profileInfo({ provenance: "divejson_import" }),
+    });
+    const { title, description } = deleteFileConfirmation(
+      [suunto, imported],
+      "sj",
+    );
+
+    expect(title).toBe("Delete this file and its recording?");
+    expect(description).toContain("the next one takes over");
+    expect(description).toContain("it holds no file");
+    expect(description).toContain("are cleared");
+    expect(description).not.toContain("re-read from that instead");
+  });
+
+  it("finds the recording that takes over by ordinal, not by list position", () => {
+    // The edit form passes `dive.recordings` straight through, unsorted, so the
+    // successor is not simply the next entry in the array.
+    const suunto = recording({ files: [suuntoJson] });
+    const third = recording({ uuid: "r3", ordinal: 2, files: [] });
+    const second = recording({ uuid: "r2", ordinal: 1, files: [perdixFile] });
+    const { description } = deleteFileConfirmation(
+      [third, suunto, second],
+      "sj",
+    );
+
+    expect(description).toContain("re-read from that instead");
+  });
+
+  it("says the readings are cleared when nothing is left to read them from", () => {
+    const suunto = recording({ files: [suuntoJson] });
+    const { title, description } = deleteFileConfirmation([suunto], "sj");
+
+    expect(title).toBe("Delete this file and its recording?");
+    expect(description).toContain("the dive's only recording");
+    expect(description).toContain("nothing is left to read them from");
+    expect(description).not.toContain("takes over");
+  });
+
+  it.each([
+    ["merge", "they were merged from two recordings"],
+    ["divejson_import", "they came in through the converter"],
+  ] as const)(
+    "keeps a recording whose %s samples no file could produce again",
+    (provenance, clause) => {
+      const merged = recording({
+        files: [suuntoJson],
+        profile: profileInfo({ provenance }),
+      });
+      const { title, description } = deleteFileConfirmation([merged], "sj");
+
+      // The recording survives file-less, so the title must not promise its
+      // removal - but the dive's readings still go, having come off the file.
+      expect(title).toBe("Delete this file?");
+      expect(description).toContain("nothing to download");
+      expect(description).toContain(clause);
+      expect(description).toContain("are cleared with the last of those files");
+    },
+  );
+
+  it("removes a recording whose samples were read off the file", () => {
+    const suunto = recording({
+      files: [suuntoJson],
+      profile: profileInfo({ provenance: "file" }),
+    });
+
+    expect(deleteFileConfirmation([suunto], "sj").title).toBe(
+      "Delete this file and its recording?",
+    );
+  });
+
+  it("does not call a secondary deletion a no-op when the primary holds no file", () => {
+    // Removing a secondary recording re-runs `refresh_tech_scalars` over the
+    // untouched primary, which is only a no-op while that primary has files to
+    // re-read. A converted import has none, and the figures the document
+    // supplied go with the unrelated deletion.
+    const imported = recording({
+      files: [],
+      profile: profileInfo({ provenance: "divejson_import" }),
+    });
+    const perdix = recording({ uuid: "r2", ordinal: 1, files: [perdixFile] });
+    const { description } = deleteFileConfirmation([imported, perdix], "pf");
+
+    expect(description).toContain("come back empty");
+    expect(description).not.toContain("left alone");
+  });
+
+  it("calls a secondary deletion a no-op while the primary still has files", () => {
+    const suunto = recording({ files: [suuntoJson] });
+    const perdix = recording({ uuid: "r2", ordinal: 1, files: [perdixFile] });
+
+    expect(
+      deleteFileConfirmation([suunto, perdix], "pf").description,
+    ).toContain("are left alone");
+  });
+
+  it("leaves the figures alone when a secondary merely loses one of its files", () => {
+    // `_rederive_recording` returns before the figures for any recording that
+    // is not ordinal 0, so this path is untouched whatever the primary holds.
+    const imported = recording({
+      files: [],
+      profile: profileInfo({ provenance: "divejson_import" }),
+    });
+    const perdix = recording({
+      uuid: "r2",
+      ordinal: 1,
+      files: [perdixFile, file({ uuid: "pf2", original_filename: "b.fit" })],
+    });
+
+    expect(
+      deleteFileConfirmation([imported, perdix], "pf").description,
+    ).toContain("are left alone");
+  });
+
+  it("falls back to a conservative sentence for a file nothing holds", () => {
+    // The dialog can outlive a re-read that removed the row behind it. Claiming
+    // the recording survives would be the wrong guess of the two.
+    const { title, description } = deleteFileConfirmation([], "gone");
+
+    expect(title).toBe("Delete this file?");
+    expect(description).toContain("may change with it");
+  });
+});
+
+describe("deleteRecordingConfirmation", () => {
+  it("names what takes over from the recording shown by default", () => {
+    const imported = recording({
+      files: [],
+      profile: profileInfo({ provenance: "divejson_import" }),
+    });
+    const perdix = recording({ uuid: "r2", ordinal: 1, files: [perdixFile] });
+    const { title, description } = deleteRecordingConfirmation(
+      [imported, perdix],
+      "r1",
+    );
+
+    expect(title).toBe("Delete this recording?");
+    expect(description).toContain("the next one takes over");
+    expect(description).toContain("The dive itself stays");
+  });
+
+  it("says the readings are cleared when it was the dive's only recording", () => {
+    const imported = recording({
+      files: [],
+      profile: profileInfo({ provenance: "merge" }),
+    });
+
+    // Nothing here ever had a file to read them off, so the sentence must not
+    // claim one - this recording's samples came in through a document.
+    expect(deleteRecordingConfirmation([imported], "r1").description).toContain(
+      "the dive's only recording",
+    );
+  });
+
+  it("covers the files a recording holds rather than assuming it holds none", () => {
+    // The dive page offers this route only for a file-less recording, which is a
+    // fact about that button and not about the endpoint.
+    const suunto = recording({ files: [suuntoJson, suuntoFit] });
+
+    expect(deleteRecordingConfirmation([suunto], "r1").description).toContain(
+      "every file it holds",
+    );
+  });
+
+  it("falls back to a conservative sentence for a recording nothing holds", () => {
+    expect(deleteRecordingConfirmation([], "gone").description).toContain(
+      "may change with it",
+    );
   });
 });

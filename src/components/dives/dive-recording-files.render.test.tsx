@@ -208,7 +208,14 @@ describe("DiveRecordingFiles", () => {
     const onDeleteStored = vi.fn().mockResolvedValue(undefined);
     render(
       <DiveRecordingFiles
-        recordings={[recording({ files: [file({ uuid: "stored-uuid" })] })]}
+        recordings={[
+          recording({
+            files: [
+              file({ uuid: "stored-uuid" }),
+              file({ uuid: "f2", original_filename: "dive.json" }),
+            ],
+          }),
+        ]}
         pending={[]}
         onRemovePending={vi.fn()}
         onDeleteStored={onDeleteStored}
@@ -223,10 +230,40 @@ describe("DiveRecordingFiles", () => {
     // The dialog says what else goes with the file, because on this route that
     // is not obvious - the recording's profile is re-read from what is left.
     expect(
-      screen.getByText(/re-read from whatever files are left/i),
+      screen.getByRole("heading", { name: "Delete this file?" }),
     ).toBeVisible();
+    expect(screen.getByText(/re-read from the files it keeps/i)).toBeVisible();
 
     await userEvent.click(screen.getByRole("button", { name: "Delete" }));
     expect(onDeleteStored).toHaveBeenCalledWith("stored-uuid");
+  });
+
+  it("says the recording goes too when this is its last file", async () => {
+    // The deletion a diver cannot tell from the one above by looking at the
+    // row: the same Trash icon on the last file removes the recording, promotes
+    // whatever is next and rewrites the dive's readings. The title carries it,
+    // because that is the line a confirmation is actually read at.
+    render(
+      <DiveRecordingFiles
+        recordings={[recording({ files: [file({ uuid: "stored-uuid" })] })]}
+        pending={[]}
+        onRemovePending={vi.fn()}
+        onDeleteStored={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Delete dive.fit" }),
+    );
+
+    expect(
+      screen.getByRole("heading", {
+        name: "Delete this file and its recording?",
+      }),
+    ).toBeVisible();
+    expect(screen.getByText(/the whole recording goes with it/i)).toBeVisible();
+    expect(
+      screen.getByText(/the figures the dive computer recorded are cleared/i),
+    ).toBeVisible();
   });
 });

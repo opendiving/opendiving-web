@@ -123,6 +123,235 @@ export function noFileKeptSentence(recording: Recording): string | null {
   }
 }
 
+/**
+ * The title and the description of a confirmation before one destructive action
+ * on a recording or one of its files.
+ *
+ * Both, because on this route the *title* is where the material difference
+ * lands: deleting a file the recording survives and deleting the one that takes
+ * the recording with it are different actions, and a dialog headed "Delete this
+ * file?" for both asks about the smaller one.
+ */
+export interface RecordingConfirmation {
+  title: string;
+  description: string;
+}
+
+// The dive row itself is never touched by any of this - it is the recordings
+// that are hard-deleted - and a diver being told their recording disappears is
+// exactly who needs to hear it. Offered only where something did disappear; on a
+// file among others it would be reassurance against a fear nobody has.
+const DIVE_IS_UNTOUCHED =
+  "The dive itself stays, with everything you typed on it.";
+
+/**
+ * Why this recording would survive losing its last file, as a clause, or `null`
+ * when it would not survive it.
+ *
+ * The `provenance` question `noFileKeptSentence` asks, in the vocabulary that
+ * one uses - this is describing the row that sentence is about to occupy. The
+ * API keeps a recording whose samples no file could yield again, a merge's or a
+ * converted document's, and deletes one whose profile was only ever read off the
+ * file being removed (`delete_dive_file` in the API's `services/dive_files.py`).
+ *
+ * A recording carrying no profile at all falls to the `null` here and is
+ * deleted, which is right: it has no samples to be unable to reproduce.
+ */
+function unreproducibleSamples(recording: Recording): string | null {
+  switch (recording.profile?.provenance) {
+    case "merge":
+      return "they were merged from two recordings";
+    case "divejson_import":
+      return "they came in through the converter";
+    default:
+      return null;
+  }
+}
+
+/** What is left of the recording once the action goes through. */
+type RecordingOutcome = "keeps files" | "keeps samples only" | "removed";
+
+// Everything `refresh_tech_scalars` rewrites, as one noun phrase - the API's
+// whole `DiveTechScalars` mixin, which is the CNS and OTU clocks, the surface
+// pressure, and the entry and exit positions the dive page draws on its map.
+// Named as one thing rather than enumerated because they move as one: the write
+// is outright and covers the lot, and a dive that never carried a position
+// would otherwise be told about one it is losing. The sentence about what stays
+// draws the line the diver actually needs - these are the figures nobody typed.
+const COMPUTER_FIGURES = "the figures the dive computer recorded";
+
+/**
+ * What the figures the dive computer recorded do, as a sentence.
+ *
+ * **One rule sits under every branch**: the dive's figures are whatever ordinal
+ * 0 holds files for once the deletion is through. `refresh_tech_scalars` re-reads
+ * the primary recording's files and writes every figure it does not find as
+ * null, so an empty ordinal 0 clears them however it came to be empty - this
+ * recording survived its own last file, the recording promoted in its place
+ * holds none, or there is nothing left to promote. `renumber_ordinals` promotes
+ * in ordinal order without skipping a file-less recording, so "is another
+ * recording there" is not the question; "does whoever is primary afterwards hold
+ * a file" is.
+ *
+ * **A secondary recording is not the no-op it looks like**, which is why this
+ * takes the outcome and not just the ordinal. Only `keeps files` returns before
+ * the figures are touched (`_rederive_recording`); removing a secondary
+ * recording, or emptying one, runs `refresh_tech_scalars` over the *untouched*
+ * primary. That re-reads the same files to the same values - unless the primary
+ * holds no files at all, which is what a converted logbook import creates, and
+ * then a deletion elsewhere on the dive clears figures the document supplied.
+ *
+ * **No count of the branches here, deliberately.** One was stated and went wrong
+ * twice in three commits, each time because the function grew a case; the rule
+ * above is what a reader needs to check a branch against, and unlike a total it
+ * cannot be made stale by adding one.
+ */
+function figuresSentence(
+  recording: Recording,
+  recordings: Recording[],
+  outcome: RecordingOutcome,
+): string {
+  // Whether a recording has anything to read the figures off. Asked of whoever
+  // is primary afterwards: the untouched one when a secondary is being deleted,
+  // and the successor when the primary is.
+  const holdsFiles = (candidate: Recording | undefined) =>
+    candidate !== undefined && candidate.files.length > 0;
+
+  if (recording.ordinal !== 0) {
+    if (
+      outcome === "keeps files" ||
+      holdsFiles(recordings.find((other) => other.ordinal === 0))
+    ) {
+      return `Another recording is the one shown by default, so ${COMPUTER_FIGURES} are left alone.`;
+    }
+    return `The recording shown by default is a different one and holds no file, so ${COMPUTER_FIGURES} are re-read from it and come back empty.`;
+  }
+  if (outcome === "keeps files") {
+    return `This recording also writes ${COMPUTER_FIGURES}, so those are re-read along with it.`;
+  }
+  if (outcome === "keeps samples only") {
+    // The recording stays, but with no file behind it there is nothing to read
+    // the figures off - which is what "nothing here can re-derive them" means.
+    return `This recording's files wrote ${COMPUTER_FIGURES}, and they are cleared with the last of those files.`;
+  }
+  // Which recording takes over: the lowest ordinal among the rest. By ordinal
+  // and not by position, because the edit form hands its list over unsorted.
+  const successor = recordings.reduce<Recording | undefined>(
+    (next, other) =>
+      other.uuid === recording.uuid ||
+      (next !== undefined && next.ordinal <= other.ordinal)
+        ? next
+        : other,
+    undefined,
+  );
+  if (successor === undefined) {
+    return `It is the dive's only recording, so ${COMPUTER_FIGURES} are cleared — nothing is left to read them from.`;
+  }
+  return holdsFiles(successor)
+    ? `It is the recording shown by default, so the next one takes over and ${COMPUTER_FIGURES} are re-read from that instead.`
+    : `It is the recording shown by default, so the next one takes over — and it holds no file, so ${COMPUTER_FIGURES} are cleared.`;
+}
+
+function sentences(...parts: (string | null)[]): string {
+  return parts.filter((part): part is string => part !== null).join(" ");
+}
+
+/**
+ * What deleting one stored file will actually do, for the dialog that asks.
+ *
+ * Three outcomes behind one control, and the diver cannot tell them apart from
+ * the row: the recording keeps its other files and re-reads its profile from
+ * them; the recording's last file goes and **the recording goes with it**, its
+ * profile and samples included; or the recording survives file-less because its
+ * samples came from a merge or a converted document and no file could produce
+ * them again. Each also moves the dive's own readings differently - see
+ * `figuresSentence`.
+ *
+ * Takes the dive's whole recording list rather than the one recording, so that
+ * "is this the last file", "is this the recording shown by default" and "is
+ * there another one to take over" are all derived here instead of being answered
+ * three times at two call sites. A `fileUuid` no recording holds gets a
+ * conservative sentence rather than a confident wrong one; the dialog can
+ * outlive a re-read that removed the row behind it.
+ */
+export function deleteFileConfirmation(
+  recordings: Recording[],
+  fileUuid: string,
+): RecordingConfirmation {
+  const recording = recordings.find((candidate) =>
+    candidate.files.some((file) => file.uuid === fileUuid),
+  );
+  if (!recording) {
+    return {
+      title: "Delete this file?",
+      description:
+        "The file is permanently deleted, and what this dive shows may change with it.",
+    };
+  }
+
+  const isLast = recording.files.length === 1;
+  const kept = isLast ? unreproducibleSamples(recording) : null;
+  const outcome: RecordingOutcome = !isLast
+    ? "keeps files"
+    : kept !== null
+      ? "keeps samples only"
+      : "removed";
+
+  const fileSentence =
+    outcome === "keeps files"
+      ? "The file is permanently deleted, and this recording's profile is re-read from the files it keeps."
+      : outcome === "keeps samples only"
+        ? `The file is permanently deleted, leaving this recording with nothing to download. Its samples stay — ${kept}, and no file can produce them again.`
+        : "This is the recording's last file, so the whole recording goes with it: the file, its profile and its samples, permanently.";
+
+  return {
+    title:
+      outcome === "removed"
+        ? "Delete this file and its recording?"
+        : "Delete this file?",
+    description: sentences(
+      fileSentence,
+      figuresSentence(recording, recordings, outcome),
+      outcome === "removed" ? DIVE_IS_UNTOUCHED : null,
+    ),
+  };
+}
+
+/**
+ * What deleting a whole recording will do, for the dialog that asks.
+ *
+ * Offered only for a recording holding no files - nothing else can remove one,
+ * and where there are files deleting them one at a time is the smaller action -
+ * but the sentence covers files anyway rather than assuming the caller's rule,
+ * which is a claim about a button and not about this route.
+ */
+export function deleteRecordingConfirmation(
+  recordings: Recording[],
+  recordingUuid: string,
+): RecordingConfirmation {
+  const recording = recordings.find(
+    (candidate) => candidate.uuid === recordingUuid,
+  );
+  if (!recording) {
+    return {
+      title: "Delete this recording?",
+      description:
+        "The recording and its samples are permanently deleted, and what this dive shows may change with it.",
+    };
+  }
+
+  return {
+    title: "Delete this recording?",
+    description: sentences(
+      recording.files.length > 0
+        ? "The recording, its profile, its samples and every file it holds are permanently deleted."
+        : "The recording, its profile and its samples are permanently deleted.",
+      figuresSentence(recording, recordings, "removed"),
+      DIVE_IS_UNTOUCHED,
+    ),
+  };
+}
+
 /** One line of the file list on a dive form or in the recordings card. */
 export type DiveFileRow =
   | {

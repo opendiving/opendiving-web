@@ -317,4 +317,90 @@ describe("DiveRecordingsCard", () => {
 
     expect(divesAPI.deleteDiveFile).toHaveBeenCalledWith("d1", "file-uuid");
   });
+
+  it("distinguishes the file deletion the recording survives from the one it does not", async () => {
+    // The Suunto that exported one dive twice, beside a second computer. The
+    // same Trash icon on the FIT and then on the JSON does two different things
+    // - the second takes the recording, the primary slot and the dive's
+    // readings with it - and nothing in the row says which.
+    const suunto = recording({
+      uuid: "a",
+      ordinal: 0,
+      files: [
+        file({ uuid: "sj", original_filename: "ocean.json" }),
+        file({ uuid: "sf", original_filename: "ocean.fit" }),
+      ],
+    });
+    const perdix = recording({
+      uuid: "b",
+      ordinal: 1,
+      files: [file({ uuid: "pf", original_filename: "perdix.uddf" })],
+    });
+
+    const { rerender } = render(
+      <DiveRecordingsCard
+        dive={dive({ recordings: [suunto, perdix] })}
+        onChanged={vi.fn()}
+      />,
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Delete ocean.fit" }),
+    );
+    expect(
+      screen.getByRole("heading", { name: "Delete this file?" }),
+    ).toBeVisible();
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    rerender(
+      <DiveRecordingsCard
+        dive={dive({
+          recordings: [{ ...suunto, files: [suunto.files[0]] }, perdix],
+        })}
+        onChanged={vi.fn()}
+      />,
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Delete ocean.json" }),
+    );
+    expect(
+      screen.getByRole("heading", {
+        name: "Delete this file and its recording?",
+      }),
+    ).toBeVisible();
+    expect(screen.getByText(/the next one takes over/i)).toBeVisible();
+  });
+
+  it("says what a whole-recording delete moves, rather than that the dive is unaffected", async () => {
+    // The dive row survives, which is the only sense in which it is unaffected:
+    // this recording is the one shown by default, so the dive's readings follow
+    // whatever takes its place.
+    render(
+      <DiveRecordingsCard
+        dive={dive({
+          recordings: [
+            recording({
+              uuid: "a",
+              ordinal: 0,
+              profile: profileInfo({ provenance: "merge" }),
+            }),
+            recording({
+              uuid: "b",
+              ordinal: 1,
+              files: [file({ uuid: "pf" })],
+            }),
+          ],
+        })}
+        onChanged={vi.fn()}
+      />,
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /delete recording/i }),
+    );
+
+    expect(screen.getByText(/the next one takes over/i)).toBeVisible();
+    expect(screen.getByText(/The dive itself stays/i)).toBeVisible();
+  });
 });

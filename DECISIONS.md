@@ -16273,3 +16273,96 @@ input's own 50 °C ceiling and nothing else on the page would have drawn a messa
 other forms in the app still leave this to the browser.** They are one `<form>` each and the same
 two lines would do it; the dive form is where the failure was reported and where the imported values
 land.
+
+## Deleting a file is three different actions, and the confirmation says which
+
+The Trash icon beside a stored file runs one endpoint, `DELETE /dive/{uuid}/file/{fid}`, and that
+endpoint does one of three things depending on what the recording is left holding
+(`delete_dive_file` in the API's `services/dive_files.py`):
+
+- **The recording keeps its other files.** Its profile is re-derived from them, which is the case
+  the copy used to describe and the only one it described.
+- **The recording's last file goes, and the recording goes with it** — profile, samples and all, by
+  the FK cascade in `delete_recording`. Then `renumber_ordinals` closes the gap, so if it was
+  ordinal 0 the _next_ recording becomes primary and the dive charts a different profile by default.
+- **The recording's last file goes and the recording survives, file-less**, when its samples are
+  ones no file could produce again — a merge's or a converted document's. Same shape a converter
+  import creates; see "A recording with no files says so, and which kind of nothing it is".
+
+The dive's figures move on all three, by two different routes, and **outright** on both — the point
+of the rewrite is to stop claiming a reading the dive no longer has evidence for. Where the
+recording keeps files, `_rederive_recording` rewrites them from what is left, and only when that
+recording is ordinal 0: a _secondary_ recording keeping files leaves them alone entirely, having
+returned before it reaches them. Where the last file goes, `refresh_tech_scalars` rewrites them from
+whichever recording is primary _afterwards_ — which may be a different one, or none. On a dive whose
+primary recording just lost its figures, that is a CNS and an OTU disappearing off the page, which
+is exactly how this was found: a Suunto recording holding a JSON and a FIT, the FIT deleted with no
+surprises, then the JSON deleted and the recording, the charted profile and the dive's exposure
+figures all moved at once.
+
+**"Figures", not "oxygen-exposure readings"**, though CNS and OTU are what the report was about.
+`refresh_tech_scalars` writes every field of the API's `DiveTechScalars` — the two exposure clocks,
+the surface pressure, and the **entry and exit positions**, which `dive-detail-sidebar.tsx` draws as
+pins on the dive's map and as an entry-to-exit drift line. A sentence naming only the exposure
+readings understates a deletion that also drops the dive's recorded position, which is the same
+failure one field along. The copy says "the figures the dive computer recorded" and enumerates none
+of them: a dive whose computer logged no position must not be warned about losing one, and the
+sentence about what stays — everything the diver typed — is what draws the line that matters.
+
+Two questions the copy cannot ask, both of which it asked first and got wrong. `figuresSentence` in
+`lib/dive-recordings.ts` states the rule they violate instead of counting its own branches — that
+count was written down and went stale twice in three commits, once for each case the function grew,
+which is the shape of a fact that should never have been a number.
+
+**"Does another recording exist?"** `renumber_ordinals` promotes in ordinal order and does not skip
+a recording for holding no files, and `refresh_tech_scalars` writes every figure it cannot find on
+the new primary's files as null — so a file-less recording promoted into ordinal 0 clears the dive's
+figures just as thoroughly as having no recording at all. The sentence turns on whether the
+recording that takes over holds a file, not on whether it is there.
+
+**"Is this recording the primary one?"** A secondary recording looks like a no-op and is one only
+while it `keeps files`: that is the path through `_rederive_recording`, which returns before the
+figures for any ordinal but 0. Removing a secondary recording, or emptying one, runs
+`refresh_tech_scalars` over the _untouched_ primary — normally a re-read to the same values, and a
+clearing when that primary holds no files, because a converted logbook import writes its document's
+CNS onto the dive row beside a recording with nothing to re-read it from. The API guards exactly
+this in `POST /dives/merge` and its own `DECISIONS.md` says why; the two delete routes do not, so
+the copy has to. Deleting one recording can therefore clear figures that came from another.
+
+**The title carries the difference, not only the description.** "Delete this file?" over a dialog
+that is about to remove the recording is asking about the smaller of two actions, and a diver who
+reads the heading and clicks — which is most of them — never learns otherwise. So the heading
+becomes "Delete this file and its recording?" in exactly the case where the recording goes, and the
+description then says which recording takes over and what happens to the dive's readings.
+
+`deleteFileConfirmation` and `deleteRecordingConfirmation` in `lib/dive-recordings.ts` decide it,
+and both take the dive's **whole recording list** rather than the one recording. "Is this the last
+file", "is this the one shown by default" and "is there another to take over" are three questions
+about the list, and answering them at the call sites would mean answering them twice — the dive
+page's recordings card and the file list on both dive forms offer the same deletion, and they had
+already drifted to the extent that one of them claimed "the dive itself is unaffected".
+
+That claim was the second thing wrong here, on the whole-recording route. The dive _row_ is
+untouched — it is soft-deleted only by its own delete, and the recordings are what get hard-deleted
+— but the dive's figures follow the primary recording, so removing that recording moves them. The
+sentence now says the dive keeps everything the diver typed, which is the true half, and the figures
+get a sentence of their own.
+
+**Every branch gets that sentence, including the ones where nothing moves.** It reads like padding
+and is not: the row a diver clicked looks identical whichever branch it is, and a confirmation that
+mentions the dive's figures only when they are at risk teaches nothing until the first time it
+matters — by which point the diver has learnt that this dialog does not talk about them. The same
+reason the file list gives a file-less recording a row instead of skipping it.
+
+The dialogs are mounted only while a deletion is pending, rather than kept mounted with a nullable
+description. Both strings are now derived from the row, so the `pending ? … : undefined` idiom used
+elsewhere in the app would have the heading fall back to the neutral "Delete this file?" as the
+dialog closed — the wrong half of the very distinction this exists to draw.
+
+One understatement of the same family is left standing, deliberately. **Deleting a dive hard-deletes
+its recordings and their files** (`erase_dive`, and see the API's `DECISIONS.md`), while the dive
+row itself is only flagged — so the imported files are the unrecoverable part of an action whose
+confirmation says only "This action cannot be undone". Saying so needs the dive's recordings, and
+`GET /dives` does not carry them: the list page could not make the claim the detail page could, and
+one dialog that names the files while the identical one two clicks away does not is worse than
+neither.

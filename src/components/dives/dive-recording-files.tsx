@@ -7,6 +7,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { IconTooltip } from "@/components/ui/tooltip";
 import type { Recording } from "@/lib/api/dives";
 import {
+  deleteFileConfirmation,
   diveFileRows,
   UNNAMED_DEVICE_LABEL,
   type DiveFileRow,
@@ -88,19 +89,27 @@ export function DiveRecordingFiles({
 
   return (
     <>
-      <ConfirmDialog
-        open={pendingDeletion !== null}
-        onOpenChange={(open) => !open && setPendingDeletion(null)}
-        title="Delete this file?"
-        // Says what else goes with it, because on this route that is not
-        // obvious: the API re-derives the recording's profile from whatever
-        // files are left, and deleting the last one of a file-backed recording
-        // takes the recording with it.
-        description="The file will be permanently deleted, and this recording's profile is re-read from whatever files are left. This cannot be undone."
-        confirmText="Delete"
-        isLoading={isDeleting}
-        onConfirm={confirmDelete}
-      />
+      {/* Three outcomes sit behind one Trash icon - the recording keeps its
+          other files, it survives file-less because nothing could re-read its
+          samples, or **it is deleted along with the file** - and they differ in
+          what the dive shows afterwards. `deleteFileConfirmation` is the single
+          place that decides which, shared with the recordings card on the dive
+          page so two routes to one endpoint cannot drift apart.
+
+          Mounted only while a row is pending, so both strings come from that
+          row: the nullable-prop idiom used elsewhere would let the heading fall
+          back to a neutral "Delete this file?" as the dialog closed, which is
+          the wrong half of the very difference this draws. */}
+      {pendingDeletion?.kind === "file" && (
+        <ConfirmDialog
+          open
+          onOpenChange={(open) => !open && setPendingDeletion(null)}
+          {...deleteFileConfirmation(recordings, pendingDeletion.file.uuid)}
+          confirmText="Delete"
+          isLoading={isDeleting}
+          onConfirm={confirmDelete}
+        />
+      )}
 
       <ul className="mt-3 space-y-2" data-testid="dive-file-list">
         {storedRows.map((row) => (
