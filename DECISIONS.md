@@ -16006,6 +16006,33 @@ OTU are the device's own running accounting rather than a per-dive quantity that
 and the API deliberately leaves them as they are rather than rewriting a `cns_end` an import had
 filled in.
 
+### The neighbours go stale without the uuid changing, so the page carries a reload token
+
+Two components on the dive page read `GET /dive/{uuid}/neighbors`: the pager in the header, and the
+merge action beside it. Both key their fetch on the dive's uuid, which is right for every event
+either of them was built for — following an arrow swaps the uuid, and the keying is what stops the
+pager pointing at the dive you just left.
+
+**A merge this dive survives is the event that uuid cannot describe.** The absorbed dive is
+soft-deleted and stops resolving, but the dive on screen is the same one with the same uuid and the
+same recordings, so neither effect re-runs and both components go on offering the dive that is now
+gone. In the merge dialog that is a second merge failing with the generic toast; in the pager it is
+a live arrow whose click fails `getDive` and bounces the diver to `/dives` with a load error about a
+dive they never asked for. Repairing a computer's three-part split takes two merges in a row, so
+this is the ordinary path rather than a corner.
+
+`neighborsToken` in `dives/(detail)/layout.tsx` is the signal, bumped alongside `refreshDive` and
+read by both. It is **owned by the page** because the page is the only party that knows the event
+happened — neither component can observe it from its own props — and because a signal that reaches
+one of the two is worse than none: it repairs the dialog and leaves the arrow, which is the half a
+diver is more likely to click.
+
+They still fetch separately, which costs one extra request per dive page load. Hoisting the
+neighbours themselves would save it and was rejected: it would rewrite the pager's uuid-keying and
+the dead-until-known states built on it — eight tests' worth of behaviour that exists because a
+keyboard diver following the arrows lost focus on every step — to save one cheap request on a page
+that already makes several.
+
 ## A recording with no files says so, and cannot yet say which kind of nothing
 
 A recording can carry samples and no downloadable file: it is what logbook import builds from a

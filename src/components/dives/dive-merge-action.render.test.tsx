@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -170,14 +171,19 @@ describe("DiveMergeAction", () => {
     expect(router.push).not.toHaveBeenCalled();
   });
 
-  it("re-reads the neighbours after a merge it survived", async () => {
+  it("re-reads the neighbours when the page bumps its reload token", async () => {
     // Nothing else can re-run that fetch: the dive's uuid is the same string
-    // and it still has recordings, so a refetched dive is a new object with
-    // identical effect dependencies. Left stale, the dialog goes on offering
-    // the dive it just absorbed - soft-deleted, and a second merge onto it
-    // fails with the generic toast - while the dive that is now genuinely
-    // adjacent never appears. Repairing a three-part split needs two merges in
-    // a row, so this is the ordinary case rather than a corner.
+    // after a merge it survived, and it still has recordings, so a refetched
+    // dive is a new object with identical effect dependencies. Left stale, the
+    // dialog goes on offering the dive it just absorbed - soft-deleted, and a
+    // second merge onto it fails with the generic toast - while the dive that
+    // is now genuinely adjacent never appears. Repairing a three-part split
+    // needs two merges in a row, so this is the ordinary case rather than a
+    // corner.
+    //
+    // The token is the page's, not this component's, because the pager beside
+    // it reads the same endpoint and goes stale on the same event. `Harness`
+    // below is the layout's half of that contract.
     vi.mocked(divesAPI.mergeDives).mockResolvedValue(
       mergeResult({
         dive: dive({ uuid: "part-2" }),
@@ -198,7 +204,18 @@ describe("DiveMergeAction", () => {
       next: null,
     });
 
-    render(<DiveMergeAction dive={dive()} onMerged={vi.fn()} />);
+    function Harness() {
+      const [token, setToken] = useState(0);
+      return (
+        <DiveMergeAction
+          dive={dive()}
+          reloadToken={token}
+          onMerged={() => setToken((count) => count + 1)}
+        />
+      );
+    }
+
+    render(<Harness />);
 
     await userEvent.click(
       await screen.findByRole("button", { name: /merge/i }),

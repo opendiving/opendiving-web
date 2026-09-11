@@ -60,6 +60,20 @@ export default function DiveDetailLayout({
   // changes the course but not the trip re-fetches the trip as well. Harmless,
   // since the key still matches and nothing blanks - but it is the reason not
   // to read this as a cache.
+  // Bumped when something changes which dives are adjacent to this one without
+  // changing which dive is on screen. A merge this dive survived is the only
+  // such event today, and it is invisible to both neighbour consumers on their
+  // own: the uuid is the same string afterwards, so neither effect re-runs, and
+  // the pager and the merge dialog would both go on offering the dive that was
+  // just absorbed - soft-deleted, and a 404 the moment either is clicked.
+  //
+  // Owned here rather than in each component because both read the same
+  // endpoint about the same dive and go stale on the same event. They still
+  // fetch separately, which costs one extra request per dive page; that is the
+  // cheaper half of the trade against hoisting the neighbours themselves, which
+  // would rewrite the pager's uuid-keying - the thing standing between a
+  // keyboard diver and a pager aimed at the dive they just left.
+  const [neighborsToken, setNeighborsToken] = useState(0);
   const [links, setLinks] = useState<{
     tripUuid?: string;
     trip: Trip | null;
@@ -193,14 +207,23 @@ export default function DiveDetailLayout({
         // below it. The far end of this row is Delete, and the width between
         // them is the point: a step is a thing you do repeatedly and quickly,
         // and it should not share a corner with the button you must not miss.
-        nav={<DiveNeighborNav diveUuid={dive.uuid} />}
+        nav={
+          <DiveNeighborNav diveUuid={dive.uuid} reloadToken={neighborsToken} />
+        }
         actions={
           <>
             {/* Before Edit rather than beside Delete: a merge is a repair to
                 what the computer recorded, which is the same kind of act as
                 editing, and the far corner belongs to the button you must not
                 miss. It renders nothing on a hand-logged dive. */}
-            <DiveMergeAction dive={dive} onMerged={refreshDive} />
+            <DiveMergeAction
+              dive={dive}
+              reloadToken={neighborsToken}
+              onMerged={() => {
+                refreshDive();
+                setNeighborsToken((count) => count + 1);
+              }}
+            />
             <Button variant="outline" asChild>
               <Link href={`/dives/${dive.uuid}/edit`}>
                 <Edit className="h-4 w-4 mr-2" />

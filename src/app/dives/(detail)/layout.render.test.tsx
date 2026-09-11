@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import DiveDetailLayout from "./layout";
 import { useDiveDetail } from "@/components/dives/dive-detail-context";
 import type { Dive } from "@/lib/api/dives";
@@ -41,9 +41,40 @@ vi.mock("next/navigation", () => ({
 }));
 
 // Rendered inside the header; its own behaviour belongs to
-// `dive-neighbor-nav.render.test.tsx`.
+// `dive-neighbor-nav.render.test.tsx`. The token it is handed is this file's
+// business, though - see the reload test below.
+const navTokens = vi.hoisted(() => ({ seen: [] as (number | undefined)[] }));
+
+// `Array.prototype.at` is outside this project's `lib` target, so `tsc` refuses
+// it even though every runtime here has it. Indexing is the portable spelling.
+function last(values: (number | undefined)[]): number | undefined {
+  return values[values.length - 1];
+}
 vi.mock("@/components/dives/dive-neighbor-nav", () => ({
-  DiveNeighborNav: () => null,
+  DiveNeighborNav: ({ reloadToken }: { reloadToken?: number }) => {
+    navTokens.seen.push(reloadToken);
+    return null;
+  },
+}));
+
+// Same: the merge action's own behaviour is its file's. What belongs here is
+// that the page answers its `onMerged` by moving the token both components read.
+const merge = vi.hoisted(() => ({
+  onMerged: null as null | (() => void),
+  tokens: [] as (number | undefined)[],
+}));
+vi.mock("@/components/dives/dive-merge-action", () => ({
+  DiveMergeAction: ({
+    onMerged,
+    reloadToken,
+  }: {
+    onMerged: () => void;
+    reloadToken?: number;
+  }) => {
+    merge.onMerged = onMerged;
+    merge.tokens.push(reloadToken);
+    return null;
+  },
 }));
 
 const getTrip = vi.fn();
@@ -209,5 +240,39 @@ describe("the dive detail layout's trip lookup", () => {
     );
 
     expect(probe()).toHaveAttribute("data-trip", "");
+  });
+});
+
+describe("DiveDetailLayout's neighbour reload token", () => {
+  beforeEach(() => {
+    navTokens.seen.length = 0;
+    merge.tokens.length = 0;
+    merge.onMerged = null;
+  });
+
+  it("moves one token that both neighbour readers see", async () => {
+    // The two components on this page that read `GET /dive/{uuid}/neighbors`
+    // go stale on the same event and cannot notice it themselves: a merge this
+    // dive survived soft-deletes the dive it absorbed while leaving the uuid on
+    // screen unchanged, so neither effect re-runs. The page is the only party
+    // that knows, which is why the signal is owned here rather than in either
+    // of them - and why it has to reach *both*. Reaching only the merge dialog
+    // leaves the pager with a live arrow onto a dive that no longer resolves.
+    dive.current = makeDive();
+    render(
+      <DiveDetailLayout>
+        <div />
+      </DiveDetailLayout>,
+    );
+
+    const before = last(navTokens.seen);
+    expect(before).toBe(last(merge.tokens));
+
+    await act(async () => {
+      merge.onMerged?.();
+    });
+
+    await waitFor(() => expect(last(navTokens.seen)).not.toBe(before));
+    expect(last(navTokens.seen)).toBe(last(merge.tokens));
   });
 });

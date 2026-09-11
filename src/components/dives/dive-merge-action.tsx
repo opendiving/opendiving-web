@@ -14,8 +14,15 @@ import { cn } from "@/lib/utils";
 
 interface DiveMergeActionProps {
   dive: Dive;
-  // Re-reads the dive after a merge that left this one standing.
+  // Re-reads the dive after a merge that left this one standing, **and bumps
+  // `reloadToken`**. Both halves are the page's to do, because both consumers
+  // of `GET /dive/{uuid}/neighbors` on this page - this and `DiveNeighborNav` -
+  // go stale on the same event and there is no reason for each to discover it
+  // separately.
   onMerged: () => void | Promise<void>;
+  // The page's reload signal, shared with `DiveNeighborNav` - see that
+  // component's prop for why the dive's uuid cannot carry it.
+  reloadToken?: number;
 }
 
 // How a neighbour is named in the dialog: the diver's own number and the day.
@@ -47,7 +54,11 @@ function neighborName(neighbor: DiveNeighbor): string {
  * hand-entered dive - Subsurface's own rule - and an action that can only 422 is
  * not an action.
  */
-export function DiveMergeAction({ dive, onMerged }: DiveMergeActionProps) {
+export function DiveMergeAction({
+  dive,
+  onMerged,
+  reloadToken = 0,
+}: DiveMergeActionProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
@@ -60,17 +71,6 @@ export function DiveMergeAction({ dive, onMerged }: DiveMergeActionProps) {
     diveUuid: string;
     neighbors: DiveNeighbor[];
   } | null>(null);
-  // Bumped after a merge this dive survived, which is the one thing that
-  // changes the answer without changing the question. Nothing else here can
-  // re-run the effect below: the dive's uuid is the same string and it still
-  // has recordings, so a refetched dive is a new object with identical
-  // dependencies - and the neighbour it just absorbed is soft-deleted and no
-  // longer resolves. Without this the dialog goes on offering that uuid, a
-  // second merge fails with the generic toast, and the dive that is now
-  // genuinely adjacent is missing. Two merges in a row is not a corner case:
-  // it is what repairing a computer's three-part split takes.
-  const [reloads, setReloads] = useState(0);
-
   const diveUuid = dive.uuid;
   const mergeable = canMergeDive(dive);
 
@@ -99,7 +99,7 @@ export function DiveMergeAction({ dive, onMerged }: DiveMergeActionProps) {
     return () => {
       cancelled = true;
     };
-  }, [diveUuid, mergeable, reloads]);
+  }, [diveUuid, mergeable, reloadToken]);
 
   const neighbors = loaded?.diveUuid === diveUuid ? loaded.neighbors : [];
   if (!mergeable || neighbors.length === 0) return null;
@@ -123,13 +123,13 @@ export function DiveMergeAction({ dive, onMerged }: DiveMergeActionProps) {
       // the uuid that lost is soft-deleted and no longer resolves, so staying
       // here would be a 404 on the next reload.
       if (result.dive.uuid === dive.uuid) {
-        // Cleared before it is refetched, so the button goes away for the one
-        // round trip rather than offering a list that is now wrong. The same
+        // Cleared before the page's `onMerged` bumps `reloadToken` and the
+        // effect refetches, so the button goes away for the one round trip
+        // rather than offering a list that is now wrong. The same
         // dead-until-known stance `DiveNeighborNav` takes, and for the same
         // reason: a control pointing somewhere that no longer exists is worse
         // than a control that is briefly absent.
         setLoaded(null);
-        setReloads((count) => count + 1);
         await onMerged();
       } else {
         router.push(`/dives/${result.dive.uuid}`);

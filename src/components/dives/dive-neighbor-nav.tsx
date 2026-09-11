@@ -10,6 +10,18 @@ import { cn } from "@/lib/utils";
 
 export interface DiveNeighborNavProps {
   diveUuid: string;
+  /**
+   * Bumped by the page when something has changed which dives are adjacent
+   * *without* changing which dive is on screen — today, a merge this dive
+   * survived, which soft-deletes the one it absorbed.
+   *
+   * The uuid cannot carry that: it is the same string before and after, so the
+   * effect below would never re-run and this pager would keep a live arrow
+   * pointing at a dive that no longer resolves — one click, a failed `getDive`,
+   * and the diver is bounced to `/dives` with a load error about a dive they
+   * did not ask for.
+   */
+  reloadToken?: number;
 }
 
 // What the button's tooltip and accessible name say about where it goes. The
@@ -48,7 +60,10 @@ function neighborLabel(
  * so the pair doesn't shift sideways as a diver steps onto the oldest dive - and
  * so the end of the log is visible instead of merely being where clicking stops.
  */
-export function DiveNeighborNav({ diveUuid }: DiveNeighborNavProps) {
+export function DiveNeighborNav({
+  diveUuid,
+  reloadToken = 0,
+}: DiveNeighborNavProps) {
   // Keyed by the uuid they were fetched for. Navigating between two dives keeps
   // this component mounted with a new `diveUuid`, and a plain `neighbors` state
   // would spend that render pointing the buttons at the previous dive's
@@ -78,7 +93,7 @@ export function DiveNeighborNav({ diveUuid }: DiveNeighborNavProps) {
     return () => {
       cancelled = true;
     };
-  }, [diveUuid]);
+  }, [diveUuid, reloadToken]);
 
   const neighbors = loaded?.diveUuid === diveUuid ? loaded.neighbors : null;
   // "Not yet known" rather than "not there". Both render the same dead button, but
