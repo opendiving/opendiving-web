@@ -104,7 +104,7 @@ describe("the operator block", () => {
     expect(block).toHaveTextContent(/free of charge/);
     expect(block).toHaveTextContent(/registration needs an invitation/);
     expect(block).toHaveTextContent(/no uptime is promised/);
-    expect(block).toHaveTextContent(/at least 30 days from that message/);
+    expect(block).toHaveTextContent(/at least 90 days from that message/);
   });
 
   // The AGPLv3 section 13 offer, which §7 says is the operator's to make and which no

@@ -16815,6 +16815,21 @@ about one of these vendors' docs before. Retention figures come from the same pl
 §7's "within 30 days" true on this deployment: a 14-day grace period plus a 3-day recovery window
 is 17.
 
+**The beta-end export window is 90 days, and it is deliberately not §7's 30.** The block's answer to
+"what happens to your data if the beta ends" promises that the export in Settings keeps working for
+at least 90 days from the notice mail. The first draft wrote 30, for no better reason than that §7
+already promised 30 for a deletion you ask for yourself, and the two numbers measure unrelated
+things: §7's is a ceiling on how long the operator may take to finish a deletion the reader chose,
+while this one is a floor on how long the reader has to act on a deletion chosen for them. The
+operator ruled 90 on 2026-09-12 - divers log seasonally, someone who dives twice a year may not open
+that mail inside a month, and this is the one promise on either page that governs whether a reader
+gets their records back at all. So the two figures standing next to each other is the intended state
+and not a straggler from an incomplete sweep: do not harmonise them. What the two do share is the
+mechanism, which is why the sentence still says deletion follows "the same way §11 and the Privacy
+Policy's §7 describe a deletion you ask for yourself" - once the window closes, the same 14-day
+grace and 3-day recovery run, and that clause reasons from the manner of the deletion rather than
+from its clock.
+
 **Two answers the block carries that no grep for `operator` would have found.** Neither sentence
 contains the word, which is the lesson "The author and the operator are two roles" already recorded
 about sweeping these pages:

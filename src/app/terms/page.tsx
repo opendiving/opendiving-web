@@ -85,7 +85,7 @@ export default async function TermsPage() {
               You are told before anything is deleted. The operator will email
               the address on each account, and the export in Settings &mdash;
               the one §6 says needs nobody&rsquo;s permission &mdash; keeps
-              working for at least 30 days from that message. Accounts and
+              working for at least 90 days from that message. Accounts and
               everything in them are deleted once that window closes, the same
               way §11 and the Privacy Policy&rsquo;s §7 describe a deletion you
               ask for yourself.
