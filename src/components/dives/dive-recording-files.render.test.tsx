@@ -263,7 +263,7 @@ describe("DiveRecordingFiles", () => {
     ).toBeVisible();
     expect(screen.getByText(/the whole recording goes with it/i)).toBeVisible();
     expect(
-      screen.getByText(/oxygen-exposure readings are cleared/i),
+      screen.getByText(/the figures the dive computer recorded are cleared/i),
     ).toBeVisible();
   });
 });

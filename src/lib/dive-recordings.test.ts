@@ -397,7 +397,7 @@ describe("deleteFileConfirmation", () => {
       expect(title).toBe("Delete this file?");
       expect(description).toContain("nothing to download");
       expect(description).toContain(clause);
-      expect(description).toContain("are cleared with the last of them");
+      expect(description).toContain("are cleared with the last of those files");
     },
   );
 
@@ -410,6 +410,49 @@ describe("deleteFileConfirmation", () => {
     expect(deleteFileConfirmation([suunto], "sj").title).toBe(
       "Delete this file and its recording?",
     );
+  });
+
+  it("does not call a secondary deletion a no-op when the primary holds no file", () => {
+    // Removing a secondary recording re-runs `refresh_tech_scalars` over the
+    // untouched primary, which is only a no-op while that primary has files to
+    // re-read. A converted import has none, and the figures the document
+    // supplied go with the unrelated deletion.
+    const imported = recording({
+      files: [],
+      profile: profileInfo({ provenance: "divejson_import" }),
+    });
+    const perdix = recording({ uuid: "r2", ordinal: 1, files: [perdixFile] });
+    const { description } = deleteFileConfirmation([imported, perdix], "pf");
+
+    expect(description).toContain("come back empty");
+    expect(description).not.toContain("left alone");
+  });
+
+  it("calls a secondary deletion a no-op while the primary still has files", () => {
+    const suunto = recording({ files: [suuntoJson] });
+    const perdix = recording({ uuid: "r2", ordinal: 1, files: [perdixFile] });
+
+    expect(
+      deleteFileConfirmation([suunto, perdix], "pf").description,
+    ).toContain("are left alone");
+  });
+
+  it("leaves the figures alone when a secondary merely loses one of its files", () => {
+    // `_rederive_recording` returns before the figures for any recording that
+    // is not ordinal 0, so this path is untouched whatever the primary holds.
+    const imported = recording({
+      files: [],
+      profile: profileInfo({ provenance: "divejson_import" }),
+    });
+    const perdix = recording({
+      uuid: "r2",
+      ordinal: 1,
+      files: [perdixFile, file({ uuid: "pf2", original_filename: "b.fit" })],
+    });
+
+    expect(
+      deleteFileConfirmation([imported, perdix], "pf").description,
+    ).toContain("are left alone");
   });
 
   it("falls back to a conservative sentence for a file nothing holds", () => {

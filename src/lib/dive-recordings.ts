@@ -171,57 +171,86 @@ function unreproducibleSamples(recording: Recording): string | null {
 /** What is left of the recording once the action goes through. */
 type RecordingOutcome = "keeps files" | "keeps samples only" | "removed";
 
+// Everything `refresh_tech_scalars` rewrites, as one noun phrase - the API's
+// whole `DiveTechScalars` mixin, which is the CNS and OTU clocks, the surface
+// pressure, and the entry and exit positions the dive page draws on its map.
+// Named as one thing rather than enumerated because they move as one: the write
+// is outright and covers the lot, and a dive that never carried a position
+// would otherwise be told about one it is losing. The sentence about what stays
+// draws the line the diver actually needs - these are the figures nobody typed.
+const COMPUTER_FIGURES = "the figures the dive computer recorded";
+
 /**
- * What the dive's own oxygen-exposure readings do, as a sentence.
+ * What the figures the dive computer recorded do, as a sentence.
  *
- * **Only the primary recording's files write them**, so for every other
- * recording the honest answer is that nothing moves - and that is worth a clause
- * rather than a silence, because nothing in the row a diver clicked says which
- * one they are looking at.
+ * **Only the primary recording's files write them**, so for most of what a diver
+ * can do to a secondary recording the honest answer is that nothing moves - and
+ * that is worth a clause rather than a silence, because nothing in the row they
+ * clicked says which one they are looking at.
  *
- * Where the recording *is* primary there are five answers and the difference
- * between them is the whole point of this module. Two re-read the readings -
- * from the files this recording keeps, or from whichever recording takes over
- * as primary. **Three clear them**, and they are three because the readings are
- * cleared whenever no file is left under ordinal 0, however it got that way:
- * this recording survived its last file, no recording is left at all, or the
- * one that takes over holds no files of its own. `refresh_tech_scalars` reads
- * the new primary's files and writes every reading it does not find as null,
- * and `renumber_ordinals` promotes in ordinal order without skipping a
+ * Where the recording *is* primary there are five answers. Two re-read the
+ * figures - from the files this recording keeps, or from whichever recording
+ * takes over as primary. **Three clear them**, and they are three because the
+ * figures are cleared whenever no file is left under ordinal 0, however it got
+ * that way: this recording survived its last file, no recording is left at all,
+ * or the one that takes over holds no files of its own. `refresh_tech_scalars`
+ * reads the new primary's files and writes every figure it does not find as
+ * null, and `renumber_ordinals` promotes in ordinal order without skipping a
  * file-less recording, so "another recording exists" is not the question.
+ *
+ * **A secondary recording is not always the no-op it looks like**, which is the
+ * sixth answer and the reason this takes the outcome rather than just the
+ * ordinal. Only `keeps files` returns before the figures are touched
+ * (`_rederive_recording`); removing a secondary recording, or emptying one, runs
+ * `refresh_tech_scalars` over the *unchanged* primary. That re-reads the same
+ * files to the same values - unless the primary holds no files at all, which is
+ * what a converted logbook import creates, and then it clears figures the
+ * document itself supplied.
  */
 function exposureSentence(
   recording: Recording,
   recordings: Recording[],
   outcome: RecordingOutcome,
 ): string {
+  // Whether a recording has anything to read the figures off. Asked of whoever
+  // is primary afterwards: the untouched one when a secondary is being deleted,
+  // and the successor when the primary is.
+  const holdsFiles = (candidate: Recording | undefined) =>
+    candidate !== undefined && candidate.files.length > 0;
+
   if (recording.ordinal !== 0) {
-    return "Another recording is the one shown by default, so the dive's oxygen-exposure readings are left alone.";
+    if (
+      outcome === "keeps files" ||
+      holdsFiles(recordings.find((other) => other.ordinal === 0))
+    ) {
+      return `Another recording is the one shown by default, so ${COMPUTER_FIGURES} are left alone.`;
+    }
+    return `The recording shown by default is a different one and holds no file, so ${COMPUTER_FIGURES} are re-read from it and come back empty.`;
   }
   if (outcome === "keeps files") {
-    return "This recording also writes the dive's oxygen-exposure readings, so those are re-read along with it.";
+    return `This recording also writes ${COMPUTER_FIGURES}, so those are re-read along with it.`;
   }
   if (outcome === "keeps samples only") {
     // The recording stays, but with no file behind it there is nothing to read
-    // the readings off - which is what "nothing here can re-derive them" means.
-    return "The dive's oxygen-exposure readings came off this recording's files, and are cleared with the last of them.";
+    // the figures off - which is what "nothing here can re-derive them" means.
+    return `This recording's files wrote ${COMPUTER_FIGURES}, and they are cleared with the last of those files.`;
   }
   // Which recording takes over: the lowest ordinal among the rest. By ordinal
   // and not by position, because the edit form hands its list over unsorted.
-  const successor = recordings.reduce<Recording | null>(
+  const successor = recordings.reduce<Recording | undefined>(
     (next, other) =>
       other.uuid === recording.uuid ||
-      (next !== null && next.ordinal <= other.ordinal)
+      (next !== undefined && next.ordinal <= other.ordinal)
         ? next
         : other,
-    null,
+    undefined,
   );
-  if (successor === null) {
-    return "It is the dive's only recording, so the dive's oxygen-exposure readings are cleared — nothing is left to read them from.";
+  if (successor === undefined) {
+    return `It is the dive's only recording, so ${COMPUTER_FIGURES} are cleared — nothing is left to read them from.`;
   }
-  return successor.files.length > 0
-    ? "It is the recording shown by default, so the next one takes over and the dive's oxygen-exposure readings are re-read from that instead."
-    : "It is the recording shown by default, so the next one takes over — and it holds no file, so the dive's oxygen-exposure readings are cleared.";
+  return holdsFiles(successor)
+    ? `It is the recording shown by default, so the next one takes over and ${COMPUTER_FIGURES} are re-read from that instead.`
+    : `It is the recording shown by default, so the next one takes over — and it holds no file, so ${COMPUTER_FIGURES} are cleared.`;
 }
 
 function sentences(...parts: (string | null)[]): string {
