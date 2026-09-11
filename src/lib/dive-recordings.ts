@@ -99,20 +99,28 @@ export function recordingLabel(recording: Recording): string {
  * of two such recordings leaves — so the list says so in words instead of
  * rendering an empty row that reads as a loss.
  *
- * **One sentence rather than the two this was specified as**, and the reason is
- * a gap in the API rather than a choice: telling "imported through the
- * converter" from "merged from two recordings" needs the profile's provenance,
- * which the server stores (`DiveProfile.parser_key`, one of a parser key,
- * `divejson_import` or `merge`) and does not publish — `DiveProfileInfo` on the
- * dive detail response carries no such member, and neither does the full
- * profile payload. The wording below is true of both paths: a merged recording
- * keeps whatever files either part had, so one with none had none on either
- * side, and in both cases the samples arrived without a file to re-read them
- * from. Narrow it the day the provenance ships.
+ * **Which of the two it was comes from the profile's `provenance`**, the closed
+ * `file` / `divejson_import` / `merge` vocabulary the dive read publishes on
+ * every recording's profile summary. The recording's own shape cannot answer it:
+ * `files` is empty either way, and a merge keeps whatever files either half had,
+ * so file-lessness says only that neither half had one.
+ *
+ * The fallback covers the case with no provenance to read — a recording the
+ * import wrote from a device and nothing else, which carries no profile at all,
+ * and any payload that reaches a browser without the member. It claims nothing
+ * about samples, because that recording has none.
  */
 export function noFileKeptSentence(recording: Recording): string | null {
   if (recording.files.length > 0) return null;
-  return "No file kept — these samples were imported rather than read from a file stored here.";
+
+  switch (recording.profile?.provenance) {
+    case "divejson_import":
+      return "No file kept — these samples were imported through the converter.";
+    case "merge":
+      return "No file kept — these samples were merged from two recordings.";
+    default:
+      return "No file kept — nothing was stored here to re-read this recording from.";
+  }
 }
 
 /** One line of the file list on a dive form or in the recordings card. */

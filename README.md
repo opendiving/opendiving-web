@@ -10,8 +10,8 @@ them into trips, and keep your gear service history and c-cards in one place.
 
 Cloud dive logs come and go — Movescount, Deepblu, Diveboard — and when they go, years of dive
 history go with them. OpenDiving is built on a different premise: the app is AGPL-licensed, the data
-sits in a plain Postgres database, and a dive logged from a dive-computer file keeps that file
-alongside it, downloadable at any time. Self-hosting isn't a feature here; it's the guarantee behind
+sits in a plain Postgres database, and every dive-computer file you upload stays with the recording
+it came from, downloadable at any time. Self-hosting isn't a feature here; it's the guarantee behind
 the rest — anyone can run this software, one click hands the whole log back in open formats, and it
 reads a logbook back in from DiveJSON, UDDF, Subsurface, FIT, or a Suunto app or DM5 export, so no
 shutdown, acquisition, or paywall can ever take your logbook with it.
@@ -112,8 +112,9 @@ Honest answers to "why not X":
   server-shaped alternative: one instance behind every browser and every family member, with an API
   — and yours to run on the household server if that is where you want it.
 - **Vendor clouds (Shearwater, Garmin, Suunto, Oceanic+)** — where dives are born, not where they
-  should live. OpenDiving imports their exports — one dive at a time, with the original file kept
-  alongside it, or a whole logbook at once — so switching computers never splits your history.
+  should live. OpenDiving imports their exports — one dive at a time, each file kept on the
+  recording it came from, or a whole logbook at once — so switching computers never splits your
+  history, and a dive logged off two of them keeps both computers' records side by side.
 
 ## Self-hosting
 
