@@ -22,7 +22,12 @@ interface InviteRequestsTableProps {
   /** The addresses currently selected, which is what the page's actions act on. */
   selected: string[];
   onToggle: (email: string, checked: boolean) => void;
-  onToggleAll: (checked: boolean) => void;
+  /**
+   * Clear the selection if anything is selected, otherwise start one. It takes
+   * no argument on purpose - the header box cannot report its own state
+   * usefully once the page caps the selection; see `toggleAll` there.
+   */
+  onToggleAll: () => void;
 }
 
 /**
@@ -84,8 +89,12 @@ export function InviteRequestsTable({
                 if (node) node.indeterminate = someSelected && !allSelected;
               }}
               checked={allSelected}
-              onChange={(event) => onToggleAll(event.target.checked)}
-              aria-label="Select every request on this page"
+              // The event's `checked` is deliberately dropped: it is unreliable
+              // here (see `toggleAll` on the page), and the control's meaning is
+              // "clear the selection, or start one" rather than a mirror of a
+              // box's state.
+              onChange={() => onToggleAll()}
+              aria-label="Select a batch of requests, or clear the selection"
             />
           </TableHead>
           <TableHead>Address</TableHead>

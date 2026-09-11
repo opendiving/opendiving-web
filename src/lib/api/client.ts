@@ -289,7 +289,8 @@ apiClient.get = ((url: string, config?: AxiosRequestConfig) => {
 //
 // All five fields are declared, matching the eight per-resource copies this
 // replaces. Nothing in the app reads `page`/`items_per_page` - `total_count` and
-// `has_more` drive every list footer - but they are always on the wire, so
+// `has_more` are what `useInfiniteResource` reads, and between them drive every
+// load-on-scroll trigger in the app - but they are always on the wire, so
 // omitting them (as the `hooks/` copy did) made the envelope look like it had
 // three fields. Note the API clamps both, so the `items_per_page` echoed back can
 // be smaller than the one requested.

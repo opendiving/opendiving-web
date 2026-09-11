@@ -16562,9 +16562,18 @@ deliberately keeps the selection so the operator can retry, the retry fails iden
 guarantee is now stated: `MAX_SELECTED` in the page, mirroring `MAX_ADDRESSES_PER_BATCH` in the
 API's invitation schema.
 
-It is enforced on the **selection** rather than on the buttons, which is the part worth arguing.
-Disabling an action over an oversized selection is the shape that first suggests itself and the
-worse one: the refusal lands after all the ticking, and the only way out is to untick by hand.
+The select-all box decides from the **selection**, not from its own `checked`, and that is a second
+trap inside the first. Past the cap the box can never render checked — `allSelected` asks whether
+every loaded row is selected, and the cap guarantees it is not — while a native checkbox negates its
+own checkedness on click and ignores `indeterminate` entirely. So a box rendered unchecked reports
+`checked === true` on every click, and a handler that trusted it re-selected the same hundred
+forever, with no way back to an empty selection but a hundred individual unticks. The header box is
+the control that clears everything, which is what its own table test has always said; reading the
+selection is what keeps that true in the one state the cap exists for.
+
+The cap is enforced on the **selection** rather than on the buttons, which is the part worth
+arguing. Disabling an action over an oversized selection is the shape that first suggests itself and
+the worse one: the refusal lands after all the ticking, and the only way out is to untick by hand.
 Instead select-all takes the first hundred and the live region says so, and a tick past the cap
 simply does not take. The queue reloads after every action, so working a long queue a batch at a
 time is the flow — which is what the per-page selection amounted to anyway, by accident.

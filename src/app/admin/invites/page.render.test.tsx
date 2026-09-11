@@ -150,7 +150,7 @@ describe("the invite queue", () => {
     await screen.findByText("first@example.com");
 
     const all = screen.getByRole("checkbox", {
-      name: "Select every request on this page",
+      name: "Select a batch of requests, or clear the selection",
     });
     await userEvent.click(all);
     expect(
@@ -182,7 +182,7 @@ describe("the invite queue", () => {
 
       await userEvent.click(
         screen.getByRole("checkbox", {
-          name: "Select every request on this page",
+          name: "Select a batch of requests, or clear the selection",
         }),
       );
 
@@ -199,13 +199,40 @@ describe("the invite queue", () => {
       ).not.toBeChecked();
     });
 
+    // The header box can never render *checked* past the cap - `allSelected`
+    // asks whether every loaded row is selected, and the cap guarantees it is
+    // not. A native checkbox negates its own checkedness on click and ignores
+    // `indeterminate`, so it reports `checked === true` every time; a handler
+    // that trusted that would re-select the same hundred forever.
+    it("still clears the selection once the cap has been hit", async () => {
+      render(<AdminInvitesPage />);
+      await screen.findByText("diver0@example.com");
+
+      const all = screen.getByRole("checkbox", {
+        name: "Select a batch of requests, or clear the selection",
+      });
+      await userEvent.click(all);
+      expect(
+        screen.getByText(
+          "100 addresses selected - the most one batch can hold",
+        ),
+      ).toBeInTheDocument();
+
+      await userEvent.click(all);
+
+      expect(screen.getByText("Nothing selected")).toBeInTheDocument();
+      expect(
+        screen.getByRole("checkbox", { name: "Select diver0@example.com" }),
+      ).not.toBeChecked();
+    });
+
     it("refuses to tick one past the cap", async () => {
       render(<AdminInvitesPage />);
       await screen.findByText("diver0@example.com");
 
       await userEvent.click(
         screen.getByRole("checkbox", {
-          name: "Select every request on this page",
+          name: "Select a batch of requests, or clear the selection",
         }),
       );
       await userEvent.click(

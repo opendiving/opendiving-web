@@ -94,11 +94,21 @@ export default function AdminInvitesPage() {
   // The queue reloads after an action, so acting on a full batch and ticking
   // again is the way through a long queue - which is what the old per-page
   // selection amounted to anyway.
-  const toggleAll = (checked: boolean) =>
-    setSelected(
-      checked
-        ? requests.slice(0, MAX_SELECTED).map((request) => request.email)
-        : [],
+  //
+  // **It decides from the selection, not from the checkbox's `checked`.** Once
+  // more rows are loaded than a batch can hold, the header box can never render
+  // checked - `allSelected` asks whether *every* loaded row is selected, and the
+  // cap guarantees it isn't. A native checkbox negates its own checkedness on
+  // click and ignores `indeterminate` entirely, so a box rendered unchecked
+  // reports `checked === true` every time, and a handler that trusted it would
+  // re-select the same hundred forever with no way back to empty but a hundred
+  // unticks. Reading the selection instead keeps the control two-way in the one
+  // state the cap exists for.
+  const toggleAll = () =>
+    setSelected((current) =>
+      current.length > 0
+        ? []
+        : requests.slice(0, MAX_SELECTED).map((request) => request.email),
     );
 
   const runAction = async (action: PendingAction) => {
