@@ -35,8 +35,9 @@
 // recorded rather than left as a gap: `lib/api/client.ts` wrote it to
 // `localStorage` until the change recorded under "Access token lives in memory
 // only, never in `localStorage`", and it carries no prefix. The ground for
-// leaving it is population, not harm - the app has never been deployed
-// anywhere, so the only browser that ever held one is the maintainer's own.
+// leaving it is population, not harm - that change predates every release and
+// the project's own hosted instance, so the only browser that ever held one is
+// the maintainer's own.
 //
 // React-free on purpose: the read/subscribe pair below is in the
 // `useSyncExternalStore` shape the other storage modules use, and the one

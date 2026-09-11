@@ -8736,12 +8736,23 @@ it from the deleted one. Don't add a third by pattern-matching on this one; `con
 in `CODE_OF_CONDUCT.md` carries conduct reports and nothing else.
 
 Two near misses, for anyone tempted to revisit them. The app's own contact form has a `security`
-category in `CONTACT_CATEGORIES`, but it only exists on a _running instance_ and there is no hosted
-instance of this project — `SECURITY.md` mentions it only as the thing a self-hoster's own users
-would use to reach _that_ operator. And the file briefly had no mailbox at all, offering "open an
-issue saying only that you have a security report" as the fallback for a reporter without a GitHub
-account: that was incoherent, since filing an issue needs an account just as much. A second channel
-that shares the first one's precondition is not a second channel.
+category in `CONTACT_CATEGORIES`, but it only exists on a _running instance_, so `SECURITY.md`
+mentions it only as the thing a self-hoster's own users would use to reach _that_ operator. And the
+file briefly had no mailbox at all, offering "open an issue saying only that you have a security
+report" as the fallback for a reporter without a GitHub account: that was incoherent, since filing
+an issue needs an account just as much. A second channel that shares the first one's precondition is
+not a second channel.
+
+**Amended: the first of those said "and there is no hosted instance of this project", which stopped
+being true.** The project runs an instance of its own now — `CONTRIBUTING.md` and
+`publish-image.yml` both say so, `:edge` being what it follows — and on that one instance the
+contact form's `security` category reaches the maintainers rather than a stranger. It is still not a
+third security channel and should not be advertised as one: it is an unauthenticated public form
+posting through the API to whatever address that instance configured, with none of the privacy
+guarantees an advisory thread has. What changes is only the reasoning — the category is unfit for
+the job, not merely pointed at somebody else. `SECURITY.md`'s two channels are the two channels, on
+every instance including this project's, and its out-of-scope clause is the sentence that says the
+project's own server is a target like any other rather than a testing ground.
 
 **No supported-versions table and no SLA.** The boilerplate template wants a matrix of version
 ranges with ticks and crosses, and this project has one release line: `publish-image.yml` publishes
@@ -11717,9 +11728,10 @@ has to see the objection already recorded, or its next-themes rewrite lands and 
 outside it.** `lib/api/client.ts` and `lib/api/auth.ts` wrote it to `localStorage` until the change
 recorded under _"Access token lives in memory only, never in `localStorage`"_, and it carries no
 prefix, so prefix clearing cannot reach it. **The ground for leaving it is population, not harm**:
-this app has never been public and has never been deployed anywhere, so the only browser that ever
-held one is the maintainer's own, and no self-hoster can acquire one because that change predates
-every release. The maintainer clears theirs by hand, once. The rejected alternative — a named legacy
+that change predates every release _and_ the project's own hosted instance, which follows `:edge`
+off `main` and so has never served a build that wrote the key — so the only browser that ever held
+one is the maintainer's own, and neither a self-hoster nor a visitor to the project's instance can
+acquire one. The maintainer clears theirs by hand, once. The rejected alternative — a named legacy
 list alongside the prefix — is technically cheap and would not have tripped check (1), whose pattern
 only matches prefixed strings, but it reopens the enumeration the prefix rule exists to close and
 carries a list forever to serve a population of one. Recorded rather than left implicit because
