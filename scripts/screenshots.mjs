@@ -50,20 +50,25 @@ const CHROME_CANDIDATES = [
 // beside its site/environment/import sidebar instead of a screen above it.
 const WIDTH = 1024;
 
-// Height is per page, because the boundary to cut on is. 1086 ends the dive page below
-// its profile chart - clearing the sidebar column beside it - and the gear page below
-// its service history. The dashboard's number is measured rather than written down; see
-// `CUT_BELOW`, which is why its entry here is only the frame the page loads at.
+// Height is per page, because the boundary to cut on is. 1086 ends the gear page below
+// its service history. The other two are measured rather than written down; see
+// `CUT_BELOW`, which is why their entries here are only the frame the page loads at.
 const HEIGHT = { dashboard: 1564, "dive-detail": 1086, "gear-item": 1086 };
 
-// Where a shot names the card it should end on, the frame is measured in the page just
-// before the shutter instead of being kept here as a number. Written-down heights went
-// stale twice in one afternoon: dive activity landed under the consumption card and put
-// the old cut through the middle of it, and then four words came out of the consumption
-// card's description, its header row stopped wrapping, and the cut moved 40px again. A
+// Where a shot names a card it must reach, the frame is measured in the page just before
+// the shutter instead of being kept here as a number. Written-down heights went stale
+// twice in one afternoon: dive activity landed under the consumption card and put the old
+// cut through the middle of it, and then four words came out of the consumption card's
+// description, its header row stopped wrapping, and the cut moved 40px again. A
 // hand-measured figure is not even portable between browsers - the two disagreed by 3px
 // here, which is the difference between a clean edge and a sliver of the next card.
-const CUT_BELOW = { dashboard: "Dive Activity" };
+//
+// The name is a floor, not the boundary: `cutBelow()` goes on down to the first height at
+// which no card at all is still open (see it for why). So this names the card the image
+// exists to show - `Recordings` on the dive page, which is what the whole shot is for -
+// rather than the one that happens to sit last, which is a fact about the account's data
+// and not something to write down here.
+const CUT_BELOW = { dashboard: "Dive Activity", "dive-detail": "Recordings" };
 const frame = (name) => ({ width: WIDTH, height: HEIGHT[name] });
 // The year both dashboard charts are parked on, on their `Year` scope - twelve months of
 // one season in each. One constant, because the two cards showing the *same* period is
@@ -83,7 +88,11 @@ const GREETING_HOUR = Number(process.env.GREETING_HOUR ?? 9);
 // Range-checked because `setHours()` rolls rather than rejects: a 25 would pin the clock
 // to 01:00 *tomorrow* and quietly take a day off the service countdown - the one thing
 // the comment above promises this override does not touch.
-if (!Number.isInteger(GREETING_HOUR) || GREETING_HOUR < 0 || GREETING_HOUR > 23) {
+if (
+  !Number.isInteger(GREETING_HOUR) ||
+  GREETING_HOUR < 0 ||
+  GREETING_HOUR > 23
+) {
   console.error(
     `GREETING_HOUR must be a whole hour from 0 to 23, not "${process.env.GREETING_HOUR}"`,
   );
@@ -152,9 +161,9 @@ async function magicLink() {
 
 // --------------------------------------------------------------- what to shoot
 // Neither subject is hardcoded, so this runs against any account. Each is picked for the
-// page that photographs best: the dive is whichever recent one carries an imported
-// profile (only the single-dive endpoint says so, hence the probing), and the gear item
-// is whichever has the most service tracked on it.
+// page that photographs best: the dive is whichever recent one has the most recordings
+// carrying samples (only the single-dive endpoint carries them, hence the probing), and
+// the gear item is whichever has the most service tracked on it.
 //
 // The queries reuse the access token the app is already sending, lifted off its own
 // requests. The alternatives are both worse: a second magic link runs into the
@@ -173,11 +182,32 @@ async function pickSubjects(token) {
     `dives?user_uuid=${user.uuid}&page=1&items_per_page=30`,
   );
 
+  // Ranked, not filtered, and the rank is how many of the dive's recordings carry
+  // samples. Two of those draw the page's whole recordings story - the Recordings
+  // card listing both computers, and the switcher above the chart, which
+  // `DiveProfileCard` only renders once a second recording has a profile - and that
+  // is what this image exists to show. But a log whose dives each came off one
+  // computer is the ordinary case rather than a failed search, and one of those is
+  // an honest picture of the same page. Zero is the only disqualifier: the card
+  // renders nothing at all without samples, so the page would photograph flat and
+  // the `Dive Profile` wait below would time out.
+  //
+  // Every candidate is read, with no early exit, because the best one is not known
+  // until the last has been looked at - the list is in start-time order, not in
+  // anything this ranks on. Ties keep the earliest seen, so a run against a log with
+  // no two-recording dive still picks the most recent single one.
   let dive = null;
+  let chartedRecordings = 0;
   for (const candidate of dives.data) {
-    if (await get(`dive/${candidate.uuid}/profile`)) {
+    // Only the dive read carries `recordings`; the list response deliberately
+    // leaves them off, so there is no way to rank these without a fetch apiece.
+    const detail = await get(`dive/${candidate.uuid}`);
+    const charted = (detail?.recordings ?? []).filter(
+      (recording) => recording.profile,
+    ).length;
+    if (charted > chartedRecordings) {
       dive = candidate.uuid;
-      break;
+      chartedRecordings = charted;
     }
   }
 
@@ -191,7 +221,11 @@ async function pickSubjects(token) {
         b.service.length - a.service.length || b.dive_count - a.dive_count,
     );
 
-  return { dive, gearItem: (ranked[0] ?? gear.data[0])?.uuid };
+  return {
+    dive,
+    chartedRecordings,
+    gearItem: (ranked[0] ?? gear.data[0])?.uuid ?? null,
+  };
 }
 
 // ---------------------------------------------------------------- the camera
@@ -202,22 +236,78 @@ const hideDevTools = (page) =>
     document.querySelectorAll("nextjs-portal").forEach((el) => el.remove());
   });
 
-// The top of the first row below the named card, which is the far side of the gap the
-// page's `space-y-6` puts between them - so the frame ends on the boundary rather than a
-// few pixels into the next card or short of the one before it.
+// The first height at or below the named card where the page has a clean seam all the way
+// across: every card that begins above the cut also ends above it, and the cut sits in the
+// gap `space-y-6` leaves between rows rather than a few pixels into the card after it.
+//
+// It used to be one line - the top of the named card's next sibling - and that was right
+// for exactly as long as every shot cut on the dashboard, which is one column. The dive
+// page is two. `Recordings` is a card in the narrow sidebar, so its neighbour's top is a
+// coordinate in that column, and the main column beside it was part-way down the gas
+// consumption card at the same height: the frame came out with a sentence sliced through
+// the middle of a line of text.
+//
+// Growing until nothing is open is the fix, and it has to be a loop rather than one sweep
+// over what the anchor's own bottom crosses. On that page the sweep ends part-way into the
+// sidebar card *below* the anchor, which by definition was not open at the anchor's bottom
+// and so was never looked at; taking that one in then reaches into the main column's next
+// card, and only the third pass settles. The cut can therefore land a long way below the
+// card that named it - far enough that the frame is most of the page - and that is a fact
+// about how the page staggers, not a number to talk down: a seam is where the two columns
+// happen to finish together, and there may be only one below the anchor.
 async function cutBelow(page, label) {
-  const top = await page.evaluate((text) => {
-    const heading = [...document.querySelectorAll("h2, h3")].find((node) =>
-      node.textContent.trim().startsWith(text),
-    );
-    const next = heading?.closest(
-      "div.rounded-lg.border.bg-card",
-    )?.nextElementSibling;
-    return next ? Math.round(next.getBoundingClientRect().top + scrollY) : null;
+  const measured = await page.evaluate((text) => {
+    const CARD = "div.rounded-lg.border.bg-card";
+    // Nested cards need no excluding: one is inside its parent's box on both edges, so it
+    // is open only where the parent already is and can never move the cut on its own.
+    const cards = [...document.querySelectorAll(CARD)];
+    const box = (element) => {
+      const rect = element.getBoundingClientRect();
+      return { top: rect.top + scrollY, bottom: rect.bottom + scrollY };
+    };
+
+    const anchor = [...document.querySelectorAll("h2, h3")]
+      .find((node) => node.textContent.trim().startsWith(text))
+      ?.closest(CARD);
+    if (!anchor) return { height: null, why: "no card carries that heading" };
+
+    // The gap between rows, read off the anchor's own neighbour rather than written down.
+    // Either neighbour will do, and the one above is not a fallback for tidiness: a card
+    // named at the bottom of its column has nothing below it to measure against, and used
+    // to be refused outright even though the far column ran on past it.
+    const previous = anchor.previousElementSibling;
+    const next = anchor.nextElementSibling;
+    const gutter = next
+      ? box(next).top - box(anchor).bottom
+      : previous
+        ? box(anchor).top - box(previous).bottom
+        : null;
+    if (gutter === null)
+      return {
+        height: null,
+        why: "that card has no neighbour to measure the gap from",
+      };
+
+    // Seeded from the neighbour's top where there is one, so a page with nothing open
+    // across the seam - the dashboard, every shot before the dive page - measures exactly
+    // what the single line above it did, to the pixel.
+    let cut = next ? box(next).top : box(anchor).bottom + gutter;
+    // Each pass that moves the cut has to have found a card the pass before it could not
+    // see, so one per card is more than it can ever need and the loop cannot spin.
+    for (let pass = 0; pass <= cards.length; pass++) {
+      const open = cards.filter((card) => box(card).top < cut);
+      const grown = Math.max(
+        cut,
+        ...open.map((card) => box(card).bottom + gutter),
+      );
+      if (grown === cut) return { height: Math.round(cut), why: null };
+      cut = grown;
+    }
+    return { height: null, why: "the cut never settled" };
   }, label);
-  if (top === null)
-    throw new Error(`nothing below the ${label} card to cut at`);
-  return top;
+  if (measured.height === null)
+    throw new Error(`cannot cut below the ${label} card: ${measured.why}`);
+  return measured.height;
 }
 
 // One shutter press, written to both trees from the buffer it returns. Shooting twice
@@ -385,15 +475,30 @@ await visit(page, "dashboard", `${WEB}/dashboard`);
 // and fails strict mode. `chartCard` scopes by the heading for the same reason.
 await page.getByRole("heading", { name: "Gas Consumption" }).waitFor();
 
-// Skipped when only the dashboard is being retaken: finding the dive costs one request
-// per candidate until a profile turns up.
+// Skipped when only the dashboard is being retaken: ranking the dives costs one request
+// per candidate, for all thirty of them.
 const subjects =
   wanted("dive-detail") || wanted("gear-item")
     ? await pickSubjects(bearer)
-    : { dive: null, gearItem: null };
-const { dive, gearItem } = subjects;
+    : { dive: null, chartedRecordings: 0, gearItem: null };
+const { dive, chartedRecordings, gearItem } = subjects;
+const diveNote = dive
+  ? `${dive} (${chartedRecordings} charted recording${chartedRecordings === 1 ? "" : "s"})`
+  : "(none with samples)";
 if (dive || gearItem)
-  console.log(`dive ${dive ?? "(none with a profile)"} · gear ${gearItem}`);
+  console.log(`dive ${diveNote} · gear ${gearItem ?? "(none)"}`);
+
+// A requested shot with no subject is a failure, not a note - and it fails here, before
+// the first shutter press, so a run that cannot produce all of what was asked for leaves
+// no half-updated set of images behind. The dive shot warned and exited 0 for a week
+// after the route it probed was removed, which is exactly long enough for nobody to
+// notice that the README was still showing a page the app no longer draws.
+if (wanted("dive-detail") && !dive)
+  throw new Error(
+    `no dive of ${email} has a recording with a profile - nothing to shoot for dive-detail`,
+  );
+if (wanted("gear-item") && !gearItem)
+  throw new Error(`${email} has no gear - nothing to shoot for gear-item`);
 
 if (wanted("dashboard")) {
   await selectPeriod(page, "Gas Consumption", "Year", CHART_YEAR);
@@ -405,14 +510,14 @@ if (wanted("dashboard")) {
 // One frame per page, and one page per feature. Two crops of the same page at
 // different scroll offsets read as a mistake rather than as two things.
 if (wanted("dive-detail")) {
-  if (dive) {
-    await visit(page, "dive-detail", `${WEB}/dives/${dive}`);
-    await page.getByText("Dive Profile").waitFor();
-    await atTop(page);
-    await shot(page, "dive-detail", HEIGHT["dive-detail"]);
-  } else {
-    console.warn("! no dive with an imported profile - skipped the dive shot");
-  }
+  await visit(page, "dive-detail", `${WEB}/dives/${dive}`);
+  await page.getByText("Dive Profile").waitFor();
+  await atTop(page);
+  await shot(
+    page,
+    "dive-detail",
+    await cutBelow(page, CUT_BELOW["dive-detail"]),
+  );
 }
 
 if (wanted("gear-item")) {

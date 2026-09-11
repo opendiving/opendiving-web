@@ -45,9 +45,10 @@ Everything the shot needs is a constant in `scripts/screenshots.mjs`, with the r
 - **1024px wide**, Tailwind's `lg`, at `deviceScaleFactor: 2` → the PNG lands at 2048 wide.
 - **Dark mode**, `reducedMotion: "reduce"`.
 - **Height is measured in the page, not written down** — `CUT_BELOW.dashboard` names the _Dive
-  Activity_ card and `cutBelow()` reads the top of the row after it moments before the shutter. That
-  is what makes the frame cover the header and both chart cards and end on a card boundary. Two
-  hand-measured heights went stale within one afternoon; don't add a third.
+  Activity_ card, and `cutBelow()` finds the first height past it at which no card is still open,
+  moments before the shutter. On this page that is the row below the anchor and nothing further, so
+  the frame covers the header and both chart cards and ends on a card boundary. Two hand-measured
+  heights went stale within one afternoon; don't add a third.
 - **Both cards on Year / 2025**, from the single `CHART_YEAR` constant — the two cards showing the
   same period is the point, since they read as a pair.
 
@@ -103,7 +104,8 @@ Commit it there too, on its own, with the same subject.
 - **`Gas Consumption has no year "2025" with dives`** — the account has nothing logged that year.
   Override for a one-off run with `CHART_YEAR=2024`, and change the constant only if 2025 has
   genuinely stopped being the right year for the README.
-- **`nothing below the Dive Activity card to cut at`, or a heading wait timing out** — the dashboard
-  was restructured. Update `CUT_BELOW` / the heading the walk scopes on, in the script.
+- **`cannot cut below the Dive Activity card: no card carries that heading`, or a heading wait
+  timing out** — the dashboard was restructured. Update `CUT_BELOW` / the heading the walk scopes
+  on, in the script.
 - **`No Chrome found`** — set `CHROME_PATH`. `playwright-core` drives the machine's own Chrome and
   never downloads one.
