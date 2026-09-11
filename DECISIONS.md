@@ -16548,9 +16548,26 @@ immediately. Merging the two into one list was considered and rejected: it would
 heading, its count badge, its own New button and its different columns, and the geometry already
 sequences them for free.
 
-**The admin queue stopped clearing its selection.** That reset existed because turning a page
-carried the ticked addresses off screen, and sending invitations the operator can no longer see is
-worth guarding against. Loading more only appends, so the guard has nothing left to guard.
+**The admin queue stopped clearing its selection, and that reset was load-bearing twice over.** The
+reason it existed was that turning a page carried the ticked addresses off screen, and sending
+invitations the operator can no longer see is worth guarding against. Loading more only appends, so
+that half has nothing left to guard.
+
+The half nobody had written down is the batch cap. Both routes reject more than a hundred addresses
+with a 422 rather than sending part of the batch, and this page never had to say so: selection was
+per page, a page was ten rows, and the page's own docstring named that as the reason it could skip
+repeating the number. A queue that accumulates as you scroll takes the ceiling away silently — a
+select-all after eleven pages is a request that cannot succeed, and because the failure path
+deliberately keeps the selection so the operator can retry, the retry fails identically. So the
+guarantee is now stated: `MAX_SELECTED` in the page, mirroring `MAX_ADDRESSES_PER_BATCH` in the
+API's invitation schema.
+
+It is enforced on the **selection** rather than on the buttons, which is the part worth arguing.
+Disabling an action over an oversized selection is the shape that first suggests itself and the
+worse one: the refusal lands after all the ticking, and the only way out is to untick by hand.
+Instead select-all takes the first hundred and the live region says so, and a tick past the cap
+simply does not take. The queue reloads after every action, so working a long queue a batch at a
+time is the flow — which is what the per-page selection amounted to anyway, by accident.
 
 ### What the two test lanes can and cannot say about this
 

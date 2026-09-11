@@ -162,6 +162,66 @@ describe("the invite queue", () => {
       screen.getByRole("checkbox", { name: "Select first@example.com" }),
     ).not.toBeChecked();
   });
+
+  // The queue accumulates as the operator scrolls, and both batch routes reject
+  // more than a hundred addresses outright rather than sending part of the
+  // batch. Selection used to be held under that ceiling for free, by being
+  // cleared on every page turn; loading on scroll is what removed the page turn.
+  describe("the hundred-address batch cap", () => {
+    const many = Array.from({ length: 130 }, (_, i) =>
+      request({ email: `diver${i}@example.com` }),
+    );
+
+    beforeEach(() => {
+      listInviteRequests.mockImplementation(async () => page(many));
+    });
+
+    it("selects at most a full batch, not every row on screen", async () => {
+      render(<AdminInvitesPage />);
+      await screen.findByText("diver0@example.com");
+
+      await userEvent.click(
+        screen.getByRole("checkbox", {
+          name: "Select every request on this page",
+        }),
+      );
+
+      expect(
+        await screen.findByText(
+          "100 addresses selected - the most one batch can hold",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("checkbox", { name: "Select diver99@example.com" }),
+      ).toBeChecked();
+      expect(
+        screen.getByRole("checkbox", { name: "Select diver100@example.com" }),
+      ).not.toBeChecked();
+    });
+
+    it("refuses to tick one past the cap", async () => {
+      render(<AdminInvitesPage />);
+      await screen.findByText("diver0@example.com");
+
+      await userEvent.click(
+        screen.getByRole("checkbox", {
+          name: "Select every request on this page",
+        }),
+      );
+      await userEvent.click(
+        screen.getByRole("checkbox", { name: "Select diver120@example.com" }),
+      );
+
+      expect(
+        screen.getByRole("checkbox", { name: "Select diver120@example.com" }),
+      ).not.toBeChecked();
+      expect(
+        screen.getByText(
+          "100 addresses selected - the most one batch can hold",
+        ),
+      ).toBeInTheDocument();
+    });
+  });
 });
 
 describe("sending invitations", () => {

@@ -72,7 +72,9 @@ export interface InviteRequestsRemoved {
  *
  * The two batch routes take addresses rather than row ids, so an address that
  * never asked can be invited through the same call; the API caps how many go in
- * one request, which one page of the queue is comfortably inside.
+ * one request at a hundred, and rejects an oversized batch with a 422 rather
+ * than sending part of it. The queue page holds its selection to that cap - see
+ * `MAX_SELECTED` there, and the note on why the number has to be written down.
  */
 export const adminAPI = {
   /**

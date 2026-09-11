@@ -209,7 +209,8 @@ export function useInfiniteResource<T>(
    * it.
    *
    * The cursor steps back a page for the same reason `removeItem` re-derives
-   * it, and is re-derived rather than decremented for the same reason too. Every list here is ordered by a column the edit dialog can change - dive
+   * it, and is re-derived rather than decremented for the same reason too.
+   * Every list here is ordered by a column the edit dialog can change - dive
    * sites by name, trips and courses by start date, certifications by the date
    * certified - so a rename or a re-dated trip *moves* the row in the server's
    * order. Move it later than the loaded window and everything after its old

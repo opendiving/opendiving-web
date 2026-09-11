@@ -27,11 +27,23 @@ type PendingAction = "invite" | "remove";
  * "registration is by invitation" would be false there. The queue is described
  * by what it holds instead.
  *
- * Selection lives here and is per page: it is cleared when the page changes and
- * after either action, so an address can never be acted on while off screen. It
- * is also what keeps the batch inside the API's cap without this page having to
- * repeat the number - a selection cannot be larger than a page of the queue.
+ * Selection lives here and is cleared after either action, so an address is
+ * never carried into a batch the operator has stopped looking at. It used to be
+ * cleared on a page turn too, which is what kept it inside the API's cap without
+ * this page having to repeat the number; the queue loads on scroll now and
+ * accumulates, so `MAX_SELECTED` below states the cap outright.
  */
+// Mirrors `MAX_ADDRESSES_PER_BATCH` in the API's invitation schema, which both
+// batch routes enforce with a 422 rather than a partial send.
+//
+// This page used to get the limit for free and said so: selection was per page,
+// a page was ten rows, and ten is comfortably inside a hundred. Loading on
+// scroll is what took that away - the queue accumulates now, so a select-all
+// after enough scrolling can reach every row the operator has passed. The number
+// is repeated here because the API publishes no endpoint that states it; if it
+// ever moves, this is the second place.
+const MAX_SELECTED = 100;
+
 export default function AdminInvitesPage() {
   const { toast } = useToast();
   const [selected, setSelected] = useState<string[]>([]);
@@ -67,15 +79,27 @@ export default function AdminInvitesPage() {
     errorMessage: "Failed to load the invite queue. Please try again.",
   });
 
+  // Both guards are on the selection itself rather than on the buttons, so the
+  // batch is incapable of being too big rather than merely refused when it is.
+  // A disabled action over an oversized selection is the worse shape: the
+  // failure arrives after the work of ticking, and the only way out is to untick
+  // by hand.
   const toggle = (email: string, checked: boolean) =>
-    setSelected((current) =>
-      checked
-        ? [...current, email]
-        : current.filter((selected) => selected !== email),
-    );
+    setSelected((current) => {
+      if (!checked) return current.filter((selected) => selected !== email);
+      return current.length >= MAX_SELECTED ? current : [...current, email];
+    });
 
+  // Select-all takes the first `MAX_SELECTED` rows rather than every loaded one.
+  // The queue reloads after an action, so acting on a full batch and ticking
+  // again is the way through a long queue - which is what the old per-page
+  // selection amounted to anyway.
   const toggleAll = (checked: boolean) =>
-    setSelected(checked ? requests.map((request) => request.email) : []);
+    setSelected(
+      checked
+        ? requests.slice(0, MAX_SELECTED).map((request) => request.email)
+        : [],
+    );
 
   const runAction = async (action: PendingAction) => {
     setIsActing(true);
@@ -175,7 +199,11 @@ export default function AdminInvitesPage() {
               // half that arrives unasked.
               aria-live="polite"
             >
-              {count === 0 ? "Nothing selected" : `${addresses} selected`}
+              {count === 0
+                ? "Nothing selected"
+                : count >= MAX_SELECTED
+                  ? `${addresses} selected - the most one batch can hold`
+                  : `${addresses} selected`}
             </span>
           </div>
 
