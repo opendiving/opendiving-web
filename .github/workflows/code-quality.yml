@@ -6,9 +6,10 @@ on:
       - main
   pull_request:
 
-# Both jobs only read: they check out, install, run npm scripts and upload reports as
-# artifacts. `contents: read` is what checkout needs and the whole of what they need, and
-# saying so keeps the token off whatever the repository default happens to grant. This
+# All three jobs only read: they check out, install, run npm scripts and upload reports as
+# artifacts, and `dependency-review` reads the dependency review API, which `contents: read`
+# also covers. That is what checkout needs and the whole of what they need, and saying so
+# keeps the token off whatever the repository default happens to grant. This
 # workflow has more reason to care than most: on top of the dependency tree it executes
 # while linting, building and testing, four of its steps are `npx --yes` fetching a tool
 # at run time, so the code running beside that token is not the code the lockfile pinned.
@@ -81,6 +82,61 @@ jobs:
           name: eslint-report
           path: eslint-report.json
           retention-days: 30
+
+  # Live again since 2026-09-12, when this repository went public. The action's own README
+  # says where it runs: public repositories, and private ones with a GitHub Advanced Security
+  # licence. This one was private and had no such licence, so the job sat commented out for
+  # as long as that was true and was deleted outright in the pre-publication sweep rather
+  # than left as scaffolding. This is that job rebuilt, not uncommented.
+  #
+  # It answers a question `vulnerability-scan.yml`'s PR job does not. Trivy scans the whole
+  # tree a change would ship and fails on a fixable HIGH or CRITICAL wherever it came from;
+  # this compares the PR's manifests against the base commit's and reports only what the
+  # *change* introduces - which is also the only place a newly added dependency's licence is
+  # ever looked at.
+  #
+  # `fail-on-severity: moderate` is stricter than that Trivy gate deliberately. A moderate
+  # advisory arriving with a dependency somebody is adding right now is cheap to decline and
+  # expensive to remove a year later, which is not true of one found in a tree already
+  # shipped.
+  #
+  # The licence allow-list is a gate on what a diff *adds*, not an audit of the installed
+  # tree, and it is not about compatibility: this project is AGPL-3.0, which every licence
+  # below flows into. What it buys is that a licence nobody has looked at arrives as a red
+  # check rather than as a line in a lockfile.
+  #
+  # It was derived rather than copied. The block deleted in the pre-publication sweep named
+  # six licences and had never run once; 17 of the 579 packages `npm ci` installs sit outside
+  # those six, and `caniuse-lite`, `lru-cache`, `minimatch`, `argparse`, `mdn-data` and
+  # `lightningcss` are among them - transitive dependencies of Next.js and Tailwind that move
+  # on ordinary bumps, and a *changed* dependency is licence-checked exactly like an added
+  # one. Restoring the six verbatim would have made a required check red on a `caniuse-lite`
+  # bump, which is a check somebody turns off. So this is the union of those six and every
+  # licence the tree already ships. `DECISIONS.md` carries the command that derives it; re-run
+  # that before widening this by hand.
+  #
+  # Pinned on a major tag rather than by SHA because it is GitHub's own action, which is the
+  # split the other `actions/*` entries above follow and the SHA-pinned third-party ones in
+  # `publish-image.yml` and `vulnerability-scan.yml` do not. `DECISIONS.md` records it under
+  # "`pinDigests` is `false`, and that is load-bearing rather than a default"; Renovate renews
+  # both styles and would flatten them if that setting moved.
+  dependency-review:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v5
+        with:
+          fail-on-severity: moderate
+          allow-licenses: >-
+            0BSD, Apache-2.0, BSD-2-Clause, BSD-3-Clause, BlueOak-1.0.0, CC0-1.0,
+            CC-BY-4.0, ISC, LGPL-3.0-or-later, MIT, MIT-0, MPL-2.0, Python-2.0
 
   accessibility-check:
     runs-on: ubuntu-latest
