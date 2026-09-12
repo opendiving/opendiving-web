@@ -3593,12 +3593,15 @@ reaches into the main column's next card, and only the third pass settles. Each 
 cut has found a card the one before it could not see, so the loop is bounded by the number of cards.
 
 **The frame that comes out can be a long way below the card that named it.** The committed image
-runs 624px past the bottom of the _Recordings_ card it is anchored on, because those two columns
-finish together in exactly one place below it — it is two thirds of the page, and taller than both
-the hero and the gear image beside it in the README table. That is the trade the parent section
-above already rules on: cutting where nothing is sliced matters more than the exact number, and more
-than the shots agreeing on one. The alternative was to cut _above_ the offending card, which would
-drop the anchor out of the frame and defeat the shot.
+runs several hundred pixels past the bottom of the _Recordings_ card it is anchored on, because
+those two columns finish together in exactly one place below it — it is two thirds of the page, and
+taller than both the hero and the gear image beside it in the README table. How far past is not
+written down here, because it moves with whichever dive the subject picker lands on: a retake whose
+subject had a taller _Recordings_ card closed the gap by eighty-odd pixels without anything about
+the mechanism changing. That is the trade the parent section above already rules on: cutting where
+nothing is sliced matters more than the exact number, and more than the shots agreeing on one. The
+alternative was to cut _above_ the offending card, which would drop the anchor out of the frame and
+defeat the shot.
 
 **The dashboard is unmoved, deliberately.** Its cards finish together at the anchor already, so the
 loop settles on the first pass at exactly the height the single line returned — and the loop is
