@@ -121,7 +121,7 @@ It signs itself in with a magic link read out of the API container's log, so it 
 local stack. Chromium comes from your existing Chrome install (override with `CHROME_PATH`);
 `playwright-core` only drives it, so `npm install` never downloads a browser.
 
-The same three images are on the front page of
+The same images are on the front page of
 [opendiving/opendiving](https://github.com/opendiving/opendiving), which has no way to retake them —
 the app is here. So the script writes that repository's copies too when a clone of it sits beside
 this one (`../opendiving`, or `PRODUCT_DIR`), from the same shutter press. With no such clone it
@@ -131,9 +131,10 @@ Committing the regenerated files over there is a separate, manual step.
 Every shot uses one width, and the year the two dashboard charts are parked on is a constant beside
 it at the top of `scripts/screenshots.mjs`. No dimension is a round number — 1024 is `lg`, where the
 detail pages stop stacking their sidebar, and the heights are either measured in the page moments
-before the shutter, at the first line past a named card where no card is cut through, or a literal
-for a page whose layout has never moved — so read the comments there before changing them, and see
-[DECISIONS.md](DECISIONS.md) for the rest of the reasoning.
+before the shutter — at the first line past a named card where no card is cut through, or at the
+foot of a named card where the shot is about one column — or a literal for a page whose layout has
+never moved. So read the comments there before changing them, and see [DECISIONS.md](DECISIONS.md)
+for the rest of the reasoning.
 
 ## Design expectations
 

@@ -21,9 +21,9 @@ the placeholder — `scripts/screenshots.mjs` spells its usage the same way. It 
 magic link it reads out of the API container's log, so **the `opendiving-web-login` skill is not
 part of this flow** — only reach for it when the sign-in inside the script is what broke.
 
-Name `dashboard` explicitly. A bare `npm run screenshots -- …` retakes all three images, and the
-other two are not stable between runs ("due in 24 days" counts down, the subjects are re-picked from
-whatever the log holds that day), so a full retake puts two unrelated images in the diff.
+Name `dashboard` explicitly. A bare `npm run screenshots -- …` retakes every image, and the rest are
+not stable between runs ("due in 24 days" counts down, the subjects are re-picked from whatever the
+log holds that day), so a full retake puts unrelated images in the diff.
 
 ## Before running
 
