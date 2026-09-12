@@ -9343,6 +9343,16 @@ finding and its severity, not which of two remedies applies to it, and the split
 Publish Image at this `v` tag" and "merge the bump and cut a release" is the whole value of the
 report.
 
+**Moving the body broke a relative link, which is the kind of thing that survives a careful read.**
+The footer linked the workflow as `../blob/main/.github/workflows/vulnerability-scan.yml`, and that
+resolved because an issue body renders at `/<owner>/<repo>/issues/<n>` — one segment after the
+repository name, so `..` lands on the repository root. A job summary renders at
+`/<owner>/<repo>/actions/runs/<id>`, three segments deep, where the same link resolves under
+`/actions/` and 404s. The depth of the page a markdown body is rendered on is part of that body's
+contract, so the footer builds absolute URLs from `github.server_url` and `github.repository` now.
+Anything else moved between an issue, a comment, a release note and a run summary has the same trap
+in it.
+
 **The api repository's copy of this workflow has not moved yet, and that is a port owed in that
 direction** — the same one its `declare -A TAGS_FOR` bug is. Until it does, the two files differ in
 more than the node-versus-`python3` report the section above calls their only deliberate divergence:
