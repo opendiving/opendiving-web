@@ -3514,6 +3514,40 @@ alternatives are both worse: verifying a second magic link server-side runs into
 three-per-email-per-fifteen-minutes limit within a single retake, and calling `/auth/refresh` from
 the page rotates the cookie out from under the app.
 
+**`DIVE_UUID` names the dive outright, for when the rank cannot tell the candidates apart.** The
+rank is a count, and counts tie. In a log whose dives each came off one computer every candidate
+scores one, nothing ever beats the first, and the subject is simply the most recent dive - which is
+not a property worth photographing. A trial run picked one with no deco ceiling, no visibility and a
+single mixture, whose _Gas Consumption_ card renders as the prompt to enter a start and end pressure
+instead of the derived SAC/RMV table, while a dive a few rows down the same list had all three - and
+that second dive is the one the committed image is of, from a run back when the same rank still
+reached it. The rank cannot reach that frame any more, which is the whole case for naming a subject
+outright. Set, the environment variable is used as given and the ranking is skipped rather than run
+and overruled; absent, nothing changes. It is the only thing about the subjects that can be held
+still, which is why _"One shot at a time, optionally"_ above still stands: the gear item is
+re-ranked every run and "due in 24 days" counts down regardless.
+
+**Both of its failures throw, before the first shutter press.** A uuid `GET /dive/{uuid}` will not
+answer for, and one whose dive has no recording carrying samples - the second because the profile
+card renders nothing without them, so the page photographs flat and the `Dive Profile` wait times
+out anyway. Neither falls back to the ranking, because a run that quietly shot a different dive than
+the one it was handed would say so only in a line of output nobody reads, which is this script's own
+recurring failure (see _"The dive shot is ranked by recordings"_ below). The run's subject line says
+which mechanism chose, `named by DIVE_UUID` against `ranked`, so a variable that never arrived is
+visible in the output rather than only in the image.
+
+**It arrived without a retake, deliberately, and `docs/screenshots/dive-detail.png` is the image it
+always was.** The obvious first use of the variable was to re-shoot that page against a dive
+carrying the computed deco readouts, and the run that did drew a percent panel scaled to five
+figures: that dive's recorded `gradient_factor` series peaks above 14 000 and puts nearly a third of
+its samples over 200, so it reads as implausible along much of its length rather than only at the
+tip. The chart is right to draw it - those readouts are carried as the computer wrote them and
+nothing here invents a meaning for them, and _"A panel row is scaled from the channels on it that
+are shown"_ below already treats a four-figure `gf99` as the ordinary case rather than a bug - but a
+README hero is the wrong place to park an open question, so the picture waits until that field's
+scale is settled rather than the tooling waiting for the picture. Retaking it afterwards is one
+command, which is what the variable is for.
+
 **The clock is pinned to 09:00, so the dashboard greets the same way every retake.** The heading
 reads "Good morning/afternoon/evening" off `new Date().getHours()` (see _"The heading greets by time
 of day"_ above), which made the hero image a record of what time the maintainer happened to run the
@@ -3600,13 +3634,16 @@ anchor, which was not open at the anchor's bottom and so was never in the sweep.
 reaches into the main column's next card, and only the third pass settles. Each pass that moves the
 cut has found a card the one before it could not see, so the loop is bounded by the number of cards.
 
-**The frame that comes out can be a long way below the card that named it.** The committed image
-runs 624px past the bottom of the _Recordings_ card it is anchored on, because those two columns
-finish together in exactly one place below it — it is two thirds of the page, and taller than both
-the hero and the gear image beside it in the README table. That is the trade the parent section
-above already rules on: cutting where nothing is sliced matters more than the exact number, and more
-than the shots agreeing on one. The alternative was to cut _above_ the offending card, which would
-drop the anchor out of the frame and defeat the shot.
+**The frame that comes out can end a long way below the card that named it.** The committed image
+runs past the bottom of the _Recordings_ card it is anchored on, down to the one place below it
+where those two columns happen to finish together — far enough that the frame is a substantial part
+of the whole page. Neither that distance nor how the image compares in height to the other two is
+written down here, because both are properties of whichever dive is being photographed rather than
+of the cut: a retake against a different subject moves them with nothing about the mechanism
+changing, and `DIVE_UUID` above now makes changing the subject a deliberate one-word decision. That
+is the trade the parent section above already rules on: cutting where nothing is sliced matters more
+than the exact number, and more than the shots agreeing on one. The alternative was to cut _above_
+the offending card, which would drop the anchor out of the frame and defeat the shot.
 
 **The dashboard is unmoved, deliberately.** Its cards finish together at the anchor already, so the
 loop settles on the first pass at exactly the height the single line returned — and the loop is
@@ -3677,6 +3714,11 @@ taught the recordings card to say its mode and model, without retaking it. So th
 longer shows the page it is of, its height is going to move when it is retaken, and picking a gear
 stop against the current 3930 would mean picking one again afterwards. Every absolute figure below
 is against that 3930 and inherits the same expiry.
+
+**That retake is not merely pending, it is held** — see _"It arrived without a retake,
+deliberately"_ above, which is the reason it did not happen the moment `DIVE_UUID` made it one
+command. So this lever stays unpulled for longer than "the next time someone retakes the dive shot"
+suggests, and the expiry above is not a short one.
 
 The figures are measured rather than reasoned about, by putting the row's markdown through GitHub's
 own `/markdown` API, styling the HTML that comes back with the `github-markdown-css` distribution of

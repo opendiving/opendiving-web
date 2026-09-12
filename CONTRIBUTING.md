@@ -131,6 +131,11 @@ newly-named shot on that README, which names the images it renders one at a time
 files; it does not lay out anyone's page, least of all another repository's. Until that edit is made
 there, the two front pages show different sets, and only the files they share are identical.
 
+The subjects — which dive, which gear item, which dive site — are picked out of the account's own
+log and so move between runs. `DIVE_UUID=<uuid>` pins the dive when the pick is a dull one, and
+throws rather than falling back if that dive cannot be read or has no recording to chart. The other
+two have no equivalent.
+
 Every shot uses one width, and the year the two dashboard charts are parked on is a constant beside
 it at the top of `scripts/screenshots.mjs`. No dimension is a round number — 1024 is `lg`, where the
 detail pages stop stacking their sidebar, and the heights are measured in the page moments before

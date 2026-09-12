@@ -4,6 +4,9 @@
 //   npm run screenshots -- you@example.com             # all of them
 //   npm run screenshots -- you@example.com dashboard   # just the named ones
 //
+//   DIVE_UUID=<uuid> npm run screenshots -- you@example.com dive-detail
+//                                                      # that dive, not the ranked one
+//
 // Needs the API up (`docker compose up` in opendiving-api) and the dev server on
 // http://localhost:3000. It signs in as the given account by requesting a magic link
 // and reading the token back out of the API container's log, so it only works against
@@ -130,6 +133,23 @@ if (
   process.exit(1);
 }
 
+// The dive the `dive-detail` shot is of, when the rank in `pickDive()` cannot tell the
+// candidates apart. The rank is a count and counts tie: in a log whose dives each came off
+// one computer every candidate scores one, so the winner is whichever is most recent - and
+// recency is not a property worth photographing. Set, this is used as given and the ranking
+// is skipped rather than run and overruled; absent - the ordinary case - nothing changes.
+//
+// Present but blank is rejected rather than read as absent, in the same spirit as the range
+// check above: `DIVE_UUID=$SOMETHING` with `SOMETHING` unset is a caller that meant to name
+// a dive, and quietly ranking instead is the one outcome this variable exists to rule out.
+const DIVE_UUID = process.env.DIVE_UUID?.trim() ?? null;
+if (DIVE_UUID === "") {
+  console.error(
+    "DIVE_UUID is set but empty - name a dive uuid, or leave it unset",
+  );
+  process.exit(1);
+}
+
 const email = process.argv[2] ?? process.env.SCREENSHOT_EMAIL;
 if (!email) {
   console.error("usage: npm run screenshots -- you@example.com [shot...]");
@@ -195,7 +215,9 @@ async function magicLink() {
 // that photographs best: the dive is whichever recent one has the most recordings
 // carrying samples (only the single-dive endpoint carries them, hence the probing), the
 // gear item is whichever has the most service tracked on it, and the dive site is
-// whichever *placed* one has the most dives at it.
+// whichever *placed* one has the most dives at it. `DIVE_UUID` overrides the first of
+// those where the rank has nothing to go on; the other two have no such escape hatch,
+// because their ranks have not needed one.
 //
 // The queries reuse the access token the app is already sending, lifted off its own
 // requests. The alternatives are both worse: a second magic link runs into the
@@ -214,38 +236,10 @@ async function pickSubjects(token, asked) {
   };
 
   const user = await get("user");
-  const dives = asked("dive-detail")
-    ? await get(`dives?user_uuid=${user.uuid}&page=1&items_per_page=30`)
-    : { data: [] };
 
-  // Ranked, not filtered, and the rank is how many of the dive's recordings carry
-  // samples. Two of those draw the page's whole recordings story - the Recordings
-  // card listing both computers, and the switcher above the chart, which
-  // `DiveProfileCard` only renders once a second recording has a profile - and that
-  // is what this image exists to show. But a log whose dives each came off one
-  // computer is the ordinary case rather than a failed search, and one of those is
-  // an honest picture of the same page. Zero is the only disqualifier: the card
-  // renders nothing at all without samples, so the page would photograph flat and
-  // the `Dive Profile` wait below would time out.
-  //
-  // Every candidate is read, with no early exit, because the best one is not known
-  // until the last has been looked at - the list is in start-time order, not in
-  // anything this ranks on. Ties keep the earliest seen, so a run against a log with
-  // no two-recording dive still picks the most recent single one.
-  let dive = null;
-  let chartedRecordings = 0;
-  for (const candidate of dives.data) {
-    // Only the dive read carries `recordings`; the list response deliberately
-    // leaves them off, so there is no way to rank these without a fetch apiece.
-    const detail = await get(`dive/${candidate.uuid}`);
-    const charted = (detail?.recordings ?? []).filter(
-      (recording) => recording.profile,
-    ).length;
-    if (charted > chartedRecordings) {
-      dive = candidate.uuid;
-      chartedRecordings = charted;
-    }
-  }
+  const { dive, chartedRecordings } = asked("dive-detail")
+    ? await pickDive(get, user.uuid)
+    : { dive: null, chartedRecordings: 0 };
 
   const gear = asked("gear-item")
     ? await get(`gear-items?user_uuid=${user.uuid}&page=1&items_per_page=100`)
@@ -268,6 +262,70 @@ async function pickSubjects(token, asked) {
     site,
     siteDives,
   };
+}
+
+// How many of a dive's recordings have samples to chart - the rank below, and the one
+// thing a named dive is still held to. Only the dive read carries `recordings`; the list
+// response deliberately leaves them off, so there is no way to ask this without a fetch
+// apiece.
+const chartedIn = (detail) =>
+  (detail?.recordings ?? []).filter((recording) => recording.profile).length;
+
+// The dive whose page is worth photographing: the one `DIVE_UUID` names, or failing that
+// the recent one with the most recordings carrying samples.
+//
+// **A named dive skips the ranking entirely** rather than running it and overruling the
+// answer, which saves its request per candidate as well as settling the argument.
+//
+// Both ways a named dive can be wrong throw, and neither falls back to the ranking: a run
+// that quietly photographed a different dive than the one it was handed would say so only
+// in a line of output nobody reads, which is the failure this script keeps re-teaching
+// (see DECISIONS.md). They throw while the subjects are still being picked, before the
+// first shutter press, so a mistyped uuid costs a run and not an image - and only on a run
+// that is actually shooting this page, since `asked` skips the search otherwise.
+async function pickDive(get, userUuid) {
+  if (DIVE_UUID) {
+    const detail = await get(`dive/${DIVE_UUID}`);
+    if (!detail)
+      throw new Error(
+        `DIVE_UUID ${DIVE_UUID}: GET /dive/{uuid} did not answer - check the uuid, and that the dive is one of ${email}'s`,
+      );
+    const chartedRecordings = chartedIn(detail);
+    if (chartedRecordings === 0)
+      throw new Error(
+        `DIVE_UUID ${DIVE_UUID} has no recording carrying samples - the profile card would render nothing and the \`Dive Profile\` wait would time out`,
+      );
+    return { dive: DIVE_UUID, chartedRecordings };
+  }
+
+  const dives = await get(
+    `dives?user_uuid=${userUuid}&page=1&items_per_page=30`,
+  );
+
+  // Ranked, not filtered, and the rank is how many of the dive's recordings carry
+  // samples. Two of those draw the page's whole recordings story - the Recordings card
+  // listing both computers, and the switcher above the chart, which `DiveProfileCard`
+  // only renders once a second recording has a profile - and that is what this image
+  // exists to show. But a log whose dives each came off one computer is the ordinary case
+  // rather than a failed search, and one of those is an honest picture of the same page.
+  // Zero is the only disqualifier: the card renders nothing at all without samples, so the
+  // page would photograph flat and the `Dive Profile` wait below would time out.
+  //
+  // Every candidate is read, with no early exit, because the best one is not known until
+  // the last has been looked at - the list is in start-time order, not in anything this
+  // ranks on. Ties keep the earliest seen, so a run against a log with no two-recording
+  // dive still picks the most recent single one - which is what `DIVE_UUID` is there to
+  // overrule, since that is every dive in most logs.
+  let dive = null;
+  let chartedRecordings = 0;
+  for (const candidate of dives.data) {
+    const charted = chartedIn(await get(`dive/${candidate.uuid}`));
+    if (charted > chartedRecordings) {
+      dive = candidate.uuid;
+      chartedRecordings = charted;
+    }
+  }
+  return { dive, chartedRecordings };
 }
 
 // The site whose page is worth photographing: one that has a position, and among those
@@ -669,8 +727,11 @@ const subjects =
     ? await pickSubjects(bearer, wanted)
     : { dive: null, chartedRecordings: 0, gearItem: null, site: null };
 const { dive, chartedRecordings, gearItem, site, siteDives } = subjects;
+// Says which mechanism chose the dive as well as which dive it chose, so a run whose
+// `DIVE_UUID` went unread - misspelled in the environment, dropped by a wrapper - is
+// visible in its own output rather than only in the image that comes out.
 const diveNote = dive
-  ? `${dive} (${chartedRecordings} charted recording${chartedRecordings === 1 ? "" : "s"})`
+  ? `${dive} (${chartedRecordings} charted recording${chartedRecordings === 1 ? "" : "s"}, ${DIVE_UUID ? "named by DIVE_UUID" : "ranked"})`
   : "(none with samples)";
 if (dive || gearItem || site)
   console.log(
