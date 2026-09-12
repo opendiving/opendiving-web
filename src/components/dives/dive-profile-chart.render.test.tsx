@@ -1370,3 +1370,49 @@ describe("DiveProfileChart with a marker carrying no type", () => {
     expect(readoutText()).toMatch(/Deco ceiling broken/);
   });
 });
+
+describe("DiveProfileChart deco panel scales", () => {
+  // A gradient factor five orders of magnitude over a CNS clock, which is not a
+  // made-up shape: a Suunto Ocean's `gf99` reaches five figures on a
+  // decompression ascent, and the API stores it as the device wrote it.
+  const lopsided = everyChannel({
+    gradient_factor: { times: [0, 300, 600], values: [40, 12575, 90] },
+    cns: { times: [0, 300, 600], values: [0, 80, 124] },
+  });
+
+  const topTick = (container: HTMLElement, axis: string) =>
+    container.querySelector(`[data-deco-panel="${axis}"] text`)?.textContent ??
+    "";
+
+  it("takes a row's scale from the channels on it that are shown", () => {
+    // Unlike the depth axis, which is computed from the ceiling whether or not
+    // the ceiling is plotted: there the hidden channel is bounded by the visible
+    // one, so feeding it in costs nothing and keeps the axis still. A gradient
+    // factor is no such bound, and letting a hidden one set this scale would
+    // draw the CNS clock as a flat line on the baseline.
+    const { container } = render(<DiveProfileChart profile={lopsided} />);
+    expect(Number.parseFloat(topTick(container, "percent"))).toBeGreaterThan(
+      10000,
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: CHANNEL_BUTTONS.gradient_factor }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: CHANNEL_BUTTONS.surface_gradient_factor,
+      }),
+    );
+
+    expect(Number.parseFloat(topTick(container, "percent"))).toBeLessThan(100);
+  });
+
+  it("rounds a fractional scale instead of printing its float noise", () => {
+    // `Math.ceil(1.32 / 0.2) * 0.2` is 1.4000000000000001. `axisTicks` is where
+    // that is already solved, and reading the domain's ends off it rather than
+    // off `domain` directly is what keeps the solution in one place.
+    const { container } = render(<DiveProfileChart profile={lopsided} />);
+
+    expect(topTick(container, "ppo2")).toMatch(/^\d+(\.\d{1,2})? bar$/);
+  });
+});

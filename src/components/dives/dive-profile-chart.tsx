@@ -148,7 +148,12 @@ interface PlottedChannel {
   // and gridlines can read the same one the curve was drawn with rather than
   // recomputing one and hoping it matches. It wouldn't, for pressure: every
   // cylinder shares one domain across all of them.
-  domain: Domain;
+  //
+  // **Null on a deco channel, where it cannot be known yet**: a panel row's scale
+  // is taken over the channels on that row that are *shown*, and nothing here has
+  // seen the selection. See the positioning step for why that differs from
+  // `depthDomain`'s rule.
+  domain: Domain | null;
   // Runs of consecutive samples, as index arrays - never one polyline across a
   // sensor dropout, and never a run too short to draw.
   segments: number[][];
@@ -169,10 +174,14 @@ interface PlottedChannel {
 }
 
 // The same channel once the selection is known, and therefore once there is a
-// rect to map it into. `y` is deliberately not on `PlottedChannel`: a deco
-// channel's row depends on which *other* deco channels are switched on, and
-// `channels` is built before any of that is decided.
-type PositionedChannel = PlottedChannel & { y: (value: number) => number };
+// scale and a rect to map it into. Neither `y` nor a concrete `domain` can sit on
+// `PlottedChannel`: a deco channel's row, and the numbers down the side of it,
+// both depend on which *other* deco channels are switched on, and `channels` is
+// built before any of that is decided.
+type PositionedChannel = Omit<PlottedChannel, "domain"> & {
+  domain: Domain;
+  y: (value: number) => number;
+};
 
 // Module-level so the reference is stable across renders - see
 // `subscribeToNothing`. `useSyncExternalStore` re-reads whenever this identity
@@ -426,16 +435,6 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
             : null;
         })
         .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
-      if (built.length === 0) continue;
-
-      // One domain across the row, from every channel on it whether or not it is
-      // currently plotted - the same rule `depthDomain` follows, and for the same
-      // reason: an axis that moved when a sibling was toggled would shift the
-      // curves under the diver's eyes for no change in the data. From the drawn
-      // values, so a sample the chart dropped cannot stretch it.
-      const domain = niceDomain(
-        built.flatMap((entry) => drawnValues(entry.series, entry.drawn)),
-      );
       for (const entry of built) {
         plotted.push({
           key: entry.key,
@@ -443,7 +442,9 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
           axis,
           label: PROFILE_CHANNELS[entry.key].label,
           series: entry.series,
-          domain,
+          // Decided in the positioning step, from the channels on this row that
+          // are actually shown.
+          domain: null,
           segments: entry.segments,
           gapSeconds: entry.gapSeconds,
           drawn: entry.drawn,
@@ -574,26 +575,55 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
     availableChannels.filter((key) => visible.includes(key)),
   );
 
-  // The shown channels, now that there is a rect to map each into. A deco
+  // One scale per panel row, over the channels on that row that are **shown** -
+  // which is deliberately not the rule `depthDomain` follows for depth and the
+  // ceiling.
+  //
+  // There the hidden channel's values go in whether or not it is plotted, so the
+  // axis does not shift under the diver's eyes when the ceiling is toggled; it
+  // costs nothing, because a ceiling is always shallower than the depth it was
+  // computed at. Here it would cost the row: a Suunto's `gf99` reaches five
+  // figures on a decompression ascent, and letting a hidden gradient factor set
+  // the percent row's scale would draw a CNS clock of 23 % as a flat line on the
+  // baseline. A gradient factor is not a bound on a CNS clock the way a ceiling
+  // is a bound on depth, so there is nothing to buy the stillness with.
+  const panelDomains = new Map<ProfileAxisKey, Domain>(
+    placement.panels.map((axis) => [
+      axis,
+      niceDomain(
+        channels
+          .filter(
+            (channel) =>
+              channel.axis === axis && visible.includes(channel.channelKey),
+          )
+          .flatMap((channel) => drawnValues(channel.series, channel.drawn)),
+      ),
+    ]),
+  );
+
+  // The shown channels, now that there is a scale and a rect for each. A deco
   // channel's row is its axis's position among the panels, which is exactly the
   // thing that could not be known while `channels` was being built.
   const shown: PositionedChannel[] = channels
     .filter((channel) => visible.includes(channel.channelKey))
-    .map((channel) => {
+    .flatMap((channel) => {
       const panelIndex = placement.panels.indexOf(channel.axis);
+      const domain = channel.domain ?? panelDomains.get(channel.axis);
+      // Unreachable: a channel is either on the depth plot with a domain of its
+      // own, or on a panel row that `placement` grew *because* it is shown.
+      if (!domain) return [];
+
       const { inverted } = PROFILE_CHANNELS[channel.channelKey];
-      return {
-        ...channel,
-        y:
-          panelIndex >= 0
-            ? scaleY(
-                channel.domain,
-                panelTop(panelIndex),
-                PANEL_HEIGHT,
-                inverted,
-              )
-            : scaleY(channel.domain, PADDING.top, PLOT_HEIGHT, inverted),
-      };
+      return [
+        {
+          ...channel,
+          domain,
+          y:
+            panelIndex >= 0
+              ? scaleY(domain, panelTop(panelIndex), PANEL_HEIGHT, inverted)
+              : scaleY(domain, PADDING.top, PLOT_HEIGHT, inverted),
+        },
+      ];
     });
 
   const chartFoot = chartBottom(placement.panels.length);
@@ -835,14 +865,20 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
               can share one of these rows, so numbers in any one of them would be
               claiming the scale for that curve. The depth plot's coloured-edge
               rule holds where it was written, on an edge one channel owns. */}
-              {placement.panels.map((axis, index) => {
+              {placement.panels.map((axis) => {
                 const row = shown.find((channel) => channel.axis === axis);
                 if (!row) return null;
                 const suffix = axisUnitSuffix(axis, units);
+                // The domain's own ends, taken through `axisTicks` rather than
+                // read off `domain` directly: that is where the fractional-step
+                // rounding lives, and without it a ppO₂ row is labelled
+                // `1.4000000000000001`.
+                const ticks = axisTicks(row.domain);
+                const bounds = [ticks[ticks.length - 1], ticks[0]];
 
                 return (
                   <g key={axis} data-deco-panel={axis} aria-hidden>
-                    {[row.domain.max, row.domain.min].map((tick) => (
+                    {bounds.map((tick) => (
                       <line
                         key={tick}
                         className="text-border"
@@ -854,7 +890,7 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
                         strokeWidth={1}
                       />
                     ))}
-                    {[row.domain.max, row.domain.min].map((tick, position) => (
+                    {bounds.map((tick, position) => (
                       <text
                         key={tick}
                         x={PADDING.left - 6}

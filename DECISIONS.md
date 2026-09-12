@@ -17085,8 +17085,20 @@ colours would be claiming the scale for that curve. The depth plot's rule holds 
 — on an edge that one channel owns.
 
 Two labels per row rather than `axisTicks`'s four or five: 11-unit type collides with itself in a
-46-unit row. The top one carries the unit (`40 min`, `1.5 bar`, `100%`) and the bottom one is a
-bare number, which names the scale without spending a second line on a caption.
+46-unit row. The top one carries the unit (`40 min`, `1.5 bar`, `100%`) and the bottom one is a bare
+number, which names the scale without spending a second line on a caption. Both are still read
+_through_ `axisTicks` rather than off `domain` directly — that is where the fractional-step rounding
+lives, and `Math.ceil(1.32 / 0.2) * 0.2` is `1.4000000000000001`.
+
+**A panel row is scaled from the channels on it that are shown**, which is deliberately not the rule
+`depthDomain` follows. There the hidden channel's values go in whether or not it is plotted, so the
+axis does not shift when the ceiling is toggled — and it costs nothing, because a ceiling is always
+shallower than the depth it was computed at. Here it would cost the row. A `gf99` of 12 575 beside a
+CNS clock of 23 % is not a hypothetical, and a hidden gradient factor setting the percent row's
+scale would draw the CNS as a flat line on the baseline. **Stillness is bought with a bound, and
+there is no bound here** — a gradient factor is not a ceiling on a CNS clock — so the domain is
+taken over what is on the row, and `PlottedChannel.domain` is null for a deco channel until the
+selection is known.
 
 **The crosshair runs the full height and the hit target covers the panel too.** It is one instant of
 one dive; a crosshair stopping at the depth plot's baseline would leave a panel dot with no line to
