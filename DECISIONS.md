@@ -8672,7 +8672,10 @@ plumbing. The job reads the same conventional title the check above it validated
 retitled from `feat!:` to `fix:` does not stay in the Breaking section forever. It is gated to
 same-repo PRs: on a fork PR the token is read-only whatever the workflow asks for, and an ungated
 step would turn a _required_ check red on every external contribution, which is exactly the wrong
-week for it when the repos go public.
+week for it when the repos go public. **They went public on 2026-09-12**, so the gate stopped being
+a precaution against a future week and started earning its place the same day; fork PRs are now the
+ordinary case rather than the one being planned for, and `semantic-title` is one of the required
+checks the `main` ruleset names.
 
 ## The install lives in the product repository, and this README points at it
 
@@ -8728,18 +8731,23 @@ The "One-command self-hosting" roadmap bullet was removed rather than reworded, 
 forward-dated basis: it and the new section describe one feature, and keeping both would leave the
 file promising in one place what it documents in another.
 
-**One sentence in that paragraph is forward-dated again, deliberately, and this is the record of
-it.** "It is also where the instance this project runs itself is named, for anyone who would rather
-not run one" is true of the front door only once the front door says so, and today it does not — the
+**One sentence in that paragraph was forward-dated deliberately, and this is the record of it.
+Settled on 2026-09-12: the front door names `opendiving.app`, and it landed there before the
+repositories went public, so the order below held and the sentence is now simply true.** Nothing
+here needs deleting; what follows is why it was written ahead of itself and what the test was. "It
+is also where the instance this project runs itself is named, for anyone who would rather not run
+one" was true of the front door only once the front door said so, and for a while it did not — the
 project runs an instance, but naming its address is a change over there, not here. Writing the
 pointer without the address is the whole point: this README should say _where_ that fact lives
 rather than carry a copy of it, because a URL duplicated into three repositories is a URL that goes
 wrong in two of them, and the same reasoning already sends install, configuration and release
-questions to the same place. The order is the other half. The address lands at the front door before
-any of these repositories is public, and the flip to public is what a stranger's first read depends
-on — so the window in which the sentence is ahead of itself is a window nobody outside the project
-can see, the same window the `security/advisories/new` link in `SECURITY.md` sits in. If that order
-ever inverts, this sentence is the thing to delete, not to reword.
+questions to the same place. The order was the other half, and it is the part worth keeping now that
+it has been run. The address had to reach the front door before any of these repositories went
+public, because the flip is what a stranger's first read depends on — so the window in which the
+sentence was ahead of itself was a window nobody outside the project could see, the same window the
+`security/advisories/new` link in `SECURITY.md` sat in. Both closed on 2026-09-12, in that order.
+Had the order inverted, this sentence was the thing to delete rather than reword; that is the rule
+to reuse the next time something here is written ahead of a change in another repository.
 
 `SECURITY.md`'s "that includes the instance this project runs itself" does not depend on the same
 order and is not forward-dated. It says which targets are out of scope for active testing, and a
@@ -8950,7 +8958,9 @@ scopes it uses. Two commented-out blocks used to illustrate this from inside `co
 "Comment PR with quality report" step calling `issues.createComment`, which would have wanted
 `pull-requests: write`, and a `dependency-review` job, which would have wanted nothing beyond
 `contents: read`. Both were deleted in the pre-publication sweep; see "Dead commented-out blocks
-came out before the repository went public" below.
+came out before the repository went public" below. The `dependency-review` job is live again since
+2026-09-12 and is still the second of those two cases — it reads and writes nothing, so it runs on
+the workflow-level `contents: read` and declares no block of its own.
 
 The api repo's `linting.yml`, `tests.yml` and `type-checking.yml` had the same gap, and have since
 been given the same two lines — the same way its `publish-image.yml` and `pr-title.yml` already
@@ -8970,9 +8980,9 @@ already, and which parts of the boilerplate a template would have supplied are m
 **The primary channel is GitHub's private vulnerability reporting** — `security/advisories/new` on
 this repository — because it is private by construction, keeps the thread and the eventual advisory
 in one place, and credits the reporter without anyone having to remember to. It is a repository
-setting rather than a file (Settings → Code security), and it gets switched on when these repos go
-public. That ordering is fine and not a gap: while the repo is private, nobody who would read
-`SECURITY.md` can reach it either.
+setting rather than a file (Settings → Code security), and it got switched on when these repos went
+public — **done 2026-09-12**, in the same sitting as the flip. That ordering was fine and not a gap:
+while the repo was private, nobody who would read `SECURITY.md` could reach it either.
 
 **`security@opendiving.app` is the second channel, and it is a real inbox.** It has to be, which is
 the whole point of writing this down. `security@` was literally one of the three invented addresses
@@ -9130,10 +9140,13 @@ and three smaller ones carry it:
 
 Verified rather than assumed, by running `renovate --platform=local --dry-run=extract` against this
 repository before committing to the config — via `ghcr.io/renovatebot/renovate`, because Renovate 44
-declares `node ^24.11.0` and refuses to start on a newer local Node. It extracts 96 dependencies
-across 9 files: `npm` 46 (the 45 in `package.json` plus `engines.node`, with `package-lock.json`
-correctly picked up as its lock file), `github-actions` 43, `dockerfile` 2, `nvm` 1, and the regex
-manager's 4. `renovate-config-validator` is the cheaper half of the same check and catches a
+declares `node ^24.11.0` and refuses to start on a newer local Node. On that run it extracted 96
+dependencies across 9 files: `npm` 46 (the 45 in `package.json` plus `engines.node`, with
+`package-lock.json` correctly picked up as its lock file), `github-actions` 43, `dockerfile` 2,
+`nvm` 1, and the regex manager's 4. Those figures are the shape of that run rather than a standing
+count — every `uses:` added to a workflow moves the `github-actions` one, and three have been added
+since — and what they were checking is that each manager sees something, which is the part re-run
+the same way. `renovate-config-validator` is the cheaper half of the same check and catches a
 misspelled option without a container; both commands are written down in CONTRIBUTING.md so the next
 person changing that file does not have to rediscover them.
 
@@ -9215,18 +9228,23 @@ editable by whoever contributes to _this_ repository. `node` reads a script from
 The rest of the design is the api's, and is repeated here only where this repository changes the
 answer:
 
-- **The alert is an issue, not a code-scanning alert**, because SARIF upload needs GitHub Advanced
-  Security on a private repository and this one is private until it isn't. A detection mechanism
-  that only starts working after a settings change nobody has made is not detection. When the
-  repository goes public, `upload-sarif` is what to replace that step with.
+- **The alert was an issue, not a code-scanning alert — both instructions in this bullet are now
+  done, 2026-09-12.** SARIF upload needed GitHub Advanced Security on a private repository, and this
+  one was private until it wasn't; a detection mechanism that only starts working after a settings
+  change nobody has made is not detection. The instruction the bullet carried — when the repository
+  goes public, `upload-sarif` is what to replace that step with — was carried out on the day of the
+  flip. "The alert arrives where it can be acted on, and the scan replaces the whole set" below is
+  the record of the replacement and of what it cost.
 - **One issue, edited in place, keyed on a fingerprint** of the sorted set of fixable CVE ids and
   deliberately not the digests: a rebuild that fails to clear a CVE changes every digest without
-  changing the problem. The clean-scan close rewrites the body _before_ closing, which is what keeps
-  the "same CVE set, leave it closed" suppression honest — closing without it would leave the issue
-  carrying the last vulnerable fingerprint, making this workflow's own close indistinguishable from
-  a human dismissal, so a recurrence would match and never alert again. The empty set hashes to
-  `e3b0c442…`, which no real finding collides with.
-- **Findings fail the PR job and never the scheduled one.** The scheduled job's output is an issue,
+  changing the problem. The clean-scan close rewrote the body _before_ closing, which is what kept
+  the "same CVE set, leave it closed" suppression honest — closing without it would have left the
+  issue carrying the last vulnerable fingerprint, making this workflow's own close indistinguishable
+  from a human dismissal, so a recurrence would match and never alert again. The empty set hashes to
+  `e3b0c442…`, which no real finding collides with. **Retired 2026-09-12 with the issue itself**; it
+  is kept here because it is the reasoning a later hand-rolled alert surface would have to redo, and
+  the section below says why code scanning gets it for nothing.
+- **Findings fail the PR job and never the scheduled one.** The scheduled job's output is an alert,
   so a red X would add nothing and would train someone to ignore a red X on a security workflow. It
   does fail loudly in the one case that would otherwise look like good news: release tags exist but
   no image alias resolves, which is a broken login or a missing package rather than an absence of
@@ -9244,21 +9262,23 @@ answer:
   only published image at all; the section on the edge channel has the rest. Widening the release
   half is one line shorter and strictly worse: a dispatch only ever repoints the aliases of the
   version it names, so a finding on an older minor would survive every rebuild, return on the next
-  morning's scan, and — because a never-rebuilt image keeps accruing _new_ advisories — open a fresh
-  issue each time the previous was closed. Widening the scan means first widening the support
+  morning's scan, and — because a never-rebuilt image keeps accruing _new_ advisories — grow the
+  alert set again each time it was cleared. Widening the scan means first widening the support
   policy, and that is a decision in `SECURITY.md`.
 
-**The tracking issue is public, and `SECURITY.md` says not to open public issues for
+**The scanner's alerts are not private, and `SECURITY.md` says not to open public issues for
 vulnerabilities. Both are right**, and `SECURITY.md` now says where the line is so that the next
 person to notice does not either delete the workflow or quietly loosen the policy. That rule
-protects an _undisclosed defect in code this project ships_: opening an issue for one starts the
-exposure clock before a fix exists. A base-image finding is the other thing entirely — it carries a
-CVE id because Alpine and NVD published it first, since matching an installed version against a
-public advisory database is the whole of what Trivy does, so the issue discloses nothing a reader
-could not get by running `trivy image` against the same public tag. What it adds is _notification_,
-not disclosure. Routing that through private vulnerability reporting instead would put a daily cron
-job into the one inbox that must not be noisy. The distinction to preserve: already-public advisory
-about shipped bytes → issue; undisclosed defect in our own code → the private channel. A scan that
+protects an _undisclosed defect in code this project ships_: disclosing one before a fix exists
+starts the exposure clock. A base-image finding is the other thing entirely — it carries a CVE id
+because Alpine and NVD published it first, since matching an installed version against a public
+advisory database is the whole of what Trivy does, so it discloses nothing a reader could not get by
+running `trivy image` against the same public tag. What it adds is _notification_, not disclosure.
+Routing that through private vulnerability reporting instead would put a daily cron job into the one
+inbox that must not be noisy. **This argument was written when the alert was a public issue and it
+did not move when the surface did** — that is the point of stating it about the finding rather than
+about the destination. The distinction to preserve: already-public advisory about shipped bytes →
+the scanner's own surface; undisclosed defect in our own code → the private channel. A scan that
 ever starts reporting the second kind — a `--scanners secret` pass finding a committed credential —
 has crossed the line and needs a different destination, which is why `--scanners vuln` is explicit
 on both jobs rather than left to the default.
@@ -9278,13 +9298,114 @@ direction.
 **The permissions are the narrowest that work, which required knowing why one of them is there at
 all.** Both jobs declare their own block, because a job-level block replaces the workflow-level one
 rather than adding to it — so the PR job's token cannot write anything even though the scheduled job
-in the same file needs `issues: write`. The non-obvious scope is `packages: read` on the PR job,
+in the same file needs a write scope (`issues: write` when this was written;
+`security-events: write` since 2026-09-12). The non-obvious scope is `packages: read` on the PR job,
 which scans no image: Trivy's vulnerability database is itself an OCI artifact pulled from ghcr.io,
 and anonymous pulls of it are rate-limited per IP across every runner GitHub owns. The
 `docker login` step is what makes that pull authenticated, and without it the check fails
 intermittently for reasons that look nothing like their cause. Neither job asks for
 `packages: write`: the rebuild that answers a finding is a human dispatching Publish Image, which
 already has it.
+
+## The alert arrives where it can be acted on, and the scan replaces the whole set
+
+On 2026-09-12 this repository went public and the scheduled scan stopped filing issues. It uploads
+SARIF to code scanning instead, which is what the section above always said to do on this day. The
+substance of the workflow did not change: the same targets, the same two halves of each image, the
+same remedy prose. What changed is the destination, and with it a page of bookkeeping.
+
+**The gain is that "is it fixed yet" stops being something the workflow has to answer.** The issue
+needed a fingerprint over the fixable CVE ids, a rewrite of its own body before closing, and a "same
+set, leave it closed" suppression, and every one of those existed to tell _this problem, still
+there_ from _something new_. An upload replaces the whole alert set for its category, so a finding
+that a scan no longer returns closes itself and a recurrence opens fresh. That machinery is gone
+rather than ported, and the bullets above keep its reasoning because a hand-rolled surface would
+have to rediscover all of it.
+
+**One upload, one category, and each half is load-bearing.** `upload-sarif`'s `sarif_file` takes a
+directory and combines every `.sarif` under it into one analysis, which is why the two or three
+images in the scan set are written to `sarif/` and uploaded together instead of one call per image —
+separate uploads under one category overwrite each other, and the last image scanned would be the
+only one with alerts. The category is the key GitHub matches an upload against the previous one, so
+it is a constant (`published-images`). A category per image reads as the tidier design and is the
+trap: every `X.Y.Z` alias leaves the scan set one release later, and a category never uploaded to
+again keeps its alerts open forever — the same never-cleared-alert failure the older-minors decision
+above exists to avoid, arrived at from the other end.
+
+**The scan runs twice per image now, and `--ignore-unfixed` is the difference.** Only findings with
+a published fix become alerts, because an alert with no move attached is what this workflow exists
+not to produce; the unfixable ones stay a number in the run summary, where they are evidence about
+the base image rather than a task. The first pass keeps everything for that summary. `trivy convert`
+cannot derive the second pass from the first one's JSON — it filters on `--severity` and has no
+`--ignore-unfixed` — so it is a second `trivy image`, which is cheap because the image is in Trivy's
+local cache by then. The markdown report survives for the same reason: code scanning carries a
+finding and its severity, not which of two remedies applies to it, and the split between "dispatch
+Publish Image at this `v` tag" and "merge the bump and cut a release" is the whole value of the
+report.
+
+**The api repository's copy of this workflow has not moved yet, and that is a port owed in that
+direction** — the same one its `declare -A TAGS_FOR` bug is. Until it does, the two files differ in
+more than the node-versus-`python3` report the section above calls their only deliberate divergence:
+this one uploads SARIF and that one still files an issue. The divergence is temporary and the fix is
+to port this, not to describe it as a second deliberate difference.
+
+**It does not collide with CodeQL default setup**, which is configured on this repository. Default
+setup conflicts with an _advanced_ CodeQL workflow, because both would upload CodeQL results for the
+same language; a third-party SARIF upload carries its own tool name and its own category and is
+independent of it.
+
+**The one thing the move does not do is tidy up after itself.** Issue #196, the last `image-cve`
+issue, is still open and nothing edits or closes it any more — the step that did is deleted. It
+needs closing by hand, and `CONTRIBUTING.md` and `SECURITY.md` both say so rather than pretending
+the surface changed retroactively. The `image-cve` label is left in place for the same reason: it is
+still attached to that issue.
+
+## `dependency-review` is a gate on the diff, and its licence list was derived
+
+The job came back on 2026-09-12 for the reason it left. The action's README states where it runs —
+public repositories, and private ones with a GitHub Advanced Security licence — and this repository
+was private with no such licence. It had sat commented out for as long as that was true, and the
+pre-publication sweep deleted it outright rather than leave scaffolding, so this is a job rebuilt
+rather than uncommented, which is what let the defect below be found.
+
+**It is not a second copy of the Trivy PR check.** Trivy scans the whole tree a change would ship;
+this compares the PR's manifests against the base commit's and reports only what the change
+introduces. The overlap on vulnerabilities is real and deliberate — `fail-on-severity: moderate`
+here is stricter than Trivy's HIGH, because a moderate advisory arriving with a dependency somebody
+is adding right now is cheap to decline and expensive to remove a year later. The half with no
+overlap at all is the licence check.
+
+**Restoring the deleted block's licence list verbatim would have produced a required check that goes
+red on a `caniuse-lite` bump.** That block named
+`MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, 0BSD` and had never run once, so nothing had ever
+tested it against a real tree. It fails on 17 of the 579 packages `npm ci` installs, and six of
+those — `caniuse-lite` (CC-BY-4.0), `lru-cache` and `minimatch` (BlueOak-1.0.0), `argparse`
+(Python-2.0), `mdn-data` (CC0-1.0) and `lightningcss` (MPL-2.0) — are transitive dependencies of
+Next.js and Tailwind that move on ordinary bumps. A _changed_ dependency is licence-checked exactly
+like an added one, so the first Renovate batch would have turned a gating check red with no remedy
+but widening the list. The list in the workflow is therefore the union of those six licences and
+every licence the tree already ships. Derive it again rather than editing it by hand:
+
+```bash
+node -e 'const fs=require("fs"),p=require("path");const s=new Set();(function w(d){for(const e of fs.readdirSync(d,{withFileTypes:true})){if(!e.isDirectory())continue;const q=p.join(d,e.name);if(e.name.startsWith("@")){w(q);continue;}const j=p.join(q,"package.json");if(fs.existsSync(j)){const m=JSON.parse(fs.readFileSync(j,"utf8"));s.add(typeof m.license==="string"?m.license:(m.license||{}).type||"UNKNOWN");}const n=p.join(q,"node_modules");if(fs.existsSync(n))w(n);}})("node_modules");console.log([...s].sort().join("\n"));'
+```
+
+**The list is not a compatibility check, and reading it as one would lead somewhere wrong.** This
+project is AGPL-3.0, which every licence on it flows into — including the `LGPL-3.0-or-later` that
+`@img/sharp-libvips-*` carries and the `MPL-2.0` of `lightningcss`. What the gate buys is that a
+licence nobody has looked at arrives as a red check instead of as a line in a lockfile. Widening it
+is that look having happened, recorded in a diff.
+
+**The action is pinned on a major tag, not by SHA**, because `actions/dependency-review-action` is
+GitHub's own. That is the split "`pinDigests` is `false`, and that is load-bearing rather than a
+default" describes and Renovate renews; the same goes for `github/codeql-action/upload-sarif@v4` in
+`vulnerability-scan.yml`. The third-party actions in `publish-image.yml` and the Trivy setup are the
+SHA-pinned ones.
+
+**Its check name is `dependency-review`**, which matters because the `main` ruleset's required-check
+list is exact: a job that runs but is not named there does not gate anything, and a name in the list
+whose job never runs leaves every pull request pending forever. The job declares no `name:`, so the
+check is the job id.
 
 ## The sign-in email carries a code as well as a link, and the code is keyed on the request, not the address
 
@@ -9593,16 +9714,19 @@ longer asks for them. (ii) The instruction below to target _every_ branch with t
 `required_signatures` ruleset the day these repos go public — it is every branch _except_ `main`,
 because with required signatures on `main` GitHub refuses to squash-merge a pull request you did not
 author, and squash is the only merge method enabled here, so every outside PR would be unmergeable
-on day one. (iii) The description below of the Claude hook as rejecting the command before it runs —
-it now asks git first and rejects only where the key that command would disable is reported on. (iv)
-The claim below that the hook's _registration_ is committed: `.claude/settings.json` is gone and the
-`PreToolUse` entry lives in the untracked `.claude/settings.local.json`. Both hook scripts are still
-committed. The premise under the claim — that agents only ever see committed files — did not change;
-it still holds, which is exactly why the registration no longer reaches those sessions. Everything
-else here stands, which is why the section is kept whole: that no git setting can prevent an inline
-override, the push hook's mechanics and its `%G?`-of-`N` reasoning, the
-`.claude/*`-versus-`.claude/` re-inclusion mechanic, the Python-version fail-open note, and the
-bare-command-substitution post-mortem.
+on day one. **Done on 2026-09-12, as corrected**: the repositories went public and a
+`required_signatures` ruleset now targets every branch except `main`, beside a `main` ruleset that
+requires a pull request and allows squash only, and a `tags` ruleset protecting `v*`. The
+instruction below is history; this is what was actually applied. (iii) The description below of the
+Claude hook as rejecting the command before it runs — it now asks git first and rejects only where
+the key that command would disable is reported on. (iv) The claim below that the hook's
+_registration_ is committed: `.claude/settings.json` is gone and the `PreToolUse` entry lives in the
+untracked `.claude/settings.local.json`. Both hook scripts are still committed. The premise under
+the claim — that agents only ever see committed files — did not change; it still holds, which is
+exactly why the registration no longer reaches those sessions. Everything else here stands, which is
+why the section is kept whole: that no git setting can prevent an inline override, the push hook's
+mechanics and its `%G?`-of-`N` reasoning, the `.claude/*`-versus-`.claude/` re-inclusion mechanic,
+the Python-version fail-open note, and the bare-command-substitution post-mortem.
 
 Every commit here is meant to be signed, and for a while about half of them were not — this repo was
 the worse of the two. The commits that came out _Unverified_ were not the victims of an expired key
@@ -9652,9 +9776,12 @@ unavailable while these repos are private under a free organisation — the rule
 branch-protection endpoints both answer `403 Upgrade to GitHub Pro or make this repository public`.
 When the repos go public, turn it on and target _every_ branch: pull requests are squash-merged and
 GitHub signs that commit itself, so a `main`-only rule would pass on a branch of entirely unsigned
-work, which is the exact state this section exists to describe. The sibling
-[opendiving-api](https://github.com/opendiving/opendiving-api) repo carries the long-form version of
-this reasoning in its own `DECISIONS.md`.
+work, which is the exact state this section exists to describe. **Turned on 2026-09-12, with the one
+correction the superseding note at the top of this section makes: every branch _except_ `main`,
+because required signatures on `main` and squash-only merging cannot both hold for a PR you did not
+author.** The reasoning for _every branch_ is why the exception is that narrow rather than a
+`main`-only rule. The sibling [opendiving-api](https://github.com/opendiving/opendiving-api) repo
+carries the long-form version of this reasoning in its own `DECISIONS.md`.
 
 ## Passkeys come from two places, and the enrollment nudge is the one that matters
 
@@ -10121,7 +10248,10 @@ was sent off to configure GPG for a typo fix. So the demand went. The _Pull requ
 commits do not need to be signed, the `git config core.hooksPath .githooks` line moved out of
 _Getting set up_ into a new _For maintainers_ section, and `AGENTS.md` went conditional on what git
 actually reports. Signing itself is unchanged: these machines still sign, both hooks are still
-committed, and the ruleset above still lands the day these repos are public.
+committed, and the ruleset above landed on 2026-09-12, the day these repos went public — on every
+branch except `main`, which is the exception that section's superseding note explains. It does not
+put the demand back on contributors: an outside contributor's branch lives on their own fork, which
+no ruleset here reaches, and what lands on `main` is the squash commit GitHub signs itself.
 
 **Squash-only is load-bearing now, and it is a repo setting nobody should tidy later.** `main`'s
 provenance never came from the branch — pull requests are squash-merged, GitHub creates that commit
@@ -10301,21 +10431,24 @@ reasoning for bugs: authentication, stored data, imports and the worker are all 
 reporter who already knows that skips a round-trip, and one who does not is told to file here anyway
 rather than being made to choose correctly.
 
-Two of those URLs 404 for a stranger today, deliberately, and for two different reasons. Discussions
-_are_ on, on the front door — the feature works on a private repository in an organisation — so that
-link is live and merely invisible until the repositories are public. Private vulnerability reporting
-is the one that genuinely does not exist yet: it is a switch GitHub offers only on a public
-repository, and it gets flipped in the same sitting as the flip to public. Writing both links now
-means the forms are correct on the day that happens rather than a to-do that surfaces from a
-stranger's confusion; the alternative — links added later — is the one that gets forgotten. The
-security link's wording tracks [SECURITY.md](SECURITY.md), which names that same URL as the primary
-channel.
+Two of those URLs used to 404 for a stranger, deliberately, and for two different reasons. **Both
+resolve as of 2026-09-12** — the repositories went public and private vulnerability reporting was
+switched on in the same sitting — so nothing here is outstanding; what follows is why they were
+written before they worked. Discussions were always on, on the front door — the feature works on a
+private repository in an organisation — so that link was live and merely invisible. Private
+vulnerability reporting was the one that genuinely did not exist: it is a switch GitHub offers only
+on a public repository, which is why it was always going to be flipped in the same sitting as the
+flip itself. Writing both links in advance meant the forms were correct on the day that happened
+rather than a to-do surfacing from a stranger's confusion; the alternative — links added later — is
+the one that gets forgotten, and that is the reusable half. The security link's wording tracks
+[SECURITY.md](SECURITY.md), which names that same URL as the primary channel.
 
 `blank_issues_enabled` stays `true`. Forcing every report through a form buys triage a solo
 maintainer does not need, and the things it would wall out — a typo, a question that turned out to
 be a bug, a maintainer filing a note to self — are all things this project wants. The forms are the
-paved path, not a gate. Nothing here affects the `image-cve` issues `vulnerability-scan.yml` opens
-either: those are created through the API, which does not apply templates.
+paved path, not a gate. Nothing here ever affected the `image-cve` issues `vulnerability-scan.yml`
+used to open either: those were created through the API, which does not apply templates — and since
+2026-09-12 that workflow opens no issues at all.
 
 ## Two checks could not have been _required_, and a passing run said nothing about it
 
@@ -17119,13 +17252,18 @@ it can run, and by then rewriting it against the current action is the cheaper h
 anyway. Retrieving the text from history costs one `git log -S` and hands it over with a date
 attached, which is the part that decides whether it is still worth having.
 
-Only one of the three is coming back, and not by uncommenting. A live dependency-review job is a
-public-repository thing anyway — the action reads GitHub's advisory data for the PR's dependency
-diff — so it arrives as its own change once the flip happens, written against the current action.
-Nothing replaces the Snyk step or the PR-comment step: `vulnerability-scan.yml` watches the
-published image and `.github/renovate.json5` watches the manifests, which is the coverage Snyk was
-gesturing at, and a quality report that is a PR comment rather than a failing check is a thing
-people learn to scroll past.
+Only one of the three came back, and not by uncommenting — **done 2026-09-12**, the day of the flip.
+A live dependency-review job is a public-repository thing anyway: the action runs on public
+repositories and on private ones with a GitHub Advanced Security licence, and this was neither. It
+was rewritten against the current action rather than restored, and that is what caught the defect in
+the deleted block's licence allow-list — six of the packages it would have rejected are Next.js and
+Tailwind transitives that move on ordinary bumps, so uncommenting it would have shipped a required
+check that goes red on a `caniuse-lite` bump. "`dependency-review` is a gate on the diff, and its
+licence list was derived" has the whole of it, and it is the best evidence this section has that a
+commented-out block is an untested one. Nothing replaces the Snyk step or the PR-comment step:
+`vulnerability-scan.yml` watches the published image and `.github/renovate.json5` watches the
+manifests, which is the coverage Snyk was gesturing at, and a quality report that is a PR comment
+rather than a failing check is a thing people learn to scroll past.
 
 The permissions rationale at the top of `code-quality.yml` used to explain itself through the
 commented-out comment step ("reviving it means giving that job a block of its own"). That was a true
