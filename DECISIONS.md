@@ -3651,6 +3651,56 @@ and nothing counted, and `/dive-sites` caps `items_per_page` at 100, so the whol
 through first. The first placed site seeds the answer, so a log with placed sites and no dives at
 any of them still produces a picture rather than an error.
 
+### The frame does not chase the README row, because it cannot reach it
+
+This shot exists to fill the hole under `gear-item.png` in the two-column row, so the fair question
+is why the two columns still do not end level, and whether the frame should simply be made taller
+until they do. It should not, and the reasons are measurements rather than taste — taken by putting
+the row's markdown through GitHub's own `/markdown` API, styling the HTML that comes back with the
+`github-markdown-css` distribution of GitHub's stylesheet, and measuring the boxes with the
+committed PNGs in them.
+
+**The hole is 1758px and the frame comes to 1648.** `dive-detail.png` is 3930px tall and
+`gear-item.png` 2172, so whatever stacks beneath the gear shot needs 1758 to come level with the
+dive page beside them. The rule above returns 824 CSS px, which is 1648 at the 2x everything here is
+captured at.
+
+**A cell adds leading between two stacked images, and it does not scale with them.** The two are
+separated by a `<br>`, so each takes its own line box and the first carries the font's descent below
+the image's baseline — 6px where the system stack resolves to San Francisco, 7px for Segoe UI, Arial
+or Georgia. That is a constant in the _rendered_ page while the images are scaled to whatever width
+the column has, so the height that comes level is not 1758 but 1758 − leading ÷ scale: 1732 in a
+1012px column, 1716 in a 640px one, and different again for a reader whose browser picks another
+font. **No single committed height is level for every reader.** 1758 is only the height whose error
+is the same few pixels everywhere, which is the best a single figure can do.
+
+**Half of what is left shows at the top, not all of it at the bottom.** Table cells are
+middle-aligned, so the shorter column is centred in the row rather than hung from its top. The
+committed pair sits about 10px inside the row at a 1012px column and 5px at a 640px one, at _both_
+edges — not 20px at the bottom, which is what the raw difference would suggest and what makes this
+worth writing down.
+
+**And the frame is quantized to the dive list's row pitch.** That list runs on an 82px pitch past
+the sidebar card's foot, and by the rule above a frame may end in the gap between two rows but never
+inside one. Below the card those gaps fall at 812–824 and 894–906 CSS px — 1624–1648 and 1788–1812
+captured — while the band that would come level, 858 to 866, is squarely inside the row that runs
+824 to 894, ending 28 to 36px above its bottom border. That is the clipped-row look this rule exists
+to avoid.
+
+**So there are two reachable frames, and the taller one is not level either.** Captured and rendered
+rather than reasoned about: in a 1012px column, 1788 overhangs by about 6.5px at each edge where the
+committed frame falls short by about 9.9, and in a 640px one it is fractionally worse than what is
+here. A third of a visible defect is not worth a figure in this script that encodes the arithmetic
+of a README table — this repository's or the product repository's — because it would go stale the
+first time any of the three images is re-framed, and do it silently.
+
+**What could come level is the pair, not this frame on its own.** `gear-item`'s 1086 is the one
+height here that is written down rather than measured, and moving it moves the hole; two clean
+frames chosen together can sum far closer than either can reach alone. That means retaking an image
+nothing else needs retaken, so it belongs to whoever next has a reason to take both — as does the
+other half of the choice, which is that a row of two columns is only one way to lay three images
+out.
+
 ### The map is photographed to find out whether it drew
 
 `networkidle` is blind to MapLibre. It settles when the tile requests stop arriving, which is before
