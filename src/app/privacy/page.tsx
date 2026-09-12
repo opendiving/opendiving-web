@@ -140,9 +140,10 @@ export default async function PrivacyPage() {
               Those four sections invite you to read the code rather than trust
               this page &mdash; §5 puts it as{" "}
               <em>the source is public, so these claims can be checked</em>{" "}
-              &mdash; and that invitation is open the moment the project&rsquo;s
-              repositories are published. Before then the route that works is
-              the operator&rsquo;s: the{" "}
+              &mdash; and that invitation is open: the project&rsquo;s
+              repositories are public. What they hold is the project&rsquo;s
+              source rather than proof of what this copy runs, so the
+              operator&rsquo;s route stands beside it: the{" "}
               <Link
                 href="/terms"
                 className="underline hover:text-muted-foreground"

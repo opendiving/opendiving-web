@@ -17367,14 +17367,14 @@ about sweeping these pages:
 
 - The privacy page's §1, §5, §11 and §12 invite a reader to check every claim against public source,
   and the terms page's §7 states the publication as a present fact ("The project publishes its own
-  source publicly"). Neither is open while the project's repositories are private, so the block
-  answers the privacy four with the route that works either way - the standing source offer on the
-  Terms page - and §7's own project-operated clause says the public repositories it speaks of are
-  still to come. Enumerating these by eye is what got them wrong the first time: the set was written
-  as §1, §11 and §12, and review found §5's _Open to review_ bullet and §7's sentence making the
-  same claim in different words.
-  `git grep -i "source is public\|publishes its own source\|read the code"` across both pages is the
-  derivation, not a reading of the section list.
+  source publicly"). Neither was open while the project's repositories were private, so the block
+  answered the privacy four with the route that works either way - the standing source offer on the
+  Terms page - and §7's own project-operated clause said the public repositories it speaks of were
+  still to come. **That premise died on 2026-09-12** and the section below says what replaced it.
+  Enumerating these by eye is what got them wrong the first time: the set was written as §1, §11 and
+  §12, and review found §5's _Open to review_ bullet and §7's sentence making the same claim in
+  different words. `git grep -i "source is public\|publishes its own source\|read the code"` across
+  both pages is the derivation, not a reading of the section list.
 - The terms page's §13 says "There is deliberately no project address printed here", which stops
   being true the moment the block prints one. The block's own paragraph scopes it: what is still not
   printed is an address for the project as the software's _author_, and the one on the page belongs
@@ -17394,6 +17394,48 @@ dropped is the failure that would otherwise reach a reader.
 find an empty page. Their tests call `render(await PrivacyPage())`. The terms page had no test at
 all before this; a page with one rendering is a page review reads, and the second rendering is the
 one review cannot see.
+
+## The source offer names the repositories, and still leads with the request
+
+The three sentences above that hedged on the repositories being private were written on 2026-09-12
+and were false by the end of that day: `opendiving/opendiving`, `opendiving/opendiving-api` and
+`opendiving/opendiving-web` all went public. Two of them were being served to signed-in people on
+the instance the project runs, in the one place on either page whose subject is where to get the
+source - the terms page's §7 clause said "the public repositories this section speaks of are still
+to come, which is why that offer leads with the request rather than the link", and the privacy
+page's source answer said the invitation to read the code opens "the moment the project's
+repositories are published". A false sentence is bad; a false sentence used to justify withholding a
+link that exists is what made this worth correcting on its own rather than inside a sweep.
+
+**The correction is not "the repositories are public, so §13 is satisfied by a GitHub link", and the
+copy is written to stop that reading from arriving later.** What AGPLv3 section 13 obliges is the
+_operator's_ offer of the source of the _modified version they are running_. A repository is the
+project's source; it is evidence of what this copy runs only once something ties the two together,
+which is the commit the block already points at `/api/v1/health` for. So the block now offers both
+routes unhedged - the request, and the repositories - and the request is still written first,
+because it is the one that does not depend on the running build having come from the project's own
+publishing. The block's own last sentence has always said what happens when it didn't: a `commit`
+reading `unknown`, and the request as the way through. The §7 clause now gives that as its reason
+instead of the publication date, so the two halves of the page argue the same thing.
+
+The privacy page's answer moved the same way and for the same reason: the invitation to check the
+claims is open now, and the operator's standing offer stands _beside_ it rather than as a stand-in
+until publication.
+
+**`PROJECT_SOURCE_URL` is the organisation, not a repository, and that is deliberate.** A copy of
+this app is two images built from two repositories plus the install bundle from a third, so the
+legal pages point at the source of the whole product; `github.com/opendiving/opendiving-web` in the
+footer and the header is this app's own source and a different claim. Its JSDoc used to end "once
+the repositories are public", which is the third survivor of the same premise and the one no reader
+would ever have seen.
+
+**Both render tests pinned the stale sentences**, which is the half worth knowing about this kind of
+copy fix: `app/terms/page.test.tsx` asserted the words "still to come" and
+`app/privacy/page.test.tsx` asserted "open the moment the project's repositories are published", so
+the suite would have gone on certifying the false page. They now assert the replacements, and each
+also asserts the clause that keeps the request leading - a future edit that shortens either page to
+"the repositories are public, so follow the link" fails a test rather than quietly collapsing the
+distinction above.
 
 ## The species credit became a link on the API's side, and the picker needed nothing
 
