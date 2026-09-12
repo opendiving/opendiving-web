@@ -121,12 +121,15 @@ It signs itself in with a magic link read out of the API container's log, so it 
 local stack. Chromium comes from your existing Chrome install (override with `CHROME_PATH`);
 `playwright-core` only drives it, so `npm install` never downloads a browser.
 
-The same images are on the front page of
+Copies of these images are on the front page of
 [opendiving/opendiving](https://github.com/opendiving/opendiving), which has no way to retake them —
 the app is here. So the script writes that repository's copies too when a clone of it sits beside
 this one (`../opendiving`, or `PRODUCT_DIR`), from the same shutter press. With no such clone it
 says so and writes only this repository's, which is what a contributor with one checkout gets.
-Committing the regenerated files over there is a separate, manual step.
+Committing the regenerated files over there is a separate, manual step — and so is putting a
+newly-named shot on that README, which names the images it renders one at a time. This script writes
+files; it does not lay out anyone's page, least of all another repository's. Until that edit is made
+there, the two front pages show different sets, and only the files they share are identical.
 
 Every shot uses one width, and the year the two dashboard charts are parked on is a constant beside
 it at the top of `scripts/screenshots.mjs`. No dimension is a round number — 1024 is `lg`, where the

@@ -3701,9 +3701,9 @@ has been fixed.
 
 ### The same script writes the product repository's copies
 
-`opendiving/opendiving` renders these same images on its own front page — the page the project is
-judged on — and has nothing that could retake them, because the app they are of is here. So `shot()`
-writes both trees from one shutter press: `docs/screenshots/` in this repository, and
+`opendiving/opendiving` renders copies of these images on its own front page — the page the project
+is judged on — and has nothing that could retake them, because the app they are of is here. So
+`shot()` writes both trees from one shutter press: `docs/screenshots/` in this repository, and
 `$PRODUCT_DIR/docs/screenshots/` when a clone of the product repo sits beside this one, defaulting
 to `../opendiving` in the same `../sibling` shape `API_DIR` already uses. An absent clone is a
 printed note and not a failure — a contributor with one checkout has to be able to run this, which
@@ -3713,6 +3713,15 @@ is the whole reason the default is a guess rather than a requirement.
 down, the subject dive is whichever recent one has a profile, and two shots taken a second apart are
 not the same image. Writing the buffer twice is what makes the copies identical rather than merely
 similar, and similar is the state that has somebody staring at two diffs wondering what changed.
+
+**A new shot reaches that repository as a file, not as a picture on its page**, and the two are
+worth keeping apart when reading the paragraph above. `shot()` writes whatever it takes into both
+trees, so a capture added here lands in the product clone the first time anyone runs the script —
+but that README names the images it renders one at a time, and nothing in this repository edits it.
+`dive-site.png` arrived exactly that way. So the claim this section makes is that the files are
+byte-identical, never that both front pages show the same set: they can legitimately differ for as
+long as it takes somebody to make the other change, in the other repository, where the layout
+decision belongs.
 
 **The rejected alternatives** were hotlinking this repository's raw URLs from the product README —
 which breaks the day either repository is renamed and leaves that README unrenderable in a clone —
