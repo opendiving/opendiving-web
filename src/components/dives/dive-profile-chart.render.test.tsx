@@ -697,12 +697,14 @@ describe("DiveProfileChart depth fill across a dropout", () => {
 describe("DiveProfileChart vertical axes", () => {
   // The reported bug was one cell of this table: with depth and the ceiling both
   // switched off, the left-hand labels vanished and the plot was left with a blank
-  // margin and gridlines running out of it. Swept over all fifteen selections
-  // rather than pinned at that one, because "which channel labels which edge" is a
-  // rule with four inputs and the failing combination was not the obvious one.
+  // margin and gridlines running out of it. Swept over every non-empty selection
+  // of the ten channels rather than pinned at that one, because "which channel
+  // labels which edge" is a rule whose failing combination was not the obvious
+  // one - and the six that take no edge are swept too, since "this selection
+  // leaves both edges alone" is as much a cell of the table as the other kind.
   //
   // Seeded through the remembered selection rather than by clicking, which is the
-  // same path a returning diver takes and needs no fifteen-way click sequence.
+  // same path a returning diver takes and needs no 1 023 click sequences.
   it.each(EVERY_SELECTION)(
     "reads %s off the left edge, and the right only for a second scale",
     (_, keys) => {

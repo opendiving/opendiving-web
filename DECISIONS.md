@@ -5211,14 +5211,22 @@ identical figures either side of a plot invite exactly the reading that they are
 So, as an invariant: **the left edge is labelled whenever anything is plotted, and the right edge
 exactly when the plot holds a second scale.**
 
-`DiveProfileChart vertical axes` sweeps all fifteen non-empty selections and asserts both halves,
-seeded through the remembered selection rather than through fifteen click sequences. The expected
+`DiveProfileChart vertical axes` sweeps every non-empty selection and asserts both halves, seeded
+through the remembered selection rather than through that many click sequences. The expected
 right-hand answer is computed rather than listed — `distinctScales` counts the domains a selection
 puts on the plot, collapsing the ceiling into depth — so the test states the rule instead of
-restating the implementation's fifteen outcomes. Six more tests pin _which_ edge each scale lands on
-by reading back the colour class on the labels, which is the half a count can't see. Confirmed by
-restoring the old `depth ?? ceiling` rule: four cells of the sweep fail, and the one everybody would
-have hand-written — depth plus temperature — is not among them.
+restating the implementation's outcomes one by one. Six more tests pin _which_ edge each scale lands
+on by reading back the colour class on the labels, which is the half a count can't see. Confirmed by
+restoring the old `depth ?? ceiling` rule: cells of the sweep fail, and the one everybody would have
+hand-written — depth plus temperature — is not among them.
+
+**Every count that used to be in this paragraph has been taken out, and the removal is the note.**
+It said fifteen selections, fifteen click sequences and four failing cells, all true of a chart with
+four channels. The deco panel took the selection space to ten channels and 1 023 non-empty rows
+without touching the rule or the test — which is exactly what stating the rule rather than the
+outcomes was for, and exactly why restating the outcome count here was the one part that could go
+stale. See _"The deco readouts got a panel"_ below for what "the plot" means now that there is a
+second one.
 
 **And switching the last channel off returned a bare sentence in place of the whole chart.** The
 card collapsed to two lines, which dragged the legend — the only way back — up the page after the

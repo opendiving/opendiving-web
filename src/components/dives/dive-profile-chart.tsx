@@ -1477,15 +1477,15 @@ function LegendToggles({
               //
               // A circle rather than the diamond or the triangle: those two mean
               // "gas switch" and "a stop" specifically, and one entry standing
-              // for all five types has no business claiming to be one of them.
-              // The circle is already what the two general types draw, and the
-              // crosshair names the particular one in words.
+              // for every type in the vocabulary has no business claiming to be
+              // one of them. The circle is already what the general types draw,
+              // and the crosshair names the particular one in words.
               //
               // Deliberately uncoloured in both states, unlike every swatch
               // above. Marker colour answers "does this join to something else
               // on the chart" - only a gas switch does, in the cylinders' violet
               // - so a coloured legend swatch would be making that claim on
-              // behalf of the four types for which it is false.
+              // behalf of every other type, for which it is false.
               <span aria-hidden className="inline-flex w-4 justify-center">
                 <span className="h-1.5 w-1.5 rounded-full bg-current" />
               </span>
@@ -1531,14 +1531,14 @@ function describeProfile({
     value.toFixed(displayChannel(PROFILE_CHANNELS[key], units).decimals);
   const word = (key: ProfileChannelKey) => channelWord(key, units);
 
-  // **Which extreme says something is per quantity**, and the four that name a
-  // single one are not the four that would be guessed. A maximum NDL is the
-  // device's display cap on almost every recreational dive and says nothing,
-  // while the minimum is the moment the dive came closest to an obligation - the
-  // same call the API makes in choosing which extreme to store. Depth, the
-  // ceiling, time-to-surface and every percentage read the other way, and
-  // temperature and tank pressure are ranges because both ends are a fact about
-  // the dive.
+  // **Which extreme says something is per quantity**, and the NDL is the one
+  // that reads against the grain. A maximum NDL is the device's display cap on
+  // almost every recreational dive and says nothing, while the minimum is the
+  // moment the dive came closest to an obligation - the same call the API makes
+  // in choosing which extreme to store. Every other single-extreme channel -
+  // depth, the ceiling, time to surface, ppO₂ and the three percentages - names
+  // its maximum, and temperature and tank pressure are the two ranges, because
+  // there both ends are a fact about the dive.
   //
   // Driven by `PROFILE_CHANNEL_KEYS` rather than by ten `if`s, so the sentence
   // keeps the legend's order and a channel added to that list cannot be silently
