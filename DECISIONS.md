@@ -3620,11 +3620,13 @@ purpose. `CUT_BELOW` exists so that never happens, so this says where the line i
 
 **The page has exactly two cards and they finish together in exactly one place: the bottom of it.**
 Every dive logged at the site fills the main column, the site's details and its map fill the
-sidebar, and there is no intermediate height at which nothing is open — `cutBelow()` on either
-anchor returns the whole page, 1889px, which is as tall as the dive shot beside it. What this image
-exists for is the map, and the map sits 200px down a sidebar card that ends less than half way
-along. So `CUT_AFTER_CARD` names the sidebar card and the frame ends at its foot, letting the dive
-list run on past the edge — 824px, against 1889 for the seam.
+sidebar, and the only height at which nothing is open is 1889px — the main column's card ends at
+1865 and the grid's gap is 24 — which is as tall as the dive shot beside it. `cutBelow()` never gets
+that far: each card is the only child of its column `div`, so the neighbour it reads its gutter off
+does not exist and it refuses on either anchor with _"that card has no neighbour to measure the gap
+from"_. What this image exists for is the map, and the map sits some 215px down a sidebar card that
+ends at 783, a third of the way along. So `CUT_AFTER_CARD` names the sidebar card and the frame ends
+at its foot, letting the dive list run on past the edge — 824px, against 1889 for the seam.
 
 **The gutter under it is read off the grid, not off a neighbour.** A column of one card has nothing
 beside it to measure the gap from, which is the shape this rule exists for, and `rowGap` on the
