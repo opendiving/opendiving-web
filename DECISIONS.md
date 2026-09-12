@@ -9292,8 +9292,13 @@ fires when release tags exist but not one image alias resolves, so the maintaine
 diagnostic where the `::error::` naming the GHCR login, `docker buildx` and the package should be. A
 failure whose message is about the script rather than the cause is barely better than the silent
 success this branch was written to prevent. `declare -A TAGS_FOR=()` is the whole fix. The api
-repository's copy of this workflow has the same line and the same bug; it is a port owed in that
-direction.
+repository's copy carried the same line and the same bug, and took the fix on 2026-09-11 in
+`opendiving-api#166` (`607599a`); the comment there credits this file for finding it, and nothing is
+owed in that direction any more. **The sentence that said otherwise stood here for a day after the
+port landed**, and the section below repeated it in a paragraph written fresh the next evening —
+which is the ordinary fate of a claim about another repository. No check in either repository can
+falsify one; only somebody going to look can, so a claim of this shape gets re-read rather than
+carried forward whenever the two files are compared.
 
 **The permissions are the narrowest that work, which required knowing why one of them is there at
 all.** Both jobs declare their own block, because a job-level block replaces the workflow-level one
@@ -9353,11 +9358,24 @@ contract, so the footer builds absolute URLs from `github.server_url` and `githu
 Anything else moved between an issue, a comment, a release note and a run summary has the same trap
 in it.
 
-**The api repository's copy of this workflow has not moved yet, and that is a port owed in that
-direction** — the same one its `declare -A TAGS_FOR` bug is. Until it does, the two files differ in
-more than the node-versus-`python3` report the section above calls their only deliberate divergence:
-this one uploads SARIF and that one still files an issue. The divergence is temporary and the fix is
-to port this, not to describe it as a second deliberate difference.
+**The api repository's copy of this workflow made the same move an hour later, and the two files are
+back in step.** `opendiving-api#183` (`ca6e061`) landed on the evening of 2026-09-12: the same
+`security-events: write` in place of `issues: write`, the same `upload-sarif` against a directory of
+`.sarif` files under the same constant `published-images` category, and the same issue step deleted
+along with its label creation, its fingerprint and its close-comment. So the gap this paragraph used
+to describe — this one uploading SARIF while that one still filed an issue — was real for about an
+hour and is closed, and the report written in node where the api's copy uses `python3` is once again
+the _only_ deliberate divergence between the two, exactly as the section above says.
+
+That distinction is the thing to carry forward, because the two kinds of difference look identical
+in a diff. The deliberate one is single and named, and it is the report's interpreter. What the
+ecosystems force alongside it — npm packages rather than Python distributions, Alpine rather than
+Debian, the remedy each of those implies — is not a divergence at all but the same file said in two
+vocabularies. Everything beyond that is a port owed in one direction or the other, and it falls both
+ways: this repository found the `TAGS_FOR` bug and the api took it, while the scan's severity
+thresholds are the api's and this repository took those. Reading a temporary divergence as a second
+deliberate one is what closes a port silently, which is why this gap was worth writing down while it
+was open and is worth marking closed rather than deleting.
 
 **It does not collide with CodeQL default setup**, which is configured on this repository. Default
 setup conflicts with an _advanced_ CodeQL workflow, because both would upload CodeQL results for the
