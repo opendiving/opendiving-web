@@ -133,7 +133,7 @@ if (
   process.exit(1);
 }
 
-// The dive the `dive-detail` shot is of, when the rank in `pickSubjects()` cannot tell the
+// The dive the `dive-detail` shot is of, when the rank in `pickDive()` cannot tell the
 // candidates apart. The rank is a count and counts tie: in a log whose dives each came off
 // one computer every candidate scores one, so the winner is whichever is most recent - and
 // recency is not a property worth photographing. Set, this is used as given and the ranking
