@@ -3506,6 +3506,26 @@ alternatives are both worse: verifying a second magic link server-side runs into
 three-per-email-per-fifteen-minutes limit within a single retake, and calling `/auth/refresh` from
 the page rotates the cookie out from under the app.
 
+**`DIVE_UUID` names the dive outright, for when the rank cannot tell the candidates apart.** The
+rank is a count, and counts tie. In a log whose dives each came off one computer every candidate
+scores one, nothing ever beats the first, and the subject is simply the most recent dive - which is
+not a property worth photographing. That picked one with no deco ceiling, no visibility and a single
+mixture, whose _Gas Consumption_ card renders as the prompt to enter a start and end pressure
+instead of the derived SAC/RMV table this image is partly there to show, while a dive a few rows
+down the same list had all three. Set, the environment variable is used as given and the ranking is
+skipped rather than run and overruled; absent, nothing changes. It is the only thing about the
+subjects that can be held still, which is why _"One shot at a time, optionally"_ above still stands:
+the gear item is re-ranked every run and "due in 24 days" counts down regardless.
+
+**Both of its failures throw, before the first shutter press.** A uuid `GET /dive/{uuid}` will not
+answer for, and one whose dive has no recording carrying samples - the second because the profile
+card renders nothing without them, so the page photographs flat and the `Dive Profile` wait times
+out anyway. Neither falls back to the ranking, because a run that quietly shot a different dive than
+the one it was handed would say so only in a line of output nobody reads, which is this script's own
+recurring failure (see _"The dive shot is ranked by recordings"_ below). The run's subject line says
+which mechanism chose, `named by DIVE_UUID` against `ranked`, so a variable that never arrived is
+visible in the output rather than only in the image.
+
 **The clock is pinned to 09:00, so the dashboard greets the same way every retake.** The heading
 reads "Good morning/afternoon/evening" off `new Date().getHours()` (see _"The heading greets by time
 of day"_ above), which made the hero image a record of what time the maintainer happened to run the
@@ -3558,12 +3578,13 @@ _for_, not the card that comes out last; where the frame actually ends is the su
 
 **The committed image is of a dive with one recording, and shows no profile switcher.** That is not
 a regression and not a missing card. `DiveProfileCard` draws the switcher only once a _second_
-recording of the same dive has a profile, and no dive in the log these images come from has one, so
-the ranking above settled for the best available and photographed it honestly. Shooting a different
-account instead is not the way out: all three README images are one product tour, and a set taken
-from two logs is a defect that has been caught here before. A retake against a log that does hold a
-two-computer dive will grow a control above the chart that this image does not have — check that
-before reading its absence as a regression.
+recording of the same dive has a profile, and no dive in the log these images come from has one — so
+neither the ranking nor a subject named by `DIVE_UUID` could have produced that control, and what
+was shot is the best the log holds, photographed honestly. Shooting a different account instead is
+not the way out: all three README images are one product tour, and a set taken from two logs is a
+defect that has been caught here before. A retake against a log that does hold a two-computer dive
+will grow a control above the chart that this image does not have — check that before reading its
+absence as a regression.
 
 ### A cut that cannot slice a card
 
@@ -3592,16 +3613,16 @@ anchor, which was not open at the anchor's bottom and so was never in the sweep.
 reaches into the main column's next card, and only the third pass settles. Each pass that moves the
 cut has found a card the one before it could not see, so the loop is bounded by the number of cards.
 
-**The frame that comes out can be a long way below the card that named it.** The committed image
-runs several hundred pixels past the bottom of the _Recordings_ card it is anchored on, because
-those two columns finish together in exactly one place below it — it is two thirds of the page, and
-taller than both the hero and the gear image beside it in the README table. How far past is not
-written down here, because it moves with whichever dive the subject picker lands on: a retake whose
-subject had a taller _Recordings_ card closed the gap by eighty-odd pixels without anything about
-the mechanism changing. That is the trade the parent section above already rules on: cutting where
-nothing is sliced matters more than the exact number, and more than the shots agreeing on one. The
-alternative was to cut _above_ the offending card, which would drop the anchor out of the frame and
-defeat the shot.
+**The frame that comes out can end a long way below the card that named it.** The committed image
+runs past the bottom of the _Recordings_ card it is anchored on, down to the one place below it
+where those two columns happen to finish together — far enough that the frame is a substantial part
+of the whole page. Neither that distance nor how the image compares in height to the other two is
+written down here, because both move with whichever dive is being photographed, and both have moved:
+changing the subject has shrunk the overshoot and taken this from the tallest of the three images to
+the middle one, with nothing about the mechanism changing. That is the trade the parent section
+above already rules on: cutting where nothing is sliced matters more than the exact number, and more
+than the shots agreeing on one. The alternative was to cut _above_ the offending card, which would
+drop the anchor out of the frame and defeat the shot.
 
 **The dashboard is unmoved, deliberately.** Its cards finish together at the anchor already, so the
 loop settles on the first pass at exactly the height the single line returned — and the loop is
