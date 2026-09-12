@@ -16985,3 +16985,55 @@ dropped is the failure that would otherwise reach a reader.
 find an empty page. Their tests call `render(await PrivacyPage())`. The terms page had no test at
 all before this; a page with one rendering is a page review reads, and the second rendering is the
 one review cannot see.
+
+## The species credit became a link on the API's side, and the picker needed nothing
+
+`_WORMS_ATTRIBUTION` in the API is now
+`[World Register of Marine Species](https://www.marinespecies.org) (CC BY)` rather than the bare
+`World Register of Marine Species (marinespecies.org)` it used to be. Nothing in the picker had to
+change for that: it already renders every credit through `Attribution`, which is the whole point of
+"The geocoder's attribution is a wire format, not display copy" above, and the same
+either-merge-order safety applies here — `parseAttribution` on a string with no markdown in it
+returns one text run. What did have to change is the two test fixtures that pinned the old wording
+(`species-multi-select.test.ts`, `species-multi-select.render.test.tsx`), which would otherwise have
+gone on asserting a string the API no longer sends while the suite stayed green.
+
+**The trailing `(CC BY)` is a plain run after the link, and that is a property worth a test of its
+own.** `parseAttribution` splits a string into runs and links rather than matching one whole, so the
+licence survives as text beside the anchor; a parser that matched whole strings would drop it, and
+dropping the licence name out of a licence credit is the one failure here that is not cosmetic. The
+render test therefore asserts the anchor's `href` and the `(CC BY)` run separately, rather than a
+regex over the visible text — which passes just as happily when the raw markdown is printed to the
+diver.
+
+**The API's cache prefix moved `v6` -> `v7` in the same change**, because a cached search answer
+carries the `attribution` string for a month. A local instance that has been running will therefore
+stop showing the old credit as soon as that API lands, which makes "the old string is gone" evidence
+of nothing about this repo's half.
+
+## The species page credits the taxonomy, and composes that credit by hand
+
+`src/app/species/[id]/page.tsx` carried a comment saying a link out to WoRMS was "not this change's
+to make" — the earlier scope, when the only outbound links the species feature introduced were the
+two the photo licence requires. The register's own credit carries a link now, so the foot of the
+classification card reads "Taxonomy: World Register of Marine Species, CC BY" and the comment
+records why the destination exists instead of why it doesn't.
+
+`NOTICE.md` stays silent on WoRMS, and is right to: it covers third-party material copied into this
+repository's own tree, and none of the taxonomy ever is — the app asks the register at request time
+and stores the answer next door, in the API's catalog.
+
+It is composed out of anchors rather than handed to `Attribution`, for the reason
+`SpeciesPhotoCredit` is: a credit needing **two** hyperlinks cannot come from one string, and
+`Species` carries no `attribution` field at all — only `SpeciesSearchResult` does, which is a fact
+about search results and not about a stored catalog row. The two links are the source and then the
+licence; the photo credit runs the other way round (`Photo by … · licence · Wikimedia Commons`)
+because it has an author to lead with and this has none.
+
+The AphiaID row above it stays plain text. Making the number itself the link is the obvious
+alternative and is worse: it wants a per-taxon URL rather than the register's front page, and it
+would leave one value in a card of labelled facts silently clickable.
+
+Wikidata gets no line here. Its half is the common names, it is CC0, and CC0 asks for nothing — so
+the page carries one credit where the picker carries two, and the picker's second one exists because
+a search feed names upstream Wikidata rows the catalog has never stored.

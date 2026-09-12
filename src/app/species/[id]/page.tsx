@@ -185,11 +185,49 @@ export default function SpeciesDetailPage() {
               )}
               {/* The identity the catalog is keyed on, and the one number that
                   means anything outside this database - which is why the export
-                  carries it too. Plain text rather than a link out to WoRMS:
-                  the only outbound links this feature introduces are the two the
-                  photo licence requires, and inventing a third destination is
-                  not this change's to make. */}
+                  carries it too. Still plain text, but no longer because a link
+                  out to WoRMS is off the table: it is the credit below that
+                  carries the link now, and this number is the wrong element to
+                  hang it on - following it wants a per-taxon URL, and the row
+                  would then be the only value in the card that is also a
+                  destination. */}
               <InfoRow label="WoRMS AphiaID">{species.aphia_id}</InfoRow>
+              {/* The classification in this card is WoRMS's - every catalog row
+                  is keyed on an AphiaID, and the API credits every one of them
+                  to WoRMS - and WoRMS's text content is CC BY, a licence that
+                  asks to be credited where the work is shown. This card is
+                  where it is shown, and it carried no credit at all until the
+                  API's own credit string learned to link, in the same change
+                  this line arrived with.
+
+                  Composed out of anchors rather than rendered through
+                  `Attribution`, which takes one string and so can carry one
+                  link: this needs two, the source and the licence, which is the
+                  same reason `SpeciesPhotoCredit` composes rather than parses.
+                  The common names are Wikidata's and are CC0, which asks for
+                  nothing - so there is one credit here and two under the
+                  picker, whose second one belongs to upstream rows the catalog
+                  never stored. */}
+              <p className="text-xs text-muted-foreground">
+                Taxonomy:{" "}
+                <a
+                  href="https://www.marinespecies.org"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-foreground"
+                >
+                  World Register of Marine Species
+                </a>
+                ,{" "}
+                <a
+                  href="https://creativecommons.org/licenses/by/4.0/"
+                  target="_blank"
+                  rel="noopener noreferrer license"
+                  className="underline hover:text-foreground"
+                >
+                  CC BY
+                </a>
+              </p>
             </CardContent>
           </Card>
         </div>

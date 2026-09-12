@@ -56,7 +56,12 @@ one.
   Your **life list** collects every species you have ever logged, with a photograph fetched once
   from Wikimedia Commons and served from the instance you are on — your browser never talks to
   Wikimedia, and each species has a page carrying its credit, its classification and the dives you
-  saw it on.
+  saw it on. The taxonomy is WoRMS's, whose text content is available under
+  [CC BY](https://creativecommons.org/licenses/by/4.0/) and which asks to be cited in full: _WoRMS
+  Editorial Board (2026). World Register of Marine Species. Available from
+  https://www.marinespecies.org at VLIZ. Accessed 2026-09-11. doi:10.14284/170_ — a date that stands
+  for no copy of anything, because **this app queries the register live rather than holding a
+  snapshot of it**.
 - **Certifications** — keep photos of your c-cards on hand at the dive shop without digging out the
   plastic.
 - **Courses** — the training itself, with the agency, instructor and shop: link the dives you did on
