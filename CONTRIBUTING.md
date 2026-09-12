@@ -136,11 +136,9 @@ it at the top of `scripts/screenshots.mjs`. No dimension is a round number — 1
 detail pages stop stacking their sidebar, and the heights are measured in the page moments before
 the shutter — at the first line past a named card where no card is cut through, or at the foot of a
 named card where the shot is about one column. The gear page is the exception: its height is a
-literal, because what decides it is the README row rather than the page — it is the height at which
-the gear and dive-site shots, stacked in one cell, come level with the dive page beside them — and
-the script checks before the shutter that it still lands between two rows rather than through one.
-So read the comments there before changing them, and see [DECISIONS.md](DECISIONS.md) for the rest
-of the reasoning.
+literal, it is known to end inside a card rather than on a boundary, and it is left alone anyway,
+because what would decide a new one is the README row rather than the page. So read the comments
+there before changing them, and see [DECISIONS.md](DECISIONS.md) for the rest of the reasoning.
 
 ## Design expectations
 
