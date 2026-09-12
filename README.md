@@ -5,8 +5,9 @@ out, everything in one click. Yours to self-host.**
 
 OpenDiving is an open-source logbook for scuba divers — recreational and technical: log dives with
 multi-tank gas mixtures (nitrox and trimix), import dives straight from your dive computer's export
-file — full depth/temperature/tank-pressure profile, deco ceiling and dive events included — group
-them into trips, and keep your gear service history and c-cards in one place.
+file — full depth/temperature/tank-pressure profile, deco ceiling, the readouts the computer itself
+computed and dive events included — group them into trips, and keep your gear service history and
+c-cards in one place.
 
 Cloud dive logs come and go — Movescount, Deepblu, Diveboard — and when they go, years of dive
 history go with them. OpenDiving is built on a different premise: the app is AGPL-licensed, the data
@@ -32,18 +33,22 @@ one.
   multiple dive sites (drift dives happen), in order. Switch off the fields you never fill in and
   save the arrangement as a named set — the choice follows your account, not the device.
 - **Technical diving** — trimix and nitrox mixes get derived gas names and per-mix **MOD** at your
-  ppO₂ limit, plus END/EAD; the profile chart shades the **deco ceiling** and marks dive events;
-  **CNS/OTU** oxygen exposure and surface pressure are kept from imports, per-cylinder ppO₂ limits
-  and gas roles included.
+  ppO₂ limit, plus END/EAD; the profile chart shades the **deco ceiling**, plots the computer's own
+  **NDL, TTS, ppO₂, CNS and gradient factors** and marks dive events; each recording says the mode
+  it ran in and the **decompression model** behind those numbers; **CNS/OTU** oxygen exposure and
+  surface pressure are kept from imports, per-cylinder ppO₂ limits and gas roles included.
 - **Dive-computer import** — upload a FIT file (Garmin Descent, Suunto Ocean/D5) or a Suunto
   XML/JSON export and the form pre-fills itself, keeping the file's own UTC offset where it records
   one (FIT and the JSON exports do; Suunto's XML carries no offset at all, so those fall back to
   your current timezone). Every file you upload stays with the **recording** it came from and can be
   re-downloaded any time — a dive logged off two computers has two recordings, and one computer's
   JSON beside its FIT is two files of one recording, each filling what the other left blank. The
-  per-sample **dive profile** (depth, temperature, tank pressure, deco ceiling, events) is extracted
-  and charted per recording, with a switcher when there is more than one. A computer that chopped
-  one dive into two logs them as two dives, and **Merge** folds them back into one.
+  per-sample **dive profile** is extracted and charted per recording, with a switcher when there is
+  more than one: depth, temperature, tank pressure and the deco ceiling on the depth plot, the six
+  readouts the computer itself computed — **no-deco time, time to surface, ppO₂, CNS and both
+  gradient factors** — on a panel under it, and the device's own event markers along the axis. A
+  computer that chopped one dive into two logs them as two dives, and **Merge** folds them back into
+  one.
 - **Air consumption** — SAC and RMV are derived automatically, including a **per-tank breakdown**
   across recorded gas switches on multi-tank dives, with a consumption trend chart on the dashboard.
 - **Trips** — group dives into a liveaboard or a holiday week, with location and dates.

@@ -83,6 +83,24 @@ function everyChannel(overrides: Partial<DiveProfile> = {}): DiveProfile {
         values: [2000, 1850, 1700, 1560, 1420, 1280, 1140, 1000, 880, 800, 760],
       },
     ],
+    // The six the computer worked out for itself, on depth's own clock and at
+    // the API's own scales: seconds, hundredths of a bar, tenths of a percent
+    // and whole percent.
+    ndl: {
+      times,
+      values: [5940, 3600, 1800, 900, 300, 0, 0, 0, 0, 0, 0],
+    },
+    tts: { times, values: [0, 0, 0, 300, 600, 900, 1080, 900, 600, 300, 0] },
+    ppo2: { times, values: [21, 80, 110, 132, 130, 128, 126, 90, 60, 40, 21] },
+    cns: { times, values: [0, 10, 24, 40, 58, 77, 96, 110, 118, 122, 124] },
+    gradient_factor: {
+      times,
+      values: [0, 5, 12, 20, 31, 45, 62, 80, 91, 96, 98],
+    },
+    surface_gradient_factor: {
+      times,
+      values: [0, 12, 30, 48, 66, 78, 84, 80, 64, 40, 20],
+    },
     events: [],
     ...overrides,
   };
@@ -94,12 +112,28 @@ const CHANNEL_BUTTONS = {
   ceiling: /^Deco ceiling/,
   temperature: /^Temperature/,
   pressure: /^Tank pressure/,
+  ndl: /^No-deco time/,
+  tts: /^Time to surface/,
+  ppo2: /^ppO₂/,
+  cns: /^CNS/,
+  gradient_factor: /^Gradient factor/,
+  surface_gradient_factor: /^Surface gradient factor/,
 } as const;
 
 type ChannelKey = keyof typeof CHANNEL_BUTTONS;
 const CHANNEL_KEYS = Object.keys(CHANNEL_BUTTONS) as ChannelKey[];
 
-// Every non-empty selection of the four, as [label, keys] rows for `it.each`. The
+// The four that can claim an edge of the depth plot. The other six are drawn in
+// the deco panel below it, which has a scale of its own per row and takes no
+// edge from this plot at all.
+const DEPTH_PLOT_KEYS: readonly ChannelKey[] = [
+  "depth",
+  "ceiling",
+  "temperature",
+  "pressure",
+];
+
+// Every non-empty selection of the ten, as [label, keys] rows for `it.each`. The
 // empty one is the "all hidden" state and has a test of its own below.
 const EVERY_SELECTION = Array.from(
   { length: 2 ** CHANNEL_KEYS.length },
@@ -108,15 +142,24 @@ const EVERY_SELECTION = Array.from(
   .filter((keys) => keys.length > 0)
   .map((keys) => [keys.join(" + "), keys] as const);
 
-// The numbers running down either edge of the plot. The elapsed-time ticks anchor
-// `middle`, so these two selectors are exactly the vertical axes.
+// The numbers running down either edge of the **depth plot**. The elapsed-time
+// ticks anchor `middle`, so the anchors are exactly the vertical axes - and the
+// deco panel's rows carry their own left-hand numbers, which are a different
+// question and are excluded here rather than being allowed to answer this one.
+const outsideThePanel = (tick: Element) => !tick.closest("[data-deco-panel]");
 const leftAxisTicks = (root: HTMLElement) =>
-  [...root.querySelectorAll("text[text-anchor='end']")].map(
-    (tick) => tick.textContent,
-  );
+  [...root.querySelectorAll("text[text-anchor='end']")]
+    .filter(outsideThePanel)
+    .map((tick) => tick.textContent);
 const rightAxisTicks = (root: HTMLElement) =>
-  [...root.querySelectorAll("text[text-anchor='start']")].map(
-    (tick) => tick.textContent,
+  [...root.querySelectorAll("text[text-anchor='start']")]
+    .filter(outsideThePanel)
+    .map((tick) => tick.textContent);
+
+// The deco panel's rows that are actually on screen, by the axis each carries.
+const panelRows = (root: HTMLElement) =>
+  [...root.querySelectorAll("[data-deco-panel]")].map((row) =>
+    row.getAttribute("data-deco-panel"),
   );
 
 // The chart remembers which channels were last plotted, so the tests below that
@@ -581,11 +624,16 @@ describe("DiveProfileChart with a ceiling too sparse to plot", () => {
   });
 });
 
-// How many distinct scales a selection puts on the plot. Depth and the ceiling share
-// one domain by construction; temperature and pressure each have their own - so this
-// is the number of edges that should end up labelled, and the chart has two.
+// How many distinct scales a selection puts on the **depth plot**. Depth and the
+// ceiling share one domain by construction; temperature and pressure each have
+// their own, and the six deco channels put none there at all - so this is the
+// number of edges that should end up labelled, and the plot has two.
 function distinctScales(keys: readonly ChannelKey[]): number {
-  return new Set(keys.map((key) => (key === "ceiling" ? "depth" : key))).size;
+  return new Set(
+    keys
+      .filter((key) => DEPTH_PLOT_KEYS.includes(key))
+      .map((key) => (key === "ceiling" ? "depth" : key)),
+  ).size;
 }
 
 describe("DiveProfileChart depth fill across a dropout", () => {
@@ -667,10 +715,47 @@ describe("DiveProfileChart vertical axes", () => {
         <DiveProfileChart profile={everyChannel()} />,
       );
 
-      expect(leftAxisTicks(container).length).toBeGreaterThan(0);
+      expect(leftAxisTicks(container).length > 0).toBe(
+        distinctScales(keys) > 0,
+      );
       expect(rightAxisTicks(container).length > 0).toBe(
         distinctScales(keys) > 1,
       );
+    },
+  );
+
+  it.each(EVERY_SELECTION)(
+    "gives %s a labelled scale wherever it is drawn",
+    (_, keys) => {
+      // No curve is drawn against nothing. A deco channel the diver switched on
+      // is in a panel row, and that row carries its own numbers - which is the
+      // half of the rule the depth plot's two edges could never have satisfied.
+      window.localStorage.setItem(
+        DIVE_PROFILE_SERIES_KEY,
+        JSON.stringify(keys),
+      );
+
+      const { container } = render(
+        <DiveProfileChart profile={everyChannel()} />,
+      );
+
+      const expectedRows = [
+        keys.some((key) => key === "ndl" || key === "tts") ? "duration" : null,
+        keys.includes("ppo2") ? "ppo2" : null,
+        keys.some((key) =>
+          ["cns", "gradient_factor", "surface_gradient_factor"].includes(key),
+        )
+          ? "percent"
+          : null,
+      ].filter((axis) => axis !== null);
+
+      expect(panelRows(container)).toEqual(expectedRows);
+      for (const axis of expectedRows) {
+        const row = container.querySelector(`[data-deco-panel="${axis}"]`);
+        expect(
+          row?.querySelectorAll("text[text-anchor='end']").length,
+        ).toBeGreaterThan(0);
+      }
     },
   );
 
@@ -1141,5 +1226,147 @@ describe("DiveProfileChart remembered selection that plots no curve here", () =>
     expect(
       container.querySelectorAll("g[aria-hidden][opacity] line"),
     ).toHaveLength(0);
+  });
+});
+
+describe("DiveProfileChart deco readouts", () => {
+  // t = 600 s is the third sample of `everyChannel`, so every channel has a real
+  // reading there and none of them is interpolated.
+  const hoverOverTheThirdSample = () => {
+    render(<DiveProfileChart profile={everyChannel()} />);
+    hoverAt(600 / 3000);
+  };
+
+  it("quotes every channel that is switched on, each in its own unit", () => {
+    hoverOverTheThirdSample();
+
+    // Minutes rather than the seconds the wire carries, two decimals of bar for
+    // a ppO₂, and a percent sign attached the way a degree is.
+    expect(readoutText()).toMatch(/30 min No-deco time/);
+    expect(readoutText()).toMatch(/0 min Time to surface/);
+    expect(readoutText()).toMatch(/1\.10 bar ppO₂/);
+    expect(readoutText()).toMatch(/2\.4% CNS/);
+    expect(readoutText()).toMatch(/12% Gradient factor/);
+    expect(readoutText()).toMatch(/30% Surface gradient factor/);
+  });
+
+  it("stops quoting a channel the diver switched off", () => {
+    // Hiding a thing hides it everywhere: the curve, the crosshair readout and
+    // the accessible summary all read one visibility. This chart has been talked
+    // out of the "drawn in one view, named in another" disagreement several
+    // times over, and a new channel is a new way back into it.
+    hoverOverTheThirdSample();
+    expect(readoutText()).toMatch(/No-deco time/);
+
+    fireEvent.click(screen.getByRole("button", { name: CHANNEL_BUTTONS.ndl }));
+    hoverAt(600 / 3000);
+
+    expect(readoutText()).not.toMatch(/No-deco time/);
+    expect(readoutText()).toMatch(/Time to surface/);
+  });
+
+  it("names the shown deco channels in the accessible summary, and only those", () => {
+    render(<DiveProfileChart profile={everyChannel()} />);
+
+    const summary = () =>
+      screen.getByRole("img").getAttribute("aria-label") ?? "";
+
+    // **Which extreme says something is per quantity.** A maximum NDL is the
+    // device's display cap on almost every recreational dive; the minimum is the
+    // moment the dive came closest to an obligation.
+    expect(summary()).toMatch(/no-decompression time down to 0 minutes/);
+    expect(summary()).toMatch(/time to surface up to 18 minutes/);
+    expect(summary()).toMatch(/oxygen partial pressure up to 1\.32 bar/);
+    expect(summary()).toMatch(/CNS to 12\.4 percent/);
+    expect(summary()).toMatch(/gradient factor to 98 percent/);
+    expect(summary()).toMatch(/surface gradient factor to 84 percent/);
+
+    fireEvent.click(screen.getByRole("button", { name: CHANNEL_BUTTONS.cns }));
+
+    expect(summary()).not.toMatch(/CNS to/);
+    expect(summary()).toMatch(/gradient factor to 98 percent/);
+  });
+
+  it("numbers each panel row in the unit its curves are in", () => {
+    const { container } = render(<DiveProfileChart profile={everyChannel()} />);
+
+    // The top tick of a row carries the unit; the bottom one is a bare number,
+    // because two units on one 46-unit scale is noise.
+    const topTick = (axis: string) =>
+      container.querySelector(`[data-deco-panel="${axis}"] text`)
+        ?.textContent ?? "";
+
+    expect(topTick("duration")).toMatch(/ min$/);
+    expect(topTick("ppo2")).toMatch(/ bar$/);
+    expect(topTick("percent")).toMatch(/%$/);
+  });
+
+  it("keeps a gradient factor the device wrote past 100 %", () => {
+    // A Suunto Ocean's `gf99` reaches five figures on a decompression ascent.
+    // The axis stretches; the reading is not clamped, because a cap would be a
+    // guess wearing a plausible number.
+    render(
+      <DiveProfileChart
+        profile={everyChannel({
+          gradient_factor: {
+            times: [0, 300, 600],
+            values: [40, 12575, 90],
+          },
+        })}
+      />,
+    );
+
+    expect(screen.getByRole("img").getAttribute("aria-label")).toMatch(
+      /gradient factor to 12575 percent/,
+    );
+  });
+
+  it("offers no toggle for a channel this dive's computer never recorded", () => {
+    render(<DiveProfileChart profile={longProfile()} />);
+
+    expect(
+      screen.queryByRole("button", { name: CHANNEL_BUTTONS.ndl }),
+    ).toBeNull();
+    expect(
+      screen.getByRole("button", { name: CHANNEL_BUTTONS.depth }),
+    ).toBeTruthy();
+  });
+});
+
+describe("DiveProfileChart with a marker carrying no type", () => {
+  // DiveJSON §6.6 makes `type` optional and spells "the device recorded
+  // something and nothing in the vocabulary says what" as an absent type beside
+  // a required label. The API used to send `other` for exactly this and now
+  // sends a null, so a marker with no type is the ordinary case rather than a
+  // broken payload - and it has to draw, and read, on its own wording.
+  const withTypeless = longProfile({
+    events: [{ time: 1500, type: null, label: "Violated Deep Stop" }],
+  });
+
+  it("draws it and names it by the device's own wording", () => {
+    render(<DiveProfileChart profile={withTypeless} />);
+    hoverAt(1500 / 3000);
+
+    expect(readoutText()).toMatch(/Violated Deep Stop/);
+    expect(screen.getByRole("img").getAttribute("aria-label")).toMatch(
+      /Violated Deep Stop at/,
+    );
+  });
+
+  it("draws the alarm classes it does know", () => {
+    render(
+      <DiveProfileChart
+        profile={longProfile({
+          events: [
+            { time: 1500, type: "ceiling_violation", label: "Ceiling Broken" },
+          ],
+        })}
+      />,
+    );
+    hoverAt(1500 / 3000);
+
+    // The vocabulary's word, not the vendor's spelling: one value per distinct
+    // meaning is the whole reason the enum is not one entry per vendor string.
+    expect(readoutText()).toMatch(/Deco ceiling broken/);
   });
 });

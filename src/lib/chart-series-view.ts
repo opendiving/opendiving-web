@@ -8,9 +8,11 @@
 // links point at and people bookmark.
 //
 // Generic over the series keys because two charts want it and their keys have
-// nothing in common: the profile chart plots depth/ceiling/temperature/pressure,
-// the gas chart plots dives/trend/average. What is shared is the shape - a set
-// of keys, re-validated on the way in against the ones the chart actually has.
+// nothing in common: the profile chart plots depth, the deco ceiling,
+// temperature, tank pressure and the six channels a computer's own
+// decompression arithmetic produces; the gas chart plots dives/trend/average.
+// What is shared is the shape - a set of keys, re-validated on the way in
+// against the ones the chart actually has.
 //
 // What's stored is a view preference: a handful of series names the chart itself
 // defines. No dive data, nothing fetched.
@@ -21,24 +23,25 @@
 // dead key names that would have to be carried, kept correct, and grown on every
 // future bump - in code whose whole job is to be forgotten.
 
-// Versioned, and now on its third: `-v2` when the deco ceiling became a fourth
-// channel, `-v3` when the event markers gained a toggle of their own.
+// Versioned, and now on its fourth: `-v2` when the deco ceiling became a fourth
+// channel, `-v3` when the event markers gained a toggle of their own, `-v4` when
+// the six deco readouts arrived.
 // `parseSeriesVisibility` filters a stored selection down to the keys this build
 // plots, which is exactly right for a key that has *gone* and exactly wrong for
-// one that has arrived: every selection written before the markers were
-// switchable names only channels, all of them still available, so it would
-// restore cleanly and leave the markers switched off - hiding annotations that
-// have always been drawn, with a legend entry sitting right there claiming the
-// diver had turned them off themselves.
+// one that has arrived: every selection written before the deco readouts names
+// only the four original channels and the markers, all of them still available,
+// so it would restore cleanly and leave the new channels switched off - hiding a
+// feature behind legend entries sitting right there claiming the diver had
+// turned them off themselves.
 //
 // Bumping the key drops those selections and opens on everything plotted, which
 // is what a first visit already does. The cost is one diver's hidden temperature
 // line coming back once; the alternative is a feature that is invisible to
 // precisely the people who have used the chart before.
 //
-// **The general rule, twice applied now: adding a key to a
+// **The general rule, three times applied now: adding a key to a
 // `parseSeriesVisibility` list needs a key bump; removing one does not.**
-export const DIVE_PROFILE_SERIES_KEY = "opendiving:dive-profile-series-v3";
+export const DIVE_PROFILE_SERIES_KEY = "opendiving:dive-profile-series-v4";
 export const GAS_USE_SERIES_KEY = "opendiving:gas-use-series";
 
 // The stored entry, raw and unparsed.

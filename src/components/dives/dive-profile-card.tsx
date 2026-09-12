@@ -91,8 +91,9 @@ function describeProfileContents(
   return `${parts.join(", ")}.`;
 }
 
-// The dive's recorded depth/temperature/tank-pressure curves, on the dive detail
-// page.
+// The dive's recorded curves - depth, temperature and tank pressure, the deco
+// ceiling, and the six readouts its computer worked out for itself - on the dive
+// detail page.
 //
 // Renders nothing when the dive has no profile - the same call as
 // `DiveRecordingsCard`, and the opposite of `GasUseCard`: a dive logged by hand

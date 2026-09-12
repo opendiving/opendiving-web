@@ -211,7 +211,10 @@ export function LandingPage() {
                 <ul className="space-y-2 text-sm text-muted-foreground">
                   <li>• FIT files from Garmin Descent and Suunto</li>
                   <li>• Suunto XML and JSON exports</li>
-                  <li>• Full depth, temperature and pressure profile</li>
+                  <li>
+                    • Full depth, temperature and pressure profile, with the
+                    computer&rsquo;s own deco readouts
+                  </li>
                   <li>
                     • Every file you upload stays with its recording, and stays
                     downloadable

@@ -391,11 +391,50 @@ export interface RecordingDevice {
 // filling what the other left blank - and `profile` may be present with `files`
 // empty, which is what logbook import creates from a converted document. That
 // is first-class rather than degenerate, and the file list says so in words.
+// The decompression model one device ran on one dive, and the settings it ran it
+// with. Null for the whole object where the source recorded none, rather than
+// five nulls - so a caller tests the object, not its members, exactly as it does
+// for `RecordingDevice`.
+//
+// `algorithm` is a value from the API's `DecoAlgorithm` (`buhlmann`, `rgbm`)
+// and is typed `string` here for the reason every closed vocabulary crossing
+// this boundary is: the two repos deploy independently, so the set is closed in
+// the API's *current* build and not in the bytes this browser holds. Render it
+// through `recordingSettingsLabel()` (`lib/dive-recordings.ts`), which falls back
+// to the device's own `name` rather than to a word it made up.
+export interface RecordingDecoModel {
+  // The model's family, where the source named one.
+  algorithm?: string | null;
+  // The device's own name for its model, as the source spelled it - free text,
+  // e.g. "Suunto Fused RGBM 2".
+  name?: string | null;
+  // Whole percent, recorded with `gf_high` or not at all.
+  gf_low?: number | null;
+  gf_high?: number | null;
+  // The device's own conservatism setting, on the device's own scale (Suunto's
+  // P-2 to P2). Negative values are real, and `0` is a setting rather than an
+  // absence - so read this with `== null`, never for falsiness.
+  conservatism?: number | null;
+}
+
 export interface Recording {
   uuid: string;
   // Position among this dive's recordings; 0 is primary.
   ordinal: number;
   device?: RecordingDevice | null;
+  // The mode this **device** ran in, not the dive's kind: one of
+  // `open_circuit`, `closed_circuit`, `semi_closed`, `gauge`, `freedive`. A
+  // backup computer run in gauge mode beside a primary on open circuit is
+  // ordinary practice, and the dive was not a gauge dive.
+  //
+  // **Null means the file recorded no mode - never assume open circuit.** UDDF
+  // documents an absent `<divemode>` as meaning open circuit; that is the source
+  // *format*'s claim about its own default rather than the device's about the
+  // dive, and neither repo reads it. A `string` rather than a union for the same
+  // reason as `RecordingDecoModel.algorithm`.
+  mode?: string | null;
+  // The decompression model this device ran, or null where nothing recorded one.
+  deco_model?: RecordingDecoModel | null;
   // This device's own start - not the dive's, which a second computer entering
   // the water later legitimately differs from. Offset-less where the source
   // recorded no offset, exactly as `Dive.start_time` is, so read it with the
@@ -454,11 +493,12 @@ export interface DiveProfileInfo {
   // `noFileKeptSentence` (`lib/dive-recordings.ts`) rather than switching on it
   // at a call site.
   provenance: DiveProfileProvenance;
-  // Which curves the profile carries: any of "depth", "ceiling",
-  // "temperature", "pressure".
+  // Which curves the profile carries, in the order a chart stacks them: any of
+  // "depth", "ceiling", "temperature", "pressure", "ndl", "tts", "ppo2", "cns",
+  // "gradient_factor", "surface_gradient_factor".
   channels: string[];
   // How many event markers the profile carries. Deliberately a count rather
-  // than a fifth entry in `channels`: an event is not a curve with an axis, and
+  // than an entry in `channels`: an event is not a curve with an axis, and
   // "3 markers" is worth showing where a bare boolean isn't. Null on a profile
   // extracted before the API recorded events at all - a row the backfill hasn't
   // reached - where 0 is this extractor having looked and found none.
@@ -504,13 +544,38 @@ export interface DiveProfilePressureSeries extends DiveProfileSeries {
   gas_number: number;
 }
 
-// What a marker on the profile chart says happened. A closed vocabulary the API
+// What a marker on the profile chart says happened. The vocabulary the API
 // normalizes three export formats into (`ProfileEventType` in its
 // `schemas/dive_profile.py`), so a chart never has to interpret a device's own
-// wording - except for `other`, which is exactly the case where it hands that
-// wording over in `label`.
+// wording - except where there is no type at all, which is exactly the case
+// where it hands that wording over in `label`.
+//
+// **There is no `other` here, and that is the shape of the wire rather than an
+// omission.** DiveJSON §6.6 makes `type` OPTIONAL and spells "the device
+// recorded something and nothing in the vocabulary says what" as an *absent*
+// type beside a `label` that is then required; the API stores that fact as
+// `OTHER` and maps it to a null on the way out. A payload from an older build
+// still carrying the string is handled by the same fallbacks an unknown type
+// gets - `describeEvent`'s `default` and `glyphFor`'s - so nothing has to keep a
+// member for it.
 export type DiveProfileEventType =
-  "gas_switch" | "deep_stop" | "safety_stop" | "bookmark" | "other";
+  | "gas_switch"
+  | "deep_stop"
+  | "safety_stop"
+  | "bookmark"
+  // The alarm classes, seeded from the wording real computers use. One value per
+  // distinct meaning rather than one per vendor string: "Safety Stop Broken" and
+  // "Mandatory Safety Stop Broken" are one occurrence with two spellings, and
+  // the spelling travels in `label`.
+  | "ascent_rate"
+  | "safety_stop_mandatory"
+  | "safety_stop_violation"
+  | "deep_stop_violation"
+  | "ceiling_violation"
+  | "ndl_reached"
+  | "ppo2_high"
+  | "pressure_low"
+  | "depth_alarm";
 
 // One thing the dive computer recorded happening, at an instant rather than
 // over a channel.
@@ -518,14 +583,18 @@ export interface DiveProfileEvent {
   // Elapsed seconds from the start of the dive, on the same axis as every
   // series' `times`.
   time: number;
-  type: DiveProfileEventType;
+  // **Null means unclassified** - the device recorded something here and this
+  // vocabulary has no word for it - and `label` then carries its own wording.
+  type?: DiveProfileEventType | null;
   // Set only on a `gas_switch`, and the same label `DiveMixture.gas_number` and
   // the pressure curves carry - so a switch marker and the cylinder it switched
   // to can be joined. Null where the file recorded that a switch happened
   // without saying to what.
   gas_number?: number | null;
-  // The device's own wording, always present on an `other` and absent on the
-  // types that speak for themselves.
+  // The device's own wording. Always present where `type` is null, which is what
+  // makes an unclassified marker worth rendering; set beside a type wherever the
+  // device had wording of its own, and absent on the types that speak for
+  // themselves.
   //
   // The only parser-derived free text in any response body: everything else an
   // import produces is a number or a value from a closed vocabulary. The API
@@ -561,6 +630,40 @@ export interface DiveProfile {
   // Plural, unlike the three channels above, because this one is genuinely
   // multi-tank: one entry per cylinder the device reported.
   pressures: DiveProfilePressureSeries[];
+  // The device's own decompression arithmetic, and **declared in the format's
+  // order rather than at the end** - DiveJSON §6.4 puts `pressures` between
+  // `temperature` and `ndl`, and the API serializes this object's members in
+  // that order.
+  //
+  // Nothing in this app derives any of these from depth and a gas fraction.
+  // Each depends on the model the device ran, its settings and the diver's
+  // exposure history, none of which a logged dive carries - so an absent channel
+  // is a channel the computer did not record, never one to compute.
+  //
+  // Remaining no-decompression time, in seconds. A zero is a reading - the
+  // moment the dive stopped being a no-decompression dive - and so is a value at
+  // the device's display maximum.
+  ndl?: DiveProfileSeries | null;
+  // Time to surface in seconds, stops included, as the device computed it.
+  tts?: DiveProfileSeries | null;
+  // The partial pressure of oxygen the device computed, in hundredths of a bar:
+  // what it calculated from the gas it believed it was breathing, not a cell
+  // reading. A third pressure scale, and the only one that is not tank pressure.
+  ppo2?: DiveProfileSeries | null;
+  // The CNS oxygen clock during the dive, in tenths of a percent. Unbounded
+  // above - real computers report past 100 %. Not the same quantity as the
+  // dive's own `cns_start`/`cns_end`, which are whole percent and are neither
+  // derived from this channel nor a source for it.
+  cns?: DiveProfileSeries | null;
+  // The leading tissue's gradient factor in whole percent - a device's GF99 -
+  // and the gradient factor that tissue would have on surfacing directly from
+  // here. **Unbounded above, and a reader must not clamp them:** a Suunto
+  // Ocean's `gf99` reaches five figures on a decompression ascent while the
+  // surface figure beside it declines smoothly through the same stops, Suunto
+  // publishes no definition, and a cap would be a guess wearing a plausible
+  // number.
+  gradient_factor?: DiveProfileSeries | null;
+  surface_gradient_factor?: DiveProfileSeries | null;
   events: DiveProfileEvent[];
 }
 

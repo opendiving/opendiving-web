@@ -11722,10 +11722,10 @@ jsdom can show the latter, since the bundling decision belongs to the build.
 **Clearing goes by prefix; suppression goes by list, and the asymmetry is deliberate.**
 `setOptOut(true)` writes the flag and then walks live storage, removing `theme` plus every
 `opendiving:`-prefixed key present except the named exclusions. What forced that: orphaned keys sit
-in any browser that ran an older build and have no literal left in this tree — the two superseded
-dive-profile series keys from the `-v2` and `-v3` bumps, and the last-auth-method key deleted with
-the sign-in hint. A census cannot see them, and **naming one as a literal would oblige §10 to give a
-row to a key this app no longer writes**, since `storage-keys.test.ts` check (1) sweeps every
+in any browser that ran an older build and have no literal left in this tree — the three superseded
+dive-profile series keys from the `-v2`, `-v3` and `-v4` bumps, and the last-auth-method key deleted
+with the sign-in hint. A census cannot see them, and **naming one as a literal would oblige §10 to
+give a row to a key this app no longer writes**, since `storage-keys.test.ts` check (1) sweeps every
 `opendiving:` literal in `src/`. Prefix clearing removes those and any future one by construction.
 Suppression cannot work the same way — a key has to be classified before a write of it can be
 dropped — so the covered set is a list, and check (4) of `storage-keys.test.ts` is what stops a new
@@ -17037,3 +17037,213 @@ would leave one value in a card of labelled facts silently clickable.
 Wikidata gets no line here. Its half is the common names, it is CC0, and CC0 asks for nothing — so
 the page carries one credit where the picker carries two, and the picker's second one exists because
 a search feed names upstream Wikidata rows the catalog has never stored.
+
+## The deco readouts got a panel, because the depth plot has two edges and they need three
+
+`api-1` added six channels to the profile — the no-decompression clock, the time to surface, the
+ppO₂ the computer calculated, the CNS clock and the two gradient factors — and the depth plot could
+not house them. The rule stated under _"The profile's left edge always carries a scale"_ is that the
+plot holds at most three scales and labels at most two edges; these six carry three more units
+between them (minutes, bar, percent), and nothing in the existing rule can put numbers beside a
+fourth or fifth.
+
+**So the chart grew a second plot under the first, sharing its elapsed-time axis, with one row per
+unit.** Minutes carry NDL and TTS, bar carries ppO₂ alone, percent carries CNS and both gradient
+factors. A row exists only while something is on it, so the chart is the 280-unit box it has always
+been until the diver switches a deco channel on and grows by 58 units per row after that — at most
+three. The invariant the shape buys is the one worth having: **no curve is drawn against nothing.**
+
+`profileScalePlacement` in `lib/dive-profile.ts` is where the rule lives, and it is a pure function
+over channel keys on purpose. The old edge rule had four inputs and its failing case was not the
+obvious one — the report that produced _"an all-hidden chart is still a chart"_ was one cell of a
+fifteen-cell table nobody had swept. This one has ten inputs and 1 024 cells, which is a table no
+sequence of renders would afford: as a function it sweeps in under a second, and the render test
+sweeps every non-empty one of them against the DOM for the two things a function cannot see — that
+the component asks it, and that each row it returns actually carries numbers.
+
+**What was rejected, and why each is worse:**
+
+- **Putting the six on the depth plot under the existing rule.** Four of them would then be drawn
+  against nothing, which is the whole of what this invariant forbids — and a ppO₂ curve on the
+  tank-pressure axis is a flat line along the baseline, since 1.3 bar of oxygen and 230 bar of gas
+  are not one scale however much they share a unit. That last point is why `ProfileAxisKey` is named
+  after the quantity rather than after the unit.
+- **A third and fourth labelled edge.** Three columns of numbers down one side is unreadable, which
+  this file already concluded once when pressure was made the channel that goes unlabelled.
+- **One panel with two edges of its own, and the third unit unlabelled.** The same failure one level
+  down, dressed as a compromise.
+- **A row per channel — six rows.** Six axes for what is three quantities, and it separates NDL from
+  TTS and GF99 from its surface counterpart, which are exactly the pairs a diver reads against each
+  other.
+- **Normalising all six onto one 0–100 axis.** The numbers on that axis would then belong to no
+  channel, and the crosshair would be the only honest reading on the chart.
+
+**The panel's axes are numbered in `--muted-foreground`, not in a channel's colour**, which is a
+deliberate departure from the depth plot's rule that an edge is labelled in the colour of whatever
+is holding it. Three curves in three colours share the percent row, so numbers in any one of those
+colours would be claiming the scale for that curve. The depth plot's rule holds where it was written
+— on an edge that one channel owns.
+
+Two labels per row rather than `axisTicks`'s four or five: 11-unit type collides with itself in a
+46-unit row. The top one carries the unit (`40 min`, `1.5 bar`, `100%`) and the bottom one is a
+bare number, which names the scale without spending a second line on a caption.
+
+**The crosshair runs the full height and the hit target covers the panel too.** It is one instant of
+one dive; a crosshair stopping at the depth plot's baseline would leave a panel dot with no line to
+place it on.
+
+## Hiding a deco channel hides it everywhere, and that was the question worth asking
+
+The six new channels are mostly off-plot in the sense that matters to a reader: with ten toggles and
+two labelled edges, the crosshair is where an NDL is actually read. That is a real argument for
+letting the crosshair quote a channel the diver has switched off, and it was put and **rejected**.
+
+`shownValues` and `eventsShown` keep their guards, `shown` stays the filter, and this change widens
+the vocabulary `shown` draws from without changing what `shown` means. The reason is recorded twice
+over already — _"The markers got a switch, and it is not a fifth channel"_ notes that this chart has
+been talked out of the "drawn in one view, named in another" disagreement four separate times, and
+_"Markers are clipped to the plot"_ adds that a thing invisible to the eye and announced to a screen
+reader is the two views disagreeing about what the chart contains. Six channels is six new ways back
+in.
+
+The variant that sounds like a compromise — crosshair reads everything, accessible summary names
+only what is shown — _is_ that disagreement, by name. If the rule is ever to be reversed it is worth
+its own change and its own entry here, not an unremarked side effect of adding channels.
+
+## The chart's `scale` stopped being the API's constant, for two channels
+
+`ProfileChannel.scale` is documented as a pair with `DEPTH_SCALE`/`TEMPERATURE_SCALE`/
+`PRESSURE_SCALE` in the API's `schemas/dive_profile.py`, and for the depth plot's four channels it
+still is. For `ndl` and `tts` it is not: the format's scale is 1, because the wire carries whole
+seconds, and this chart divides by 60.
+
+That is not a unit-system conversion — a minute is a minute in both systems, which is why neither
+channel has a `Dimension` — it is the difference between the encoding and the reading. A diver reads
+a no-decompression limit in minutes, every computer displays it in minutes, and an axis running 0–5
+940 in seconds is numbers nobody uses. The alternative was `MM:SS` through `formatDurationForForm`,
+which is what the elapsed-time axis already uses: a TTS reading of `18:00` directly under an axis
+labelled `18:00` for elapsed time is two different quantities in one notation.
+
+The cost is that `scale`'s comment now has two cases in it. Stated on the field rather than left to
+be discovered, because "these two lists are a pair" is the kind of sentence a reader trusts.
+
+## The six deco channels have no `Dimension`, and `CHANNEL_DIMENSION` widened rather than `units.ts`
+
+`lib/units.ts` names ppO₂, CNS and duration as **deliberately absent** from `Dimension` — a bar is a
+bar and a percent is a percent in both systems, and a minute is not a length. The gradient factors
+are percentages too. So six of the ten channels have nothing to look up there, and
+`CHANNEL_DIMENSION` had to say so one way or another.
+
+It now holds `Dimension | InvariantUnit`, where the object spelling carries the two things a
+dimension would have answered that the channel's own `unit` does not: the spoken word for the
+accessible summary, and the separator (`23.4%` attaches the way `21.6°C` does; `1.32 bar` and
+`18 min` do not). `typeof entry === "string"` is the discriminant, narrowed at each of the four
+readers rather than through a `dimensionOrNull` helper — three of the four want the _other_ branch's
+value, so such a helper would be followed by a cast or a `!` at every call site to recover what it
+had just discarded.
+
+**Rejected: adding unit-invariant dimensions to `units.ts`.** It is the other half of the choice the
+plan left open, and it puts identity conversions into the one module whose entire job is that a
+conversion exists — `toImperial: (x) => x` four times over, in a table whose every other row is a
+real constant checked against a standard. The exception belongs where it is local, which is the
+chart that has it.
+
+## Ten channels, ten accents, and what has to be separable is what shares a row
+
+Six new chart tokens in `globals.css` — `--ndl`, `--tts`, `--ppo2`, `--cns`, `--gradient-factor` and
+`--surface-gradient-factor` — declared once and never redeclared under `.dark`, the same call
+`--pressure` and `--ceiling` make. Each clears the 3:1 WCAG asks of a graphical object against
+**both** cards; the measured figures are on the block itself, and were computed rather than assumed,
+as `--ceiling`'s were.
+
+The separation that matters is **within a panel row**, because that is where two curves share a
+plot: minutes holds two, percent holds three, and within each the hues are 90 degrees apart or more.
+Across rows they are not always — `--surface-gradient-factor` at 230 sits 25 degrees from `--ppo2`
+at 205 — and that is the trade `--ceiling` already makes at 16 degrees from `--coral`, accepted here
+for the same stated reason: two curves that never share a plot are told apart by which plot they are
+in, the legend names each in words, and the crosshair repeats the name beside every figure. Colour
+is doing the least of the work.
+
+**The two gradient factors are not one hue at two lightnesses**, which was tried first and is the
+obvious encoding for "the same quantity at two horizons". Two olives far enough apart to tell apart
+put the lighter one at 1.97:1 on the light card. A contrast floor that only one of a pair clears is
+not a pair.
+
+**The panel's curves are solid, and that is not an exception to the ceiling's dash.** The dash marks
+the one line on the _depth plot_ that was never measured, among three that were. Every curve in the
+deco panel is the device's own arithmetic, so a dash there would distinguish nothing from nothing —
+the case the rule answers does not arise.
+
+## A profile event can arrive with no type, and `other` left the wire
+
+DiveJSON §6.6 makes `type` OPTIONAL: "the device recorded something and nothing in the vocabulary
+says what" is spelled as an _absent_ type beside a `label` that is then required. The API stores
+that fact as `OTHER` and maps it to a null on the way out, so `DiveProfileEvent.type` is now
+`DiveProfileEventType | null | undefined` and the union carries thirteen values with no `other`
+among them.
+
+`describeEvent` keeps its `default` and `glyphFor` keeps taking a string, which is the rule recorded
+under _"A closed vocabulary from another deployable is an open one at the boundary"_ — and that
+branch now catches **three** arrivals rather than one: a null type, a type this bundle predates, and
+an older API build's literal `"other"`. All three want the device's own wording, so they share one
+`return` rather than three copies of it.
+
+**Thirteen types, still three glyph shapes.** A shape is worth about one bit at four units across,
+and the families are unchanged: the gas plan is the diamond, a stop is the triangle, the computer
+talking is the circle. A violated stop keeps the stop's triangle rather than taking the ceiling's
+red — red means the ceiling on this chart and only the ceiling, and a safety stop is precisely the
+stop that is not an obligation.
+
+The alarm vocabulary is one value per distinct meaning rather than one per vendor string: "Safety
+Stop Broken" and "Mandatory Safety Stop Broken" are one occurrence with two spellings, and the
+spelling travels in `label`.
+
+## A recording says what it ran, and an absent mode is not open circuit
+
+The per-recording block in `DiveRecordingsCard` now carries one line of settings —
+`Open circuit · Bühlmann GF 30/85`, or `Freedive`, or a model alone where a file recorded the
+algorithm and not the mode. `recordingSettingsLabel` in `lib/dive-recordings.ts` composes it.
+
+**Per recording, never per dive**, which is the same reason the device label lives there: a backup
+computer run in gauge mode beside a primary on open circuit is ordinary practice and the dive was
+not a gauge dive. Two computers give two answers and the recording is the row that holds both.
+
+**A mode this build has never heard of prints nothing**, not the raw `semi_closed_rebreather` and
+emphatically not a default. `MODE_LABELS` is a lookup with no fallback entry, for the boundary rule
+above: the vocabulary is closed in the API's _current_ build and the two repos deploy independently.
+And **an absent mode is never open circuit** — UDDF documents an absent `<divemode>` as meaning one,
+but that is the source format's claim about its own default rather than the device's about the dive,
+so neither repo reads it and neither should this line.
+
+**The device's own name for its model beats the family.** A Suunto names its model
+`Suunto Fused RGBM 2`, which says more than `RGBM` does, and the two together say one of them twice
+— the same call `recordingDeviceLabel` already makes between a model string and a brand. The family
+fills in where a source named a model without naming a product: a UDDF `<buehlmann>` element, a
+FIT's `zhl_16c`.
+
+The gradient factors attach to the model (`Bühlmann GF 30/85`) because they are its settings, and
+both halves render or neither — a lone `GF 30/` would be a claim the file never made. The
+conservatism is its own clause rather than part of the model's name: it sits on the device's own
+scale (Suunto's P-2 to P2) and means nothing without the model and the computer beside it, which is
+exactly what this line sits under. `0` is a setting rather than an absence, so it is read with
+`== null`, and a positive value keeps its sign.
+
+## `-v4`: the fourth bump of the remembered-selection key
+
+`DIVE_PROFILE_SERIES_KEY` moved from `-v3` to `-v4` under the rule this file already states — adding
+a key to a `parseSeriesVisibility` list needs a key bump; removing one does not. Every selection
+written before this change names the four original channels and the markers, all still available, so
+it would restore cleanly with six new channels switched off and six legend entries implying the
+diver had turned them off themselves: the feature invisible to precisely the people who have used
+the chart before.
+
+The bump's followers are worth listing, because two of the three are prose and the third is a
+fixture nobody would grep for:
+
+- `COVERED_KEYS` in `lib/device-memory.ts` and §10 of `app/privacy/page.tsx`, both holding the key
+  as a literal — `storage-keys.test.ts` check (1) fails the build if they disagree.
+- The orphan comment in `device-memory.ts` and its mirror in this file, which counted "the two
+  superseded dive-profile series keys" and now count three.
+- `device-memory.test.ts`'s prefix-clearing fixture, whose comment counts the same set in different
+  words — "Two orphans left behind by key bumps and one by a deleted feature" — and whose seeded
+  store gains `-v3`. A sweep for the first sentence does not find this one.

@@ -404,3 +404,63 @@ describe("DiveRecordingsCard", () => {
     expect(screen.getByText(/The dive itself stays/i)).toBeVisible();
   });
 });
+
+describe("DiveRecordingsCard settings line", () => {
+  it("says what each computer was set to, per recording", () => {
+    // **Per recording, never per dive.** A backup run in gauge mode beside a
+    // primary on open circuit is ordinary practice, and this card is the one
+    // place that can say both without claiming either of the dive.
+    render(
+      <DiveRecordingsCard
+        dive={dive({
+          recordings: [
+            recording({
+              uuid: "perdix",
+              ordinal: 0,
+              files: [file()],
+              device: { brand: "Shearwater", model: "Perdix 3" },
+              mode: "closed_circuit",
+              deco_model: {
+                algorithm: "buhlmann",
+                gf_low: 30,
+                gf_high: 85,
+              },
+            }),
+            recording({
+              uuid: "ocean",
+              ordinal: 1,
+              files: [file({ uuid: "f2" })],
+              device: { brand: "Suunto", model: "Suunto Ocean" },
+              mode: "gauge",
+            }),
+          ],
+        })}
+        onChanged={vi.fn()}
+      />,
+    );
+
+    const [primary, backup] = screen.getAllByTestId("dive-recording");
+    expect(
+      within(primary).getByTestId("dive-recording-settings"),
+    ).toHaveTextContent("Closed circuit · Bühlmann GF 30/85");
+    expect(
+      within(backup).getByTestId("dive-recording-settings"),
+    ).toHaveTextContent("Gauge");
+  });
+
+  it("leaves the line out where the file recorded neither", () => {
+    // Rather than printing "Open circuit" on a file that never said so - an
+    // absent mode is not open circuit, however a source format's documentation
+    // glosses its own default.
+    render(
+      <DiveRecordingsCard
+        dive={dive({
+          recordings: [recording({ files: [file()] })],
+        })}
+        onChanged={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByTestId("dive-recording-settings")).toBeNull();
+  });
+});

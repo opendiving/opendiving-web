@@ -1,19 +1,28 @@
 "use client";
 
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import type { DiveProfile, DiveProfileEvent } from "@/lib/api/dives";
+import type {
+  DiveProfile,
+  DiveProfileEvent,
+  DiveProfileEventType,
+} from "@/lib/api/dives";
 import { axisTicks, niceDomain, type Domain } from "@/lib/chart-scale";
 import { buildAreaPath } from "@/lib/chart-path";
 import {
   type ChannelSeries,
+  type ProfileAxisKey,
   type ProfileChannel,
   type ProfileChannelKey,
+  type ProfileSeriesKey,
   type ProfileViewKey,
   EVENTS_LABEL,
+  PANEL_AXES,
   PROFILE_CHANNELS,
   PROFILE_CHANNEL_KEYS,
   PROFILE_VIEW_KEYS,
+  axisUnitSuffix,
   channelWord,
+  channelsOnAxis,
   depthDomain,
   displayChannel,
   describeEvent,
@@ -22,6 +31,7 @@ import {
   drawnSampleIndexAt,
   gapThreshold,
   nearestEvent,
+  profileScalePlacement,
   readoutTolerance,
   segmentByTimeGap,
   toChannelSeries,
@@ -52,7 +62,7 @@ import type { UnitSystem } from "@/lib/units";
 // cross-referenced, because this comment is what stops the next person reaching
 // for Recharts.
 //
-// Four channels, four colors, all of them theme-stable tokens declared once in
+// Ten channels, ten colors, all of them theme-stable tokens declared once in
 // `globals.css` and never redeclared under `.dark` (see the note on `--pressure`
 // there). `--primary` would not do: it is near-black in light mode and a mid
 // grey in dark, which left the gas chart's trend line barely visible.
@@ -60,14 +70,44 @@ import type { UnitSystem } from "@/lib/units";
 // The viewBox coordinate space. Not pixels: the SVG scales to its container, so
 // these are only ever ratios to each other.
 const WIDTH = 720;
-const HEIGHT = 280;
 // Wider on both sides than the gas chart: depth is on the left and temperature
 // and pressure share the right, so both margins carry axis labels.
 const PADDING = { top: 14, right: 46, bottom: 28, left: 44 };
 
 const PLOT_WIDTH = WIDTH - PADDING.left - PADDING.right;
-const PLOT_HEIGHT = HEIGHT - PADDING.top - PADDING.bottom;
-const PLOT_BOTTOM = HEIGHT - PADDING.bottom;
+const PLOT_HEIGHT = 238;
+const PLOT_BOTTOM = PADDING.top + PLOT_HEIGHT;
+
+// The deco panel: one short plot per unit the depth plot's two edges cannot
+// carry, stacked under it and sharing its elapsed-time axis. See
+// `profileScalePlacement` for why the split is forced rather than chosen.
+//
+// Each row is its own plot with its own left-hand scale, so the depth plot's
+// edges are untouched by anything the diver switches on down here, and every
+// curve on the chart is drawn against numbers that belong to it.
+const PANEL_HEIGHT = 46;
+const PANEL_GAP = 12;
+
+const panelTop = (index: number) =>
+  PLOT_BOTTOM + PANEL_GAP + index * (PANEL_HEIGHT + PANEL_GAP);
+
+// Where the drawing stops, and how tall the viewBox is. Both grow with the
+// panel count, which is why neither is a module constant: with no panel this is
+// the 280-unit box the chart has always been.
+const chartBottom = (panelCount: number) =>
+  panelCount === 0 ? PLOT_BOTTOM : panelTop(panelCount - 1) + PANEL_HEIGHT;
+const chartHeight = (panelCount: number) =>
+  chartBottom(panelCount) + PADDING.bottom;
+
+// Display value -> y, in one rect. The `inverted` flag is depth's: it grows
+// downward from the surface, so its axis is upside down relative to every other
+// scale on the chart.
+const scaleY =
+  (domain: Domain, top: number, height: number, inverted: boolean) =>
+  (value: number) => {
+    const fraction = (value - domain.min) / (domain.max - domain.min);
+    return top + (inverted ? fraction : 1 - fraction) * height;
+  };
 
 // How close the crosshair has to be to an event marker before the readout names
 // it, in viewBox units - converted to seconds per dive, so it stays the same
@@ -96,18 +136,19 @@ export interface DiveProfileChartProps {
 
 interface PlottedChannel {
   key: string;
-  // Which of the four toggles this line belongs to. Not the same as `key`: two
-  // cylinders are two lines and one channel.
+  // Which of the legend's toggles this line belongs to. Not the same as `key`:
+  // two cylinders are two lines and one channel.
   channelKey: ProfileChannelKey;
+  // Which scale it is drawn against, which also decides *where* it is drawn -
+  // the depth plot for the first three, a row of the deco panel for the rest.
+  axis: ProfileAxisKey;
   label: string;
   series: ChannelSeries;
-  // The axis this line is scaled against, kept alongside it so the axis labels
-  // and gridlines can read the same domain the curve was drawn with rather than
+  // The domain this line is scaled against, kept alongside it so the axis labels
+  // and gridlines can read the same one the curve was drawn with rather than
   // recomputing one and hoping it matches. It wouldn't, for pressure: every
   // cylinder shares one domain across all of them.
   domain: Domain;
-  // Display value -> y coordinate.
-  y: (value: number) => number;
   // Runs of consecutive samples, as index arrays - never one polyline across a
   // sensor dropout, and never a run too short to draw.
   segments: number[][];
@@ -126,6 +167,12 @@ interface PlottedChannel {
   // "yes" by a sample nothing was drawn from.
   drawn: Set<number>;
 }
+
+// The same channel once the selection is known, and therefore once there is a
+// rect to map it into. `y` is deliberately not on `PlottedChannel`: a deco
+// channel's row depends on which *other* deco channels are switched on, and
+// `channels` is built before any of that is decided.
+type PositionedChannel = PlottedChannel & { y: (value: number) => number };
 
 // Module-level so the reference is stable across renders - see
 // `subscribeToNothing`. `useSyncExternalStore` re-reads whenever this identity
@@ -293,18 +340,15 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
       drawnValues(depth, depthRuns?.drawn),
       drawnValues(ceiling, ceilingRuns?.drawn),
     );
-    const verticalY = (value: number) =>
-      PADDING.top +
-      ((value - vertical.min) / (vertical.max - vertical.min)) * PLOT_HEIGHT;
 
     if (depth && depthRuns) {
       plotted.push({
         key: "depth",
         channelKey: "depth",
+        axis: "depth",
         label: PROFILE_CHANNELS.depth.label,
         series: depth,
         domain: vertical,
-        y: verticalY,
         ...depthRuns,
       });
     }
@@ -313,10 +357,10 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
       plotted.push({
         key: "ceiling",
         channelKey: "ceiling",
+        axis: "depth",
         label: PROFILE_CHANNELS.ceiling.label,
         series: ceiling,
         domain: vertical,
-        y: verticalY,
         // Segmented like every other channel, and here the gaps carry the most
         // meaning of any on the chart: a break in this series is a stretch of
         // the dive with *no* decompression obligation, not a sensor dropping
@@ -331,16 +375,13 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
       // Its own domain, not shared with depth: a 21.6-21.9 °C range - which is
       // what a whole dive's temperature usually spans - would be a flat line on
       // any axis wide enough for depth.
-      const domain = niceDomain(temperature.values);
       plotted.push({
         key: "temperature",
         channelKey: "temperature",
+        axis: "temperature",
         label: PROFILE_CHANNELS.temperature.label,
         series: temperature,
-        domain,
-        y: (value) =>
-          PADDING.top +
-          (1 - (value - domain.min) / (domain.max - domain.min)) * PLOT_HEIGHT,
+        domain: niceDomain(temperature.values),
         ...runs(temperature.t, PROFILE_CHANNELS.temperature),
       });
     }
@@ -356,17 +397,56 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
         plotted.push({
           key: `pressure-${cylinder.gasNumber}`,
           channelKey: "pressure",
+          axis: "pressure",
           label:
             pressure.length > 1
               ? `${PROFILE_CHANNELS.pressure.label} (gas ${cylinder.gasNumber})`
               : PROFILE_CHANNELS.pressure.label,
           series: cylinder,
           domain,
-          y: (value) =>
-            PADDING.top +
-            (1 - (value - domain.min) / (domain.max - domain.min)) *
-              PLOT_HEIGHT,
           ...runs(cylinder.t, PROFILE_CHANNELS.pressure),
+        });
+      }
+    }
+
+    // The deco panel's channels, one axis at a time. Nothing here is special-
+    // cased per channel: they differ from the four above only in sharing an axis
+    // with whichever siblings carry the same unit, so the loop is over the axes
+    // and the channels fall out of `channelsOnAxis`.
+    for (const axis of PANEL_AXES) {
+      const built = channelsOnAxis(PROFILE_CHANNEL_KEYS, axis)
+        // Tank pressure is the one channel the API serves as a list rather than
+        // a series, and it never lands in a panel - this is what says so to the
+        // type system rather than to a reader only.
+        .filter((key): key is ProfileSeriesKey => key !== "pressure")
+        .map((key) => {
+          const series = toChannelSeries(profile, key, units);
+          return series
+            ? { key, series, ...runs(series.t, PROFILE_CHANNELS[key]) }
+            : null;
+        })
+        .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+      if (built.length === 0) continue;
+
+      // One domain across the row, from every channel on it whether or not it is
+      // currently plotted - the same rule `depthDomain` follows, and for the same
+      // reason: an axis that moved when a sibling was toggled would shift the
+      // curves under the diver's eyes for no change in the data. From the drawn
+      // values, so a sample the chart dropped cannot stretch it.
+      const domain = niceDomain(
+        built.flatMap((entry) => drawnValues(entry.series, entry.drawn)),
+      );
+      for (const entry of built) {
+        plotted.push({
+          key: entry.key,
+          channelKey: entry.key,
+          axis,
+          label: PROFILE_CHANNELS[entry.key].label,
+          series: entry.series,
+          domain,
+          segments: entry.segments,
+          gapSeconds: entry.gapSeconds,
+          drawn: entry.drawn,
         });
       }
     }
@@ -486,9 +566,38 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
       toggleSeries(current ?? selection, key, PROFILE_VIEW_KEYS),
     );
 
-  const shown = channels.filter((channel) =>
-    visible.includes(channel.channelKey),
+  // Where this selection's scales land: which channel labels each edge of the
+  // depth plot, and which rows the deco panel grows. Derived from the keys alone
+  // (`profileScalePlacement`) so the rule can be swept over every one of the
+  // 1 024 selections in a unit test rather than sampled by rendering.
+  const placement = profileScalePlacement(
+    availableChannels.filter((key) => visible.includes(key)),
   );
+
+  // The shown channels, now that there is a rect to map each into. A deco
+  // channel's row is its axis's position among the panels, which is exactly the
+  // thing that could not be known while `channels` was being built.
+  const shown: PositionedChannel[] = channels
+    .filter((channel) => visible.includes(channel.channelKey))
+    .map((channel) => {
+      const panelIndex = placement.panels.indexOf(channel.axis);
+      const { inverted } = PROFILE_CHANNELS[channel.channelKey];
+      return {
+        ...channel,
+        y:
+          panelIndex >= 0
+            ? scaleY(
+                channel.domain,
+                panelTop(panelIndex),
+                PANEL_HEIGHT,
+                inverted,
+              )
+            : scaleY(channel.domain, PADDING.top, PLOT_HEIGHT, inverted),
+      };
+    });
+
+  const chartFoot = chartBottom(placement.panels.length);
+  const height = chartHeight(placement.panels.length);
 
   // Whether the markers are on the plot right now. Read by everything that says
   // anything about them - the glyphs, the crosshair and the accessible summary -
@@ -515,51 +624,19 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
           .flatMap((channel) => drawnValues(channel.series, channel.drawn))
       : [];
 
-  const depthChannel = shown.find((channel) => channel.key === "depth") ?? null;
-  const ceilingChannel =
-    shown.find((channel) => channel.key === "ceiling") ?? null;
-  const temperatureChannel =
-    shown.find((channel) => channel.key === "temperature") ?? null;
-  const pressureChannel =
-    shown.find((channel) => channel.channelKey === "pressure") ?? null;
+  // The channel drawing a given toggle right now, or null. `find` rather than a
+  // filter for pressure on purpose: every cylinder shares one domain and one y,
+  // so any of them answers for the axis.
+  const shownChannel = (key: ProfileChannelKey): PositionedChannel | null =>
+    shown.find((channel) => channel.channelKey === key) ?? null;
 
-  // Depth and the ceiling are one scale, not two - the same meters on the same
-  // domain, labelled in whichever of the two colours is drawing it. So the plot
-  // holds at most three scales however many curves are on it, and this is the
-  // first of them.
-  const verticalChannel = depthChannel ?? ceilingChannel;
-  const scales = [verticalChannel, temperatureChannel, pressureChannel].filter(
-    (channel): channel is PlottedChannel => channel !== null,
-  );
+  const depthChannel = shownChannel("depth");
+  const ceilingChannel = shownChannel("ceiling");
 
-  // **Sides are fixed while there are two scales to tell apart**: meters on the
-  // left, temperature on the right, and pressure taking whichever of the two the
-  // others left free. A diver reads this chart across a logbook of dives, and an
-  // axis that changes sides with the channel mix makes them re-read the colour
-  // of the numbers every time - the labels are coloured, but hue is a slower
-  // thing to check than position.
-  //
-  // Pressure is the one that moves, and it is the right one to move: it is the
-  // channel that goes unlabelled anyway on a full three-scale plot, where
-  // temperature has the right and the crosshair gives the exact figure for any
-  // instant. Three sets of numbers on one edge is unreadable.
-  //
-  // **A single scale goes on the left and the right edge stays empty.** There is
-  // no side to protect when nothing shares the plot with it, the left is where
-  // the eye goes for a primary axis, and it is where the gridlines are already
-  // anchored. The two rules together: the left edge is labelled whenever
-  // anything is plotted, and the right edge exactly when the plot holds a second
-  // scale.
-  const hasTwoScales = scales.length > 1;
-  const leftChannel = hasTwoScales
-    ? (verticalChannel ?? pressureChannel)
-    : (scales[0] ?? null);
-  // Reachable only with meters on the left, since two scales without temperature
-  // means depth (or the ceiling) and pressure - so this can never hand pressure
-  // to both edges at once.
-  const rightChannel = hasTwoScales
-    ? (temperatureChannel ?? pressureChannel)
-    : null;
+  // Which channel labels each edge of the depth plot - the rule lives in
+  // `profileScalePlacement`, and what is left here is looking the channel up.
+  const leftChannel = placement.left ? shownChannel(placement.left) : null;
+  const rightChannel = placement.right ? shownChannel(placement.right) : null;
 
   // The water column: one filled region per run of consecutive depth samples,
   // from the surface down to the curve.
@@ -671,19 +748,16 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
               tooltip's percentage offsets are resolved against. */}
           <div className="relative min-w-[560px]">
             <svg
-              viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+              viewBox={`0 0 ${WIDTH} ${height}`}
               className="w-full h-auto"
               role="img"
               // Only what's on screen. A summary naming a temperature range the
               // diver has hidden describes a chart nobody is looking at.
               aria-label={describeProfile({
-                depth: shownValues("depth"),
-                ceiling: shownValues("ceiling"),
-                temperature: shownValues("temperature"),
-                pressure: shownValues("pressure"),
-                // Emptied rather than filtered, since the toggle is all-or-nothing
-                // - and this is the same "only what's on screen" rule the four
-                // channels above go through `shownValues` for.
+                readings: shownValues,
+                // Emptied rather than filtered, since the toggle is
+                // all-or-nothing - and this is the same "only what's on screen"
+                // rule the channels go through `shownValues` for.
                 events: eventsShown ? events : [],
                 duration,
                 units,
@@ -753,12 +827,57 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
                   </text>
                 ))}
 
+              {/* The deco panel's rows: two rules and two numbers each, the
+              upper one carrying the unit. Deliberately thinner than the depth
+              plot's axis - `axisTicks` would put four or five labels in 46
+              units, where 11-unit type collides with itself - and deliberately
+              **not** coloured after a channel: three curves in different colours
+              can share one of these rows, so numbers in any one of them would be
+              claiming the scale for that curve. The depth plot's coloured-edge
+              rule holds where it was written, on an edge one channel owns. */}
+              {placement.panels.map((axis, index) => {
+                const row = shown.find((channel) => channel.axis === axis);
+                if (!row) return null;
+                const suffix = axisUnitSuffix(axis, units);
+
+                return (
+                  <g key={axis} data-deco-panel={axis} aria-hidden>
+                    {[row.domain.max, row.domain.min].map((tick) => (
+                      <line
+                        key={tick}
+                        className="text-border"
+                        x1={PADDING.left}
+                        x2={WIDTH - PADDING.right}
+                        y1={row.y(tick)}
+                        y2={row.y(tick)}
+                        stroke="currentColor"
+                        strokeWidth={1}
+                      />
+                    ))}
+                    {[row.domain.max, row.domain.min].map((tick, position) => (
+                      <text
+                        key={tick}
+                        x={PADDING.left - 6}
+                        y={row.y(tick)}
+                        textAnchor="end"
+                        dominantBaseline="middle"
+                        fontSize={10}
+                        fill="currentColor"
+                        className="text-muted-foreground"
+                      >
+                        {position === 0 ? `${tick}${suffix}` : tick}
+                      </text>
+                    ))}
+                  </g>
+                );
+              })}
+
               {elapsedTicks(duration).map((tick) => (
                 <text
                   key={tick}
                   aria-hidden
                   x={x(tick)}
-                  y={HEIGHT - 8}
+                  y={height - 8}
                   textAnchor="middle"
                   fontSize={11}
                   fill="currentColor"
@@ -834,7 +953,7 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
               not make them one; what it grants is that a dive with a dozen of
               them can be read without them, which "annotations are cheap enough
               to always draw" was the wrong answer to. See `PROFILE_VIEW_KEYS`
-              for why they are a separate list rather than a fifth channel. */}
+              for why they are a separate list rather than one more channel. */}
               {eventsShown &&
                 events.map((event, index) => (
                   <EventMarker
@@ -845,12 +964,16 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
                   />
                 ))}
 
+              {/* Through the deco panel as well as the depth plot: it is one
+              instant of one dive, and a crosshair that stopped at the depth
+              plot's baseline would leave the diver reading a panel dot with no
+              line to place it on. */}
               {hoveredSeconds !== null && (
                 <line
                   x1={x(hoveredSeconds)}
                   x2={x(hoveredSeconds)}
                   y1={PADDING.top}
-                  y2={PLOT_BOTTOM}
+                  y2={chartFoot}
                   stroke="currentColor"
                   strokeWidth={1}
                   className="text-muted-foreground"
@@ -883,7 +1006,7 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
                 x={PADDING.left}
                 y={PADDING.top}
                 width={PLOT_WIDTH}
-                height={PLOT_HEIGHT}
+                height={chartFoot - PADDING.top}
                 fill="transparent"
                 onMouseMove={(event) => {
                   const bounds = event.currentTarget.getBoundingClientRect();
@@ -903,6 +1026,10 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
                   readouts={readouts}
                   event={hoveredEvent}
                   cx={x(hoveredSeconds)}
+                  // The box the card's percentage offsets are resolved against,
+                  // which grows with the panel: a card positioned as a fraction
+                  // of a height it no longer has lands somewhere else entirely.
+                  chartHeight={height}
                   // The topmost of the dots being described, which is only used to
                   // decide which end of the plot the card sits at - see
                   // `tooltipVerticalAnchor`. `PLOT_BOTTOM` is the degenerate
@@ -991,32 +1118,64 @@ interface EventGlyph {
   shape: "diamond" | "triangle" | "circle";
 }
 
-const EVENT_GLYPHS: Record<DiveProfileEvent["type"], EventGlyph> = {
+// **Three shapes for thirteen types, and the family is the whole point.** A
+// stop is a triangle whether the computer prescribed it or recorded it broken,
+// an alarm is the computer talking and draws the general circle, and the gas
+// plan is the diamond. Nine more outlines would be nine more things to tell
+// apart at four units across; the crosshair says which one it is in words.
+const EVENT_GLYPHS: Record<DiveProfileEventType, EventGlyph> = {
   gas_switch: { colorClass: "text-pressure", shape: "diamond" },
   deep_stop: { colorClass: "text-muted-foreground", shape: "triangle" },
   safety_stop: { colorClass: "text-muted-foreground", shape: "triangle" },
   bookmark: { colorClass: "text-muted-foreground", shape: "circle" },
-  other: { colorClass: "text-muted-foreground", shape: "circle" },
+  // The alarm classes. A violated stop keeps the stop's triangle rather than
+  // taking the ceiling's red: red means the ceiling on this chart and only the
+  // ceiling, and a safety stop is precisely the stop that is not an obligation.
+  safety_stop_mandatory: {
+    colorClass: "text-muted-foreground",
+    shape: "triangle",
+  },
+  safety_stop_violation: {
+    colorClass: "text-muted-foreground",
+    shape: "triangle",
+  },
+  deep_stop_violation: {
+    colorClass: "text-muted-foreground",
+    shape: "triangle",
+  },
+  ascent_rate: { colorClass: "text-muted-foreground", shape: "circle" },
+  ceiling_violation: { colorClass: "text-muted-foreground", shape: "circle" },
+  ndl_reached: { colorClass: "text-muted-foreground", shape: "circle" },
+  ppo2_high: { colorClass: "text-muted-foreground", shape: "circle" },
+  pressure_low: { colorClass: "text-muted-foreground", shape: "circle" },
+  depth_alarm: { colorClass: "text-muted-foreground", shape: "circle" },
 };
 
-// What a type this build has never heard of is drawn as.
+// What a marker with no type, or a type this build has never heard of, is drawn
+// as.
 //
-// `event.type` is a `string` on the wire that TypeScript has been told is one of
-// five, and the two repos deploy independently: an API that grows a sixth
-// `ProfileEventType` reaches browsers still running this bundle. Indexing
-// `EVENT_GLYPHS` with it then yields `undefined`, and destructuring that is a
-// `TypeError` inside render - which, with no `error.tsx` anywhere under
-// `src/app`, takes out the whole dive detail route rather than one tick. A
-// neutral grey circle is the honest degradation, and `describeEvent` falls back
-// to the device's own wording beside it. The `as` is doing the opposite of its
-// usual job here: it exists so the `??` is reachable, not to silence it.
+// Both are real and they are not the same thing. An **absent** type is the
+// format's own way of saying the device recorded something this vocabulary has
+// no word for, and arrives with the device's wording in `label`. An
+// **unrecognized** type is the deployment gap: `event.type` is a `string` on the
+// wire that TypeScript has been told is one of thirteen, the two repos deploy
+// independently, and an API that grows a fourteenth reaches browsers still
+// running this bundle. Indexing `EVENT_GLYPHS` with either yields `undefined`,
+// and destructuring that is a `TypeError` inside render - which, with no
+// `error.tsx` anywhere under `src/app`, takes out the whole dive detail route
+// rather than one tick. A neutral grey circle is the honest degradation for
+// both, and `describeEvent` falls back to the device's own wording beside it.
 const UNKNOWN_EVENT_GLYPH: EventGlyph = {
   colorClass: "text-muted-foreground",
   shape: "circle",
 };
 
-function glyphFor(type: string): EventGlyph {
-  return EVENT_GLYPHS[type as DiveProfileEvent["type"]] ?? UNKNOWN_EVENT_GLYPH;
+function glyphFor(type: string | null | undefined): EventGlyph {
+  if (type == null) return UNKNOWN_EVENT_GLYPH;
+
+  // The `as` is doing the opposite of its usual job here: it exists so the `??`
+  // is reachable, not to silence it.
+  return EVENT_GLYPHS[type as DiveProfileEventType] ?? UNKNOWN_EVENT_GLYPH;
 }
 
 // One marker: a tick standing on the x-axis with its glyph on top.
@@ -1107,12 +1266,14 @@ function ProfileTooltip({
   readouts,
   event,
   cx,
+  chartHeight,
   topmostY,
 }: {
   seconds: number;
   readouts: Readout[];
   event: DiveProfileEvent | null;
   cx: number;
+  chartHeight: number;
   topmostY: number;
 }) {
   // The card always lands inside the chart box, in both axes. It has to: the
@@ -1145,7 +1306,7 @@ function ProfileTooltip({
       className="pointer-events-none absolute z-10 whitespace-nowrap rounded-md border border-white/10 bg-tooltip px-3 py-2 text-tooltip-foreground shadow-lg"
       style={{
         left: `${(cx / WIDTH) * 100}%`,
-        top: `${(y / HEIGHT) * 100}%`,
+        top: `${(y / chartHeight) * 100}%`,
         transform: `translate(${translateX}, ${translateY})`,
       }}
       role="presentation"
@@ -1304,24 +1465,18 @@ function LegendToggles({
 // The chart's accessible name. The visual tooltip says nothing to a screen
 // reader, so this has to carry the shape of the dive on its own.
 function describeProfile({
-  depth,
-  ceiling,
-  temperature,
-  pressure,
+  readings,
   events,
   duration,
   units,
 }: {
-  // Readings that are on screen, in display units - not the channels' raw
-  // series. Every one of these is fed through `drawnValues`, because this
+  // A channel's readings that are on screen, in display units - not its raw
+  // series. Every one of these comes through `drawnValues`, because this
   // function's whole output is extremes and an extreme taken over samples the
   // chart declined to draw describes a curve nobody can see. An empty array is
   // "this channel is not on screen", which covers hidden, absent and too-sparse
   // with one check.
-  depth: number[];
-  ceiling: number[];
-  temperature: number[];
-  pressure: number[];
+  readings: (key: ProfileChannelKey) => number[];
   events: readonly DiveProfileEvent[];
   duration: number;
   // The system those readings are already in, so this can name it. Spelled out
@@ -1338,34 +1493,54 @@ function describeProfile({
   // and the same one the numbers were stored under.
   const say = (key: ProfileChannelKey, value: number) =>
     value.toFixed(displayChannel(PROFILE_CHANNELS[key], units).decimals);
+  const word = (key: ProfileChannelKey) => channelWord(key, units);
 
-  if (depth.length > 0) {
-    parts.push(
-      `maximum depth ${say("depth", Math.max(...depth))} ${channelWord("depth", units)}`,
-    );
-  }
-  if (ceiling.length > 0) {
-    // The deepest ceiling, which is the one number that says how much
-    // decompression this dive owed at its worst.
-    parts.push(
-      `deco ceiling to ${say("ceiling", Math.max(...ceiling))} ${channelWord("ceiling", units)}`,
-    );
-  }
-  if (temperature.length > 0) {
-    parts.push(
-      `temperature ${say("temperature", Math.min(...temperature))} to ${say(
-        "temperature",
-        Math.max(...temperature),
-      )} ${channelWord("temperature", units)}`,
-    );
-  }
-  if (pressure.length > 0) {
-    parts.push(
-      `tank pressure ${say("pressure", Math.max(...pressure))} down to ${say(
-        "pressure",
-        Math.min(...pressure),
-      )} ${channelWord("pressure", units)}`,
-    );
+  // **Which extreme says something is per quantity**, and the four that name a
+  // single one are not the four that would be guessed. A maximum NDL is the
+  // device's display cap on almost every recreational dive and says nothing,
+  // while the minimum is the moment the dive came closest to an obligation - the
+  // same call the API makes in choosing which extreme to store. Depth, the
+  // ceiling, time-to-surface and every percentage read the other way, and
+  // temperature and tank pressure are ranges because both ends are a fact about
+  // the dive.
+  //
+  // Driven by `PROFILE_CHANNEL_KEYS` rather than by ten `if`s, so the sentence
+  // keeps the legend's order and a channel added to that list cannot be silently
+  // left out of what a screen reader hears.
+  const phrase = (key: ProfileChannelKey, values: number[]): string | null => {
+    if (values.length === 0) return null;
+    const low = say(key, Math.min(...values));
+    const high = say(key, Math.max(...values));
+
+    switch (key) {
+      case "depth":
+        return `maximum depth ${high} ${word(key)}`;
+      case "ceiling":
+        // The deepest ceiling, which is the one number that says how much
+        // decompression this dive owed at its worst.
+        return `deco ceiling to ${high} ${word(key)}`;
+      case "temperature":
+        return `temperature ${low} to ${high} ${word(key)}`;
+      case "pressure":
+        return `tank pressure ${high} down to ${low} ${word(key)}`;
+      case "ndl":
+        return `no-decompression time down to ${low} ${word(key)}`;
+      case "tts":
+        return `time to surface up to ${high} ${word(key)}`;
+      case "ppo2":
+        return `oxygen partial pressure up to ${high} ${word(key)}`;
+      case "cns":
+        return `CNS to ${high} ${word(key)}`;
+      case "gradient_factor":
+        return `gradient factor to ${high} ${word(key)}`;
+      case "surface_gradient_factor":
+        return `surface gradient factor to ${high} ${word(key)}`;
+    }
+  };
+
+  for (const key of PROFILE_CHANNEL_KEYS) {
+    const said = phrase(key, readings(key));
+    if (said) parts.push(said);
   }
 
   // Spelled out rather than counted, unlike the channels above, because this is

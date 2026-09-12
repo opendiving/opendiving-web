@@ -15,6 +15,7 @@ import {
   primaryRecording,
   recordingDeviceLabel,
   recordingLabel,
+  recordingSettingsLabel,
   UNNAMED_DEVICE_LABEL,
 } from "@/lib/dive-recordings";
 
@@ -526,5 +527,119 @@ describe("deleteRecordingConfirmation", () => {
     expect(deleteRecordingConfirmation([], "gone").description).toContain(
       "may change with it",
     );
+  });
+});
+
+describe("recordingSettingsLabel", () => {
+  it("says the mode and the model on one line", () => {
+    expect(
+      recordingSettingsLabel(
+        recording({
+          mode: "open_circuit",
+          deco_model: { algorithm: "buhlmann", gf_low: 30, gf_high: 85 },
+        }),
+      ),
+    ).toBe("Open circuit · Bühlmann GF 30/85");
+  });
+
+  it("prefers the device's own name for its model over the family", () => {
+    // The same call `recordingDeviceLabel` makes between a model and a brand:
+    // "Suunto Fused RGBM 2" says more than "RGBM", and the two together say one
+    // of them twice.
+    expect(
+      recordingSettingsLabel(
+        recording({
+          mode: "open_circuit",
+          deco_model: { algorithm: "rgbm", name: "Suunto Fused RGBM 2" },
+        }),
+      ),
+    ).toBe("Open circuit · Suunto Fused RGBM 2");
+  });
+
+  it("names a freedive with no model to name", () => {
+    expect(recordingSettingsLabel(recording({ mode: "freedive" }))).toBe(
+      "Freedive",
+    );
+  });
+
+  it("says the model alone where the file recorded no mode", () => {
+    expect(
+      recordingSettingsLabel(
+        recording({ deco_model: { name: "ZHL-16C", gf_low: 40, gf_high: 85 } }),
+      ),
+    ).toBe("ZHL-16C GF 40/85");
+  });
+
+  it("says nothing at all rather than guessing open circuit", () => {
+    // UDDF documents an absent `<divemode>` as meaning open circuit. That is the
+    // source format's claim about its own default rather than the device's about
+    // the dive, and reading it would label a CCR dive whose importer never set
+    // the mode as open circuit.
+    expect(recordingSettingsLabel(recording())).toBeNull();
+    expect(recordingSettingsLabel(recording({ mode: null }))).toBeNull();
+    expect(
+      recordingSettingsLabel(recording({ mode: null, deco_model: null })),
+    ).toBeNull();
+  });
+
+  it("says nothing for a mode this build has never heard of", () => {
+    // The vocabulary is closed in the API's *current* build, and the two repos
+    // deploy independently - so a raw `semi_closed_rebreather` on screen is the
+    // failure this guards against, and a wrong word is worse than no word.
+    expect(
+      recordingSettingsLabel(
+        recording({ mode: "semi_closed_rebreather", deco_model: null }),
+      ),
+    ).toBeNull();
+    // Which does not silence what the file *did* record.
+    expect(
+      recordingSettingsLabel(
+        recording({
+          mode: "semi_closed_rebreather",
+          deco_model: { name: "VPM-B" },
+        }),
+      ),
+    ).toBe("VPM-B");
+  });
+
+  it("carries a conservatism as its own clause, sign and all", () => {
+    // On the device's own scale - Suunto's P-2 to P2 - which means nothing
+    // without the model and the computer beside it, and this line sits under
+    // both. `0` is a setting rather than an absence.
+    expect(
+      recordingSettingsLabel(
+        recording({
+          mode: "gauge",
+          deco_model: { name: "Suunto Fused RGBM 2", conservatism: 0 },
+        }),
+      ),
+    ).toBe("Gauge · Suunto Fused RGBM 2 · conservatism 0");
+    expect(
+      recordingSettingsLabel(
+        recording({ deco_model: { name: "Fused RGBM", conservatism: 1 } }),
+      ),
+    ).toBe("Fused RGBM · conservatism +1");
+    expect(
+      recordingSettingsLabel(
+        recording({ deco_model: { name: "Fused RGBM", conservatism: -2 } }),
+      ),
+    ).toBe("Fused RGBM · conservatism -2");
+  });
+
+  it("drops a half-recorded gradient-factor pair rather than printing one", () => {
+    // The API records both or neither, and a lone "GF 30/" would be a claim the
+    // file never made.
+    expect(
+      recordingSettingsLabel(
+        recording({
+          mode: "closed_circuit",
+          deco_model: { algorithm: "buhlmann", gf_low: 30 },
+        }),
+      ),
+    ).toBe("Closed circuit · Bühlmann");
+  });
+
+  it("is null for a deco model that recorded nothing worth a word", () => {
+    expect(recordingSettingsLabel(recording({ deco_model: {} }))).toBeNull();
   });
 });

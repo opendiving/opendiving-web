@@ -20,15 +20,34 @@ import {
 // derivation belongs here.
 
 export type ProfileChannelKey =
-  "depth" | "ceiling" | "temperature" | "pressure";
+  | "depth"
+  | "ceiling"
+  | "temperature"
+  | "pressure"
+  // The six the device's own decompression arithmetic produces. They are
+  // channels on exactly the terms the first four are - a domain, a scale, a
+  // unit and a toggle - and they are drawn away from the depth plot only
+  // because the plot has two edges and these carry three more units between
+  // them. See `CHANNEL_AXIS`.
+  | "ndl"
+  | "tts"
+  | "ppo2"
+  | "cns"
+  | "gradient_factor"
+  | "surface_gradient_factor";
 
 export interface ProfileChannel {
   key: ProfileChannelKey;
   label: string;
   unit: string;
   // What the API's integer `values` are divided by to reach display units.
-  // Mirrors `DEPTH_SCALE`/`TEMPERATURE_SCALE`/`PRESSURE_SCALE` in the API's
-  // `schemas/dive_profile.py` - these two lists are a pair.
+  //
+  // For the depth plot's four channels this is exactly the API's own
+  // constant - `DEPTH_SCALE`/`CEILING_SCALE`/`TEMPERATURE_SCALE`/`PRESSURE_SCALE` in
+  // `schemas/dive_profile.py`, and those two lists are a pair. For `ndl` and
+  // `tts` it is not: the format's scale is 1 because the wire carries whole
+  // seconds, and a diver reads a no-decompression limit in minutes, so the
+  // divisor is 60 and the axis is numbered in the unit the wrist showed.
   scale: number;
   // How many decimals a reading of this channel is worth showing. Same
   // resolution as the stored scale: showing more digits than were stored is a
@@ -92,11 +111,16 @@ export const PROFILE_CHANNELS: Record<ProfileChannelKey, ProfileChannel> = {
     decimals: 1,
     colorClass: "text-ceiling",
     inverted: true,
-    // The only dashed curve on the chart, and the dash is load-bearing: this is
-    // the one line here that was never measured. Depth, temperature and
-    // pressure are readings; a ceiling is a computed limit that moved as the
-    // diver's tissues loaded, and a solid line would present the two as the
-    // same kind of fact.
+    // The only dashed curve on the chart, and the dash is load-bearing: it is
+    // the one line **on the depth plot** that was never measured. Depth,
+    // temperature and pressure are readings; a ceiling is a computed limit that
+    // moved as the diver's tissues loaded, and a solid line would present the
+    // two as the same kind of fact.
+    //
+    // The deco panel's six channels are computed too and are drawn solid, which
+    // is not an exception to that rule but the absence of the case it answers:
+    // every curve in that panel is the device's own arithmetic, so a dash there
+    // would distinguish nothing from nothing.
     dashed: true,
     // A break in this series is a stretch of dive with no decompression
     // obligation, not a sensor dropping out.
@@ -124,20 +148,102 @@ export const PROFILE_CHANNELS: Record<ProfileChannelKey, ProfileChannel> = {
     dashed: false,
     gapsAreMeaningful: false,
   },
+  // The six below are the device's own decompression arithmetic. None of them is
+  // inverted (more is up, on all six), none is dashed - see the note on the
+  // ceiling's dash - and a gap in any of them means "not recorded here", the
+  // measured channels' meaning rather than the ceiling's.
+  ndl: {
+    key: "ndl",
+    label: "No-deco time",
+    unit: "min",
+    // Seconds on the wire. See `scale` above for why this one is not the API's
+    // own constant.
+    scale: 60,
+    decimals: 0,
+    colorClass: "text-ndl",
+    inverted: false,
+    dashed: false,
+    gapsAreMeaningful: false,
+  },
+  tts: {
+    key: "tts",
+    label: "Time to surface",
+    unit: "min",
+    scale: 60,
+    decimals: 0,
+    colorClass: "text-tts",
+    inverted: false,
+    dashed: false,
+    gapsAreMeaningful: false,
+  },
+  ppo2: {
+    key: "ppo2",
+    label: "ppO₂",
+    unit: "bar",
+    scale: 100, // hundredths of a bar
+    // Two, because tenths cannot tell 1.30 from 1.32 and the limits divers set
+    // themselves live in that last digit.
+    decimals: 2,
+    colorClass: "text-ppo2",
+    inverted: false,
+    dashed: false,
+    gapsAreMeaningful: false,
+  },
+  cns: {
+    key: "cns",
+    label: "CNS",
+    unit: "%",
+    scale: 10, // tenths of a percent
+    decimals: 1,
+    colorClass: "text-cns",
+    inverted: false,
+    dashed: false,
+    gapsAreMeaningful: false,
+  },
+  gradient_factor: {
+    key: "gradient_factor",
+    label: "Gradient factor",
+    unit: "%",
+    scale: 1, // whole percent
+    decimals: 0,
+    colorClass: "text-gradient-factor",
+    inverted: false,
+    dashed: false,
+    gapsAreMeaningful: false,
+  },
+  surface_gradient_factor: {
+    key: "surface_gradient_factor",
+    label: "Surface gradient factor",
+    unit: "%",
+    scale: 1, // whole percent
+    decimals: 0,
+    colorClass: "text-surface-gradient-factor",
+    inverted: false,
+    dashed: false,
+    gapsAreMeaningful: false,
+  },
 };
 
-// The channels in the order they're plotted and listed in the legend. A separate
-// list rather than `Object.keys` on the record above, which gives this order only
-// by accident of how the object happens to be written.
+// The channels in the order they're plotted and listed in the legend, which is
+// the order the API's `PROFILE_CHANNEL_ORDER` sorts a profile's `channels` by and
+// the order DiveJSON §6.4 declares its members in. A separate list rather than
+// `Object.keys` on the record above, which gives this order only by accident of
+// how the object happens to be written.
 export const PROFILE_CHANNEL_KEYS: readonly ProfileChannelKey[] = [
   "depth",
   "ceiling",
   "temperature",
   "pressure",
+  "ndl",
+  "tts",
+  "ppo2",
+  "cns",
+  "gradient_factor",
+  "surface_gradient_factor",
 ];
 
-// Everything the legend switches, which is the four channels plus the event
-// markers - and the markers are emphatically *not* a fifth channel. They have no
+// Everything the legend switches, which is every channel plus the event
+// markers - and the markers are emphatically *not* another channel. They have no
 // scale, no unit and nothing to invert, so a `PROFILE_CHANNELS` entry would have
 // had to invent all three; what they share with a channel is only that the
 // legend names them and the diver can turn them off.
@@ -158,6 +264,135 @@ export const PROFILE_VIEW_KEYS: readonly ProfileViewKey[] = [
 // the chart's accessible summary use for them.
 export const EVENTS_LABEL = "Markers";
 
+// Which channels share one domain, and therefore one labelled scale. Depth and
+// the ceiling are one axis by construction - the same meters, so a 3 m ceiling
+// cannot be drawn below a 40 m depth - and the two gradient factors and the CNS
+// clock are one because they are all whole percent.
+//
+// Named after the quantity rather than after the unit: `ppo2` and `pressure` are
+// both bar and are emphatically **not** one axis, because 1.3 bar of oxygen on a
+// 230-bar tank scale is a flat line along the baseline.
+export type ProfileAxisKey =
+  "depth" | "temperature" | "pressure" | "duration" | "ppo2" | "percent";
+
+const CHANNEL_AXIS: Record<ProfileChannelKey, ProfileAxisKey> = {
+  depth: "depth",
+  ceiling: "depth",
+  temperature: "temperature",
+  pressure: "pressure",
+  ndl: "duration",
+  tts: "duration",
+  ppo2: "ppo2",
+  cns: "percent",
+  gradient_factor: "percent",
+  surface_gradient_factor: "percent",
+};
+
+// The axes the depth plot itself can carry, and the axes that go into the deco
+// panel underneath it - in the order their rows stack.
+//
+// **The split is forced, not stylistic.** The depth plot has two edges and holds
+// at most three scales; the ten channels carry six axes between them. So three of
+// them are housed where a labelled scale can be given them, and the panel is one
+// row per axis so that every curve on the chart is drawn against numbers that
+// belong to it.
+export const PANEL_AXES: readonly ProfileAxisKey[] = [
+  "duration",
+  "ppo2",
+  "percent",
+];
+
+// What follows the number on a panel row's top tick - the separator and the unit
+// both, so "40 min" and "100%" each get the spacing that quantity is written
+// with. Read off the channels themselves rather than written out again, so a row
+// cannot come to disagree with the curves in it.
+export function axisUnitSuffix(
+  axis: ProfileAxisKey,
+  units: UnitSystem,
+): string {
+  const key = PROFILE_CHANNEL_KEYS.find(
+    (candidate) => CHANNEL_AXIS[candidate] === axis,
+  );
+  if (!key) return "";
+
+  return `${channelSeparator(key)}${displayChannel(PROFILE_CHANNELS[key], units).unit}`;
+}
+
+/** Which channels of a selection belong to one axis, in the legend's order. */
+export function channelsOnAxis(
+  shown: readonly ProfileChannelKey[],
+  axis: ProfileAxisKey,
+): ProfileChannelKey[] {
+  return PROFILE_CHANNEL_KEYS.filter(
+    (key) => CHANNEL_AXIS[key] === axis && shown.includes(key),
+  );
+}
+
+/**
+ * Where a selection's scales go: which channel labels the depth plot's left edge,
+ * which labels its right, and which rows the deco panel grows.
+ *
+ * A pure function over channel keys rather than logic inside the component,
+ * because the rule has ten inputs and the combination that breaks it is never the
+ * obvious one - `lib/dive-profile.test.ts` sweeps every one of the 1 024
+ * selections, which no sequence of renders could afford to.
+ *
+ * **Sides are fixed while there are two scales to tell apart**: meters on the
+ * left, temperature on the right, and pressure taking whichever of the two the
+ * others left free. A diver reads this chart across a logbook of dives, and an
+ * axis that changed edges with the channel mix would make them re-read the colour
+ * of the numbers every time. A single scale goes on the left and the right edge
+ * stays empty — there is no side to protect when nothing shares the plot with it.
+ *
+ * The panel rows are independent of all that: they are their own plots with their
+ * own left edges, so nothing about the depth plot's edges changes when one
+ * appears.
+ */
+export interface ProfileScalePlacement {
+  /** Labels the depth plot's left edge; null only when nothing is plotted on it. */
+  left: ProfileChannelKey | null;
+  /** Labels its right edge, exactly when the plot holds a second scale. */
+  right: ProfileChannelKey | null;
+  /** One row per axis the selection puts below the depth plot, in `PANEL_AXES` order. */
+  panels: ProfileAxisKey[];
+}
+
+export function profileScalePlacement(
+  shown: readonly ProfileChannelKey[],
+): ProfileScalePlacement {
+  const has = (key: ProfileChannelKey) => shown.includes(key);
+
+  // "Depth, or the ceiling if depth is off" - one scale, labelled in whichever
+  // of the two is drawing it.
+  const vertical: ProfileChannelKey | null = has("depth")
+    ? "depth"
+    : has("ceiling")
+      ? "ceiling"
+      : null;
+  const temperature: ProfileChannelKey | null = has("temperature")
+    ? "temperature"
+    : null;
+  const pressure: ProfileChannelKey | null = has("pressure")
+    ? "pressure"
+    : null;
+
+  const scales = [vertical, temperature, pressure].filter(
+    (key) => key !== null,
+  );
+  const hasTwoScales = scales.length > 1;
+
+  return {
+    left: hasTwoScales ? (vertical ?? pressure) : (scales[0] ?? null),
+    // Reachable only with meters on the left, since two scales without
+    // temperature means depth (or the ceiling) and pressure - so this can never
+    // hand pressure to both edges at once.
+    right: hasTwoScales ? (temperature ?? pressure) : null,
+    panels: PANEL_AXES.filter((axis) =>
+      shown.some((key) => CHANNEL_AXIS[key] === axis),
+    ),
+  };
+}
+
 export interface ChannelSeries {
   channel: ProfileChannel;
   // Elapsed seconds, as served. Kept as `t` rather than following the wire's
@@ -168,18 +403,54 @@ export interface ChannelSeries {
   values: number[];
 }
 
-// Which of `lib/units.ts`'s dimensions each channel is a reading of.
+// What `lib/units.ts` supplies for a channel it has no dimension for: the two
+// things a `Dimension` would have answered that the channel's own `unit` does
+// not - how it is spoken aloud, and what sits between the value and the label.
+interface InvariantUnit {
+  /** Spoken form, for the accessible summary: "%" is read aloud as nothing. */
+  word: string;
+  /** What sits between value and label - "" where the unit attaches. */
+  separator: string;
+}
+
+// Which of `lib/units.ts`'s dimensions each channel is a reading of - or, for a
+// channel that reads the same number in both systems, what that module would
+// have supplied if it had one.
 //
 // The ceiling is a **depth**, and sharing depth's dimension is what keeps the two
 // converting identically - the same binding `scale` already has for the same
 // reason. A shaded deco region drawn against a curve converted by any other factor
 // would drift off the water it bounds.
-const CHANNEL_DIMENSION: Record<ProfileChannelKey, Dimension> = {
-  depth: "depth",
-  ceiling: "depth",
-  temperature: "temperature",
-  pressure: "pressure",
-};
+//
+// **The six deco channels have no dimension, and inventing one would have been
+// the wrong half of the choice.** `lib/units.ts` names ppO₂, CNS and duration as
+// deliberately absent from `Dimension` - a bar is a bar and a percent is a
+// percent in both systems, and a minute is not a length - and the gradient
+// factors are percentages too. Adding unit-invariant dimensions there would put
+// identity conversions in the one module whose entire job is that a conversion
+// exists, so the widening happens here instead, where the exception is local to
+// the chart that has it.
+const CHANNEL_DIMENSION: Record<ProfileChannelKey, Dimension | InvariantUnit> =
+  {
+    depth: "depth",
+    ceiling: "depth",
+    temperature: "temperature",
+    pressure: "pressure",
+    ndl: { word: "minutes", separator: " " },
+    tts: { word: "minutes", separator: " " },
+    ppo2: { word: "bar", separator: " " },
+    // Attached, the way a degree is: "23.4%" is how a percentage is written
+    // everywhere, including on the computers these readings come off.
+    cns: { word: "percent", separator: "" },
+    gradient_factor: { word: "percent", separator: "" },
+    surface_gradient_factor: { word: "percent", separator: "" },
+  };
+
+// A `Dimension` is a string and the invariant spelling is an object, so `typeof`
+// is the discriminant and each of the four readers below narrows on it directly.
+// Deliberately not routed through a `dimensionOrNull` helper: three of the four
+// want the *other* branch's value, so such a helper would be followed by a cast
+// or a `!` at every call site to recover what it had just discarded.
 
 /**
  * A channel as it is labelled and quoted for one system.
@@ -188,16 +459,21 @@ const CHANNEL_DIMENSION: Record<ProfileChannelKey, Dimension> = {
  * at all: a foot, a degree Fahrenheit and a psi are each finer than the tenth of a
  * metric unit the stored scale resolves to, so a decimal there would be inventing
  * precision rather than preserving it.
+ *
+ * A channel with no dimension is returned unchanged in **both** systems - there is
+ * no imperial spelling of a percent, and dropping its decimals would round every
+ * ppO₂ to a whole bar.
  */
 export function displayChannel(
   channel: ProfileChannel,
   units: UnitSystem,
 ): ProfileChannel {
-  if (units === "metric") return channel;
+  const entry = CHANNEL_DIMENSION[channel.key];
+  if (units === "metric" || typeof entry !== "string") return channel;
 
   return {
     ...channel,
-    unit: unitLabel(CHANNEL_DIMENSION[channel.key], units),
+    unit: unitLabel(entry, units),
     decimals: 0,
   };
 }
@@ -209,18 +485,31 @@ export function displayChannel(
  * and describes how the API encodes an integer, not how a diver reads one. Folding
  * a unit conversion into it would make this app's idea of a centimetre disagree
  * with the API's.
+ *
+ * A channel with no dimension passes through: the number a diver reads is the
+ * same in either system.
  */
 export function toChannelDisplay(
   scaledValue: number,
   key: ProfileChannelKey,
   units: UnitSystem,
 ): number {
-  return toDisplayUnits(scaledValue, CHANNEL_DIMENSION[key], units);
+  const entry = CHANNEL_DIMENSION[key];
+  return typeof entry === "string"
+    ? toDisplayUnits(scaledValue, entry, units)
+    : scaledValue;
 }
 
 /** The spoken unit for a channel, for the chart's accessible description. */
 export function channelWord(key: ProfileChannelKey, units: UnitSystem): string {
-  return unitWord(CHANNEL_DIMENSION[key], units);
+  const entry = CHANNEL_DIMENSION[key];
+  return typeof entry === "string" ? unitWord(entry, units) : entry.word;
+}
+
+/** What sits between a reading and its unit - see `DimensionSpec.separator`. */
+function channelSeparator(key: ProfileChannelKey): string {
+  const entry = CHANNEL_DIMENSION[key];
+  return typeof entry === "string" ? unitSeparator(entry) : entry.separator;
 }
 
 // A channel's stored integers as display units, or `null` when the profile
@@ -229,9 +518,15 @@ export function channelWord(key: ProfileChannelKey, units: UnitSystem): string {
 // Divides, never multiplies by a reciprocal: `1234 / 100` is the correctly
 // rounded `12.34`, whereas `1234 * 0.01` is `12.340000000000002` - exactly the
 // noise the integer encoding was chosen to remove.
+// Every channel the API serves as a single series, which is all of them but tank
+// pressure - that one is a list, one entry per cylinder, and has
+// `toPressureSeries` below. Derived rather than spelled out, so a channel added
+// to `ProfileChannelKey` is one this accepts without a second edit.
+export type ProfileSeriesKey = Exclude<ProfileChannelKey, "pressure">;
+
 export function toChannelSeries(
   profile: DiveProfile,
-  key: "depth" | "ceiling" | "temperature",
+  key: ProfileSeriesKey,
   units: UnitSystem,
 ): ChannelSeries | null {
   const series: DiveProfileSeries | null | undefined = profile[key];
@@ -340,22 +635,29 @@ export function nearestEvent(
 // What a marker says, in words - for the crosshair readout and for the chart's
 // accessible summary.
 //
-// An `other` is the device's own wording and is passed through as it stands:
-// that is the entire point of the type, and rephrasing "Mandatory Safety Stop
-// Broken" into something tidier would be inventing a claim about a dive. The
-// API guarantees a label on an `other` (its `_validate_events` rejects one
-// without), so the fallback here is only for a payload that broke that promise -
-// an unlabelled tick with no words is still better than the string "undefined".
+// An event with **no type** is the device's own wording and is passed through as
+// it stands: that is the entire point of the absent type, and rephrasing
+// "Mandatory Safety Stop Broken" into something tidier would be inventing a
+// claim about a dive. The API guarantees a label wherever it sends no type (its
+// `_validate_events` rejects one without), so the fallback noun here is only for
+// a payload that broke that promise - an unlabelled tick with no words is still
+// better than the string "undefined".
+//
+// **One value per distinct meaning, not one per vendor string**, which is why
+// there is no case for "Mandatory Safety Stop Broken" beside
+// `safety_stop_violation`: the spelling travels in `label` and the chart says
+// what happened.
 //
 // The `default` is not dead code, however much the exhaustive `case` list makes
 // it look like one. `ProfileEventType` is closed *today*, and the two repos
-// deploy independently: an API that grows a sixth type reaches a browser still
-// running this bundle, where `event.type` is a string TypeScript merely believes
-// is one of five. Without the branch the switch falls off the end and returns
-// `undefined` from a function typed `: string`, which renders as an empty
-// tooltip line and puts the literal word "undefined" in the chart's
-// `aria-label`. Degrading to the device's own wording, or to a neutral noun,
-// costs three lines.
+// deploy independently: an API that grows a fourteenth type reaches a browser
+// still running this bundle, where `event.type` is a string TypeScript merely
+// believes is one of thirteen. Without the branch the switch falls off the end
+// and returns `undefined` from a function typed `: string`, which renders as an
+// empty tooltip line and puts the literal word "undefined" in the chart's
+// `aria-label`. It is also where a null type lands, and where an older build's
+// `"other"` lands - three arrivals, one honest answer, and deliberately one
+// `return` rather than three copies of it.
 export function describeEvent(event: DiveProfileEvent): string {
   switch (event.type) {
     case "gas_switch":
@@ -371,11 +673,24 @@ export function describeEvent(event: DiveProfileEvent): string {
       return "Safety stop";
     case "bookmark":
       return "Bookmark";
-    // `other` and an unknown type take the same branch, and deliberately share
-    // one `return` rather than repeating it: they want identical handling for
-    // almost the same reason - the device said something this vocabulary has no
-    // word for - and two identical branches are two things to keep in step.
-    case "other":
+    case "ascent_rate":
+      return "Ascent rate";
+    case "safety_stop_mandatory":
+      return "Mandatory safety stop";
+    case "safety_stop_violation":
+      return "Safety stop broken";
+    case "deep_stop_violation":
+      return "Deep stop broken";
+    case "ceiling_violation":
+      return "Deco ceiling broken";
+    case "ndl_reached":
+      return "No-deco limit reached";
+    case "ppo2_high":
+      return "ppO₂ high";
+    case "pressure_low":
+      return "Tank pressure low";
+    case "depth_alarm":
+      return "Depth alarm";
     default:
       return event.label?.trim() || "Device event";
   }
@@ -664,5 +979,5 @@ export function formatChannelValue(
   // what makes a temperature read "21.6°C" here exactly as it does in the sidebar;
   // it used to be a hardcoded space, and was the one place in the app that spaced
   // a degree symbol.
-  return `${value.toFixed(channel.decimals)}${unitSeparator(CHANNEL_DIMENSION[channel.key])}${channel.unit}`;
+  return `${value.toFixed(channel.decimals)}${channelSeparator(channel.key)}${channel.unit}`;
 }
