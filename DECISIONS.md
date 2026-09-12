@@ -3830,10 +3830,14 @@ similar, and similar is the state that has somebody staring at two diffs wonderi
 worth keeping apart when reading the paragraph above. `shot()` writes whatever it takes into both
 trees, so a capture added here lands in the product clone the first time anyone runs the script —
 but that README names the images it renders one at a time, and nothing in this repository edits it.
-`dive-site.png` arrived exactly that way. So the claim this section makes is that the files are
-byte-identical, never that both front pages show the same set: they can legitimately differ for as
-long as it takes somebody to make the other change, in the other repository, where the layout
-decision belongs.
+`dive-site.png` will arrive exactly that way, and has not yet: it was captured in a git worktree,
+where `../opendiving` resolves inside `.claude/worktrees/` and finds nothing, so the run printed its
+absent-clone note and wrote one copy. That is worth knowing before reading a missing file over there
+as a bug — an agent's capture is always taken in a worktree, so the second write is the one that
+routinely does not happen, and the next run from a full checkout makes it. So the claim this section
+makes is that the files are byte-identical wherever both exist, never that both front pages show the
+same set: they can legitimately differ for as long as it takes somebody to make the other change, in
+the other repository, where the layout decision belongs.
 
 **The rejected alternatives** were hotlinking this repository's raw URLs from the product README —
 which breaks the day either repository is renamed and leaves that README unrenderable in a clone —
