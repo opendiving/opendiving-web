@@ -16,10 +16,12 @@ export interface InstanceConfig {
   /**
    * Whether the OpenDiving project itself operates this instance - `false` on
    * every self-hosted install, and `true` only where the project runs the copy.
-   * Backed by the API's `PROJECT_OPERATED` setting. Its one consumer is the
-   * landing hero's request form, which may speak in the project's own voice
-   * only where this says so; nothing about which form the hero holds, or what
-   * the API accepts, turns on it.
+   * Backed by the API's `PROJECT_OPERATED` setting. Two consumers read it, and
+   * both use it for the same thing - deciding whether this copy may speak in
+   * the project's own voice. The landing hero's request form is one; the other
+   * is `lib/api/config.server.ts`, which asks the API from the server and gates
+   * the operator block on `/privacy` and `/terms`. Nothing about which form the
+   * hero holds, or what the API accepts, turns on it.
    */
   project_operated: boolean;
 }

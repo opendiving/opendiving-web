@@ -20,6 +20,8 @@ shutdown, acquisition, or paywall can ever take your logbook with it.
 about running it, lives at **[opendiving/opendiving](https://github.com/opendiving/opendiving)**:
 the install, the configuration reference, the operator guides and the release that ties the
 components together. Start there if you want to run OpenDiving rather than work on this half of it.
+It is also where the instance this project runs itself is named, for anyone who would rather not run
+one.
 
 ![Dashboard](docs/screenshots/dashboard.png)
 

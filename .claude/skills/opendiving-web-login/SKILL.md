@@ -75,10 +75,9 @@ a time and verifying it consumes it, so a server-side verify leaves the browser 
 Open the link and click through it, e.g. with the Browser pane:
 
 1. `preview_start {url: "<the link from step 1>"}` — the `{url}` form only opens a browser tab, it
-   never launches a server. (Where a `launch.json` defines an `opendiving-web` entry — in this
-   maintainer's umbrella checkout, one level above this repo, not in the repo itself — it is
-   deliberately command-less, so even `{name: ...}` attaches to the running dev server rather than
-   starting one.)
+   never launches a server. Prefer it over `{name: ...}`, which starts whatever a `launch.json` in
+   scope defines; this repository ships none, so what that would start depends on your own setup
+   rather than on anything here — and _Before starting_ has already settled the dev server.
 2. `read_page` → click the button labelled **Sign in**
 3. Confirm success: the header shows an **Account menu** button and you land on `/dashboard`
 

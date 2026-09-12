@@ -84,4 +84,7 @@ to it or tell you plainly that we can't.
 
 Reporting something in good faith is welcome here. Don't test against an instance you don't run:
 those are other divers' logbooks, and this project can't grant you permission to touch someone
-else's server.
+else's server. **That includes the instance this project runs itself** — it holds real divers' data
+like any other, so it is out of scope for active testing, with no bug bounty and no safe-harbour
+carve-out. Run your own copy, test that as hard as you like, and report what you find through the
+channels above; a finding in the code is the same finding wherever it was found.
