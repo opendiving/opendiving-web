@@ -3432,10 +3432,14 @@ full width at every breakpoint, so the chart only gets wider and the trend easie
 for everything, and no reason to special-case the hero on that axis.
 
 **Height is per page, and the cut lands on a card boundary rather than a round figure.** Cutting at
-the _end_ of a card matters more than the exact number, and more than the three shots agreeing: a
+the _end_ of a card matters more than the exact number, and more than the shots agreeing on one: a
 frame that stops just shy of finishing a card reads as an off-by-one, while one that stops well
-inside a card the reader can see continues reads as a page that goes on. 1086 ends the gear page
-below its service history; the other two frames are measured in the page rather than written down.
+inside a card the reader can see continues reads as a page that goes on. Every frame but the gear
+page's is measured in the page rather than written down. The gear page's is 1086, it is the one
+frame in this script that breaks the rule this paragraph states — it ends 151px inside the dive
+list, not below anything — and it is left that way on purpose, for a reason that is not about that
+page at all; see _"The gear frame is the lever under the README row, and it is not pulled here"_
+below.
 
 **The dive page carried 1086 too, and did not land on a boundary with it.** The frame ran past the
 profile card and stopped part-way through the glyphs of the _Gas Consumption_ heading below it - and
@@ -3458,8 +3462,10 @@ Worse, the figure is not portable. Measuring 1564 in one Chromium and shooting i
 `playwright-core` drives produced a 3px sliver of the Recent Dives card along the bottom edge - the
 same page, laid out four pixels apart. So `cutBelow()` measures the page being photographed, moments
 before the shutter, and that is the frame height. `CUT_BELOW` names a card; nobody maintains a
-number. Any page can opt in the same way, and the gear page is the one that still carries a literal,
-because 1086 has never moved for it.
+number. Any page can opt in the same way. The gear page is the one that still carries a literal, and
+not because its layout held still — it did not, and by the time anyone decoded that PNG the literal
+was cutting a dive row in half — but because the height it should move _to_ is decided by the README
+row rather than by the page, and that height is not settled yet. See the section on it below.
 
 **What it measures is a seam across the whole page, not the named card's own bottom edge**, and the
 distinction is invisible until a shot cuts on a page with two columns - see _"A cut that cannot
@@ -3470,9 +3476,9 @@ people read a README on. Every image in `docs/screenshots/` is therefore twice i
 1024-wide page is a 2048-wide PNG.
 
 **One shot at a time, optionally.** `npm run screenshots -- you@example.com dashboard` takes only
-the named images. None of the three are stable between runs - "due in 24 days" counts down, the
-subjects are re-picked from whatever the log holds that day - so retaking all three to change one
-puts two unrelated images in the diff.
+the named images. None of them are stable between runs - "due in 24 days" counts down, the subjects
+are re-picked from whatever the log holds that day - so retaking the set to change one puts
+unrelated images in the diff.
 
 **Selectors are scoped to the card they belong to, by heading.** `selectMonth` drove the consumption
 chart's Year/Month toggle through a bare `getByRole("button", {name: "Month"})`, which was
@@ -3489,14 +3495,16 @@ the two cards _share_, as a `/previous period with dives/i` regex. Pinning the w
 would mean a wording improvement in the app breaks the screenshots, and the card scope is what makes
 matching the shared half unambiguous.
 
-**Two images, not four, and one frame per page.** The grid previously held two crops of the same
-dive page at different scroll offsets - the top, and the profile chart further down - which reads as
-a mistake rather than as two things. At 1024 that is moot: one frame of the dive page carries the
-chart _and_ the sidebar. Filling the other two cells then meant reaching for list pages, and a table
-of dive sites or trips is a screenshot of a table - it demonstrates nothing the feature list hasn't
-already said. What's left is the two pages that show something you cannot describe in a bullet: the
-profile charted out of a dive-computer export, and a gear item's service schedule with its history
-under it.
+**One frame per page, and no crop of a page already shown.** The grid previously held two crops of
+the same dive page at different scroll offsets - the top, and the profile chart further down - which
+reads as a mistake rather than as two things. At 1024 that is moot: one frame of the dive page
+carries the chart _and_ the sidebar. Filling the other cells then meant reaching for list pages, and
+a table of dive sites or trips is a screenshot of a table - it demonstrates nothing the feature list
+hasn't already said. What passes the bar is a page that shows something you cannot describe in a
+bullet: the profile charted out of a dive-computer export, a gear item's service schedule with its
+history under it, and - added later, for a row whose two cells were 1758px apart in height - one
+dive _site_ on the map with its dives beside it, which is the list page's subject as a page rather
+than as a table. See _"The dive-site shot cuts at the foot of one column"_ below.
 
 **Nothing about the account is hardcoded.** The dive is whichever of the 30 most recent has the most
 recordings carrying samples (only `GET /dive/{uuid}` says, hence the probing - see the subsection
@@ -3594,8 +3602,8 @@ _for_, not the card that comes out last; where the frame actually ends is the su
 a regression and not a missing card. `DiveProfileCard` draws the switcher only once a _second_
 recording of the same dive has a profile, and no dive in the log these images come from has one, so
 the ranking above settled for the best available and photographed it honestly. Shooting a different
-account instead is not the way out: all three README images are one product tour, and a set taken
-from two logs is a defect that has been caught here before. A retake against a log that does hold a
+account instead is not the way out: the README images are one product tour, and a set taken from two
+logs is a defect that has been caught here before. A retake against a log that does hold a
 two-computer dive will grow a control above the chart that this image does not have — check that
 before reading its absence as a regression.
 
@@ -3644,6 +3652,189 @@ bottom plus the gap, so that path stays arithmetically identical rather than mer
 the difference between a clean edge and a sliver of the next card, per the section above.
 `dashboard.png` was not re-shot at all, so it is byte-for-byte the file that was already committed.
 
+### The dive-site shot cuts at the foot of one column, not at a seam
+
+The fourth image is the dive-site page, and it is the first shot whose frame ends inside a card on
+purpose. `CUT_BELOW` exists so that never happens, so this says where the line is.
+
+**The page has exactly two cards and they finish together in exactly one place: the bottom of it.**
+Every dive logged at the site fills the main column, the site's details and its map fill the
+sidebar, and the only height at which nothing is open is 1889px — the main column's card ends at
+1865 and the grid's gap is 24 — which is as tall as the dive shot beside it. `cutBelow()` never gets
+that far: each card is the only child of its column `div`, so the neighbour it reads its gutter off
+does not exist and it refuses on either anchor with _"that card has no neighbour to measure the gap
+from"_. What this image exists for is the map, and the map sits some 215px down a sidebar card that
+ends at 783, a third of the way along. So `CUT_AFTER_CARD` names the sidebar card and the frame ends
+at its foot, letting the dive list run on past the edge — 824px, against 1889 for the seam.
+
+**The gutter under it is read off the grid, not off a neighbour.** A column of one card has nothing
+beside it to measure the gap from, which is the shape this rule exists for, and `rowGap` on the
+two-column grid is a resolved length at any breakpoint. Still measured in the page being
+photographed, which is the property the section above cares about; nobody maintains a number.
+
+**A card may be cut through. A row may not.** The first frame this produced ran the line four pixels
+above a dive row's bottom border, which reads as a clipped row and not as a list that goes on —
+which is the entire claim the rule rests on. So the cut moves down past any row it lands inside, to
+the top of the row after it, the same seeding `cutBelow()` uses and for the same reason: the gap is
+drawn in full and the next row contributes no sliver. Rows are bordered boxes exactly as cards are
+(`<a class="rounded-lg border">` in `RecentDivesCard`), and nesting is what separates them — a row
+has a bordered ancestor, a card does not. It loops, because clearing a row in one list can land the
+cut inside a row of another; each pass clears one row's bottom, so it is bounded by the rows on the
+page.
+
+**Do not reach for this rule where the far column is prose or a chart.** A list of rows is the one
+shape a frame can honestly end part-way down. The dive page, whose far column is a paragraph about
+what the gas figures cover, is the case the section above already records getting this wrong.
+
+**The subject is the placed site with the most dives, and a position is a hard requirement** —
+unlike every other subject in this script, where the rank is a preference and only an empty one is
+disqualified. `LocationsMap` renders nothing at all for a site without coordinates, so a site with
+none is not a worse photograph of this page; it is a photograph of a different page. Dive count is
+the preference on top, because a site somebody keeps going back to is what the page is for, and it
+costs a scoped `/dives` request per placed site: the list schema carries the name and the position
+and nothing counted, and `/dive-sites` caps `items_per_page` at 100, so the whole list is paged
+through first. The first placed site seeds the answer, so a log with placed sites and no dives at
+any of them still produces a picture rather than an error.
+
+### The gear frame is the lever under the README row, and it is not pulled here
+
+The dive-site shot exists to fill the hole under `gear-item.png` in the two-column row, and on its
+own it cannot close it. `dive-detail.png` is 3930 captured px tall and `gear-item.png` 2172, so
+whatever stacks beneath the gear shot needs 1758 to come level with the dive page beside them; the
+rule above decides this frame from its own page and returns 824 CSS px, which is 1648 at the 2x
+everything here is captured at. What could close the hole is the _pair_. `gear-item`'s height is the
+one figure in `screenshots.mjs` written down rather than measured, so moving it moves the hole, and
+two clean frames chosen together sum far closer than either reaches alone.
+
+**That lever is deliberately not pulled here, and the rest of this section is the measurement of
+it** — kept so that whoever does pull it does not have to take it again. It is not pulled because
+the target is not a fixed quantity: it is set by `dive-detail.png` beside the pair, and that image
+is stale. It was last regenerated in #179; #198 then put the deco readouts on the profile chart and
+taught the recordings card to say its mode and model, without retaking it. So the dive shot no
+longer shows the page it is of, its height is going to move when it is retaken, and picking a gear
+stop against the current 3930 would mean picking one again afterwards. Every absolute figure below
+is against that 3930 and inherits the same expiry.
+
+**That retake is not merely pending, it is held** — see _"It arrived without a retake,
+deliberately"_ above, which is the reason it did not happen the moment `DIVE_UUID` made it one
+command. So this lever stays unpulled for longer than "the next time someone retakes the dive shot"
+suggests, and the expiry above is not a short one.
+
+The figures are measured rather than reasoned about, by putting the row's markdown through GitHub's
+own `/markdown` API, styling the HTML that comes back with the `github-markdown-css` distribution of
+GitHub's stylesheet, and measuring the boxes with the committed PNGs in them — **in a document with
+a doctype.** Measured both ways: in quirks mode the image's line box collapses onto the image and
+the leading below it reads as 0 rather than 6, which is the whole of the quantity this section turns
+on — 26 captured pixels of gear frame at a 1012px container — and it is how the first pass at this
+got its answer.
+
+**A cell adds leading between the two stacked images, and it does not scale with them.** They are
+separated by a `<br>`, so each takes its own line box and the first carries the font's descent below
+the image's baseline — 6px where the system stack resolves to San Francisco, 7px for Segoe UI, Arial
+or Georgia. That is a constant in the _rendered_ page while the images scale with the column, so the
+pair comes level not at 3930 − 1648 = 2282 but at 2282 − leading ÷ scale.
+
+**And the scale is not the one the arithmetic invites.** Both images fill a table _cell_, which is
+half the container and not the container: in a 1012px container the image is 478.5 across, not 1012.
+So the height that comes level is 2256 there and 2240 in a 640px one — **no single committed height
+is level for every reader**, since the target moves 16px across that range and again for a browser
+that picks a different font.
+
+**The gear frame is quantized to its dive list's row pitch, and the nearest stop below the target is
+1116 CSS px.** The gear page is a _Service_ card ending at 911 and a _Dives with this Gear_ card
+running 935 to 1959, whose rows sit on an 82px pitch with a 12px gap; a frame may end in one of
+those gaps but never inside a row, for the reason the section above gives. The pitch and the gap are
+the layout's; every absolute figure here is the account's, on the day it was measured, which is why
+a height like this wants asking of the page rather than writing down. Past the Service card the
+first gap is 1104–1116 CSS, 2208–2232 captured, and the next is 1186–1198, 2372–2396. The target
+band, 2240–2256, falls inside the row between them. 2232 is therefore the nearest reachable frame —
+and because the target stays above it everywhere from a 640px container up, it is also the better of
+the two at every one of those widths, so there is no width to optimise for and none to trade away.
+Narrower than about 546px the target drops below 2232 and the pair tips from falling short to
+overhanging, by 0.4px per edge at 480.
+
+**Half of what is left shows at the top, not all of it at the bottom.** Table cells are
+middle-aligned, so the shorter column is centred in the row rather than hung from its top, and the
+error is split between the two edges. Rendered, per edge, positive being the pair falling short:
+
+| README container | image width | **2172, committed** | 2232, the stop below | 2372, the stop above |
+| ---------------- | ----------- | ------------------- | -------------------- | -------------------- |
+| 1012             | 478.5       | **9.84**            | 2.84                 | −13.50               |
+| 896              | 420.5       | **8.30**            | 2.14                 | −12.23               |
+| 768              | 356.5       | **6.58**            | 1.36                 | −10.83               |
+| 640              | 292.5       | **4.86**            | 0.58                 | −9.42                |
+| 480              | 212.5       | **2.70**            | −0.39                | −7.66                |
+
+So the choice, when the dive shot has been retaken and these are recomputed against its real height,
+is between the stop below the target and the stop above it, and on today's figures the one below
+wins at every width. What it costs is a figure in this repository that goes stale when a _different_
+image is re-framed: re-framing `dive-detail` or `dive-site` moves the target and nothing notices.
+The defences available are that the height can be labelled as coupled where it is defined, and that
+one script takes all the images the row is made of. What should not be paid is putting the
+arithmetic in the script — `HEIGHT` should carry a number, not a formula that would have to read two
+other PNGs and a README in another repository to produce one.
+
+**The committed 1086 is not a clean frame, and never has been.** It was described here as ending the
+gear page below its service history, and it does not: it runs 151px into the _Dives with this Gear_
+card and cuts the first dive row through the middle of its date. That is visible in
+`docs/screenshots/gear-item.png` as committed — decode it and look at the last 250 rows — and it had
+been there for as long as that image had been on the front page, because a written-down height fails
+the way this file already records twice: silently, with nothing measuring it. It is left in place
+rather than nudged to the next clean stop on its own, because a frame is not the only thing that
+height decides — the next clean stop upward _is_ 1116, so the honest fix for the slice and the lever
+for the README row are the same move, and it is worth making once.
+
+**A guard for it was written and then reverted with the retake, which is worth recording rather than
+rediscovering.** `refuseSlicedRow()` asked the page, before the shutter, whether the written-down
+height landed inside a row, and threw if it did — refusing rather than snapping to the nearest gap,
+since snapping keeps the image clean while silently changing the height the README row is balanced
+around. It cannot be kept while the literal is 1086, because 1086 is precisely the height it
+refuses: the script would decline to photograph the gear page at all, and this repository would ship
+an image its own script will not reproduce. So it belongs with the new height, not before it — write
+it back in the same change that moves the literal.
+
+**The alternatives, so they are not re-derived either.** Moving the dive-site frame instead and
+leaving the gear shot alone was the first answer here, and it has no stop near level: that frame's
+reachable heights are 1624–1648 and 1788–1812, and against a 2172 gear shot 1648 falls short by
+9.84px per edge at a 1012px container while 1788 overhangs by 6.5 — both worse than the 2.84 the
+gear stop reaches, and it spends the one frame whose subject the reader is actually there for. And a
+row of two columns is only one way to lay three images out — a three-column row narrows all of them,
+which is what put a tall image beside a short one in the first place.
+
+### The map is photographed to find out whether it drew
+
+`networkidle` is blind to MapLibre. It settles when the tile requests stop arriving, which is before
+the renderer has put them on screen, and a canvas caught in that window photographs as an empty box
+— a README image that is wrong in the one way nothing else here reports, since every other wait
+would have succeeded.
+
+**Reading the pixels from page script does not work**, which is the obvious fix and the wrong one.
+`MapCanvas` builds the map without `preserveDrawingBuffer`, so the drawing buffer is gone by the
+time anything outside the render can copy it: `drawImage` from that canvas returns an empty frame
+however much is visible on screen. Turning the flag on to support a screenshot script would be a
+permanent cost on every map in the app for a maintainer errand.
+
+**So `mapPainted()` screenshots the canvas element instead.** Playwright captures through the
+compositor, which is where the WebGL surface actually is, and that is the same path the page
+screenshot itself takes — so what the check sees is what the image will show. A PNG of a flat frame
+compresses to about a kilobyte and one with a coastline in it to tens of that, so a byte count well
+clear of both separates them without measuring either. Two captures running that are byte-identical
+_and_ over the floor is a map that is drawn and no longer moving; MapLibre fades its labels in, so
+"drawn" on its own would be a frame taken mid-fade. It throws rather than warning after twenty
+seconds of neither, for the reason the parent section keeps re-learning.
+
+**The frame is set before the check, not left to `shot()`.** MapLibre redraws whenever its box
+changes, so a check answered at the loading frame is a check on a canvas that is about to be drawn
+again.
+
+**The committed image confirms it independently**: 409 distinct colours inside the map's box in
+`docs/screenshots/dive-site.png` — x 1428–1931, y 902–1281, the canvas within its 2px border, 504 by
+380 — against 1 in the page background beside it, the strip x 0–39 over the same rows. A count needs
+the rectangle it was taken over to mean anything, and this one was written down without it first;
+re-derive both with any image library rather than trusting the figure. There is no flat region of
+the map's size anywhere in the image, which is why the control is a strip and not a same-sized box.
+Worth doing once by hand rather than trusting the script that decided to press the shutter.
+
 ### `visit()` fails loudly when a navigation lands on `/signin`
 
 Kept from a workaround that is no longer needed, because it is worth keeping on its own.
@@ -3664,9 +3855,9 @@ has been fixed.
 
 ### The same script writes the product repository's copies
 
-`opendiving/opendiving` renders these three images on its own front page — the page the project is
-judged on — and has nothing that could retake them, because the app they are of is here. So `shot()`
-writes both trees from one shutter press: `docs/screenshots/` in this repository, and
+`opendiving/opendiving` renders copies of these images on its own front page — the page the project
+is judged on — and has nothing that could retake them, because the app they are of is here. So
+`shot()` writes both trees from one shutter press: `docs/screenshots/` in this repository, and
 `$PRODUCT_DIR/docs/screenshots/` when a clone of the product repo sits beside this one, defaulting
 to `../opendiving` in the same `../sibling` shape `API_DIR` already uses. An absent clone is a
 printed note and not a failure — a contributor with one checkout has to be able to run this, which
@@ -3676,6 +3867,19 @@ is the whole reason the default is a guess rather than a requirement.
 down, the subject dive is whichever recent one has a profile, and two shots taken a second apart are
 not the same image. Writing the buffer twice is what makes the copies identical rather than merely
 similar, and similar is the state that has somebody staring at two diffs wondering what changed.
+
+**A new shot reaches that repository as a file, not as a picture on its page**, and the two are
+worth keeping apart when reading the paragraph above. `shot()` writes whatever it takes into both
+trees, so a capture added here lands in the product clone the first time anyone runs the script —
+but that README names the images it renders one at a time, and nothing in this repository edits it.
+`dive-site.png` will arrive exactly that way, and has not yet: it was captured in a git worktree,
+where `../opendiving` resolves inside `.claude/worktrees/` and finds nothing, so the run printed its
+absent-clone note and wrote one copy. That is worth knowing before reading a missing file over there
+as a bug — an agent's capture is always taken in a worktree, so the second write is the one that
+routinely does not happen, and the next run from a full checkout makes it. So the claim this section
+makes is that the files are byte-identical wherever both exist, never that both front pages show the
+same set: they can legitimately differ for as long as it takes somebody to make the other change, in
+the other repository, where the layout decision belongs.
 
 **The rejected alternatives** were hotlinking this repository's raw URLs from the product README —
 which breaks the day either repository is renamed and leaves that README unrenderable in a clone —
@@ -14108,15 +14312,27 @@ hero's reef ships as a 19 KB mask, not the 318 KB SVG it came from" below.)
 had ever been committed here when this was written, across all of history: `docs/screenshots/`'s
 `dashboard.png`, `dive-detail.png` and `gear-item.png`; the two basemap sprite sheets
 `public/basemap/sprite/ofm.png` and `ofm@2x.png`; `public/coral.png` and `public/octo.png`; and the
-brand mark's own `src/app/icon.svg` and `src/app/favicon.ico`. All three screenshots are of
-authenticated pages — `scripts/screenshots.mjs` shoots dashboard, dive-detail and gear-item and
-nothing else. The reef rendered on the _landing_ hero, which no screenshot captures, and the two
-glow PNGs rendered nowhere at all. The older screenshots do carry the previous waves mark, but that
-was lucide under ISC, which permits redistribution.
+brand mark's own `src/app/icon.svg` and `src/app/favicon.ico`. Every screenshot is of an
+authenticated page — `scripts/screenshots.mjs` shoots nothing that is not signed in. The reef
+rendered on the _landing_ hero, which no screenshot captures, and the two glow PNGs rendered nowhere
+at all. The older screenshots do carry the previous waves mark, but that was lucide under ISC, which
+permits redistribution.
 
 **Seven of those nine remain.** `coral.png` and `octo.png` went out of the history itself in the
-purge below, so a clone now reaches the three screenshots, the two basemap sprite sheets, `icon.svg`
-and `favicon.ico`, and nothing else.
+purge below, so of the nine a clone now reaches the three screenshots, the two basemap sprite
+sheets, `icon.svg` and `favicon.ico`. The enumeration is deliberately scoped to that audit rather
+than to the tree: an image committed since is not covered by it, and the paragraph below is the one
+that has been.
+
+**A fourth screenshot has been added since, and it is the one image here that carries somebody
+else's rendering.** `docs/screenshots/dive-site.png` is a page with a MapLibre frame in it, so the
+committed PNG contains a slice of the OpenFreeMap basemap — OpenMapTiles' styling over OpenStreetMap
+data — rather than only this app's own pixels. What makes that fine is visible in the image itself:
+the frame renders the basemap's own credit line, "OpenFreeMap © OpenMapTiles Data from
+OpenStreetMap", inside the box, so the attribution travels with the picture wherever the README
+does. Anyone pointing `MAP_STYLE_URL` somewhere else and re-running the script inherits that
+provider's terms along with its tiles, and the credit rendered in the frame is whatever
+`MAP_ATTRIBUTION` says — which is the check to make before committing the result.
 
 **Getting that list right took three tries, and each wrong answer came from the tool rather than the
 tree.** A first sweep globbed `png|jpe?g|webp|gif` and so silently dropped `favicon.ico` and

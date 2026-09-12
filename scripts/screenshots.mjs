@@ -1,5 +1,5 @@
 // Retakes the README screenshots in `docs/screenshots/`, and the product repo's copies of
-// the same three images when a clone of it is on disk beside this one.
+// the same images when a clone of it is on disk beside this one.
 //
 //   npm run screenshots -- you@example.com             # all of them
 //   npm run screenshots -- you@example.com dashboard   # just the named ones
@@ -23,7 +23,7 @@ import { chromium } from "playwright-core";
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = path.join(root, "docs", "screenshots");
 const API_DIR = process.env.API_DIR ?? path.join(root, "..", "opendiving-api");
-// The product repo renders these same three images on the page the project is judged on,
+// The product repo renders these same images on the page the project is judged on,
 // and has nothing that can retake them - the app they are of is here. So this script
 // writes both copies from one shutter press rather than leaving the front page to rot on
 // a screenshot of an older UI. Same `../sibling` shape as API_DIR, and skipped with a note
@@ -53,10 +53,25 @@ const CHROME_CANDIDATES = [
 // beside its site/environment/import sidebar instead of a screen above it.
 const WIDTH = 1024;
 
-// Height is per page, because the boundary to cut on is. 1086 ends the gear page below
-// its service history. The other two are measured rather than written down; see
-// `CUT_BELOW`, which is why their entries here are only the frame the page loads at.
-const HEIGHT = { dashboard: 1564, "dive-detail": 1086, "gear-item": 1086 };
+// Height is per page, because the boundary to cut on is. Every entry here is the frame
+// the page *loads* at - see `CUT_BELOW` and `CUT_AFTER_CARD` for the two rules that
+// measure the real one in the page moments before the shutter - except `gear-item`, whose
+// entry is also the height it is shot at.
+//
+// 1086 is the one height in this file nothing measures, and it is a known-bad frame: it
+// ends 151px inside the gear page's `Dives with this Gear` card, cutting the first dive
+// row through its date - which the comment here claimed for a long time it did not. It is
+// still here because moving it is not a decision about this page. It is the lever that
+// closes the hole under `gear-item.png` in the README row, the height that closes it is
+// set by `dive-detail.png` beside it, and that image is itself stale - so picking a stop
+// now would only mean picking one again. DECISIONS.md carries the measurements, the
+// reachable stops and what the choice will be once the dive shot is retaken.
+const HEIGHT = {
+  dashboard: 1564,
+  "dive-detail": 1086,
+  "gear-item": 1086,
+  "dive-site": 1086,
+};
 
 // Where a shot names a card it must reach, the frame is measured in the page just before
 // the shutter instead of being kept here as a number. Written-down heights went stale
@@ -72,6 +87,22 @@ const HEIGHT = { dashboard: 1564, "dive-detail": 1086, "gear-item": 1086 };
 // rather than the one that happens to sit last, which is a fact about the account's data
 // and not something to write down here.
 const CUT_BELOW = { dashboard: "Dive Activity", "dive-detail": "Recordings" };
+
+// The other framing rule, for a shot that is about one column: the frame ends at the foot
+// of the named card and whatever is beside it runs on past the edge.
+//
+// `CUT_BELOW` exists so that nothing is ever sliced, and this deliberately gives that up,
+// so it is worth saying where the line is. The dive-site page is two cards - the whole
+// list of dives at the site in the main column, the site's details with its map in the
+// sidebar - and they finish together in exactly one place: the bottom of the page. A seam
+// there is the entire page, which is not what this shot is for. The map is, and it sits
+// 200px from the top of a sidebar card that ends less than half way down.
+//
+// What gets sliced is the one shape a cut can honestly land in: a list of rows, which
+// reads as a page that goes on rather than as a frame that stopped by accident - the
+// distinction the section this rule is recorded under already draws. Do not reach for
+// this where the far column is prose or a chart.
+const CUT_AFTER_CARD = { "dive-site": "Dive Site Information" };
 const frame = (name) => ({ width: WIDTH, height: HEIGHT[name] });
 // The year both dashboard charts are parked on, on their `Year` scope - twelve months of
 // one season in each. One constant, because the two cards showing the *same* period is
@@ -113,7 +144,9 @@ if (
 // a dive, and quietly ranking instead is the one outcome this variable exists to rule out.
 const DIVE_UUID = process.env.DIVE_UUID?.trim() ?? null;
 if (DIVE_UUID === "") {
-  console.error("DIVE_UUID is set but empty - name a dive uuid, or leave it unset");
+  console.error(
+    "DIVE_UUID is set but empty - name a dive uuid, or leave it unset",
+  );
   process.exit(1);
 }
 
@@ -123,9 +156,9 @@ if (!email) {
   process.exit(1);
 }
 
-// Retaking one image at a time keeps the other two out of the diff. They are not stable
+// Retaking one image at a time keeps the rest out of the diff. They are not stable
 // between runs - "due in 24 days" counts down, and the subjects are picked from whatever
-// the log holds that day - so a full retake to change one shot rewrites all three.
+// the log holds that day - so a full retake to change one shot rewrites every one of them.
 const only = process.argv.slice(3);
 const unknown = only.filter((name) => !(name in HEIGHT));
 if (unknown.length) {
@@ -178,18 +211,23 @@ async function magicLink() {
 }
 
 // --------------------------------------------------------------- what to shoot
-// Neither subject is hardcoded, so this runs against any account. Each is picked for the
-// page that photographs best: the dive is whichever recent one has the most recordings
-// carrying samples (only the single-dive endpoint carries them, hence the probing), and
-// the gear item is whichever has the most service tracked on it. `DIVE_UUID` overrides
-// the first of those where the rank has nothing to go on; the gear item has no such
-// escape hatch, because its rank has not needed one.
+// No subject is hardcoded, so this runs against any account. Each is picked for the page
+// that photographs best: the dive is whichever recent one has the most recordings
+// carrying samples (only the single-dive endpoint carries them, hence the probing), the
+// gear item is whichever has the most service tracked on it, and the dive site is
+// whichever *placed* one has the most dives at it. `DIVE_UUID` overrides the first of
+// those where the rank has nothing to go on; the other two have no such escape hatch,
+// because their ranks have not needed one.
 //
 // The queries reuse the access token the app is already sending, lifted off its own
 // requests. The alternatives are both worse: a second magic link runs into the
 // three-per-email-per-fifteen-minutes limit, and spending the refresh cookie directly
 // rotates it out from under the page.
-async function pickSubjects(token) {
+//
+// Each search is skipped when nothing being shot needs it, which is what `asked` is for:
+// ranking the dives costs a request per candidate and ranking the sites costs one per
+// placed site, and a run retaking one image should not pay for the other's search.
+async function pickSubjects(token, asked) {
   const get = async (url) => {
     const response = await fetch(`${API}/${url}`, {
       headers: { Authorization: `Bearer ${token}` },
@@ -197,71 +235,15 @@ async function pickSubjects(token) {
     return response.ok ? response.json() : null;
   };
 
-  // How many of a dive's recordings have samples to chart - the rank below, and the one
-  // thing a named dive is still held to. Only the dive read carries `recordings`; the
-  // list response deliberately leaves them off, so there is no way to ask this without a
-  // fetch apiece.
-  const chartedIn = (detail) =>
-    (detail?.recordings ?? []).filter((recording) => recording.profile).length;
-
   const user = await get("user");
 
-  let dive = null;
-  let chartedRecordings = 0;
-  if (DIVE_UUID) {
-    // Read once to check it, and the ranking below is skipped entirely rather than run
-    // and overruled - which saves its request per candidate as well as settling the
-    // argument.
-    //
-    // Both ways this can be wrong throw, and neither falls back to the ranking: a run
-    // that quietly photographed a different dive than the one it was handed would say so
-    // in a line of output nobody reads, which is the failure this script keeps
-    // re-teaching (see DECISIONS.md). They throw whenever the subjects are picked rather
-    // than only when the dive shot is wanted, because a uuid that does not resolve is a
-    // mistake in the invocation and the cheapest run to find it in is this one.
-    const detail = await get(`dive/${DIVE_UUID}`);
-    if (!detail)
-      throw new Error(
-        `DIVE_UUID ${DIVE_UUID}: GET /dive/{uuid} did not answer - check the uuid, and that the dive is one of ${email}'s`,
-      );
-    chartedRecordings = chartedIn(detail);
-    if (chartedRecordings === 0)
-      throw new Error(
-        `DIVE_UUID ${DIVE_UUID} has no recording carrying samples - the profile card would render nothing and the \`Dive Profile\` wait would time out`,
-      );
-    dive = DIVE_UUID;
-  } else {
-    const dives = await get(
-      `dives?user_uuid=${user.uuid}&page=1&items_per_page=30`,
-    );
+  const { dive, chartedRecordings } = asked("dive-detail")
+    ? await pickDive(get, user.uuid)
+    : { dive: null, chartedRecordings: 0 };
 
-    // Ranked, not filtered, and the rank is how many of the dive's recordings carry
-    // samples. Two of those draw the page's whole recordings story - the Recordings
-    // card listing both computers, and the switcher above the chart, which
-    // `DiveProfileCard` only renders once a second recording has a profile - and that
-    // is what this image exists to show. But a log whose dives each came off one
-    // computer is the ordinary case rather than a failed search, and one of those is
-    // an honest picture of the same page. Zero is the only disqualifier: the card
-    // renders nothing at all without samples, so the page would photograph flat and
-    // the `Dive Profile` wait below would time out.
-    //
-    // Every candidate is read, with no early exit, because the best one is not known
-    // until the last has been looked at - the list is in start-time order, not in
-    // anything this ranks on. Ties keep the earliest seen, so a run against a log with
-    // no two-recording dive still picks the most recent single one - which is what
-    // `DIVE_UUID` is there to overrule, since that is every dive in most logs.
-    for (const candidate of dives.data) {
-      const charted = chartedIn(await get(`dive/${candidate.uuid}`));
-      if (charted > chartedRecordings) {
-        dive = candidate.uuid;
-        chartedRecordings = charted;
-      }
-    }
-  }
-
-  const gear = await get(
-    `gear-items?user_uuid=${user.uuid}&page=1&items_per_page=100`,
-  );
+  const gear = asked("gear-item")
+    ? await get(`gear-items?user_uuid=${user.uuid}&page=1&items_per_page=100`)
+    : { data: [] };
   const ranked = gear.data
     .filter((item) => (item.service ?? []).length > 0)
     .sort(
@@ -269,11 +251,129 @@ async function pickSubjects(token) {
         b.service.length - a.service.length || b.dive_count - a.dive_count,
     );
 
+  const { site, siteDives } = asked("dive-site")
+    ? await pickSite(get, user.uuid)
+    : { site: null, siteDives: 0 };
+
   return {
     dive,
     chartedRecordings,
     gearItem: (ranked[0] ?? gear.data[0])?.uuid ?? null,
+    site,
+    siteDives,
   };
+}
+
+// How many of a dive's recordings have samples to chart - the rank below, and the one
+// thing a named dive is still held to. Only the dive read carries `recordings`; the list
+// response deliberately leaves them off, so there is no way to ask this without a fetch
+// apiece.
+const chartedIn = (detail) =>
+  (detail?.recordings ?? []).filter((recording) => recording.profile).length;
+
+// The dive whose page is worth photographing: the one `DIVE_UUID` names, or failing that
+// the recent one with the most recordings carrying samples.
+//
+// **A named dive skips the ranking entirely** rather than running it and overruling the
+// answer, which saves its request per candidate as well as settling the argument.
+//
+// Both ways a named dive can be wrong throw, and neither falls back to the ranking: a run
+// that quietly photographed a different dive than the one it was handed would say so only
+// in a line of output nobody reads, which is the failure this script keeps re-teaching
+// (see DECISIONS.md). They throw while the subjects are still being picked, before the
+// first shutter press, so a mistyped uuid costs a run and not an image - and only on a run
+// that is actually shooting this page, since `asked` skips the search otherwise.
+async function pickDive(get, userUuid) {
+  if (DIVE_UUID) {
+    const detail = await get(`dive/${DIVE_UUID}`);
+    if (!detail)
+      throw new Error(
+        `DIVE_UUID ${DIVE_UUID}: GET /dive/{uuid} did not answer - check the uuid, and that the dive is one of ${email}'s`,
+      );
+    const chartedRecordings = chartedIn(detail);
+    if (chartedRecordings === 0)
+      throw new Error(
+        `DIVE_UUID ${DIVE_UUID} has no recording carrying samples - the profile card would render nothing and the \`Dive Profile\` wait would time out`,
+      );
+    return { dive: DIVE_UUID, chartedRecordings };
+  }
+
+  const dives = await get(
+    `dives?user_uuid=${userUuid}&page=1&items_per_page=30`,
+  );
+
+  // Ranked, not filtered, and the rank is how many of the dive's recordings carry
+  // samples. Two of those draw the page's whole recordings story - the Recordings card
+  // listing both computers, and the switcher above the chart, which `DiveProfileCard`
+  // only renders once a second recording has a profile - and that is what this image
+  // exists to show. But a log whose dives each came off one computer is the ordinary case
+  // rather than a failed search, and one of those is an honest picture of the same page.
+  // Zero is the only disqualifier: the card renders nothing at all without samples, so the
+  // page would photograph flat and the `Dive Profile` wait below would time out.
+  //
+  // Every candidate is read, with no early exit, because the best one is not known until
+  // the last has been looked at - the list is in start-time order, not in anything this
+  // ranks on. Ties keep the earliest seen, so a run against a log with no two-recording
+  // dive still picks the most recent single one - which is what `DIVE_UUID` is there to
+  // overrule, since that is every dive in most logs.
+  let dive = null;
+  let chartedRecordings = 0;
+  for (const candidate of dives.data) {
+    const charted = chartedIn(await get(`dive/${candidate.uuid}`));
+    if (charted > chartedRecordings) {
+      dive = candidate.uuid;
+      chartedRecordings = charted;
+    }
+  }
+  return { dive, chartedRecordings };
+}
+
+// The site whose page is worth photographing: one that has a position, and among those
+// the one with the most dives logged at it.
+//
+// **A position is the only hard requirement**, unlike every other subject here, where the
+// rank is a preference and nothing is disqualified. The map is what this shot exists for
+// and `LocationsMap` renders nothing at all for a site without coordinates, so a site
+// with none is not a worse picture of the page - it is a picture of a different page.
+//
+// Dive count is the preference on top of that, because a site somebody keeps going back
+// to is what the page is for, and it is not in the list schema: `/dive-sites` carries the
+// name, the position and nothing counted, so the count is one scoped `/dives` request per
+// placed site, read off `total_count` with a single row asked for. The whole site list has
+// to be paged through first for the same reason the count does not come free - the API
+// caps `items_per_page` at 100 and a diver's list runs past that.
+//
+// The first placed site seeds the answer, so a log whose sites are all placed and none
+// dived still produces a picture rather than an error. Ties keep the earliest seen, which
+// is name order, the order `/dive-sites` returns.
+async function pickSite(get, userUuid) {
+  const sites = [];
+  for (let page = 1; ; page++) {
+    const response = await get(
+      `dive-sites?user_uuid=${userUuid}&page=${page}&items_per_page=100`,
+    );
+    if (!response) break;
+    sites.push(...response.data);
+    if (!response.has_more) break;
+  }
+
+  const placed = sites.filter(
+    (candidate) => candidate.latitude != null && candidate.longitude != null,
+  );
+
+  let site = placed[0]?.uuid ?? null;
+  let siteDives = 0;
+  for (const candidate of placed) {
+    const scoped = await get(
+      `dives?user_uuid=${userUuid}&dive_site_uuid=${candidate.uuid}&page=1&items_per_page=1`,
+    );
+    const count = scoped?.total_count ?? 0;
+    if (count > siteDives) {
+      site = candidate.uuid;
+      siteDives = count;
+    }
+  }
+  return { site, siteDives };
 }
 
 // ---------------------------------------------------------------- the camera
@@ -356,6 +456,103 @@ async function cutBelow(page, label) {
   if (measured.height === null)
     throw new Error(`cannot cut below the ${label} card: ${measured.why}`);
   return measured.height;
+}
+
+// The foot of the named card, nudged clear of any row it would have cut through - the
+// other rule, the one that lets the far column run on past the frame. See `CUT_AFTER_CARD`
+// for when that is the right thing to do and when it is not.
+//
+// **A card may be cut through; a row may not.** Those are different things even though
+// the first shot to use this rule ran the line four pixels above a dive row's bottom
+// border, which looks like a clipped row rather than a list that continues - the whole
+// claim this rule rests on. So the cut moves down past a row it lands inside, to the top
+// of the one after it, which is where `cutBelow` seeds from for the same reason: the gap
+// is fully drawn and the next row contributes no sliver.
+//
+// Rows are bordered boxes like cards are, and nesting is what tells them apart - the dive
+// list's rows are `<a class="rounded-lg border">` inside the card, so a row has a bordered
+// ancestor and a card does not. Looping rather than sweeping once because a pass that
+// moves the cut can land it inside a row of some other list; each pass clears one row's
+// bottom, so it is bounded by the rows on the page and cannot spin.
+//
+// The gutter is read off the grid the card sits in rather than off a neighbour, because a
+// column of one card has no neighbour to measure against - which is exactly the shape this
+// rule is for. `rowGap` is a resolved length whatever the breakpoint, so the figure is
+// still measured in the page being photographed and not written down here.
+async function cutAfterCard(page, label) {
+  const measured = await page.evaluate((text) => {
+    const CARD = "div.rounded-lg.border.bg-card";
+    const BOXED = ".rounded-lg.border";
+    const box = (element) => {
+      const rect = element.getBoundingClientRect();
+      return { top: rect.top + scrollY, bottom: rect.bottom + scrollY };
+    };
+
+    const anchor = [...document.querySelectorAll("h2, h3")]
+      .find((node) => node.textContent.trim().startsWith(text))
+      ?.closest(CARD);
+    if (!anchor) return { height: null, why: "no card carries that heading" };
+
+    const grid = anchor.closest("div.grid");
+    const gutter = grid ? parseFloat(getComputedStyle(grid).rowGap) : NaN;
+    if (!Number.isFinite(gutter))
+      return {
+        height: null,
+        why: "that card sits in no grid with a row gap to measure",
+      };
+
+    const rows = [...document.querySelectorAll(BOXED)].filter((element) =>
+      element.parentElement?.closest(BOXED),
+    );
+
+    let cut = box(anchor).bottom + gutter;
+    for (let pass = 0; pass <= rows.length; pass++) {
+      const sliced = rows.find(
+        (row) => box(row).top < cut && box(row).bottom > cut,
+      );
+      if (!sliced) return { height: Math.round(cut), why: null };
+      const next = sliced.nextElementSibling;
+      cut = next ? box(next).top : box(sliced).bottom + gutter;
+    }
+    return { height: null, why: "the cut never cleared the rows below it" };
+  }, label);
+  if (measured.height === null)
+    throw new Error(`cannot cut after the ${label} card: ${measured.why}`);
+  return measured.height;
+}
+
+// A blank frame where the map should be is roughly the size of a flat PNG of the same
+// box, and a drawn coastline is many times that. Well clear of both, so it separates them
+// rather than measuring either: the empty dark frame comes back around a kilobyte.
+const MAP_PAINT_FLOOR = 8_000;
+
+// Waits for MapLibre to have actually drawn, which nothing else in this script can tell.
+//
+// `networkidle` settles when the tile requests stop arriving, which is before the
+// renderer has put them on screen, and the WebGL context is built without
+// `preserveDrawingBuffer` - so a page script that copies the canvas reads an empty buffer
+// however much is visible on it. A map that photographs as an empty box is the failure
+// this shot is most exposed to and the one least likely to be noticed, since every other
+// wait would report success.
+//
+// So the map is photographed to find out. Playwright captures through the compositor,
+// which sees the WebGL surface the way a screenshot of the whole page will, and a PNG of
+// a flat frame compresses to a small fraction of one with a coastline in it. Two captures
+// running that are byte-identical and over the floor is a map that is both drawn and no
+// longer moving - MapLibre fades its labels in, so "drawn" alone would be a frame taken
+// mid-fade.
+async function mapPainted(page) {
+  const canvas = page.locator("canvas").first();
+  let previous = null;
+  for (let attempt = 0; attempt < 40; attempt++) {
+    const png = await canvas.screenshot();
+    if (png.length >= MAP_PAINT_FLOOR && previous?.equals(png)) return png;
+    previous = png;
+    await page.waitForTimeout(500);
+  }
+  throw new Error(
+    `the map never settled into a drawn frame (last capture ${previous?.length ?? 0} bytes, floor ${MAP_PAINT_FLOOR})`,
+  );
 }
 
 // One shutter press, written to both trees from the buffer it returns. Shooting twice
@@ -523,21 +720,23 @@ await visit(page, "dashboard", `${WEB}/dashboard`);
 // and fails strict mode. `chartCard` scopes by the heading for the same reason.
 await page.getByRole("heading", { name: "Gas Consumption" }).waitFor();
 
-// Skipped when only the dashboard is being retaken: ranking the dives costs one request
-// per candidate, for all thirty of them.
+// Skipped when only the dashboard is being retaken, and each search inside it is skipped
+// on its own: ranking the dives costs one request per candidate, for all thirty of them.
 const subjects =
-  wanted("dive-detail") || wanted("gear-item")
-    ? await pickSubjects(bearer)
-    : { dive: null, chartedRecordings: 0, gearItem: null };
-const { dive, chartedRecordings, gearItem } = subjects;
+  wanted("dive-detail") || wanted("gear-item") || wanted("dive-site")
+    ? await pickSubjects(bearer, wanted)
+    : { dive: null, chartedRecordings: 0, gearItem: null, site: null };
+const { dive, chartedRecordings, gearItem, site, siteDives } = subjects;
 // Says which mechanism chose the dive as well as which dive it chose, so a run whose
 // `DIVE_UUID` went unread - misspelled in the environment, dropped by a wrapper - is
 // visible in its own output rather than only in the image that comes out.
 const diveNote = dive
   ? `${dive} (${chartedRecordings} charted recording${chartedRecordings === 1 ? "" : "s"}, ${DIVE_UUID ? "named by DIVE_UUID" : "ranked"})`
   : "(none with samples)";
-if (dive || gearItem)
-  console.log(`dive ${diveNote} · gear ${gearItem ?? "(none)"}`);
+if (dive || gearItem || site)
+  console.log(
+    `dive ${diveNote} · gear ${gearItem ?? "(none)"} · site ${site ? `${site} (${siteDives} dive${siteDives === 1 ? "" : "s"})` : "(none placed)"}`,
+  );
 
 // A requested shot with no subject is a failure, not a note - and it fails here, before
 // the first shutter press, so a run that cannot produce all of what was asked for leaves
@@ -550,6 +749,10 @@ if (wanted("dive-detail") && !dive)
   );
 if (wanted("gear-item") && !gearItem)
   throw new Error(`${email} has no gear - nothing to shoot for gear-item`);
+if (wanted("dive-site") && !site)
+  throw new Error(
+    `no dive site of ${email} has coordinates - nothing to shoot for dive-site`,
+  );
 
 if (wanted("dashboard")) {
   await selectPeriod(page, "Gas Consumption", "Year", CHART_YEAR);
@@ -576,6 +779,21 @@ if (wanted("gear-item")) {
   await page.getByText("Service history").waitFor();
   await atTop(page);
   await shot(page, "gear-item", HEIGHT["gear-item"]);
+}
+
+if (wanted("dive-site")) {
+  await visit(page, "dive-site", `${WEB}/sites/${site}`);
+  await page
+    .getByRole("heading", { name: CUT_AFTER_CARD["dive-site"] })
+    .waitFor();
+  // The frame is settled before the map is checked, rather than leaving it to `shot()`:
+  // MapLibre redraws whenever its box changes, so a check answered at the loading frame
+  // would be a check on a canvas that is about to be drawn again.
+  const height = await cutAfterCard(page, CUT_AFTER_CARD["dive-site"]);
+  await page.setViewportSize({ width: WIDTH, height });
+  await atTop(page);
+  await mapPainted(page);
+  await shot(page, "dive-site", height);
 }
 
 await browser.close();
