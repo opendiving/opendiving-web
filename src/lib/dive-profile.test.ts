@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import type { DiveProfile, DiveProfileEvent } from "@/lib/api/dives";
 import {
   MIN_GAP_SECONDS,
+  PROFILE_CHANNEL_KEYS,
+  type ProfileChannelKey,
+  axisUnitSuffix,
   channelWord,
+  channelsOnAxis,
   depthDomain,
   displayChannel,
   describeEvent,
@@ -18,6 +22,7 @@ import {
   toChannelSeries,
   toPressureSeries,
   tooltipVerticalAnchor,
+  profileScalePlacement,
   PROFILE_CHANNELS,
 } from "@/lib/dive-profile";
 
@@ -168,7 +173,7 @@ describe("depthDomain", () => {
 describe("nearestEvent", () => {
   const events = [
     event({ time: 0, type: "gas_switch", gas_number: 0 }),
-    event({ time: 497, type: "other", label: "NoDecoTime" }),
+    event({ time: 497, type: null, label: "NoDecoTime" }),
     event({ time: 2075, type: "gas_switch", gas_number: 1 }),
   ];
 
@@ -375,38 +380,84 @@ describe("describeEvent", () => {
     expect(describeEvent(event({ type: "bookmark" }))).toBe("Bookmark");
   });
 
-  it("passes a device's own wording through unchanged", () => {
+  it("names every alarm class the API can send", () => {
+    // One value per distinct meaning, not one per vendor string: the device's
+    // own spelling travels in `label` and the chart says what happened.
+    expect(describeEvent(event({ type: "ascent_rate" }))).toBe("Ascent rate");
+    expect(describeEvent(event({ type: "safety_stop_mandatory" }))).toBe(
+      "Mandatory safety stop",
+    );
+    expect(describeEvent(event({ type: "safety_stop_violation" }))).toBe(
+      "Safety stop broken",
+    );
+    expect(describeEvent(event({ type: "deep_stop_violation" }))).toBe(
+      "Deep stop broken",
+    );
+    expect(describeEvent(event({ type: "ceiling_violation" }))).toBe(
+      "Deco ceiling broken",
+    );
+    expect(describeEvent(event({ type: "ndl_reached" }))).toBe(
+      "No-deco limit reached",
+    );
+    expect(describeEvent(event({ type: "ppo2_high" }))).toBe("ppO\u2082 high");
+    expect(describeEvent(event({ type: "pressure_low" }))).toBe(
+      "Tank pressure low",
+    );
+    expect(describeEvent(event({ type: "depth_alarm" }))).toBe("Depth alarm");
+  });
+
+  it("passes a device's own wording through where there is no type", () => {
+    // Which is what an absent type *means*: the device recorded something this
+    // vocabulary has no word for, and rephrasing it would invent a claim about
+    // a dive.
     expect(
-      describeEvent(event({ type: "other", label: "Mandatory Safety Stop" })),
+      describeEvent(event({ type: null, label: "Mandatory Safety Stop" })),
     ).toBe("Mandatory Safety Stop");
+    expect(describeEvent({ time: 10, label: "Violated Deep Stop" })).toBe(
+      "Violated Deep Stop",
+    );
+  });
+
+  it("treats an older build's `other` as the unclassified it meant", () => {
+    // The API dropped `other` from the wire when DiveJSON made `type` optional.
+    // The two repos deploy independently, so a payload still carrying the string
+    // reaches this bundle - and it lands on the same `default` an unknown type
+    // does, which is the right answer rather than a lucky one.
+    expect(
+      describeEvent({
+        time: 10,
+        type: "other",
+        label: "Ceiling Broken",
+      } as unknown as DiveProfileEvent),
+    ).toBe("Ceiling Broken");
   });
 
   it("survives a type this build has never heard of", () => {
     // The API's `ProfileEventType` is closed today and the two repos deploy
-    // independently, so a sixth type reaches this bundle as a string TypeScript
-    // was told is one of five. Without the `default` the switch fell off the end
-    // and returned `undefined` from a function typed `: string`.
+    // independently, so a fourteenth type reaches this bundle as a string
+    // TypeScript was told is one of thirteen. Without the `default` the switch
+    // fell off the end and returned `undefined` from a function typed `: string`.
     const rogue = {
       time: 10,
-      type: "ndl_violation",
-      label: "NDL Violation",
+      type: "setpoint_change",
+      label: "Setpoint Change",
     } as unknown as DiveProfileEvent;
 
-    expect(describeEvent(rogue)).toBe("NDL Violation");
+    expect(describeEvent(rogue)).toBe("Setpoint Change");
     expect(
       describeEvent({
         time: 10,
-        type: "ndl_violation",
+        type: "setpoint_change",
       } as unknown as DiveProfileEvent),
     ).toBe("Device event");
   });
 
-  it("falls back for an `other` the API should never have sent", () => {
-    // `_validate_events` rejects an unlabelled `other` server-side, so this is
-    // only reachable through a broken payload - where a neutral word beats the
-    // string "undefined" on a chart.
-    expect(describeEvent(event({ type: "other" }))).toBe("Device event");
-    expect(describeEvent(event({ type: "other", label: "  " }))).toBe(
+  it("falls back for an unlabelled marker the API should never have sent", () => {
+    // `_validate_events` rejects a typeless event with no label server-side, so
+    // this is only reachable through a broken payload - where a neutral word
+    // beats the string "undefined" on a chart.
+    expect(describeEvent(event({ type: null }))).toBe("Device event");
+    expect(describeEvent(event({ type: null, label: "  " }))).toBe(
       "Device event",
     );
   });
@@ -656,5 +707,266 @@ describe("formatChannelValue", () => {
     expect(formatChannelValue(205.2, PROFILE_CHANNELS.pressure)).toBe(
       "205 bar",
     );
+  });
+});
+
+describe("the deco channels", () => {
+  // Every one of the six, from a profile carrying all of them at the scales the
+  // API serves. The numbers here are the wire's integers, so the assertions are
+  // the whole of the contract between `schemas/dive_profile.py` and this chart.
+  const deco = profile({
+    ndl: { times: [0, 60], values: [5940, 0] },
+    tts: { times: [0, 60], values: [0, 1080] },
+    ppo2: { times: [0, 60], values: [21, 132] },
+    cns: { times: [0, 60], values: [0, 234] },
+    gradient_factor: { times: [0, 60], values: [0, 12575] },
+    surface_gradient_factor: { times: [0, 60], values: [0, 87] },
+  });
+
+  it("reads a no-deco time in minutes, not in the seconds it arrives as", () => {
+    // 5 940 s is 99 minutes - a Shearwater's display maximum, which is a reading
+    // rather than a sentinel and is carried as one.
+    expect(toChannelSeries(deco, "ndl", "metric")?.values).toEqual([99, 0]);
+    expect(toChannelSeries(deco, "tts", "metric")?.values).toEqual([0, 18]);
+  });
+
+  it("divides ppO₂ by hundredths and CNS by tenths", () => {
+    expect(toChannelSeries(deco, "ppo2", "metric")?.values).toEqual([
+      0.21, 1.32,
+    ]);
+    expect(toChannelSeries(deco, "cns", "metric")?.values).toEqual([0, 23.4]);
+  });
+
+  it("leaves a gradient factor exactly as the device wrote it", () => {
+    // A Suunto Ocean's `gf99` reaches five figures on a decompression ascent.
+    // Clamping it to 100 would be a guess wearing a plausible number, and the
+    // chart's axis is what stretches instead.
+    expect(toChannelSeries(deco, "gradient_factor", "metric")?.values).toEqual([
+      0, 12575,
+    ]);
+    expect(
+      toChannelSeries(deco, "surface_gradient_factor", "metric")?.values,
+    ).toEqual([0, 87]);
+  });
+
+  it("reads the same in imperial, because none of the six converts", () => {
+    // `lib/units.ts` names ppO₂, CNS and duration as deliberately absent from
+    // `Dimension`, and a percent is a percent - so a diver reading in feet and
+    // psi sees these six unchanged, labels included.
+    for (const key of [
+      "ndl",
+      "tts",
+      "ppo2",
+      "cns",
+      "gradient_factor",
+      "surface_gradient_factor",
+    ] as const) {
+      expect(toChannelSeries(deco, key, "imperial")?.values).toEqual(
+        toChannelSeries(deco, key, "metric")?.values,
+      );
+      expect(displayChannel(PROFILE_CHANNELS[key], "imperial")).toEqual(
+        PROFILE_CHANNELS[key],
+      );
+    }
+  });
+
+  it("formats each with the spacing its unit is written with", () => {
+    expect(formatChannelValue(18, PROFILE_CHANNELS.tts)).toBe("18 min");
+    expect(formatChannelValue(1.32, PROFILE_CHANNELS.ppo2)).toBe("1.32 bar");
+    // Attached, like the degree symbol and unlike bar.
+    expect(formatChannelValue(23.4, PROFILE_CHANNELS.cns)).toBe("23.4%");
+    expect(formatChannelValue(87, PROFILE_CHANNELS.gradient_factor)).toBe(
+      "87%",
+    );
+  });
+
+  it("is spoken in words a screen reader can read aloud", () => {
+    expect(channelWord("ndl", "metric")).toBe("minutes");
+    expect(channelWord("ppo2", "imperial")).toBe("bar");
+    expect(channelWord("cns", "metric")).toBe("percent");
+  });
+
+  it("treats a gap as 'not recorded', the way a measured channel does", () => {
+    // Only the ceiling's gaps mean something about the dive - a stretch with no
+    // obligation. A hole in an NDL series is a device that stopped writing one,
+    // so these are not segmented at the readout tolerance and a two-sample
+    // channel is still drawn.
+    const meaningful = Object.values(PROFILE_CHANNELS)
+      .filter((channel) => channel.gapsAreMeaningful)
+      .map((channel) => channel.key);
+
+    expect(meaningful).toEqual(["ceiling"]);
+  });
+});
+
+describe("channelsOnAxis", () => {
+  it("groups the channels that share one scale", () => {
+    expect(channelsOnAxis(PROFILE_CHANNEL_KEYS, "duration")).toEqual([
+      "ndl",
+      "tts",
+    ]);
+    expect(channelsOnAxis(PROFILE_CHANNEL_KEYS, "percent")).toEqual([
+      "cns",
+      "gradient_factor",
+      "surface_gradient_factor",
+    ]);
+    expect(channelsOnAxis(PROFILE_CHANNEL_KEYS, "depth")).toEqual([
+      "depth",
+      "ceiling",
+    ]);
+  });
+
+  it("keeps ppO₂ off the tank-pressure scale though both are bar", () => {
+    // 1.3 bar of oxygen on a 230-bar tank axis is a flat line along the
+    // baseline. The axes are named after the quantity for exactly this reason.
+    expect(channelsOnAxis(PROFILE_CHANNEL_KEYS, "ppo2")).toEqual(["ppo2"]);
+    expect(channelsOnAxis(PROFILE_CHANNEL_KEYS, "pressure")).toEqual([
+      "pressure",
+    ]);
+  });
+
+  it("answers in the legend's order, and only for what is shown", () => {
+    expect(
+      channelsOnAxis(["surface_gradient_factor", "cns"], "percent"),
+    ).toEqual(["cns", "surface_gradient_factor"]);
+  });
+});
+
+describe("axisUnitSuffix", () => {
+  it("carries the separator as well as the unit", () => {
+    expect(axisUnitSuffix("duration", "metric")).toBe(" min");
+    expect(axisUnitSuffix("ppo2", "metric")).toBe(" bar");
+    expect(axisUnitSuffix("percent", "metric")).toBe("%");
+  });
+
+  it("follows the diver's system where the axis has one", () => {
+    expect(axisUnitSuffix("depth", "imperial")).toBe(" ft");
+    // And does not where it doesn't - the deco panel reads the same either way.
+    expect(axisUnitSuffix("percent", "imperial")).toBe("%");
+  });
+});
+
+describe("profileScalePlacement", () => {
+  // Every one of the 1 024 selections of the ten channels. Swept as a pure
+  // function rather than by rendering, which is the whole reason the rule lives
+  // here: the combination that breaks a ten-input rule is never the obvious one,
+  // and 1 024 renders is not a test anybody would keep.
+  const EVERY_SELECTION = Array.from(
+    { length: 2 ** PROFILE_CHANNEL_KEYS.length },
+    (_, mask) => PROFILE_CHANNEL_KEYS.filter((_, index) => mask & (1 << index)),
+  );
+
+  // How many distinct scales a selection puts on the *depth plot*. Depth and the
+  // ceiling share one domain by construction; temperature and tank pressure each
+  // have their own, and nothing else is drawn there.
+  const depthPlotScales = (keys: readonly ProfileChannelKey[]) =>
+    new Set(
+      keys
+        .filter((key) =>
+          ["depth", "ceiling", "temperature", "pressure"].includes(key),
+        )
+        .map((key) => (key === "ceiling" ? "depth" : key)),
+    ).size;
+
+  it.each(EVERY_SELECTION.map((keys) => [keys.join(" + ") || "nothing", keys]))(
+    "labels the depth plot's edges for %s",
+    (_, keys) => {
+      const placement = profileScalePlacement(
+        keys as readonly ProfileChannelKey[],
+      );
+      const scales = depthPlotScales(keys as readonly ProfileChannelKey[]);
+
+      // The left edge is labelled whenever anything is on the depth plot, and
+      // the right exactly when that plot holds a second scale.
+      expect(placement.left !== null).toBe(scales > 0);
+      expect(placement.right !== null).toBe(scales > 1);
+      // And never the same channel twice, which would put one scale on both
+      // edges and invite the reading that they are two.
+      if (placement.right !== null) {
+        expect(placement.right).not.toBe(placement.left);
+      }
+    },
+  );
+
+  it.each(EVERY_SELECTION.map((keys) => [keys.join(" + ") || "nothing", keys]))(
+    "gives every deco channel a panel row for %s",
+    (_, keys) => {
+      const shown = keys as readonly ProfileChannelKey[];
+      const placement = profileScalePlacement(shown);
+
+      // No curve is drawn against nothing: every channel the diver switched on
+      // either labels an edge of the depth plot or sits in a panel row that
+      // carries its own scale.
+      for (const key of shown) {
+        const housed =
+          key === placement.left ||
+          key === placement.right ||
+          key === "ceiling" ||
+          key === "pressure" ||
+          placement.panels.some((axis) =>
+            channelsOnAxis(shown, axis).includes(key),
+          );
+        expect(housed).toBe(true);
+      }
+      // A row exists only where something is on it.
+      for (const axis of placement.panels) {
+        expect(channelsOnAxis(shown, axis).length).toBeGreaterThan(0);
+      }
+    },
+  );
+
+  it("keeps meters on the left and temperature on the right", () => {
+    expect(profileScalePlacement(["depth", "temperature"])).toMatchObject({
+      left: "depth",
+      right: "temperature",
+    });
+  });
+
+  it("hands the ceiling depth's own edge when depth is off", () => {
+    expect(profileScalePlacement(["ceiling", "temperature"])).toMatchObject({
+      left: "ceiling",
+      right: "temperature",
+    });
+  });
+
+  it("moves pressure rather than the other two", () => {
+    expect(profileScalePlacement(["depth", "pressure"]).right).toBe("pressure");
+    expect(profileScalePlacement(["temperature", "pressure"]).left).toBe(
+      "pressure",
+    );
+    // Three scales, two edges: pressure is the one that goes unlabelled, and the
+    // crosshair gives its exact figure for any instant.
+    expect(
+      profileScalePlacement(["depth", "temperature", "pressure"]),
+    ).toMatchObject({ left: "depth", right: "temperature" });
+  });
+
+  it("puts a lone scale on the left and leaves the right empty", () => {
+    expect(profileScalePlacement(["temperature"])).toMatchObject({
+      left: "temperature",
+      right: null,
+    });
+  });
+
+  it("leaves the depth plot's edges alone when only deco channels are on", () => {
+    // The panel rows are their own plots with their own left edges, so nothing
+    // the diver switches on down there can claim an edge up here.
+    expect(profileScalePlacement(["ndl", "cns"])).toEqual({
+      left: null,
+      right: null,
+      panels: ["duration", "percent"],
+    });
+  });
+
+  it("stacks the rows in one order however the selection was made", () => {
+    expect(profileScalePlacement(["cns", "ppo2", "tts"]).panels).toEqual([
+      "duration",
+      "ppo2",
+      "percent",
+    ]);
+  });
+
+  it("grows no row for an axis nothing is on", () => {
+    expect(profileScalePlacement(["depth", "ceiling"]).panels).toEqual([]);
   });
 });

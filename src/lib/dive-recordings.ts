@@ -2,6 +2,7 @@ import type {
   Dive,
   DiveFileInfo,
   Recording,
+  RecordingDecoModel,
   RecordingDevice,
 } from "./api/dives";
 import { diveParserLabel } from "./api/dives";
@@ -59,6 +60,102 @@ export function recordingDeviceLabel(
   }
 
   return label || null;
+}
+
+/**
+ * What the API's `DiveMode` values are called in words.
+ *
+ * A lookup with no fallback entry on purpose. The vocabulary is closed in the
+ * API's *current* build and the two repos deploy independently, so a mode this
+ * bundle has never heard of is a real arrival — and the honest answer to it is
+ * to say nothing rather than to print a raw `semi_closed_rebreather` or, worse,
+ * to default to open circuit. **An absent mode is never open circuit**: UDDF
+ * documents an absent `<divemode>` as meaning one, and neither repo reads that,
+ * because it is the source format's claim about its own default rather than the
+ * device's about the dive.
+ */
+const MODE_LABELS: Record<string, string> = {
+  open_circuit: "Open circuit",
+  closed_circuit: "Closed circuit",
+  semi_closed: "Semi-closed",
+  gauge: "Gauge",
+  freedive: "Freedive",
+};
+
+/** The same, for the model families the API's `DecoAlgorithm` names. */
+const ALGORITHM_LABELS: Record<string, string> = {
+  buhlmann: "Bühlmann",
+  rgbm: "RGBM",
+};
+
+/**
+ * The decompression model one device ran, in words, or `null` where nothing
+ * worth a line was recorded.
+ *
+ * **The device's own name wins over the family**, which is the same call
+ * `recordingDeviceLabel` makes between a model string and a brand: a Suunto
+ * names its model `Suunto Fused RGBM 2` and that says more than `RGBM` does,
+ * while `RGBM Suunto Fused RGBM 2` says one of them twice. The family is what
+ * fills in where a source named a model without naming a product — a UDDF's
+ * `<buehlmann>` element, a FIT's `zhl_16c`.
+ *
+ * The gradient factors attach to it (`Bühlmann GF 30/85`) because they are that
+ * model's settings, and both halves are required together or not at all. The
+ * conservatism is a separate clause: it is on the device's own scale and means
+ * nothing without the model and the computer beside it, which is exactly where
+ * this line is rendered.
+ */
+function decoModelLabel(model: RecordingDecoModel | null | undefined) {
+  if (!model) return null;
+
+  const named =
+    model.name?.trim() ||
+    (model.algorithm ? (ALGORITHM_LABELS[model.algorithm] ?? null) : null);
+  const gradientFactors =
+    model.gf_low != null && model.gf_high != null
+      ? `GF ${model.gf_low}/${model.gf_high}`
+      : null;
+  const described = [named, gradientFactors]
+    .filter((part): part is string => part != null)
+    .join(" ");
+
+  // `0` is a setting - the middle of Suunto's P-2 to P2 - so this tests for null
+  // rather than for falsiness, and a positive value keeps its sign because the
+  // scale runs both ways.
+  const conservatism =
+    model.conservatism == null
+      ? null
+      : `conservatism ${model.conservatism > 0 ? `+${model.conservatism}` : model.conservatism}`;
+
+  return (
+    [described || null, conservatism]
+      .filter((part): part is string => part != null)
+      .join(" · ") || null
+  );
+}
+
+/**
+ * What this device was set to when it recorded the dive: the mode it ran in and
+ * the decompression model it ran, or `null` where the source recorded neither.
+ *
+ * One line rather than two because they are one fact about one machine — `Open
+ * circuit · Bühlmann GF 30/85`, or `Freedive` where a freediving computer has no
+ * model to name, or a model alone where a file recorded the algorithm and not
+ * the mode.
+ *
+ * **Per recording, never per dive.** A backup computer run in gauge mode beside
+ * a primary on open circuit is ordinary practice and the dive was not a gauge
+ * dive; two computers give two answers, and the recording is the row that can
+ * hold both.
+ */
+export function recordingSettingsLabel(recording: Recording): string | null {
+  const mode = recording.mode ? (MODE_LABELS[recording.mode] ?? null) : null;
+
+  return (
+    [mode, decoModelLabel(recording.deco_model)]
+      .filter((part): part is string => part != null)
+      .join(" · ") || null
+  );
 }
 
 /**

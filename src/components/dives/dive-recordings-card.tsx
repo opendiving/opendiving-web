@@ -22,6 +22,7 @@ import {
   noFileKeptSentence,
   recordingDeviceLabel,
   recordingLabel,
+  recordingSettingsLabel,
   UNNAMED_DEVICE_LABEL,
 } from "@/lib/dive-recordings";
 import { downloadBlob } from "@/lib/download";
@@ -186,6 +187,12 @@ export function DiveRecordingsCard({
         <CardContent className="space-y-6">
           {recordings.map((recording) => {
             const device = recordingDeviceLabel(recording.device);
+            // What this computer was set to, where the file said: its mode and
+            // its decompression model. On the recording rather than on the dive,
+            // because a backup run in gauge mode does not make the dive a gauge
+            // dive - and absent entirely rather than guessed, which is why there
+            // is no "Open circuit" here on a file that recorded no mode.
+            const settings = recordingSettingsLabel(recording);
             const noFileKept = noFileKeptSentence(recording);
             // Its own start, but only where it says something the dive's start
             // does not: a second computer that entered the water a minute later
@@ -210,6 +217,14 @@ export function DiveRecordingsCard({
                     <div className="text-xs text-muted-foreground">
                       {recordingLabel(recording)}
                       {recording.ordinal === 0 ? " · shown by default" : ""}
+                    </div>
+                  )}
+                  {settings && (
+                    <div
+                      data-testid="dive-recording-settings"
+                      className="text-sm text-muted-foreground"
+                    >
+                      {settings}
                     </div>
                   )}
                   {ownStart && (

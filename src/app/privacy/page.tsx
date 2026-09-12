@@ -1221,7 +1221,7 @@ export default async function PrivacyPage() {
                 Kept until you undo that from the passkeys card in your settings
               </li>
               <li>
-                <StorageKey name="opendiving:dive-profile-series-v3" /> &mdash;
+                <StorageKey name="opendiving:dive-profile-series-v4" /> &mdash;
                 which lines you last had showing on a dive profile chart. Kept
                 until you change them
               </li>

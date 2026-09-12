@@ -21,9 +21,9 @@
 //
 // **Clearing goes by prefix; suppression goes by list.** Orphaned keys sit in
 // browsers that ran an older build and have no literal left in this tree: the
-// two superseded dive-profile series keys from the `-v2` and `-v3` bumps, and
-// the last-auth-method key from the change that deleted the sign-in hint. A
-// census cannot see any of them, and naming one here as a literal would oblige
+// three superseded dive-profile series keys from the `-v2`, `-v3` and `-v4`
+// bumps, and the last-auth-method key from the change that deleted the sign-in
+// hint. A census cannot see any of them, and naming one here as a literal would oblige
 // §10 of the privacy page to give a row to a key this app no longer writes, so
 // `setOptOut(true)` walks live storage instead and removes everything under the
 // prefix bar the named exclusions. Suppression cannot work that way - a key has
@@ -65,7 +65,7 @@ export const DEVICE_MEMORY_OPT_OUT_KEY = "opendiving:device-memory-opt-out";
 export const COVERED_KEYS = [
   "theme",
   "opendiving:passkey-nudge-dismissed",
-  "opendiving:dive-profile-series-v3",
+  "opendiving:dive-profile-series-v4",
   "opendiving:gas-use-series",
   "opendiving:dive-activity-view",
   "opendiving:gas-use-view",
