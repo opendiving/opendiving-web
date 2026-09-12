@@ -14203,8 +14203,10 @@ at all. The older screenshots do carry the previous waves mark, but that was luc
 permits redistribution.
 
 **Seven of those nine remain.** `coral.png` and `octo.png` went out of the history itself in the
-purge below, so a clone now reaches the three screenshots, the two basemap sprite sheets, `icon.svg`
-and `favicon.ico`, and nothing else.
+purge below, so of the nine a clone now reaches the three screenshots, the two basemap sprite
+sheets, `icon.svg` and `favicon.ico`. The enumeration is deliberately scoped to that audit rather
+than to the tree: an image committed since is not covered by it, and the paragraph below is the one
+that has been.
 
 **A fourth screenshot has been added since, and it is the one image here that carries somebody
 else's rendering.** `docs/screenshots/dive-site.png` is a page with a MapLibre frame in it, so the
