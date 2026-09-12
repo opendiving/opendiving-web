@@ -29,7 +29,11 @@ export const PROJECT_OPERATOR = {
   jurisdiction: "Germany",
 } as const;
 
-/** Where the project's own source lives, once the repositories are public. */
+/**
+ * Where the project's own source lives. The organisation rather than any one
+ * repository: a running copy is two images built from two of them, and the legal pages
+ * point at the source of the whole thing rather than at this app's half.
+ */
 export const PROJECT_SOURCE_URL = "https://github.com/opendiving";
 
 /**

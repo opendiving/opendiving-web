@@ -121,24 +121,31 @@ describe("the operator block", () => {
     expect(block).toHaveTextContent(
       /complete source of the version\s+running on this copy is\s+available on request/,
     );
-    expect(block).toHaveTextContent(/github\.com\/opendiving/);
+    expect(block).toHaveTextContent(
+      /in the project’s public repositories at\s+github\.com\/opendiving/,
+    );
     expect(block).toHaveTextContent(/\/api\/v1\/health/);
     expect(block).toHaveTextContent(/commit/);
     // The honest half: outside an image the project published, that field says so.
     expect(block).toHaveTextContent(/unknown/);
   });
 
-  // §7 asserts "The project publishes its own source publicly" in the present tense, which
-  // is not true while the repositories are private. The block hedges its own link with
-  // "once the project's repositories are published"; without this clause the two sit on one
-  // page contradicting each other, so the clause is asserted rather than left to prose.
-  it("places §7's publication claim in the future on this copy", async () => {
+  // §7 asserts "The project publishes its own source publicly" in the present tense, and
+  // since 2026-09-12 that is simply true. What the clause now has to carry is the reason
+  // the block's offer still leads with the request: §13 owes the source of the *running
+  // version*, which a public repository does not on its own identify. A future edit that
+  // shortens this to "the repositories are public, so follow the link" collapses the two,
+  // which is the failure this assertion exists to catch.
+  it("names §7's public repositories and keeps the request leading", async () => {
     await renderPage(true);
 
     expect(
       screen.getByText(
-        /public\s+repositories this section speaks of are still to come/,
+        /public\s+repositories this section speaks of are named there too/,
       ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/still leads with the request rather than the link/),
     ).toBeInTheDocument();
   });
 

@@ -624,10 +624,12 @@ describe("the operator block", () => {
     expect(block).toHaveTextContent(/Sixteen/);
   });
 
-  // Four sections invite the reader to check this page against public source, and that
-  // invitation is not open while the repositories are private. §5 is the one that reads as
-  // a bullet rather than as a section-length invitation, which is how it was missed when
-  // this answer was first written as "§1, §11, §12" - so it is named here by its own words.
+  // Four sections invite the reader to check this page against public source, and since
+  // 2026-09-12 that invitation is open. The answer still has to keep the operator's route
+  // beside it, because a public repository is the project's source and not proof of what
+  // this copy runs. §5 is the one that reads as a bullet rather than as a section-length
+  // invitation, which is how it was missed when this answer was first written as
+  // "§1, §11, §12" - so it is named here by its own words.
   it("covers every section that sends the reader to public source, §5 included", async () => {
     await renderPage({ google: false, projectOperated: true });
 
@@ -642,8 +644,9 @@ describe("the operator block", () => {
     // `toHaveTextContent` reads rendered text, so the entity is already a curly
     // apostrophe by the time it is matched - hence the character rather than `&rsquo;`.
     expect(block).toHaveTextContent(
-      /open the moment the project’s repositories are published/,
+      /that invitation is open: the project’s\s+repositories are public/,
     );
+    expect(block).toHaveTextContent(/the operator’s route stands beside it/);
   });
 
   // The sections whose own prose would otherwise dangle. Each gets one pointer, and the

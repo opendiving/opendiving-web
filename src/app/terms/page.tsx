@@ -100,7 +100,7 @@ export default async function TermsPage() {
               >
                 {PROJECT_OPERATOR.contactEmail}
               </a>
-              , and, once the project&rsquo;s repositories are published, at{" "}
+              , and in the project&rsquo;s public repositories at{" "}
               <a
                 href={PROJECT_SOURCE_URL}
                 target="_blank"
@@ -109,8 +109,9 @@ export default async function TermsPage() {
               >
                 github.com/opendiving
               </a>
-              . The request is the route that does not depend on that, which is
-              why it is written first. Which build is running is not a guess:{" "}
+              . The request is the route that works whatever this copy is
+              running, which is why it is written first. Which build is running
+              is not a guess:{" "}
               <code className="rounded bg-muted px-1 py-0.5 font-mono text-sm">
                 {BUILD_IDENTITY_PATH}
               </code>{" "}
@@ -439,8 +440,11 @@ export default async function TermsPage() {
                   On this copy the offer is made, under{" "}
                   <em>Who runs this copy</em> at the top of this page, along
                   with what identifies the build running here. The public
-                  repositories this section speaks of are still to come, which
-                  is why that offer leads with the request rather than the link.
+                  repositories this section speaks of are named there too. That
+                  offer still leads with the request rather than the link,
+                  because what section 13 owes you is the source of the version
+                  running here, which a repository on its own does not pin and
+                  the commit named there does.
                 </>
               )}
             </p>
