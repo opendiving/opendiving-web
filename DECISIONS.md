@@ -17890,6 +17890,17 @@ recording would itself be deleted and the one after it promoted. The comment on 
 the trade; the short version is that overstating what is lost is the safe direction and the
 alternative is re-implementing the server's promotion rules in a dialog.
 
+**The provenance goes with the file, and that one is not a trade.** `unreproducibleSamples` is what
+lets a recording survive its last file — samples from a merge or from the converter, which no file
+could produce again — and it reads `profile.provenance`. The server re-derives the profile from
+whatever files are left on every deletion that leaves one (`_rederive_recording` in the API's
+`services/dive_files.py`), so a merged recording that loses one of its two files comes out of that
+deletion with `file` provenance, and the deletion after it takes the recording. Carried through
+unchanged, the stored `merge` would have the dialog say "its samples stay" about a save that
+destroys them — an understatement of loss in a destructive confirmation, which is the one direction
+none of this may be wrong in. So a recording that loses a file in the filter loses its provenance
+with it.
+
 Two things went with the immediate delete, and a third had to be rebuilt. `deleteStoredFile`'s
 re-read (`setDive(await getDive())`, deliberately not `useResource`'s `refetch`) is gone, and so is
 the reason it existed — there is no longer a moment mid-edit when the server's copy of the dive and

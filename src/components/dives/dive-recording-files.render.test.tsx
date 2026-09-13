@@ -316,6 +316,49 @@ describe("DiveRecordingFiles", () => {
     ).toBeVisible();
   });
 
+  it("stops promising a merge's samples once one of its files is struck off", async () => {
+    // The one direction a destructive confirmation must never be wrong in.
+    // A merged recording survives losing its *last* file - nothing could
+    // produce those samples again - but the server re-derives the profile from
+    // whatever is left on the deletion before it, so by the time the second one
+    // runs the recording is reproducible and goes with the file.
+    render(
+      <DiveRecordingFiles
+        recordings={[
+          recording({
+            profile: {
+              uuid: "p1",
+              duration: 3163,
+              depth_sample_count: 314,
+              provenance: "merge",
+              channels: ["depth"],
+            },
+            files: [
+              file({ uuid: "gone", original_filename: "ocean.fit" }),
+              file({ uuid: "last", original_filename: "ocean.json" }),
+            ],
+          }),
+        ]}
+        pending={[]}
+        onRemovePending={vi.fn()}
+        removedStored={["gone"]}
+        onRemoveStored={vi.fn()}
+        onRestoreStored={vi.fn()}
+      />,
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Delete ocean.json" }),
+    );
+
+    expect(
+      screen.getByRole("heading", {
+        name: "Delete this file and its recording?",
+      }),
+    ).toBeVisible();
+    expect(screen.queryByText(/its samples stay/i)).not.toBeInTheDocument();
+  });
+
   it("describes the second mark against what the save will actually leave", async () => {
     // The half deferring the deletion took away. With one file of this
     // recording already struck off, deleting the other one takes the whole

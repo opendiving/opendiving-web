@@ -38,9 +38,10 @@ export interface DiveFormCardProps<TFieldValues extends DiveFormValues> {
   cancelHref: string;
   submittingLabel: string;
   submitLabel: string;
-  // All five passed straight through to `DiveFileImport`. The page, not this
-  // card, owns the picked files: they can only be attached once the dive
-  // exists, which is after `onSubmit` resolves.
+  // Passed straight through to `DiveFileImport`, every one of them. The page,
+  // not this card, owns what the file list is about: a picked file can only be
+  // attached once the dive exists, which is after `onSubmit` resolves, and a
+  // stored one is deleted in the same pass rather than when it is struck off.
   onFileAdded?: (pending: PendingDiveFile) => void;
   pendingFiles?: PendingDiveFile[];
   onRemovePendingFile?: (id: string) => void;

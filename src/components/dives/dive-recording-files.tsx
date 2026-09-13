@@ -67,29 +67,48 @@ interface DiveRecordingFilesProps {
  * purpose is telling "the recording keeps its other files" from "the recording
  * goes with it" would describe the smaller of the two.
  *
- * Files rather than whole recordings, deliberately, and that is a conservative
- * answer rather than an exact one. A recording every one of whose files is
- * marked comes through with `files: []`, so `figuresSentence` reads it as a
- * successor holding no file and says the dive's computer figures are cleared.
- * That is right where the recording survives file-less, and pessimistic where
- * it does not: the server deletes such a recording outright and promotes the
- * *next* one, which may still hold a file and re-read them. Getting that case
- * right means deciding here which recording the server promotes - the second
- * implementation of the server's rules `deleteFileConfirmation` is written to
- * avoid - and the error only ever runs one way, since a recording the filtered
- * list shows holding files really does keep them. A warning that overstates
- * what is lost is the safe half of that trade; the unfiltered list got it wrong
- * in the other direction.
+ * **A recording that loses a file also loses its provenance**, and that is not
+ * cosmetic. `unreproducibleSamples` is what decides whether a recording
+ * survives its last file, and it answers yes for samples that came from a merge
+ * or the converter. But the server re-derives the profile from whatever files
+ * are left on *every* deletion that leaves one (`_rederive_recording` in the
+ * API's `services/dive_files.py`), so a merged recording that loses one of its
+ * two files comes out of that deletion with `file` provenance - and the second
+ * deletion then takes the recording, its profile and its samples. Carrying the
+ * stored provenance through would have the dialog promise "its samples stay"
+ * about a save that destroys them, which is the one direction a destructive
+ * confirmation must never be wrong in.
+ *
+ * Files rather than whole recordings, deliberately, and that much is a
+ * conservative answer rather than an exact one. A recording every one of whose
+ * files is marked comes through with `files: []`, so `figuresSentence` reads it
+ * as a successor holding no file and says the dive's computer figures are
+ * cleared. That is right where the recording survives file-less, and
+ * pessimistic where it does not: the server deletes such a recording outright
+ * and promotes the *next* one, which may still hold a file and re-read them.
+ * Getting that case right means deciding here which recording the server
+ * promotes - the second implementation of the server's rules
+ * `deleteFileConfirmation` is written to avoid - and that error only ever runs
+ * one way, since a recording the filtered list shows holding files really does
+ * keep them. A warning that overstates what is lost is the safe half of that
+ * trade; the unfiltered list got it wrong in the other direction.
  */
 function asTheSaveWillFindThem(
   recordings: Recording[],
   removed: Set<string>,
 ): Recording[] {
   if (removed.size === 0) return recordings;
-  return recordings.map((recording) => ({
-    ...recording,
-    files: recording.files.filter((file) => !removed.has(file.uuid)),
-  }));
+  return recordings.map((recording) => {
+    const files = recording.files.filter((file) => !removed.has(file.uuid));
+    if (files.length === recording.files.length) return recording;
+    return {
+      ...recording,
+      files,
+      profile: recording.profile
+        ? { ...recording.profile, provenance: "file" as const }
+        : recording.profile,
+    };
+  });
 }
 
 /**
