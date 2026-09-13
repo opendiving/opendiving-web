@@ -11,6 +11,7 @@ import {
   diveFileRows,
   UNNAMED_DEVICE_LABEL,
   type DiveFileRow,
+  type RecordingConfirmation,
 } from "@/lib/dive-recordings";
 import { formatFileSize } from "@/lib/format";
 
@@ -55,70 +56,40 @@ interface DiveRecordingFilesProps {
 }
 
 /**
- * The dive's recordings as the save will find them: the files already marked
- * for removal taken out of them.
+ * The confirmation before striking a stored file off the list.
  *
- * **What the confirmation has to be computed against**, and the thing deferring
- * the deletion took away. `deleteFileConfirmation` decides which of its three
- * outcomes to describe from `recording.files.length`, and the immediate delete
- * this replaces kept that honest by re-reading the dive after every one. Mark
- * the second-to-last file of a recording and then open the dialog on the last,
- * and the unfiltered list still holds two - so the one dialog whose whole
- * purpose is telling "the recording keeps its other files" from "the recording
- * goes with it" would describe the smaller of the two.
+ * **It only describes an outcome while it is the first thing struck off**, and
+ * that limit is the point rather than a gap. `deleteFileConfirmation` tells the
+ * three outcomes apart — the recording keeps its other files, it survives
+ * file-less, or it goes with the file — by reading the dive as the server holds
+ * it, and the immediate delete this replaces kept that true for free by
+ * re-reading after every one. Nothing re-reads now, so from the second mark on,
+ * the answer depends on a cascade that happens on the server when the save runs:
+ * a recording emptied by an earlier mark is deleted, its profile is re-derived
+ * from whatever files are left (which turns a merge's unreproducible samples
+ * into reproducible ones), and the ordinals are renumbered, moving which
+ * recording the dive reads its computer figures from.
  *
- * **A recording that loses a file also loses its provenance**, and that is not
- * cosmetic. `unreproducibleSamples` is what decides whether a recording
- * survives its last file, and it answers yes for samples that came from a merge
- * or the converter. But the server re-derives the profile from whatever files
- * are left on *every* deletion that leaves one (`_rederive_recording` in the
- * API's `services/dive_files.py`), so a merged recording that loses one of its
- * two files comes out of that deletion with `file` provenance - and the second
- * deletion then takes the recording, its profile and its samples. Carrying the
- * stored provenance through would have the dialog promise "its samples stay"
- * about a save that destroys them, which is the one direction a destructive
- * confirmation must never be wrong in.
- *
- * Files rather than whole recordings, deliberately, and that much is a
- * conservative answer rather than an exact one. A recording every one of whose
- * files is marked comes through with `files: []`, so `figuresSentence` reads it
- * as a successor holding no file and says the dive's computer figures are
- * cleared. That is right where the recording survives file-less, and
- * pessimistic where it does not: the server deletes such a recording outright
- * and promotes the *next* one, which may still hold a file and re-read them.
- * Getting that case right means deciding here which recording the server
- * promotes - the second implementation of the server's rules
- * `deleteFileConfirmation` is written to avoid - and that error only ever runs
- * one way, since a recording the filtered list shows holding files really does
- * keep them. A warning that overstates what is lost is the safe half of that
- * trade; the unfiltered list got it wrong in the other direction.
+ * Three rounds of review found three different ways for a local model of that to
+ * be wrong, each in a dialog whose whole job is to be right about a destructive
+ * action, so there is no local model: past the first mark this says what is
+ * certain and stops. `deleteFileConfirmation` itself is untouched — the dive
+ * page's recordings card shares it, and there the delete really is immediate and
+ * the re-read really does happen.
  */
-function asTheSaveWillFindThem(
+function removeFileConfirmation(
   recordings: Recording[],
-  removed: Set<string>,
-): Recording[] {
-  if (removed.size === 0) return recordings;
-  return recordings.map((recording) => {
-    const files = recording.files.filter((file) => !removed.has(file.uuid));
-    if (files.length === recording.files.length) return recording;
+  fileUuid: string,
+  othersAlreadyMarked: boolean,
+): RecordingConfirmation {
+  if (othersAlreadyMarked) {
     return {
-      ...recording,
-      files,
-      profile: recording.profile
-        ? { ...recording.profile, provenance: "file" as const }
-        : recording.profile,
+      title: "Delete this file?",
+      description:
+        "It is permanently deleted when you save, along with the others you have struck off. Between them they may leave a recording with no files, and a recording with nothing left to re-read is deleted with its profile and its samples — so what this dive shows can change. Nothing happens until you save; until then the row stays on the list, marked, and you can put it back.",
     };
-  });
-}
+  }
 
-/**
- * The shared consequence text, with the one thing that is true only on a form
- * added to it: none of it happens yet.
- *
- * `deleteFileConfirmation` itself is left alone because the dive page's
- * recordings card shares it, and there the delete really is immediate.
- */
-function removeFileConfirmation(recordings: Recording[], fileUuid: string) {
   const confirmation = deleteFileConfirmation(recordings, fileUuid);
   return {
     title: confirmation.title,
@@ -184,8 +155,9 @@ export function DiveRecordingFiles({
           open
           onOpenChange={(open) => !open && setPendingDeletion(null)}
           {...removeFileConfirmation(
-            asTheSaveWillFindThem(recordings, removed),
+            recordings,
             pendingDeletion.file.uuid,
+            removed.size > 0,
           )}
           confirmText="Delete"
           onConfirm={confirmDelete}

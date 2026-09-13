@@ -17878,28 +17878,31 @@ the row — the recording keeps its other files, it survives file-less, or it go
 shares it and deletes immediately there. The form wraps it in `removeFileConfirmation`, which adds
 the one sentence that is only true here.
 
-**But it is handed a filtered list, and that is the part deferring the deletion nearly lost.** Which
-of the three outcomes that function describes comes out of `recording.files.length`, and the
-immediate delete kept that honest for free by re-reading the dive after every one. Without the
-re-read, a second mark on the same recording is judged against a list that still holds the first:
-strike off the second-to-last file, open the dialog on the last, and the sentence is "the recording
-keeps its other files" about a save that will take the recording, its profile and its samples. So
-`asTheSaveWillFindThem` takes the marked files out of the recordings first — files, not whole
-recordings, which makes the successor sentence pessimistic rather than exact where a fully struck
-recording would itself be deleted and the one after it promoted. The comment on that function has
-the trade; the short version is that overstating what is lost is the safe direction and the
-alternative is re-implementing the server's promotion rules in a dialog.
+**Past the first mark, the confirmation stops describing an outcome**, and that limit is the whole
+design rather than a gap in it. `deleteFileConfirmation` tells the three outcomes apart by reading
+the dive as the server holds it, and the immediate delete kept that true for free by re-reading
+after every one. Nothing re-reads now, and from the second mark on the answer depends on a cascade
+that only runs when the save does: a recording emptied by an earlier mark is deleted, its profile is
+re-derived from whatever files are left — which turns a merge's unreproducible samples into
+reproducible ones — and `renumber_ordinals` promotes the next recording, moving which one the dive
+reads its computer figures from.
 
-**The provenance goes with the file, and that one is not a trade.** `unreproducibleSamples` is what
-lets a recording survive its last file — samples from a merge or from the converter, which no file
-could produce again — and it reads `profile.provenance`. The server re-derives the profile from
-whatever files are left on every deletion that leaves one (`_rederive_recording` in the API's
-`services/dive_files.py`), so a merged recording that loses one of its two files comes out of that
-deletion with `file` provenance, and the deletion after it takes the recording. Carried through
-unchanged, the stored `merge` would have the dialog say "its samples stay" about a save that
-destroys them — an understatement of loss in a destructive confirmation, which is the one direction
-none of this may be wrong in. So a recording that loses a file in the filter loses its provenance
-with it.
+**Three review rounds found three different ways to get a local model of that wrong**, each of them
+in a dialog whose only job is to be right about a destructive action. The first version read the
+unfiltered file list, so a second mark on one recording said "the recording keeps its other files"
+about a save that would take the recording. Filtering the files fixed the count and left the stored
+provenance, so a merged recording promised "its samples stay" about a save that destroys them.
+Rewriting the provenance too left the ordinals, so emptying the primary and then striking the last
+file off a secondary said the dive's computer figures were "left alone" when the promotion clears
+them. Each fix was correct and each uncovered the next field the server moves.
+
+So there is no local model. Past the first mark `removeFileConfirmation` says what is certain — the
+file goes on save, the set may leave a recording with no files, a recording with nothing left to
+re-read goes with its profile and its samples, and what the dive shows can change — and claims
+nothing it would have to predict a cascade to know. The first mark keeps the exact three-outcome
+text, because with nothing struck off yet the dive on screen _is_ the dive the save will find.
+`deleteFileConfirmation` is untouched either way: the dive page's recordings card shares it, and
+there the delete really is immediate and the re-read really does happen.
 
 Two things went with the immediate delete, and a third had to be rebuilt. `deleteStoredFile`'s
 re-read (`setDive(await getDive())`, deliberately not `useResource`'s `refetch`) is gone, and so is
