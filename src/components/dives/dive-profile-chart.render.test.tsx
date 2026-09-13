@@ -1425,10 +1425,12 @@ describe("DiveProfileChart with a gradient factor past the percent axis's bound"
   // Dive `019fcee1-2219-76df-9e5c-b20e3473f304` in shape: a Suunto Ocean `gf99`
   // running to 14 060 % across a third of the ascent, beside the surface gradient
   // factor that peaks near 170 and is the channel carrying the readable story.
-  // Neither figure is invented - `plans/suunto-ocean-gf99.md` in the umbrella
-  // establishes the reading as a device fault across a 79-dive corpus, in which
-  // GF99 <= surface GF holds on every sample of the 75 clean dives and fails on
-  // two samples in five of the four broken ones.
+  // Neither figure is invented: across a 79-dive corpus of exports from this
+  // computer the reading is a device fault rather than a different scale, and the
+  // inequality GF99 <= surface GF - which no decompression model in use can
+  // violate - holds on every sample of the 75 clean dives and fails on two
+  // samples in five of the four broken ones. DECISIONS.md carries the evidence,
+  // under *"The percent axis stops at 200 %"*.
   //
   // No CNS, which is not tidiness: the Suunto JSON carries none, so on this dive
   // the percent row holds the two gradient factors and nothing else.

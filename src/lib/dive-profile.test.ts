@@ -173,10 +173,10 @@ describe("depthDomain", () => {
 });
 
 describe("axisDomain", () => {
-  // The readings behind these numbers are in `plans/suunto-ocean-gf99.md` in the
-  // umbrella - a 79-dive corpus in which the surface gradient factor peaks at 173
-  // and four dives report a `gf99` that violates an inequality no decompression
-  // model can violate, reaching 14 060.
+  // Not invented numbers: across a 79-dive corpus of Suunto Ocean exports the
+  // surface gradient factor peaks at 173, and four dives report a `gf99` that
+  // violates an inequality no decompression model can violate, reaching 14 060.
+  // DECISIONS.md, *"The percent axis stops at 200 %"*, carries the evidence.
   const SUUNTO_GF99_PEAK = 14060;
 
   it("fits an unbounded axis to its readings, as it always did", () => {

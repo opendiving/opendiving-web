@@ -17755,15 +17755,15 @@ story of that ascent — peaks at 170 there, and was drawn across **1.1 % of the
 flat line on the baseline. One channel's fault erased another channel's data, and the README's
 dive-detail screenshot was held rather than shipped because of it.
 
-**The reading is wrong, and that is established rather than assumed.** `plans/suunto-ocean-gf99.md`
-in the umbrella settles it over a 79-dive corpus: the same dive's saved tissue tensions put the real
-surfacing figure near 60, the device's own recorded GF-high is 85, a reconstruction of the ascent
-tracks the _other_ channel to 5.5 % mean error, and the model-independent inequality GF99 ≤ surface
-GF — which no decompression model in use can violate — holds on every sample of the 75 clean dives
-and fails on two samples in five of the four broken ones. Both firmware and "it was a deco dive" are
-ruled out as the variable. Nothing this project does causes it, and no other implementation would
-ever surface it: libdivecomputer does not read the field and Subsurface and Submersion both
-recompute their own.
+**The reading is wrong, and that is established rather than assumed.** It was settled over a 79-dive
+corpus of Suunto Ocean exports before any of this was written: the same dive's saved tissue tensions
+put the real surfacing figure near 60, the device's own recorded GF-high is 85, a reconstruction of
+the ascent tracks the _other_ channel to 5.5 % mean error, and the model-independent inequality GF99
+≤ surface GF — which no decompression model in use can violate — holds on every sample of the 75
+clean dives and fails on two samples in five of the four broken ones. Both firmware and "it was a
+deco dive" are ruled out as the variable. Nothing this project does causes it, and no other
+implementation would ever surface it: libdivecomputer does not read the field and Subsurface and
+Submersion both recompute their own.
 
 So the fix is a presentation choice and only that. `AXIS_BOUND` in `lib/dive-profile.ts` gives the
 percent axis a ceiling of 200 % and every other axis `null`; `axisDomain` fits `niceDomain` to the
