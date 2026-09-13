@@ -18313,3 +18313,68 @@ own copy of it, and this fix landed in all of them together — which is the onl
 can be read as describing a solved problem. Nothing checks that the copies agree, so a later change
 that lands in one and not the rest leaves the others with whatever this section is about. Diff the
 labelling step across them before assuming otherwise.
+
+## A selection is not a query
+
+Both of the dive form's dropdown implementations wrote the picked item's name into their own input,
+and then read that same text back as the thing to filter on. So a dive already filed under "Dahab
+2025" opened its Trip menu on one row — the trip it was already filed under, plus whatever else
+happened to contain its name — and changing the trip meant clearing the field first. The API matches
+a case-insensitive substring, so the server was answering the question correctly; the question was
+wrong.
+
+The rule, now shared: **while the text in the box is a selection the component wrote, the menu shows
+the unfiltered list**, with the selected row carrying its existing `bg-accent/50` and scrolled into
+view. Filtering starts at the first keystroke and applies to what was typed. That is what MUI
+Autocomplete and Headless UI Combobox do, and what makes a picker something you can browse as well
+as search.
+
+`menuQuery({ text, typed })` in `creatable-combobox.tsx` is the whole of it, exported and
+unit-tested beside `visibleItems`. The flag is set by `handleInputChange` and cleared by every path
+that writes the text on the diver's behalf — `handleSelect`, `commit`'s `select` and `create`
+branches, the Clear button, and the sync-from-`value` effect. `DiveFormPresetSaveAs` imports the
+same function; it is hand-rolled for the blur-commit reason its own doc comment gives, but there is
+no second reading of this rule.
+
+**A flag rather than "the text equals the selected name."** The comparison looks equivalent and
+isn't: `handleInputChange` selects an exact match as it is keyed in, so the instant a name was typed
+out in full the field would be a selection by that test and the menu would jump back to the whole
+list under the diver's fingers — filtering right up to the last letter and then abandoning it. The
+flag asks who wrote the text, which is the actual question.
+
+**Every text-vs-query comparison keys on the one derived query**, and that is not tidiness. The
+search effect, `visibleItems`, `emptyMenuLabel`, `searchFailed` and `searchPending` all used
+`inputValue.trim()`. Leaving any one of them behind puts it out of step with the search that
+actually ran: `searchPending` is `searchedQuery !== query`, so on the raw text it compares the `""`
+the server answered against the trip's name, never agrees, and renders "Searching..." for as long as
+the menu is empty — a spinner over a list that has already arrived.
+
+`commit()` and `commitAction` needed no change, which is worth stating because it looks like an
+oversight. Blurring a field nobody edited is a no-op either way, by whichever of two branches it
+reaches — and it is worth knowing which, because the obvious guess is the wrong one. `commitAction`
+looks for an exact match in `availableItems` _before_ the stale-query guard, and `availableItems` is
+now the unfiltered page the `""` search returned: for an account inside a picker's page size (25
+trips) that page holds the selection, so the branch taken is `select`, re-selecting the id already
+set. `keep` — via the guard, on `searchedQuery === ""` against the selected name — is what a
+selection _outside_ that page falls through to, which is the >25-trip account. Both were reachable
+before this change; what moved is which one is ordinary.
+
+`VolumeCombobox` is the third dropdown and already complies by construction: it never filters at all
+(see the cylinder-preset entry above), so its list has always opened whole.
+
+The scroll is deliberately not a highlight. `activeIndex` stays `-1` when the menu opens, so Enter
+keeps its "commit the typed text" meaning rather than silently re-picking the row already chosen —
+see "Dropdowns are navigable with Up/Down and Enter". The selected row is scrolled into view once
+per opening; a keyboard highlight takes over from there.
+
+That "once" has a trap in it, found in the browser rather than in review. `remoteResult` outlives
+the menu closing, so reopening renders the _previous_ query's rows for a round trip before this
+opening's own `""` lands — and a scroll aimed at that list is both wrong and final, since the latch
+that makes it happen once stops anything correcting it. Measured on a 24-trip account: pick the 22nd
+trip from a menu narrowed to 8 by a query, reopen, and the list sits six rows short of it. The
+effect therefore waits on `searchPending`, which is the same derived query doing the same job it
+does everywhere else here.
+
+Untouched: the multi-selects and `sites/place-search.tsx`. They pass `value={undefined}` and/or
+`keepOpenOnSelect`, so their input is empty after each pick and there is no selection for the query
+to be confused with.

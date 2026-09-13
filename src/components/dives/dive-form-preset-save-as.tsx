@@ -5,6 +5,7 @@ import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { menuQuery } from "@/components/ui/creatable-combobox";
 import { dialogFormSubmit } from "@/lib/dialog-form";
 import type { DiveFormPreset } from "@/lib/api/dive-form-presets";
 
@@ -55,6 +56,13 @@ interface DiveFormPresetSaveAsProps {
  * thing - nothing here is special-cased for having been seeded. A set matching no
  * preset opens empty, as it always did.
  *
+ * **A seeded name is not a filter.** The dropdown opens on the whole list while the
+ * text is one this component wrote - the seed, or a picked row - and narrows only
+ * once the diver types. It shares `menuQuery` with `CreatableCombobox` so there is
+ * one rule for both; the "Replaces…/Creates…" line below the field is keyed on the
+ * text itself, since that is a statement about what Save will do rather than about
+ * the menu.
+ *
  * **Written out rather than reaching for `CreatableCombobox`.** That component commits
  * on blur - unmatched text with no `onCreate` resolves to "clear", and the effect that
  * syncs text from the selected id then empties the field - so typing a new name and
@@ -70,6 +78,9 @@ export function DiveFormPresetSaveAs({
   // Seeded once and then this component's own, which is the whole contract with
   // `initialName` - see the comment on the prop.
   const [name, setName] = useState(initialName);
+  // Whether `name` is the diver's own typing rather than the seed or a picked
+  // row - see `menuQuery`, and the note about it above.
+  const [typed, setTyped] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -79,8 +90,9 @@ export function DiveFormPresetSaveAs({
 
   const trimmed = name.trim();
   const existing = findByName(presets, trimmed);
+  const query = menuQuery({ text: name, typed }).toLowerCase();
   const matches = presets.filter((preset) =>
-    preset.name.toLowerCase().includes(trimmed.toLowerCase()),
+    preset.name.toLowerCase().includes(query),
   );
 
   const close = () => {
@@ -90,6 +102,7 @@ export function DiveFormPresetSaveAs({
 
   const pick = (preset: DiveFormPreset) => {
     setName(preset.name);
+    setTyped(false);
     close();
     inputRef.current?.focus();
   };
@@ -163,6 +176,7 @@ export function DiveFormPresetSaveAs({
             disabled={disabled}
             onChange={(event) => {
               setName(event.target.value);
+              setTyped(true);
               setIsOpen(true);
               setActiveIndex(-1);
             }}
