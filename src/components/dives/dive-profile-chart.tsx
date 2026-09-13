@@ -224,8 +224,8 @@ function drawnValues(
 export function DiveProfileChart({ profile }: DiveProfileChartProps) {
   const units = useUnits();
   // Names the clip paths below, so two charts on one page cannot clip each other
-  // - the trap `globals.css`'s note on borrowed SVG already records for hardcoded
-  // mask and filter ids.
+  // - the trap `components/icons/google-icon.tsx` already records for the mask and
+  // filter ids it namespaces the same way.
   //
   // Reduced to letters, digits and dashes rather than used as `useId` hands it
   // over. React 19 spells an id `«r0»`, and 18 spelled it `:r0:`; both are legal

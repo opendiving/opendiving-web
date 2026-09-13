@@ -17842,6 +17842,7 @@ used to read "greater than 10 000".
 `clipPrefix` is `useId` with everything but letters, digits, dashes and underscores stripped. React
 19 spells an id `«r0»` and 18 spelled it `:r0:`; both are legal in an `id` attribute and neither is
 legal unescaped in the `url(#…)` fragment that has to resolve it. What survives the strip is still
-the part that differs between two ids on one page, which is what the whole id is for — see
-`globals.css`'s note on the borrowed SVG whose hardcoded mask ids were "safe only because it's a
-lone" element.
+the part that differs between two ids on one page, which is what the whole id is for — the same call
+`components/icons/google-icon.tsx` makes, and for the reason _"Unified auth flow"_ records: the SVG
+it was traced from hardcodes its mask, clip-path and filter ids, "safe only because it's a lone,
+standalone SVG file, never composed with anything else".

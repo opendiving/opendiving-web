@@ -806,8 +806,10 @@ describe("the deco channels", () => {
 
   it("leaves a gradient factor exactly as the device wrote it", () => {
     // A Suunto Ocean's `gf99` reaches five figures on a decompression ascent.
-    // Clamping it to 100 would be a guess wearing a plausible number, and the
-    // chart's axis is what stretches instead.
+    // Clamping it would be a guess wearing a plausible number, so nothing between
+    // the wire and the readout touches it. The percent *axis* stops at 200 % and
+    // the curve is drawn leaving the row - see `axisDomain` above, which is the
+    // half of this that is allowed to be bounded.
     expect(toChannelSeries(deco, "gradient_factor", "metric")?.values).toEqual([
       0, 12575,
     ]);

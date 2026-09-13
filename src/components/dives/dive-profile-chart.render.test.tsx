@@ -1305,8 +1305,11 @@ describe("DiveProfileChart deco readouts", () => {
 
   it("keeps a gradient factor the device wrote past 100 %", () => {
     // A Suunto Ocean's `gf99` reaches five figures on a decompression ascent.
-    // The axis stretches; the reading is not clamped, because a cap would be a
-    // guess wearing a plausible number.
+    // The axis stops at 200 % and the curve leaves the row, but what the diver is
+    // *told* is untouched: clamping the reading would be a guess wearing a
+    // plausible number. Which half is bounded is the whole of this fix - see
+    // "DiveProfileChart with a gradient factor past the percent axis's bound"
+    // below for the other half.
     render(
       <DiveProfileChart
         profile={everyChannel({
