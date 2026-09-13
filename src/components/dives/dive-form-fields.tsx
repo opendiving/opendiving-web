@@ -190,9 +190,18 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
           Guarded, and that guard is load-bearing now that Dive number has moved
           out from under it: with both of these hidden the grid would render empty
           and leave the form's `space-y-6` gap between the card's top and the dive
-          site, which reads as a field that failed to load. */}
+          site, which reads as a field that failed to load.
+
+          With exactly one of them visible the survivor spans both columns rather
+          than sitting half-width beside a hole - `FormField` renders `FormItem`
+          as this grid's direct child, so `:only-child` is the remaining field.
+          The `md:` prefix is required: below it the grid is one column wide and a
+          `col-span-2` would invent a second. The readings grid below solves the
+          same problem by packing instead; this row cannot, having only the two
+          fields, and a full-width combobox reads well directly above the
+          full-width dive site picker. */}
       {(isVisible("trip_uuid") || isVisible("course_uuid")) && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:[&>:only-child]:col-span-2">
           {isVisible("trip_uuid") && (
             <FormField
               control={control}
@@ -257,9 +266,35 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
         />
       )}
 
-      {/* Dive number. In a two-column grid holding one field, so it keeps the
-          column width every other row has - full width would make the form's one
-          always-present field its widest. */}
+      {/* Date and Time */}
+      <FormField
+        control={control}
+        name={"start_time" as Path<TFieldValues>}
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Start time{requiredMark}</FormLabel>
+            <FormControl>
+              <DiveStartTimeField
+                value={field.value}
+                onChange={field.onChange}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      {/* Dive number & Duration. Paired because both are always rendered -
+          neither is in the Fields dialog - so this row is the one pair no
+          visibility choice can break, and neither field has to sit half-width
+          beside a hole. Dive number was alone in a grid of its own until then,
+          for the column width: full width would make the form's one
+          always-present field its widest, and a number box is the last thing
+          that should be. The pair keeps that width without the empty column.
+
+          Unequal heights are expected here: `diveNumberNotice` adds a line
+          under the number when the suggestion is already taken, and Duration
+          has nothing to match it with. */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <FormField
           control={control}
@@ -295,51 +330,61 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
             </FormItem>
           )}
         />
+
+        <FormField
+          control={control}
+          name={"duration" as Path<TFieldValues>}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Duration{requiredMark}</FormLabel>
+              <div className="relative">
+                <Clock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
+                <FormControl>
+                  <Input
+                    type="text"
+                    placeholder="e.g. 45 or 67:30"
+                    className="pl-9"
+                    {...field}
+                  />
+                </FormControl>
+              </div>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
       </div>
 
-      {/* Date and Time */}
-      <FormField
-        control={control}
-        name={"start_time" as Path<TFieldValues>}
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Start time{requiredMark}</FormLabel>
-            <FormControl>
-              <DiveStartTimeField
-                value={field.value}
-                onChange={field.onChange}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+      {/* The readings: depth, then the environment the Fields dialog groups
+          under that name. One grid rather than three fixed pairs, because every
+          one of these six hides on its own. Paired up, hiding half of a pair
+          left the other half in its column with an empty one beside it, which
+          reads as a field that failed to load; a single grid lets auto-flow
+          pack whatever survives from the left, so a hidden field costs a slot
+          and not a hole. With all six visible the rows hold what they always
+          held - depth, temperature and visibility, water and altitude - and
+          sit where they always sat, which is what the row gap below is for.
 
-      <FormField
-        control={control}
-        name={"duration" as Path<TFieldValues>}
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Duration{requiredMark}</FormLabel>
-            <div className="relative">
-              <Clock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
-              <FormControl>
-                <Input
-                  type="text"
-                  placeholder="e.g. 45 or 67:30"
-                  className="pl-9"
-                  {...field}
-                />
-              </FormControl>
-            </div>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+          An odd number visible leaves one field half-width on the last row.
+          That is accepted and deliberately not spanned: a ragged bottom edge
+          reads as the end of a list, a gap in the middle reads as breakage.
 
-      {/* Depth Information */}
-      {(isVisible("max_depth") || isVisible("avg_depth")) && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          `gap-y-6` rather than `gap-4`'s 1rem, because these rows used to be
+          three separate children of the form's `space-y-6` and the 1.5rem
+          between them was the form's own rhythm, not a pair's. Merging them
+          into one grid would otherwise tighten the whole card by 8px a row
+          while every other block boundary stayed where it was. The column gap
+          is still 1rem, so a visible row is pixel-identical to the one it
+          replaces. On a phone the six stack at 1.5rem where the old pairs
+          stacked at 1rem inside themselves - one grid has one row gap, and
+          after this merge there are no pairs left for the tighter one to mean
+          anything about. */}
+      {(isVisible("max_depth") ||
+        isVisible("avg_depth") ||
+        isVisible("bottom_temperature") ||
+        isVisible("visibility") ||
+        isVisible("water_type") ||
+        isVisible("altitude")) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-6">
           {isVisible("max_depth") && (
             <FormField
               control={control}
@@ -411,14 +456,6 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
               )}
             />
           )}
-        </div>
-      )}
-
-      {/* Environment: temperature & visibility. Half of the "Environment"
-          group the Fields dialog lists; the water/altitude block below is the
-          other half, kept a separate row because it hides on its own fields. */}
-      {(isVisible("bottom_temperature") || isVisible("visibility")) && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {isVisible("bottom_temperature") && (
             <FormField
               control={control}
@@ -500,15 +537,10 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
               )}
             />
           )}
-        </div>
-      )}
-
-      {/* Environment: water & altitude - what the water was and where it was, which the
+          {/* Water and altitude - what the water was and where it was, which the
           computer treats as calibration settings and the log treats as facts
-          about the dive. They sit under the readings above rather than with the
-          gear because they are observations, not choices carried in. */}
-      {(isVisible("water_type") || isVisible("altitude")) && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          about the dive. Last in the grid rather than with the gear because
+          they are observations, not choices carried in. */}
           {isVisible("water_type") && (
             <FormField
               control={control}

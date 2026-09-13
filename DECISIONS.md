@@ -16336,6 +16336,17 @@ The rule has already been restated wrongly once — as "one block per group, wit
 exception" — and was false again within a day, so `DIVE_FORM_FIELD_GROUPS`' own doc states the run
 rule rather than a count, and the exceptions are named there in one place.
 
+**The block half of that rule is gone, and only the order half survives** — see "Hidden dive-form
+fields leave a ragged edge, never a hole" below. The readings merged into one grid where each of the
+six hides independently, so "a row exists where a set of fields has to appear and disappear
+together" no longer picks out anything: there is no row-sized unit for a heading to align to, and
+"Dive info" and "Environment" each own part of the same grid, which is precisely what "never part of
+one" forbade. What that clause was protecting is the order — a diver finds the field in the dialog
+where they would look for it on the form — and the order is intact and still the invariant. The
+paragraphs above are left standing because they are the reasoning that produced the surviving half,
+and because this rule has now been restated wrongly twice; `DIVE_FORM_FIELD_GROUPS`' doc carries the
+current statement, as it always has.
+
 **`mixtures` leads its group rather than following the always-on cylinder columns.** It is the
 switch that decides whether the Gas Mixtures section is on the form at all, and every other row
 under that heading is downstream of it — the always-on columns as much as the per-cylinder ones the
@@ -18519,3 +18530,57 @@ apart by.
 hint and nothing more. A diver with the Worthington HP100 rather than the Faber types 11.6
 themselves, which this field has always allowed — that is the escape hatch that lets the preset
 table stay a short list of the common cases instead of growing into a cylinder database.
+
+## Hidden dive-form fields leave a ragged edge, never a hole
+
+Every optional field on the dive form can be switched off in the Fields dialog, and the form was
+built as fixed pairs — Trip | Course, Max depth | Avg depth, Bottom temperature | Visibility, Water
+type | Altitude — each in its own `grid grid-cols-1 md:grid-cols-2 gap-4`. Hiding one half of a pair
+left the other half in its own column with an empty one beside it. A diver who hid Course, Average
+depth and Visibility got four half-width fields each trailing a gap, and the report that started
+this described it exactly as it looks: fields that failed to load.
+
+**A gap in the middle of a form reads as breakage; a short last row does not.** That asymmetry is
+the whole decision. The six readings — both depths, bottom temperature, visibility, water type,
+altitude — are now one grid guarded by "any of the six visible", and CSS grid auto-flow packs
+whatever survives from the left. A hidden field costs a slot, so the fields after it move up, and
+nothing is ever left staring at an empty column. An odd number visible leaves one field half-width
+at the bottom, and that is accepted rather than spanned: the eye reads a ragged bottom edge as the
+end of a list.
+
+**The merged grid is `gap-x-4 gap-y-6`, and the split axes are the point.** Those three rows used to
+be three separate children of the form's `space-y-6`, so the 1.5rem between them belonged to the
+form's rhythm rather than to any pair. A plain `gap-4` would have quietly pulled every reading row
+8px closer than every other block boundary on the card — a change to the everything-visible case,
+which this work was supposed to leave alone. With the row gap restored and the column gap still
+1rem, a visible row is pixel-identical to the one it replaces. The one thing that does move is the
+phone: six fields stacking at 1.5rem where the old pairs stacked at 1rem within themselves. A grid
+has one row gap, and after this merge there are no pairs for a tighter one to be about — so it
+matches the rest of the single-column form, which is the better answer of the two available.
+
+**Dive number got a permanent partner instead of a span.** It sat alone in a two-column grid on
+purpose — full width would have made the form's one always-present field its widest, and a number
+box is the last thing that should be — but alone in a pair grid is exactly the empty column above.
+Duration is the fix: `dive_number`, `start_time` and `duration` are the three fields with no
+`isVisible` guard, so a Dive number | Duration row is the one pair no visibility choice can break.
+Duration moved up from under Start time to make it. The alternative, `md:[&>:only-child]:col-span-2`
+on the lone grid, would have stretched a number input across the card whenever it was by itself,
+which is the thing the lone grid existed to prevent — a span is only right where the widened field
+reads well wide.
+
+**Moving Start time above the pair moved it in the Fields dialog too.** `DIVE_FORM_ALWAYS_ON_FIELDS`
+is what the dialog renders for the rows a diver cannot switch off, in array order, and it still read
+`Dive number, Start time, Duration` — the form's old order. Nothing in the suite pins that list
+against the form, and nothing can cheaply: the dialog's order is an array and the form's is JSX. So
+it is a hand-checked invariant, and the check is the one in `DIVE_FORM_FIELD_GROUPS`' doc — the
+dialog lists fields in the order the form renders them. Whoever moves a row on one side owes the
+other side the same move.
+
+**Trip is that case, so Trip does get the span.** With Course hidden the Trip/Course grid has one
+child, and `md:[&>:only-child]:col-span-2` widens it; a full-width combobox sits directly above the
+full-width dive site picker and matches it. The `md:` prefix is not optional — below that breakpoint
+the grid is one column and `col-span-2` would invent a second, leaving the field half-width on a
+phone. `FormField` renders `FormItem` as the grid's direct child, which is what makes `:only-child`
+resolve to the surviving field rather than to something inside it. This is the only grid in the form
+carrying the class, and the readings grid deliberately does not: packing already solves it there,
+and a span would fight the auto-flow.
