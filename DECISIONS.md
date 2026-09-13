@@ -17906,8 +17906,9 @@ variables instead of as a parent box, and why the translate centring came back w
 `useVisualViewport` cannot be called from `DialogContent`'s body, which is where it started and
 where it looks like it belongs. `DialogPortal` is what gates the DOM and it renders `null` while
 closed, but the component _around_ it is rendered by its parent either way — a `__vvSubs` counter
-said 12 before anything had been opened on the dive form. So it is called from `VisualViewportVars`,
-a component rendering `null` among the content's children, which mount and unmount with the portal.
+said 12 before anything had been opened on the dive form. So it is called from
+`VisualViewportEffects`, a component rendering `null` among the content's children, which mount and
+unmount with the portal.
 
 Two details in the hook follow from more than one dialog being open at once — a confirm raised from
 inside a form dialog is ordinary here. The variables are refcounted, so the first to close does not
@@ -18108,12 +18109,19 @@ client render already has the answer and no toast is briefly swipeable the wrong
 snapshot is `false` — the narrow layout — because the classes it pairs with are mobile-first, and a
 server that guessed the other way would disagree with the HTML it just sent.
 
-**The swipe classes carry both axes at once**, each with a `0px` fallback:
+**The swipe classes carry both axes at once**, which is what lets one class string serve both
+directions with no `sm:` variant per property:
 `data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x,0px)]` and the `-y` beside it. Radix
-only ever writes the variable for the axis its direction names, so the other resolves to the
-fallback and contributes nothing, and one class string serves both directions with no `sm:` variant
-per property. The fallbacks are not decoration: an unresolved `var()` takes the whole `translate`
-declaration down with it, including the axis that _is_ moving.
+writes _both_ variables on every swipe and zeroes the axis its direction does not name — the clamp
+is in its pointer-move handler, `clampedX = isHorizontalSwipe ? clamp(0, x) : 0` and the mirror of
+it for `y` — so the off-axis utility applies with a value of `0px` and contributes nothing.
+
+The `,0px` fallbacks are belt-and-braces rather than the mechanism, and the first draft of this
+section had that backwards. They would only be reached if a `data-[swipe=*]` selector matched while
+its variable was unset, and Radix sets the attribute and the variables in the same handler, so they
+are never the value in use. Kept anyway, because an unresolved `var()` takes the whole `translate`
+declaration with it — including the axis that _is_ moving — and a silently dead swipe is a poor way
+to discover that an upgrade stopped writing both.
 
 Sliding out is the one part that does need the breakpoint, since it follows the corner rather than
 the gesture — `slide-out-to-top-full` on a phone, `sm:slide-out-to-right-full` above. That pair sets

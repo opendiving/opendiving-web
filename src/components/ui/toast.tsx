@@ -24,14 +24,20 @@ const ToastViewport = React.forwardRef<
 ));
 ToastViewport.displayName = ToastPrimitives.Viewport.displayName;
 
-// The swipe classes carry *both* axes at once, each with a `0px` fallback, and
-// that is what lets one string serve two dismiss directions. Radix only ever
-// writes the variable for the axis its `swipeDirection` names - the other stays
-// undefined, resolves to the fallback, and contributes nothing - so the toast
-// follows whichever direction `Toaster` has the provider on at this width
-// without a `sm:` variant per property. Without the fallbacks an undefined
-// variable would take the whole `translate` declaration down with it, including
-// the axis that *is* moving.
+// The swipe classes carry *both* axes at once, which is what lets one string
+// serve two dismiss directions - the toast follows whichever direction
+// `Toaster` has the provider on at this width, with no `sm:` variant per
+// property. Radix writes both `--radix-toast-swipe-move-x` and `-y` on every
+// swipe and zeroes the axis its `swipeDirection` does not name, in JS, before
+// either reaches the DOM, so the off-axis utility resolves to `0px` and
+// contributes nothing.
+//
+// The `,0px` fallbacks are belt-and-braces, not the mechanism: the
+// `data-[swipe=*]` selectors only match once Radix has set the attribute, and
+// it writes the variables in the same handler, so the fallback is never the
+// value in use. Kept because an unresolved `var()` would take the whole
+// `translate` declaration with it - including the axis that *is* moving - which
+// is a poor way to find out that a Radix upgrade stopped writing both.
 //
 // Sliding out follows the corner the toast is in, which is the one thing that
 // does need the breakpoint: top on a phone, bottom-right from `sm` up. The
