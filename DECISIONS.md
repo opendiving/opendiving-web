@@ -17275,9 +17275,9 @@ burst is the one deployed, and every commit that is built still carries its own 
 
 **Which is exactly why the group is no longer one group.** The same rule applied to the release path
 is not a dropped edge build but a dropped _release_, and the release ritual walks straight into it:
-`CONTRIBUTING.md` has the version bump merged to `main` and the `v` tag pushed at that commit
+the release coordinator merges the version bump to `main` and pushes the `v` tag at that commit
 immediately afterwards, so the tag run queues behind the bump merge's own edge build - and any merge
-landing while it waits would cancel it. No `X.Y.Z`, no `X.Y`, no `:latest`, no draft release, and a
+landing while it waits would cancel it. No `X.Y.Z`, no `X.Y`, no `:latest`, no release at all, and a
 cancelled check that reads exactly like the dropped merge above. The key is therefore `edge` for a
 push to `main` and `release` for everything else, which keeps the property the single group was
 there for: nothing that can write `:latest` or a version alias runs beside anything else that can. A
