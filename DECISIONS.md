@@ -3465,8 +3465,10 @@ same page, laid out four pixels apart. So `cutBelow()` measures the page being p
 before the shutter, and that is the frame height. `CUT_BELOW` names a card; nobody maintains a
 number. Any page can opt in the same way. The gear page is the one that still carries a literal, and
 not because its layout held still — it did not, and by the time anyone decoded that PNG the literal
-was cutting a dive row in half — but because the height it should move _to_ is decided by the README
-row rather than by the page, and that height is not settled yet. See the section on it below.
+was cutting a dive row in half — but because the height is decided by the README row rather than by
+the page. It is 911 now, settled against the retaken dive shot; measuring this page instead would
+return 935, which is the wrong answer for the row even though it is the right one for the page. See
+the section on it below.
 
 **What it measures is a seam across the whole page, not the named card's own bottom edge**, and the
 distinction is invisible until a shot cuts on a page with two columns - see _"A cut that cannot
@@ -3670,7 +3672,9 @@ purpose. `CUT_BELOW` exists so that never happens, so this says where the line i
 **The page has exactly two cards and they finish together in exactly one place: the bottom of it.**
 Every dive logged at the site fills the main column, the site's details and its map fill the
 sidebar, and the only height at which nothing is open is 1889px — the main column's card ends at
-1865 and the grid's gap is 24 — which is as tall as the dive shot beside it. `cutBelow()` never gets
+1865 and the grid's gap is 24 — which is the whole page, and taller than the dive shot it sits
+beside in the README row: 1736 CSS since that shot was retaken, 1965 when this paragraph was
+written. The comparison moves with that shot rather than with this page. `cutBelow()` never gets
 that far: each card is the only child of its column `div`, so the neighbour it reads its gutter off
 does not exist and it refuses on either anchor with _"that card has no neighbour to measure the gap
 from"_. What this image exists for is the map, and the map sits some 215px down a sidebar card that
@@ -3751,9 +3755,9 @@ running 935 to 1959, whose rows sit on an 82px pitch with a 12px gap. The three 
 a gutter clear of their last card, and both rules in this script compute exactly that — `cutBelow()`
 and `cutAfterCard()` would each return 935 here. But 935 is 1870 captured, and the target band is
 1766–1798: below it at every width. The nearest reachable height is therefore **911, the foot of the
-Service card with nothing under it**, at 1822 captured — 2px above the pair's ideal sum, so that
-what is left is the leading and almost nothing else. Past that the next stops are the row gaps at
-1104–1116 and 1186–1198 CSS, hundreds of pixels further away.
+Service card with nothing under it**, at 1822 captured — 2px below the 1824 above, so the pair sums
+2px short of the dive shot and what is left is the leading and almost nothing else. Past that the
+next stops are the row gaps at 1104–1116 and 1186–1198 CSS, hundreds of pixels further away.
 
 **Half of what is left shows at the top, not all of it at the bottom.** Table cells are
 middle-aligned, so the shorter column is centred in the row rather than hung from its top, and the
