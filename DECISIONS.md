@@ -17860,6 +17860,19 @@ the row — the recording keeps its other files, it survives file-less, or it go
 shares it and deletes immediately there. The form wraps it in `removeFileConfirmation`, which adds
 the one sentence that is only true here.
 
-Two things went with the immediate delete. `deleteStoredFile`'s re-read (`setDive(await getDive())`,
-deliberately not `useResource`'s `refetch`) is gone, and so is the reason it existed — there is no
-longer a moment mid-edit when the server's copy of the dive and the form disagree.
+**But it is handed a filtered list, and that is the part deferring the deletion nearly lost.** Which
+of the three outcomes that function describes comes out of `recording.files.length`, and the
+immediate delete kept that honest for free by re-reading the dive after every one. Without the
+re-read, a second mark on the same recording is judged against a list that still holds the first:
+strike off the second-to-last file, open the dialog on the last, and the sentence is "the recording
+keeps its other files" about a save that will take the recording, its profile and its samples. So
+`asTheSaveWillFindThem` takes the marked files out of the recordings first — files, not whole
+recordings, which makes the successor sentence pessimistic rather than exact where a fully struck
+recording would itself be deleted and the one after it promoted. The comment on that function has
+the trade; the short version is that overstating what is lost is the safe direction and the
+alternative is re-implementing the server's promotion rules in a dialog.
+
+Two things went with the immediate delete, and a third had to be rebuilt. `deleteStoredFile`'s
+re-read (`setDive(await getDive())`, deliberately not `useResource`'s `refetch`) is gone, and so is
+the reason it existed — there is no longer a moment mid-edit when the server's copy of the dive and
+the form disagree. What it was also quietly doing for the confirmation is the filtering above.

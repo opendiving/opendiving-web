@@ -67,13 +67,19 @@ interface DiveRecordingFilesProps {
  * purpose is telling "the recording keeps its other files" from "the recording
  * goes with it" would describe the smaller of the two.
  *
- * Files rather than whole recordings, deliberately. A recording every one of
- * whose files is marked comes through with `files: []`, which is the right
- * answer to `figuresSentence`'s question about a successor - one holding no
- * file clears the dive's computer figures. Dropping it from the list outright
- * would be this component predicting *which* recording the server promotes
- * next, which is the second implementation of the server's rules that
- * `deleteFileConfirmation` is written to avoid.
+ * Files rather than whole recordings, deliberately, and that is a conservative
+ * answer rather than an exact one. A recording every one of whose files is
+ * marked comes through with `files: []`, so `figuresSentence` reads it as a
+ * successor holding no file and says the dive's computer figures are cleared.
+ * That is right where the recording survives file-less, and pessimistic where
+ * it does not: the server deletes such a recording outright and promotes the
+ * *next* one, which may still hold a file and re-read them. Getting that case
+ * right means deciding here which recording the server promotes - the second
+ * implementation of the server's rules `deleteFileConfirmation` is written to
+ * avoid - and the error only ever runs one way, since a recording the filtered
+ * list shows holding files really does keep them. A warning that overstates
+ * what is lost is the safe half of that trade; the unfiltered list got it wrong
+ * in the other direction.
  */
 function asTheSaveWillFindThem(
   recordings: Recording[],
