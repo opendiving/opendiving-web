@@ -134,7 +134,7 @@ describe("VolumeCombobox", () => {
   // are written out rather than derived from `VOLUME_OPTIONS` so that a preset
   // added to the wrong system's list fails here instead of agreeing with itself.
   // Order matters too: both are ascending by litres, which is the quantity stored.
-  it("offers the European sizes in metric, plus the two US ones met on a rental boat", async () => {
+  it("offers the European sizes in metric, plus the three US ones met on a rental boat", async () => {
     const user = userEvent.setup();
     render(<Harness />);
 
@@ -152,6 +152,7 @@ describe("VolumeCombobox", () => {
       "15 L",
       "18 L",
       "20 L",
+      "22.2 L (2x AL80)",
       "24 L (2x12 L)",
       "30 L (2x15 L)",
     ]);

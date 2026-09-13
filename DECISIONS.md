@@ -18452,13 +18452,14 @@ unchanged. The correction is to what is offered, never to what is recorded.
 **The list is units-aware, which is new for this field.** Adding the missing common cylinders — the
 AL40 stage bottle, five HP steels, four LP steels, a 7 L and two European twin sets — roughly
 doubled the table, and most of the additions are noise to whichever half of the world does not dive
-them. So `volumeOptionsFor` splits it: the metric singles and twins in metric mode, the AL/HP/LP
-sizes and the imperial doubles in imperial, each landing around fifteen entries. The AL40 and the
-AL80 are the only two offered in both, being what a metric diver meets on a rental boat abroad. This
-is what lets the dropdown keep showing every preset unfiltered, which was only ever defensible while
-the list was short enough to browse. Membership is all it decides: the stored value is litres in
-either mode, and any number can still be typed, so a preset missing from a diver's list costs them
-one click and nothing else.
+them. So `volumeOptionsFor` splits it: the European singles and twins in metric mode, the AL/HP/LP
+sizes in imperial, each landing around fifteen entries. The AL40, the AL80 and the twin AL80 are
+offered in both, being what a metric diver meets on a rental boat abroad - and the twin is there for
+the same reason as the single, which is also why splitting them would have been the inconsistency
+rather than the saving. This is what lets the dropdown keep showing every preset unfiltered, which
+was only ever defensible while the list was short enough to browse. Membership is all it decides:
+the stored value is litres in either mode, and any number can still be typed, so a preset missing
+from a diver's list costs them one click and nothing else.
 
 **Two presets share a value, so the list is keyed by label.** The HP117 and the LP95 are both 15.0 L
 — they differ by working pressure, which the mixture does not record. `key={option.value}` gave

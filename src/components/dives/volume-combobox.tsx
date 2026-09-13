@@ -24,9 +24,11 @@ export interface VolumeOption {
    * The one unit system this preset is offered in, or omitted for a preset
    * offered in both - see `volumeOptionsFor`.
    *
-   * Only the AL40 and the AL80 are offered in both. They are what a metric diver
-   * meets on a rental boat abroad; the rest of the US list is noise to them,
-   * exactly as the European sizes are noise to a US diver.
+   * The AL40, the AL80 and the twin AL80 are the three offered in both. They are
+   * what a metric diver meets on a rental boat abroad, and the twin for the same
+   * reason as the single - a set of them is what the same boat hands a diver
+   * doing two dives on one fill. The rest of the US list is noise to a metric
+   * diver, exactly as the European sizes are noise to a US one.
    */
   showIn?: UnitSystem;
 }
@@ -129,12 +131,7 @@ export const VOLUME_OPTIONS: VolumeOption[] = [
     showIn: "imperial",
   },
   { value: 20, label: "20 L", showIn: "metric" },
-  {
-    value: 22.2,
-    label: "22.2 L (2x AL80)",
-    imperialName: "2x AL80",
-    showIn: "imperial",
-  },
+  { value: 22.2, label: "22.2 L (2x AL80)", imperialName: "2x AL80" },
   { value: 24, label: "24 L (2x12 L)", showIn: "metric" },
   { value: 30, label: "30 L (2x15 L)", showIn: "metric" },
 ];
