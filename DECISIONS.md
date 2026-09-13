@@ -10212,13 +10212,11 @@ never fires it, and no window `resize` listener exists to poke either (it regist
 `ResizeObserver` is undefined). So the wrong numbers are the ones the dialog keeps.
 
 The fix is `data-[state=open]:zoom-in-100 data-[state=closed]:zoom-out-100` on this one
-`DialogContent`. The fade stays — opacity does not change the width and height that are read from
-the box. So did the slide, on the same grounds, until the shared dialog stopped translating itself
-into place (_"The dialog is centred in the visual viewport, not in `100vh`"_). Passing an explicit
-`cropSize` looks like the more surgical fix and is not one: `computeSizes` still derives the media's
-rendered size from the same scaled rect, so the percentages stay wrong and merely clamp at 100
-instead. Deferring the mount until the animation ends would also work, at the price of an event that
-has to fire or the cropper never appears.
+`DialogContent`. Fade and slide stay — a translation moves the box without changing the width and
+height that are read from it. Passing an explicit `cropSize` looks like the more surgical fix and is
+not one: `computeSizes` still derives the media's rendered size from the same scaled rect, so the
+percentages stay wrong and merely clamp at 100 instead. Deferring the mount until the animation ends
+would also work, at the price of an event that has to fire or the cropper never appears.
 
 The dependency was worth taking. It is MIT, has one runtime dependency (`normalize-wheel`), gives
 pinch and touch for free, and its peer range has been an open `react >= 16.4.0` since 2019, so React
@@ -17773,21 +17771,41 @@ anchored where it was. That is the second screenshot in the report that started 
 its title scrolled off the top and its buttons behind the keys. `window.visualViewport` is the only
 thing that reports it — `offsetTop` is the displacement, `height` is what is left — so
 `useVisualViewport` (`hooks/useVisualViewport.ts`) mirrors both onto `--visual-viewport-top` and
-`--visual-viewport-height`, and `DialogFrame` is a fixed box of exactly that size with the dialog
-centred inside it. A dialog then cannot be laid out anywhere the diver cannot see.
+`--visual-viewport-height`, and `DialogContent`'s `top` and `max-height` are `calc`s over the pair.
+The dialog is then centred on the visible area and capped to it, less a 1rem gutter, so it cannot be
+laid out anywhere the diver cannot see.
 
-The frame also carries `p-4`, which is the other half of the report: the content was `w-full`, edge
-to edge on a phone with its close button in the corner of the screen. It is `pointer-events-none`
-with `pointer-events-auto` back on the content, so the gutter still belongs to the overlay and an
-outside click still dismisses.
+That gutter is the other half of the report: the content was `w-full`, edge to edge on a phone with
+its close button in the corner of the screen. It is `w-[calc(100%-2rem)]` now, and `rounded-lg`
+rather than `sm:rounded-lg`, corners being something a dialog with a margin has at every width.
+
+### Nothing may sit between `DialogPortal` and `DialogContent`
+
+The first version of this put a fixed, full-visible-viewport `<div>` inside the portal and centred
+the content in it with flexbox — one box of the right size, no `calc`s, and it measured correctly at
+every width. What it also did was silently kill the exit animation of **every dialog in the app**.
+
+`DialogPortal` wraps each of its own children in a `Presence`, which reads the exit animation off
+`getComputedStyle` of the node its ref lands on. The ref reaches that child through `Portal` →
+`Primitive.div` with `asChild` → `Slot` → `cloneElement(child, { ref })`. A wrapper component that
+is not a `forwardRef` — a plain `function DialogFrame({ children })` — takes that ref as an ignored
+prop, with no warning from React 19, so `stylesRef.current` stays `null`, `getAnimationName(null)`
+answers `"none"`, and the close sends `UNMOUNT` in the same commit. The dialog pops out of existence
+while the overlay, still a `forwardRef` child of its own `Presence`, goes on fading for its 200 ms.
+
+Forwarding the ref would not have been the fix either: `Presence` would then have measured the
+frame, which carries no animation of its own, and answered `"none"` all the same. The animation has
+to be on the node the portal wraps, which is why the visible viewport reaches the content as
+variables instead of as a parent box, and why the translate centring came back with the
+`slide-in-from-*` classes that belong to it.
 
 ### `DialogContent` runs its hooks on every page that declares a dialog
 
-The hook started in `DialogContent`'s own body, which looked right and was not: `DialogPortal` is
-what gates the DOM and it renders `null` while closed, but the component _around_ it is rendered by
-its parent either way. A `__vvSubs` counter said 12 before anything had been opened on the dive
-form. So the hook is called from `DialogFrame`, which sits inside the portal and therefore mounts
-and unmounts with the dialog.
+`useVisualViewport` cannot be called from `DialogContent`'s body, which is where it started and
+where it looks like it belongs. `DialogPortal` is what gates the DOM and it renders `null` while
+closed, but the component _around_ it is rendered by its parent either way — a `__vvSubs` counter
+said 12 before anything had been opened on the dive form. So it is called from `VisualViewportVars`,
+a component rendering `null` among the content's children, which mount and unmount with the portal.
 
 Two details in the hook follow from more than one dialog being open at once — a confirm raised from
 inside a form dialog is ordinary here. The variables are refcounted, so the first to close does not
