@@ -3435,11 +3435,12 @@ for everything, and no reason to special-case the hero on that axis.
 the _end_ of a card matters more than the exact number, and more than the shots agreeing on one: a
 frame that stops just shy of finishing a card reads as an off-by-one, while one that stops well
 inside a card the reader can see continues reads as a page that goes on. Every frame but the gear
-page's is measured in the page rather than written down. The gear page's is 1086, it is the one
-frame in this script that breaks the rule this paragraph states — it ends 151px inside the dive
-list, not below anything — and it is left that way on purpose, for a reason that is not about that
-page at all; see _"The gear frame is the lever under the README row, and it is not pulled here"_
-below.
+page's is measured in the page rather than written down. The gear page's is 911, the one frame in
+this script still chosen rather than measured, and it is chosen for a reason that is not about that
+page at all — it is the height at which the pair stacked in the README's other cell comes level with
+the dive shot. It lands on the foot of the _Service_ card, which is a boundary; the 1086 it replaced
+did not, and ended 151px inside the dive list. See _"The gear frame is the lever under the README
+row, and it has now been pulled"_ below.
 
 **The dive page carried 1086 too, and did not land on a boundary with it.** The frame ran past the
 profile card and stopped part-way through the glyphs of the _Gas Consumption_ heading below it - and
@@ -3547,6 +3548,15 @@ are shown"_ below already treats a four-figure `gf99` as the ordinary case rathe
 README hero is the wrong place to park an open question, so the picture waits until that field's
 scale is settled rather than the tooling waiting for the picture. Retaking it afterwards is one
 command, which is what the variable is for.
+
+**2026-09-13: the scale was settled and the picture was taken.** _"The percent axis stops at 200 %,
+and the curve that overruns it is drawn leaving the row"_ below is the answer this paragraph was
+waiting on, and it names the same dive — `019fcee1-2219-76df-9e5c-b20e3473f304`, the one the
+committed image was already of. So the retake is that dive again rather than a new subject, shot
+with `DIVE_UUID` because the ranking can no longer reach it, and the open question it was held for
+is answered on the chart rather than parked on the front page. What the retake moved is recorded
+under _"The gear frame is the lever under the README row"_ below: the frame came out 458px shorter,
+and the row's other cell was re-cut against it in the same change.
 
 **The clock is pinned to 09:00, so the dashboard greets the same way every retake.** The heading
 reads "Good morning/afternoon/evening" off `new Date().getHours()` (see _"The heading greets by time
@@ -3696,108 +3706,105 @@ and nothing counted, and `/dive-sites` caps `items_per_page` at 100, so the whol
 through first. The first placed site seeds the answer, so a log with placed sites and no dives at
 any of them still produces a picture rather than an error.
 
-### The gear frame is the lever under the README row, and it is not pulled here
+### The gear frame is the lever under the README row, and it has now been pulled
 
 The dive-site shot exists to fill the hole under `gear-item.png` in the two-column row, and on its
-own it cannot close it. `dive-detail.png` is 3930 captured px tall and `gear-item.png` 2172, so
-whatever stacks beneath the gear shot needs 1758 to come level with the dive page beside them; the
-rule above decides this frame from its own page and returns 824 CSS px, which is 1648 at the 2x
-everything here is captured at. What could close the hole is the _pair_. `gear-item`'s height is the
+own it cannot close it: its rule decides that frame from its own page and returns 824 CSS px, 1648
+at the 2x everything here is captured at. What closes it is the _pair_. `gear-item`'s height is the
 one figure in `screenshots.mjs` written down rather than measured, so moving it moves the hole, and
-two clean frames chosen together sum far closer than either reaches alone.
+two frames chosen together sum far closer than either reaches alone.
 
-**That lever is deliberately not pulled here, and the rest of this section is the measurement of
-it** — kept so that whoever does pull it does not have to take it again. It is not pulled because
-the target is not a fixed quantity: it is set by `dive-detail.png` beside the pair, and that image
-is stale. It was last regenerated in #179; #198 then put the deco readouts on the profile chart and
-taught the recordings card to say its mode and model, without retaking it. So the dive shot no
-longer shows the page it is of, its height is going to move when it is retaken, and picking a gear
-stop against the current 3930 would mean picking one again afterwards. Every absolute figure below
-is against that 3930 and inherits the same expiry.
+**The section this replaces measured the lever and deliberately left it unpulled**, because the
+target is not a fixed quantity — it is set by `dive-detail.png` beside the pair, and that image was
+stale. It is not stale now, and the figures below are against the retake rather than against the
+3930 every absolute number in the previous version inherited.
 
-**That retake is not merely pending, it is held** — see _"It arrived without a retake,
-deliberately"_ above, which is the reason it did not happen the moment `DIVE_UUID` made it one
-command. So this lever stays unpulled for longer than "the next time someone retakes the dive shot"
-suggests, and the expiry above is not a short one.
+**Retaking the dive shot moved the target by 458px, and shortened it.** That is the opposite of what
+adding the deco panels to the profile chart suggests, so it is worth saying where it went.
+`cutBelow()` settles at the first height where no card is still open, and on the retaken page that
+is 1736 CSS — the foot of _Gas Consumption_ plus the grid's gutter, which is exactly where the
+_Gear_ card begins. The old 1965 ran past that card to the bottom of it. So the frame did not lose a
+slice of anything; it stops one card earlier, and **the gear table the old hero carried is now below
+the frame.** The dive page's own shot is still the profile, the mixtures, the consumption and the
+sidebar, which is what its alt text claims and what the image exists for.
 
 The figures are measured rather than reasoned about, by putting the row's markdown through GitHub's
 own `/markdown` API, styling the HTML that comes back with the `github-markdown-css` distribution of
 GitHub's stylesheet, and measuring the boxes with the committed PNGs in them — **in a document with
-a doctype.** Measured both ways: in quirks mode the image's line box collapses onto the image and
-the leading below it reads as 0 rather than 6, which is the whole of the quantity this section turns
-on — 26 captured pixels of gear frame at a 1012px container — and it is how the first pass at this
-got its answer.
+a doctype.** In quirks mode the image's line box collapses onto the image and the leading below it
+reads as 0 rather than 6, which is the whole of the quantity this section turns on, and it is how
+the first pass at this got its answer.
 
 **A cell adds leading between the two stacked images, and it does not scale with them.** They are
 separated by a `<br>`, so each takes its own line box and the first carries the font's descent below
 the image's baseline — 6px where the system stack resolves to San Francisco, 7px for Segoe UI, Arial
-or Georgia. That is a constant in the _rendered_ page while the images scale with the column, so the
-pair comes level not at 3930 − 1648 = 2282 but at 2282 − leading ÷ scale.
+or Georgia. That is a constant in the _rendered_ page while the images scale with the column.
 
 **And the scale is not the one the arithmetic invites.** Both images fill a table _cell_, which is
 half the container and not the container: in a 1012px container the image is 478.5 across, not 1012.
-So the height that comes level is 2256 there and 2240 in a 640px one — **no single committed height
-is level for every reader**, since the target moves 16px across that range and again for a browser
-that picks a different font.
+So the pair comes level not at 3472 − 1648 = 1824 but at 1824 − leading ÷ scale — 1798 captured px
+in a 1012px container, 1782 in a 640px one and 1766 at 480.
 
-**The gear frame is quantized to its dive list's row pitch, and the nearest stop below the target is
-1116 CSS px.** The gear page is a _Service_ card ending at 911 and a _Dives with this Gear_ card
-running 935 to 1959, whose rows sit on an 82px pitch with a 12px gap; a frame may end in one of
-those gaps but never inside a row, for the reason the section above gives. The pitch and the gap are
-the layout's; every absolute figure here is the account's, on the day it was measured, which is why
-a height like this wants asking of the page rather than writing down. Past the Service card the
-first gap is 1104–1116 CSS, 2208–2232 captured, and the next is 1186–1198, 2372–2396. The target
-band, 2240–2256, falls inside the row between them. 2232 is therefore the nearest reachable frame —
-and because the target stays above it everywhere from a 640px container up, it is also the better of
-the two at every one of those widths, so there is no width to optimise for and none to trade away.
-Narrower than about 546px the target drops below 2232 and the pair tips from falling short to
-overhanging, by 0.4px per edge at 480.
+**Every stop that keeps a gutter under the frame overshoots that target, so the chosen one has
+none.** The gear page is a _Service_ card ending at 911 CSS and a _Dives with this Gear_ card
+running 935 to 1959, whose rows sit on an 82px pitch with a 12px gap. The three other shots all end
+a gutter clear of their last card, and both rules in this script compute exactly that — `cutBelow()`
+and `cutAfterCard()` would each return 935 here. But 935 is 1870 captured, and the target band is
+1766–1798: below it at every width. The nearest reachable height is therefore **911, the foot of the
+Service card with nothing under it**, at 1822 captured — 2px above the pair's ideal sum, so that
+what is left is the leading and almost nothing else. Past that the next stops are the row gaps at
+1104–1116 and 1186–1198 CSS, hundreds of pixels further away.
 
 **Half of what is left shows at the top, not all of it at the bottom.** Table cells are
 middle-aligned, so the shorter column is centred in the row rather than hung from its top, and the
-error is split between the two edges. Rendered, per edge, positive being the pair falling short:
+error is split between the two edges. Rendered, per edge, positive being the pair falling short and
+negative the pair overhanging:
 
-| README container | image width | **2172, committed** | 2232, the stop below | 2372, the stop above |
-| ---------------- | ----------- | ------------------- | -------------------- | -------------------- |
-| 1012             | 478.5       | **9.84**            | 2.84                 | −13.50               |
-| 896              | 420.5       | **8.30**            | 2.14                 | −12.23               |
-| 768              | 356.5       | **6.58**            | 1.36                 | −10.83               |
-| 640              | 292.5       | **4.86**            | 0.58                 | −9.42                |
-| 480              | 212.5       | **2.70**            | −0.39                | −7.66                |
+| README container | image width | 2172, the old frame | **1822, committed** | 1870, with a gutter |
+| ---------------- | ----------- | ------------------- | ------------------- | ------------------- |
+| 1012             | 478.5       | −43.64              | **−2.75**           | −8.36               |
+| 896              | 420.5       | −38.72              | **−2.78**           | −7.70               |
+| 768              | 356.5       | −33.28              | **−2.81**           | −6.98               |
+| 640              | 292.5       | −27.84              | **−2.84**           | −6.27               |
+| 480              | 212.5       | −21.05              | **−2.89**           | −5.38               |
 
-So the choice, when the dive shot has been retaken and these are recomputed against its real height,
-is between the stop below the target and the stop above it, and on today's figures the one below
-wins at every width. What it costs is a figure in this repository that goes stale when a _different_
-image is re-framed: re-framing `dive-detail` or `dive-site` moves the target and nothing notices.
-The defences available are that the height can be labelled as coupled where it is defined, and that
-one script takes all the images the row is made of. What should not be paid is putting the
-arithmetic in the script — `HEIGHT` should carry a number, not a formula that would have to read two
-other PNGs and a README in another repository to produce one.
+**The residual barely moves across the range, and that is the point rather than a coincidence.**
+Because the two images sum to within 2 captured px of the dive shot, what is left is the leading
+alone, which is a constant in rendered pixels — so the row is as level at 480 as at 1012 instead of
+drifting, which is what a stop further from the ideal sum would have done. A reader on a font stack
+that gives 7px of descent rather than 6 sees 3.25 to 3.39 instead, measured the same way.
 
-**The committed 1086 is not a clean frame, and never has been.** It was described here as ending the
-gear page below its service history, and it does not: it runs 151px into the _Dives with this Gear_
-card and cuts the first dive row through the middle of its date. That is visible in
-`docs/screenshots/gear-item.png` as committed — decode it and look at the last 250 rows — and it had
-been there for as long as that image had been on the front page, because a written-down height fails
-the way this file already records twice: silently, with nothing measuring it. It is left in place
-rather than nudged to the next clean stop on its own, because a frame is not the only thing that
-height decides — the next clean stop upward _is_ 1116, so the honest fix for the slice and the lever
-for the README row are the same move, and it is worth making once.
+**What it costs is a figure in this repository that goes stale when a _different_ image is
+re-framed:** re-framing `dive-detail` or `dive-site` moves the target and nothing notices. The
+defences available are that the height is labelled as coupled where it is defined, and that one
+script takes all the images the row is made of. What should not be paid is putting the arithmetic in
+the script — `HEIGHT` should carry a number, not a formula that would have to read two other PNGs
+and a README in another repository to produce one.
 
-**A guard for it was written and then reverted with the retake, which is worth recording rather than
-rediscovering.** `refuseSlicedRow()` asked the page, before the shutter, whether the written-down
-height landed inside a row, and threw if it did — refusing rather than snapping to the nearest gap,
-since snapping keeps the image clean while silently changing the height the README row is balanced
-around. It cannot be kept while the literal is 1086, because 1086 is precisely the height it
-refuses: the script would decline to photograph the gear page at all, and this repository would ship
-an image its own script will not reproduce. So it belongs with the new height, not before it — write
-it back in the same change that moves the literal.
+**The committed 1086 was never a clean frame**, which is the second thing this change fixes. It was
+described here for a long time as ending the gear page below its service history, and it did not: it
+ran 151px into the _Dives with this Gear_ card and cut the first dive row through the middle of its
+date. That was visible in `docs/screenshots/gear-item.png` as committed, and it had been there for
+as long as that image had been on the front page, because a written-down height fails the way this
+file already records twice: silently, with nothing measuring it.
 
-**The alternatives, so they are not re-derived either.** Moving the dive-site frame instead and
-leaving the gear shot alone was the first answer here, and it has no stop near level: that frame's
-reachable heights are 1624–1648 and 1788–1812, and against a 2172 gear shot 1648 falls short by
-9.84px per edge at a 1012px container while 1788 overhangs by 6.5 — both worse than the 2.84 the
-gear stop reaches, and it spends the one frame whose subject the reader is actually there for. And a
+**So the guard goes back in with the new height.** `refuseSlicedRow()` asks the page, before the
+shutter, whether the written-down height lands inside a row, and throws if it does — refusing rather
+than snapping to the nearest gap, since snapping keeps the image clean while silently changing the
+height the README row is balanced around. It could not be kept while the literal was 1086, because
+1086 is precisely the height it refuses: the script would have declined to photograph the gear page
+at all, and this repository would have shipped an image its own script will not reproduce. At 911 it
+passes, and it is not idle — the rows above the frame are that account's _service schedules_, which
+move whenever a schedule is added or its wording changes, and a frame at the foot of the card they
+sit in is exactly the frame they can grow into.
+
+**The alternatives, so they are not re-derived.** Moving the dive-site frame instead and leaving the
+gear shot alone has no stop near level: that frame's reachable heights are 1624–1648 and 1788–1812,
+and pairing 1624 with a gutter-respecting 1870 still leaves 5.57px per edge at 1012, worse than the
+2.75 the flush gear stop reaches, while spending the one frame whose subject the reader is actually
+there for. Cutting the Service card through, 12px above its foot, would reach the target exactly and
+is permitted by the rule that a card may be cut where a row may not — but it would slice off the
+card's own bottom border for 12px of gain, which reads as a frame that stopped by accident. And a
 row of two columns is only one way to lay three images out — a three-column row narrows all of them,
 which is what put a tall image beside a short one in the first place.
 

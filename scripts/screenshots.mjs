@@ -58,18 +58,28 @@ const WIDTH = 1024;
 // measure the real one in the page moments before the shutter - except `gear-item`, whose
 // entry is also the height it is shot at.
 //
-// 1086 is the one height in this file nothing measures, and it is a known-bad frame: it
-// ends 151px inside the gear page's `Dives with this Gear` card, cutting the first dive
-// row through its date - which the comment here claimed for a long time it did not. It is
-// still here because moving it is not a decision about this page. It is the lever that
-// closes the hole under `gear-item.png` in the README row, the height that closes it is
-// set by `dive-detail.png` beside it, and that image is itself stale - so picking a stop
-// now would only mean picking one again. DECISIONS.md carries the measurements, the
-// reachable stops and what the choice will be once the dive shot is retaken.
+// 911 is written down because it is not a property of the gear page at all: it is the
+// height at which `gear-item.png` stacked over `dive-site.png` comes level with
+// `dive-detail.png` beside them in the README row. That makes it the one figure in this
+// file that goes stale when a *different* image is re-framed, which is a real cost and is
+// argued out in DECISIONS.md rather than here.
+//
+// It is the foot of the `Service` card with no gutter under it, which the other three
+// shots would each have added - and that is the whole of the travel this lever has left.
+// The pair has to come level with a dive shot that lost 458px when it was retaken, so the
+// height that would balance the row exactly is *inside* the Service card, and every stop
+// that keeps a gutter overshoots. DECISIONS.md has the residuals at five container widths.
+//
+// What it has to be on this page is a height that does not end through a row - the same
+// thing `cutAfterCard()` guarantees for the shot that measures. Nothing here can guarantee
+// it, because the rows are that account's service schedules and dives and they move: the
+// figure this replaced, 1086, had been cutting a dive row through the middle of its date
+// for as long as anyone had been looking at it. So the page is asked before the shutter -
+// `refuseSlicedRow()` below.
 const HEIGHT = {
   dashboard: 1564,
   "dive-detail": 1086,
-  "gear-item": 1086,
+  "gear-item": 911,
   "dive-site": 1086,
 };
 
@@ -521,6 +531,44 @@ async function cutAfterCard(page, label) {
   return measured.height;
 }
 
+// The one check a written-down height cannot do for itself: that it does not end inside a
+// row. `cutAfterCard()` gets this for free because it measures; `HEIGHT["gear-item"]` is a
+// figure about the README row rather than about the gear page, so nothing moves it when
+// the page moves under it - and the page does move, because those rows are the account's
+// service schedules and dives.
+//
+// Loud rather than corrected, deliberately. Snapping the frame to the nearest gap would
+// keep the shot clean and silently change the height the README row is balanced against,
+// which is the failure this script has already had twice with heights that were merely
+// stale. Same definition of a row as `cutAfterCard()`: a bordered box nested inside
+// another.
+async function refuseSlicedRow(page, name, height) {
+  const sliced = await page.evaluate((cut) => {
+    const BOXED = ".rounded-lg.border";
+    const box = (element) => {
+      const rect = element.getBoundingClientRect();
+      return { top: rect.top + scrollY, bottom: rect.bottom + scrollY };
+    };
+    return (
+      [...document.querySelectorAll(BOXED)]
+        .filter((element) => element.parentElement?.closest(BOXED))
+        .map((element) => ({
+          ...box(element),
+          text: (element.textContent ?? "")
+            .trim()
+            .replace(/\s+/g, " ")
+            .slice(0, 60),
+        }))
+        .find((row) => row.top < cut && row.bottom > cut) ?? null
+    );
+  }, height);
+  if (sliced)
+    throw new Error(
+      `the ${name} frame of ${height} cuts through the row running ${sliced.top} to ${sliced.bottom} ("${sliced.text}"). ` +
+        `That height is written down in HEIGHT and the page has moved under it - see DECISIONS.md for what it is chosen against before changing it.`,
+    );
+}
+
 // A blank frame where the map should be is roughly the size of a flat PNG of the same
 // box, and a drawn coastline is many times that. Well clear of both, so it separates them
 // rather than measuring either: the empty dark frame comes back around a kilobyte.
@@ -778,6 +826,7 @@ if (wanted("gear-item")) {
   await visit(page, "gear-item", `${WEB}/gear/${gearItem}`);
   await page.getByText("Service history").waitFor();
   await atTop(page);
+  await refuseSlicedRow(page, "gear-item", HEIGHT["gear-item"]);
   await shot(page, "gear-item", HEIGHT["gear-item"]);
 }
 
