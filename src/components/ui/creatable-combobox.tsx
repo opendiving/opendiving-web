@@ -717,7 +717,27 @@ export function CreatableCombobox({
         disabled={disabled || isLoading}
         className={cn(value !== undefined && "pr-7")}
         onChange={(e) => handleInputChange(e.target.value)}
-        onFocus={() => setIsOpen(true)}
+        onFocus={() => {
+          setIsOpen(true);
+          // The menu now opens unfiltered, so the text sitting in a filled
+          // single-select is a label rather than a query - and clicking in to
+          // change the trip and typing gave "Dahab 2025R" against an empty menu.
+          // Selecting it makes the first keystroke replace it, which is what the
+          // field looks like it will do.
+          //
+          // `onFocus` rather than `onClick`: the latter fires again on every
+          // click into an already-focused field, so it would keep re-selecting
+          // under a caret the diver had just placed by hand.
+          //
+          // Gated on there being something to replace, which is not the same as
+          // `!keepOpenOnSelect`: an append-only field is empty after every pick,
+          // but so is a single-select on a new dive, and `select()` on an empty
+          // field is a no-op that still raises the handles and the copy callout
+          // on a phone. `keepOpenOnSelect` stays in the condition because that
+          // field's input is a filter even when the diver has typed into it -
+          // its text is a query, and a query is not a label.
+          if (!keepOpenOnSelect && inputValue) inputRef.current?.select();
+        }}
         // Focus alone isn't enough: a `focus` event doesn't fire on an input
         // that already has focus, so any path that closes the menu while
         // keeping focus (picking an item, Escape, a dialog restoring focus)

@@ -131,6 +131,18 @@ describe("CreatableCombobox opened on a selection", () => {
     scrollIntoView.mockRestore();
   });
 
+  it("selects the text it holds, so the first keystroke replaces it", async () => {
+    // The menu opens unfiltered now, so the text is a label. Without this,
+    // clicking in and typing gives "kohDahab 2026" and a menu matching nothing.
+    render(<Field />);
+
+    await userEvent.click(box());
+
+    const input = box() as HTMLInputElement;
+    expect(input.selectionStart).toBe(0);
+    expect(input.selectionEnd).toBe("Dahab 2025".length);
+  });
+
   it("says the list is empty rather than searching forever", async () => {
     // `searchPending` compares the query the server answered against the query
     // the menu is about. Left on the raw text it compares "" against
@@ -145,5 +157,53 @@ describe("CreatableCombobox opened on a selection", () => {
       expect(screen.getByText("No trips yet.")).toBeInTheDocument(),
     );
     expect(screen.queryByText("Searching...")).not.toBeInTheDocument();
+  });
+});
+
+describe("CreatableCombobox with nothing chosen", () => {
+  it("leaves an empty single-select alone on focus", async () => {
+    // Nothing to replace - a new dive's Trip picker, or the replacement picker
+    // in the delete dialog. `select()` here is a no-op that still raises the
+    // handles and the copy callout on a phone.
+    const select = vi.spyOn(HTMLInputElement.prototype, "select");
+    render(
+      <CreatableCombobox
+        value={undefined}
+        onSearch={onSearch}
+        onChange={vi.fn()}
+        noItemsLabel="No trips yet."
+      />,
+    );
+
+    await userEvent.click(box());
+
+    await waitFor(() => expect(rowNames()).toHaveLength(3));
+    expect(box()).toHaveValue("");
+    expect(select).not.toHaveBeenCalled();
+    select.mockRestore();
+  });
+});
+
+describe("CreatableCombobox in an append-only field", () => {
+  it("leaves the empty input alone on focus", async () => {
+    // `keepOpenOnSelect` clears the input after every pick, so there is nothing
+    // to select - and a select() on an empty field is a no-op that still raises
+    // the handles and the copy bar on a phone.
+    const select = vi.spyOn(HTMLInputElement.prototype, "select");
+    render(
+      <CreatableCombobox
+        value={undefined}
+        onSearch={onSearch}
+        onChange={vi.fn()}
+        keepOpenOnSelect
+        noItemsLabel="No sites yet."
+      />,
+    );
+
+    await userEvent.click(box());
+
+    await waitFor(() => expect(rowNames()).toHaveLength(3));
+    expect(select).not.toHaveBeenCalled();
+    select.mockRestore();
   });
 });

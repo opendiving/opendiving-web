@@ -18378,3 +18378,27 @@ does everywhere else here.
 Untouched: the multi-selects and `sites/place-search.tsx`. They pass `value={undefined}` and/or
 `keepOpenOnSelect`, so their input is empty after each pick and there is no selection for the query
 to be confused with.
+
+**And a filled single-select selects its text on focus**, which is the other half of treating it as
+a label. Without it, clicking into a field reading "Dahab 2026" and typing gives "kohDahab 2026" and
+a menu matching nothing — measured in the app, and the reason it is here rather than filed as a
+nicety. `onFocus` rather than `onClick`, which fires again on every click into an already-focused
+field and would re-select under a caret the diver had just placed by hand.
+
+The condition is `!keepOpenOnSelect && inputValue`, and both halves are load-bearing — the first
+draft had only the first, and review caught that it did not implement the reason given for it. An
+empty field has nothing to replace, and `select()` on one is a no-op that still raises the handles
+and the copy callout on a phone; that is true of an append-only picker after every pick _and_ of a
+single-select on a new dive, or of `DeleteWithReassignDialog`'s picker, whose empty state is its
+default. `keepOpenOnSelect` stays in the condition for a different reason, not as a proxy for
+emptiness: that field's text is a query even once the diver has typed it, and a query is not a
+label.
+
+**The phone is the unverified part** — every claim above about handles and the copy callout, and the
+select-on-focus behaviour those claims are the reason for. On iOS Safari a selected range shows the
+handles and the Copy bar, and `select()` inside a focus handler has a reputation for being
+unreliable there; this machine has no iOS runtime installed (`xcrun simctl list runtimes` is empty),
+so all of it is tested in desktop Chrome and in jsdom and nowhere else. Select-on-focus is a
+separate commit for that reason: if a phone says otherwise, revert that one and the rest of this
+section still holds. The `keepOpenOnSelect` half of the condition is outside the bracket either way
+— nothing about it is device-specific.
