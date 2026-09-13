@@ -46,6 +46,13 @@ function EditDivePageContent() {
   // can gain a second computer's recording and a second file of an existing one
   // in the same edit.
   const [pendingFiles, setPendingFiles] = useState<PendingDiveFile[]>([]);
+  // Stored files the diver has struck off the list, deleted after the edit is
+  // saved for the reason the attaches above wait for it: a form describes what
+  // the dive should hold when the diver is done with it, and Cancel has to mean
+  // the dive is exactly as they found it. This used to fire the moment the
+  // dialog was confirmed, which made "Cancel" a lie about the one part of the
+  // form that is not undoable.
+  const [removedFileUuids, setRemovedFileUuids] = useState<string[]>([]);
 
   const form = useForm<DiveUpdateInput>({
     resolver: zodResolver(diveUpdateSchema),
@@ -103,7 +110,6 @@ function EditDivePageContent() {
   const {
     id: diveId,
     resource: dive,
-    setResource: setDive,
     isLoading: isLoadingDive,
   } = useResource<Dive>(divesAPI.getDive, {
     enabled: !!user,
@@ -112,50 +118,21 @@ function EditDivePageContent() {
     onLoaded: resetFromDive,
   });
 
-  // Deleting a stored file happens now, not on save: the file is already on the
-  // server, so there is nothing for a save to confirm and nothing for Cancel to
-  // undo. The dialog in `DiveRecordingFiles` is the confirmation.
-  //
-  // **Re-read and `setDive`, deliberately not `useResource`'s `refetch`.** That
-  // one re-runs `onLoaded`, which here is `resetFromDive` - so a diver who had
-  // retyped a depth and then removed a file would have watched the edit vanish.
-  // What has to update is the file list, which reads `dive.recordings`, and the
-  // server may well have changed more of it than the one row: the recording's
-  // profile is re-derived from whatever files are left, the recording itself
-  // goes when its last file does, and the dive's exposure readings follow the
-  // primary. Predicting any of that here would be a second implementation of
-  // rules that already have one.
-  const deleteStoredFile = useCallback(
-    async (fileUuid: string) => {
-      if (!diveId) return;
-      try {
-        await divesAPI.deleteDiveFile(diveId, fileUuid);
-        setDive(await divesAPI.getDive(diveId));
-        toast({
-          title: "File deleted",
-          description: "The file was removed from this dive.",
-        });
-      } catch (error) {
-        console.error("Failed to delete the dive file:", error);
-        toast({
-          title: "Error",
-          description: getApiErrorMessage(
-            error,
-            "Failed to delete the file. Please try again.",
-          ),
-          variant: "destructive",
-        });
-      }
-    },
-    [diveId, setDive, toast],
-  );
-
   // Back/Cancel return to wherever the edit was started from - the dive list, a
   // trip, an explicit `?from=` - falling back to the dive itself.
   const returnTo = useReturnTo({
     href: `/dives/${diveId}`,
     label: "Back to Dive",
   });
+
+  // What to call a struck-off file in a failure toast. Read off the loaded dive
+  // rather than carried alongside the uuid, since the list on screen is already
+  // built from exactly these rows; the uuid is the fallback for a dive that was
+  // re-read out from under the form.
+  const removedFileName = (fileUuid: string) =>
+    (dive?.recordings ?? [])
+      .flatMap((recording) => recording.files)
+      .find((file) => file.uuid === fileUuid)?.original_filename ?? "a file";
 
   const onSubmit = async (data: DiveUpdateInput) => {
     if (!user || !diveId) return;
@@ -166,6 +143,27 @@ function EditDivePageContent() {
       const updateData = buildDiveUpdate(data);
 
       await divesAPI.updateDive(diveId, updateData);
+
+      // Removals before additions, so each attach lands in the state the diver
+      // was looking at rather than beside rows they had already struck off.
+      // Each failure is its own toast and none of them stops the next: the edit
+      // is saved either way, and a file that survived is a smaller loss than a
+      // save the diver has to make twice.
+      for (const fileUuid of removedFileUuids) {
+        try {
+          await divesAPI.deleteDiveFile(diveId, fileUuid);
+        } catch (error) {
+          console.error("Failed to delete the dive file:", error);
+          toast({
+            title: `Dive updated, but ${removedFileName(fileUuid)} wasn't deleted`,
+            description: getApiErrorMessage(
+              error,
+              "Try removing the file again.",
+            ),
+            variant: "destructive",
+          });
+        }
+      }
 
       // Serially and in pick order, for the reason the create page gives: the
       // API decides per file which recording it joins, and racing two attaches
@@ -271,7 +269,17 @@ function EditDivePageContent() {
         onRemovePendingFile={(id) =>
           setPendingFiles((files) => files.filter((item) => item.id !== id))
         }
-        onDeleteStoredFile={deleteStoredFile}
+        removedStoredFiles={removedFileUuids}
+        onRemoveStoredFile={(fileUuid) =>
+          setRemovedFileUuids((uuids) =>
+            uuids.includes(fileUuid) ? uuids : [...uuids, fileUuid],
+          )
+        }
+        onRestoreStoredFile={(fileUuid) =>
+          setRemovedFileUuids((uuids) =>
+            uuids.filter((uuid) => uuid !== fileUuid),
+          )
+        }
         recordings={dive.recordings ?? []}
         diveUuid={dive.uuid}
         // The dive already carries its sites' names, so the picker doesn't have

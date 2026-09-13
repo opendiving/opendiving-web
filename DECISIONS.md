@@ -17744,3 +17744,115 @@ fixture nobody would grep for:
 - `device-memory.test.ts`'s prefix-clearing fixture, whose comment counts the same set in different
   words — "Two orphans left behind by key bumps and one by a deleted feature" — and whose seeded
   store gains `-v3`. A sweep for the first sentence does not find this one.
+
+## The dialog is centred in the visual viewport, not in `100vh`
+
+Every modal form in the app is one `DialogContent` (`components/ui/dialog.tsx`), and on an iPhone
+none of them fitted the screen. Two separate causes, both invisible on a desktop browser at any
+window size:
+
+**`vh` on iOS is not what the diver can see.** It measures the _large_ viewport — the page as it
+would be with Safari's toolbars retracted — so with the toolbars up, `max-h-[90vh]` was taller than
+the screen. Centred on the layout viewport with `top-[50%]` and a translate, a dialog that size
+hangs off both ends, and since it is `position: fixed` with the page behind it scroll-locked, there
+is nothing to scroll to reach either end. `svh`/`dvh` fix that much, and the `:root` fallback in
+`globals.css` is `100svh` behind a `@supports` guard — a custom property holding a unit the browser
+has never heard of parses fine and then drops whatever declaration substitutes it, so the `vh`
+spelling has to be a real fallback rather than a comment.
+
+**No unit fixes the keyboard.** iOS does not resize the layout viewport when the keyboard opens; it
+scrolls the _visual_ viewport up to keep the focused input in sight and leaves `position: fixed`
+anchored where it was. That is the second screenshot in the report that started this: New Trip with
+its title scrolled off the top and its buttons behind the keys. `window.visualViewport` is the only
+thing that reports it — `offsetTop` is the displacement, `height` is what is left — so
+`useVisualViewport` (`hooks/useVisualViewport.ts`) mirrors both onto `--visual-viewport-top` and
+`--visual-viewport-height`, and `DialogFrame` is a fixed box of exactly that size with the dialog
+centred inside it. A dialog then cannot be laid out anywhere the diver cannot see.
+
+The frame also carries `p-4`, which is the other half of the report: the content was `w-full`, edge
+to edge on a phone with its close button in the corner of the screen. It is `pointer-events-none`
+with `pointer-events-auto` back on the content, so the gutter still belongs to the overlay and an
+outside click still dismisses.
+
+### `DialogContent` runs its hooks on every page that declares a dialog
+
+The hook started in `DialogContent`'s own body, which looked right and was not: `DialogPortal` is
+what gates the DOM and it renders `null` while closed, but the component _around_ it is rendered by
+its parent either way. A `__vvSubs` counter said 12 before anything had been opened on the dive
+form. So the hook is called from `DialogFrame`, which sits inside the portal and therefore mounts
+and unmounts with the dialog.
+
+Two details in the hook follow from more than one dialog being open at once — a confirm raised from
+inside a form dialog is ordinary here. The variables are refcounted, so the first to close does not
+strip them from the one still open. And each caller registers **its own closure** rather than the
+shared `syncViewportVars`: `addEventListener` de-duplicates identical `(type, listener)` pairs, so a
+shared function would be one registration that the first `removeEventListener` takes away from
+everybody.
+
+## "Add Mixture" takes the focus nowhere, because iOS opens a focused `<select>`
+
+`useFieldArray().append()` defaults to `shouldFocus: true`, which focuses the first field of the new
+row that registered a focusable ref. `VolumeCombobox` registers none, so the focus skipped past
+Volume and landed on whichever box came next — the ppO₂ limit `<select>` wherever that column is on
+screen, the O₂ box where it is hidden.
+
+On a desktop that is invisible. On iOS, focusing a `<select>` **opens its picker wheel**, so one tap
+on Add Mixture added a tank and opened a dropdown nobody asked for — which reads, from the diver's
+side, as the tap having gone through to the field underneath. Hence
+`append({ ...DEFAULT_MIXTURE }, { shouldFocus: false })`.
+
+Worth keeping in mind beyond this button: the app has several plain `<select>`s (ppO₂ limit, Role,
+Usage, water type), chosen over the shadcn `Select` because they need `""` as a real selectable
+option, and **any** programmatic `.focus()` on one of them is a dropdown opening on a phone.
+
+## The dive file picker takes several files, and the batch is applied serially
+
+`multiple` on the input, and `importFiles` walks the picked files in order. The list on that card
+and the page state behind it already held several — a dive off two computers, or one computer's JSON
+beside its FIT — so the single-file picker was making that two trips for no reason.
+
+**Serially, never `Promise.all`.** Which mode a file is applied in depends on what the files before
+it left behind (first file prefills, every later one fills blanks only), so racing them would make
+first-file-wins depend on which response came back first.
+
+**The "is a file already here" flag is a local, not the prop.** `hasFileAlready` is derived from
+`pending`/`recordings`, and neither has re-rendered while the loop is still running, so reading it
+per file would say "none" for every file in the batch and collapse first-file-wins into
+last-file-wins. It is seeded from the prop once and set by hand after each accepted file; the render
+test pins it with a second file carrying a deeper max depth.
+
+A bad file does not end the batch — the diver picked them together and has no way to re-pick "the
+other three", so an oversized or unparseable one says so and the loop carries on. A _match_ against
+another dive does pause it, since only the diver can answer that, and the files after it ride along
+on the offer (`MatchOffer.rest`) so that "Log as a new dive" picks the batch back up and dismissing
+the dialog drops the rest with the question. The toast belongs to the pick rather than to the file,
+counting what actually landed — four identical toasts for four files is one sentence said four
+times.
+
+`importNote` is cleared once per pick and then only ever assigned a non-`null` note. Only a prefill
+has anything to report, so every later file answers `null`, and assigning that would wipe the first
+file's note off the screen mid-batch.
+
+## The edit form deletes a stored file on save, beside the attaches
+
+Importing a file has always waited for the save — the API stores nothing at parse time, and
+importing then cancelling must not change what the dive holds. Deleting one did not: it fired the
+moment the confirm dialog was accepted, on the grounds that the file is already on the server so
+there is nothing for a save to confirm. True about the request, and wrong about the form: it made
+Cancel a lie about the one part of the page that could not be undone.
+
+So `dives/[id]/edit` holds `removedFileUuids` the way it holds `pendingFiles`, the row stays on the
+list struck through and saying `Deleted when you save`, and the Trash icon becomes an Undo. The
+deletions run first on submit and the attaches after, so each attach lands in the state the diver
+was looking at; each failure is its own toast and none of them stops the next, matching what the
+attaches already did.
+
+The confirmation stays, because the three outcomes behind that one icon are still not visible from
+the row — the recording keeps its other files, it survives file-less, or it goes with the file.
+`deleteFileConfirmation` in `lib/dive-recordings.ts` is untouched: the dive page's recordings card
+shares it and deletes immediately there. The form wraps it in `removeFileConfirmation`, which adds
+the one sentence that is only true here.
+
+Two things went with the immediate delete. `deleteStoredFile`'s re-read (`setDive(await getDive())`,
+deliberately not `useResource`'s `refetch`) is gone, and so is the reason it existed — there is no
+longer a moment mid-edit when the server's copy of the dive and the form disagree.

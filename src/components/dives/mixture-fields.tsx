@@ -687,7 +687,15 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
         type="button"
         variant="outline"
         size="sm"
-        onClick={() => append({ ...DEFAULT_MIXTURE })}
+        // `shouldFocus: false`, which is not react-hook-form's default. Its
+        // default focuses the first field of the new row that registered a
+        // focusable ref - and `VolumeCombobox` registers none, so the focus
+        // skipped past Volume and landed on whichever box came next: the ppO₂
+        // limit `<select>` where that column is on screen. On iOS, focusing a
+        // `<select>` opens its picker wheel, so one tap on this button added a
+        // tank *and* opened a dropdown the diver never asked for - which reads
+        // as the tap having gone through to the field underneath.
+        onClick={() => append({ ...DEFAULT_MIXTURE }, { shouldFocus: false })}
       >
         <Plus className="h-4 w-4 mr-2" />
         Add Mixture
