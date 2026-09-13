@@ -17904,7 +17904,8 @@ text, because with nothing struck off yet the dive on screen _is_ the dive the s
 `deleteFileConfirmation` is untouched either way: the dive page's recordings card shares it, and
 there the delete really is immediate and the re-read really does happen.
 
-Two things went with the immediate delete, and a third had to be rebuilt. `deleteStoredFile`'s
-re-read (`setDive(await getDive())`, deliberately not `useResource`'s `refetch`) is gone, and so is
-the reason it existed — there is no longer a moment mid-edit when the server's copy of the dive and
-the form disagree. What it was also quietly doing for the confirmation is the filtering above.
+Two things went with the immediate delete. `deleteStoredFile`'s re-read (`setDive(await getDive())`,
+deliberately not `useResource`'s `refetch`) is gone, and so is the reason it existed — there is no
+longer a moment mid-edit when the server's copy of the dive and the form disagree. What it was also
+quietly buying was the confirmation's accuracy, and that is what the paragraphs above are about:
+nothing rebuilt it, because nothing on this side of the wire can.
