@@ -5,7 +5,10 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { IconTooltip } from "@/components/ui/tooltip";
-import { useVisualViewport } from "@/hooks/useVisualViewport";
+import {
+  useKeepFocusedFieldVisible,
+  useVisualViewport,
+} from "@/hooks/useVisualViewport";
 
 const Dialog = DialogPrimitive.Root;
 const DialogTrigger = DialogPrimitive.Trigger;
@@ -19,7 +22,29 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      // Anchored to the visible viewport like the content below, then
+      // deliberately overgrown by half a screen at each end.
+      //
+      // **Covering the visible area exactly is the wrong target, and aiming for
+      // it is what the first two attempts at this did.** `inset-0` is the
+      // initial containing block, which iOS leaves sized to a window the diver
+      // is no longer looking at once the keyboard is up; sizing to
+      // `--visual-viewport-height` instead tracks what they *can* see, and on a
+      // real iPhone still came up short along the bottom, because Safari
+      // collapses its toolbar for the keyboard and a fixed box cannot be
+      // stretched past the layout viewport it was anchored in. Both are the
+      // same mistake - a scrim whose bottom edge is computed from a number that
+      // has to be exactly right.
+      //
+      // It does not have to be. This is a flat wash with nothing in it and no
+      // second job, so it only has to cover *at least* what is on screen;
+      // overflowing costs nothing, cannot be scrolled to (the page behind is
+      // scroll-locked and a fixed box adds no overflow of its own), and a pad
+      // this size outlasts any toolbar, accessory bar or keyboard animation
+      // frame. `--visual-viewport-top` still anchors it, so it follows the
+      // viewport when Safari pans to a focused field rather than being a
+      // fixed slab the pan slides out from under.
+      "fixed inset-x-0 top-[calc(var(--visual-viewport-top)_-_50vh)] z-50 h-[calc(var(--visual-viewport-height)_+_100vh)] bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className,
     )}
     {...props}
@@ -28,8 +53,10 @@ const DialogOverlay = React.forwardRef<
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
 /**
- * Mirrors `window.visualViewport` onto the CSS variables `DialogContent`
- * positions itself with, for as long as a dialog is open. Renders nothing.
+ * The two things a dialog owes the visible viewport, for as long as it is open:
+ * the CSS variables `DialogOverlay` and `DialogContent` are positioned with, and
+ * a focused field kept inside the box those variables have just resized.
+ * Renders nothing.
  *
  * **A child of the content rather than a hook in `DialogContent`'s body**,
  * because `DialogContent` is rendered by every page that *declares* a dialog,
@@ -38,8 +65,9 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
  * that body meant a dozen of them on the dive form before the diver had touched
  * anything. Children of the content mount and unmount with the portal.
  */
-function VisualViewportVars() {
+function VisualViewportEffects() {
   useVisualViewport();
+  useKeepFocusedFieldVisible();
   return null;
 }
 
@@ -82,7 +110,7 @@ const DialogContent = React.forwardRef<
       )}
       {...props}
     >
-      <VisualViewportVars />
+      <VisualViewportEffects />
       {children}
       {/* `IconTooltip` supplies the `aria-label` the `sr-only` span used to,
           so the cross keeps its name and gains the hover hint every other icon

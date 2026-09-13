@@ -87,3 +87,128 @@ export function useVisualViewport() {
     };
   }, []);
 }
+
+/** What an on-screen keyboard is ever opened for. */
+const FIELD_SELECTOR = "input, textarea, select, [contenteditable]";
+
+/**
+ * How many frames the settle loop below will chase a box that is still moving
+ * before giving up. Generous next to the 200ms transition it is waiting out -
+ * this is a backstop against a box that never stops changing, not a timeout
+ * anything is expected to reach.
+ */
+const SETTLE_FRAME_CAP = 40;
+
+/**
+ * How many consecutive frames of an unchanged height end the loop.
+ *
+ * More than one, because "same as last frame" on its own is true before the
+ * transition has got going as well as after it has finished, and the two are
+ * indistinguishable from inside a single frame. Measured in the browser, the
+ * dialog was still at its old height for the first two frames after the event
+ * and only began moving on the third - a loop that stopped at the first repeat
+ * would have given up there, every time, having corrected nothing.
+ */
+const STABLE_FRAMES = 4;
+
+/**
+ * How many frames the loop runs before it will accept a stable height as final.
+ *
+ * The floor under `STABLE_FRAMES`, and it exists because that test alone is a
+ * bet on the transition having *started*. `DialogContent` is on a 200ms
+ * transition; sixteen frames is past the end of it at 60Hz and, at the refresh
+ * rates where it is not, the box is still visibly moving, so the stability test
+ * carries the rest. Every frame in here costs one `scrollIntoView` that does
+ * nothing unless something is actually out of view.
+ */
+const MIN_SETTLE_FRAMES = 16;
+
+/** The nearest ancestor that scrolls, which for a field in a dialog is the dialog. */
+function scrollContainerOf(element: HTMLElement): HTMLElement | null {
+  for (let node = element.parentElement; node; node = node.parentElement) {
+    const { overflowY } = getComputedStyle(node);
+    if (overflowY === "auto" || overflowY === "scroll") return node;
+  }
+  return null;
+}
+
+/**
+ * Scrolls the focused field back into view whenever the visible viewport
+ * *resizes*, for as long as the caller is mounted.
+ *
+ * **The keyboard opening is not the end of the story it looks like.** iOS
+ * reveals the focused input itself before it fires anything, so the field is on
+ * screen at the moment of the tap and the bug is what happens next:
+ * `useVisualViewport` mirrors the shrunken viewport onto the variables above,
+ * `ui/dialog.tsx` re-centres `DialogContent` and cuts its `max-height` to
+ * match, and the content's `scrollTop` survives all of it unchanged. A dialog
+ * that was 780px of visible content becomes 400px anchored at the same offset,
+ * so what it shows is the *top* of what it was showing. A field near the foot
+ * of it - "Save as" at the end of the Fields tab, which is the report this
+ * came from - drops out of the box the diver is typing into.
+ *
+ * **It has to wait for the dialog to finish resizing, and that is the part that
+ * is easy to get wrong.** `DialogContent` carries `transition: all 200ms`, so
+ * its `max-height` *animates* down to the new viewport rather than snapping:
+ * measured here, it was still 770px of an eventual 388px two frames after the
+ * event. Correcting then is worse than not correcting at all, because the field
+ * is still comfortably inside a box that has not shrunk yet, `block: "nearest"`
+ * reads that as "nothing to do", and nothing looks at it again. Hence the loop -
+ * it re-reveals each frame until the container's height stops moving, which is
+ * the only honest signal that the geometry is final.
+ *
+ * `block: "nearest"` because it is a correction and not a jump: a field still
+ * in view must not move at all, and one that fell out should come back the short
+ * way. That is also what makes running it every frame harmless - the call does
+ * nothing on the frames where nothing is wrong.
+ *
+ * **`resize` only, never `scroll`.** The visual viewport also scrolls when
+ * Safari pans to a focused field, and re-revealing on that would be this
+ * fighting the browser for the same pixels while the diver's finger is still
+ * on the screen. Only a resize invalidates the geometry that
+ * `useVisualViewport` just wrote.
+ *
+ * No-ops where `visualViewport` is absent, like the hook above it.
+ */
+export function useKeepFocusedFieldVisible() {
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+
+    let frame = 0;
+    const reveal = () => {
+      cancelAnimationFrame(frame);
+
+      let previousHeight = Number.NaN;
+      let stableFrames = 0;
+      let frames = 0;
+      const settle = () => {
+        const active = document.activeElement;
+        // Re-read every frame rather than closing over it: a resize can outlast
+        // the focus that started it, and a field the diver has already left is
+        // not one to chase.
+        if (!(active instanceof HTMLElement)) return;
+        if (!active.matches(FIELD_SELECTOR)) return;
+
+        active.scrollIntoView({ block: "nearest" });
+
+        const container = scrollContainerOf(active);
+        const height = container ? container.clientHeight : -1;
+        stableFrames = height === previousHeight ? stableFrames + 1 : 0;
+        previousHeight = height;
+        frames += 1;
+        const settled =
+          frames >= MIN_SETTLE_FRAMES && stableFrames >= STABLE_FRAMES;
+        if (settled || frames > SETTLE_FRAME_CAP) return;
+        frame = requestAnimationFrame(settle);
+      };
+      frame = requestAnimationFrame(settle);
+    };
+
+    viewport.addEventListener("resize", reveal);
+    return () => {
+      cancelAnimationFrame(frame);
+      viewport.removeEventListener("resize", reveal);
+    };
+  }, []);
+}

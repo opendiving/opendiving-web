@@ -14,6 +14,25 @@ import {
 import type { DiveFormVisibility } from "@/hooks/useDiveFormVisibility";
 
 /**
+ * What every switch's label wears, in place of `Label`'s own `leading-none`.
+ *
+ * At 14px that line box is 14px and the text's ink is 17px, so anything with a
+ * descender hangs ~1.5px below the element's own box. That is invisible until
+ * the box is *painted on its own*, which is what a row whose switch is
+ * `disabled` arranges: `Label` dims itself through `peer-disabled:opacity-70`,
+ * and iOS rasterises an opacity layer to the element's box and throws away what
+ * pokes out of it. The subscript in "O₂" came back with its bottom sliced off
+ * flat, while the identical glyph one row down in "ppO₂ limit" - enabled, so
+ * never composited - was untouched. "Volume" beside it is dimmed too and looked
+ * fine, having nothing below the baseline to lose, which is what makes this
+ * read as a font bug rather than a layout one.
+ *
+ * `leading-5` is 20px, which contains the ink and is exactly the switch's `h-5`,
+ * so no row in this list changes height by gaining it.
+ */
+const SWITCH_LABEL = "font-normal leading-5";
+
+/**
  * The hideable field a group lists ahead of everything else, where it has one.
  *
  * Only `mixtures` does. It is the switch that decides whether the Gas Mixtures section
@@ -96,7 +115,7 @@ export function DiveFormFieldSwitches({
             disabled={perCylinder && !gasOnScreen}
             onCheckedChange={(next) => toggleField(entry.key, next)}
           />
-          <Label htmlFor={fieldId} className="font-normal">
+          <Label htmlFor={fieldId} className={SWITCH_LABEL}>
             {entry.label}
           </Label>
         </div>
@@ -138,7 +157,7 @@ export function DiveFormFieldSwitches({
             {alwaysOn.map(({ entry, id: rowId }) => (
               <div key={rowId} className="flex items-center gap-2">
                 <Switch id={rowId} checked disabled />
-                <Label htmlFor={rowId} className="font-normal">
+                <Label htmlFor={rowId} className={SWITCH_LABEL}>
                   {entry.label}
                 </Label>
               </div>

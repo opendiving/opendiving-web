@@ -24,8 +24,28 @@ const ToastViewport = React.forwardRef<
 ));
 ToastViewport.displayName = ToastPrimitives.Viewport.displayName;
 
+// The swipe classes carry *both* axes at once, which is what lets one string
+// serve two dismiss directions - the toast follows whichever direction
+// `Toaster` has the provider on at this width, with no `sm:` variant per
+// property. Radix writes both `--radix-toast-swipe-move-x` and `-y` on every
+// swipe and zeroes the axis its `swipeDirection` does not name, in JS, before
+// either reaches the DOM, so the off-axis utility resolves to `0px` and
+// contributes nothing.
+//
+// The `,0px` fallbacks are belt-and-braces, not the mechanism: the
+// `data-[swipe=*]` selectors only match once Radix has set the attribute, and
+// it writes the variables in the same handler, so the fallback is never the
+// value in use. Kept because an unresolved `var()` would take the whole
+// `translate` declaration with it - including the axis that *is* moving - which
+// is a poor way to find out that a Radix upgrade stopped writing both.
+//
+// Sliding out follows the corner the toast is in, which is the one thing that
+// does need the breakpoint: top on a phone, bottom-right from `sm` up. The
+// `sm:` rule has to put `--tw-exit-translate-y` back to `0` by hand, because it
+// is a different property from the `x` it sets and would otherwise keep the
+// vertical exit the base rule wrote.
 const toastVariants = cva(
-  "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border p-6 pr-8 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full",
+  "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border p-6 pr-8 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=cancel]:translate-y-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x,0px)] data-[swipe=end]:translate-y-[var(--radix-toast-swipe-end-y,0px)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x,0px)] data-[swipe=move]:translate-y-[var(--radix-toast-swipe-move-y,0px)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-top-full data-[state=closed]:sm:[--tw-exit-translate-y:0] data-[state=closed]:sm:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full",
   {
     variants: {
       variant: {
