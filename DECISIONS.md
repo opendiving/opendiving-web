@@ -1326,6 +1326,11 @@ precision needed fixing to actually display/accept it correctly:
   the input became a plain native `type="number"` - clearing via select-all+delete/backspace already
   works out of the box, so a bespoke clear affordance was redundant.
 
+  (The presets have since been renamed AL/HP/LP and split by unit system, so the `11.1 L (S80)`
+  above reads `11.1 L (AL80)` now, and "always shows every preset" means every preset offered to the
+  reader's system - see "Cylinder presets are named AL/HP/LP, and the list depends on the unit
+  system" at the end of this file.)
+
 - `dives/[id]/page.tsx`'s dive-detail view displayed `mixture.oxygen.toFixed(1)}%` but
   `mixture.helium}%` with no formatting at all - inconsistent with each other, and the `toFixed(1)`
   actively hid a second decimal digit that's now a real, meaningful value (e.g. `20.99%` rendering
@@ -7337,11 +7342,13 @@ page component. No synthetic row, and therefore no special case anywhere downstr
 **The obvious narrower fix is wrong, and worth recording as wrong.** It was a guard in
 `buildDiveUpdate`: omit `mixtures` when the dive arrived with none _and_ the field still holds one
 pristine `DEFAULT_MIXTURE`. `DEFAULT_MIXTURE`'s `volume: 11.1` is the `"11.1 L (S80)"` preset — an
-aluminium 80 of air, the most common recreational cylinder there is. A guard keyed on value-equality
-with it makes exactly that cylinder unsavable: leave the row alone and it is dropped, type 11.2 and
-back to 11.1 and it is still dropped. It would also put a page-specific question back into
-`buildDiveUpdate` in the same change that took one out, and its natural unit test compares
-`DEFAULT_MIXTURE` against `DEFAULT_MIXTURE`, so it cannot detect the drift that would break it.
+aluminium 80 of air, the most common recreational cylinder there is (spelled `"11.1 L (AL80)"` since
+"Cylinder presets are named AL/HP/LP, and the list depends on the unit system", and still 11.1 L). A
+guard keyed on value-equality with it makes exactly that cylinder unsavable: leave the row alone and
+it is dropped, type 11.2 and back to 11.1 and it is still dropped. It would also put a page-specific
+question back into `buildDiveUpdate` in the same change that took one out, and its natural unit test
+compares `DEFAULT_MIXTURE` against `DEFAULT_MIXTURE`, so it cannot detect the drift that would break
+it.
 
 **Two things this needed were already here.** `MixtureFields` renders `mixtures: []` cleanly and
 says "No cylinders recorded for this dive." over it, and its per-tank Trash button has no
@@ -7888,6 +7895,11 @@ a rated-working-pressure column the mixture does not have (cuft = litres × rate
 so a conversion factor here would be fake maths. Imperial mode only relabels the presets, leading
 with the cu-ft name a diver already uses: "11.1 L (S80)" becomes "S80 (11.1 L)". Adding that column
 is the revisit point.
+
+(Both halves of that have moved on. The relabel now reads "AL80 (11.1 L)", and it is no longer the
+_only_ thing imperial mode does here - which presets are offered depends on the system too. See
+"Cylinder presets are named AL/HP/LP, and the list depends on the unit system" at the end of this
+file.)
 
 **Spacing and precision were unified as a side effect, and both were previously inconsistent.**
 Display sites split between `{v}m` and `{v} m` - the Environment sidebar rendered both, two cards
@@ -15934,7 +15946,9 @@ in the position its own function checks the volume in:
 
 "Size", not "volume", in all three: the box is labelled **Volume (L)** and a diver reads that as the
 gas in the cylinder as often as the cylinder itself, which is exactly the confusion that makes an
-S80 "80 cubic feet" and 11.1 L at once.
+S80 "80 cubic feet" and 11.1 L at once. (That cylinder is spelled AL80 in the app now, for a related
+reason - see "Cylinder presets are named AL/HP/LP, and the list depends on the unit system" at the
+end of this file.)
 
 **What did _not_ change, and was tempting.** `diveModWarning`'s multi-cylinder branch still leaves a
 cylinder with no usable oxygen fraction out of the deepest-capable maximum rather than falling
@@ -18402,3 +18416,57 @@ so all of it is tested in desktop Chrome and in jsdom and nowhere else. Select-o
 separate commit for that reason: if a phone says otherwise, revert that one and the rest of this
 section still holds. The `keepOpenOnSelect` half of the condition is outside the bracket either way
 — nothing about it is device-specific.
+
+## Cylinder presets are named AL/HP/LP, and the list depends on the unit system
+
+`VolumeCombobox` offered the US aluminium cylinders as `S50`/`S63`/`S72`/`S80`/`S100`. That is a
+real name — it is the model prefix Luxfer and Catalina stamp on their scuba line, and since both of
+them make aluminium cylinders only, an S80 _is_ the aluminium 80. It is also the wrong name to show
+a diver, who reads the S as steel. `10.2 L (S72)` was the worst of the five: the "steel 72" is a
+famous vintage cylinder, and 10.2 L is separately what a steel HP80 holds, so that one row managed
+to name a steel tank, at a steel tank's capacity, while meaning an aluminium one.
+
+The presets are now AL/HP/LP plus nominal cu ft — `AL` for aluminium, `HP` for the 3442 psi steel
+family and `LP` for the 2400/2640 psi one. That is what Subsurface's built-in tank table, Shearwater
+Cloud and MacDive all use, and what a US diver says out loud.
+
+**Plain "80 cu ft" would have been worse than either.** The field stores litres of water capacity;
+cubic feet is the gas a cylinder holds at a rated pressure the mixture has no column for. An AL80 at
+3000 psi is 11.1 L and a steel HP80 at 3442 psi is 10.2 L — the same "80 cubic feet", two different
+cylinders. The material is exactly what pins a cu-ft name to a litre figure, so stripping it out
+would make the preset ambiguous in the one direction that matters. `volumeOptionLabel` already
+carried the litres-vs-cu-ft argument for refusing to _convert_; this is the same argument one level
+down, about what to call the thing.
+
+**The litre figures come off manufacturer sheets, and never off the cu-ft name.** Three were wrong
+and are corrected: AL63 9.2 → 9.0, AL72 10.2 → 10.0, AL100 13.6 → 13.2. They arrived with the
+Suunto-parsing work and match no maker's sheet. The sources are Luxfer's and Catalina's scuba spec
+sheets (via XS Scuba), XS Scuba's Metal Impact sheet, and Faber's and Worthington's own — cited in
+the table's comment rather than here, because the next person to add a row needs them at the row.
+Where makers disagree the comment says which figure won and why: HP100 is Faber's 12.9 against
+Worthington's 11.6 and PST's 12.7, and HP130 is Worthington's X8-130 at 16.0, Faber having no 130 at
+all. **No data path is needed for the correction.** A stored dive keeps whatever litres the diver
+picked, and nothing outside this file reads these numbers — `DEFAULT_MIXTURE` uses 11.1, which is
+unchanged. The correction is to what is offered, never to what is recorded.
+
+**The list is units-aware, which is new for this field.** Adding the missing common cylinders — the
+AL40 stage bottle, five HP steels, four LP steels, a 7 L and two European twin sets — roughly
+doubled the table, and most of the additions are noise to whichever half of the world does not dive
+them. So `volumeOptionsFor` splits it: the metric singles and twins in metric mode, the AL/HP/LP
+sizes and the imperial doubles in imperial, each landing around fifteen entries. The AL40 and the
+AL80 are the only two offered in both, being what a metric diver meets on a rental boat abroad. This
+is what lets the dropdown keep showing every preset unfiltered, which was only ever defensible while
+the list was short enough to browse. Membership is all it decides: the stored value is litres in
+either mode, and any number can still be typed, so a preset missing from a diver's list costs them
+one click and nothing else.
+
+**Two presets share a value, so the list is keyed by label.** The HP117 and the LP95 are both 15.0 L
+— they differ by working pressure, which the mixture does not record. `key={option.value}` gave
+React duplicate keys the moment both entered the same list, and the selected-row tint lights up both
+of them, which is correct rather than sloppy: with only litres stored there is nothing to tell them
+apart by.
+
+**The mixture still does not record working pressure, and must not start to.** A preset is a litre
+hint and nothing more. A diver with the Worthington HP100 rather than the Faber types 11.6
+themselves, which this field has always allowed — that is the escape hatch that lets the preset
+table stay a short list of the common cases instead of growing into a cylinder database.

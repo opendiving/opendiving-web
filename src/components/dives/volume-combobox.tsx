@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { nextActiveIndex } from "@/components/ui/creatable-combobox";
 import { cn } from "@/lib/utils";
@@ -14,44 +14,162 @@ export interface VolumeOption {
   /**
    * The cu-ft name this cylinder is known by, where it has one.
    *
-   * Only the US aluminum sizes carry one. `24 L (2x12 L)`'s parenthetical looks
-   * like the same thing and is not - it is a metric composition, so it is part of
-   * `label` and never leads.
+   * Only the US sizes carry one, and it always states the material: `AL` for
+   * aluminium, `HP` and `LP` for the two steel working-pressure families.
+   * `24 L (2x12 L)`'s parenthetical looks like the same thing and is not - it is
+   * a metric composition, so it is part of `label` and never leads.
    */
   imperialName?: string;
+  /**
+   * The one unit system this preset is offered in, or omitted for a preset
+   * offered in both - see `volumeOptionsFor`.
+   *
+   * Only the AL40 and the AL80 are offered in both. They are what a metric diver
+   * meets on a rental boat abroad; the rest of the US list is noise to them,
+   * exactly as the European sizes are noise to a US diver.
+   */
+  showIn?: UnitSystem;
 }
 
-// Common cylinder water capacities (liters). Plain-metric entries are typical
-// European steel/aluminum single/twin tanks; imperial-origin entries are
-// common US aluminum cylinders, labeled with their familiar cu-ft-based size
-// (e.g. "S80") alongside the actual liter water capacity, since that's how
-// divers usually refer to them day to day.
+// Common cylinder water capacities (litres), ascending, with both systems'
+// presets in one table that `volumeOptionsFor` splits. The unnamed entries are
+// the typical European steel/aluminium singles and twins; the named ones are the
+// US sizes, carrying the name divers actually say alongside the litre water
+// capacity the mixture stores.
+//
+// The name states the material because the litres depend on it: an AL80 at
+// 3000 psi is 11.1 L and a steel HP80 at 3442 psi is 10.2 L, and both are "80
+// cubic feet". `AL` is aluminium - Luxfer and Catalina model-number that line
+// `S80`, an `S` divers read as steel, which is why the model number is not what
+// is shown here (see DECISIONS.md). `HP` is the 3442 psi steel family and `LP`
+// the 2400/2640 psi one, from Faber and Worthington.
+//
+// Every litre figure is a manufacturer's stated water capacity - Luxfer's and
+// Catalina's scuba sheets via XS Scuba, XS Scuba's Metal Impact sheet, Faber's
+// and Worthington's own - never a number derived from the cu-ft name. The two
+// sizes where makers disagree enough to matter say so below.
 export const VOLUME_OPTIONS: VolumeOption[] = [
-  { value: 3, label: "3 L" },
-  { value: 5, label: "5 L" },
-  { value: 7.1, label: "7.1 L (S50)", imperialName: "S50" },
-  { value: 9.2, label: "9.2 L (S63)", imperialName: "S63" },
-  { value: 10, label: "10 L" },
-  { value: 10.2, label: "10.2 L (S72)", imperialName: "S72" },
-  { value: 11.1, label: "11.1 L (S80)", imperialName: "S80" },
-  { value: 12, label: "12 L" },
-  { value: 13.6, label: "13.6 L (S100)", imperialName: "S100" },
-  { value: 15, label: "15 L" },
-  { value: 18, label: "18 L" },
-  { value: 20, label: "20 L" },
-  { value: 22.2, label: "22.2 L (2x S80)", imperialName: "2x S80" },
-  { value: 24, label: "24 L (2x12 L)" },
+  { value: 3, label: "3 L", showIn: "metric" },
+  { value: 5, label: "5 L", showIn: "metric" },
+  // The stage/deco/pony bottle, and common enough on a rental boat to be worth
+  // offering a metric diver too. Luxfer 5.7, Catalina 5.8.
+  { value: 5.7, label: "5.7 L (AL40)", imperialName: "AL40" },
+  { value: 7, label: "7 L", showIn: "metric" },
+  {
+    value: 7.1,
+    label: "7.1 L (AL50)",
+    imperialName: "AL50",
+    showIn: "imperial",
+  },
+  { value: 9, label: "9 L (AL63)", imperialName: "AL63", showIn: "imperial" },
+  { value: 10, label: "10 L", showIn: "metric" },
+  { value: 10, label: "10 L (AL72)", imperialName: "AL72", showIn: "imperial" },
+  {
+    value: 10.2,
+    label: "10.2 L (HP80)",
+    imperialName: "HP80",
+    showIn: "imperial",
+  },
+  { value: 11.1, label: "11.1 L (AL80)", imperialName: "AL80" },
+  { value: 12, label: "12 L", showIn: "metric" },
+  // The one size the makers genuinely disagree on: Faber 12.9, Worthington's own
+  // sheet 11.6, PST 12.7. Faber's figure is the preset because it is the one most
+  // often sold under the name; a diver holding either of the others types theirs.
+  {
+    value: 12.9,
+    label: "12.9 L (HP100)",
+    imperialName: "HP100",
+    showIn: "imperial",
+  },
+  { value: 13, label: "13 L (LP85)", imperialName: "LP85", showIn: "imperial" },
+  {
+    value: 13.2,
+    label: "13.2 L (AL100)",
+    imperialName: "AL100",
+    showIn: "imperial",
+  },
+  { value: 14, label: "14 L (2x7 L)", showIn: "metric" },
+  { value: 15, label: "15 L", showIn: "metric" },
+  // Two different cylinders at the same water capacity, which is the honest state
+  // of affairs rather than a duplicate: the HP117 and the LP95 really are both
+  // 15 L, and the mixture records the litres without the pressure that separates
+  // them. Hence `key={option.label}` below - the value is not unique.
+  {
+    value: 15,
+    label: "15 L (HP117)",
+    imperialName: "HP117",
+    showIn: "imperial",
+  },
+  { value: 15, label: "15 L (LP95)", imperialName: "LP95", showIn: "imperial" },
+  {
+    value: 15.3,
+    label: "15.3 L (HP120)",
+    imperialName: "HP120",
+    showIn: "imperial",
+  },
+  // Worthington's X8-130. Faber has no 130; its nearest is the HP133 at 17 L,
+  // which is a different cylinder rather than a second figure for this one.
+  {
+    value: 16,
+    label: "16 L (HP130)",
+    imperialName: "HP130",
+    showIn: "imperial",
+  },
+  {
+    value: 17,
+    label: "17 L (LP108)",
+    imperialName: "LP108",
+    showIn: "imperial",
+  },
+  { value: 18, label: "18 L", showIn: "metric" },
+  {
+    value: 19,
+    label: "19 L (LP121)",
+    imperialName: "LP121",
+    showIn: "imperial",
+  },
+  { value: 20, label: "20 L", showIn: "metric" },
+  {
+    value: 22.2,
+    label: "22.2 L (2x AL80)",
+    imperialName: "2x AL80",
+    showIn: "imperial",
+  },
+  { value: 24, label: "24 L (2x12 L)", showIn: "metric" },
+  { value: 30, label: "30 L (2x15 L)", showIn: "metric" },
 ];
+
+/**
+ * The presets offered to a diver reading in `units`.
+ *
+ * Each system lands around fifteen entries, which is what keeps the dropdown
+ * browsable with no filter at all (see the note on `VolumeCombobox`). Unsplit the
+ * table is nearly thirty, and most of it is noise to whichever half of the world
+ * does not use it - four LP steels mean nothing to a metric diver, and a 2x7 L
+ * twinset nothing to a US one.
+ *
+ * Membership is all this decides. The stored value is litres in both systems, and
+ * any number at all can still be typed, so a preset missing from a diver's list
+ * costs them the click and nothing else.
+ */
+export function volumeOptionsFor(units: UnitSystem): VolumeOption[] {
+  return VOLUME_OPTIONS.filter(
+    (option) => option.showIn === undefined || option.showIn === units,
+  );
+}
 
 /**
  * How a preset is written for a diver reading in `units`.
  *
- * Imperial leads with the cu-ft name where there is one - "S80 (11.1 L)" rather
- * than "11.1 L (S80)" - and that relabel is the *whole* of what imperial mode does
- * to this field. The stored value stays litres in both systems, because a
- * cylinder's litres are its water capacity while its cubic feet are the gas it
- * holds at a rated pressure the mixture doesn't record: converting one to the other
- * needs a column that doesn't exist, and inventing a factor would be fake maths.
+ * Imperial leads with the cu-ft name where there is one - "AL80 (11.1 L)" rather
+ * than "11.1 L (AL80)". This relabel and `volumeOptionsFor`'s membership are the
+ * whole of what imperial mode does to this field. The stored value stays litres in
+ * both systems, because a cylinder's litres are its water capacity while its cubic
+ * feet are the gas it holds at a rated pressure the mixture doesn't record:
+ * converting one to the other needs a column that doesn't exist, and inventing a
+ * factor would be fake maths. That is also why the name has to carry the material -
+ * an AL80 and an HP80 are the same "80 cubic feet" at 11.1 L and 10.2 L, so the
+ * material is what pins a cu-ft name to a litre figure.
  * A preset with no cu-ft identity is the same string in both systems.
  */
 export function volumeOptionLabel(
@@ -84,13 +202,14 @@ export interface VolumeComboboxProps extends FormControlSlotProps {
 }
 
 // A combobox for picking a cylinder volume: click one of the common-size
-// presets below (always shown in full, not filtered by what's typed - there
-// are few enough that filtering just makes it harder to browse them all), or
-// type/commit an arbitrary number (e.g. an odd steel tank, or a value filled
-// in from a parsed dive-computer file - see `dive-file-import.tsx`) that
-// isn't one of them. The input itself only ever shows the plain number, never
-// a preset's label (e.g. "11.1", not "11.1 L (S80)") - the label is just a
-// hint shown in the dropdown to help pick the right preset.
+// presets for this diver's unit system (`volumeOptionsFor` - always shown in
+// full, not filtered by what's typed, there being few enough per system that
+// filtering just makes it harder to browse them all), or type/commit an
+// arbitrary number (e.g. an odd steel tank, or a value filled in from a parsed
+// dive-computer file - see `dive-file-import.tsx`) that isn't one of them. The
+// input itself only ever shows the plain number, never a preset's label (e.g.
+// "11.1", not "11.1 L (AL80)") - the label is just a hint shown in the dropdown
+// to help pick the right preset.
 //
 // Deliberately a plain input + manually-rendered dropdown (mirroring
 // `CreatableCombobox`'s approach) rather than a Radix/shadcn `Select`: a
@@ -107,6 +226,7 @@ export function VolumeCombobox({
 }: VolumeComboboxProps) {
   const [isOpen, setIsOpen] = useState(false);
   const units = useUnits();
+  const options = useMemo(() => volumeOptionsFor(units), [units]);
   // Index of the keyboard-highlighted preset, or -1 for none - shares
   // `nextActiveIndex` with `CreatableCombobox` so both dropdowns in the dive
   // form move the same way.
@@ -205,7 +325,7 @@ export function VolumeCombobox({
               nextActiveIndex(
                 current,
                 e.key === "ArrowDown" ? 1 : -1,
-                VOLUME_OPTIONS.length,
+                options.length,
               ),
             );
             return;
@@ -214,7 +334,7 @@ export function VolumeCombobox({
           if (e.key === "Enter") {
             e.preventDefault();
             if (isOpen && activeIndex >= 0) {
-              handleSelect(VOLUME_OPTIONS[activeIndex]);
+              handleSelect(options[activeIndex]);
               return;
             }
             inputRef.current?.blur();
@@ -233,9 +353,12 @@ export function VolumeCombobox({
           role="listbox"
           className="absolute z-50 mt-1 w-full rounded-md border bg-popover text-popover-foreground shadow-md max-h-60 overflow-auto"
         >
-          {VOLUME_OPTIONS.map((option, index) => (
+          {options.map((option, index) => (
             <button
-              key={option.value}
+              // Keyed by label, not value: the HP117 and the LP95 are both 15 L,
+              // and two rows keyed alike is a React warning and a re-order bug.
+              // Labels are unique across the table; values are not.
+              key={option.label}
               type="button"
               id={optionId(index)}
               role="option"
@@ -245,6 +368,9 @@ export function VolumeCombobox({
               }}
               className={cn(
                 "w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground",
+                // Tints every row holding the committed value, so 15 L lights up
+                // both the HP117 and the LP95. Correct rather than sloppy: the
+                // mixture records litres and cannot tell those two apart.
                 option.value === value && "bg-accent/50",
                 index === activeIndex && "bg-accent text-accent-foreground",
               )}

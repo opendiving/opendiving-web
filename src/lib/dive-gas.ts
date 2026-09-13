@@ -622,7 +622,7 @@ export function gasUseUnavailableReason(dive: Dive): string | null {
   //
   // "Size", not "volume": the box is labelled Volume (L) and a diver reads that as the
   // gas in the cylinder as often as the cylinder itself, which is the confusion that
-  // makes an S80 "80 cubic feet" and 11.1 L at once.
+  // makes an AL80 "80 cubic feet" and 11.1 L at once.
   if (mixture.volume == null) {
     return "Add this tank's size to see your gas consumption.";
   }
