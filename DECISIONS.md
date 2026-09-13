@@ -18043,25 +18043,42 @@ rather than a class string — it resizes the viewport across the `md` breakpoin
 below and 14px above. The wide half is not ceremony: it fails a "fix" that drops the breakpoint and
 makes every desktop input 16px.
 
-## The overlay is on the visible viewport too, and stopped short of the keyboard without it
+## The dialog scrim is deliberately oversized, and two attempts to size it correctly failed first
 
 `DialogContent` has been positioned against `--visual-viewport-top`/`--visual-viewport-height` since
-the iPhone report above, but `DialogOverlay` was left on `fixed inset-0`, and that turned out to be
-half a fix. `inset: 0` resolves against the initial containing block, which iOS leaves anchored to a
-layout viewport it does not resize when the keyboard opens — so the dialog moved onto what the diver
-could see and the scrim behind it did not. Measured off the report, on a 375×812 phone with the
-keyboard up: the scrim ended roughly 100pt above the top of the keyboard, and the strip in between
-showed the undimmed page — the dive form's Course field, at full brightness, under an open modal.
+the iPhone report above, but `DialogOverlay` was left on `fixed inset-0`, and that was half a fix.
+`inset: 0` resolves against the initial containing block, which iOS leaves anchored to a layout
+viewport it does not resize when the keyboard opens — so the dialog moved onto what the diver could
+see and the scrim behind it did not. On a 375×812 phone with the keyboard up the scrim ended roughly
+100pt above the keyboard, and the strip between showed the undimmed page under an open modal.
 
-So the overlay takes the same two variables: `top-[var(--visual-viewport-top)]` and
-`h-[var(--visual-viewport-height)]`, with `inset-x-0` for the width it never had a problem with. It
-is then exactly the box the content is centred inside, by construction rather than by coincidence,
-and the ordinary desktop case is unchanged — with no keyboard the variables are the window, so the
-rect is the `0 → innerHeight` that `inset-0` was already giving.
+**Sizing it to the visible viewport instead did not fix it either, and that is the part worth
+keeping.** `top-[var(--visual-viewport-top)]` with `h-[var(--visual-viewport-height)]` is exactly
+the box the content is centred inside, it measures correctly in a desktop browser at any size, and
+on a real iPhone it _still_ came up short along the bottom — less short, which is worse, because it
+looks like success. Safari collapses its bottom toolbar to make room for the keyboard, so the area
+the diver can see grows while the layout viewport a fixed box was anchored in does not, and there is
+no number available to the page that closes that gap. Both attempts are the same mistake: a scrim
+whose bottom edge is computed from a quantity that has to be exactly right.
 
-Worth being explicit that a scrim has no second job to fall back on. A dialog laid out somewhere the
-diver cannot see is a bug you can see; a scrim that misses part of the screen is a bug that looks
-like a rendering artefact, which is why this one survived the fix that was aimed at it.
+It does not have to be right. The scrim is a flat wash with nothing in it, so it only has to cover
+_at least_ what is on screen — so it is anchored to `--visual-viewport-top` and then overgrown by
+half a viewport at each end: `top: calc(var(--visual-viewport-top) - 50vh)` over
+`height: calc(var(--visual-viewport-height) + 100vh)`. Overflowing costs nothing. A fixed box
+contributes no scrollable overflow, the page behind it is scroll-locked by Radix while it is open,
+and a pad that size outlasts any toolbar, accessory bar, or half-finished keyboard animation frame.
+The anchor is still the visible viewport rather than the layout one, so the scrim follows Safari
+when it pans to a focused field instead of being a slab the pan slides out from under.
+
+The general rule, for the next overlay: **size a thing you can see through to the pixel, and a thing
+you cannot to the horizon.** The content has to be exact because being wrong puts controls off
+screen; the scrim has no second job, and exactness buys it nothing but a way to fail.
+
+Worth being explicit about why this one took three goes. A dialog laid out where the diver cannot
+reach it is a bug you can see. A scrim that misses a strip along one edge reads as a rendering
+artefact, and the two fixes that did not work both looked plausible in every browser available to
+the person writing them — the desktop measurements were correct each time, and the device was the
+only thing that disagreed.
 
 ## The focused field is put back after the dialog resizes, and the waiting is the whole trick
 
