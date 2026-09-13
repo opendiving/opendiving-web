@@ -53,8 +53,9 @@ export interface VolumeOptionGroup {
 //
 // Every litre figure is a manufacturer's stated water capacity - Luxfer's and
 // Catalina's scuba sheets via XS Scuba, XS Scuba's Metal Impact sheet, Faber's
-// and Worthington's own - never a number derived from the cu-ft name. The two
-// sizes where makers disagree enough to matter say so below.
+// and Worthington's own - never a number derived from the cu-ft name. Where the
+// sheets disagree, that row's comment gives the figures and says which one the
+// preset takes, so the next person to touch it can see it was a choice.
 export const VOLUME_GROUPS: VolumeOptionGroup[] = [
   {
     label: "Metric singles",
@@ -90,9 +91,12 @@ export const VOLUME_GROUPS: VolumeOptionGroup[] = [
     system: "imperial",
     // Nominal cu ft ascending, which for this family is also litres ascending.
     options: [
-      // The standard stage/deco/pony bottle. Luxfer 5.7, Catalina 5.8.
+      // The standard stage/deco/pony bottle. Luxfer 5.7, Catalina 5.8; the preset
+      // takes Luxfer's, theirs being the AL40 most often sold under the name.
       { value: 5.7, label: "5.7 L (AL40)", imperialName: "AL40" },
-      // Luxfer 6.9, Catalina 7.2, Metal Impact 7.1.
+      // Luxfer 6.9, Metal Impact 7.1, Catalina 7.2 - a 0.3 L spread with no maker
+      // dominant enough to settle it the way Faber settles the HP100. The preset
+      // takes the middle figure; a diver whose own sheet says 6.9 types it.
       { value: 7.1, label: "7.1 L (AL50)", imperialName: "AL50" },
       { value: 9, label: "9 L (AL63)", imperialName: "AL63" },
       { value: 10, label: "10 L (AL72)", imperialName: "AL72" },
@@ -107,7 +111,9 @@ export const VOLUME_GROUPS: VolumeOptionGroup[] = [
     // deliberately not ascending by litres across the join (HP130 is 16 L and the
     // LP85 under it is 13 L). A diver reaches for one family or the other.
     options: [
-      // Faber 10.2, Worthington 10.1.
+      // Faber 10.2, Worthington 10.1. The preset takes Faber's, for the reason the
+      // HP100 below does - one maker across the family beats a row-by-row pick,
+      // and a tenth of a litre is well inside what a diver would retype anyway.
       { value: 10.2, label: "10.2 L (HP80)", imperialName: "HP80" },
       // The one size the makers genuinely disagree on: Faber 12.9, Worthington's
       // own sheet 11.6, PST 12.7. Faber's figure is the preset because it is the

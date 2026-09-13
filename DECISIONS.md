@@ -18444,11 +18444,14 @@ and are corrected: AL63 9.2 → 9.0, AL72 10.2 → 10.0, AL100 13.6 → 13.2. Th
 Suunto-parsing work and match no maker's sheet. The sources are Luxfer's and Catalina's scuba spec
 sheets (via XS Scuba), XS Scuba's Metal Impact sheet, and Faber's and Worthington's own — cited in
 the table's comment rather than here, because the next person to add a row needs them at the row.
-Where makers disagree the comment says which figure won and why: HP100 is Faber's 12.9 against
-Worthington's 11.6 and PST's 12.7, and HP130 is Worthington's X8-130 at 16.0, Faber having no 130 at
-all. **No data path is needed for the correction.** A stored dive keeps whatever litres the diver
-picked, and nothing outside this file reads these numbers — `DEFAULT_MIXTURE` uses 11.1, which is
-unchanged. The correction is to what is offered, never to what is recorded.
+Where makers disagree, that row's comment gives the figures and says which one the preset takes —
+deliberately without a count here, since the rows carrying one are a moving set and the table is the
+place to read it. The widest is HP100, Faber's 12.9 against Worthington's 11.6 and PST's 12.7. HP130
+is a different shape of the same problem: Worthington's X8-130 is 16.0 and Faber has no 130 at all,
+its nearest being an HP133 at 17 L. **No data path is needed for the correction.** A stored dive
+keeps whatever litres the diver picked, and nothing outside this file reads these numbers —
+`DEFAULT_MIXTURE` uses 11.1, which is unchanged. The correction is to what is offered, never to what
+is recorded.
 
 **The list was made units-aware, and that was wrong. It is recorded here because it shipped.**
 Adding the missing common cylinders — the AL40 stage bottle, five HP steels, four LP steels, a 7 L
