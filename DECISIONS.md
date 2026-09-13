@@ -8726,8 +8726,10 @@ free-to-delete guard is still the tag↔manifest check above, which runs before 
 it runs only on a `v*` tag push and on the dispatch that rebuilds a released version, so it is no
 ruleset's required check and no other job's `needs:` — and a job id asserting a draft is the stale
 name a reader trusts before they read the step under it. By the paragraph above about the api repo's
-workflow of the same name, if that repository's job id still reads `draft-release`, the port is owed
-in this direction.
+workflow of the same name, a rename here alone would be a drift owed in that direction — so it was
+not done alone. That repository renamed its mirror job on its own branch, in flight alongside this
+one and before either merged, so the two ids never diverged and nothing is owed. A third rename
+costs the same coordination: both files in one go, or neither.
 
 ## The install lives in the product repository, and this README points at it
 
