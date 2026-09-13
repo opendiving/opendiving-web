@@ -18208,3 +18208,55 @@ this repo's lint rejects both: a ref frozen in the dialog's render body (`react-
 access refs during render"), and a `useEffect` that seeds the child when the prop arrives
 (`react-hooks/set-state-in-effect`). Letting the mount do the freezing is shorter than either and
 needs neither rule bent.
+
+## A debounce test that raced the debounce
+
+`"debounces a burst into one request"` in `src/app/dives/new/page.render.test.tsx` failed once on CI
+(run 34767448613) on a PR that touched a workflow file and this document, and passed on a re-run
+with nothing changed. The failure was the argument assertion, not the count:
+
+```
+expected [ { dive_form_hidden_fields: [ -"visibility", -"altitude", "notes" ] } ]
+```
+
+The test flips three switches and asserts the 400 ms window in `useDiveFormVisibility` coalesces
+them into one `PATCH`. Each flip was an awaited `userEvent.click`, so the burst ran on the runner's
+wall clock: on a loaded machine the window elapses after the first click, the save goes out carrying
+`["notes"]` alone, and the burst costs three requests instead of one.
+
+**The count assertion was never going to catch that, and that is the part worth keeping.**
+`await waitFor(() => expect(updateProfile).toHaveBeenCalled())` returns the moment the _first_ call
+lands. The second and third are still pending timers at that point, so `toHaveBeenCalledTimes(1)`
+passes on the broken run for the same reason it passes on the good one, and only the arguments are
+left to fail on. A coalescing test that waits for "called at all" has already given up the thing it
+is testing.
+
+So the burst now runs on a frozen clock — `vi.useFakeTimers()`, three flips,
+`expect(updateProfile).not.toHaveBeenCalled()`, then one `act` that advances exactly
+`SAVE_DEBOUNCE_MS`. The mid-burst assertion is the half the old shape never made, and it is the one
+that holds however long the machine takes. The constant is exported from the hook rather than copied
+into the test, so raising the window cannot leave a test passing against a number the app no longer
+has.
+
+**`userEvent` cannot drive that window, and the way it fails wastes an afternoon.** A
+`userEvent.setup({ advanceTimers })` user routes every action through Testing Library's
+`asyncWrapper`, which drains the microtask queue behind a `setTimeout(…, 0)` and advances it only
+`if (jestFakeTimersAreEnabled())` — a check that reads `typeof jest !== "undefined"` first
+(`node_modules/@testing-library/react/dist/pure.js`). Under Vitest that is false, nobody advances
+the faked timer, and the first click hangs until the 5s test timeout with no indication of which
+layer stopped. `advanceTimers` does not help; it is userEvent's own delay hook, not Testing
+Library's drain. `fireEvent` goes through the synchronous `eventWrapper` instead and is unaffected —
+and for a burst it is the better spelling anyway, since three flips inside one window is the claim
+and the gesture is not. `runOutCooldown` in `src/components/auth/auth-form.test.tsx` records the
+same constraint from the other side: fake only between the async helpers, never across one.
+
+Both halves were checked by falsification rather than by a green run. Shrinking `SAVE_DEBOUNCE_MS`
+to 1, 10, 20 and 40 ms — a stand-in for an arbitrarily slow runner — failed the old test at every
+value and passes the new one at every value, because no real time elapses between synchronous flips
+on a frozen clock. Replacing the debounce with an immediate `flush()` fails the new test on the
+mid-burst assertion, so it still catches the regression it exists for. The same 1 ms sweep run over
+the whole file, and over `src/app/dives/[id]/edit/page.render.test.tsx`, passes: no other test in
+either leans on the window holding a burst together. The neighbouring
+`"sends the canonical list, and does not reset the form"` looks like the same shape and is not — its
+`waitFor(() => expect(…).toHaveBeenCalledWith(…))` is satisfied by _any_ call carrying the canonical
+list, so an early partial save ahead of it changes nothing.

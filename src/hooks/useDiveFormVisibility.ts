@@ -31,8 +31,12 @@ type MixtureRow = Record<string, unknown>;
  * How long a burst of switch flips is allowed to settle before it costs a request.
  * Long enough that flipping three switches in a row sends one `PATCH`, short enough
  * that the save has landed by the time a diver could reach another device.
+ *
+ * Exported for the tests that drive this window on a fake clock: the one covering the
+ * coalescing has to step past it exactly, and a number copied into the test file would
+ * go on passing against a window this one no longer has.
  */
-const SAVE_DEBOUNCE_MS = 400;
+export const SAVE_DEBOUNCE_MS = 400;
 
 /** The keys whose effective visibility governs what the cylinder list may hold. */
 const GAS_KEYS: readonly DiveFormFieldKey[] = [
