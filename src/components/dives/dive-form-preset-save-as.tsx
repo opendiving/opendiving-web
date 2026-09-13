@@ -21,6 +21,15 @@ function findByName(presets: readonly DiveFormPreset[], name: string) {
 
 interface DiveFormPresetSaveAsProps {
   presets: readonly DiveFormPreset[];
+  /**
+   * The name to start in the box - the preset the fields on screen already
+   * match, or `""` for none.
+   *
+   * Read **at mount only**. The dialog recomputes it as switches are flipped and
+   * relies on this component being mounted when it opens, so that the seed is
+   * the set as it was opened on rather than as it stands mid-edit.
+   */
+  initialName: string;
   disabled: boolean;
   /** Save. The name is trimmed and matched already; `existing` is what it named. */
   onSave: (name: string, existing: DiveFormPreset | undefined) => void;
@@ -38,6 +47,14 @@ interface DiveFormPresetSaveAsProps {
  * says which of the two the button is about to do, rather than leaving an overwrite to
  * be discovered.
  *
+ * **It opens on the preset the fields already match**, where they match one, so the
+ * ordinary "I changed two switches and want them saved back" ends in one tap on Save
+ * rather than in retyping a name that is already on the trigger three feet away. The
+ * line under the field then reads "Replaces…", which is the same sentence it would
+ * have shown had the name been typed, and Save is the same button doing the same
+ * thing - nothing here is special-cased for having been seeded. A set matching no
+ * preset opens empty, as it always did.
+ *
  * **Written out rather than reaching for `CreatableCombobox`.** That component commits
  * on blur - unmatched text with no `onCreate` resolves to "clear", and the effect that
  * syncs text from the selected id then empties the field - so typing a new name and
@@ -46,10 +63,13 @@ interface DiveFormPresetSaveAsProps {
  */
 export function DiveFormPresetSaveAs({
   presets,
+  initialName,
   disabled,
   onSave,
 }: DiveFormPresetSaveAsProps) {
-  const [name, setName] = useState("");
+  // Seeded once and then this component's own, which is the whole contract with
+  // `initialName` - see the comment on the prop.
+  const [name, setName] = useState(initialName);
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);

@@ -5,7 +5,10 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { IconTooltip } from "@/components/ui/tooltip";
-import { useVisualViewport } from "@/hooks/useVisualViewport";
+import {
+  useKeepFocusedFieldVisible,
+  useVisualViewport,
+} from "@/hooks/useVisualViewport";
 
 const Dialog = DialogPrimitive.Root;
 const DialogTrigger = DialogPrimitive.Trigger;
@@ -19,7 +22,15 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      // Placed on the visible viewport, not on `inset-0`. The two are the same
+      // box until a phone opens its keyboard, at which point `inset-0` is the
+      // initial containing block - which iOS leaves where it was, sized to a
+      // window the diver is no longer looking at - and the scrim stops short of
+      // the bottom of what is actually on screen, with the page showing through
+      // under it. Same three variables and the same reasoning as the content
+      // below; a scrim that does not cover what the dialog is laid out over has
+      // no second job to fall back on.
+      "fixed inset-x-0 top-[var(--visual-viewport-top)] z-50 h-[var(--visual-viewport-height)] bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className,
     )}
     {...props}
@@ -28,8 +39,10 @@ const DialogOverlay = React.forwardRef<
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
 /**
- * Mirrors `window.visualViewport` onto the CSS variables `DialogContent`
- * positions itself with, for as long as a dialog is open. Renders nothing.
+ * The two things a dialog owes the visible viewport, for as long as it is open:
+ * the CSS variables `DialogOverlay` and `DialogContent` are positioned with, and
+ * a focused field kept inside the box those variables have just resized.
+ * Renders nothing.
  *
  * **A child of the content rather than a hook in `DialogContent`'s body**,
  * because `DialogContent` is rendered by every page that *declares* a dialog,
@@ -38,8 +51,9 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
  * that body meant a dozen of them on the dive form before the diver had touched
  * anything. Children of the content mount and unmount with the portal.
  */
-function VisualViewportVars() {
+function VisualViewportEffects() {
   useVisualViewport();
+  useKeepFocusedFieldVisible();
   return null;
 }
 
@@ -82,7 +96,7 @@ const DialogContent = React.forwardRef<
       )}
       {...props}
     >
-      <VisualViewportVars />
+      <VisualViewportEffects />
       {children}
       {/* `IconTooltip` supplies the `aria-label` the `sr-only` span used to,
           so the cross keeps its name and gains the hover hint every other icon

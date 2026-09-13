@@ -18041,3 +18041,134 @@ hiding that it is not.
 rather than a class string — it resizes the viewport across the `md` breakpoint and asserts 16px
 below and 14px above. The wide half is not ceremony: it fails a "fix" that drops the breakpoint and
 makes every desktop input 16px.
+
+## The overlay is on the visible viewport too, and stopped short of the keyboard without it
+
+`DialogContent` has been positioned against `--visual-viewport-top`/`--visual-viewport-height` since
+the iPhone report above, but `DialogOverlay` was left on `fixed inset-0`, and that turned out to be
+half a fix. `inset: 0` resolves against the initial containing block, which iOS leaves anchored to a
+layout viewport it does not resize when the keyboard opens — so the dialog moved onto what the diver
+could see and the scrim behind it did not. Measured off the report, on a 375×812 phone with the
+keyboard up: the scrim ended roughly 100pt above the top of the keyboard, and the strip in between
+showed the undimmed page — the dive form's Course field, at full brightness, under an open modal.
+
+So the overlay takes the same two variables: `top-[var(--visual-viewport-top)]` and
+`h-[var(--visual-viewport-height)]`, with `inset-x-0` for the width it never had a problem with. It
+is then exactly the box the content is centred inside, by construction rather than by coincidence,
+and the ordinary desktop case is unchanged — with no keyboard the variables are the window, so the
+rect is the `0 → innerHeight` that `inset-0` was already giving.
+
+Worth being explicit that a scrim has no second job to fall back on. A dialog laid out somewhere the
+diver cannot see is a bug you can see; a scrim that misses part of the screen is a bug that looks
+like a rendering artefact, which is why this one survived the fix that was aimed at it.
+
+## The focused field is put back after the dialog resizes, and the waiting is the whole trick
+
+Tapping "Save as" at the foot of the Configure dialog scrolled it out of sight. iOS is not at fault
+and neither is the reveal it does on focus: the field is on screen at the moment of the tap. What
+follows is. `useVisualViewport` mirrors the shrunken viewport, `DialogContent`'s `max-height` drops
+to match, and the content's `scrollTop` is untouched by any of it — so a box showing 780px of a
+1,400px list from offset 603 becomes a box showing 386px from offset 603, which is the _top_ of what
+it was showing. Anything near the foot is now below the fold. `useKeepFocusedFieldVisible`
+(`hooks/useVisualViewport.ts`) re-reveals the focused field once the geometry settles;
+`block: "nearest"` keeps it a correction rather than a jump, and makes the call a no-op on every
+frame where nothing is wrong.
+
+**"Once it settles" is the part that is easy to get wrong, and the first version got it wrong.**
+`DialogContent` carries `transition: all 200ms`, so its `max-height` _animates_ down rather than
+snapping. Two `requestAnimationFrame`s after the event — which looks like plenty — the dialog was
+still 770px of an eventual 388px, the field was comfortably inside it, `nearest` correctly did
+nothing, and nothing looked again. The loop therefore keeps re-revealing each frame until the scroll
+container's height stops changing.
+
+**Stability alone is not a sufficient signal either**, and this is the second trap. "Same height as
+last frame" is true _before_ the transition gets going as well as after it ends, and one frame
+cannot tell those apart — measured, the box sat at its old height for the first two frames and only
+began moving on the third. A loop that trusted the first repeat would give up during that pause
+every time. Hence `MIN_SETTLE_FRAMES`, a floor of 16 frames under the stability test: past the end
+of a 200ms transition at 60Hz, and at the refresh rates where 16 frames is not, the box is still
+visibly moving so the stability test carries the rest. `SETTLE_FRAME_CAP` is the backstop against a
+box that never stops. The unit tests drive a fake container whose height changes on a schedule, and
+one of them pins the late-start case specifically.
+
+It listens to `resize` and never to `scroll`. The visual viewport also scrolls when Safari pans to a
+focused field, and correcting on that is this fighting the browser for the same pixels with the
+diver's finger still down.
+
+## Toasts are swiped away in the direction they already sit
+
+Radix's `swipeDirection` defaults to `right` at every width. `ToastViewport` puts the stack across
+the top of a phone and in the bottom-right corner from `sm` up, so on a phone that default was a
+banner at the top of the screen that could only be flicked sideways — which is not what iOS teaches.
+A notification at the top of an iPhone is flicked _up_. `Toaster` therefore picks the direction from
+the placement: `up` below `sm`, `right` from `sm` up, where the corner makes it natural again.
+
+The width is read with `useSyncExternalStore` over `matchMedia` rather than an effect, so the first
+client render already has the answer and no toast is briefly swipeable the wrong way. Its server
+snapshot is `false` — the narrow layout — because the classes it pairs with are mobile-first, and a
+server that guessed the other way would disagree with the HTML it just sent.
+
+**The swipe classes carry both axes at once**, each with a `0px` fallback:
+`data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x,0px)]` and the `-y` beside it. Radix
+only ever writes the variable for the axis its direction names, so the other resolves to the
+fallback and contributes nothing, and one class string serves both directions with no `sm:` variant
+per property. The fallbacks are not decoration: an unresolved `var()` takes the whole `translate`
+declaration down with it, including the axis that _is_ moving.
+
+Sliding out is the one part that does need the breakpoint, since it follows the corner rather than
+the gesture — `slide-out-to-top-full` on a phone, `sm:slide-out-to-right-full` above. That pair sets
+two _different_ properties, so the `sm:` rule also has to put `--tw-exit-translate-y` back to `0` by
+hand; without it the desktop exit keeps the vertical component the base rule wrote. The enter
+animation has no such problem, both halves of it being vertical.
+
+## A dimmed label has to contain its own ink, or iOS cuts the subscript off
+
+The "O₂" row in the Configure dialog came back from an iPhone with the bottom of its subscript
+sliced off flat, while "ppO₂ limit" one row down — the same glyph, the same font, the same size —
+was untouched. Nothing in the DOM distinguishes them: both labels measure 14px tall with
+`overflow: visible` on every ancestor, and in desktop Chrome both render whole.
+
+Two facts, and the bug is their product. `Label` sets `leading-none`, so at `text-sm` the line box
+is 14px while the text's ink is 17px — every glyph with anything below the baseline hangs ~1.5px
+outside the element's own box, harmlessly, until something paints that box on its own. And the O₂
+row's switch is `disabled`, which is what `peer-disabled:opacity-70` dims the label through. An
+opacity layer is composited, iOS rasterises it to the element's box, and the overhang is discarded
+with it. "Volume" beside it is dimmed too and looks fine — it has nothing below the baseline to
+lose, which is exactly what makes this read as a font problem rather than a layout one.
+
+`Inter` is loaded with `subsets: ["latin"]`, whose unicode-range covers `U+2000-206F` but not the
+Superscripts and Subscripts block at `U+2070-209F`, so `₂` is a fallback-font glyph in the first
+place. That is not the bug — the fallback renders the character correctly — but it is why the ink
+overruns a line box derived from Inter's metrics.
+
+The fix is to size the line box to its contents: `leading-5` on the switch rows, which is 20px, and
+also exactly the switch's own `h-5`, so no row in the list changes height by gaining it. Fixed at
+the rows rather than in `Label` itself, where raising the line height would move every stacked form
+label in the app by 6px to cure a clip only these rows can produce.
+
+## "Save as" opens on the preset the fields already match
+
+Opening Configure on a set that _is_ one of the account's presets and being asked to name it is one
+question too many — the trigger three feet away already reads "Technical". So the box is seeded with
+the matching preset's name, the line beneath it reads "Replaces…", and the ordinary "I flipped two
+switches and want them saved back" is one tap. A set matching nothing opens empty, as before, and
+nothing about Save is special-cased for having been seeded.
+
+**The seed has to be frozen at the moment of opening, and the mount is what freezes it.** The match
+is computed against `visibility.hidden`, which changes the instant a switch is flipped — so a name
+recomputed every render would blank itself on the diver's first edit, which is precisely the edit
+they mean to save back under that name. `DiveFormPresetSaveAs` reads `initialName` into `useState`
+once and owns it thereafter, and it mounts when the dialog opens because `DialogPortal` renders
+`null` while closed. No ref holds anything still; the component's own lifetime does.
+
+The exception is the account's presets still being on the wire at that moment, when there is nothing
+to match against and `""` is not an answer worth keeping. The control is keyed on whether the list
+has resolved, so their arrival remounts it on the real answer. The list is fetched by the Fields
+menu on mount and is normally there long before anyone opens this, which is why one remount in a
+sub-second window is the right price rather than a reason for an effect.
+
+Two earlier shapes are worth recording as dead ends, because both are what you reach for first and
+this repo's lint rejects both: a ref frozen in the dialog's render body (`react-hooks/refs`, "cannot
+access refs during render"), and a `useEffect` that seeds the child when the prop arrives
+(`react-hooks/set-state-in-effect`). Letting the mount do the freezing is shorter than either and
+needs neither rule bent.
