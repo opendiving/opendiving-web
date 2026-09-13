@@ -232,14 +232,35 @@ to, so it is invisible to a self-hoster, and `edge` is not a tag you are asked t
 deploy hook is a notice and a green build, not a failure, so a fork publishes the image and deploys
 nothing.
 
-This repo's part is small: bump `version` in `package.json` in its own PR, titled
-`chore: release v0.4.0`, then tag that bump commit and push the tag. The tag push runs **Publish
-Image**, which compares the tag against the manifest and fails the build if they disagree — so
-nothing is published from a bump and a tag that say different things.
+**Nothing here is bumped or tagged by hand.** A release is one dispatch of
+[Cut the release](https://github.com/opendiving/opendiving/actions/workflows/release-cut.yml) in the
+product repo: it opens a `chore(release): v0.4.0` pull request here, waits for this repo's required
+checks, squash-merges it and pushes `v0.4.0` at the commit that lands — and does the same in
+`opendiving-api` before tagging itself last. Bumping a version or pushing a `v` tag yourself is how
+the _next_ release gets stuck rather than this one: the coordinator refuses when the entries that
+declare a version disagree, or when the newest tag is not what the manifest says, and either of
+those is what a hand-cut release leaves behind.
 
-Everything else — the cadence, how to pick the number, the scanner that finds breaking changes in
-the window, the release notes, the order the three tags go in — lives in the product repo's
-CONTRIBUTING under
+**The bump is more than `package.json`.** `package-lock.json` carries the same number twice, in its
+root object and in its `packages[""]` entry, and `npm ci` is perfectly happy when those disagree
+with the manifest — so a bump that misses them drifts silently instead of turning a check red. The
+coordinator writes all three entries in the one commit.
+
+The tag push runs **Publish Image**, which compares the tag against `package.json` and fails before
+anything reaches the registry if they disagree — so nothing is published from a bump and a tag that
+say different things. Once the images are up it publishes this repository's release at that version,
+with notes generated from the merged PRs and sorted by `.github/release.yml`. It is not a draft and
+nobody finishes it by hand: the release an operator downloads from and reads before upgrading is the
+product one, and this one is the record of what went into the image they pull.
+
+**That release is live before the product's guard runs**, and that is the cost of nobody finishing
+it. The product repo is tagged last so that its own workflow can refuse when either image is missing
+or half-published — but by then this repository has already moved `:latest` and published its
+release, so a refusal there leaves a published `v0.4.0` here for a product version that never
+released. A tag that has published something is never repointed; a bad release gets a successor.
+
+Everything else — the cadence, how to pick the number, what counts as breaking, the release notes,
+and why the three tags go in that order — lives in the product repo's CONTRIBUTING under
 [Cutting a release](https://github.com/opendiving/opendiving/blob/main/CONTRIBUTING.md#cutting-a-release).
 It is deliberately in one place: a decision table kept in three repos drifts apart, and that one is
 the copy self-hosters read.

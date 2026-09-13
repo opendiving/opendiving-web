@@ -10,8 +10,10 @@ name: Publish Image
 # follow; the `deploy` job is what tells that instance a new digest exists.
 #
 # A `v*` tag push is the release path: it publishes the whole alias set for that version
-# and opens a draft release. Tags are cut deliberately - by hand, after bumping
-# `package.json`, which the guard below insists on.
+# and publishes this repository's release. Tags are cut deliberately and no longer by hand:
+# the release coordinator in `opendiving/opendiving` bumps `package.json` and
+# `package-lock.json` through a pull request and tags the commit that lands, and the guard
+# below insists that tag and manifest agree.
 #
 # `workflow_dispatch` is everything else: a staging build off a branch, or rebuilding an
 # already-released version because its base image grew a CVE. That second case is why a
@@ -44,7 +46,7 @@ on:
 
 # `packages: write` is the whole point of the job; `contents: read` is what checkout
 # needs. The GITHUB_TOKEN these grant is also what links the resulting package back to
-# this repository, so no personal access token is involved. The draft release needs
+# this repository, so no personal access token is involved. The release job needs
 # `contents: write`, which is granted to that job alone rather than to everything.
 permissions:
   contents: read
@@ -63,7 +65,7 @@ permissions:
 # the release path, and one shared group would have imposed it there: the release ritual
 # pushes the `v*` tag straight after merging the version bump, so the tag run queues behind
 # that merge's own edge build, and any merge landing meanwhile would cancel the release
-# outright - no `X.Y.Z`, no `X.Y`, no `:latest`, no draft release, and a cancelled check
+# outright - no `X.Y.Z`, no `X.Y`, no `:latest`, no release, and a cancelled check
 # indistinguishable from the dropped-merge case above.
 #
 # A `workflow_dispatch` sits with the releases even when it is launched from `main`, because
@@ -527,9 +529,14 @@ jobs:
   # bundle the product repo (`opendiving/opendiving`) attaches to its own release, and this
   # repo's release is the record of what went into the image they pull. That repo's release
   # is also what verifies this image exists at the version it names.
-  # `.github/release.yml` sorts the PRs by the labels `pr-title.yml` applies; the human
-  # writes the headline and publishes.
-  draft-release:
+  # `.github/release.yml` sorts the PRs by the labels `pr-title.yml` applies, and the notes
+  # go out as generated rather than waiting for a headline. Nobody is standing by to press
+  # publish: the tag that got here was pushed by the release coordinator in
+  # `opendiving/opendiving`, not by a person, and the release a human still finishes by hand
+  # is the product one - the release an operator downloads from and reads before upgrading.
+  # A draft nobody is waiting on is a release nobody sees. DECISIONS.md, "The image builds
+  # once per architecture", carries what that costs.
+  publish-release:
     needs: [prepare, merge]
     if: needs.prepare.outputs.version != ''
     runs-on: ubuntu-latest
@@ -537,7 +544,7 @@ jobs:
       contents: write
 
     steps:
-      - name: Open a draft release
+      - name: Publish the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
@@ -548,4 +555,4 @@ jobs:
             echo "Release $TAG already exists - leaving it as it is."
             exit 0
           fi
-          gh release create "$TAG" --draft --generate-notes --title "$TAG"
+          gh release create "$TAG" --generate-notes --title "$TAG"

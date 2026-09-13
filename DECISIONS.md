@@ -8701,6 +8701,36 @@ a precaution against a future week and started earning its place the same day; f
 ordinary case rather than the one being planned for, and `semantic-title` is one of the required
 checks the `main` ruleset names.
 
+**The release those notes go into is published rather than drafted, and that changed on
+2026-09-13.** It used to be created with `--draft` so somebody could write a headline over the
+generated notes before anyone saw it. Two things ended that. The tag is no longer pushed by a person
+at all — one dispatch of the release coordinator in `opendiving/opendiving` opens the version-bump
+pull request here, merges it, pushes the tag, and does the same in `opendiving-api` before tagging
+itself last — so a draft here waits on a human step the ritual no longer has anywhere to put, and
+the release sits invisible until someone remembers it. And the release worth writing a headline for
+is the product one: it carries the install bundle, it is what an operator downloads from and reads
+before upgrading, and it is still finished by hand. This one is the record of what went into the
+image, which generated notes sorted by `.github/release.yml` state completely.
+
+**What it costs is that this release is live before the product's guard runs**, and that is worth
+stating rather than discovering. The product repository is tagged last precisely so its own workflow
+can refuse when one of the two images is missing or half-published, and that ordering is unchanged —
+but by the time it runs, this repository has already pushed `latest` and now published its release
+too, so a refusal there leaves a published `v0.4.0` here for a product version that never released.
+That is a weaker guard than the one the first release was cut under. It is the accepted price of
+taking the person out of the loop: the alternative was finishing two component drafts by hand on
+every release, at a one-to-four-week cadence, for notes nobody installs from. The genuinely
+free-to-delete guard is still the tag↔manifest check above, which runs before anything is built.
+
+**The job is named `publish-release` rather than `draft-release`.** Nothing referred to it by name —
+it runs only on a `v*` tag push and on the dispatch that rebuilds a released version, so it is no
+ruleset's required check and no other job's `needs:` — and a job id asserting a draft is the stale
+name a reader trusts before they read the step under it. By the paragraph above about the api repo's
+workflow of the same name, a rename here alone would be a drift owed in that direction — so it was
+not done alone. That repository renamed its mirror job on its own branch, in flight alongside this
+one and before either merged, so the two ids never diverged and nothing is owed. A third rename
+costs the same coordination: both files in one go, or neither.
+
 ## The install lives in the product repository, and this README points at it
 
 An install is one compose file, and that file belongs to neither component: it names the `web`
@@ -17248,9 +17278,9 @@ burst is the one deployed, and every commit that is built still carries its own 
 
 **Which is exactly why the group is no longer one group.** The same rule applied to the release path
 is not a dropped edge build but a dropped _release_, and the release ritual walks straight into it:
-`CONTRIBUTING.md` has the version bump merged to `main` and the `v` tag pushed at that commit
+the release coordinator merges the version bump to `main` and pushes the `v` tag at that commit
 immediately afterwards, so the tag run queues behind the bump merge's own edge build - and any merge
-landing while it waits would cancel it. No `X.Y.Z`, no `X.Y`, no `:latest`, no draft release, and a
+landing while it waits would cancel it. No `X.Y.Z`, no `X.Y`, no `:latest`, no release at all, and a
 cancelled check that reads exactly like the dropped merge above. The key is therefore `edge` for a
 push to `main` and `release` for everything else, which keeps the property the single group was
 there for: nothing that can write `:latest` or a version alias runs beside anything else that can. A
