@@ -4,6 +4,7 @@ import {
   MIN_GAP_SECONDS,
   PROFILE_CHANNEL_KEYS,
   type ProfileChannelKey,
+  axisDomain,
   axisUnitSuffix,
   channelWord,
   channelsOnAxis,
@@ -25,6 +26,7 @@ import {
   profileScalePlacement,
   PROFILE_CHANNELS,
 } from "@/lib/dive-profile";
+import { niceDomain } from "@/lib/chart-scale";
 
 function profile(overrides: Partial<DiveProfile> = {}): DiveProfile {
   return {
@@ -167,6 +169,71 @@ describe("depthDomain", () => {
 
     expect(domain.min).toBe(0);
     expect(domain.max).toBeGreaterThanOrEqual(12.65);
+  });
+});
+
+describe("axisDomain", () => {
+  // Not invented numbers: across a 79-dive corpus of Suunto Ocean exports the
+  // surface gradient factor peaks at 173, and four dives report a `gf99` that
+  // violates an inequality no decompression model can violate, reaching 14 060.
+  // DECISIONS.md, *"The percent axis stops at 200 %"*, carries the evidence.
+  const SUUNTO_GF99_PEAK = 14060;
+
+  it("fits an unbounded axis to its readings, as it always did", () => {
+    // A time to surface of 900 minutes is a device saying something strange and
+    // not a fault this chart can name, so nothing caps it: the only axis carrying
+    // a bound is the one whose channels have a known way of being wrong.
+    expect(axisDomain("duration", [0, 18, 900])).toEqual(
+      niceDomain([0, 18, 900]),
+    );
+  });
+
+  it("leaves a percent axis alone while its readings fit under the bound", () => {
+    // The 75 clean dives of the corpus, where the highest surface gradient factor
+    // is 121. Nothing about those charts changes.
+    const readings = [0, 30, 84, 121];
+
+    expect(axisDomain("percent", readings)).toEqual(niceDomain(readings));
+    expect(axisDomain("percent", readings).max).toBeLessThan(200);
+  });
+
+  it("stops a percent axis at 200 % however high the reading goes", () => {
+    expect(axisDomain("percent", [0, 170, SUUNTO_GF99_PEAK])).toEqual({
+      min: 0,
+      max: 200,
+      step: 50,
+    });
+  });
+
+  it("draws the same 200 % band whatever the overrun is", () => {
+    // What a percentile rule cannot promise: on the worst dive the 99th still
+    // yields 2 000 and the 95th yields 400, so adjacent dives would be drawn
+    // against different scales with nothing on screen to say so.
+    expect(axisDomain("percent", [0, 170, 400])).toEqual(
+      axisDomain("percent", [0, 170, SUUNTO_GF99_PEAK]),
+    );
+  });
+
+  it("still gives a band when every reading is above the bound", () => {
+    // Degenerate, and reachable: a row carrying only a gradient factor whose
+    // whole drawn run overran. `niceDomain` on a zero-height range would hand
+    // back a 199-to-201 sliver.
+    expect(axisDomain("percent", [732, SUUNTO_GF99_PEAK])).toEqual({
+      min: 0,
+      max: 200,
+      step: 50,
+    });
+  });
+
+  it("bounds the axis and not the reading", () => {
+    // The property the whole change is for: nothing here touches the values it
+    // was handed. Stated as a test because the temptation is to clamp, which
+    // DiveJSON §5.4 forbids and which would launder a device fault into a
+    // plausible number.
+    const values = [0, 170, SUUNTO_GF99_PEAK];
+    axisDomain("percent", values);
+
+    expect(values).toEqual([0, 170, SUUNTO_GF99_PEAK]);
   });
 });
 
@@ -739,8 +806,10 @@ describe("the deco channels", () => {
 
   it("leaves a gradient factor exactly as the device wrote it", () => {
     // A Suunto Ocean's `gf99` reaches five figures on a decompression ascent.
-    // Clamping it to 100 would be a guess wearing a plausible number, and the
-    // chart's axis is what stretches instead.
+    // Clamping it would be a guess wearing a plausible number, so nothing between
+    // the wire and the readout touches it. The percent *axis* stops at 200 % and
+    // the curve is drawn leaving the row - see `axisDomain` above, which is the
+    // half of this that is allowed to be bounded.
     expect(toChannelSeries(deco, "gradient_factor", "metric")?.values).toEqual([
       0, 12575,
     ]);
