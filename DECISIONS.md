@@ -18041,4 +18041,3 @@ hiding that it is not.
 rather than a class string — it resizes the viewport across the `md` breakpoint and asserts 16px
 below and 14px above. The wide half is not ceremony: it fails a "fix" that drops the breakpoint and
 makes every desktop input 16px.
-
