@@ -17909,3 +17909,33 @@ deliberately not `useResource`'s `refetch`) is gone, and so is the reason it exi
 longer a moment mid-edit when the server's copy of the dive and the form disagree. What it was also
 quietly buying was the confirmation's accuracy, and that is what the paragraphs above are about:
 nothing rebuilt it, because nothing on this side of the wire can.
+
+## A field under 16px zooms an iPhone in, and it stays zoomed
+
+The dive form's dialogs were reported as not fitting an iPhone, and the visual-viewport work above
+is only half of why. The other half is that **iOS Safari zooms the whole page in whenever it focuses
+a field whose computed font-size is under 16px**, and it does not zoom back out afterwards — the
+diver taps the Trip box, the page scales up, and every screen after that is drawn on a visual
+viewport narrower than the layout viewport. A `position: fixed` overlay is laid out against the
+layout viewport, so from then on every dialog is wider than the screen, its padding hanging off both
+edges and its close button past the right one. That is the original screenshot, and no amount of
+`svh` or `visualViewport` arithmetic reaches it: the geometry is right and the page is magnified.
+
+`Input`'s box was `text-sm` — 14px. It is `text-base md:text-sm` now, so a phone gets 16px and
+nothing changes from `md:` up, which is the width this app's density is drawn for. The same edit
+went to `Textarea` and to the month/year `<select>`s in `calendar.tsx`; a `<select>` is a field iOS
+zooms for exactly like a text box, which is what makes the dive form's ppO₂ limit, Role, Usage and
+water type part of this — they are plain `<select>`s wearing `inputClassName`, so `Input`'s change
+reaches them for free. `SelectTrigger` needs nothing: Radix's is a `<button>`, and a button is not a
+field.
+
+**The alternative is a viewport meta, and it is the wrong one.** `maximum-scale=1` or
+`user-scalable=no` suppresses the zoom by taking pinch-zoom away from everybody, which is an
+accessibility regression traded for a layout bug — and iOS has ignored both by default since iOS 10
+anyway, so it would not even work. Sizing the field correctly is the fix; the meta is a way of
+hiding that it is not.
+
+`input.browser.test.tsx` pins it, in the browser lane because the invariant is a measured number
+rather than a class string — it resizes the viewport across the `md` breakpoint and asserts 16px
+below and 14px above. The wide half is not ceremony: it fails a "fix" that drops the breakpoint and
+makes every desktop input 16px.
