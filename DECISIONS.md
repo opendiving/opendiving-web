@@ -1326,10 +1326,11 @@ precision needed fixing to actually display/accept it correctly:
   the input became a plain native `type="number"` - clearing via select-all+delete/backspace already
   works out of the box, so a bespoke clear affordance was redundant.
 
-  (The presets have since been renamed AL/HP/LP and split by unit system, so the `11.1 L (S80)`
-  above reads `11.1 L (AL80)` now, and "always shows every preset" means every preset offered to the
-  reader's system - see "Cylinder presets are named AL/HP/LP, and the list depends on the unit
-  system" at the end of this file.)
+  (The presets have since been renamed AL/HP/LP and sorted under group headings, so the
+  `11.1 L (S80)` above reads `11.1 L (AL80)` now and sits under one of them. "Always shows every
+  preset" still holds literally: every preset is offered to every diver whatever their unit system,
+  and the headings are what keep the full list browsable. See "Cylinder presets are named AL/HP/LP,
+  and every one of them is offered in both systems" at the end of this file.)
 
 - `dives/[id]/page.tsx`'s dive-detail view displayed `mixture.oxygen.toFixed(1)}%` but
   `mixture.helium}%` with no formatting at all - inconsistent with each other, and the `toFixed(1)`
@@ -7343,12 +7344,12 @@ page component. No synthetic row, and therefore no special case anywhere downstr
 `buildDiveUpdate`: omit `mixtures` when the dive arrived with none _and_ the field still holds one
 pristine `DEFAULT_MIXTURE`. `DEFAULT_MIXTURE`'s `volume: 11.1` is the `"11.1 L (S80)"` preset — an
 aluminium 80 of air, the most common recreational cylinder there is (spelled `"11.1 L (AL80)"` since
-"Cylinder presets are named AL/HP/LP, and the list depends on the unit system", and still 11.1 L). A
-guard keyed on value-equality with it makes exactly that cylinder unsavable: leave the row alone and
-it is dropped, type 11.2 and back to 11.1 and it is still dropped. It would also put a page-specific
-question back into `buildDiveUpdate` in the same change that took one out, and its natural unit test
-compares `DEFAULT_MIXTURE` against `DEFAULT_MIXTURE`, so it cannot detect the drift that would break
-it.
+"Cylinder presets are named AL/HP/LP, and every one of them is offered in both systems", and still
+11.1 L). A guard keyed on value-equality with it makes exactly that cylinder unsavable: leave the
+row alone and it is dropped, type 11.2 and back to 11.1 and it is still dropped. It would also put a
+page-specific question back into `buildDiveUpdate` in the same change that took one out, and its
+natural unit test compares `DEFAULT_MIXTURE` against `DEFAULT_MIXTURE`, so it cannot detect the
+drift that would break it.
 
 **Two things this needed were already here.** `MixtureFields` renders `mixtures: []` cleanly and
 says "No cylinders recorded for this dive." over it, and its per-tank Trash button has no
@@ -7897,9 +7898,9 @@ with the cu-ft name a diver already uses: "11.1 L (S80)" becomes "S80 (11.1 L)".
 is the revisit point.
 
 (Both halves of that have moved on. The relabel now reads "AL80 (11.1 L)", and it is no longer the
-_only_ thing imperial mode does here - which presets are offered depends on the system too. See
-"Cylinder presets are named AL/HP/LP, and the list depends on the unit system" at the end of this
-file.)
+_only_ thing imperial mode does here - the order the preset groups appear in depends on the system
+too, though which presets are offered does not. See "Cylinder presets are named AL/HP/LP, and every
+one of them is offered in both systems" at the end of this file.)
 
 **Spacing and precision were unified as a side effect, and both were previously inconsistent.**
 Display sites split between `{v}m` and `{v} m` - the Environment sidebar rendered both, two cards
@@ -15947,8 +15948,8 @@ in the position its own function checks the volume in:
 "Size", not "volume", in all three: the box is labelled **Volume (L)** and a diver reads that as the
 gas in the cylinder as often as the cylinder itself, which is exactly the confusion that makes an
 S80 "80 cubic feet" and 11.1 L at once. (That cylinder is spelled AL80 in the app now, for a related
-reason - see "Cylinder presets are named AL/HP/LP, and the list depends on the unit system" at the
-end of this file.)
+reason - see "Cylinder presets are named AL/HP/LP, and every one of them is offered in both systems"
+at the end of this file.)
 
 **What did _not_ change, and was tempting.** `diveModWarning`'s multi-cylinder branch still leaves a
 cylinder with no usable oxygen fraction out of the deepest-capable maximum rather than falling
@@ -18417,7 +18418,7 @@ separate commit for that reason: if a phone says otherwise, revert that one and 
 section still holds. The `keepOpenOnSelect` half of the condition is outside the bracket either way
 — nothing about it is device-specific.
 
-## Cylinder presets are named AL/HP/LP, and the list depends on the unit system
+## Cylinder presets are named AL/HP/LP, and every one of them is offered in both systems
 
 `VolumeCombobox` offered the US aluminium cylinders as `S50`/`S63`/`S72`/`S80`/`S100`. That is a
 real name — it is the model prefix Luxfer and Catalina stamp on their scuba line, and since both of
@@ -18449,16 +18450,31 @@ all. **No data path is needed for the correction.** A stored dive keeps whatever
 picked, and nothing outside this file reads these numbers — `DEFAULT_MIXTURE` uses 11.1, which is
 unchanged. The correction is to what is offered, never to what is recorded.
 
-**The list is units-aware, which is new for this field.** Adding the missing common cylinders — the
-AL40 stage bottle, five HP steels, four LP steels, a 7 L and two European twin sets — roughly
-doubled the table, and most of the additions are noise to whichever half of the world does not dive
-them. So `volumeOptionsFor` splits it: the metric singles and twins in metric mode, the AL/HP/LP
-sizes and the imperial doubles in imperial, each landing around fifteen entries. The AL40 and the
-AL80 are the only two offered in both, being what a metric diver meets on a rental boat abroad. This
-is what lets the dropdown keep showing every preset unfiltered, which was only ever defensible while
-the list was short enough to browse. Membership is all it decides: the stored value is litres in
-either mode, and any number can still be typed, so a preset missing from a diver's list costs them
-one click and nothing else.
+**The list was made units-aware, and that was wrong. It is recorded here because it shipped.**
+Adding the missing common cylinders — the AL40 stage bottle, five HP steels, four LP steels, a 7 L
+and two European twin sets — took the table to 27 entries, and #212 split it with a `showIn` field
+and a `volumeOptionsFor` filter: the metric sizes to metric divers, the AL/HP/LP sizes to imperial
+ones, around fifteen each. The argument was that the other half of the world's cylinders are noise.
+That argument has the audience backwards, and the owner's objection is the shortest statement of it:
+_"if I use metric and dive in a place with imperial tanks, I have no idea how many liters they are
+and don't see them in the dropdown."_ It cuts both ways — an imperial diver handed a 12 L in Croatia
+is stuck identically.
+
+**A named preset exists for the diver who does not know the cylinder.** Someone who dives AL80s
+every weekend does not need a row telling them an AL80 is 11.1 L; they know, and they can type it.
+The row earns its place for the traveller handed an unfamiliar tank on a boat, and a filter keyed on
+the diver's own unit system hides it from exactly that person and from nobody else. It is the rare
+filter that removes a list's entire value while looking like a tidy-up. Every preset is offered in
+both systems now; `showIn` and `volumeOptionsFor` are gone.
+
+**Grouping is what keeps 27 rows browsable**, which is the job the split was wrongly doing. The
+dropdown carries four headings — Metric singles, Twin sets, US aluminium, US steel — and
+`volumeGroupsFor` puts the reader's own two first, so the _order_ depends on the unit system while
+membership never does. Headings are not options: they are `aria-hidden` labels on a `role="group"`
+wrapper and hold no index, which is what makes the arrow keys step over them without a special case
+in `nextActiveIndex`. Within a group the order is ascending litres, except US steel, which runs HP
+then LP in nominal cu ft — a diver reaches for one family or the other, so HP130 at 16 L sitting
+above LP85 at 13 L is the right break.
 
 **Two presets share a value, so the list is keyed by label.** The HP117 and the LP95 are both 15.0 L
 — they differ by working pressure, which the mixture does not record. `key={option.value}` gave
