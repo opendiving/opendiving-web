@@ -360,19 +360,31 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
           left the other half in its column with an empty one beside it, which
           reads as a field that failed to load; a single grid lets auto-flow
           pack whatever survives from the left, so a hidden field costs a slot
-          and not a hole. With all six visible the rows are what they always
-          were - depth, temperature and visibility, water and altitude.
+          and not a hole. With all six visible the rows hold what they always
+          held - depth, temperature and visibility, water and altitude - and
+          sit where they always sat, which is what the row gap below is for.
 
           An odd number visible leaves one field half-width on the last row.
           That is accepted and deliberately not spanned: a ragged bottom edge
-          reads as the end of a list, a gap in the middle reads as breakage. */}
+          reads as the end of a list, a gap in the middle reads as breakage.
+
+          `gap-y-6` rather than `gap-4`'s 1rem, because these rows used to be
+          three separate children of the form's `space-y-6` and the 1.5rem
+          between them was the form's own rhythm, not a pair's. Merging them
+          into one grid would otherwise tighten the whole card by 8px a row
+          while every other block boundary stayed where it was. The column gap
+          is still 1rem, so a visible row is pixel-identical to the one it
+          replaces. On a phone the six stack at 1.5rem where the old pairs
+          stacked at 1rem inside themselves - one grid has one row gap, and
+          after this merge there are no pairs left for the tighter one to mean
+          anything about. */}
       {(isVisible("max_depth") ||
         isVisible("avg_depth") ||
         isVisible("bottom_temperature") ||
         isVisible("visibility") ||
         isVisible("water_type") ||
         isVisible("altitude")) && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-6">
           {isVisible("max_depth") && (
             <FormField
               control={control}

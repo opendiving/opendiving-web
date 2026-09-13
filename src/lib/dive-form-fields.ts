@@ -101,19 +101,25 @@ export const NON_HIDEABLE_MIXTURE_SCHEMA_KEYS = [
 /**
  * The form's own field groups, in the order the form renders them.
  *
- * **A group is a run of one or more adjacent blocks of `dive-form-fields.tsx`**, in the
- * order the form renders them. Never part of a block, and never a reordering: that is
- * what makes a diver looking for a field in the dialog find it where they would look for
- * it on the form, and it is the invariant to preserve when either side moves.
+ * **The dialog lists fields in the order the form renders them**, and that order is the
+ * invariant to preserve when either side moves: it is what makes a diver looking for a
+ * field in the dialog find it where they would look for it on the form. Headings mark
+ * runs of that one order; they never reorder it and never interleave.
  *
- * Three groups currently span more than one block, each because the form's rows are
- * finer-grained than a diver's idea of the subject. A block is a row, and a row exists
- * where a set of fields has to appear and disappear together; a heading exists where a
- * diver would go looking. "Trip, course & site" covers the trip/course pair and the dive
- * site below it. "Dive info" covers the dive number, the date-and-time row and the depth
- * pair. "Environment" covers the temperature/visibility row and the water/altitude one.
- * Splitting any of them into a heading per row would offer more choices than there are
- * decisions to make.
+ * This used to be stated in terms of blocks - "a group is a run of adjacent blocks,
+ * never part of one" - where a block was a row, and a row was a set of fields that had
+ * to appear and disappear together. The readings grid ended that: max depth, average
+ * depth, bottom temperature, visibility, water type and altitude share one grid in
+ * which each hides on its own and the survivors reflow, so there is no row-sized unit
+ * left for a heading to align to, and "Dive info" and "Environment" would each own part
+ * of the same one. What the block rule was protecting is the order, so the order is what
+ * this now says. See "Hidden dive-form fields leave a ragged edge, never a hole" in
+ * `DECISIONS.md`.
+ *
+ * Headings are still coarser than the form's rows, deliberately. "Trip, course & site"
+ * covers the trip/course pair and the dive site below it; "Dive info" covers start time,
+ * the dive number/duration pair and the two depths; "Environment" covers the other four
+ * readings. A heading per row would offer more choices than there are decisions to make.
  *
  * Groups carried only by always-on rows are listed anyway - a gap where Start time should
  * be reads as a field that went missing.
@@ -194,8 +200,10 @@ export const DIVE_FORM_ALWAYS_ON_FIELDS: readonly {
   label: string;
   group: DiveFormFieldGroup;
 }[] = [
-  { label: "Dive number", group: "Dive info" },
+  // Form order, which is the invariant above: Start time is its own row, and Dive
+  // number and Duration are the pair below it, left to right.
   { label: "Start time", group: "Dive info" },
+  { label: "Dive number", group: "Dive info" },
   { label: "Duration", group: "Dive info" },
   { label: "Volume", group: "Gas mixtures" },
   { label: "O₂", group: "Gas mixtures" },

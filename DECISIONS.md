@@ -16336,6 +16336,17 @@ The rule has already been restated wrongly once — as "one block per group, wit
 exception" — and was false again within a day, so `DIVE_FORM_FIELD_GROUPS`' own doc states the run
 rule rather than a count, and the exceptions are named there in one place.
 
+**The block half of that rule is gone, and only the order half survives** — see "Hidden dive-form
+fields leave a ragged edge, never a hole" below. The readings merged into one grid where each of the
+six hides independently, so "a row exists where a set of fields has to appear and disappear
+together" no longer picks out anything: there is no row-sized unit for a heading to align to, and
+"Dive info" and "Environment" each own part of the same grid, which is precisely what "never part of
+one" forbade. What that clause was protecting is the order — a diver finds the field in the dialog
+where they would look for it on the form — and the order is intact and still the invariant. The
+paragraphs above are left standing because they are the reasoning that produced the surviving half,
+and because this rule has now been restated wrongly twice; `DIVE_FORM_FIELD_GROUPS`' doc carries the
+current statement, as it always has.
+
 **`mixtures` leads its group rather than following the always-on cylinder columns.** It is the
 switch that decides whether the Gas Mixtures section is on the form at all, and every other row
 under that heading is downstream of it — the always-on columns as much as the per-cylinder ones the
@@ -18533,9 +18544,19 @@ this described it exactly as it looks: fields that failed to load.
 the whole decision. The six readings — both depths, bottom temperature, visibility, water type,
 altitude — are now one grid guarded by "any of the six visible", and CSS grid auto-flow packs
 whatever survives from the left. A hidden field costs a slot, so the fields after it move up, and
-nothing is ever left staring at an empty column. With everything visible the rows are identical to
-what they were. An odd number visible leaves one field half-width at the bottom, and that is
-accepted rather than spanned: the eye reads a ragged bottom edge as the end of a list.
+nothing is ever left staring at an empty column. An odd number visible leaves one field half-width
+at the bottom, and that is accepted rather than spanned: the eye reads a ragged bottom edge as the
+end of a list.
+
+**The merged grid is `gap-x-4 gap-y-6`, and the split axes are the point.** Those three rows used to
+be three separate children of the form's `space-y-6`, so the 1.5rem between them belonged to the
+form's rhythm rather than to any pair. A plain `gap-4` would have quietly pulled every reading row
+8px closer than every other block boundary on the card — a change to the everything-visible case,
+which this work was supposed to leave alone. With the row gap restored and the column gap still
+1rem, a visible row is pixel-identical to the one it replaces. The one thing that does move is the
+phone: six fields stacking at 1.5rem where the old pairs stacked at 1rem within themselves. A grid
+has one row gap, and after this merge there are no pairs for a tighter one to be about — so it
+matches the rest of the single-column form, which is the better answer of the two available.
 
 **Dive number got a permanent partner instead of a span.** It sat alone in a two-column grid on
 purpose — full width would have made the form's one always-present field its widest, and a number
@@ -18546,6 +18567,14 @@ Duration moved up from under Start time to make it. The alternative, `md:[&>:onl
 on the lone grid, would have stretched a number input across the card whenever it was by itself,
 which is the thing the lone grid existed to prevent — a span is only right where the widened field
 reads well wide.
+
+**Moving Start time above the pair moved it in the Fields dialog too.** `DIVE_FORM_ALWAYS_ON_FIELDS`
+is what the dialog renders for the rows a diver cannot switch off, in array order, and it still read
+`Dive number, Start time, Duration` — the form's old order. Nothing in the suite pins that list
+against the form, and nothing can cheaply: the dialog's order is an array and the form's is JSX. So
+it is a hand-checked invariant, and the check is the one in `DIVE_FORM_FIELD_GROUPS`' doc — the
+dialog lists fields in the order the form renders them. Whoever moves a row on one side owes the
+other side the same move.
 
 **Trip is that case, so Trip does get the span.** With Course hidden the Trip/Course grid has one
 child, and `md:[&>:only-child]:col-span-2` widens it; a full-width combobox sits directly above the
