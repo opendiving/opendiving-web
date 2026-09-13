@@ -315,4 +315,39 @@ describe("DiveRecordingFiles", () => {
       screen.getByText(/the figures the dive computer recorded are cleared/i),
     ).toBeVisible();
   });
+
+  it("describes the second mark against what the save will actually leave", async () => {
+    // The half deferring the deletion took away. With one file of this
+    // recording already struck off, deleting the other one takes the whole
+    // recording - and the unfiltered list, which still holds both, would have
+    // the dialog describe the smaller outcome instead.
+    render(
+      <DiveRecordingFiles
+        recordings={[
+          recording({
+            files: [
+              file({ uuid: "gone", original_filename: "ocean.fit" }),
+              file({ uuid: "last", original_filename: "ocean.json" }),
+            ],
+          }),
+        ]}
+        pending={[]}
+        onRemovePending={vi.fn()}
+        removedStored={["gone"]}
+        onRemoveStored={vi.fn()}
+        onRestoreStored={vi.fn()}
+      />,
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Delete ocean.json" }),
+    );
+
+    expect(
+      screen.getByRole("heading", {
+        name: "Delete this file and its recording?",
+      }),
+    ).toBeVisible();
+    expect(screen.getByText(/the whole recording goes with it/i)).toBeVisible();
+  });
 });

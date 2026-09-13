@@ -55,6 +55,38 @@ interface DiveRecordingFilesProps {
 }
 
 /**
+ * The dive's recordings as the save will find them: the files already marked
+ * for removal taken out of them.
+ *
+ * **What the confirmation has to be computed against**, and the thing deferring
+ * the deletion took away. `deleteFileConfirmation` decides which of its three
+ * outcomes to describe from `recording.files.length`, and the immediate delete
+ * this replaces kept that honest by re-reading the dive after every one. Mark
+ * the second-to-last file of a recording and then open the dialog on the last,
+ * and the unfiltered list still holds two - so the one dialog whose whole
+ * purpose is telling "the recording keeps its other files" from "the recording
+ * goes with it" would describe the smaller of the two.
+ *
+ * Files rather than whole recordings, deliberately. A recording every one of
+ * whose files is marked comes through with `files: []`, which is the right
+ * answer to `figuresSentence`'s question about a successor - one holding no
+ * file clears the dive's computer figures. Dropping it from the list outright
+ * would be this component predicting *which* recording the server promotes
+ * next, which is the second implementation of the server's rules that
+ * `deleteFileConfirmation` is written to avoid.
+ */
+function asTheSaveWillFindThem(
+  recordings: Recording[],
+  removed: Set<string>,
+): Recording[] {
+  if (removed.size === 0) return recordings;
+  return recordings.map((recording) => ({
+    ...recording,
+    files: recording.files.filter((file) => !removed.has(file.uuid)),
+  }));
+}
+
+/**
  * The shared consequence text, with the one thing that is true only on a form
  * added to it: none of it happens yet.
  *
@@ -126,7 +158,10 @@ export function DiveRecordingFiles({
         <ConfirmDialog
           open
           onOpenChange={(open) => !open && setPendingDeletion(null)}
-          {...removeFileConfirmation(recordings, pendingDeletion.file.uuid)}
+          {...removeFileConfirmation(
+            asTheSaveWillFindThem(recordings, removed),
+            pendingDeletion.file.uuid,
+          )}
           confirmText="Delete"
           onConfirm={confirmDelete}
         />

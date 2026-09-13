@@ -6398,9 +6398,9 @@ handles on purpose.
 **One finger belongs to the page, two fingers to the map.** `touch-action: none` is what a map wants
 — it is the only way a one-finger drag reaches a pan handler instead of scrolling — and it is what
 `useDragSort` correctly uses for a drag handle a few pixels tall. A map is not a drag handle. This
-one sits inside a `max-h-[90vh] overflow-y-auto` dialog and covers a large share of it on a phone,
-so claiming the vertical axis leaves a thumb landing on the map unable to reach Notes or Save at
-all. Scrolling _past_ a control beats panning _within_ it. So the surface keeps
+one sits inside a dialog that scrolls within a capped height and covers a large share of it on a
+phone, so claiming the vertical axis leaves a thumb landing on the map unable to reach Notes or Save
+at all. Scrolling _past_ a control beats panning _within_ it. So the surface keeps
 `touch-action: pan-y`, a lone finger scrolls the dialog, and two fingers pan and pinch-zoom — the
 bargain every embedded map makes. A one-finger drag is not silently ignored: it raises a brief "use
 two fingers to move the map", because a gesture that does nothing and says nothing reads as broken.
@@ -10212,11 +10212,13 @@ never fires it, and no window `resize` listener exists to poke either (it regist
 `ResizeObserver` is undefined). So the wrong numbers are the ones the dialog keeps.
 
 The fix is `data-[state=open]:zoom-in-100 data-[state=closed]:zoom-out-100` on this one
-`DialogContent`. Fade and slide stay — a translation moves the box without changing the width and
-height that are read from it. Passing an explicit `cropSize` looks like the more surgical fix and is
-not one: `computeSizes` still derives the media's rendered size from the same scaled rect, so the
-percentages stay wrong and merely clamp at 100 instead. Deferring the mount until the animation ends
-would also work, at the price of an event that has to fire or the cropper never appears.
+`DialogContent`. The fade stays — opacity does not change the width and height that are read from
+the box. So did the slide, on the same grounds, until the shared dialog stopped translating itself
+into place (_"The dialog is centred in the visual viewport, not in `100vh`"_). Passing an explicit
+`cropSize` looks like the more surgical fix and is not one: `computeSizes` still derives the media's
+rendered size from the same scaled rect, so the percentages stay wrong and merely clamp at 100
+instead. Deferring the mount until the animation ends would also work, at the price of an event that
+has to fire or the cropper never appears.
 
 The dependency was worth taking. It is MIT, has one runtime dependency (`normalize-wheel`), gives
 pinch and touch for free, and its peer range has been an open `react >= 16.4.0` since 2019, so React
@@ -16638,14 +16640,19 @@ device's own counter — server-side, over the bytes, on rules the browser has n
 thing the client decides is what to do about a match against a _different_ dive, which is a question
 for the diver (`DiveFileImport`'s match dialog) rather than for either machine.
 
-`onDeleteStored` is the asymmetric half. A pending file is removed locally with no dialog —
-unpicking a file is the diver correcting themselves — while a stored one is deleted immediately,
-behind a confirm, because it is already on the server and there is nothing for a save to confirm or
+**Superseded from here to the end of this section** — a stored file is now struck off and deleted
+with the save, see _"The edit form deletes a stored file on save, beside the attaches"_ below. The
+asymmetry described here is gone along with the re-read the subsection is about; both are kept
+because the `refetch` trap below is a live hazard anywhere else on that page.
+
+`onDeleteStored` was the asymmetric half. A pending file is removed locally with no dialog —
+unpicking a file is the diver correcting themselves — while a stored one was deleted immediately,
+behind a confirm, because it is already on the server and there was nothing for a save to confirm or
 for Cancel to undo.
 
 ### Deleting a stored file re-reads the dive without `useResource`'s `refetch`
 
-The edit page calls `divesAPI.getDive` and `setResource` by hand after a delete. `refetch` looks
+The edit page called `divesAPI.getDive` and `setResource` by hand after a delete. `refetch` looks
 like the obvious call and is wrong here: it re-runs `onLoaded`, which on that page is
 `resetFromDive` → `form.reset(values)` — so a diver who had retyped a depth and then removed a file
 would have watched the edit vanish, with no error and nothing to blame.

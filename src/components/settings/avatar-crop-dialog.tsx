@@ -74,8 +74,10 @@ export function AvatarCropDialog({
           `ResizeObserver`, which watches the layout box and so never fires when
           only an ancestor transform changes. The mask is then drawn 5% small while
           the exported crop is computed as 100% of the media, which is the mask and
-          the saved picture disagreeing. Fade and slide are kept - a translation
-          does not change the reported width or height. */}
+          the saved picture disagreeing. The fade is kept: opacity does not change
+          the reported width or height either. The shared dialog used to slide as
+          well, and that was kept on the same grounds - it centres with flexbox
+          now and no longer does. */}
       <DialogContent className="data-[state=open]:zoom-in-100 data-[state=closed]:zoom-out-100">
         <DialogHeader>
           <DialogTitle>Adjust your photo</DialogTitle>
