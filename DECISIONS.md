@@ -18519,3 +18519,39 @@ apart by.
 hint and nothing more. A diver with the Worthington HP100 rather than the Faber types 11.6
 themselves, which this field has always allowed — that is the escape hatch that lets the preset
 table stay a short list of the common cases instead of growing into a cylinder database.
+
+## Hidden dive-form fields leave a ragged edge, never a hole
+
+Every optional field on the dive form can be switched off in the Fields dialog, and the form was
+built as fixed pairs — Trip | Course, Max depth | Avg depth, Bottom temperature | Visibility, Water
+type | Altitude — each in its own `grid grid-cols-1 md:grid-cols-2 gap-4`. Hiding one half of a pair
+left the other half in its own column with an empty one beside it. A diver who hid Course, Average
+depth and Visibility got four half-width fields each trailing a gap, and the report that started
+this described it exactly as it looks: fields that failed to load.
+
+**A gap in the middle of a form reads as breakage; a short last row does not.** That asymmetry is
+the whole decision. The six readings — both depths, bottom temperature, visibility, water type,
+altitude — are now one grid guarded by "any of the six visible", and CSS grid auto-flow packs
+whatever survives from the left. A hidden field costs a slot, so the fields after it move up, and
+nothing is ever left staring at an empty column. With everything visible the rows are identical to
+what they were. An odd number visible leaves one field half-width at the bottom, and that is
+accepted rather than spanned: the eye reads a ragged bottom edge as the end of a list.
+
+**Dive number got a permanent partner instead of a span.** It sat alone in a two-column grid on
+purpose — full width would have made the form's one always-present field its widest, and a number
+box is the last thing that should be — but alone in a pair grid is exactly the empty column above.
+Duration is the fix: `dive_number`, `start_time` and `duration` are the three fields with no
+`isVisible` guard, so a Dive number | Duration row is the one pair no visibility choice can break.
+Duration moved up from under Start time to make it. The alternative, `md:[&>:only-child]:col-span-2`
+on the lone grid, would have stretched a number input across the card whenever it was by itself,
+which is the thing the lone grid existed to prevent — a span is only right where the widened field
+reads well wide.
+
+**Trip is that case, so Trip does get the span.** With Course hidden the Trip/Course grid has one
+child, and `md:[&>:only-child]:col-span-2` widens it; a full-width combobox sits directly above the
+full-width dive site picker and matches it. The `md:` prefix is not optional — below that breakpoint
+the grid is one column and `col-span-2` would invent a second, leaving the field half-width on a
+phone. `FormField` renders `FormItem` as the grid's direct child, which is what makes `:only-child`
+resolve to the surviving field rather than to something inside it. This is the only grid in the form
+carrying the class, and the readings grid deliberately does not: packing already solves it there,
+and a span would fight the auto-flow.
