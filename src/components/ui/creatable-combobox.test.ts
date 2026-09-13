@@ -4,6 +4,7 @@ import {
   clampActiveIndex,
   commitAction,
   emptyMenuLabel,
+  menuQuery,
   nextActiveIndex,
   searchDelayMs,
   visibleItems,
@@ -77,6 +78,40 @@ describe("searchDelayMs", () => {
     // The override must not creep into the one query that has nothing to
     // coalesce, or the slower picker gets a slower-appearing menu too.
     expect(searchDelayMs("", 450)).toBe(0);
+  });
+});
+
+describe("menuQuery", () => {
+  it("is nothing while the text is a selection the component wrote", () => {
+    // The bug this exists for: with the trip already chosen, the input holds
+    // "Dahab 2025", and searching for that returned the one trip already
+    // selected - so changing it meant clearing the field first.
+    expect(menuQuery({ text: "Dahab 2025", typed: false })).toBe("");
+  });
+
+  it("is the typed text once the diver types", () => {
+    expect(menuQuery({ text: "dah", typed: true })).toBe("dah");
+  });
+
+  it("trims what it hands on", () => {
+    // Every consumer compares it against a trimmed `searchedQuery`/`failedQuery`,
+    // so a stray space would read as an unanswered query for as long as it stood.
+    expect(menuQuery({ text: "  dah  ", typed: true })).toBe("dah");
+  });
+
+  it("is nothing for an emptied field either way", () => {
+    // Backspacing to nothing is still "typed", and asks for the same unfiltered
+    // list the menu opens on.
+    expect(menuQuery({ text: "", typed: true })).toBe("");
+    expect(menuQuery({ text: "   ", typed: true })).toBe("");
+    expect(menuQuery({ text: "", typed: false })).toBe("");
+  });
+
+  it("opens the whole list for text that matches nothing, unless it was typed", () => {
+    // `typed` is about *who wrote the text*, not about whether it looks like a
+    // name - a selection whose item has been renamed elsewhere still opens whole.
+    expect(menuQuery({ text: "Zqxwv", typed: false })).toBe("");
+    expect(menuQuery({ text: "Zqxwv", typed: true })).toBe("Zqxwv");
   });
 });
 

@@ -76,6 +76,29 @@ export function searchDelayMs(
   return query ? debounceMs : 0;
 }
 
+// The query the menu is actually about.
+//
+// A selection is not a query. Once a pick - or the sync-from-`value` effect -
+// has written the chosen item's name into the input, that text is a *label*, and
+// filtering on it left the menu showing the one row already selected (plus
+// anything else containing its name), so changing a trip meant clearing the
+// field first. Opening shows the whole list; it narrows from the moment the
+// diver types.
+//
+// Keyed on a flag rather than on "the text still equals the selected name",
+// because `handleInputChange` selects an exact match as it is keyed in: under
+// that rule, typing a name out in full would throw the menu back to the
+// unfiltered list on the last keystroke.
+export function menuQuery({
+  text,
+  typed,
+}: {
+  text: string;
+  typed: boolean;
+}): string {
+  return typed ? text.trim() : "";
+}
+
 // The options the menu actually shows.
 //
 // `alreadyFiltered` is set in remote mode, where the server has applied the
@@ -335,6 +358,9 @@ export function CreatableCombobox({
   "aria-invalid": ariaInvalid,
 }: CreatableComboboxProps) {
   const [inputValue, setInputValue] = useState("");
+  // Whether the text in the field is the diver's own rather than something this
+  // component wrote there. See `menuQuery`, which is the only thing that reads it.
+  const [typed, setTyped] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   // Index of the keyboard-highlighted option, or -1 for none. Counts the
@@ -377,6 +403,14 @@ export function CreatableCombobox({
   });
   const isRemote = Boolean(onSearch);
 
+  // Every text-vs-query comparison below keys on this rather than on
+  // `inputValue`: the search it fires, the local filter, the two "is this
+  // answered yet" derivations, and what an empty menu says. Leaving any one of
+  // them on the raw text puts it out of step with the search that actually ran -
+  // `searchPending` would compare an empty `searchedQuery` against the selected
+  // trip's name and report "Searching..." for as long as the menu was empty.
+  const query = menuQuery({ text: inputValue, typed });
+
   // Ask the server for matches while the menu is open, restarting the timer on
   // every keystroke. Opening the menu runs it once with an empty query, which is
   // what fills the initial (unfiltered, server-truncated) list.
@@ -384,7 +418,6 @@ export function CreatableCombobox({
     if (!isRemote || !isOpen) return;
 
     let cancelled = false;
-    const query = inputValue.trim();
     const timer = setTimeout(
       async () => {
         setIsSearching(true);
@@ -416,7 +449,7 @@ export function CreatableCombobox({
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [isRemote, isOpen, inputValue, searchDebounceMs]);
+  }, [isRemote, isOpen, query, searchDebounceMs]);
 
   // Keep the displayed text in sync with the selected id whenever it changes
   // from outside (e.g. loading an existing record into the form), as long as
@@ -438,8 +471,7 @@ export function CreatableCombobox({
   // which is what the empty menu says so. Derived, so a new query silently drops
   // the previous one's failure the moment it differs, without an effect to keep
   // in step - the alternative reports an outage for a query nobody has tried.
-  const searchFailed =
-    failedQuery !== null && failedQuery === inputValue.trim();
+  const searchFailed = failedQuery !== null && failedQuery === query;
 
   // Whether the text in the field is still waiting on an answer - which covers
   // the debounce as well as the request, and `isSearching` does not: that only
@@ -448,7 +480,7 @@ export function CreatableCombobox({
   // as text", inviting a diver to file "Bohol" as name-only text for a place the
   // geocoder knows perfectly well. Same mistake as reporting on a query too
   // short to send, arriving one branch further along.
-  const searchPending = isRemote && searchedQuery !== inputValue.trim();
+  const searchPending = isRemote && searchedQuery !== query;
 
   useEffect(() => {
     if (isOpen) return;
@@ -461,6 +493,7 @@ export function CreatableCombobox({
       (selectedItem?.id === value ? selectedItem : null) ??
       (lastSelectedRef.current?.id === value ? lastSelectedRef.current : null);
     setInputValue(match ? match.name : "");
+    setTyped(false);
   }, [value, availableItems, selectedItem, isOpen]);
 
   // One effect rather than a call beside each `setInputValue`: the field's text
@@ -477,7 +510,7 @@ export function CreatableCombobox({
 
   const filteredItems = visibleItems({
     items: availableItems,
-    query: inputValue,
+    query,
     alreadyFiltered: isRemote,
     excludeIds,
   });
@@ -508,8 +541,46 @@ export function CreatableCombobox({
     optionRefs.current[activeOption]?.scrollIntoView({ block: "nearest" });
   }, [activeOption]);
 
+  // And do the same once for the selected row when the menu opens on one. The
+  // list is no longer filtered down to it (see `menuQuery`), so the trip a dive
+  // is already filed under can sit anywhere in it - below the fold, as far as
+  // the diver can tell absent. Nothing is *highlighted*: `activeIndex` stays -1
+  // so Enter keeps its "commit the text" meaning, and the row is found by its
+  // own `bg-accent/50`.
+  //
+  // Once per opening, and only until the rows exist - in remote mode they land a
+  // round trip after `isOpen` goes up, and after that the diver's own scrolling
+  // owns the position. A keyboard highlight takes over from the effect above.
+  const scrolledToSelection = useRef(false);
+  useEffect(() => {
+    if (!isOpen) {
+      scrolledToSelection.current = false;
+      return;
+    }
+    if (
+      scrolledToSelection.current ||
+      value === undefined ||
+      activeOption >= 0
+    ) {
+      return;
+    }
+    // `remoteResult` outlives the menu closing, so the rows on screen answer the
+    // *previous* query until this opening's own search lands. Scrolling to a row
+    // in that list aims at one about to be replaced, and the latch above means
+    // nothing corrects it afterwards: reopening on the 22nd of 24 trips, after a
+    // query that had narrowed the menu to 8, parked it six rows short.
+    if (searchPending) return;
+    const index = filteredItems.findIndex((item) => item.id === value);
+    if (index < 0) return;
+    scrolledToSelection.current = true;
+    optionRefs.current[index + addNewOffset]?.scrollIntoView({
+      block: "nearest",
+    });
+  }, [isOpen, value, activeOption, searchPending, filteredItems, addNewOffset]);
+
   const handleInputChange = (text: string) => {
     setInputValue(text);
+    setTyped(true);
     setIsOpen(true);
     // Typing re-filters the list, so a held-over index would point at a
     // different row than the one the user was looking at.
@@ -528,6 +599,7 @@ export function CreatableCombobox({
   const handleSelect = (item: ComboboxItem) => {
     onChange(item.id);
     setActiveIndex(-1);
+    setTyped(false);
     lastSelectedRef.current = item;
 
     if (keepOpenOnSelect) {
@@ -593,6 +665,7 @@ export function CreatableCombobox({
 
     if (action.type === "select") {
       setInputValue(keepOpenOnSelect ? "" : action.item.name);
+      setTyped(false);
       onChange(action.item.id);
       readyForNext();
       return;
@@ -607,6 +680,7 @@ export function CreatableCombobox({
       // clears the input synchronously, then this resolution lands a render or
       // two later and writes the name into a field the user is done with.
       setInputValue(keepOpenOnSelect ? "" : created.name);
+      setTyped(false);
       onChange(created.id);
       readyForNext();
     } catch (error) {
@@ -643,7 +717,27 @@ export function CreatableCombobox({
         disabled={disabled || isLoading}
         className={cn(value !== undefined && "pr-7")}
         onChange={(e) => handleInputChange(e.target.value)}
-        onFocus={() => setIsOpen(true)}
+        onFocus={() => {
+          setIsOpen(true);
+          // The menu now opens unfiltered, so the text sitting in a filled
+          // single-select is a label rather than a query - and clicking in to
+          // change the trip and typing gave "Dahab 2025R" against an empty menu.
+          // Selecting it makes the first keystroke replace it, which is what the
+          // field looks like it will do.
+          //
+          // `onFocus` rather than `onClick`: the latter fires again on every
+          // click into an already-focused field, so it would keep re-selecting
+          // under a caret the diver had just placed by hand.
+          //
+          // Gated on there being something to replace, which is not the same as
+          // `!keepOpenOnSelect`: an append-only field is empty after every pick,
+          // but so is a single-select on a new dive, and `select()` on an empty
+          // field is a no-op that still raises the handles and the copy callout
+          // on a phone. `keepOpenOnSelect` stays in the condition because that
+          // field's input is a filter even when the diver has typed into it -
+          // its text is a query, and a query is not a label.
+          if (!keepOpenOnSelect && inputValue) inputRef.current?.select();
+        }}
         // Focus alone isn't enough: a `focus` event doesn't fire on an input
         // that already has focus, so any path that closes the menu while
         // keeping focus (picking an item, Escape, a dialog restoring focus)
@@ -721,6 +815,7 @@ export function CreatableCombobox({
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
                 setInputValue("");
+                setTyped(false);
                 onChange(undefined);
                 inputRef.current?.focus();
               }}
@@ -792,7 +887,7 @@ export function CreatableCombobox({
           ) : (
             <div className="px-3 py-2 text-sm text-muted-foreground">
               {emptyMenuLabel({
-                query: inputValue.trim(),
+                query,
                 minSearchLength,
                 maxSearchLength,
                 searchFailed,

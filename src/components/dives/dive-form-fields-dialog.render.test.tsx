@@ -154,6 +154,46 @@ describe("DiveFormFieldsDialog", () => {
     expect(saveAsBox()).toHaveValue("Technical");
   });
 
+  it("drops the whole list down on the name it was seeded with", async () => {
+    // A seeded name is not a filter. Keyed on the text, the chevron opened on a
+    // one-row list holding the preset already named in the box, so replacing a
+    // different one meant clearing the field first.
+    const user = userEvent.setup();
+    render(
+      <DiveFormFieldsDialog
+        open
+        onOpenChange={vi.fn()}
+        visibility={visibilityStub(["mixture.helium"])}
+        presets={presetsStub([BASIC, TECHNICAL])}
+      />,
+    );
+
+    await user.click(saveAsBox());
+
+    expect(screen.getAllByRole("option").map((row) => row.textContent)).toEqual(
+      ["Basic", "Technical"],
+    );
+  });
+
+  it("filters the list once the diver types", async () => {
+    const user = userEvent.setup();
+    render(
+      <DiveFormFieldsDialog
+        open
+        onOpenChange={vi.fn()}
+        visibility={visibilityStub(["mixture.helium"])}
+        presets={presetsStub([BASIC, TECHNICAL])}
+      />,
+    );
+
+    await user.clear(saveAsBox());
+    await user.type(saveAsBox(), "bas");
+
+    expect(screen.getAllByRole("option").map((row) => row.textContent)).toEqual(
+      ["Basic"],
+    );
+  });
+
   it("lets the diver type over the name it was seeded with", async () => {
     const user = userEvent.setup();
     render(
