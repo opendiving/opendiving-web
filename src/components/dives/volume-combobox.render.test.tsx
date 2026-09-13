@@ -137,7 +137,7 @@ describe("VolumeCombobox", () => {
   // Both lists below are every preset, in full - the point of the change they
   // guard is that membership does not depend on the unit system, only the order
   // the groups come in. They are written out rather than derived from
-  // `VOLUME_OPTIONS` so that a preset filed in the wrong group fails here instead
+  // `VOLUME_GROUPS` so that a preset filed in the wrong group fails here instead
   // of agreeing with itself.
   it("offers every preset in metric, with the metric groups first", async () => {
     const user = userEvent.setup();

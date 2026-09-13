@@ -129,11 +129,6 @@ export const VOLUME_GROUPS: VolumeOptionGroup[] = [
   },
 ];
 
-/** Every preset, in the order the groups are declared above. */
-export const VOLUME_OPTIONS: VolumeOption[] = VOLUME_GROUPS.flatMap(
-  (group) => group.options,
-);
-
 /**
  * The groups in the order a diver reading in `units` sees them.
  *
