@@ -302,6 +302,75 @@ export const PANEL_AXES: readonly ProfileAxisKey[] = [
   "percent",
 ];
 
+// The value an axis will not scale past however high a reading on it goes, or
+// null where the readings are the only bound there is.
+//
+// Only the percent axis has one, and only because one of its channels can be
+// **wrong**. A Suunto Ocean's `gf99` reaches 14 060 % on a deep decompression
+// ascent - not a reading on some other scale, a fault: the same device's saved
+// tissue tensions put the real figure near 60, and across a 79-dive corpus the
+// inequality GF99 <= surface GF, which no decompression model can violate, holds
+// on every sample of the 75 clean dives and fails on two samples in five of the
+// four broken ones.
+//
+// Fitted to that reading the row runs to 15 000, and the surface gradient factor
+// - the channel that is correct, and the whole readable story of the ascent - is
+// drawn across 1.1 % of it. **One channel's fault erases another channel's
+// data**, which is what the bound exists to stop.
+//
+// 200 rather than 100, and the number comes from the quantity rather than from
+// this dive's readings. 100 % is the M-value, and a gradient factor past twice it
+// is not telling a diver anything they can act on; below that every real reading
+// still fits, since the surface gradient factor peaks at 121 across the corpus's
+// 75 clean dives and at 173 across all 79. A ceiling of 100 would draw a healthy
+// 121 leaving the panel on a dive where nothing was wrong, which is the same
+// failure this fixes, one order of magnitude down.
+//
+// See DECISIONS.md, *"The percent axis stops at 200 %, and the curve that
+// overruns it is drawn leaving the row"*, for the alternatives and why a
+// percentile is not one of them.
+const AXIS_BOUND: Record<ProfileAxisKey, number | null> = {
+  depth: null,
+  temperature: null,
+  pressure: null,
+  duration: null,
+  ppo2: null,
+  percent: 200,
+};
+
+/**
+ * The domain one axis is drawn against, fitted to `values` up to whatever
+ * ceiling that axis declares.
+ *
+ * Below the ceiling this is `niceDomain` and nothing else, so every dive whose
+ * readings are in range is scaled exactly as it always was. Above it the axis is
+ * the declared band, which is deliberately not derived from the readings at all:
+ * a rule that moved with the data - a percentile, say - would draw the same
+ * channel against a different scale on adjacent dives with nothing on screen to
+ * say so. On the worst dive in the corpus the 99th percentile still yields 2 000
+ * and the 95th yields 400.
+ *
+ * **No reading is altered by any of this.** The series, the crosshair readout,
+ * the accessible summary and everything downstream of the API still carry the
+ * figure the device wrote; what is bounded is the axis, and a curve that leaves
+ * the band is drawn leaving it.
+ *
+ * Zero-anchored in the bounded branch, which is right for the one axis that has
+ * a bound: DiveJSON §6.4 floors all three percent channels at zero, so there is
+ * no reading below it for the band to cut off.
+ */
+export function axisDomain(
+  axis: ProfileAxisKey,
+  values: readonly number[],
+): Domain {
+  const fitted = niceDomain([...values]);
+  const bound = AXIS_BOUND[axis];
+
+  return bound === null || fitted.max <= bound
+    ? fitted
+    : niceDomain([0, bound]);
+}
+
 // What follows the number on a panel row's top tick - the separator and the unit
 // both, so "40 min" and "100%" each get the spacing that quantity is written
 // with. Read off the channels themselves rather than written out again, so a row
