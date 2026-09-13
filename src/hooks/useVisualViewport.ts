@@ -45,8 +45,11 @@ function syncViewportVars() {
  * leaves `position: fixed` anchored where it was. A centred dialog therefore
  * ends up with its title scrolled off the top of the screen and its buttons
  * behind the keys. `visualViewport.offsetTop` is exactly that displacement and
- * `visualViewport.height` exactly the space left over, so a frame taking both
- * covers what the diver can see and nothing else.
+ * `visualViewport.height` exactly the space left over, so an overlay placed in
+ * terms of both lands where the diver can see it and nowhere else.
+ * `ui/dialog.tsx` spends them in `DialogContent`'s own `top` and `max-height`,
+ * and takes them as variables rather than as a parent box for a reason that has
+ * nothing to do with the viewport - see the note there.
  *
  * No-ops where `visualViewport` is absent (jsdom, and old browsers), leaving
  * the `:root` values in place - which is why the variables have a usable
