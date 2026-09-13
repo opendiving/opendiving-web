@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -14,6 +15,7 @@ import {
   DIVE_FORM_ALWAYS_ON_FIELDS,
   DIVE_FORM_FIELDS,
 } from "@/lib/dive-form-fields";
+import { SAVE_DEBOUNCE_MS } from "@/hooks/useDiveFormVisibility";
 
 // The seam this covers is the page's own seeding, which no unit test can reach: the
 // form's `defaultValues` and the last-dive prefill both decide what `mixtures` holds
@@ -1013,13 +1015,39 @@ describe("persisting a toggle", () => {
     await screen.findByLabelText(/duration/i);
 
     await openFieldsPanel();
-    await userEvent.click(screen.getByRole("switch", { name: /^notes$/i }));
-    await userEvent.click(screen.getByRole("switch", { name: /^altitude$/i }));
-    await userEvent.click(
-      screen.getByRole("switch", { name: /^visibility$/i }),
-    );
 
-    await waitFor(() => expect(authAPI.updateProfile).toHaveBeenCalled());
+    // The one test here whose subject *is* the clock, so it is the one that cannot be
+    // left to the runner's. Three awaited `userEvent` clicks take longer than the
+    // 400 ms window on a loaded machine: the save fires after the first switch and the
+    // burst costs three requests rather than one. The count alone does not catch that
+    // - `waitFor` returns the moment the first call lands, so the other two have not
+    // happened yet when it runs and only the arguments are left to fail on. That is
+    // what run 34767448613 saw, on a PR touching neither this file nor the hook.
+    //
+    // So the burst is fired synchronously on a frozen clock: `fireEvent` rather than
+    // `userEvent` because a `setup()` user routes every action through Testing
+    // Library's `asyncWrapper`, which drains the microtask queue behind a
+    // `setTimeout(0)` it only advances when Jest is the runner - on Vitest's clock
+    // that never resolves and the first click hangs until the test times out.
+    // Nothing here is about the gesture anyway; what is under test is that three
+    // flips inside one window cost one `PATCH`.
+    vi.useFakeTimers();
+    try {
+      fireEvent.click(screen.getByRole("switch", { name: /^notes$/i }));
+      fireEvent.click(screen.getByRole("switch", { name: /^altitude$/i }));
+      fireEvent.click(screen.getByRole("switch", { name: /^visibility$/i }));
+
+      // Half the claim, and the half the old shape never asserted: the window has not
+      // elapsed, so nothing is on the wire yet - whatever the machine was doing.
+      expect(authAPI.updateProfile).not.toHaveBeenCalled();
+
+      await act(async () => {
+        vi.advanceTimersByTime(SAVE_DEBOUNCE_MS);
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+
     expect(authAPI.updateProfile).toHaveBeenCalledTimes(1);
     expect(authAPI.updateProfile).toHaveBeenCalledWith({
       dive_form_hidden_fields: ["visibility", "altitude", "notes"],
