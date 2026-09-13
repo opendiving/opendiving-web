@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import type {
   DiveProfile,
   DiveProfileEvent,
@@ -20,6 +26,7 @@ import {
   PROFILE_CHANNELS,
   PROFILE_CHANNEL_KEYS,
   PROFILE_VIEW_KEYS,
+  axisDomain,
   axisUnitSuffix,
   channelWord,
   channelsOnAxis,
@@ -181,6 +188,10 @@ interface PlottedChannel {
 type PositionedChannel = Omit<PlottedChannel, "domain"> & {
   domain: Domain;
   y: (value: number) => number;
+  // Which row of the deco panel this line is drawn in, or -1 for the depth plot.
+  // Kept rather than recomputed at each of the three places that need it, one of
+  // which is the clip that holds a curve inside its row - see `panelClip`.
+  panelIndex: number;
 };
 
 // Module-level so the reference is stable across renders - see
@@ -212,6 +223,16 @@ function drawnValues(
 
 export function DiveProfileChart({ profile }: DiveProfileChartProps) {
   const units = useUnits();
+  // Names the clip paths below, so two charts on one page cannot clip each other
+  // - the trap `globals.css`'s note on borrowed SVG already records for hardcoded
+  // mask and filter ids.
+  //
+  // Reduced to letters, digits and dashes rather than used as `useId` hands it
+  // over. React 19 spells an id `«r0»`, and 18 spelled it `:r0:`; both are legal
+  // in an `id` attribute and neither is legal unescaped in the `url(#...)`
+  // fragment that has to resolve it. What survives the strip is still the part
+  // that differs between two ids on one page.
+  const clipPrefix = useId().replace(/[^a-zA-Z0-9_-]/g, "");
   // One hovered *time*, not one hovered sample, and one piece of state for the
   // whole chart - the same call `GasUseChart` makes, for the same reason. It
   // can't be an index here: the channels are independently sampled and don't
@@ -587,10 +608,17 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
   // the percent row's scale would draw a CNS clock of 23 % as a flat line on the
   // baseline. A gradient factor is not a bound on a CNS clock the way a ceiling
   // is a bound on depth, so there is nothing to buy the stillness with.
+  //
+  // `axisDomain` rather than `niceDomain`, which is what stops a *shown* one
+  // doing the same damage: the percent axis declares a ceiling of 200 % and will
+  // not scale past it whatever the readings say. The rule above still earns its
+  // place under that ceiling - a hidden gradient factor could still take a CNS
+  // row from 12 % to 200 % - so both hold at once.
   const panelDomains = new Map<ProfileAxisKey, Domain>(
     placement.panels.map((axis) => [
       axis,
-      niceDomain(
+      axisDomain(
+        axis,
         channels
           .filter(
             (channel) =>
@@ -618,6 +646,7 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
         {
           ...channel,
           domain,
+          panelIndex,
           y:
             panelIndex >= 0
               ? scaleY(domain, panelTop(panelIndex), PANEL_HEIGHT, inverted)
@@ -751,9 +780,23 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
               seconds: channel.series.t[index],
               value: channel.series.values[index],
               cy: channel.y(channel.series.values[index]),
+              // Whether the reading is one this row's axis can hold - see
+              // `axisDomain`. Only ever true on a bounded axis, and the value is
+              // quoted either way: the card is the readout, and bounding an axis
+              // is not licence to stop telling the diver what the device wrote.
+              offScale:
+                channel.series.values[index] < channel.domain.min ||
+                channel.series.values[index] > channel.domain.max,
             };
           })
           .filter((readout): readout is Readout => readout !== null);
+
+  // The subset of them with a dot on the chart. A reading the row's axis cannot
+  // hold has no honest place to be marked: at its own `cy` the dot lands over the
+  // depth plot, and pulled back to the row's top edge it would claim the curve is
+  // up there, which is exactly the reading the bound exists to avoid making. The
+  // curve says it left, and the card says what it left with.
+  const dots = readouts.filter((readout) => !readout.offScale);
 
   return (
     <div>
@@ -793,6 +836,46 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
                 units,
               })}
             >
+              {/* One clip per panel row, because a panel row's axis can declare a
+              ceiling its readings overrun - see `axisDomain`, and DECISIONS.md's
+              *"The percent axis stops at 200 %"*.
+
+              A gradient factor of 14 060 % has to be drawn **leaving** a 200 %
+              row. Held inside it instead, flattened along the top edge, it would
+              read as a measurement at 200 %, which is the one thing it is not;
+              left unclipped it would run up through the panel gap and across the
+              depth plot. So the row clips, and the curve crosses its top rule at
+              whatever angle it was climbing at and is gone.
+
+              That is also what tells the two kinds of absence apart, which is
+              worth saying because this chart cares elsewhere: a stretch the
+              device never recorded leaves the line stopping *inside* the row,
+              while a stretch the axis cannot hold leaves it stopping *on the top
+              rule*. Different pictures, and neither invents a reading.
+
+              Applied to every panel row, not only a bounded one: on an unbounded
+              row the domain covers its own drawn values by construction, so there
+              is nothing there for a clip to remove. The depth plot is left alone
+              for the same reason and an extra one - its readout dots sit on its
+              edges, and a clip would cut them in half.
+
+              Not left to the SVG's own edge, which is not clipping at all: it
+              hides what leaves the viewBox and happily draws what merely leaves a
+              plot. That distinction is already recorded, under *"Markers are
+              clipped to the plot"*. */}
+              <defs aria-hidden>
+                {placement.panels.map((axis, index) => (
+                  <clipPath key={axis} id={`${clipPrefix}-panel-${index}`}>
+                    <rect
+                      x={PADDING.left}
+                      y={panelTop(index)}
+                      width={PLOT_WIDTH}
+                      height={PANEL_HEIGHT}
+                    />
+                  </clipPath>
+                ))}
+              </defs>
+
               {/* Horizontal gridlines, from the left-hand axis, so every rule
               lines up with a labelled value rather than floating between two.
               `currentColor` throughout, so light/dark is inherited from the
@@ -957,6 +1040,11 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
                 <g
                   key={channel.key}
                   className={channel.series.channel.colorClass}
+                  clipPath={
+                    channel.panelIndex >= 0
+                      ? `url(#${clipPrefix}-panel-${channel.panelIndex})`
+                      : undefined
+                  }
                 >
                   {channel.segments.map((segment, index) => (
                     <polyline
@@ -1016,7 +1104,7 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
                 />
               )}
 
-              {readouts.map((readout) => (
+              {dots.map((readout) => (
                 <circle
                   key={readout.key}
                   cx={x(readout.seconds)}
@@ -1069,11 +1157,12 @@ export function DiveProfileChart({ profile }: DiveProfileChartProps) {
                   // The topmost of the dots being described, which is only used to
                   // decide which end of the plot the card sits at - see
                   // `tooltipVerticalAnchor`. `PLOT_BOTTOM` is the degenerate
-                  // fallback for a card with an event and no readouts to hang off,
-                  // which puts it at the top, clear of the marker on the baseline.
+                  // fallback for a card with no dot to hang off - an event on its
+                  // own, or readings that are all off their rows' axes - which
+                  // puts it at the top, clear of the marker on the baseline.
                   topmostY={
-                    readouts.length > 0
-                      ? Math.min(...readouts.map((readout) => readout.cy))
+                    dots.length > 0
+                      ? Math.min(...dots.map((readout) => readout.cy))
                       : PLOT_BOTTOM
                   }
                 />
@@ -1125,6 +1214,10 @@ interface Readout {
   seconds: number;
   value: number;
   cy: number;
+  // The reading is outside its row's axis, so the curve carrying it has left the
+  // row and there is nowhere on the chart to put a dot for it. The card still
+  // names it.
+  offScale: boolean;
 }
 
 // How a marker is drawn, by what it means. Three families rather than five

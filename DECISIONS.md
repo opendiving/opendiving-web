@@ -17744,3 +17744,104 @@ fixture nobody would grep for:
 - `device-memory.test.ts`'s prefix-clearing fixture, whose comment counts the same set in different
   words — "Two orphans left behind by key bumps and one by a deleted feature" — and whose seeded
   store gains `-v3`. A sweep for the first sentence does not find this one.
+
+## The percent axis stops at 200 %, and the curve that overruns it is drawn leaving the row
+
+`cns`, `gradient_factor` and `surface_gradient_factor` share one panel row, because they are all
+whole percent. On dive `019fcee1-2219-76df-9e5c-b20e3473f304` that row carried the two gradient
+factors and `niceDomain` gave it a step of 5 000 and a top of 15 000, because the device wrote a
+`gf99` of 14 060. The surface gradient factor — the channel that is correct, and the whole readable
+story of that ascent — peaks at 170 there, and was drawn across **1.1 % of the row's height**: a
+flat line on the baseline. One channel's fault erased another channel's data, and the README's
+dive-detail screenshot was held rather than shipped because of it.
+
+**The reading is wrong, and that is established rather than assumed.** `plans/suunto-ocean-gf99.md`
+in the umbrella settles it over a 79-dive corpus: the same dive's saved tissue tensions put the real
+surfacing figure near 60, the device's own recorded GF-high is 85, a reconstruction of the ascent
+tracks the _other_ channel to 5.5 % mean error, and the model-independent inequality GF99 ≤ surface
+GF — which no decompression model in use can violate — holds on every sample of the 75 clean dives
+and fails on two samples in five of the four broken ones. Both firmware and "it was a deco dive" are
+ruled out as the variable. Nothing this project does causes it, and no other implementation would
+ever surface it: libdivecomputer does not read the field and Subsurface and Submersion both
+recompute their own.
+
+So the fix is a presentation choice and only that. `AXIS_BOUND` in `lib/dive-profile.ts` gives the
+percent axis a ceiling of 200 % and every other axis `null`; `axisDomain` fits `niceDomain` to the
+readings below it and returns the flat 0–200 band above it. The four properties it has to have, and
+how each is met:
+
+1. **The data is never altered.** DiveJSON §5.4 forbids clamping the value and this does not go near
+   it. The stored series, the API response, the crosshair readout and the accessible summary all
+   still carry 14 060, and `axisDomain` has a test asserting it does not touch the array it is
+   handed. A diver pointing at that sample still reads `14060% Gradient factor`.
+2. **The bound is stated and is not exceeded.** 200, from the quantity rather than from the dive:
+   100 % is the M-value, and a gradient factor past twice it is not telling a diver anything they
+   can act on. Every real reading still fits — the surface gradient factor peaks at 121 across the
+   corpus's 75 clean dives and at 173 across all 79 — so no clean dive's chart changes at all. **100
+   % was asked for and is wrong for exactly that reason**: it would draw a healthy 121 leaving the
+   panel on a dive where nothing happened, which is this same failure one order of magnitude down.
+   Submersion, arriving at the shape independently, sets its own bands at 120 and 150 and says in a
+   comment that the headroom exists "so an over-pressure excursion is still on the chart rather than
+   pinned to the axis".
+3. **The overrun is drawn leaving the row, not pinned to its top.** Each panel row gets a
+   `clipPath`, so the curve crosses the row's top rule at whatever angle it was climbing at and is
+   gone. A clamp — which is what Submersion does at render, `surfaceGfData[i].clamp(minGf, maxGf)` —
+   would lay all five of this fixture's off-scale samples flat along the top edge, and a value
+   flattened against the top edge reads as a measurement at the top edge. It also has a second job:
+   unclipped, a 14 060 runs 3 188 units up through the panel gap and straight across the depth plot.
+4. **No percentile.** On the worst dive the 99th percentile still yields an axis top of 2 000 and
+   the 95th yields 400, and both move with every dive — so the same channel would be drawn against a
+   different scale on adjacent dives with nothing on screen to say so. The band above the bound is
+   therefore a constant and not a function of the readings, which a test pins by asserting a 400 and
+   a 14 060 produce the same axis.
+
+**The clip also tells the two kinds of absence apart**, which matters on a chart that has already
+had to distinguish them once for the ceiling. A stretch the device never recorded leaves the line
+stopping _inside_ the row; a stretch the axis cannot hold leaves it stopping _on the top rule_.
+Different pictures, and neither invents a reading.
+
+**A readout with no dot is deliberate.** `dots` is `readouts` minus the samples outside their row's
+axis, and the tooltip is still built from `readouts` entire. At its own `y` the dot lands over the
+depth plot; pulled back to the row's top edge it claims the curve is up there, which is the one
+reading the bound exists to avoid making. The card is what answers "what did the device write", and
+bounding an axis is not licence to stop answering it.
+
+**Applied to every panel row, not only a bounded one.** On an unbounded row the domain covers its
+own drawn values by construction, so the clip removes nothing; making it uniform is what stops the
+next bounded axis needing to remember. The depth plot is left unclipped for that reason and one more
+— its readout dots sit on its edges, and a clip would halve them. Not left to the SVG's own edge
+either, which is not clipping at all: it hides what leaves the viewBox and happily draws what merely
+leaves a plot. That distinction is already recorded under _"Markers are clipped to the plot"_.
+
+**The shown-only rule for panel domains survives, and is not made redundant by the bound.** _"The
+deco readouts got a panel"_ closes with "stillness is bought with a bound, and there is no bound
+here". There is one now, and it still does not buy the stillness: a hidden gradient factor would
+take a CNS-only row from 12.5 % to the full 200 % band, which is an eight-fold squash rather than a
+hundred-fold one. Both rules hold at once, and the test that covers the first now reads 200 where it
+used to read "greater than 10 000".
+
+**Rejected, each with the reason it fails here:**
+
+- **A log axis.** Unreadable at the range that actually matters — the difference between a GF99 of
+  80 and one of 110 is the whole of what a diver reads this pair for — and it cannot show 0, which
+  §6.4 floors all three channels at.
+- **Splitting `gradient_factor` onto a row of its own.** It loses the GF99-against-surface-GF
+  comparison that is the pair's entire point, and fixes nothing anyway: alone on a row, `gf99` still
+  draws to 15 000.
+- **Submersion's structure, where every metric gets its own declared band and CNS and OTU are scaled
+  to the dive.** Genuinely the stronger shape — a gradient factor and a CNS clock never share a
+  scale there, so this specific damage cannot reach them — and it was put to the owner and declined
+  for this change. The bound alone repairs the dive that prompted it (170 goes from 1.1 % of the row
+  to 85 %), and the variant worth having is narrow: CNS onto an axis of its own, leaving the two
+  gradient factors paired. That would partly reverse _"a row per channel — six rows"_ and costs a
+  fourth panel row, so it is its own change and its own entry if it is ever made.
+- **Clamping the value rather than the axis.** Forbidden by the format, and worse than before now
+  that the reading is demonstrably wrong rather than merely undefined: it would launder a device
+  fault into a plausible number and delete the evidence.
+
+`clipPrefix` is `useId` with everything but letters, digits, dashes and underscores stripped. React
+19 spells an id `«r0»` and 18 spelled it `:r0:`; both are legal in an `id` attribute and neither is
+legal unescaped in the `url(#…)` fragment that has to resolve it. What survives the strip is still
+the part that differs between two ids on one page, which is what the whole id is for — see
+`globals.css`'s note on the borrowed SVG whose hardcoded mask ids were "safe only because it's a
+lone" element.

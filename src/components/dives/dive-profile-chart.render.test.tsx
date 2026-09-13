@@ -1392,10 +1392,12 @@ describe("DiveProfileChart deco panel scales", () => {
     // one, so feeding it in costs nothing and keeps the axis still. A gradient
     // factor is no such bound, and letting a hidden one set this scale would
     // draw the CNS clock as a flat line on the baseline.
+    //
+    // The percent axis's own 200 % ceiling does not make this rule redundant, and
+    // these two numbers are why: a hidden gradient factor would still take the
+    // row from a CNS clock's 12.5 % to the full band.
     const { container } = render(<DiveProfileChart profile={lopsided} />);
-    expect(Number.parseFloat(topTick(container, "percent"))).toBeGreaterThan(
-      10000,
-    );
+    expect(Number.parseFloat(topTick(container, "percent"))).toBe(200);
 
     fireEvent.click(
       screen.getByRole("button", { name: CHANNEL_BUTTONS.gradient_factor }),
@@ -1416,5 +1418,146 @@ describe("DiveProfileChart deco panel scales", () => {
     const { container } = render(<DiveProfileChart profile={lopsided} />);
 
     expect(topTick(container, "ppo2")).toMatch(/^\d+(\.\d{1,2})? bar$/);
+  });
+});
+
+describe("DiveProfileChart with a gradient factor past the percent axis's bound", () => {
+  // Dive `019fcee1-2219-76df-9e5c-b20e3473f304` in shape: a Suunto Ocean `gf99`
+  // running to 14 060 % across a third of the ascent, beside the surface gradient
+  // factor that peaks near 170 and is the channel carrying the readable story.
+  // Neither figure is invented - `plans/suunto-ocean-gf99.md` in the umbrella
+  // establishes the reading as a device fault across a 79-dive corpus, in which
+  // GF99 <= surface GF holds on every sample of the 75 clean dives and fails on
+  // two samples in five of the four broken ones.
+  //
+  // No CNS, which is not tidiness: the Suunto JSON carries none, so on this dive
+  // the percent row holds the two gradient factors and nothing else.
+  const times = [0, 300, 600, 900, 1200, 1500, 1800, 2100, 2400, 2700, 3000];
+  const brokenGf = everyChannel({
+    cns: null,
+    gradient_factor: {
+      times,
+      values: [0, 40, 94, 220, 747, 14060, 6936, 334, 199, 120, 88],
+    },
+    surface_gradient_factor: {
+      times,
+      values: [0, 20, 60, 110, 150, 170, 166, 140, 100, 60, 30],
+    },
+  });
+  // Five of the eleven are above 200 %, which is the same third of the curve the
+  // real dive puts off-scale (70 of its 231 readings).
+  const OVERRUNNING_SAMPLES = 5;
+
+  const percentRow = (container: HTMLElement) =>
+    container.querySelector('[data-deco-panel="percent"]');
+
+  // The row's two rules, top first - `bounds` draws them in that order. Every
+  // assertion about leaving the row is measured against these rather than against
+  // a constant, so the row can move without the test lying.
+  const rowRules = (container: HTMLElement) =>
+    [...(percentRow(container)?.querySelectorAll("line") ?? [])].map((rule) =>
+      Number(rule.getAttribute("y1")),
+    );
+
+  // Every y a channel's polylines pass through. Attribute geometry, not layout -
+  // jsdom has no opinion about either, and the SVG's coordinates are the thing
+  // being asserted.
+  const curveYs = (container: HTMLElement, channel: string) =>
+    [...container.querySelectorAll(`g.text-${channel} polyline`)].flatMap(
+      (line) =>
+        (line.getAttribute("points") ?? "")
+          .split(" ")
+          .filter(Boolean)
+          .map((point) => Number(point.split(",")[1])),
+    );
+
+  it("stops the axis at 200 % instead of following the reading to 15 000", () => {
+    const { container } = render(<DiveProfileChart profile={brokenGf} />);
+
+    expect(percentRow(container)?.querySelector("text")?.textContent).toBe(
+      "200%",
+    );
+  });
+
+  it("gives the trustworthy channel the row instead of the baseline", () => {
+    // The damage being repaired: against an axis fitted to 14 060 the surface
+    // gradient factor's whole 170-percent story is 1.1 % of the row's height.
+    const { container } = render(<DiveProfileChart profile={brokenGf} />);
+    const [top, bottom] = rowRules(container);
+    const highest = Math.min(...curveYs(container, "surface-gradient-factor"));
+
+    expect((bottom - highest) / (bottom - top)).toBeGreaterThan(0.8);
+  });
+
+  it("draws the overrun leaving the row rather than lying along its top", () => {
+    // Smaller y is higher, so this is the curve drawn *past* the row's top rule,
+    // where the clip then takes it out of the picture. Clamped, every one of
+    // these samples would sit exactly on `top` - and a value flattened against
+    // the top edge reads as a measurement at the top edge.
+    const { container } = render(<DiveProfileChart profile={brokenGf} />);
+    const [top] = rowRules(container);
+    const ys = curveYs(container, "gradient-factor");
+
+    expect(ys.filter((y) => y < top)).toHaveLength(OVERRUNNING_SAMPLES);
+    // Drawn at the row's own scale on the way out, so 14 060 leaves by much
+    // further than 220 does. A clamp, or a second squashed scale above the
+    // bound, would collapse that difference.
+    expect(Math.min(...ys)).toBeLessThan(top - (rowRules(container)[1] - top));
+  });
+
+  it("clips each panel row, so what leaves it leaves the picture", () => {
+    const { container } = render(<DiveProfileChart profile={brokenGf} />);
+    const reference =
+      container
+        .querySelector("g.text-gradient-factor")
+        ?.getAttribute("clip-path") ?? "";
+
+    // Resolvable as a URL fragment, which is what `clipPrefix`'s strip is for -
+    // React spells `useId` with characters that are legal in an `id` and not in
+    // the `url(#...)` that has to find it.
+    expect(reference).toMatch(/^url\(#[A-Za-z0-9_-]+\)$/);
+
+    const clip = container.querySelector(
+      `clipPath[id="${reference.slice(5, -1)}"] rect`,
+    );
+    expect(Number(clip?.getAttribute("y"))).toBe(rowRules(container)[0]);
+
+    // And not applied to the depth plot, whose domain covers its own curve by
+    // construction and whose readout dots sit on its edges - a clip there would
+    // halve them.
+    expect(
+      container.querySelector("g.text-teal")?.getAttribute("clip-path"),
+    ).toBeNull();
+  });
+
+  it("still quotes what the device wrote, with no dot to hang it on", () => {
+    // Property one of the ruling: the axis is bounded and the reading is not. A
+    // dot at the sample's own y would land over the depth plot, and one pulled
+    // back to the row's top edge would claim the curve is up there.
+    const { container } = render(<DiveProfileChart profile={brokenGf} />);
+    hoverAt(1500 / 3000);
+
+    expect(readoutText()).toMatch(/14060% Gradient factor/);
+    expect(
+      container.querySelectorAll("circle.text-gradient-factor"),
+    ).toHaveLength(0);
+    expect(
+      container.querySelectorAll("circle.text-surface-gradient-factor").length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("leaves a dive whose readings fit exactly as it was", () => {
+    // The 75 clean dives of the corpus. `everyChannel`'s gradient factor peaks at
+    // 98 and its surface one at 84, so the bound never comes into it: the axis is
+    // fitted, and no curve leaves the row.
+    const { container } = render(<DiveProfileChart profile={everyChannel()} />);
+    const [top] = rowRules(container);
+
+    expect(percentRow(container)?.querySelector("text")?.textContent).not.toBe(
+      "200%",
+    );
+    expect(curveYs(container, "gradient-factor").every((y) => y >= top)).toBe(
+      true,
+    );
   });
 });
