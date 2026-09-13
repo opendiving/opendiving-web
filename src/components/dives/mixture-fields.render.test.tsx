@@ -663,3 +663,20 @@ describe("MixtureFields under a hidden set", () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe("Add Mixture", () => {
+  it("adds a tank without taking the focus into it", async () => {
+    // react-hook-form's `append` focuses the first field of the new row that
+    // registered a focusable ref, and `VolumeCombobox` registers none - so the
+    // focus skipped Volume and landed on the ppO2 limit `<select>` beside it.
+    // On iOS that opens the select's picker wheel, which reads as the tap on
+    // this button having gone through to the field underneath.
+    render(<Harness mixtures={[]} maxDepth={20} />);
+
+    const add = screen.getByRole("button", { name: /add mixture/i });
+    await userEvent.click(add);
+
+    expect(screen.getByText(/^tank 1$/i)).toBeInTheDocument();
+    expect(document.activeElement).toBe(add);
+  });
+});

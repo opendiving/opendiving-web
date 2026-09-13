@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { FileText, Trash2 } from "lucide-react";
+import { FileText, Trash2, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { IconTooltip } from "@/components/ui/tooltip";
@@ -11,6 +11,7 @@ import {
   diveFileRows,
   UNNAMED_DEVICE_LABEL,
   type DiveFileRow,
+  type RecordingConfirmation,
 } from "@/lib/dive-recordings";
 import { formatFileSize } from "@/lib/format";
 
@@ -38,10 +39,62 @@ interface DiveRecordingFilesProps {
   pending: PendingDiveFile[];
   onRemovePending: (id: string) => void;
   /**
-   * Deletes one stored file, behind this component's confirm dialog. Absent on
-   * the create form, where every row is pending and removal is local.
+   * The uuids of stored files the diver has marked for deletion. Their rows stay
+   * on the list, struck through, until the edit is saved.
    */
-  onDeleteStored?: (fileUuid: string) => Promise<void>;
+  removedStored?: string[];
+  /**
+   * Marks one stored file for deletion, behind this component's confirm dialog.
+   * **Nothing is sent until the form is saved** - the page collects these the
+   * way it collects `pending`, so that Cancel leaves the dive exactly as it
+   * found it. Absent on the create form, where every row is pending and removal
+   * is local anyway.
+   */
+  onRemoveStored?: (fileUuid: string) => void;
+  /** Takes a marked file back off the list. */
+  onRestoreStored?: (fileUuid: string) => void;
+}
+
+/**
+ * The confirmation before striking a stored file off the list.
+ *
+ * **It only describes an outcome while it is the first thing struck off**, and
+ * that limit is the point rather than a gap. `deleteFileConfirmation` tells the
+ * three outcomes apart — the recording keeps its other files, it survives
+ * file-less, or it goes with the file — by reading the dive as the server holds
+ * it, and the immediate delete this replaces kept that true for free by
+ * re-reading after every one. Nothing re-reads now, so from the second mark on,
+ * the answer depends on a cascade that happens on the server when the save runs:
+ * a recording emptied by an earlier mark is deleted, its profile is re-derived
+ * from whatever files are left (which turns a merge's unreproducible samples
+ * into reproducible ones), and the ordinals are renumbered, moving which
+ * recording the dive reads its computer figures from.
+ *
+ * Three rounds of review found three different ways for a local model of that to
+ * be wrong, each in a dialog whose whole job is to be right about a destructive
+ * action, so there is no local model: past the first mark this says what is
+ * certain and stops. `deleteFileConfirmation` itself is untouched — the dive
+ * page's recordings card shares it, and there the delete really is immediate and
+ * the re-read really does happen.
+ */
+function removeFileConfirmation(
+  recordings: Recording[],
+  fileUuid: string,
+  othersAlreadyMarked: boolean,
+): RecordingConfirmation {
+  if (othersAlreadyMarked) {
+    return {
+      title: "Delete this file?",
+      description:
+        "It is permanently deleted when you save, along with the others you have struck off. Between them they may leave a recording with no files, and a recording with nothing left to re-read is deleted with its profile and its samples — so what this dive shows can change. Nothing happens until you save; until then the row stays on the list, marked, and you can put it back.",
+    };
+  }
+
+  const confirmation = deleteFileConfirmation(recordings, fileUuid);
+  return {
+    title: confirmation.title,
+    description: `${confirmation.description} None of it happens until you save this edit - until then the row stays on the list, marked, and you can put it back.`,
+  };
 }
 
 /**
@@ -62,7 +115,9 @@ export function DiveRecordingFiles({
   recordings,
   pending,
   onRemovePending,
-  onDeleteStored,
+  removedStored = [],
+  onRemoveStored,
+  onRestoreStored,
 }: DiveRecordingFilesProps) {
   // The file uuid awaiting confirmation, or null. Kept here rather than in the
   // page because the dialog is this list's, and the page has no reason to know
@@ -70,21 +125,16 @@ export function DiveRecordingFiles({
   const [pendingDeletion, setPendingDeletion] = useState<DiveFileRow | null>(
     null,
   );
-  const [isDeleting, setIsDeleting] = useState(false);
 
+  const removed = new Set(removedStored);
   const storedRows = diveFileRows(recordings);
   if (storedRows.length === 0 && pending.length === 0) return null;
 
-  const confirmDelete = async () => {
-    if (!pendingDeletion || pendingDeletion.kind !== "file" || !onDeleteStored)
+  const confirmDelete = () => {
+    if (!pendingDeletion || pendingDeletion.kind !== "file" || !onRemoveStored)
       return;
-    try {
-      setIsDeleting(true);
-      await onDeleteStored(pendingDeletion.file.uuid);
-      setPendingDeletion(null);
-    } finally {
-      setIsDeleting(false);
-    }
+    onRemoveStored(pendingDeletion.file.uuid);
+    setPendingDeletion(null);
   };
 
   return (
@@ -104,9 +154,12 @@ export function DiveRecordingFiles({
         <ConfirmDialog
           open
           onOpenChange={(open) => !open && setPendingDeletion(null)}
-          {...deleteFileConfirmation(recordings, pendingDeletion.file.uuid)}
+          {...removeFileConfirmation(
+            recordings,
+            pendingDeletion.file.uuid,
+            removed.size > 0,
+          )}
           confirmText="Delete"
-          isLoading={isDeleting}
           onConfirm={confirmDelete}
         />
       )}
@@ -116,9 +169,15 @@ export function DiveRecordingFiles({
           <FileRow
             key={row.key}
             row={row}
+            isRemoved={row.kind === "file" && removed.has(row.file.uuid)}
             onDelete={
-              row.kind === "file" && onDeleteStored
+              row.kind === "file" && onRemoveStored
                 ? () => setPendingDeletion(row)
+                : undefined
+            }
+            onRestore={
+              row.kind === "file" && onRestoreStored
+                ? () => onRestoreStored(row.file.uuid)
                 : undefined
             }
           />
@@ -160,10 +219,15 @@ function Row({
 
 function FileRow({
   row,
+  isRemoved = false,
   onDelete,
+  onRestore,
 }: {
   row: DiveFileRow;
+  /** Marked for deletion on save - struck through rather than taken off the list. */
+  isRemoved?: boolean;
   onDelete?: () => void;
+  onRestore?: () => void;
 }) {
   const device = row.deviceLabel ?? UNNAMED_DEVICE_LABEL;
 
@@ -184,19 +248,43 @@ function FileRow({
   return (
     <Row
       action={
-        onDelete && (
-          // The file name rather than "Delete": this list has one of these per
-          // row, and a screen reader reading them out gets a column of
-          // identical names otherwise.
-          <IconTooltip label={`Delete ${row.file.original_filename}`}>
-            <Button type="button" variant="ghost" size="sm" onClick={onDelete}>
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </IconTooltip>
-        )
+        isRemoved
+          ? onRestore && (
+              <IconTooltip label={`Keep ${row.file.original_filename}`}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={onRestore}
+                >
+                  <Undo2 className="h-4 w-4" />
+                </Button>
+              </IconTooltip>
+            )
+          : onDelete && (
+              // The file name rather than "Delete": this list has one of these per
+              // row, and a screen reader reading them out gets a column of
+              // identical names otherwise.
+              <IconTooltip label={`Delete ${row.file.original_filename}`}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={onDelete}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </IconTooltip>
+            )
       }
     >
-      <div className="text-sm font-medium break-all">
+      <div
+        className={
+          isRemoved
+            ? "text-sm font-medium break-all text-muted-foreground line-through"
+            : "text-sm font-medium break-all"
+        }
+      >
         {row.file.original_filename}
       </div>
       <div className="text-sm text-muted-foreground break-words">
@@ -204,8 +292,12 @@ function FileRow({
         {row.recordingName ? ` · ${row.recordingName}` : ""}
       </div>
       <div className="text-xs text-muted-foreground">
-        {row.parserLabel ? `${row.parserLabel} · ` : ""}
-        {formatFileSize(row.file.byte_size)}
+        {/* The strike-through alone is a colour-and-decoration claim about a
+            row that is otherwise unchanged, so the state is also in words -
+            beside the pending rows, which say the mirror-image thing. */}
+        {isRemoved
+          ? "Deleted when you save"
+          : `${row.parserLabel ? `${row.parserLabel} · ` : ""}${formatFileSize(row.file.byte_size)}`}
       </div>
     </Row>
   );

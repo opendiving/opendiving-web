@@ -6398,9 +6398,9 @@ handles on purpose.
 **One finger belongs to the page, two fingers to the map.** `touch-action: none` is what a map wants
 — it is the only way a one-finger drag reaches a pan handler instead of scrolling — and it is what
 `useDragSort` correctly uses for a drag handle a few pixels tall. A map is not a drag handle. This
-one sits inside a `max-h-[90vh] overflow-y-auto` dialog and covers a large share of it on a phone,
-so claiming the vertical axis leaves a thumb landing on the map unable to reach Notes or Save at
-all. Scrolling _past_ a control beats panning _within_ it. So the surface keeps
+one sits inside a dialog that scrolls within a capped height and covers a large share of it on a
+phone, so claiming the vertical axis leaves a thumb landing on the map unable to reach Notes or Save
+at all. Scrolling _past_ a control beats panning _within_ it. So the surface keeps
 `touch-action: pan-y`, a lone finger scrolls the dialog, and two fingers pan and pinch-zoom — the
 bargain every embedded map makes. A one-finger drag is not silently ignored: it raises a brief "use
 two fingers to move the map", because a gesture that does nothing and says nothing reads as broken.
@@ -16638,14 +16638,19 @@ device's own counter — server-side, over the bytes, on rules the browser has n
 thing the client decides is what to do about a match against a _different_ dive, which is a question
 for the diver (`DiveFileImport`'s match dialog) rather than for either machine.
 
-`onDeleteStored` is the asymmetric half. A pending file is removed locally with no dialog —
-unpicking a file is the diver correcting themselves — while a stored one is deleted immediately,
-behind a confirm, because it is already on the server and there is nothing for a save to confirm or
+**Superseded from here to the end of this section** — a stored file is now struck off and deleted
+with the save, see _"The edit form deletes a stored file on save, beside the attaches"_ below. The
+asymmetry described here is gone along with the re-read the subsection is about; both are kept
+because the `refetch` trap below is a live hazard anywhere else on that page.
+
+`onDeleteStored` was the asymmetric half. A pending file is removed locally with no dialog —
+unpicking a file is the diver correcting themselves — while a stored one was deleted immediately,
+behind a confirm, because it is already on the server and there was nothing for a save to confirm or
 for Cancel to undo.
 
 ### Deleting a stored file re-reads the dive without `useResource`'s `refetch`
 
-The edit page calls `divesAPI.getDive` and `setResource` by hand after a delete. `refetch` looks
+The edit page called `divesAPI.getDive` and `setResource` by hand after a delete. `refetch` looks
 like the obvious call and is wrong here: it re-runs `onLoaded`, which on that page is
 `resetFromDive` → `form.reset(values)` — so a diver who had retyped a depth and then removed a file
 would have watched the edit vanish, with no error and nothing to blame.
@@ -17846,3 +17851,193 @@ the part that differs between two ids on one page, which is what the whole id is
 `components/icons/google-icon.tsx` makes, and for the reason _"Unified auth flow"_ records: the SVG
 it was traced from hardcodes its mask, clip-path and filter ids, "safe only because it's a lone,
 standalone SVG file, never composed with anything else".
+
+## The dialog is centred in the visual viewport, not in `100vh`
+
+Every modal form in the app is one `DialogContent` (`components/ui/dialog.tsx`), and on an iPhone
+none of them fitted the screen. Two separate causes, both invisible on a desktop browser at any
+window size:
+
+**`vh` on iOS is not what the diver can see.** It measures the _large_ viewport — the page as it
+would be with Safari's toolbars retracted — so with the toolbars up, `max-h-[90vh]` was taller than
+the screen. Centred on the layout viewport with `top-[50%]` and a translate, a dialog that size
+hangs off both ends, and since it is `position: fixed` with the page behind it scroll-locked, there
+is nothing to scroll to reach either end. `svh`/`dvh` fix that much, and the `:root` fallback in
+`globals.css` is `100svh` behind a `@supports` guard — a custom property holding a unit the browser
+has never heard of parses fine and then drops whatever declaration substitutes it, so the `vh`
+spelling has to be a real fallback rather than a comment.
+
+**No unit fixes the keyboard.** iOS does not resize the layout viewport when the keyboard opens; it
+scrolls the _visual_ viewport up to keep the focused input in sight and leaves `position: fixed`
+anchored where it was. That is the second screenshot in the report that started this: New Trip with
+its title scrolled off the top and its buttons behind the keys. `window.visualViewport` is the only
+thing that reports it — `offsetTop` is the displacement, `height` is what is left — so
+`useVisualViewport` (`hooks/useVisualViewport.ts`) mirrors both onto `--visual-viewport-top` and
+`--visual-viewport-height`, and `DialogContent`'s `top` and `max-height` are `calc`s over the pair.
+The dialog is then centred on the visible area and capped to it, less a 1rem gutter, so it cannot be
+laid out anywhere the diver cannot see.
+
+That gutter is the other half of the report: the content was `w-full`, edge to edge on a phone with
+its close button in the corner of the screen. It is `w-[calc(100%-2rem)]` now, and `rounded-lg`
+rather than `sm:rounded-lg`, corners being something a dialog with a margin has at every width.
+
+### Nothing may sit between `DialogPortal` and `DialogContent`
+
+The first version of this put a fixed, full-visible-viewport `<div>` inside the portal and centred
+the content in it with flexbox — one box of the right size, no `calc`s, and it measured correctly at
+every width. What it also did was silently kill the exit animation of **every dialog in the app**.
+
+`DialogPortal` wraps each of its own children in a `Presence`, which reads the exit animation off
+`getComputedStyle` of the node its ref lands on. The ref reaches that child through `Portal` →
+`Primitive.div` with `asChild` → `Slot` → `cloneElement(child, { ref })`. A wrapper component that
+is not a `forwardRef` — a plain `function DialogFrame({ children })` — takes that ref as an ignored
+prop, with no warning from React 19, so `stylesRef.current` stays `null`, `getAnimationName(null)`
+answers `"none"`, and the close sends `UNMOUNT` in the same commit. The dialog pops out of existence
+while the overlay, still a `forwardRef` child of its own `Presence`, goes on fading for its 200 ms.
+
+Forwarding the ref would not have been the fix either: `Presence` would then have measured the
+frame, which carries no animation of its own, and answered `"none"` all the same. The animation has
+to be on the node the portal wraps, which is why the visible viewport reaches the content as
+variables instead of as a parent box, and why the translate centring came back with the
+`slide-in-from-*` classes that belong to it.
+
+### `DialogContent` runs its hooks on every page that declares a dialog
+
+`useVisualViewport` cannot be called from `DialogContent`'s body, which is where it started and
+where it looks like it belongs. `DialogPortal` is what gates the DOM and it renders `null` while
+closed, but the component _around_ it is rendered by its parent either way — a `__vvSubs` counter
+said 12 before anything had been opened on the dive form. So it is called from `VisualViewportVars`,
+a component rendering `null` among the content's children, which mount and unmount with the portal.
+
+Two details in the hook follow from more than one dialog being open at once — a confirm raised from
+inside a form dialog is ordinary here. The variables are refcounted, so the first to close does not
+strip them from the one still open. And each caller registers **its own closure** rather than the
+shared `syncViewportVars`: `addEventListener` de-duplicates identical `(type, listener)` pairs, so a
+shared function would be one registration that the first `removeEventListener` takes away from
+everybody.
+
+## "Add Mixture" takes the focus nowhere, because iOS opens a focused `<select>`
+
+`useFieldArray().append()` defaults to `shouldFocus: true`, which focuses the first field of the new
+row that registered a focusable ref. `VolumeCombobox` registers none, so the focus skipped past
+Volume and landed on whichever box came next — the ppO₂ limit `<select>` wherever that column is on
+screen, the O₂ box where it is hidden.
+
+On a desktop that is invisible. On iOS, focusing a `<select>` **opens its picker wheel**, so one tap
+on Add Mixture added a tank and opened a dropdown nobody asked for — which reads, from the diver's
+side, as the tap having gone through to the field underneath. Hence
+`append({ ...DEFAULT_MIXTURE }, { shouldFocus: false })`.
+
+Worth keeping in mind beyond this button: the app has several plain `<select>`s (ppO₂ limit, Role,
+Usage, water type), chosen over the shadcn `Select` because they need `""` as a real selectable
+option, and **any** programmatic `.focus()` on one of them is a dropdown opening on a phone.
+
+## The dive file picker takes several files, and the batch is applied serially
+
+`multiple` on the input, and `importFiles` walks the picked files in order. The list on that card
+and the page state behind it already held several — a dive off two computers, or one computer's JSON
+beside its FIT — so the single-file picker was making that two trips for no reason.
+
+**Serially, never `Promise.all`.** Which mode a file is applied in depends on what the files before
+it left behind (first file prefills, every later one fills blanks only), so racing them would make
+first-file-wins depend on which response came back first.
+
+**The "is a file already here" flag is a local, not the prop.** `hasFileAlready` is derived from
+`pending`/`recordings`, and neither has re-rendered while the loop is still running, so reading it
+per file would say "none" for every file in the batch and collapse first-file-wins into
+last-file-wins. It is seeded from the prop once and set by hand after each accepted file; the render
+test pins it with a second file carrying a deeper max depth.
+
+A bad file does not end the batch — the diver picked them together and has no way to re-pick "the
+other three", so an oversized or unparseable one says so and the loop carries on. A _match_ against
+another dive does pause it, since only the diver can answer that, and the files after it ride along
+on the offer (`MatchOffer.rest`) so that "Log as a new dive" picks the batch back up and dismissing
+the dialog drops the rest with the question. The toast belongs to the pick rather than to the file,
+counting what actually landed — four identical toasts for four files is one sentence said four
+times.
+
+`importNote` is cleared once per pick and then only ever assigned a non-`null` note. Only a prefill
+has anything to report, so every later file answers `null`, and assigning that would wipe the first
+file's note off the screen mid-batch.
+
+## The edit form deletes a stored file on save, beside the attaches
+
+Importing a file has always waited for the save — the API stores nothing at parse time, and
+importing then cancelling must not change what the dive holds. Deleting one did not: it fired the
+moment the confirm dialog was accepted, on the grounds that the file is already on the server so
+there is nothing for a save to confirm. True about the request, and wrong about the form: it made
+Cancel a lie about the one part of the page that could not be undone.
+
+So `dives/[id]/edit` holds `removedFileUuids` the way it holds `pendingFiles`, the row stays on the
+list struck through and saying `Deleted when you save`, and the Trash icon becomes an Undo. The
+deletions run first on submit and the attaches after, so each attach lands in the state the diver
+was looking at; each failure is its own toast and none of them stops the next, matching what the
+attaches already did.
+
+The confirmation stays, because the three outcomes behind that one icon are still not visible from
+the row — the recording keeps its other files, it survives file-less, or it goes with the file.
+`deleteFileConfirmation` in `lib/dive-recordings.ts` is untouched: the dive page's recordings card
+shares it and deletes immediately there. The form wraps it in `removeFileConfirmation`, which adds
+the one sentence that is only true here.
+
+**Past the first mark, the confirmation stops describing an outcome**, and that limit is the whole
+design rather than a gap in it. `deleteFileConfirmation` tells the three outcomes apart by reading
+the dive as the server holds it, and the immediate delete kept that true for free by re-reading
+after every one. Nothing re-reads now, and from the second mark on the answer depends on a cascade
+that only runs when the save does: a recording emptied by an earlier mark is deleted, its profile is
+re-derived from whatever files are left — which turns a merge's unreproducible samples into
+reproducible ones — and `renumber_ordinals` promotes the next recording, moving which one the dive
+reads its computer figures from.
+
+**Three review rounds found three different ways to get a local model of that wrong**, each of them
+in a dialog whose only job is to be right about a destructive action. The first version read the
+unfiltered file list, so a second mark on one recording said "the recording keeps its other files"
+about a save that would take the recording. Filtering the files fixed the count and left the stored
+provenance, so a merged recording promised "its samples stay" about a save that destroys them.
+Rewriting the provenance too left the ordinals, so emptying the primary and then striking the last
+file off a secondary said the dive's computer figures were "left alone" when the promotion clears
+them. Each fix was correct and each uncovered the next field the server moves.
+
+So there is no local model. Past the first mark `removeFileConfirmation` says what is certain — the
+file goes on save, the set may leave a recording with no files, a recording with nothing left to
+re-read goes with its profile and its samples, and what the dive shows can change — and claims
+nothing it would have to predict a cascade to know. The first mark keeps the exact three-outcome
+text, because with nothing struck off yet the dive on screen _is_ the dive the save will find.
+`deleteFileConfirmation` is untouched either way: the dive page's recordings card shares it, and
+there the delete really is immediate and the re-read really does happen.
+
+Two things went with the immediate delete. `deleteStoredFile`'s re-read (`setDive(await getDive())`,
+deliberately not `useResource`'s `refetch`) is gone, and so is the reason it existed — there is no
+longer a moment mid-edit when the server's copy of the dive and the form disagree. What it was also
+quietly buying was the confirmation's accuracy, and that is what the paragraphs above are about:
+nothing rebuilt it, because nothing on this side of the wire can.
+
+## A field under 16px zooms an iPhone in, and it stays zoomed
+
+The dive form's dialogs were reported as not fitting an iPhone, and the visual-viewport work above
+is only half of why. The other half is that **iOS Safari zooms the whole page in whenever it focuses
+a field whose computed font-size is under 16px**, and it does not zoom back out afterwards — the
+diver taps the Trip box, the page scales up, and every screen after that is drawn on a visual
+viewport narrower than the layout viewport. A `position: fixed` overlay is laid out against the
+layout viewport, so from then on every dialog is wider than the screen, its padding hanging off both
+edges and its close button past the right one. That is the original screenshot, and no amount of
+`svh` or `visualViewport` arithmetic reaches it: the geometry is right and the page is magnified.
+
+`Input`'s box was `text-sm` — 14px. It is `text-base md:text-sm` now, so a phone gets 16px and
+nothing changes from `md:` up, which is the width this app's density is drawn for. The same edit
+went to `Textarea` and to the month/year `<select>`s in `calendar.tsx`; a `<select>` is a field iOS
+zooms for exactly like a text box, which is what makes the dive form's ppO₂ limit, Role, Usage and
+water type part of this — they are plain `<select>`s wearing `inputClassName`, so `Input`'s change
+reaches them for free. `SelectTrigger` needs nothing: Radix's is a `<button>`, and a button is not a
+field.
+
+**The alternative is a viewport meta, and it is the wrong one.** `maximum-scale=1` or
+`user-scalable=no` suppresses the zoom by taking pinch-zoom away from everybody, which is an
+accessibility regression traded for a layout bug — and iOS has ignored both by default since iOS 10
+anyway, so it would not even work. Sizing the field correctly is the fix; the meta is a way of
+hiding that it is not.
+
+`input.browser.test.tsx` pins it, in the browser lane because the invariant is a measured number
+rather than a class string — it resizes the viewport across the `md` breakpoint and asserts 16px
+below and 14px above. The wide half is not ceremony: it fails a "fix" that drops the breakpoint and
+makes every desktop input 16px.

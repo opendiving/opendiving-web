@@ -232,6 +232,26 @@
     --surface-gradient-factor: 230 70% 62%;
 
     --radius: 0.5rem;
+
+    /* The part of the page the browser is actually showing, for overlays that
+       have to fit inside it - currently `ui/dialog.tsx`. `useVisualViewport`
+       overwrites both from `window.visualViewport` while a dialog is open, and
+       these are what a browser that never fires those events falls back to.
+
+       `svh` rather than `vh`, because they differ on exactly the device this
+       matters on: iOS measures `vh` against the viewport Safari would have with
+       its toolbars retracted, so `100vh` is taller than the screen for as long
+       as they are up. The `@supports` below keeps `vh` for anything that has
+       never heard of `svh`, where an unsubstitutable variable would otherwise
+       drop the whole declaration that used it. */
+    --visual-viewport-height: 100vh;
+    --visual-viewport-top: 0px;
+  }
+
+  @supports (height: 100svh) {
+    :root {
+      --visual-viewport-height: 100svh;
+    }
   }
 
   /* macOS Dark Mode's actual system colors: windowBackgroundColor /

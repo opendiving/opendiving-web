@@ -194,8 +194,9 @@ export function MapCanvas({
         //
         // `cooperativeGestures` is the one that carries the most: one finger
         // scrolls the page instead of panning the map (the surface sits inside a
-        // `max-h-[90vh] overflow-y-auto` dialog and covers much of it on a
-        // phone, so a thumb landing on it has to be able to reach Save), two
+        // dialog that scrolls within a capped height - `ui/dialog.tsx` - and
+        // covers much of it on a phone, so a thumb landing on it has to be able
+        // to reach Save), two
         // fingers drive the map, and the wheel only zooms with ctrl/cmd - which
         // is also what a trackpad pinch sends. It sets `touch-action: pan-x
         // pan-y` on the canvas and `preventDefault`s `touchmove` from two

@@ -38,13 +38,16 @@ export interface DiveFormCardProps<TFieldValues extends DiveFormValues> {
   cancelHref: string;
   submittingLabel: string;
   submitLabel: string;
-  // All five passed straight through to `DiveFileImport`. The page, not this
-  // card, owns the picked files: they can only be attached once the dive
-  // exists, which is after `onSubmit` resolves.
+  // Passed straight through to `DiveFileImport`, every one of them. The page,
+  // not this card, owns what the file list is about: a picked file can only be
+  // attached once the dive exists, which is after `onSubmit` resolves, and a
+  // stored one is deleted in the same pass rather than when it is struck off.
   onFileAdded?: (pending: PendingDiveFile) => void;
   pendingFiles?: PendingDiveFile[];
   onRemovePendingFile?: (id: string) => void;
-  onDeleteStoredFile?: (fileUuid: string) => Promise<void>;
+  removedStoredFiles?: string[];
+  onRemoveStoredFile?: (fileUuid: string) => void;
+  onRestoreStoredFile?: (fileUuid: string) => void;
   recordings?: Recording[];
   // The dive being edited, so the import can tell a match against it from a
   // match against some other dive. Absent when creating.
@@ -76,7 +79,9 @@ export function DiveFormCard<TFieldValues extends DiveFormValues>({
   onFileAdded,
   pendingFiles,
   onRemovePendingFile,
-  onDeleteStoredFile,
+  removedStoredFiles,
+  onRemoveStoredFile,
+  onRestoreStoredFile,
   recordings,
   diveUuid,
   knownDiveSites,
@@ -187,7 +192,9 @@ export function DiveFormCard<TFieldValues extends DiveFormValues>({
               onFileAdded={onFileAdded}
               pending={pendingFiles}
               onRemovePending={onRemovePendingFile}
-              onDeleteStored={onDeleteStoredFile}
+              removedStored={removedStoredFiles}
+              onRemoveStored={onRemoveStoredFile}
+              onRestoreStored={onRestoreStoredFile}
               recordings={recordings}
               diveUuid={diveUuid}
               // One of the four moments a value arrives from outside the diver's

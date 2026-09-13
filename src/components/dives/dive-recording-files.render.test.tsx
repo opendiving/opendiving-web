@@ -69,7 +69,7 @@ describe("DiveRecordingFiles", () => {
         ]}
         pending={[]}
         onRemovePending={vi.fn()}
-        onDeleteStored={vi.fn()}
+        onRemoveStored={vi.fn()}
       />,
     );
 
@@ -97,7 +97,7 @@ describe("DiveRecordingFiles", () => {
         ]}
         pending={[]}
         onRemovePending={vi.fn()}
-        onDeleteStored={vi.fn()}
+        onRemoveStored={vi.fn()}
       />,
     );
 
@@ -114,7 +114,7 @@ describe("DiveRecordingFiles", () => {
   });
 
   it("offers no delete control on the create form, where nothing is stored", () => {
-    // `onDeleteStored` is absent there. A row that offered one would be offering
+    // `onRemoveStored` is absent there. A row that offered one would be offering
     // to delete a file that does not exist yet.
     render(
       <DiveRecordingFiles
@@ -151,7 +151,7 @@ describe("DiveRecordingFiles", () => {
         ]}
         pending={[]}
         onRemovePending={vi.fn()}
-        onDeleteStored={vi.fn()}
+        onRemoveStored={vi.fn()}
       />,
     );
 
@@ -175,7 +175,7 @@ describe("DiveRecordingFiles", () => {
         ]}
         pending={[pending({ file: new File(["x"], "picked.json") })]}
         onRemovePending={vi.fn()}
-        onDeleteStored={vi.fn()}
+        onRemoveStored={vi.fn()}
       />,
     );
 
@@ -204,8 +204,8 @@ describe("DiveRecordingFiles", () => {
     expect(onRemovePending).toHaveBeenCalledWith("p7");
   });
 
-  it("confirms before deleting a file that is already on the server", async () => {
-    const onDeleteStored = vi.fn().mockResolvedValue(undefined);
+  it("confirms before marking a file that is already on the server", async () => {
+    const onRemoveStored = vi.fn();
     render(
       <DiveRecordingFiles
         recordings={[
@@ -218,24 +218,73 @@ describe("DiveRecordingFiles", () => {
         ]}
         pending={[]}
         onRemovePending={vi.fn()}
-        onDeleteStored={onDeleteStored}
+        onRemoveStored={onRemoveStored}
       />,
     );
 
     await userEvent.click(
       screen.getByRole("button", { name: "Delete dive.fit" }),
     );
-    expect(onDeleteStored).not.toHaveBeenCalled();
+    expect(onRemoveStored).not.toHaveBeenCalled();
 
     // The dialog says what else goes with the file, because on this route that
-    // is not obvious - the recording's profile is re-read from what is left.
+    // is not obvious - the recording's profile is re-read from what is left -
+    // and *when*, which is the half that is only true on a form.
     expect(
       screen.getByRole("heading", { name: "Delete this file?" }),
     ).toBeVisible();
     expect(screen.getByText(/re-read from the files it keeps/i)).toBeVisible();
+    expect(
+      screen.getByText(/none of it happens until you save this edit/i),
+    ).toBeVisible();
 
     await userEvent.click(screen.getByRole("button", { name: "Delete" }));
-    expect(onDeleteStored).toHaveBeenCalledWith("stored-uuid");
+    expect(onRemoveStored).toHaveBeenCalledWith("stored-uuid");
+  });
+
+  it("keeps a marked file on the list, struck off and undoable", async () => {
+    // The whole point of deferring: the row is a statement about what the dive
+    // will hold after the save, so a file on its way out has to stay visible
+    // and reversible rather than vanishing the moment it is confirmed.
+    const onRestoreStored = vi.fn();
+    render(
+      <DiveRecordingFiles
+        recordings={[
+          recording({
+            files: [
+              file({ uuid: "gone", original_filename: "ocean.fit" }),
+              file({ uuid: "kept", original_filename: "ocean.json" }),
+            ],
+          }),
+        ]}
+        pending={[]}
+        onRemovePending={vi.fn()}
+        removedStored={["gone"]}
+        onRemoveStored={vi.fn()}
+        onRestoreStored={onRestoreStored}
+      />,
+    );
+
+    const rows = screen.getAllByTestId("dive-file-row");
+    expect(rows).toHaveLength(2);
+    expect(within(rows[0]).getByText("ocean.fit")).toBeVisible();
+    // In words as well as in a strike-through: the decoration alone is a claim
+    // about a row that is otherwise unchanged.
+    expect(within(rows[0]).getByText(/deleted when you save/i)).toBeVisible();
+
+    // The marked row swaps its delete control for the way back; the other row
+    // still has its own.
+    expect(
+      within(rows[0]).queryByRole("button", { name: "Delete ocean.fit" }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(rows[1]).getByRole("button", { name: "Delete ocean.json" }),
+    ).toBeVisible();
+
+    await userEvent.click(
+      within(rows[0]).getByRole("button", { name: "Keep ocean.fit" }),
+    );
+    expect(onRestoreStored).toHaveBeenCalledWith("gone");
   });
 
   it("says the recording goes too when this is its last file", async () => {
@@ -248,7 +297,7 @@ describe("DiveRecordingFiles", () => {
         recordings={[recording({ files: [file({ uuid: "stored-uuid" })] })]}
         pending={[]}
         onRemovePending={vi.fn()}
-        onDeleteStored={vi.fn().mockResolvedValue(undefined)}
+        onRemoveStored={vi.fn()}
       />,
     );
 
@@ -265,5 +314,46 @@ describe("DiveRecordingFiles", () => {
     expect(
       screen.getByText(/the figures the dive computer recorded are cleared/i),
     ).toBeVisible();
+  });
+
+  it("claims no outcome once something else is already struck off", async () => {
+    // From the second mark on, what else goes depends on a cascade that runs on
+    // the server at save time - an emptied recording is deleted, its profile is
+    // re-derived from what is left, and the ordinals are renumbered. This says
+    // what is certain rather than modelling that, because three rounds of
+    // review found three different ways for a local model of it to be wrong.
+    render(
+      <DiveRecordingFiles
+        recordings={[
+          recording({
+            files: [
+              file({ uuid: "gone", original_filename: "ocean.fit" }),
+              file({ uuid: "last", original_filename: "ocean.json" }),
+            ],
+          }),
+        ]}
+        pending={[]}
+        onRemovePending={vi.fn()}
+        removedStored={["gone"]}
+        onRemoveStored={vi.fn()}
+        onRestoreStored={vi.fn()}
+      />,
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Delete ocean.json" }),
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "Delete this file?" }),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/may leave a recording with no files/i),
+    ).toBeVisible();
+    // Neither of the two outcome claims the first mark is entitled to make.
+    expect(
+      screen.queryByText(/re-read from the files it keeps/i),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/its samples stay/i)).not.toBeInTheDocument();
   });
 });

@@ -223,9 +223,12 @@ export interface DiveFileImportProps<TFieldValues extends DiveFormValues> {
   // Files parsed on this form and not yet attached, held by the page.
   pending?: PendingDiveFile[];
   onRemovePending?: (id: string) => void;
-  // Deletes one stored file. Edit form only, and immediate - the file is already
-  // on the server, so there is nothing for a save to confirm.
-  onDeleteStored?: (fileUuid: string) => Promise<void>;
+  // Stored files struck off the list, and the two controls over that. Edit form
+  // only, and deferred: the deletions go out with the save, beside the attaches,
+  // so that Cancel leaves the dive's files exactly as it found them.
+  removedStored?: string[];
+  onRemoveStored?: (fileUuid: string) => void;
+  onRestoreStored?: (fileUuid: string) => void;
   // The dive being edited, so a match against *this* dive can be told from a
   // match against another one. Absent on the create form, where every match is
   // another dive by definition.
@@ -240,7 +243,9 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
   recordings = [],
   pending = [],
   onRemovePending,
-  onDeleteStored,
+  removedStored,
+  onRemoveStored,
+  onRestoreStored,
   diveUuid,
 }: DiveFileImportProps<TFieldValues>) {
   const { toast } = useToast();
@@ -279,7 +284,17 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
   // Applies a parsed file to the form and hands it to the page to attach on
   // save. Shared by the ordinary path and by "Log as a new dive", which is the
   // same thing after the diver has refused a match.
-  const acceptParsedFile = (file: File, parsed: ParsedDive) => {
+  //
+  // `alreadyHasFile` is passed rather than read off `hasFileAlready`, because
+  // within one pick this is called several times before React has re-rendered
+  // with the files it added: the prop still says "none" while the second file
+  // of the batch is being applied, and first-file-wins would collapse into
+  // last-file-wins.
+  const acceptParsedFile = (
+    file: File,
+    parsed: ParsedDive,
+    alreadyHasFile: boolean,
+  ) => {
     const sameRecording = (parsed.matches ?? []).some(
       (match) => match.same_recording && match.dive_uuid === diveUuid,
     );
@@ -287,7 +302,7 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
       form,
       parsed,
       replaceMixtures,
-      hasFileAlready || sameRecording ? "fill-only" : "prefill",
+      alreadyHasFile || sameRecording ? "fill-only" : "prefill",
     );
     onValuesApplied?.();
     onFileAdded?.({
@@ -296,65 +311,123 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
       token: parsed.file_token,
       deviceLabel: recordingDeviceLabel(parsed.device),
     });
-    setImportNote(describeMixtureImport(notes));
+    // Kept rather than replaced. Only a prefill has anything to report, so
+    // every file after the first answers `null` - and assigning that would wipe
+    // the first file's note off the screen mid-batch. The pick clears it once,
+    // in `handleFilesSelected`.
+    const note = describeMixtureImport(notes);
+    if (note) setImportNote(note);
+  };
 
+  // One toast for the pick rather than one per file: a diver emptying a
+  // computer's card picks several at once, and a stack of identical toasts is
+  // the same sentence four times over.
+  const announceImported = (count: number) => {
+    if (count === 0) return;
     toast({
-      title: "Dive file parsed",
+      title: count === 1 ? "Dive file parsed" : `${count} dive files parsed`,
       description:
-        "Form fields have been filled in from the uploaded file. Please review before saving.",
+        count === 1
+          ? "Form fields have been filled in from the uploaded file. Please review before saving."
+          : "Form fields have been filled in from the uploaded files. Please review before saving.",
     });
   };
 
-  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // Parses the picked files one at a time and writes each onto the form, in
+  // pick order.
+  //
+  // **Serially, and never in parallel.** The mode each file is applied in
+  // depends on what the ones before it left behind, so a `Promise.all` here
+  // would make first-file-wins depend on which response came back first.
+  //
+  // One bad file doesn't end the batch: an oversized or unparseable file says
+  // so and the rest carry on, since the diver picked them together and has no
+  // way to re-pick "the other three". A *match* does pause it - that is a
+  // question only they can answer - and the remainder rides along on the offer
+  // until they have.
+  const importFiles = async (
+    files: File[],
+    seed: { hasFile: boolean; accepted: number },
+  ) => {
+    let hasFile = seed.hasFile;
+    let accepted = seed.accepted;
 
+    setIsParsingFile(true);
     try {
-      // Checked here as well as by the API so a diver on a slow connection
-      // isn't made to upload an oversized file before being told no. The API
-      // re-checks regardless, and its check is the one that counts.
-      if (file.size > MAX_DIVE_FILE_SIZE) {
-        toast({
-          title: "File too large",
-          description: "Dive files must be 5 MB or smaller.",
-          variant: "destructive",
-        });
-        return;
+      for (const [index, file] of files.entries()) {
+        // Checked here as well as by the API so a diver on a slow connection
+        // isn't made to upload an oversized file before being told no. The API
+        // re-checks regardless, and its check is the one that counts.
+        if (file.size > MAX_DIVE_FILE_SIZE) {
+          toast({
+            title: "File too large",
+            description: `${file.name} is larger than 5 MB, so it wasn't read.`,
+            variant: "destructive",
+          });
+          continue;
+        }
+
+        let parsed: ParsedDive;
+        try {
+          parsed = await divesAPI.parseDiveFile(file);
+        } catch (error) {
+          console.error("Failed to parse dive file:", error);
+          toast({
+            title: "Error",
+            description: getApiErrorMessage(
+              error,
+              `Failed to parse ${file.name}. Please check the file and try again.`,
+            ),
+            variant: "destructive",
+          });
+          continue;
+        }
+
+        // A match on a dive the diver is not looking at is the one case that
+        // stops and asks. A match on *this* dive is not a question - the file
+        // belongs here, which is what the form is already doing - it only
+        // decides that the write fills rather than overwrites, above.
+        const elsewhere = (parsed.matches ?? []).filter(
+          (match) => match.dive_uuid !== diveUuid,
+        );
+        if (elsewhere.length > 0) {
+          setOffer({
+            file,
+            parsed,
+            match: elsewhere[0],
+            rest: files.slice(index + 1),
+            accepted,
+          });
+          return;
+        }
+
+        acceptParsedFile(file, parsed, hasFile);
+        hasFile = true;
+        accepted += 1;
       }
 
-      setIsParsingFile(true);
-      const parsed: ParsedDive = await divesAPI.parseDiveFile(file);
-
-      // A match on a dive the diver is not looking at is the one case that
-      // stops and asks. A match on *this* dive is not a question - the file
-      // belongs here, which is what the form is already doing - it only decides
-      // that the write fills rather than overwrites, above.
-      const elsewhere = (parsed.matches ?? []).filter(
-        (match) => match.dive_uuid !== diveUuid,
-      );
-      if (elsewhere.length > 0) {
-        setOffer({ file, parsed, match: elsewhere[0] });
-        return;
-      }
-
-      acceptParsedFile(file, parsed);
-    } catch (error) {
-      console.error("Failed to parse dive file:", error);
-
-      const errorMessage = getApiErrorMessage(
-        error,
-        "Failed to parse the dive file. Please check the file and try again.",
-      );
-
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
+      announceImported(accepted);
     } finally {
       setIsParsingFile(false);
-      e.target.value = "";
     }
+  };
+
+  const handleFilesSelected = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const files = Array.from(e.target.files ?? []);
+    // Cleared before the first parse rather than after the last. The input is
+    // what has to fire `change` again if the diver re-picks the same file, and
+    // holding the old selection across an upload that takes seconds is how that
+    // gets missed.
+    e.target.value = "";
+    if (files.length === 0) return;
+
+    setImportNote(null);
+    await importFiles(files, {
+      hasFile: hasFileAlready,
+      accepted: 0,
+    });
   };
 
   // "Attach there": the file joins the dive it matched, right now, and the diver
@@ -404,9 +477,14 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
           secondaryAction={{
             label: "Log as a new dive",
             onClick: () => {
-              const { file, parsed } = offer;
+              const { file, parsed, rest, accepted } = offer;
               setOffer(null);
-              acceptParsedFile(file, parsed);
+              acceptParsedFile(file, parsed, hasFileAlready);
+              // Picks the batch back up where the question interrupted it, and
+              // does the announcing even when nothing is left: `rest` empty is
+              // the ordinary single-file case, and the toast belongs to the
+              // pick rather than to the loop.
+              void importFiles(rest, { hasFile: true, accepted: accepted + 1 });
             },
           }}
           onConfirm={attachToMatch}
@@ -421,8 +499,9 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
           <p className="text-sm text-muted-foreground">
             Upload a dive log export — a FIT file from a Garmin Descent or
             Suunto computer, or a Suunto XML or JSON export — to fill in the
-            fields below. Upload one per computer that recorded this dive, or
-            one computer&apos;s second export alongside its first.
+            fields below. Pick as many as you like at once: one per computer
+            that recorded this dive, or one computer&apos;s second export
+            alongside its first.
           </p>
           {/* Rendered unconditionally and `sr-only` until there is something to say: a
               `role="status"` region that mounts together with its text is typically not
@@ -445,8 +524,13 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
             ref={fileInputRef}
             type="file"
             accept={DIVE_FILE_ACCEPT}
+            // A dive off two computers, or one computer's JSON beside its FIT,
+            // was always two trips through this picker for no reason: the form
+            // already holds a list and the server already decides per file
+            // which recording it joins.
+            multiple
             className="hidden"
-            onChange={handleFileSelected}
+            onChange={handleFilesSelected}
           />
           <Button
             type="button"
@@ -462,7 +546,7 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
             ) : (
               <>
                 <Upload className="h-4 w-4 mr-2" />
-                Upload Dive File
+                Upload Dive Files
               </>
             )}
           </Button>
@@ -473,7 +557,9 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
         recordings={recordings}
         pending={pending}
         onRemovePending={(id) => onRemovePending?.(id)}
-        onDeleteStored={onDeleteStored}
+        removedStored={removedStored}
+        onRemoveStored={onRemoveStored}
+        onRestoreStored={onRestoreStored}
       />
     </div>
   );
@@ -487,6 +573,14 @@ interface MatchOffer {
   file: File;
   parsed: ParsedDive;
   match: ParsedDiveMatch;
+  /**
+   * The files picked after this one, waiting on the answer. Held here rather
+   * than in state of their own so that dismissing the dialog drops them with
+   * the question - refusing to answer is not an instruction to carry on.
+   */
+  rest: File[];
+  /** How many of this pick's files reached the form before the question. */
+  accepted: number;
 }
 
 // What the match dialog says. Names the dive and the device, because those are

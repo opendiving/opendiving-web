@@ -51,6 +51,7 @@ vi.mock("@/lib/api/dives", async (importOriginal) => {
       ...actual.divesAPI,
       getDive: vi.fn(),
       updateDive: vi.fn(),
+      deleteDiveFile: vi.fn(),
     },
   };
 });
@@ -140,6 +141,7 @@ beforeEach(() => {
   stable.auth.user.dive_form_hidden_fields = [];
   vi.mocked(divesAPI.getDive).mockResolvedValue(storedDive());
   vi.mocked(divesAPI.updateDive).mockResolvedValue({ message: "ok" });
+  vi.mocked(divesAPI.deleteDiveFile).mockResolvedValue(undefined);
   vi.mocked(authAPI.updateProfile).mockResolvedValue(undefined);
   vi.mocked(presets.fetchAllDiveFormPresets).mockResolvedValue([]);
   vi.mocked(tripsAPI.getTrips).mockResolvedValue(emptyPage());
@@ -442,5 +444,103 @@ describe("a submit the browser refuses", () => {
     expect(
       screen.queryByText(/would not submit this form/i),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("removing a file the dive already holds", () => {
+  // A dive with two files on one recording, so the deletion is the ordinary
+  // "the recording keeps its other file" case rather than the one that takes
+  // the recording with it.
+  const diveWithFiles = () =>
+    storedDive({
+      recordings: [
+        {
+          uuid: "r1",
+          ordinal: 0,
+          files: [
+            {
+              uuid: "file-1",
+              original_filename: "ocean.fit",
+              content_type: "application/octet-stream",
+              byte_size: 4096,
+              parser_key: "fit",
+            },
+            {
+              uuid: "file-2",
+              original_filename: "ocean.json",
+              content_type: "application/json",
+              byte_size: 2048,
+              parser_key: "suunto_json",
+            },
+          ],
+        },
+      ],
+    } as Partial<Dive>);
+
+  const markForRemoval = async (name: string) => {
+    await userEvent.click(
+      await screen.findByRole("button", { name: `Delete ${name}` }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+  };
+
+  it("deletes nothing until the edit is saved", async () => {
+    vi.mocked(divesAPI.getDive).mockResolvedValue(diveWithFiles());
+
+    render(<EditDivePage />);
+    await markForRemoval("ocean.fit");
+
+    // The confirmation is the diver's decision, not the request. Until Save the
+    // dive still holds the file, which is what makes Cancel mean something.
+    expect(divesAPI.deleteDiveFile).not.toHaveBeenCalled();
+    expect(await screen.findByText(/deleted when you save/i)).toBeVisible();
+
+    await saveChanges();
+
+    await waitFor(() =>
+      expect(divesAPI.deleteDiveFile).toHaveBeenCalledWith("dive-1", "file-1"),
+    );
+    expect(vi.mocked(divesAPI.deleteDiveFile).mock.calls).toHaveLength(1);
+    // And the save itself still went out - the deletion rides along with it
+    // rather than replacing it.
+    expect(divesAPI.updateDive).toHaveBeenCalled();
+  });
+
+  it("takes a marked file back off the list, and then deletes nothing", async () => {
+    vi.mocked(divesAPI.getDive).mockResolvedValue(diveWithFiles());
+
+    render(<EditDivePage />);
+    await markForRemoval("ocean.fit");
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Keep ocean.fit" }),
+    );
+    expect(
+      screen.queryByText(/deleted when you save/i),
+    ).not.toBeInTheDocument();
+
+    await saveChanges();
+
+    await waitFor(() => expect(divesAPI.updateDive).toHaveBeenCalled());
+    expect(divesAPI.deleteDiveFile).not.toHaveBeenCalled();
+  });
+
+  it("saves the edit even when the deletion fails, and says which file survived", async () => {
+    vi.mocked(divesAPI.getDive).mockResolvedValue(diveWithFiles());
+    vi.mocked(divesAPI.deleteDiveFile).mockRejectedValue(new Error("nope"));
+
+    render(<EditDivePage />);
+    await markForRemoval("ocean.fit");
+    await saveChanges();
+
+    await waitFor(() =>
+      expect(stable.toast.toast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: expect.stringContaining("ocean.fit"),
+          variant: "destructive",
+        }),
+      ),
+    );
+    expect(stable.router.push).toHaveBeenCalledWith("/dives/dive-1");
   });
 });
