@@ -404,7 +404,7 @@ export function toDiveMixtureInput(mixture: DiveMixture): DiveMixtureInput {
  * The narrower alternative - keep the synthetic row and have `buildDiveUpdate`
  * drop `mixtures` when the dive arrived with none and the field still holds one
  * pristine `DEFAULT_MIXTURE` - is worse than it looks. `DEFAULT_MIXTURE` is an
- * aluminium 80 of air, the "11.1 L (S80)" preset and the most common
+ * aluminium 80 of air, the "11.1 L (AL80)" preset and the most common
  * recreational cylinder there is, so a guard keyed on value-equality with it
  * makes exactly that cylinder unsavable on exactly the dives that need it.
  *

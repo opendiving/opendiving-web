@@ -80,7 +80,7 @@ function NewDivePageContent() {
       notes: "",
       // Empty, not a seeded cylinder. A form must not write gas the diver never
       // entered: `DEFAULT_MIXTURE`'s 11.1 L of air is a plausible enough cylinder
-      // (it is the "11.1 L (S80)" preset in `volume-combobox.tsx`) that a diver who
+      // (it is the "11.1 L (AL80)" preset in `volume-combobox.tsx`) that a diver who
       // never opened the gas card could not tell it from something they logged - and
       // `diveModWarning` would then raise a depth-safety warning derived from it. The
       // prefill below still carries the last dive's cylinders over, which is where
