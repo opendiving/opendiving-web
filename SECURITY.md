@@ -33,8 +33,9 @@ Our own scanner's findings about the published image are not an exception to the
 are code-scanning alerts on this repository, raised by `.github/workflows/vulnerability-scan.yml` so
 that the base-image rebuild gets done, and they name advisories Alpine and NVD published first —
 `trivy image` against the same public tag tells you the same thing. (Before 2026-09-12 they were
-issues labelled `image-cve`; one may still be open, and nothing maintains it.) This rule is about a
-defect in _our_ code that nobody has disclosed yet — that still goes to the private channel above.
+issues labelled `image-cve`; the last of those was closed on the day of the move, and none has been
+opened since.) This rule is about a defect in _our_ code that nobody has disclosed yet — that still
+goes to the private channel above.
 
 No GitHub account, or the form isn't working for you? Email **security@opendiving.app** instead. It
 reaches the maintainers and nobody else, and a report that arrives there is handled exactly like one

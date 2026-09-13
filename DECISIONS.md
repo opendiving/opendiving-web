@@ -9382,11 +9382,27 @@ setup conflicts with an _advanced_ CodeQL workflow, because both would upload Co
 same language; a third-party SARIF upload carries its own tool name and its own category and is
 independent of it.
 
-**The one thing the move does not do is tidy up after itself.** Issue #196, the last `image-cve`
-issue, is still open and nothing edits or closes it any more — the step that did is deleted. It
-needs closing by hand, and `CONTRIBUTING.md` and `SECURITY.md` both say so rather than pretending
-the surface changed retroactively. The `image-cve` label is left in place for the same reason: it is
-still attached to that issue.
+**The move did not tidy up after itself, and the leftover was closed by hand.** #196 was opened by
+the last scheduled run under the old surface, 09:45 UTC on 2026-09-12; the flip merged that evening
+at 20:10 UTC and took the issue step with it, so from that minute nothing edited or closed an
+`image-cve` issue. The maintainer closed #196 at 20:44 UTC, thirty-four minutes later. Nothing in
+the new surface could have done it for them: an upload replaces the alert set for its category and
+knows nothing about issues, which is the same property the section above counts as the gain.
+
+**The shape recurs even though this instance is finished.** Retiring an output surface deletes the
+code that _maintains_ whatever that surface already produced, so those artifacts outlive it in the
+state they were last left — and they go stale in silence, because the thing that would have
+corrected them is the thing just removed. Thirty-four minutes was luck: the last scan happened to
+have run that morning. Had the repository been quiet for a week, #196 would have sat open carrying a
+CVE list nothing could refresh, reading as a live task. The move to make is to go looking for the
+artifacts while deleting the step, not after.
+
+The `image-cve` label is still on the repository, and #196 is the only issue that has ever carried
+it. Nothing under `.github/` names it any more, so no workflow creates it, applies it or files under
+it again — which leaves it attached to one closed issue rather than orphaned, and that is the reason
+to leave it: deleting a label strips it from every issue carrying it, and #196 is the only record of
+what the old surface produced. `CONTRIBUTING.md` and `SECURITY.md` carried this as a standing to-do
+and now record it in the past tense.
 
 ## `dependency-review` is a gate on the diff, and its licence list was derived
 
