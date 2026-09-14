@@ -70,7 +70,7 @@ jobs:
       - name: Bundle size analysis
         run: |
           npm run build
-          npx --yes @next/bundle-analyzer@16.3.0 || true
+          npx --yes @next/bundle-analyzer@16.3.5 || true
 
       - name: Check for circular dependencies
         run: npx --yes madge@8.0.0 --circular --extensions ts,tsx,js,jsx src/ || true
@@ -170,7 +170,7 @@ jobs:
 
       - name: Run accessibility tests with axe
         run: |
-          npx --yes @axe-core/cli@4.12.1 http://localhost:3000 \
+          npx --yes @axe-core/cli@4.13.0 http://localhost:3000 \
             --include="main" \
             --exclude="iframe" \
             --tags="wcag2a,wcag2aa,wcag21aa" \
