@@ -71,8 +71,8 @@
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
-    "@vitest/browser-playwright": "^4.1.11",
-    "@vitest/coverage-v8": "^4.1.11",
+    "@vitest/browser-playwright": "^5.0.0",
+    "@vitest/coverage-v8": "^5.0.0",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.3.0",
     "jsdom": "^30.0.1",
@@ -83,6 +83,6 @@
     "sharp": "^0.35.3",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.11"
+    "vitest": "^5.0.0"
   }
 }
