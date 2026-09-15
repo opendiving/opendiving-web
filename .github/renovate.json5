@@ -166,6 +166,36 @@
       "dependencyDashboardApproval": true,
     },
     {
+      // ESLint 10 cannot run this repository's config, and neither crash is ours to fix.
+      // `eslint.config.mjs` is `eslint-config-next/core-web-vitals` plus three rule overrides,
+      // and that preset carries two things v10 rejects:
+      //
+      //   - `eslint-config-next/parser`, a re-export of Next's compiled
+      //     `@babel/eslint-parser`, returns a `ScopeManager` with no `addGlobals` - the method
+      //     v10 calls on every file to install configured globals. That is
+      //     `TypeError: scopeManager.addGlobals is not a function`, on each `.js` and `.mjs`.
+      //   - `eslint-plugin-react@7.37.5`, the newest published, reads the installed React
+      //     version through `context.getFilename()`, which v10 removed. That is
+      //     `contextOrFilename.getFilename is not a function`, on each `.ts` and `.tsx`, and
+      //     its peer range says so outright: `^3 || ... || ^9.7`.
+      //
+      // The second is what settles it rather than merely dating it. `react/no-danger` is an
+      // `error` here as the XSS guardrail CONTRIBUTING.md names, and it is that plugin's rule -
+      // so "take v10 without the plugin" is "take v10 without the guardrail". `overrides` is no
+      // escape either: there is no release of `eslint-plugin-react` supporting v10 to force to,
+      // and `eslint-config-next@16.4.0-canary.31` still depends on `^7.37.0`.
+      //
+      // `dependencyDashboardApproval` rather than `enabled: false`, for the Node rule's reason
+      // above: this is a wait on upstream and not a permanent no, so it belongs somewhere it
+      // stays visible. v9 minors and patches are untouched - only the major waits. DECISIONS.md,
+      // "ESLint stays on v9, because the Next preset's plugins have not moved to v10", has the
+      // diagnosis and the check worth running before the box is ticked.
+      "matchManagers": ["npm"],
+      "matchPackageNames": ["eslint"],
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true,
+    },
+    {
       // Not the action - `aquasecurity/setup-trivy` keeps its SHA pin renewed like every
       // other third-party action here. This is its `version:` **input**, which Renovate's
       // github-actions manager extracts as a dependency of its own

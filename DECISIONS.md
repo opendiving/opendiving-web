@@ -18584,3 +18584,52 @@ phone. `FormField` renders `FormItem` as the grid's direct child, which is what 
 resolve to the surviving field rather than to something inside it. This is the only grid in the form
 carrying the class, and the readings grid deliberately does not: packing already solves it there,
 and a span would fight the auto-flow.
+
+## ESLint stays on v9, because the Next preset's plugins have not moved to v10
+
+Renovate opened the v10 major and both lint jobs died before reporting a single finding. Two
+separate incompatibilities, one hiding behind the other, and neither in code this repository owns:
+`eslint.config.mjs` is `eslint-config-next/core-web-vitals` plus an ignore list and three rule
+overrides, so every crash is inside that preset's dependency tree.
+
+**The first kills `.js` and `.mjs`.** `eslint-config-next/parser` is a thin re-export of
+`next/dist/compiled/babel/eslint-parser`, and the `ScopeManager` it returns has no `addGlobals` —
+the method v10's `SourceCode.finalize` calls on every file to install configured globals. The result
+is `TypeError: scopeManager.addGlobals is not a function`, raised from `addDeclaredGlobals`. What
+makes that trace misleading is that both scope managers you can see do have the method: ESLint's own
+`eslint-scope@9.1.2` and `@typescript-eslint/scope-manager@8.70.0` both implement it, so `npm ls`
+and a grep through `node_modules` say everything is fine. The failing one is bundled inside Next's
+compiled Babel and appears in neither. Printing `scopeManager.constructor` at the call site is what
+identifies it — the object is an old escope-era `ScopeManager`, carrying `__nestScope` and friends
+and nothing from the v9 API.
+
+**The second kills `.ts` and `.tsx`, and is invisible until the first is out of the way.** Point the
+JS files at `espree` and the run gets one step further, to
+`Error while loading rule 'react/display-name': contextOrFilename.getFilename is not a function` —
+`eslint-plugin-react@7.37.5` detecting the installed React version through an ESLint 9 API that v10
+removed. 7.37.5 is the newest published version, and its peer range says this outright:
+`^3 || ^4 || ^5 || ^6 || ^7 || ^8 || ^9.7`.
+
+**The second one is what settles the question rather than merely dating it.** `react/no-danger` is
+set to `error` in `eslint.config.mjs` as this repo's XSS guardrail — CONTRIBUTING.md names it, and
+the rule comes from `eslint-plugin-react`. So the only shape a workaround has is "run v10 without
+that plugin", which is "run v10 without the guardrail": a materially worse repository bought with a
+dev-only tool's major number, which buys nothing here at all. Forcing newer plugins through npm
+`overrides` is not an escape either — there is no release of `eslint-plugin-react` that supports v10
+to force to, and `eslint-config-next@16.4.0-canary.31`, the canary rather than the release, still
+depends on `^7.37.0` and still ships the same compiled parser.
+
+**So the hold lives in `.github/renovate.json5` and not in a pin.** A `dependencyDashboardApproval`
+rule on major `eslint` updates, which is how the Node runtime is handled two rules above it: v9
+minors and patches keep arriving on the ordinary Monday schedule, and the major sits on the
+Dependency Dashboard where it stays visible instead of being silently dropped. A pinned
+`"eslint": "9.x"` would have done the same job and said none of this, and `enabled: false` would
+have made the wait indistinguishable from a decision never to upgrade.
+
+**Two checks are worth running before anyone ticks that box, because the dashboard cannot tell you
+upstream is ready.** `npm ls eslint-plugin-react` wants a version above 7.37.5 with `^10` in its
+peer range — that clears the second blocker. The first has no version number to watch, because the
+parser is compiled into Next rather than resolved as a dependency, so the only honest test is to run
+it: install the major on a throwaway branch and check that `npx eslint .` reports lint findings
+rather than a `TypeError`. A green `npm run lint` is not the signal to look for — both of these
+crashes exit non-zero, but so does an ordinary lint failure, and the distinction is the whole point.
