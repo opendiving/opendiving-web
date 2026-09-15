@@ -9576,7 +9576,7 @@ the controlled `value` prop alike, which is exactly what `normalizeCode` was for
 marked `data-1p-ignore`/`data-lpignore` so a password manager offers the code once instead of six
 times.
 
-**Four things about it that are not obvious from the outside:**
+**Five things about it that are not obvious from the outside:**
 
 - **The root is a group, so `<Label htmlFor>` has nothing to point at.** The visible text is a
   `<span id="signin-code-label">` and the group takes `aria-labelledby`; each box gets its own
