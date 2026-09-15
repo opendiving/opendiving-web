@@ -8,21 +8,23 @@
 # testing
 /coverage
 # Vitest's own scratch root. Browser mode parks attachments here and fills in a
-# `failure-screenshots/` tree under it for every failing test; both are
-# diagnostics for the run that produced them, so they are worth looking at and
+# `failure-screenshots/` tree under it for every failing test, and a failed
+# `toMatchScreenshot` adds its `-reference`/`-actual`/`-diff` copies. All of it
+# is diagnostics for the run that produced them, so it is worth looking at and
 # never worth committing.
-# Vitest 5 moved both into this one directory. Vitest 4 wrote attachments to
-# `/.vitest-attachments/` and the failure screenshot into a `__screenshots__/`
-# beside the test, and those were the two entries this block used to carry -
-# the diagnostics no longer land in either place, so both are gone.
-# `__screenshots__/` is deliberately not ignored now rather than merely unused:
-# in 5 that directory belongs to `toMatchScreenshot`, and what it holds is the
-# *reference* image - a baseline meant to be reviewed and committed, like any
-# other snapshot. Ignoring it keeps the baseline out of the repository, and
-# `toMatchScreenshot` fails on a reference it cannot find, so the visual test
-# would fail on CI on every run. Only the `-actual`/`-diff` images a comparison
-# failure drops beside the reference are worth an ignore, and that can wait for
-# the first test to produce them.
+# Vitest 5 moved the diagnostics into this one directory. Vitest 4 wrote
+# attachments to `/.vitest-attachments/` and the failure screenshot into a
+# `__screenshots__/` beside the test, and those were the two entries this block
+# used to carry - neither holds diagnostics any more, so both are gone.
+# `__screenshots__/` is deliberately not ignored rather than merely unused: in 5
+# it holds the `toMatchScreenshot` *reference* image, a baseline meant to be
+# reviewed and committed like any other snapshot, and the matcher fails on a
+# reference it cannot find. Ignoring it would keep the baseline out of the
+# repository and fail the visual test on CI on every run.
+# The cost of leaving it tracked is that `page.screenshot()` saves there by
+# default, so an ad-hoc debug call shows up untracked. That is the recoverable
+# half of the trade - pass `save: false` or an explicit path - where an ignored
+# baseline is invisible until CI goes red.
 /.vitest/
 
 # next.js

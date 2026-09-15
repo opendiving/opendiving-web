@@ -18779,6 +18779,12 @@ Ignoring the root spares the next person the same one-line PR. The other two pat
 write need no entry — `fsModuleCache` lives in `node_modules/.vitest-cache`, already covered, and
 `.vitest-dump` appears only behind an explicit dump flag.
 
+It also covers the one part of `toMatchScreenshot` that _is_ a diagnostic. A failed comparison
+writes three images — `-reference`, `-actual` and `-diff` — and those go through `resolveDiffPath`,
+which resolves under `attachmentsDir`, not through the `resolveScreenshotPath` that puts the
+baseline beside the test. So the failure output lands in `.vitest/attachments/` and the baseline
+does not, which is the split the two entries below are drawn along.
+
 **Dropping `__screenshots__/` is the part that is a decision rather than a tidy-up.** In Vitest 5
 that directory no longer holds failure diagnostics; it belongs to `toMatchScreenshot`, and what it
 holds is the **reference** image — the baseline the assertion compares against, which is meant to be
@@ -18792,9 +18798,18 @@ this is not a test that silently passes against nothing — but it is also unfix
 and the message points at a file the author can see locally and CI cannot.
 
 No test in this repository calls `toMatchScreenshot` today, so the entry was ignoring a directory
-nothing writes while arming that trap for whoever adds the first one. The `-actual` and `-diff`
-images a real comparison failure drops beside the reference are the only things there worth
-ignoring, and they can be ignored by name when there is a test to produce them.
+nothing writes while arming that trap for whoever adds the first one.
+
+**`toMatchScreenshot` is not the only writer there, though, and the second one is the argument's
+weak point rather than a footnote.** `page.screenshot()` takes `save: true` by default and resolves
+through the same `resolveScreenshotPath`, so an ad-hoc debug call in a browser test drops a PNG into
+`__screenshots__/` too — untracked, and warned about by `gh pr create` exactly like the `.vitest/`
+this section set out to silence. Nothing in `src/` calls it today either, so this is a trade between
+two things that have not happened yet, and it is settled by which one is recoverable: an untracked
+debug screenshot is visible and deleted in a second, or avoided outright with `save: false` or an
+explicit path, while an ignored baseline is invisible by construction and takes a red CI run to
+diagnose. Ignore the directory the baselines live in and you lose the baselines; leave it tracked
+and you occasionally delete a file you can see.
 
 Both directories still existed locally, holding images from runs made under Vitest 4, and were
 deleted with the entries — `src/components/ui/__screenshots__/` especially, since un-ignoring it
