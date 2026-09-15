@@ -104,9 +104,11 @@ _only_ in a full build, not in the editor. Keep the schema's input and output ty
 the conversion in a plain helper right before the API call (see `normalizeMixtures` in
 `lib/validations/dive.ts`).
 
-**Read [DECISIONS.md](DECISIONS.md) before your first PR.** It records the non-obvious choices and
-the traps already hit — API client signatures, React Hook Form quirks, auth and token handling. When
-you make a decision that would puzzle the next person, append a section to it as part of your PR.
+**Grep [DECISIONS.md](DECISIONS.md) for what you are about to touch.** It records the non-obvious
+choices and the traps already hit — API client signatures, React Hook Form quirks, auth and token
+handling — and is far too long to read whole. When you make a decision the code cannot explain by
+itself, append a short section as part of your PR: under 150 words, present tense, what was chosen
+and why. Most reasons belong in a one-line comment at the site instead.
 
 ## README screenshots
 
