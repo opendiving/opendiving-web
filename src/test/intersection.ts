@@ -29,6 +29,7 @@ const registrations: Registration[] = [];
 class StubIntersectionObserver implements IntersectionObserver {
   readonly root = null;
   readonly rootMargin = "";
+  readonly scrollMargin = "";
   readonly thresholds: readonly number[] = [];
 
   constructor(private readonly callback: IntersectionObserverCallback) {}
