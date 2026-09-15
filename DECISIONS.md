@@ -18755,3 +18755,53 @@ rather than assumed, and it is the fact that decides how to read the hold: the c
 the linter is not. `next build` on 16.3 drives the native compiler without complaint. So when
 typescript-eslint lands 7.1 support, the bump is one line in `package.json` and nothing else —
 re-run `npm run lint` first, because that is the only check any of this was ever about.
+
+## Vitest 5 put its scratch output in one place, and `__screenshots__/` is no longer part of it
+
+Renovate's v5 bump (#224) changed where the browser project writes its diagnostics, and changed
+nothing else that was visible. `attachmentsDir` now defaults to `.vitest/attachments` resolved
+against the project root, and the failure screenshot the browser project takes for every failing
+test goes to `.vitest/attachments/failure-screenshots/<test file>/<test name>.png` — under the same
+root. Vitest 4 had those in two unrelated places: attachments in `/.vitest-attachments/`, and the
+failure screenshot in a `__screenshots__/` directory beside the test itself. Both of those were what
+`.gitignore` carried, added in #133 when the browser project arrived, and the bump did not touch
+`.gitignore` because a lockfile PR has no reason to.
+
+**The symptom is not a failing test, which is why it survived the bump.** A failing browser test now
+leaves `.vitest/` untracked in `git status`, and the first thing that complains is `gh pr create`,
+warning about an uncommitted change on a branch whose actual work is committed. Nothing in the test
+run says anything at all — the screenshot is written, reported and ignored by the runner either way.
+
+**`/.vitest/` is ignored whole rather than `/.vitest/attachments/`.** The directory is Vitest's, not
+this repository's, and attachments are not the only thing it claims: `--reporter=blob` defaults its
+output to `.vitest/blob`, which is the shape CI sharding would use if this suite ever grows into it.
+Ignoring the root spares the next person the same one-line PR. The other two paths Vitest 5 can
+write need no entry — `fsModuleCache` lives in `node_modules/.vitest-cache`, already covered, and
+`.vitest-dump` appears only behind an explicit dump flag.
+
+**Dropping `__screenshots__/` is the part that is a decision rather than a tidy-up.** In Vitest 5
+that directory no longer holds failure diagnostics; it belongs to `toMatchScreenshot`, and what it
+holds is the **reference** image — the baseline the assertion compares against, which is meant to be
+reviewed and committed exactly like a text snapshot. The two halves of the matcher's
+missing-reference behaviour are what make ignoring it untenable, and they differ by environment:
+locally it writes the reference and still **fails**, with "No existing reference screenshot found; a
+new one was created. Review it before running tests again."; under `CI=true` it writes nothing and
+fails with "No existing reference screenshot found." So an ignored baseline never reaches the
+repository, and the visual test fails on CI on every run, forever. The failure is at least loud —
+this is not a test that silently passes against nothing — but it is also unfixable from the CI side,
+and the message points at a file the author can see locally and CI cannot.
+
+No test in this repository calls `toMatchScreenshot` today, so the entry was ignoring a directory
+nothing writes while arming that trap for whoever adds the first one. The `-actual` and `-diff`
+images a real comparison failure drops beside the reference are the only things there worth
+ignoring, and they can be ignored by name when there is a test to produce them.
+
+Both directories still existed locally, holding images from runs made under Vitest 4, and were
+deleted with the entries — `src/components/ui/__screenshots__/` especially, since un-ignoring it
+while its stale contents sat there would have reproduced the untracked-file warning this was fixing.
+
+Verified rather than read off the changelog: a throwaway `*.browser.test.tsx` with a failing
+`expect` writes `.vitest/attachments/failure-screenshots/…` and leaves `git status` clean under the
+new entry. Note that `node_modules` in a worktree can be several majors behind the lockfile —
+checking this against the installed Vitest means running `npm ci` first, or the defaults you read
+are the old ones.
