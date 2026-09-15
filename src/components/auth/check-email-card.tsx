@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   OneTimePasswordField,
@@ -76,13 +76,35 @@ export function CheckEmailCard({
   const router = useRouter();
   const codeFieldRef = useRef<HTMLDivElement>(null);
 
+  // Radix's roving focus only decides which box is *tabbable*; nothing points the
+  // caret at box one on its own. Three moments need it there, so they share this.
+  const focusFirstCodeBox = useCallback(() => {
+    codeFieldRef.current?.querySelector("input")?.focus();
+  }, []);
+
+  // The first of the three, and the only one that is not a recovery: this card
+  // replaces the email form outright, taking the submit button the diver just
+  // pressed with it, so focus would otherwise fall back to `<body>`. The code is
+  // the one thing there is to type here - and a diver reading the email on the
+  // device they are already on has nothing else to do with this screen.
+  //
+  // It moves focus without a gesture of its own, which is the objection to
+  // autofocus in general; what makes it the right call here is that the gesture
+  // *was* the submit, and this is where that submit led. iOS will not raise the
+  // keyboard for a programmatic focus outside the gesture, so there the caret
+  // lands and the keyboard waits for a tap - no worse than the `<body>` this
+  // replaces.
+  useEffect(() => {
+    focusFirstCodeBox();
+  }, [focusFirstCodeBox]);
+
   // Puts the caret back in the first box after the value is emptied. Without it
   // focus stays wherever it was - box six, most likely - and Radix will happily
   // write the next digit typed there into position six of an otherwise empty
   // code, which looks like the field is broken.
   const restartCodeEntry = () => {
     setCode("");
-    codeFieldRef.current?.querySelector("input")?.focus();
+    focusFirstCodeBox();
   };
 
   // Ticks `cooldown` down to zero, one second at a time. Scheduling the next tick
