@@ -340,6 +340,10 @@ export function Header() {
                         Species
                       </Link>
                     </DropdownMenuItem>
+                    {/* The rule above the account rows: everything over it is a
+                        record a diver keeps, everything under it is the account
+                        itself. */}
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
                       <Link href="/settings" className="flex items-center">
                         <Settings className="mr-2 h-4 w-4" />

@@ -102,3 +102,25 @@ describe("the account menu's Admin entry", () => {
     ).toBeInTheDocument();
   });
 });
+
+describe("the account menu's grouping", () => {
+  it("rules off the records from the account itself", async () => {
+    // Species is the last of the records a diver keeps; Settings is the first
+    // row that is about the account. Exactly one rule between them.
+    const menu = await openAccountMenu();
+
+    const rows = Array.from(
+      menu.querySelectorAll('[role="menuitem"], [role="separator"]'),
+    ).map((row) =>
+      row.getAttribute("role") === "separator"
+        ? "---"
+        : (row.textContent ?? ""),
+    );
+
+    const speciesToSettings = rows.slice(
+      rows.indexOf("Species"),
+      rows.indexOf("Settings") + 1,
+    );
+    expect(speciesToSettings).toEqual(["Species", "---", "Settings"]);
+  });
+});
