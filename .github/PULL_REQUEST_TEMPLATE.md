@@ -6,7 +6,7 @@
 [opendiving-api](https://github.com/opendiving/opendiving-api) PR from here and this one from there;
 those two links are all that holds the pair together.
 
-**Did you hit a trap worth a `DECISIONS.md` section?** Append it as part of this PR, while you still
-remember what bit you.
+**Did you hit a trap?** A one-line comment at the site, or a short `DECISIONS.md` section if the code
+cannot carry the reason (the bar is in `AGENTS.md`).
 
 **Did anything visual move?** Screenshots — the README is screenshot-heavy for a reason.
