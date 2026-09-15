@@ -18618,3 +18618,79 @@ phone. `FormField` renders `FormItem` as the grid's direct child, which is what 
 resolve to the surviving field rather than to something inside it. This is the only grid in the form
 carrying the class, and the readings grid deliberately does not: packing already solves it there,
 and a span would fight the auto-flow.
+
+## ESLint 10 needs two lines in the config, and neither of them turns a rule off
+
+ESLint 9 reached end of life on 2026-08-06 — six months after v10's release, per ESLint's own
+version-support policy, with 9.39.5 on 2026-07-10 as its last release ever. EOL there means no
+further updates of any kind, security fixes included, which is the whole reason this upgrade is not
+optional for a repository that runs CVE scanning and OSV alerts against itself. `eslint-config-next`
+does not support v10 yet (vercel/next.js#89764, open since February and labelled `Upstream`), so the
+bump lands with two crashes that have to be worked around here.
+
+**Both are in the preset's dependencies, and both are one config block each.** The instinct on
+finding them is to conclude that `eslint-config-next` has to go and the whole flat config be
+hand-composed from `@next/eslint-plugin-next` and friends. That was measured and rejected: it costs
+the 17 `react/*` rules the preset enables, leaves this repository maintaining its own copy of a
+preset Next ships and tests, and buys nothing the two blocks below do not.
+
+**`settings.react.version` — the `.ts`/`.tsx` crash.** The preset sets it to the string `"detect"`,
+and that exact string is the only thing that routes `eslint-plugin-react` into
+`detectReactVersion()`, which calls `context.getFilename()` — removed in v10. The failure is
+`Error while loading rule 'react/display-name': contextOrFilename.getFilename is not a function`,
+and it moves between rules as you disable them, because every rule that touches the React version
+takes the same path. Naming a version skips the branch entirely and the plugin works normally. It is
+read from `react/package.json` rather than written as a literal, because a hardcoded `"19"` is a
+figure that goes stale the next time React majors, with nothing to announce it.
+
+**The parser override — the `.js`/`.mjs`/`.mts` crash.** Anything the preset does not hand to
+`@typescript-eslint` it parses with `eslint-config-next/parser`, a re-export of Next's compiled
+`@babel/eslint-parser`, whose `ScopeManager` predates v10's `addGlobals`. The preset declares over a
+thousand globals, so v10 calls that method on every such file and throws
+`TypeError: scopeManager.addGlobals is not a function`. Routing those files through the TypeScript
+parser avoids it. `.mts` and `.cts` are in the glob for a non-obvious reason: they _are_ TypeScript,
+but the preset's TS block does not claim them, so they fell through to Babel — `tailwind.config.mts`
+and `vitest.config.mts` were the last two files still failing after the obvious `{js,mjs,cjs,jsx}`
+glob, and a run that is clean except for two config files is an easy thing to mistake for a clean
+run.
+
+**That block is also why `@typescript-eslint/parser` is a direct devDependency**, which is the one
+part of this not visible in the config. `eslint.config.mjs` imports the parser, but nothing in
+`package.json` had ever asked for it: it resolved because `eslint-config-next` depends on
+`typescript-eslint`, which npm hoists to the tree root. A preset bump that nests or drops that dep
+would take `npm run lint` down with `ERR_MODULE_NOT_FOUND` — the gate this whole change exists to
+keep running — so it is declared rather than borrowed. `depcheck` is the check that would say so,
+and `code-quality.yml` runs it with `|| true`, so it would have reported this and failed nothing.
+
+**What this does not do is disable anything, and that is worth checking rather than believing.** A
+config that quietly dropped `eslint-plugin-react` would also produce a clean `npm run lint`, which
+makes a green run worthless as evidence on its own. The preset registers six plugins, but
+`@typescript-eslint` is registered with no rules enabled, so five of them can actually be caught
+failing — and the controls are one one-liner each, through `eslint --stdin --stdin-filename`: a
+`dangerouslySetInnerHTML` attribute must raise `react/no-danger`; a `useState` behind an `if` must
+raise `react-hooks/rules-of-hooks`; an `export default () => null` must raise
+`import/no-anonymous-default-export`, the single `import` rule the preset turns on; a bare `<img>`
+must raise `jsx-a11y/alt-text`; and a literal `<head>` must raise `@next/next/no-head-element`. All
+five fire under v10 with this config. Run them again before believing any future change to these
+blocks — one control per plugin is the point, because two controls on the same plugin prove nothing
+about the other four.
+
+**Three plugins now run outside their declared peer range**, so `npm ci` prints conflicting-peer
+warnings for `eslint-plugin-react`, `eslint-plugin-jsx-a11y` and `eslint-plugin-import`, all of
+which cap at `^9`. The `jsx-a11y` and `import` controls above exercise two of those three under v10
+directly — the ranges are conservative declarations rather than descriptions of breakage — and the
+third, `react`, is what the two blocks above exist for. The warnings are noise to expect in every
+install log, not a signal.
+
+**This comes out when upstream lands, and there is a specific thing to watch.** vercel/next.js#89764
+is blocked on jsx-eslint/eslint-plugin-react#3979; when that ships and `eslint-config-next` picks it
+up, both blocks in `eslint.config.mjs` can go and the peer warnings with them. Delete them together
+— and the `@typescript-eslint/parser` devDependency with them, since the parser block is the only
+thing that uses it — then re-run the five controls. Note which half-revert is the dangerous one:
+dropping the `settings` block throws on the first `.tsx` and is impossible to miss, while dropping
+the `parser` block lints every `.ts`/`.tsx` clean and throws only on the files that are not
+TypeScript — the root configs, `scripts/*.mjs`, and the generated `public/maplibre/*.mjs`, twelve of
+them when this was written. That is the one that looks like it worked, and it hides better than that
+count suggests: `eslint .` aborts on the first `TypeError` instead of collecting one per file, so
+the run names a single config file and stops, which reads like a problem with that file rather than
+a parser that is wrong for all twelve.
