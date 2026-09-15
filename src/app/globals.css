@@ -246,9 +246,15 @@
        drop the whole declaration that used it. */
     --visual-viewport-height: 100vh;
     --visual-viewport-top: 0px;
-    /* The scrim's anchor, in document coordinates. `0px` is right wherever the
-       page has not been scrolled, which is every case a browser without
-       `visualViewport` reaches this fallback in. */
+    /* The scrim's anchor, in document coordinates. Unlike the pair above, this
+       fallback is a floor rather than a correct value: page scroll has nothing
+       to do with `visualViewport` support, so a browser without the API that
+       opens a dialog partway down a long page anchors the scrim at the top of
+       the document and misses the screen. Left as is deliberately - every
+       browser the app supports has had `visualViewport` for years, and hedging
+       for one that does not is the sort of consumer the umbrella CLAUDE.md says
+       not to spend on. Worth knowing before reusing this variable for anything
+       that is not the scrim. */
     --visual-viewport-doc-top: 0px;
   }
 

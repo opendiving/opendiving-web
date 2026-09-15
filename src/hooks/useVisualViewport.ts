@@ -43,9 +43,14 @@ function syncViewportVars() {
 }
 
 /**
- * Mirrors `window.visualViewport` onto two CSS variables for as long as the
- * caller is mounted, so a fixed-position overlay can be sized and placed
- * against the part of the page a phone is actually showing.
+ * Mirrors `window.visualViewport` onto three CSS variables for as long as the
+ * caller is mounted, so that a dialog can be sized and placed against the part
+ * of the page a phone is actually showing.
+ *
+ * Two of them describe the visible area within the layout viewport, which is
+ * what `DialogContent` needs; the third repeats its top edge in document
+ * coordinates for the scrim, which is absolutely positioned because iOS clips a
+ * fixed box to that viewport and paints page content below it.
  *
  * **`100vh` is not that part, and on iOS it never was.** `vh` there measures
  * the *large* viewport - the page as it would be with Safari's toolbars

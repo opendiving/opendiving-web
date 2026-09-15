@@ -42,13 +42,25 @@ const DialogOverlay = React.forwardRef<
       // to, and the strip was simply outside. No `fixed` geometry fixes this,
       // however generous, and the second attempt's extra slack bought nothing.
       //
-      // `body` is `position: relative`, so this resolves against the document.
-      // `--visual-viewport-doc-top` is the visible top in those coordinates; the
-      // height is what the browser reports plus a screen of slack, the band's
-      // size being something the page is never told. Overflowing costs nothing -
-      // the page behind is scroll-locked while this is open, a fixed sibling adds
-      // no scrollable overflow, and the element unmounts with the dialog.
-      "absolute inset-x-0 top-[var(--visual-viewport-doc-top)] z-50 h-[calc(var(--visual-viewport-height)_+_100vh)] bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      // `body` is `position: relative` while a dialog is open, so this resolves
+      // against the document. `--visual-viewport-doc-top` is the visible top in
+      // those coordinates; the height is what the browser reports plus a screen
+      // of slack, the band's size being something the page is never told.
+      // Overflowing costs nothing - the page behind is scroll-locked while this
+      // is open, so none of it can be scrolled to, and the element unmounts with
+      // the dialog.
+      //
+      // **`w-screen` rather than `inset-x-0`, and that is not cosmetic.** The
+      // same scroll lock that positions `body` also puts a `margin-right` on it
+      // equal to the scrollbar it just removed, so that the page does not jump
+      // sideways. An absolute box takes `body`'s padding box as its containing
+      // block, so `right: 0` would stop short by exactly that margin and leave an
+      // undimmed strip down the right edge - the bug this whole section is about,
+      // rotated 90 degrees. It is invisible on macOS, where overlay scrollbars
+      // make the gap 0, and plain on Windows, Linux, or a Mac set to show
+      // scrollbars always. `100vw` is the window regardless of what `body` is
+      // doing, and cannot overflow into a scrollbar that is hidden anyway.
+      "absolute left-0 top-[var(--visual-viewport-doc-top)] z-50 h-[calc(var(--visual-viewport-height)_+_100vh)] w-screen bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className,
     )}
     {...props}
