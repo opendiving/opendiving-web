@@ -9576,7 +9576,7 @@ the controlled `value` prop alike, which is exactly what `normalizeCode` was for
 marked `data-1p-ignore`/`data-lpignore` so a password manager offers the code once instead of six
 times.
 
-**Four things about it that are not obvious from the outside:**
+**Five things about it that are not obvious from the outside:**
 
 - **The root is a group, so `<Label htmlFor>` has nothing to point at.** The visible text is a
   `<span id="signin-code-label">` and the group takes `aria-labelledby`; each box gets its own
@@ -9609,6 +9609,22 @@ times.
   only bounds which box is _tabbable_ — a digit typed into a focused box six of an empty code is
   written to position six, which reads as a broken field. `restartCodeEntry` empties the value and
   focuses the first input, and both the resend path and the failure path go through it.
+- **And the card claims the caret on mount, for the same reason one box down.** Roving focus decides
+  which box is tabbable, not where the caret is, so nothing put it in box one when the card first
+  appeared. That mattered more here than the naming suggests: `CheckEmailCard` _replaces_ `AuthForm`
+  rather than rendering beside it, so the submit button the diver just pressed is unmounted with the
+  form around it and focus falls back to `<body>` — the one screen in the flow that asks for exactly
+  one thing, with the caret nowhere near it. A mount effect shares `focusFirstCodeBox` with
+  `restartCodeEntry`, which is what the clearing paths already called.
+
+  The general objection to autofocus — that it moves focus without a gesture — does not land here:
+  the gesture was the submit, and this card is where that submit led. The cost that is real is
+  narrower. A screen reader lands on the group and hears its label and hint rather than "Check your
+  email" and the address the link went to, so the confirmation has to be navigated back to. That is
+  the trade taken, on the grounds that the address is also the thing a diver checks by eye and the
+  card is three elements tall. And on iOS a programmatic focus outside the gesture does not raise
+  the keyboard, so there the caret lands and the keyboard still waits for a tap — no worse than the
+  `<body>` it replaces, just less of a win than on a desktop.
 
 The hint under the field is rendered unconditionally, and that is load-bearing: `aria-describedby`
 on the group names it, so swapping it out for the in-flight status line — which an earlier draft did

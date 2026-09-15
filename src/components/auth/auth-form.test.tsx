@@ -212,6 +212,15 @@ describe("AuthForm heading", () => {
 });
 
 describe("AuthForm", () => {
+  // The whole swap, end to end: the button the diver pressed is unmounted with
+  // the form around it, so something has to claim the focus it leaves behind -
+  // and the code is the only thing this card asks for.
+  it("leaves the caret in the code field once the link is on its way", async () => {
+    await requestLink(null);
+
+    expect(codeBoxes()[0]).toHaveFocus();
+  });
+
   it("remembers where the diver was headed when requesting a link", async () => {
     await requestLink("/dives/abc");
 

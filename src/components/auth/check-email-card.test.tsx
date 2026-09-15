@@ -66,6 +66,15 @@ describe("CheckEmailCard", () => {
     ).toBeInTheDocument();
   });
 
+  // The card lands with the submit button that produced it already gone, so
+  // without this focus falls to `<body>` and six unlabelled-looking boxes have to
+  // be found by hand before a single digit can be typed.
+  it("puts the caret in the first box as soon as it appears", () => {
+    renderCard();
+
+    expect(codeBoxes()[0]).toHaveFocus();
+  });
+
   it("verifies the typed code against the request that produced it", async () => {
     verifyEmailCode.mockResolvedValue({ status: "authenticated" });
     const user = renderCard("/dives/abc");
