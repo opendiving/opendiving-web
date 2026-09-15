@@ -18654,6 +18654,14 @@ and `vitest.config.mts` were the last two files still failing after the obvious 
 glob, and a run that is clean except for two config files is an easy thing to mistake for a clean
 run.
 
+**That block is also why `@typescript-eslint/parser` is a direct devDependency**, which is the one
+part of this not visible in the config. `eslint.config.mjs` imports the parser, but nothing in
+`package.json` had ever asked for it: it resolved because `eslint-config-next` depends on
+`typescript-eslint`, which npm hoists to the tree root. A preset bump that nests or drops that dep
+would take `npm run lint` down with `ERR_MODULE_NOT_FOUND` — the gate this whole change exists to
+keep running — so it is declared rather than borrowed. `depcheck` is the check that would say so,
+and `code-quality.yml` runs it with `|| true`, so it would have reported this and failed nothing.
+
 **What this does not do is disable anything, and that is worth checking rather than believing.** A
 config that quietly dropped `eslint-plugin-react` would also produce a clean `npm run lint`, which
 makes a green run worthless as evidence on its own. The preset registers six plugins, but
@@ -18677,7 +18685,12 @@ install log, not a signal.
 **This comes out when upstream lands, and there is a specific thing to watch.** vercel/next.js#89764
 is blocked on jsx-eslint/eslint-plugin-react#3979; when that ships and `eslint-config-next` picks it
 up, both blocks in `eslint.config.mjs` can go and the peer warnings with them. Delete them together
-and re-run the five controls — and note which half-revert is the dangerous one: dropping the
-`settings` block throws on the first `.tsx` and is impossible to miss, while dropping the `parser`
-block lints every `.ts`/`.tsx` clean and fails only on `tailwind.config.mts`, `vitest.config.mts`
-and `scripts/*.mjs`. That is the one that looks like it worked.
+— and the `@typescript-eslint/parser` devDependency with them, since the parser block is the only
+thing that uses it — then re-run the five controls. Note which half-revert is the dangerous one:
+dropping the `settings` block throws on the first `.tsx` and is impossible to miss, while dropping
+the `parser` block lints every `.ts`/`.tsx` clean and throws only on the files that are not
+TypeScript — the root configs, `scripts/*.mjs`, and the generated `public/maplibre/*.mjs`, twelve of
+them when this was written. That is the one that looks like it worked, and it hides better than that
+count suggests: `eslint .` aborts on the first `TypeError` instead of collecting one per file, so
+the run names a single config file and stops, which reads like a problem with that file rather than
+a parser that is wrong for all twelve.
