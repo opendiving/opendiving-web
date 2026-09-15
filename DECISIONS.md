@@ -18656,20 +18656,28 @@ run.
 
 **What this does not do is disable anything, and that is worth checking rather than believing.** A
 config that quietly dropped `eslint-plugin-react` would also produce a clean `npm run lint`, which
-makes a green run worthless as evidence on its own. The negative controls are four one-liners
-through `eslint --stdin --stdin-filename`, one per plugin in the preset: a `dangerouslySetInnerHTML`
-attribute must raise `react/no-danger`, an unkeyed `.map()` must raise `react/jsx-key`, a bare
-`<img>` must raise `jsx-a11y/alt-text` and `@next/next/no-img-element`. All four fire under v10 with
-this config. Run them again before believing any future change to these blocks.
+makes a green run worthless as evidence on its own. The preset registers six plugins, but
+`@typescript-eslint` is registered with no rules enabled, so five of them can actually be caught
+failing — and the controls are one one-liner each, through `eslint --stdin --stdin-filename`: a
+`dangerouslySetInnerHTML` attribute must raise `react/no-danger`; a `useState` behind an `if` must
+raise `react-hooks/rules-of-hooks`; an `export default () => null` must raise
+`import/no-anonymous-default-export`, the single `import` rule the preset turns on; a bare `<img>`
+must raise `jsx-a11y/alt-text`; and a literal `<head>` must raise `@next/next/no-head-element`. All
+five fire under v10 with this config. Run them again before believing any future change to these
+blocks — one control per plugin is the point, because two controls on the same plugin prove nothing
+about the other four.
 
 **Three plugins now run outside their declared peer range**, so `npm ci` prints conflicting-peer
 warnings for `eslint-plugin-react`, `eslint-plugin-jsx-a11y` and `eslint-plugin-import`, all of
-which cap at `^9`. Two of those three were verified to work under v10 regardless — the ranges are
-conservative declarations rather than descriptions of breakage — and the third is what the two
-blocks above exist for. The warnings are noise to expect in every install log, not a signal.
+which cap at `^9`. The `jsx-a11y` and `import` controls above exercise two of those three under v10
+directly — the ranges are conservative declarations rather than descriptions of breakage — and the
+third, `react`, is what the two blocks above exist for. The warnings are noise to expect in every
+install log, not a signal.
 
 **This comes out when upstream lands, and there is a specific thing to watch.** vercel/next.js#89764
 is blocked on jsx-eslint/eslint-plugin-react#3979; when that ships and `eslint-config-next` picks it
 up, both blocks in `eslint.config.mjs` can go and the peer warnings with them. Delete them together
-and re-run the four controls — and note that removing only the `settings` block leaves a config that
-still lints `.ts`/`.tsx` clean, so a partial revert will look like it worked.
+and re-run the five controls — and note which half-revert is the dangerous one: dropping the
+`settings` block throws on the first `.tsx` and is impossible to miss, while dropping the `parser`
+block lints every `.ts`/`.tsx` clean and fails only on `tailwind.config.mts`, `vitest.config.mts`
+and `scripts/*.mjs`. That is the one that looks like it worked.
