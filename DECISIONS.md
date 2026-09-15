@@ -18618,3 +18618,58 @@ phone. `FormField` renders `FormItem` as the grid's direct child, which is what 
 resolve to the surviving field rather than to something inside it. This is the only grid in the form
 carrying the class, and the readings grid deliberately does not: packing already solves it there,
 and a span would fight the auto-flow.
+
+## ESLint 10 needs two lines in the config, and neither of them turns a rule off
+
+ESLint 9 reached end of life on 2026-08-06 — six months after v10's release, per ESLint's own
+version-support policy, with 9.39.5 on 2026-07-10 as its last release ever. EOL there means no
+further updates of any kind, security fixes included, which is the whole reason this upgrade is not
+optional for a repository that runs CVE scanning and OSV alerts against itself. `eslint-config-next`
+does not support v10 yet (vercel/next.js#89764, open since February and labelled `Upstream`), so the
+bump lands with two crashes that have to be worked around here.
+
+**Both are in the preset's dependencies, and both are one config block each.** The instinct on
+finding them is to conclude that `eslint-config-next` has to go and the whole flat config be
+hand-composed from `@next/eslint-plugin-next` and friends. That was measured and rejected: it costs
+the 17 `react/*` rules the preset enables, leaves this repository maintaining its own copy of a
+preset Next ships and tests, and buys nothing the two blocks below do not.
+
+**`settings.react.version` — the `.ts`/`.tsx` crash.** The preset sets it to the string `"detect"`,
+and that exact string is the only thing that routes `eslint-plugin-react` into
+`detectReactVersion()`, which calls `context.getFilename()` — removed in v10. The failure is
+`Error while loading rule 'react/display-name': contextOrFilename.getFilename is not a function`,
+and it moves between rules as you disable them, because every rule that touches the React version
+takes the same path. Naming a version skips the branch entirely and the plugin works normally. It is
+read from `react/package.json` rather than written as a literal, because a hardcoded `"19"` is a
+figure that goes stale the next time React majors, with nothing to announce it.
+
+**The parser override — the `.js`/`.mjs`/`.mts` crash.** Anything the preset does not hand to
+`@typescript-eslint` it parses with `eslint-config-next/parser`, a re-export of Next's compiled
+`@babel/eslint-parser`, whose `ScopeManager` predates v10's `addGlobals`. The preset declares over a
+thousand globals, so v10 calls that method on every such file and throws
+`TypeError: scopeManager.addGlobals is not a function`. Routing those files through the TypeScript
+parser avoids it. `.mts` and `.cts` are in the glob for a non-obvious reason: they _are_ TypeScript,
+but the preset's TS block does not claim them, so they fell through to Babel — `tailwind.config.mts`
+and `vitest.config.mts` were the last two files still failing after the obvious `{js,mjs,cjs,jsx}`
+glob, and a run that is clean except for two config files is an easy thing to mistake for a clean
+run.
+
+**What this does not do is disable anything, and that is worth checking rather than believing.** A
+config that quietly dropped `eslint-plugin-react` would also produce a clean `npm run lint`, which
+makes a green run worthless as evidence on its own. The negative controls are four one-liners
+through `eslint --stdin --stdin-filename`, one per plugin in the preset: a `dangerouslySetInnerHTML`
+attribute must raise `react/no-danger`, an unkeyed `.map()` must raise `react/jsx-key`, a bare
+`<img>` must raise `jsx-a11y/alt-text` and `@next/next/no-img-element`. All four fire under v10 with
+this config. Run them again before believing any future change to these blocks.
+
+**Three plugins now run outside their declared peer range**, so `npm ci` prints conflicting-peer
+warnings for `eslint-plugin-react`, `eslint-plugin-jsx-a11y` and `eslint-plugin-import`, all of
+which cap at `^9`. Two of those three were verified to work under v10 regardless — the ranges are
+conservative declarations rather than descriptions of breakage — and the third is what the two
+blocks above exist for. The warnings are noise to expect in every install log, not a signal.
+
+**This comes out when upstream lands, and there is a specific thing to watch.** vercel/next.js#89764
+is blocked on jsx-eslint/eslint-plugin-react#3979; when that ships and `eslint-config-next` picks it
+up, both blocks in `eslint.config.mjs` can go and the peer warnings with them. Delete them together
+and re-run the four controls — and note that removing only the `settings` block leaves a config that
+still lints `.ts`/`.tsx` clean, so a partial revert will look like it worked.
