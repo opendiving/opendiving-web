@@ -18694,3 +18694,48 @@ them when this was written. That is the one that looks like it worked, and it hi
 count suggests: `eslint .` aborts on the first `TypeError` instead of collecting one per file, so
 the run names a single config file and stops, which reads like a problem with that file rather than
 a parser that is wrong for all twelve.
+
+## TypeScript stops at 6.0 because the compiler API left the package in 7.0
+
+Renovate opened the v7 bump the Monday it shipped and it cannot merge, for a reason that is not the
+usual conservative peer range. TypeScript 7 is the native Go port, and its npm package no longer
+carries a compiler written in JavaScript to expose: the `"."` export is `./lib/version.cjs`, so
+`require("typescript")` returns `{ version, versionMajorMinor }` and nothing else. `createProgram`,
+`SyntaxKind`, the TypeChecker — the surface every type-aware linter is built on — are gone, and what
+replaces them is `typescript/unstable/*`, named that way on purpose.
+
+**So `typescript-eslint` does not degrade, it refuses.** It reads `ts.versionMajorMinor`, and on a
+major of 7 or higher throws `typescript-eslint does not support TS 7.0.` out of module load, before
+any rule runs. The tracking issue it names, typescript-eslint#10940, is scoped to TS **>= 7.1** —
+7.0 is not a version upstream intends to support at all, so waiting for a patch release of the
+linter is waiting for the wrong thing. Contrast the three `^9`-capped plugins in "ESLint 10 needs
+two lines in the config": those caps were declarations that the plugins outran, and the controls
+there prove it. This one describes an API that is genuinely absent, and the difference is worth
+re-checking rather than pattern-matching, because the two failures look identical in an install log.
+
+**Dropping the direct `@typescript-eslint/parser` devDependency does not route around it.** The
+throw arrives through `eslint-config-next`, which depends on `typescript-eslint` itself — the stack
+runs `eslint-config-next/dist/index.js` → `typescript-eslint` → the version guard. The preset is the
+consumer, so the only way out through configuration is to stop using the preset, which the section
+above already measured and rejected for smaller stakes.
+
+**The failure presents as a broken runner rather than a dependency conflict, which is the part worth
+recognising.** `npm ci` dies at ERESOLVE, so `lint-and-build`, `code-quality` and
+`accessibility-check` all fail in under twenty seconds having run nothing — three red checks with no
+test output between them. Renovate's own `renovate/artifacts` check fails first and says the most
+useful thing: the bot could not generate a lockfile, because the resolution it needed does not
+exist. A v7 PR carrying no `package-lock.json` diff is the tell.
+
+**6.0 is the landing spot, not a consolation.** It is inside `typescript-eslint`'s `>=4.8.4 <6.1.0`
+peer range, it is the release whose job is to report what 7 removes, and it found both things this
+repository had to change: `baseUrl` in `tsconfig.json` (TS5101, which names 7.0 in its own message
+and offers `ignoreDeprecations: "6.0"` to silence itself — removed instead, since `paths` was
+already tsconfig-relative and silencing it would only move the work to the next bump), and a missing
+`scrollMargin` on the `IntersectionObserver` stub in `src/test/intersection.ts`, added to the
+bundled DOM lib.
+
+**With those two fixes the TS 7 native compiler typechecks this tree clean**, which was measured
+rather than assumed, and it is the fact that decides how to read the hold: the codebase is ready and
+the linter is not. `next build` on 16.3 drives the native compiler without complaint. So when
+typescript-eslint lands 7.1 support, the bump is one line in `package.json` and nothing else —
+re-run `npm run lint` first, because that is the only check any of this was ever about.
