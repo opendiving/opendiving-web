@@ -18151,6 +18151,28 @@ the element unmounts with it. The case to check when touching this is a dialog o
 _scrolled_ page — the anchor is in document coordinates now, so a wrong one shows up there and
 nowhere else.
 
+### Leaving `fixed` cost the scrim the window, on the other axis
+
+Going absolute fixed iOS and broke every desktop with a space-taking scrollbar, which is the sort of
+trade worth writing down rather than rediscovering. The same scroll lock that makes `body`
+positioned — `react-remove-scroll`, which Radix wraps the overlay in — also puts a `margin-right` on
+it equal to the scrollbar it just removed, so that the page does not jump sideways as the dialog
+opens. An absolutely positioned box takes `body`'s padding box as its containing block, so
+`inset-x-0`'s `right: 0` lands short by exactly that margin and leaves an undimmed strip down the
+right edge. The same artefact this section is about, rotated ninety degrees, introduced by the fix
+for it.
+
+`w-screen` is the answer: `100vw` is the window regardless of what `body`'s box is doing, and it
+cannot produce a horizontal scrollbar because `body`'s `overflow: hidden` has propagated to the
+viewport by then. `left-0` stays, the margin being on the right only.
+
+**It is invisible on a Mac**, where overlay scrollbars make the gap zero — which is why it reached
+review rather than being caught while writing it. Forcing the margin reproduces it in one line:
+`document.body.style.setProperty("margin-right", "15px", "important")` with a dialog open, then
+compare the scrim's `getBoundingClientRect().right` against `window.innerWidth`. Measured that way,
+`inset-x-0` left 15px undimmed with the page itself topmost at the right edge, and `w-screen`
+reaches the edge.
+
 **The lesson is about the evidence, not the CSS.** Both dead ends were verified in a desktop browser
 at iPhone dimensions, correctly, and both were wrong on the device — the second one was even
 measured against a simulated keyboard viewport and passed. A viewport emulator cannot reproduce
