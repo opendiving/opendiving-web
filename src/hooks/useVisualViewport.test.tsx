@@ -56,6 +56,13 @@ const vars = () => ({
     "--visual-viewport-height",
   ),
   top: document.documentElement.style.getPropertyValue("--visual-viewport-top"),
+  // The scrim's own anchor. Read here rather than in a test of its own so that
+  // every assertion below covers it: this is the variable a desktop browser
+  // cannot check by looking, and an object with two keys would have passed
+  // whether or not it was ever written - or ever cleaned up.
+  docTop: document.documentElement.style.getPropertyValue(
+    "--visual-viewport-doc-top",
+  ),
 });
 
 afterEach(() => {
@@ -71,7 +78,7 @@ describe("useVisualViewport", () => {
     const viewport = installViewport(640, 0);
     const { unmount } = renderHook(() => useVisualViewport());
 
-    expect(vars()).toEqual({ height: "640px", top: "0px" });
+    expect(vars()).toEqual({ height: "640px", top: "0px", docTop: "0px" });
 
     // `scroll` rather than `resize`: an iOS keyboard moves the visual viewport
     // within an unchanged layout viewport, and `offsetTop` is the only thing
@@ -81,10 +88,14 @@ describe("useVisualViewport", () => {
       viewport.offsetTop = 120;
       viewport.emit("scroll");
     });
-    expect(vars()).toEqual({ height: "380px", top: "120px" });
+    expect(vars()).toEqual({
+      height: "380px",
+      top: "120px",
+      docTop: "120px",
+    });
 
     unmount();
-    expect(vars()).toEqual({ height: "", top: "" });
+    expect(vars()).toEqual({ height: "", top: "", docTop: "" });
   });
 
   it("keeps the variables while a second dialog is still open", () => {
@@ -96,7 +107,7 @@ describe("useVisualViewport", () => {
     const second = renderHook(() => useVisualViewport());
 
     first.unmount();
-    expect(vars()).toEqual({ height: "700px", top: "0px" });
+    expect(vars()).toEqual({ height: "700px", top: "0px", docTop: "0px" });
 
     // And the survivor is still listening - the browser de-duplicates identical
     // (type, listener) pairs, so a shared handler would have been one
@@ -108,7 +119,31 @@ describe("useVisualViewport", () => {
     expect(vars().height).toBe("420px");
 
     second.unmount();
-    expect(vars()).toEqual({ height: "", top: "" });
+    expect(vars()).toEqual({ height: "", top: "", docTop: "" });
+  });
+
+  it("adds the page scroll to the scrim's anchor, and only to that one", () => {
+    // The difference between the two top variables, and the whole reason there
+    // are two. `--visual-viewport-top` is an offset within the layout viewport,
+    // which is what a fixed box wants; the scrim is absolutely positioned, so
+    // its anchor has to carry where the page itself sits as well. A dialog
+    // opened on a scrolled page is the case that tells them apart - equal at
+    // scroll 0, which is every other test in this file.
+    const viewport = installViewport(500, 40);
+    Object.defineProperty(window, "scrollY", {
+      configurable: true,
+      value: 600,
+    });
+
+    const { unmount } = renderHook(() => useVisualViewport());
+    expect(vars()).toEqual({
+      height: "500px",
+      top: "40px",
+      docTop: "640px",
+    });
+
+    unmount();
+    Object.defineProperty(window, "scrollY", { configurable: true, value: 0 });
   });
 
   it("registers and releases one listener per caller, per event", () => {
@@ -130,7 +165,7 @@ describe("useVisualViewport", () => {
     // defined in `globals.css` precisely so this case has something to use.
     const { unmount } = renderHook(() => useVisualViewport());
 
-    expect(vars()).toEqual({ height: "", top: "" });
+    expect(vars()).toEqual({ height: "", top: "", docTop: "" });
     unmount();
   });
 });

@@ -6,6 +6,16 @@ import { useEffect } from "react";
 const HEIGHT_VAR = "--visual-viewport-height";
 /** How far the visible area sits below the top of the layout viewport. */
 const TOP_VAR = "--visual-viewport-top";
+/**
+ * The same edge in *document* coordinates - the page scroll plus that offset.
+ *
+ * Exists for the scrim alone, which cannot use the two above. iOS clips a
+ * `position: fixed` box to the layout viewport and keeps a band between that
+ * viewport and the keyboard which it goes on painting page content into, so the
+ * scrim is positioned absolutely and needs its anchor in the coordinate system
+ * absolute positioning actually uses. See `ui/dialog.tsx`.
+ */
+const DOC_TOP_VAR = "--visual-viewport-doc-top";
 
 // Refcounted, because two dialogs can be open at once - a confirm raised from
 // inside a form dialog is the ordinary case here. Without it the first one to
@@ -24,12 +34,23 @@ function syncViewportVars() {
   const root = document.documentElement;
   root.style.setProperty(HEIGHT_VAR, `${viewport.height}px`);
   root.style.setProperty(TOP_VAR, `${viewport.offsetTop}px`);
+  // `window.scrollY` rather than a second measurement: Radix locks the page
+  // behind an open dialog, so this is fixed for as long as anything reads it.
+  root.style.setProperty(
+    DOC_TOP_VAR,
+    `${window.scrollY + viewport.offsetTop}px`,
+  );
 }
 
 /**
- * Mirrors `window.visualViewport` onto two CSS variables for as long as the
- * caller is mounted, so a fixed-position overlay can be sized and placed
- * against the part of the page a phone is actually showing.
+ * Mirrors `window.visualViewport` onto three CSS variables for as long as the
+ * caller is mounted, so that a dialog can be sized and placed against the part
+ * of the page a phone is actually showing.
+ *
+ * Two of them describe the visible area within the layout viewport, which is
+ * what `DialogContent` needs; the third repeats its top edge in document
+ * coordinates for the scrim, which is absolutely positioned because iOS clips a
+ * fixed box to that viewport and paints page content below it.
  *
  * **`100vh` is not that part, and on iOS it never was.** `vh` there measures
  * the *large* viewport - the page as it would be with Safari's toolbars
@@ -84,6 +105,7 @@ export function useVisualViewport() {
       const root = document.documentElement;
       root.style.removeProperty(HEIGHT_VAR);
       root.style.removeProperty(TOP_VAR);
+      root.style.removeProperty(DOC_TOP_VAR);
     };
   }, []);
 }

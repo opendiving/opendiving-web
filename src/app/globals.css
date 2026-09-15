@@ -246,6 +246,15 @@
        drop the whole declaration that used it. */
     --visual-viewport-height: 100vh;
     --visual-viewport-top: 0px;
+    /* The scrim's anchor, in document coordinates. Unlike the pair above, this
+       fallback is a floor rather than a correct value: page scroll has nothing
+       to do with `visualViewport` support, so a browser without the API that
+       opens a dialog partway down a long page anchors the scrim at the top of
+       the document and misses the screen. Left as is deliberately - every
+       browser the app supports has had `visualViewport` for years, so the only
+       thing a better fallback would protect is a consumer that does not exist.
+       Worth knowing before reusing this variable for anything but the scrim. */
+    --visual-viewport-doc-top: 0px;
   }
 
   @supports (height: 100svh) {
