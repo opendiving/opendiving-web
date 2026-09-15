@@ -22,29 +22,33 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      // Anchored to the visible viewport like the content below, then
-      // deliberately overgrown by half a screen at each end.
+      // **Absolutely positioned, not fixed, and that is the whole of this.**
       //
-      // **Covering the visible area exactly is the wrong target, and aiming for
-      // it is what the first two attempts at this did.** `inset-0` is the
-      // initial containing block, which iOS leaves sized to a window the diver
-      // is no longer looking at once the keyboard is up; sizing to
-      // `--visual-viewport-height` instead tracks what they *can* see, and on a
-      // real iPhone still came up short along the bottom, because Safari
-      // collapses its toolbar for the keyboard and a fixed box cannot be
-      // stretched past the layout viewport it was anchored in. Both are the
-      // same mistake - a scrim whose bottom edge is computed from a number that
-      // has to be exactly right.
+      // iOS clips a `position: fixed` box to the layout viewport. With the
+      // keyboard up it also keeps a band between that viewport's bottom edge and
+      // the top of the keyboard, and goes on painting page content into it - so
+      // the page showed through under an open modal in a strip no fixed element
+      // could reach. Measured on the device with two stripes portalled beside
+      // the scrim, one of each kind: the absolute one ran the full height of the
+      // screen, the fixed one stopped dead on the exact line the undimmed strip
+      // began.
       //
-      // It does not have to be. This is a flat wash with nothing in it and no
-      // second job, so it only has to cover *at least* what is on screen;
-      // overflowing costs nothing, cannot be scrolled to (the page behind is
-      // scroll-locked and a fixed box adds no overflow of its own), and a pad
-      // this size outlasts any toolbar, accessory bar or keyboard animation
-      // frame. `--visual-viewport-top` still anchors it, so it follows the
-      // viewport when Safari pans to a focused field rather than being a
-      // fixed slab the pan slides out from under.
-      "fixed inset-x-0 top-[calc(var(--visual-viewport-top)_-_50vh)] z-50 h-[calc(var(--visual-viewport-height)_+_100vh)] bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      // Two earlier attempts aimed at the wrong thing and are worth naming so
+      // that nobody retries them. `inset-0` was the original, sized to a window
+      // the diver is no longer looking at. Sizing to `--visual-viewport-height`
+      // tracked what they *can* see and still failed - which read as bad
+      // arithmetic and was not: a hit test at the very bottom of the viewport
+      // returned the scrim, so it was already covering everything it was allowed
+      // to, and the strip was simply outside. No `fixed` geometry fixes this,
+      // however generous, and the second attempt's extra slack bought nothing.
+      //
+      // `body` is `position: relative`, so this resolves against the document.
+      // `--visual-viewport-doc-top` is the visible top in those coordinates; the
+      // height is what the browser reports plus a screen of slack, the band's
+      // size being something the page is never told. Overflowing costs nothing -
+      // the page behind is scroll-locked while this is open, a fixed sibling adds
+      // no scrollable overflow, and the element unmounts with the dialog.
+      "absolute inset-x-0 top-[var(--visual-viewport-doc-top)] z-50 h-[calc(var(--visual-viewport-height)_+_100vh)] bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className,
     )}
     {...props}

@@ -246,6 +246,10 @@
        drop the whole declaration that used it. */
     --visual-viewport-height: 100vh;
     --visual-viewport-top: 0px;
+    /* The scrim's anchor, in document coordinates. `0px` is right wherever the
+       page has not been scrolled, which is every case a browser without
+       `visualViewport` reaches this fallback in. */
+    --visual-viewport-doc-top: 0px;
   }
 
   @supports (height: 100svh) {

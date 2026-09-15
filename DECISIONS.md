@@ -18110,42 +18110,54 @@ rather than a class string — it resizes the viewport across the `md` breakpoin
 below and 14px above. The wide half is not ceremony: it fails a "fix" that drops the breakpoint and
 makes every desktop input 16px.
 
-## The dialog scrim is deliberately oversized, and two attempts to size it correctly failed first
+## The dialog scrim is positioned absolutely, because iOS clips `fixed` to the layout viewport
+
+Three attempts, and the first two are recorded here because both looked right and both were aimed at
+something that was never the problem.
 
 `DialogContent` has been positioned against `--visual-viewport-top`/`--visual-viewport-height` since
-the iPhone report above, but `DialogOverlay` was left on `fixed inset-0`, and that was half a fix.
-`inset: 0` resolves against the initial containing block, which iOS leaves anchored to a layout
-viewport it does not resize when the keyboard opens — so the dialog moved onto what the diver could
-see and the scrim behind it did not. On a 375×812 phone with the keyboard up the scrim ended roughly
-100pt above the keyboard, and the strip between showed the undimmed page under an open modal.
+the iPhone report further up, but `DialogOverlay` was left on `fixed inset-0` — the initial
+containing block, which iOS leaves sized to a window the diver is no longer looking at once the
+keyboard is up. The dialog moved onto what they could see and the scrim behind it did not, so the
+page showed through under an open modal in a strip along the bottom.
 
-**Sizing it to the visible viewport instead did not fix it either, and that is the part worth
-keeping.** `top-[var(--visual-viewport-top)]` with `h-[var(--visual-viewport-height)]` is exactly
-the box the content is centred inside, it measures correctly in a desktop browser at any size, and
-on a real iPhone it _still_ came up short along the bottom — less short, which is worse, because it
-looks like success. Safari collapses its bottom toolbar to make room for the keyboard, so the area
-the diver can see grows while the layout viewport a fixed box was anchored in does not, and there is
-no number available to the page that closes that gap. Both attempts are the same mistake: a scrim
-whose bottom edge is computed from a quantity that has to be exactly right.
+**Attempt two sized the scrim to the visible viewport, and failed in a way that reads as
+arithmetic.** `top-[var(--visual-viewport-top)]` over `h-[var(--visual-viewport-height)]` is exactly
+the box the content is centred inside, it measures correctly in a desktop browser at every size, and
+on the device the strip was still there — narrower, which is worse, because it looks like being
+close. Attempt three enlarged that box by half a viewport at each end on the theory that Safari's
+collapsing toolbar left a gap no reported number covered. It changed nothing at all, and the reason
+is the thing worth keeping.
 
-It does not have to be right. The scrim is a flat wash with nothing in it, so it only has to cover
-_at least_ what is on screen — so it is anchored to `--visual-viewport-top` and then overgrown by
-half a viewport at each end: `top: calc(var(--visual-viewport-top) - 50vh)` over
-`height: calc(var(--visual-viewport-height) + 100vh)`. Overflowing costs nothing. A fixed box
-contributes no scrollable overflow, the page behind it is scroll-locked by Radix while it is open,
-and a pad that size outlasts any toolbar, accessory bar, or half-finished keyboard animation frame.
-The anchor is still the visible viewport rather than the layout one, so the scrim follows Safari
-when it pans to a focused field instead of being a slab the pan slides out from under.
+**The scrim was already covering everything it was allowed to cover.** A readout rendered into the
+dialog on the device reported `win 393x362 · vv h=362 top=0 · scrim -181→543`, and hit-testing down
+the middle of the screen returned `354:SCRIM` — at the very bottom of the addressable viewport the
+scrim was the topmost element, with its box extending 181px past it. The undimmed strip was outside
+the viewport entirely. iOS clips a `position: fixed` box to the layout viewport, and with the
+keyboard up it keeps a band between that viewport's bottom edge and the keyboard which it goes on
+painting page content into. No `fixed` geometry reaches there, so no amount of slack was ever going
+to work.
 
-The general rule, for the next overlay: **size a thing you can see through to the pixel, and a thing
-you cannot to the horizon.** The content has to be exact because being wrong puts controls off
-screen; the scrim has no second job, and exactness buys it nothing but a way to fail.
+What settled it was two stripes portalled to `body` beside the scrim, identical but for `position` —
+magenta absolute, cyan fixed. On the phone the magenta ran the full height of the screen, through
+the band, to the keyboard; the cyan stopped dead on the exact line the undimmed strip began. So the
+scrim is `absolute`, anchored to `--visual-viewport-doc-top` — the page scroll plus the visual
+viewport's offset, which `useVisualViewport` writes alongside the other two — and `body` being
+`position: relative` is what makes that resolve against the document. The height is the reported
+viewport plus a screen of slack, since the band's size is not something the page is told.
 
-Worth being explicit about why this one took three goes. A dialog laid out where the diver cannot
-reach it is a bug you can see. A scrim that misses a strip along one edge reads as a rendering
-artefact, and the two fixes that did not work both looked plausible in every browser available to
-the person writing them — the desktop measurements were correct each time, and the device was the
-only thing that disagreed.
+Overflowing costs nothing: the page behind is scroll-locked by Radix while the dialog is open, and
+the element unmounts with it. The case to check when touching this is a dialog opened on a
+_scrolled_ page — the anchor is in document coordinates now, so a wrong one shows up there and
+nowhere else.
+
+**The lesson is about the evidence, not the CSS.** Both dead ends were verified in a desktop browser
+at iPhone dimensions, correctly, and both were wrong on the device — the second one was even
+measured against a simulated keyboard viewport and passed. A viewport emulator cannot reproduce
+Safari's own clipping of fixed layers, so for anything anchored to the visible viewport on iOS, a
+desktop measurement is evidence about the arithmetic and no evidence at all about the result. Put a
+readout on the screen and have the device answer. The `opendiving-web-lan-preview` skill exists for
+this.
 
 ## The focused field is put back after the dialog resizes, and the waiting is the whole trick
 
