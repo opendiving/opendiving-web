@@ -18620,7 +18620,7 @@ to force to, and `eslint-config-next@16.4.0-canary.31`, the canary rather than t
 depends on `^7.37.0` and still ships the same compiled parser.
 
 **So the hold lives in `.github/renovate.json5` and not in a pin.** A `dependencyDashboardApproval`
-rule on major `eslint` updates, which is how the Node runtime is handled two rules above it: v9
+rule on major `eslint` updates, which is the same handling the Node runtime gets in that file: v9
 minors and patches keep arriving on the ordinary Monday schedule, and the major sits on the
 Dependency Dashboard where it stays visible instead of being silently dropped. A pinned
 `"eslint": "9.x"` would have done the same job and said none of this, and `enabled: false` would
