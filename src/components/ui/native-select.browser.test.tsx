@@ -49,8 +49,8 @@ describe("a native picker's chevron against the Radix one", () => {
 
     // The measurement is the gap between the arrow and the border beside it,
     // which is what reads as misaligned on a form row carrying one of each.
-    // The UA's own arrow put the two at different gaps, and drew a different
-    // glyph doing it.
+    // The UA's own arrow sits at a different gap and draws a different glyph,
+    // so this fails the moment a picker loses its own chevron.
     const nativeInset =
       nativeBox.right - chevronOf(native.parentElement!).right;
     const radixInset = radixBox.right - chevronOf(radix).right;
