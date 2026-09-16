@@ -352,7 +352,7 @@ export function mod(
   // A mix already past its ppO₂ limit at the surface has no operating depth at all.
   // `null`, not `Math.max(0, …)` as `endDepth` and `ead` use: 0 m is a real answer for
   // those two — a rich mix in shallow water genuinely is equivalent to the surface —
-  // whereas "MOD 0.0 m" reads as a depth this gas may be breathed at, which is the
+  // whereas "MOD 0 m" reads as a depth this gas may be breathed at, which is the
   // opposite of what it means. Both call sites already render `-` for null.
   //
   // Unreachable until this branch: `mod` was only ever called with the 1.4/1.6

@@ -293,9 +293,10 @@ export function DiveMixturesCard({ dive }: DiveMixturesCardProps) {
                             aria-hidden
                           />
                         )}
-                        {/* Rounded down and at the same scale as the warning under
-                            the table, so the two never name different depths for
-                            one gas - see `formatComparableDepth`. */}
+                        {/* Rounded down and at the scale the warning under the table
+                            uses, so where the two differ for one gas it is the ppO₂
+                            each was computed at and never the rounding - see
+                            `formatComparableDepth`. */}
                         <span>
                           {formatComparableDepth(workingMod, units, {
                             floor: true,

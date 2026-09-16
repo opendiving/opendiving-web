@@ -1958,7 +1958,7 @@ clearing. Any optional form field needs a non-`undefined` empty value, and `role
 A diver-editable `po2_limit` across the schema's `[0.4, 2.0]` band makes `mod(50, 0.4)` −2.0 m, and
 both `diveMixtureSchema` and `ck_dive_mixture_po2_limit_range` accept the inputs. `mod()` returns
 `null` for a strictly negative result, not the `Math.max(0, …)` that `endDepth` and `ead` use: 0 m
-is a real END or EAD (a rich mix in shallow water is equivalent to the surface), whereas "MOD 0.0 m"
+is a real END or EAD (a rich mix in shallow water is equivalent to the surface), whereas "MOD 0 m"
 reads as a depth the gas may be breathed at, the opposite of the truth. Both call sites render `-`
 for `null`. Exactly 0 stays a number: `mod(40, 0.4)` is 0 m.
 
