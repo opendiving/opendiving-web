@@ -17,14 +17,9 @@ import { ConfigProvider } from "@/contexts/ConfigContext";
 // boxes that only have a size while these classes apply, so the import is now
 // load-bearing loudly as well as quietly. Louder still for "refits when its
 // frame narrows", where a missing height can stop the behaviour under test from
-// happening rather than merely stop it being measurable: MapLibre acts on its
-// container's first resize observation only where the box differs from the one
-// the map was built at, and reads a zero height as no size rather than as a
-// difference. Whether the narrowing lands in that first observation turns on
-// whether a rendering update has intervened, which nothing here orders - so a
-// frame with no height does not make that test fail, it makes it a coin toss.
-// See "jsdom answers no layout question, and the browser lane only answers one
-// with the stylesheet loaded" in DECISIONS.md.
+// happening rather than merely stop it being measurable; that test's own height
+// assertion says how. See "jsdom answers no layout question, and the browser
+// lane only answers one with the stylesheet loaded" in DECISIONS.md.
 import "@/app/globals.css";
 
 // **A real browser, not jsdom.** MapLibre needs a WebGL2 context, which jsdom
