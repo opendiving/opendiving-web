@@ -50,7 +50,7 @@
 //
 //   RSC round trip ends   the navigation's own RSC request finishes (`responseEnd`)
 //   Screen changes        the first DOM mutation under `<main>`
-//   First API call done   the first `/api/v1/` response of the destination page finishes
+//   First API call done   the first `/api/v1/` response that reached the server finishes
 //   Settled               the last DOM mutation under `<main>`: the screen stopped moving
 //   Prefetches            what the *source* page fetched before the click: requests
 //                         carrying `next-router-prefetch` or `next-router-segment-prefetch`
@@ -495,8 +495,16 @@ async function measure(page, navigation, subjects) {
           t0: mark.t0,
           rsc: first((entry) => urls.includes(entry.name)),
           dom: mark.firstDom,
-          api: first((entry) =>
-            new URL(entry.name).pathname.includes("/api/v1/"),
+          // A *call*, so anything the browser answered out of its own cache is not one:
+          // `transferSize` is zero for those and non-zero for anything that reached the
+          // server, headers included. The navigation commits before the outgoing page
+          // unmounts, and its re-render re-requests the images it is already holding -
+          // which answer in no measurable time and would otherwise be reported as the
+          // destination's data arriving a whole round trip before it did.
+          api: first(
+            (entry) =>
+              entry.transferSize > 0 &&
+              new URL(entry.name).pathname.includes("/api/v1/"),
           ),
           // The *screen* settling, not the network: the destination page goes on
           // prefetching its own links long after the diver is reading it, and the dive
