@@ -4978,7 +4978,10 @@ markup.
 The browser project lays out but loads no stylesheet of this app's: `src/app/globals.css` is
 imported by `app/layout.tsx`, which no test renders, so `h-40` is 0px and `flex` computes to
 `display: block`. Put `import "@/app/globals.css"` at the top of every browser test that asserts
-geometry. A guard written as an absence (`getComputedStyle(el).filter` is `none`) fails on no
+geometry. A zero box also silences code that measures one: MapLibre skips its container's first
+resize observation unless the box differs from the one the map was built at, and treats a zero
+height as no size rather than as a difference, so a stylesheet-less resize test can watch a map that
+never resizes. A guard written as an absence (`getComputedStyle(el).filter` is `none`) fails on no
 markup: put the regression back and watch it fail before believing it. A harness sheet may override
 the app's — `map-picker.browser.test.tsx` injects
 `[role="application"] { width: 512px; height: 256px }` unlayered in `beforeAll`, outranking
