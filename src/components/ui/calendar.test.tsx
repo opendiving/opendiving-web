@@ -68,13 +68,20 @@ describe("paging the calendar by swiping the day grid", () => {
     expect(shownMonth()).toMatch(/April 2026/);
   });
 
-  it("leaves the month alone for a drag that went further down than across", () => {
-    const { grid } = renderCalendar();
+  // Either sign, because a scroll reaching past the calendar can go either way.
+  it.each([
+    ["up", -(FAR + 40)],
+    ["down", FAR + 40],
+  ])(
+    "leaves the month alone for a drag that went further %s than across",
+    (_, dy) => {
+      const { grid } = renderCalendar();
 
-    swipe(grid, -FAR, { dy: -(FAR + 40) });
+      swipe(grid, -FAR, { dy });
 
-    expect(shownMonth()).toMatch(/April 2026/);
-  });
+      expect(shownMonth()).toMatch(/April 2026/);
+    },
+  );
 
   it("ignores a mouse dragged across the grid, which is a selection", () => {
     const { grid } = renderCalendar();
