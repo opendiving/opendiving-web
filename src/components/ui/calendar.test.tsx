@@ -120,6 +120,20 @@ describe("paging the calendar by swiping the day grid", () => {
     expect(shownMonth()).toMatch(/April 2026/);
   });
 
+  // A second finger is ignored, and ignoring it has to cost the first one
+  // nothing: the drag it is still holding is ended by its own lift.
+  it("finishes the drag when a second finger has come and gone", async () => {
+    const { grid } = renderCalendar();
+
+    fireEvent.pointerDown(grid, TOUCH);
+    fireEvent.pointerMove(grid, { ...TOUCH, clientX: TOUCH.clientX - FAR });
+    fireEvent.pointerDown(grid, { ...TOUCH, pointerId: 2, clientX: 260 });
+    fireEvent.pointerUp(grid, { ...TOUCH, clientX: TOUCH.clientX - FAR });
+    await turned();
+
+    expect(shownMonth()).toMatch(/May 2026/);
+  });
+
   it("does not also pick the day the finger lifted from", async () => {
     const { grid, onSelect } = renderCalendar();
 

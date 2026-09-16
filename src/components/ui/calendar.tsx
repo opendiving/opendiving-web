@@ -196,8 +196,11 @@ function SwipeableMonthGrid({
       // page scrolling past, which also abandons the gesture via `pointercancel`.
       style={{ touchAction: "pan-y" }}
       onPointerDown={(event) => {
-        dragging.current = false;
+        // Below the guard, not above it: a second finger landing mid-drag is
+        // ignored here, and clearing the flag on the way past would stop the
+        // first finger's lift ending the drag it is still holding.
         if (event.pointerType === "mouse" || gesture.current) return;
+        dragging.current = false;
         // A slide already in flight owns the transform. Let it finish rather
         // than race it - cancelling a leg abandons the month change with it.
         if (playing.current?.playState === "running") return;
@@ -292,12 +295,8 @@ function Neighbour({
       inert
       aria-hidden
       className="pointer-events-none absolute inset-y-0 w-full"
-      // Inline rather than a utility class: this offset is what makes the track
-      // a track, and a class is only as reliable as the stylesheet that happens
-      // to be loaded. Tailwind generates one the first time its name appears in
-      // the source, so a page already open when it did runs the new markup
-      // against a sheet that never had it - and the neighbours then stack on
-      // the month they are meant to flank.
+      // A computed key and a computed value, so there is no class name for
+      // Tailwind to have scanned.
       style={{ [side]: `calc(100% + ${MONTH_GAP_PX}px)` }}
     >
       {children(month)}
