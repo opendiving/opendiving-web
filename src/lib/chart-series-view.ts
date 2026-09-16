@@ -18,10 +18,11 @@
 // defines. No dive data, nothing fetched.
 //
 // **A superseded key is left in storage rather than cleaned up**, which is the
-// precedent for the next bump: see "Adding a channel meant bumping the
-// remembered-selection key" in DECISIONS.md. Forty inert bytes against a list of
-// dead key names that would have to be carried, kept correct, and grown on every
-// future bump - in code whose whole job is to be forgotten.
+// precedent for the next bump: see "Adding a channel needs a
+// remembered-selection key bump; removing one does not" in DECISIONS.md. Forty
+// inert bytes against a list of dead key names that would have to be carried,
+// kept correct, and grown on every future bump - in code whose whole job is to
+// be forgotten.
 
 // Versioned, and now on its fourth: `-v2` when the deco ceiling became a fourth
 // channel, `-v3` when the event markers gained a toggle of their own, `-v4` when

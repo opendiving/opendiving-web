@@ -355,10 +355,11 @@ export function nonEmptyDiveFormFields(
  * The keys a failed submit has to put back on screen.
  *
  * The resolver validates hidden fields too (react-hook-form's default
- * `shouldUnregister: false` keeps their values in form state), so a hidden field
- * carrying an error would otherwise block the save with no message anywhere on the
- * page - the exact shape of "The API sends `null`… and the save button did nothing".
- * A per-cylinder error also reveals `mixtures`, since its message has nowhere to
+ * `shouldUnregister: false` keeps their values in form state), so a hidden
+ * field carrying an error would otherwise block the save with no message
+ * anywhere on the page - the exact shape of "The API sends `null` and the form
+ * schema wants `""`, so `toDiveMixtureInput` converts at the boundary". A
+ * per-cylinder error also reveals `mixtures`, since its message has nowhere to
  * render while the section is off screen.
  */
 export function diveFormFieldsWithErrors(

@@ -118,10 +118,11 @@ export function DiveFormCard<TFieldValues extends DiveFormValues>({
   }, [focusRequest, form]);
 
   // The resolver validates hidden fields too - react-hook-form's default
-  // `shouldUnregister: false` keeps their values in form state - so without this a
-  // hidden field carrying an error would block the save with no message anywhere on
-  // the page, which is exactly the "the save button did nothing" shape DECISIONS.md
-  // records.
+  // `shouldUnregister: false` keeps their values in form state - so without
+  // this a hidden field carrying an error would block the save with no message
+  // anywhere on the page, which is the failure "The API sends `null` and the
+  // form schema wants `""`, so `toDiveMixtureInput` converts at the boundary"
+  // in DECISIONS.md.
   const handleInvalid = (errors: Record<string, unknown>) => {
     const keys = diveFormFieldsWithErrors(errors);
     if (keys.length === 0) return;

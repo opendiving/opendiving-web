@@ -50,8 +50,8 @@ instructions live in AGENTS.md" in `DECISIONS.md`.
   `core.hooksPath` — so neither runs in a checkout that has not asked for it. Where signing is _not_
   configured, commit normally and do not set it up — your commits do not need to be signed, because
   PRs are squash-merged and GitHub signs the commit that lands on `main`. If signing is on and
-  genuinely fails, report the error instead of routing around it. See "Signing stopped being a
-  demand on contributors, and the hook learned to check" in `DECISIONS.md`.
+  genuinely fails, report the error instead of routing around it. See "Signing is a maintainer's
+  setting, and the hook checks before it blocks" in `DECISIONS.md`.
 
 Test, lint, format and type-check commands are in `CONTRIBUTING.md`.
 

@@ -148,12 +148,12 @@ interface NavLinkProps {
  * opens a dive in a new tab.
  *
  * It only started paying for itself once the route tree stopped destroying this
- * node from above. Until `dives/(detail)/layout.tsx` hoisted the fetch out of the
- * dynamic segment, the App Router re-mounted the whole page on a `/dives/[id]`
- * param change and focus landed on `<body>` however careful this component was -
- * see "The step remounted the page, and hoisting the fetch into a route-group
- * layout is what stopped it" in `DECISIONS.md`. Both halves are load-bearing: the
- * hoist keeps the component mounted, and this keeps the node inside it.
+ * node from above. Until `dives/(detail)/layout.tsx` hoisted the fetch out of
+ * the dynamic segment, the App Router re-mounted the whole page on a
+ * `/dives/[id]` param change and focus landed on `<body>` however careful this
+ * component was - see "`dives/(detail)/layout.tsx` owns the dive fetch, so a
+ * step keeps the page mounted" in `DECISIONS.md`. Both halves are load-bearing:
+ * the hoist keeps the component mounted, and this keeps the node inside it.
  */
 function NavLink({ direction, neighbor, isPending }: NavLinkProps) {
   const router = useRouter();
