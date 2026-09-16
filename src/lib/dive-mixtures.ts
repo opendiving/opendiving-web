@@ -27,7 +27,8 @@ import {
 } from "@/lib/units";
 
 // Every depth this module *computes* is metres, and every depth it *prints* goes
-// through `formatDepth`. The maths below is unit-blind on purpose - `METERS_PER_BAR`
+// through `formatDepth`, or `formatComparableDepth` where a limit is stated against a
+// depth. The maths below is unit-blind on purpose - `METERS_PER_BAR`
 // is a fact about water, not a display choice - so `units` reaches only the string
 // builders, and only ever as the last step.
 
@@ -557,8 +558,9 @@ export function modWarning(
   const workingLimit = mod(oxygen, PPO2_WORKING);
   if (decoLimit == null || workingLimit == null) return null;
 
-  // Both figures print at one scale and the limit rounds down, so the sentence cannot
-  // put the same number on both sides of "is past" - see `formatComparableDepth`.
+  // Both figures print at one scale and the limit rounds down, which is what keeps a
+  // metric sentence from putting the same number on both sides of "is past". Imperial
+  // still can, inside the first centimetre - see `formatComparableDepth`.
   if (isPastLimit(breathedDepth, decoLimit)) {
     return `${formatComparableDepth(breathedDepth, units)} is past this mix's ${formatComparableDepth(decoLimit, units, { floor: true })} limit at ppO₂ ${PPO2_DECO}.`;
   }

@@ -459,6 +459,14 @@ function floorTo(value: number, decimals: number): number {
  * `floor` rounds down rather than to nearest, for a value that is itself a ceiling: a
  * limit rounded up names a depth that is past it, and it is the rounding, not the
  * limit, that then collides with the depth beside it.
+ *
+ * That closes metric and only narrows imperial. A stored depth and a floored limit
+ * sit on the same centimetre grid, so a metric breach always prints two different
+ * numbers; a tenth of a foot is 3 cm, so an imperial breach inside the first
+ * centimetre still prints one number twice - air at 56.67 m gives "185.9 ft is past
+ * this mix's 185.9 ft working limit". Hundredths of a foot would close that too, at
+ * two digits on every MOD the app shows, which is precision no cylinder is analysed
+ * to.
  */
 export function formatComparableDepth(
   meters: number,

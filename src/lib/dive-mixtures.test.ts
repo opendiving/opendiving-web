@@ -600,6 +600,15 @@ describe("the warnings in imperial", () => {
     );
   });
 
+  it("still repeats a number for a breach inside the first centimetre", () => {
+    // The residual a tenth of a foot leaves: 3 cm per step against depths stored to
+    // the centimetre. Hundredths of a foot would close it and put two digits nobody
+    // analyses a cylinder to on every MOD the app shows. Metric has no residual.
+    expect(modWarning({ oxygen: 21, helium: 0 }, 56.67, "imperial")).toContain(
+      "185.9 ft is past this mix's 185.9 ft working limit",
+    );
+  });
+
   it("names both depths in feet", () => {
     const warning = modWarning({ oxygen: 32, helium: 0 }, 45, "imperial");
 

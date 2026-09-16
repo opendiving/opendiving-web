@@ -39,7 +39,7 @@ function dive(mixtures: DiveMixture[], maxDepth: number | null): Dive {
 
 describe("DiveMixturesCard warnings", () => {
   it("says nothing about a staged deco bottle carried past its own MOD", () => {
-    // The regression case: EAN54 tops out at 19.6 m and the dive reached 45.91 m,
+    // The regression case: EAN54 tops out at 19.62 m and the dive reached 45.91 m,
     // but it was breathed on the ascent. Nothing here is a problem.
     render(<DiveMixturesCard dive={dive([AIR, EAN54], 45.91)} />);
 

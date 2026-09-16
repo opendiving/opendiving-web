@@ -1972,10 +1972,10 @@ limits.
 
 The remaining width is not paid for by moving `bar` into the headers or dropping `O₂`/`He`, which
 hold the unrounded fractions. Cell padding is the real cost (at `p-4` a seven-column table spends
-224 px on it) and `He` is dropped on a dive with no helium; see "Both gas tables fit their slot,
-with no `overflow-x-auto` wrapper". A `usage` badge in the same cell reproduces the clipping and
-lives outside the table; see "The mixtures table carries no usage badge; `tankUsageSentences` states
-the flags under it".
+224 px on it) and `He` is dropped on a dive with no helium; see "The gas tables scroll inside
+shadcn's own wrapper, and no card adds another". A `usage` badge in the same cell reproduces the
+clipping and lives outside the table; see "The mixtures table carries no usage badge;
+`tankUsageSentences` states the flags under it".
 
 ## The API sends `null` and the form schema wants `""`, so `toDiveMixtureInput` converts at the boundary
 
@@ -2182,7 +2182,8 @@ the headers is forbidden by the card's rule: units stay with the values, never d
 "Depth" beside a per-tank row invites reading it as that gas's deepest point — the misreading
 `diveModWarning` refuses to warn per tank over, a mean depth being the wrong input for a MOD. Before
 shortening a header, check what fraction of the table is `p-4` padding; halving it is what made this
-table fit. Widths: see "Both gas tables fit their slot, with no `overflow-x-auto` wrapper".
+table fit. Widths: see "The gas tables scroll inside shadcn's own wrapper, and no card adds
+another".
 
 ## The tank↔mixture join applies the API's duplicate rule rather than trusting it
 
@@ -2429,11 +2430,14 @@ node and drops keyboard focus. Unavailable is `aria-disabled` plus `pointer-even
 `aria-busy` marks not-yet-known. A failed fetch is silent, as in `DiveNumberingStatus`.
 `dive-neighbor-nav.render.test.tsx` pins node identity across the `href` swap.
 
-## Both gas tables fit their slot, with no `overflow-x-auto` wrapper
+## The gas tables scroll inside shadcn's own wrapper, and no card adds another
 
-Both tables fit their 582 px slot at the 1024 px `lg:col-span-2` pinch. `px-2` cells did most of it;
-see "Cell padding is `px-2` app-wide". The cards add no `overflow-x-auto` wrapper: shadcn's `Table`
-wraps itself in `relative w-full overflow-auto` (`ui/table.tsx`), so an outer one never scrolls and
+Both tables fit their 582 px slot at the 1024 px `lg:col-span-2` pinch, except a mixtures table
+carrying role badges: the MOD column states a limit at the scale it is compared at (115 px metric,
+112 px imperial, 9 px and 13 px more than a rounded one), which puts that worst case 7 px and 11 px
+past the slot and scrolls it. `px-2` cells did most of the fit; see "Cell padding is `px-2`
+app-wide". The cards add no `overflow-x-auto` wrapper: shadcn's `Table` wraps itself in
+`relative w-full overflow-auto` (`ui/table.tsx`), so an outer one never scrolls and
 `closest('[class*="overflow-x-auto"]')` reports 0 px. Measure `table.scrollWidth` against
 `table.parentElement.clientWidth`, any conditional `tfoot` rendered. Chart wrappers
 (`dive-profile-chart.tsx`, `gas-use-chart.tsx`, `dive-activity-chart.tsx`) stay: SVG has none.
@@ -4563,8 +4567,8 @@ against the 582 px slot at 1024 px, clipping the MOD column by 73 px. Measure wi
 container's width whenever the table fits. Rejected on measurement: the Volume cell (14 px inline,
 56 px stacked — an overflowing table is already at min-content), icons (touch has no hover), and
 band-only icons (579 px, but a glyph vocabulary against "Three glyph families, not five"). The
-column set stays; the residual 2 px with role badges is the documented worst case. jsdom does no
-layout; tests pin text only.
+column set stays; role badges are the worst case, and the two-decimal MOD beside them now takes it a
+few px past the slot, into shadcn's own scroll. jsdom does no layout; tests pin text only.
 
 ## Adding a resource means sweeping the prose that enumerates the resources
 
