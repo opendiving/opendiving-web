@@ -28,13 +28,11 @@ function renderCalendar() {
 }
 
 describe("the month arrows against the caption they steer", () => {
-  // The arrows were `absolute left-1` / `right-1` inside a `<nav>` that nothing
-  // positioned, so they resolved against whatever ancestor happened to be
-  // positioned - the popover, not the month - and landed level with the middle
-  // of the day grid on a wide viewport and above the selects on a narrow one.
-  // Both numbers are a browser's to measure, which is why this is here and not
-  // in the jsdom lane: `getBoundingClientRect` is all zeroes there and every
-  // assertion below would pass against the markup it exists to reject.
+  // Where the arrows land is a browser's to measure, which is why this is here
+  // and not in the jsdom lane: `getBoundingClientRect` is all zeroes there and
+  // every assertion below would pass against the markup it exists to reject.
+  // Both widths are checked because an absolute offset misses the caption at
+  // one width while still hitting it at the other.
   it.each([
     ["narrow", NARROW],
     ["wide", WIDE],
