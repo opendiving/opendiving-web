@@ -39,7 +39,7 @@ function dive(mixtures: DiveMixture[], maxDepth: number | null): Dive {
 
 describe("DiveMixturesCard warnings", () => {
   it("says nothing about a staged deco bottle carried past its own MOD", () => {
-    // The regression case: EAN54 tops out at 19.6 m and the dive reached 45.91 m,
+    // The regression case: EAN54 tops out at 19.62 m and the dive reached 45.91 m,
     // but it was breathed on the ascent. Nothing here is a problem.
     render(<DiveMixturesCard dive={dive([AIR, EAN54], 45.91)} />);
 
@@ -62,7 +62,7 @@ describe("DiveMixturesCard warnings", () => {
     render(<DiveMixturesCard dive={dive([EAN54], 45)} />);
 
     expect(
-      screen.getByText(/past this mix's 19.6 m limit/i),
+      screen.getByText(/past this mix's 19.62 m limit/i),
     ).toBeInTheDocument();
   });
 
@@ -74,7 +74,7 @@ describe("DiveMixturesCard warnings", () => {
   it("shows a MOD per cylinder but no warning when the dive is within limits", () => {
     render(<DiveMixturesCard dive={dive([AIR], 30)} />);
 
-    expect(screen.getByText("56.7 m")).toBeInTheDocument();
+    expect(screen.getByText("56.66 m")).toBeInTheDocument();
     expect(screen.queryByText(/past this mix/i)).not.toBeInTheDocument();
   });
 
@@ -223,7 +223,7 @@ describe("DiveMixturesCard ppO₂ qualifier", () => {
   // The MOD is the last cell of every body row. Asserted on `textContent` rather than
   // by accessible name: the depth and its limit are two elements so the muted one can
   // be muted, and `dom-accessibility-api` trims each node before joining them, which
-  // turns the rendered "56.7 m @ 1.4" into the name "56.7 m@ 1.4". The space is really
+  // turns the rendered "56.66 m @ 1.4" into the name "56.66 m@ 1.4". The space is really
   // in the DOM - this reads what the diver sees rather than pinning that quirk.
   function modCells(): (string | null)[] {
     return screen
@@ -244,10 +244,10 @@ describe("DiveMixturesCard ppO₂ qualifier", () => {
       screen.getByRole("columnheader", { name: "MOD" }),
     ).toBeInTheDocument();
     expect(screen.queryByText(/MOD @ ppO₂/)).not.toBeInTheDocument();
-    // 15.9 m, not the 19.6 m the warning above quotes for the same gas: that one is
+    // 15.92 m, not the 19.62 m the warning above quotes for the same gas: that one is
     // the 1.6 deco ceiling. Two different numbers for one cylinder is exactly why
     // every MOD says which limit produced it.
-    expect(modCells()).toEqual(["56.7 m @ 1.4", "15.9 m @ 1.4"]);
+    expect(modCells()).toEqual(["56.66 m @ 1.4", "15.92 m @ 1.4"]);
   });
 
   it("carries each cylinder's own limit when the dive mixes them", () => {
@@ -255,15 +255,15 @@ describe("DiveMixturesCard ppO₂ qualifier", () => {
     // of the same dive.
     render(<DiveMixturesCard dive={dive([at(1.4, 21), at(1.6, 50)], 30)} />);
 
-    expect(modCells()).toEqual(["56.7 m @ 1.4", "22.0 m @ 1.6"]);
+    expect(modCells()).toEqual(["56.66 m @ 1.4", "22 m @ 1.6"]);
   });
 
   it("computes each row at its own recorded limit, not the default", () => {
-    // EAN50 at ppO₂ 1.6 is 22.0 m; at the 1.4 default it would be 18.0 m. A cell
+    // EAN50 at ppO₂ 1.6 is 22 m; at the 1.4 default it would be 18 m. A cell
     // saying 1.4 beside this number would be naming a limit it didn't use.
     render(<DiveMixturesCard dive={dive([at(1.6, 50)], 20)} />);
 
-    expect(modCells()).toEqual(["22.0 m @ 1.6"]);
+    expect(modCells()).toEqual(["22 m @ 1.6"]);
   });
 });
 

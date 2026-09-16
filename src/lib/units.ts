@@ -429,6 +429,64 @@ export function formatDepth(
   return formatValue(meters, "depth", units, options);
 }
 
+/**
+ * How fine a foot is written when two depths are being compared. A tenth, which is
+ * 3 cm - the nearest imperial has to the centimetre the metric side stores.
+ */
+const COMPARABLE_IMPERIAL_DECIMALS = 1;
+
+/**
+ * Rounds *down* to `decimals` places.
+ *
+ * The scaled value is settled before it is floored, because scaling is itself
+ * inexact: `9.2 * 100` is 919.9999999999999 and `Math.floor` takes a whole step off
+ * it, so a limit already on the grid would print a centimetre shallower than it is.
+ * Six decimals is far below the grid step and far above the error. Settling the
+ * *unscaled* value instead does not work - rounding it to a couple of places finer
+ * carries 39.46996 up to 39.47, which the floor then keeps, and a limit that rounds
+ * up names a depth past itself.
+ */
+function floorTo(value: number, decimals: number): number {
+  const factor = 10 ** decimals;
+  return Math.floor(roundTo(value * factor, 6)) / factor;
+}
+
+/**
+ * A depth written at the scale two depths can be told apart at: two decimals in
+ * metric, a tenth of a foot in imperial.
+ *
+ * `formatDepth` writes imperial as whole feet, which is the resolution a single
+ * reading is honest at and too coarse to state a comparison in - a gas breached by a
+ * few centimetres prints the same number on both sides, and the sentence reads as a
+ * depth past itself.
+ *
+ * `floor` rounds down rather than to nearest, for a value that is itself a ceiling: a
+ * limit rounded up names a depth that is past it, and it is the rounding, not the
+ * limit, that then collides with the depth beside it.
+ *
+ * What that closes: a depth recorded to the centimetre and a floored limit sit on one
+ * grid, so a breach between them always prints two different numbers. What it leaves:
+ * a parsed depth carries whatever precision the computer wrote, and 33.7512 m against
+ * EAN32's 33.75 m limit prints one number twice; and a tenth of a foot is 3 cm, so an
+ * imperial breach can collide depending where in that tenth the limit falls - air at
+ * 56.67 m gives "185.9 ft is past this mix's 185.9 ft working limit", while EAN28
+ * breached by 9 mm gives 131.3 against 131.2. Hundredths of a foot would close the
+ * imperial half, at two digits on every MOD the app shows, which is precision no
+ * cylinder is analysed to.
+ */
+export function formatComparableDepth(
+  meters: number,
+  units: UnitSystem,
+  { floor = false }: { floor?: boolean } = {},
+): string {
+  const shown = toDisplayUnits(meters, "depth", units);
+  const places =
+    units === "imperial" ? COMPARABLE_IMPERIAL_DECIMALS : METRIC_DECIMALS;
+  const value = floor ? floorTo(shown, places) : roundTo(shown, places);
+
+  return `${value}${unitSeparator("depth")}${unitLabel("depth", units)}`;
+}
+
 /** A temperature in Celsius, as `"23.89°C"` or `"75°F"`. */
 export function formatTemperature(
   celsius: number,

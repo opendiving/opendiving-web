@@ -268,7 +268,7 @@ describe("logging a dive without touching the gas card", () => {
   });
 
   it("raises no depth warning on a dive deep enough for one", async () => {
-    // 60 m is past air's 56.7 m working limit, so the seeded cylinder used to make
+    // 60 m is past air's 56.66 m working limit, so the seeded cylinder used to make
     // this form warn about gas the diver never entered - the worst kind of wrong,
     // since it trains a diver to ignore the real ones.
     render(<NewDivePage />);

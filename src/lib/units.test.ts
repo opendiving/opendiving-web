@@ -10,6 +10,7 @@ import {
   displayBound,
   displayNumber,
   formatAltitude,
+  formatComparableDepth,
   formatDepth,
   formatGasVolume,
   formatPressure,
@@ -128,8 +129,8 @@ describe("imperial display", () => {
 });
 
 describe("the metric decimals override", () => {
-  // The dashboard's Recent Dives row wants a whole metre; the MOD/END/EAD strings
-  // want one decimal, which is what they have always printed.
+  // The dashboard's Recent Dives row wants a whole metre; the END and EAD strings
+  // want one decimal.
   it("fixes the metric decimals", () => {
     expect(formatDepth(30.52, "metric", { decimals: 0 })).toBe("31 m");
     expect(formatDepth(30, "metric", { decimals: 1 })).toBe("30.0 m");
@@ -141,6 +142,52 @@ describe("the metric decimals override", () => {
   it("leaves imperial alone", () => {
     expect(formatDepth(30.48, "imperial", { decimals: 1 })).toBe("100 ft");
     expect(formatRmv(18.24, "imperial", { decimals: 1 })).toBe("0.64 cuft/min");
+  });
+});
+
+describe("formatComparableDepth", () => {
+  it("writes metric at the two decimals the API stores", () => {
+    expect(formatComparableDepth(33.75, "metric")).toBe("33.75 m");
+    expect(formatComparableDepth(40, "metric")).toBe("40 m");
+  });
+
+  // Where `formatDepth` writes whole feet: a comparison needs to tell 40.02 m and
+  // 40 m apart, and both of those are 131 ft.
+  it("writes imperial to a tenth of a foot", () => {
+    expect(formatComparableDepth(40.02, "imperial")).toBe("131.3 ft");
+    expect(formatComparableDepth(40, "imperial")).toBe("131.2 ft");
+  });
+
+  it("rounds a ceiling down rather than to nearest", () => {
+    expect(formatComparableDepth(15.925925925925927, "metric")).toBe("15.93 m");
+    expect(
+      formatComparableDepth(15.925925925925927, "metric", { floor: true }),
+    ).toBe("15.92 m");
+  });
+
+  // Flooring the raw quotient would answer 39.99, turning a division's last bit
+  // into a centimetre of margin.
+  it("settles float noise before flooring", () => {
+    expect(
+      formatComparableDepth(39.999999999999993, "metric", { floor: true }),
+    ).toBe("40 m");
+  });
+
+  // The scaling is noisy in its own right: 9.2 * 100 is 919.9999999999999, and
+  // EAN62.5 planned to ppO₂ 1.2 - both values the form offers - lands there.
+  it("keeps a limit that is already on the grid", () => {
+    expect(formatComparableDepth(9.2, "metric", { floor: true })).toBe("9.2 m");
+    expect(
+      formatComparableDepth(18.49002849002849, "metric", { floor: true }),
+    ).toBe("18.49 m");
+  });
+
+  // The other direction, and the one that matters more: a limit that floors *up*
+  // names a depth past itself, which is what the floor exists to prevent.
+  it("never floors a value above itself", () => {
+    expect(
+      formatComparableDepth(39.46996466431094, "metric", { floor: true }),
+    ).toBe("39.46 m");
   });
 });
 
