@@ -3,7 +3,7 @@
 import * as React from "react";
 import { CalendarIcon } from "lucide-react";
 
-import { parseDateTimeInput } from "@/lib/date-input";
+import { parseDateInput, parseDateTimeInput } from "@/lib/date-input";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { IconTooltip } from "@/components/ui/tooltip";
@@ -111,12 +111,33 @@ export function DateTimePicker({
     );
   }, [value]);
 
+  // An empty time field means "midnight" only once a date is committed alongside
+  // it; while typing it just means "not filled in".
+  const timePart = (raw: string) => {
+    const parsed = Number.parseInt(raw, 10);
+    return Number.isNaN(parsed) ? 0 : parsed;
+  };
+
   // Leaving the field settles it; text that never became a date-time is
   // discarded rather than left on screen contradicting the value behind it.
+  //
+  // A date typed with no time takes the time the popover is holding, which is
+  // what `handleSelectDate` does with a date picked from the grid. The two are
+  // the only ways a date arrives, and when they disagreed an hour typed into the
+  // Hours box before any date existed - held there deliberately, see
+  // `handleTimeChange` - was thrown away by the blur that finally supplied one.
   const handleSettle = () => {
     const parsed = parseDateTimeInput(draft);
-    setDraft(parsed ?? value ?? "");
-    if (parsed !== null && parsed !== (value ?? "")) onChange(parsed);
+    if (parsed === null) {
+      setDraft(value ?? "");
+      return;
+    }
+    const dateOnly = parseDateInput(draft);
+    const settled = dateOnly
+      ? `${dateOnly} ${pad(timePart(hours))}:${pad(timePart(minutes))}:${pad(timePart(seconds))}`
+      : parsed;
+    setDraft(settled);
+    if (settled !== (value ?? "")) onChange(settled);
   };
 
   const openFromField = () => {
@@ -133,13 +154,6 @@ export function DateTimePicker({
   const shownMonth = shownDate
     ? `${shownDate.getFullYear()}-${pad(shownDate.getMonth() + 1)}`
     : "";
-
-  // An empty time field means "midnight" only once a date is committed alongside
-  // it; while typing it just means "not filled in".
-  const timePart = (raw: string) => {
-    const parsed = Number.parseInt(raw, 10);
-    return Number.isNaN(parsed) ? 0 : parsed;
-  };
 
   const commit = (date: Date, h: number, m: number, s: number) => {
     const next = new Date(date);
@@ -220,7 +234,6 @@ export function DateTimePicker({
             }}
             placeholder={placeholder}
             disabled={disabled}
-            inputMode="numeric"
             autoComplete="off"
             spellCheck={false}
             className="pr-9"
@@ -242,23 +255,13 @@ export function DateTimePicker({
       <PopoverContent
         className="w-auto p-0"
         align="start"
-        // Focus stays in the box unless the icon button asked for the grid, so a
-        // calendar that opened because the diver tabbed into the field does not
-        // swallow what they type next.
+        // All three as in `date-picker.tsx`, for the reasons given there.
         onOpenAutoFocus={(event) => {
           if (!focusCalendar) event.preventDefault();
         }}
-        // Radix puts focus on the icon button here, and that is right for the
-        // one path that hands focus to the grid: Escape there unmounts the day
-        // cell holding it, and with no restore focus falls to `document.body`.
-        // Prevented on the focus-opened path instead, where focus never left
-        // the box and Radix would be taking it away rather than restoring it.
         onCloseAutoFocus={(event) => {
           if (!focusCalendar) event.preventDefault();
         }}
-        // Clicking the box or its own button is not "outside" - without this,
-        // Radix closes the calendar on the pointer-down and the field's own
-        // handler reopens it on the click, which reads as a flicker.
         onInteractOutside={(event) => {
           if (anchorRef.current?.contains(event.target as Node)) {
             event.preventDefault();

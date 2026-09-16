@@ -160,7 +160,9 @@ export function DatePicker({
             }}
             placeholder={placeholder}
             disabled={disabled}
-            inputMode="numeric"
+            // Deliberately no `inputMode`: the keypad iOS shows for one carries
+            // no "-", "/" or ":" and no way to switch, which is the reason
+            // `dive-site-dialog` refuses it for coordinates.
             autoComplete="off"
             spellCheck={false}
             className={cn(showClear ? "pr-16" : "pr-9")}

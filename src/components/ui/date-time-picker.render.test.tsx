@@ -53,6 +53,25 @@ describe("DateTimePicker text entry", () => {
     expect(committed()).toBe("2024-06-01 00:00:00");
   });
 
+  it("takes the held time when the date finally arrives by typing", async () => {
+    // An hour set before any date exists is held rather than stamped onto
+    // today, so the blur that supplies the date has to pick it up - the grid's
+    // own path already does.
+    render(<Field />);
+
+    await userEvent.click(box());
+    const hours = screen.getByRole("spinbutton", { name: "Hours" });
+    await userEvent.clear(hours);
+    await userEvent.type(hours, "18");
+    expect(committed()).toBe("");
+
+    await userEvent.click(box());
+    await userEvent.type(box(), "2024-06-01");
+    await userEvent.tab();
+
+    expect(committed()).toBe("2024-06-01 18:00:00");
+  });
+
   it("refuses a pasted string carrying a UTC offset", async () => {
     // The offset belongs to the dive, not to this box, and this component has
     // nowhere to put one - so accepting the paste would mean dropping it and

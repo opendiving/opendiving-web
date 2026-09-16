@@ -65,13 +65,9 @@ export function DiveStartTimeField({
       <DateTimePicker
         {...slotProps}
         value={localDateTime}
-        // An emptied box is no start time, and stays `""` rather than being
-        // combined: `combineStartTime("", 120)` is the bare string "+02:00",
-        // which carries no time for `OFFSET_SUFFIX_REGEX` to anchor on and so
-        // reads back as an offsetless value that `new Date()` cannot parse -
-        // the field redraws as "NaN-NaN-NaN NaN:NaN:NaN" beside an offset that
-        // has flipped itself to "Not recorded". The offset select below already
-        // guards the mirror case.
+        // An emptied box is no start time: `combineStartTime("", 120)` is the
+        // bare string "+02:00", which reads back as an unparseable date. The
+        // offset select below already guards the mirror case.
         onChange={(next) =>
           onChange(next ? combineStartTime(next, offsetMinutes) : "")
         }

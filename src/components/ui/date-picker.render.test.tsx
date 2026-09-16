@@ -75,9 +75,8 @@ describe("DatePicker text entry", () => {
   });
 
   it("refuses a day the month does not have, and never keeps one it passed through", async () => {
-    // "2024-06-31" is typed through "2024-06-3", which is a real date and the
-    // wrong one. Nothing is committed until the field is left, so there is no
-    // 3rd of June to be left holding.
+    // Nothing commits until the field is left, so the real date this one is
+    // typed through cannot be what the field ends up holding.
     render(<Field />);
 
     await userEvent.type(box(), "2024-06-31");
