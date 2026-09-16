@@ -75,8 +75,7 @@ export function DateTimePicker({
   // What the box shows while it is being typed in; the value moves only when the
   // diver leaves the field or presses Enter, for the reason `date-picker.tsx`
   // sets out - a half-typed date passes through other real dates on its way. A
-  // time is optional here: a bare date reads as midnight, exactly as picking one
-  // in the calendar with the time fields untouched does.
+  // time is optional here; `handleSettle` says where the missing one comes from.
   const [draft, setDraft] = React.useState(value ?? "");
 
   const [hours, setHours] = React.useState(pad(selectedDate?.getHours() ?? 0));
@@ -121,11 +120,10 @@ export function DateTimePicker({
   // Leaving the field settles it; text that never became a date-time is
   // discarded rather than left on screen contradicting the value behind it.
   //
-  // A date typed with no time takes the time the popover is holding, which is
-  // what `handleSelectDate` does with a date picked from the grid. The two are
-  // the only ways a date arrives, and when they disagreed an hour typed into the
-  // Hours box before any date existed - held there deliberately, see
-  // `handleTimeChange` - was thrown away by the blur that finally supplied one.
+  // A date typed with no time takes the time the popover is holding, matching
+  // what `handleSelectDate` does with one picked from the grid. Those two are
+  // the only ways a date arrives, and an hour set before any date exists is held
+  // rather than committed (see `handleTimeChange`), so both have to collect it.
   const handleSettle = () => {
     const parsed = parseDateTimeInput(draft);
     if (parsed === null) {
