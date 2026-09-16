@@ -247,6 +247,15 @@ describe("modWarning", () => {
     );
   });
 
+  it("repeats a number when the depth carries more than the API stores", () => {
+    // The metric residual, and the only one: a parsed depth is whatever the computer
+    // wrote (`max_depth` is an unrounded float all the way down), so a breach finer
+    // than the centimetre the limit prints at has no room to show.
+    expect(modWarning({ oxygen: 32, helium: 0 }, 33.7512, "metric")).toContain(
+      "33.75 m is past this mix's 33.75 m working limit",
+    );
+  });
+
   it("names a limit the depth is genuinely past, not the depth again", () => {
     // 33.8 m is 5 cm past EAN32's 33.75 m. The limit prints at the scale it is true
     // at and rounds down, so the sentence never puts one number on both sides of
@@ -600,10 +609,10 @@ describe("the warnings in imperial", () => {
     );
   });
 
-  it("still repeats a number for a breach inside the first centimetre", () => {
-    // The residual a tenth of a foot leaves: 3 cm per step against depths stored to
+  it("still repeats a number for a breach inside a tenth of a foot", () => {
+    // The residual a tenth of a foot leaves: 3 cm per step against depths recorded to
     // the centimetre. Hundredths of a foot would close it and put two digits nobody
-    // analyses a cylinder to on every MOD the app shows. Metric has no residual.
+    // analyses a cylinder to on every MOD the app shows.
     expect(modWarning({ oxygen: 21, helium: 0 }, 56.67, "imperial")).toContain(
       "185.9 ft is past this mix's 185.9 ft working limit",
     );

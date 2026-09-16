@@ -464,13 +464,15 @@ function floorTo(value: number, decimals: number): number {
  * limit rounded up names a depth that is past it, and it is the rounding, not the
  * limit, that then collides with the depth beside it.
  *
- * That closes metric and only narrows imperial. A stored depth and a floored limit
- * sit on the same centimetre grid, so a metric breach always prints two different
- * numbers; a tenth of a foot is 3 cm, so an imperial breach can still print one
- * number twice, depending on where the limit falls inside the tenth - air at 56.67 m
- * gives "185.9 ft is past this mix's 185.9 ft working limit", while EAN28 breached by
- * 9 mm gives 131.3 against 131.2. Hundredths of a foot would close that too, at two
- * digits on every MOD the app shows, which is precision no cylinder is analysed to.
+ * What that closes: a depth recorded to the centimetre and a floored limit sit on one
+ * grid, so a breach between them always prints two different numbers. What it leaves:
+ * a parsed depth carries whatever precision the computer wrote, and 33.7512 m against
+ * EAN32's 33.75 m limit prints one number twice; and a tenth of a foot is 3 cm, so an
+ * imperial breach can collide depending where in that tenth the limit falls - air at
+ * 56.67 m gives "185.9 ft is past this mix's 185.9 ft working limit", while EAN28
+ * breached by 9 mm gives 131.3 against 131.2. Hundredths of a foot would close the
+ * imperial half, at two digits on every MOD the app shows, which is precision no
+ * cylinder is analysed to.
  */
 export function formatComparableDepth(
   meters: number,
