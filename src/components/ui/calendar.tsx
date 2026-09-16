@@ -18,25 +18,34 @@ function Calendar({
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
+      // Puts the two arrows inside the month, flanking the caption, instead of
+      // in a `<nav>` above it. See `month` for why they are laid out in flow.
+      navLayout="around"
       className={cn("p-3", className)}
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
-        month: "space-y-4",
-        month_caption: "flex justify-center pt-1 relative items-center",
+        // Previous arrow, caption and next arrow share the first row; the day
+        // grid spans all three columns on the second. The arrows used to be
+        // `absolute`, which resolved against whichever ancestor happened to be
+        // positioned - never this month - and dropped them somewhere unrelated
+        // to the caption they steer. Laying the row out in flow keeps them on
+        // the caption's baseline at any width, and keeps them off the month and
+        // year selects rather than merely near-missing them.
+        month: "grid grid-cols-[auto_1fr_auto] items-center gap-y-4",
+        month_caption: "flex justify-center items-center",
         caption_label: "text-sm font-medium",
         dropdowns: "flex gap-1",
         dropdown:
           "border border-input bg-background text-base md:text-sm rounded-md px-2 py-0.5 focus:outline-none focus:ring-1 focus:ring-ring appearance-none",
-        nav: "space-x-1 flex items-center",
         button_previous: cn(
           buttonVariants({ variant: "outline" }),
-          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 absolute left-1",
+          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100",
         ),
         button_next: cn(
           buttonVariants({ variant: "outline" }),
-          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 absolute right-1",
+          "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100",
         ),
-        month_grid: "w-full border-collapse space-y-1",
+        month_grid: "col-span-3 w-full border-collapse space-y-1",
         weekdays: "flex",
         weekday:
           "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
