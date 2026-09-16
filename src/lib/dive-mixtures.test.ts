@@ -231,6 +231,22 @@ describe("modWarning", () => {
     expect(modWarning({ oxygen: 32, helium: 0 }, 33.75, "metric")).toBeNull();
   });
 
+  it("stays quiet at a limit binary arithmetic lands just under", () => {
+    // The gases whose 1.4 limit is a round number in decimal and a few ULPs under
+    // it in floats. EAN32 above is float-exact, so only these exercise the tolerance.
+    expect(modWarning({ oxygen: 28, helium: 0 }, 40, "metric")).toBeNull();
+    expect(modWarning({ oxygen: 40, helium: 0 }, 25, "metric")).toBeNull();
+    expect(modWarning({ oxygen: 100, helium: 0 }, 4, "metric")).toBeNull();
+  });
+
+  it("still flags the smallest breach a dive file can record", () => {
+    // The tolerance is a nanometre, so the centimetre a recorded depth resolves to
+    // is nowhere near it: EAN28 one centimetre past 40 m is still a breach.
+    expect(modWarning({ oxygen: 28, helium: 0 }, 40.01, "metric")).toContain(
+      "40.0 m working limit",
+    );
+  });
+
   it("flags a working-limit breach as a planning note, naming the working limit", () => {
     const warning = modWarning({ oxygen: 32, helium: 0 }, 36, "metric");
     expect(warning).toContain("33.8 m working limit");
@@ -508,6 +524,15 @@ describe("diveModWarning", () => {
     // theoretical.
     expect(diveModWarning([], 60, "metric")).toBeNull();
     expect(diveModWarning([AIR], 60, "metric")).toContain("working limit");
+  });
+
+  it("stays quiet at exactly the deepest gas's ceiling", () => {
+    // The dive-wide branch carries the same rounding guard as `modWarning`, and
+    // the boundary it guards is inclusive: a dive sitting on air's 1.6 ceiling is
+    // one every gas on board reaches, not one none of them do.
+    const ceiling = mod(21, PPO2_DECO);
+    expect(ceiling).not.toBeNull();
+    expect(diveModWarning([AIR, EAN54], ceiling!, "metric")).toBeNull();
   });
 
   it("says nothing when no cylinder has a usable oxygen fraction", () => {
