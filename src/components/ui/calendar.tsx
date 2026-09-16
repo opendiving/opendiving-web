@@ -257,12 +257,12 @@ function SwipeableMonthGrid({
       <div ref={trackRef} className="relative">
         <table {...props} className="w-full border-collapse" />
         {sliding && previousMonth && (
-          <Neighbour month={previousMonth} side="right-full">
+          <Neighbour month={previousMonth} side="right">
             {renderNeighbour}
           </Neighbour>
         )}
         {sliding && nextMonth && (
-          <Neighbour month={nextMonth} side="left-full">
+          <Neighbour month={nextMonth} side="left">
             {renderNeighbour}
           </Neighbour>
         )}
@@ -278,7 +278,7 @@ function Neighbour({
   children,
 }: {
   month: Date;
-  side: "left-full" | "right-full";
+  side: "left" | "right";
   children: ((month: Date) => React.ReactNode) | null;
 }) {
   if (!children) return null;
@@ -286,7 +286,14 @@ function Neighbour({
     <div
       inert
       aria-hidden
-      className={cn("pointer-events-none absolute inset-y-0 w-full", side)}
+      className="pointer-events-none absolute inset-y-0 w-full"
+      // Inline rather than `left-full`/`right-full`: this offset is what makes
+      // the track a track, and a utility class is only as reliable as the
+      // stylesheet that happens to be loaded. Tailwind generates one the first
+      // time its name appears in the source, so a page already open when it did
+      // runs the new markup against a sheet that never had it - the neighbours
+      // then stack on the month they are meant to flank.
+      style={{ [side]: "100%" }}
     >
       {children(month)}
     </div>
