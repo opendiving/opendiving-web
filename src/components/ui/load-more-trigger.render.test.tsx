@@ -194,10 +194,9 @@ describe("LoadMoreTrigger", () => {
       expect(onLoadMore).toHaveBeenCalledTimes(2);
     });
 
-    // The bug this component had: the rows pushed the button below the fold,
-    // and it fired again anyway on an answer from before they existed - so a
-    // list poured itself out page after page, on nothing but a first glimpse of
-    // its own end.
+    // The other side of it, and what a stale answer costs: rows that push the
+    // button below the fold end the run, rather than buying another page, and
+    // another, off a first glimpse of the end of the list.
     it("stops once the rows have pushed the trigger off screen", async () => {
       const { onLoadMore, settle } = landAPage();
 
