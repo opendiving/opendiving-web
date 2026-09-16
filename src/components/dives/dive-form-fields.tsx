@@ -11,7 +11,8 @@ import {
   Waves,
   Weight,
 } from "lucide-react";
-import { Input, inputClassName } from "@/components/ui/input";
+import { Input } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/native-select";
 import { UnitNumberInput } from "@/components/unit-number-input";
 import { Textarea } from "@/components/ui/textarea";
 import { DiveStartTimeField } from "@/components/dives/dive-start-time-field";
@@ -32,7 +33,6 @@ import { CourseCombobox } from "@/components/courses/course-combobox";
 import { DiveSiteMultiSelect } from "@/components/dives/dive-site-multi-select";
 import { DiveGearField } from "@/components/gear/dive-gear-field";
 import { SpeciesMultiSelect } from "@/components/dives/species-multi-select";
-import { cn } from "@/lib/utils";
 import { DiveMixtureInput } from "@/lib/validations/dive";
 import {
   DiveSiteSummary,
@@ -555,8 +555,8 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                   <div className="relative">
                     <Waves className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
                     <FormControl>
-                      <select
-                        className={cn(inputClassName, "pl-9")}
+                      <NativeSelect
+                        className="pl-9"
                         {...field}
                         value={field.value ?? ""}
                         // `""` straight through, not `|| undefined`: react-hook-form
@@ -572,7 +572,7 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                             {WATER_TYPE_LABELS[waterType]}
                           </option>
                         ))}
-                      </select>
+                      </NativeSelect>
                     </FormControl>
                   </div>
                   <FormMessage />

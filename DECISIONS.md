@@ -6213,8 +6213,9 @@ page.
 
 `Input`'s box is `text-base md:text-sm`: 16px on a phone, 14px from `md:` up. `Textarea` and the
 month/year `<select>`s in `calendar.tsx` carry the same classes; a `<select>` zooms like a text box,
-and the dive form's plain `<select>`s (ppO₂ limit, Role, Usage, water type) wear `inputClassName`,
-so they inherit it. `SelectTrigger` needs nothing: Radix's is a `<button>`, not a field.
+and the app's plain `<select>`s (ppO₂ limit, Role, Usage, water type, the units picker) are
+`NativeSelect`, which composes `inputClassName`, so they inherit it. `SelectTrigger` needs nothing:
+Radix's is a `<button>`, not a field.
 
 `maximum-scale=1` or `user-scalable=no` is rejected: it takes pinch-zoom from everybody, and iOS
 ignores both anyway. `input.browser.test.tsx` asserts 16px below the `md` breakpoint and 14px above,

@@ -13,7 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { inputClassName } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/native-select";
 import { FormApiError } from "@/components/ui/form-api-error";
 import { UNIT_SYSTEMS, UNIT_SYSTEM_LABELS, type UnitSystem } from "@/lib/units";
 
@@ -62,9 +62,8 @@ export function UnitsCard() {
       <CardContent>
         <div className="space-y-2">
           <Label htmlFor="units">Measurement system</Label>
-          <select
+          <NativeSelect
             id="units"
-            className={inputClassName}
             value={units}
             disabled={isSaving}
             onChange={(e) => handleChange(e.target.value as UnitSystem)}
@@ -74,7 +73,7 @@ export function UnitsCard() {
                 {UNIT_SYSTEM_LABELS[system]}
               </option>
             ))}
-          </select>
+          </NativeSelect>
           <p className="text-sm text-muted-foreground">
             Applies everywhere at once, on every device you sign in from. Your
             dives are stored in metric whichever you pick, and the data export

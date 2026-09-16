@@ -4,9 +4,9 @@ import { cn } from "@/lib/utils";
 
 export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {}
 
-// Exported so the handful of native controls that can't be an `Input` - the role
-// `<select>` in `dives/mixture-fields.tsx` - can sit on a form row beside one
-// without their box drifting a few pixels taller or ringing differently on focus.
+// Exported for `NativeSelect`, which dresses the app's plain `<select>`s in it, so
+// they sit on a form row beside an `Input` without their box drifting a few pixels
+// taller or ringing differently on focus.
 // Pass it alone when the control adds nothing of its own; fold additions in with
 // `cn()` rather than concatenating, so a later utility wins the conflict the way it
 // does for a caller's `className` on `Input` below.
