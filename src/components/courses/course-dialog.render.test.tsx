@@ -116,10 +116,61 @@ describe("CourseDialog", () => {
 
     expect(screen.queryByLabelText("Agency name *")).not.toBeInTheDocument();
 
-    await userEvent.click(screen.getByLabelText("Agency *"));
+    await userEvent.click(screen.getByLabelText("Agency"));
     await userEvent.click(await screen.findByRole("option", { name: "Other" }));
 
     expect(await screen.findByLabelText("Agency name *")).toBeInTheDocument();
+  });
+
+  it("creates a course with no agency when the diver never opens the picker", async () => {
+    // The create form opens on no agency rather than PADI, so a diver who
+    // never looks at the field stores nothing instead of a fabricated one.
+    open();
+    expect(screen.getByLabelText("Agency")).toHaveTextContent("No agency");
+
+    await userEvent.type(screen.getByLabelText("Course *"), "Nitrox, at home");
+    await save();
+
+    await waitFor(() => expect(createCourse).toHaveBeenCalled());
+    expect(createCourse.mock.calls[0][0]).toMatchObject({
+      name: "Nitrox, at home",
+      agency: null,
+      agency_other: null,
+    });
+  });
+
+  it("clears a stored agency with an explicit null", async () => {
+    // An omitted key would leave `tdi` in place and report success, the same
+    // trap the text fields' `""` -> `null` mapping exists for.
+    open(EXISTING);
+
+    await waitFor(() =>
+      expect(screen.getByLabelText("Agency")).toHaveTextContent("TDI"),
+    );
+    await userEvent.click(screen.getByLabelText("Agency"));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "No agency" }),
+    );
+    await save();
+
+    await waitFor(() => expect(updateCourse).toHaveBeenCalled());
+    expect(updateCourse.mock.calls[0][1]).toMatchObject({
+      agency: null,
+      agency_other: null,
+    });
+  });
+
+  it("reopens a course with no agency on the no-agency state, and leaves it there", async () => {
+    open({ ...EXISTING, agency: null });
+
+    await waitFor(() =>
+      expect(screen.getByLabelText("Agency")).toHaveTextContent("No agency"),
+    );
+
+    await save();
+
+    await waitFor(() => expect(updateCourse).toHaveBeenCalled());
+    expect(updateCourse.mock.calls[0][1]).toMatchObject({ agency: null });
   });
 
   it("refuses an end date before the start date, beside the end date", async () => {

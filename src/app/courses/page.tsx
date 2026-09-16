@@ -211,11 +211,14 @@ export default function CoursesPage() {
                         {course.name}
                       </Link>
                     </TableCell>
+                    {/* A course need not name an agency, so this cell gets the
+                        same dash the Dates one does rather than a gap that
+                        reads as a rendering fault. */}
                     <TableCell>
                       {certificationAgencyLabel(
                         course.agency,
                         course.agency_other,
-                      )}
+                      ) ?? <span className="text-muted-foreground">-</span>}
                     </TableCell>
                     <TableCell>
                       {formatTripDateRange(

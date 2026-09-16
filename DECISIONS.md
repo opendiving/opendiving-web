@@ -4920,10 +4920,15 @@ fallback (ambiguous ownership); fill-only-if-empty (`agency` defaults to `padi`;
 strand after switching to B); always replace (clobbers typing).
 
 The copy replaces exactly the fields it filled; switching A → B empties what B lacks; clearing the
-course unlinks and touches nothing. The edit dialog gets no prefill: `reset(...)` from the stored
-card makes every value baseline. `name` and `notes` are not copied — a course name is not a card's
-level. `lib/api/certifications.ts`'s comment holds: nothing derives these at read time. Unlike "A
-dive's course is not inherited from the last dive", this runs only on the diver's own pick.
+course unlinks and touches nothing. The agency pair is the exception — a course's agency is
+optional, a certification's required — so a course naming none copies neither half and the form
+keeps its own default. Rejected: blanking it, which would make the seeded "Add certification" the
+one flow opening on an unset required field.
+
+The edit dialog gets no prefill: `reset(...)` from the stored card makes every value baseline.
+`name` and `notes` are not copied — a course name is not a card's level.
+`lib/api/certifications.ts`'s comment holds: nothing derives these at read time. Unlike "A dive's
+course is not inherited from the last dive", this runs only on the diver's own pick.
 
 ## A silently prefilled field is not a clean field
 
