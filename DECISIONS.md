@@ -86,6 +86,22 @@ around `DateTimePicker` + `UtcOffsetSelect`. New dives use `nowStartTime()`
 (`getBrowserUtcOffsetMinutes()`); `normalizeParsedStartTime()` keeps an imported file's offset and
 falls back to the browser's for naive ones.
 
+## Date fields are typed into, and settle only when the field is left
+
+Every date field is a text box with a calendar button in it (`ui/date-picker.tsx`,
+`ui/date-time-picker.tsx`); `lib/date-input.ts` reads what is typed or pasted. Separators are loose
+(`2024/6/1`, `20240601`), the order always year-first: `01/06/2024` is two different days depending
+on who typed it. `parseDateTimeInput()` refuses a trailing `Z` or `+02:00` — a dive's offset belongs
+to `UtcOffsetSelect`, and dropping a pasted one moves the dive by those hours in silence.
+
+The box holds a draft and commits on blur or Enter, never per keystroke: `2024-06-31` is typed
+through `2024-06-3`, so per-keystroke commits leave the field on the 3rd of June. Unparseable text
+is discarded and the committed value comes back.
+
+Focus opens the calendar, which follows the draft as it is typed; `onClick` reopens it, since
+`focus` does not fire on a focused input. Only the icon button hands the grid focus, or the first
+keystroke lands on a day cell.
+
 ## FastAPI 422 errors can be an array, not a string - never render `detail` directly
 
 Pydantic validation errors return `detail` as an array of `{type, loc, msg, input}` objects; other

@@ -169,6 +169,7 @@ function RenumberForm({ onDone }: { onDone: (renumbered: boolean) => void }) {
           <div className="space-y-2">
             <Label htmlFor="renumber-from">Only dives from</Label>
             <DatePicker
+              id="renumber-from"
               value={fromDate}
               onChange={setFromDate}
               placeholder="All dives"

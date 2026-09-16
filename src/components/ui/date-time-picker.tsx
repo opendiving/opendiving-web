@@ -3,12 +3,13 @@
 import * as React from "react";
 import { CalendarIcon } from "lucide-react";
 
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { parseDateTimeInput } from "@/lib/date-input";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
+import { IconTooltip } from "@/components/ui/tooltip";
 import {
   Popover,
+  PopoverAnchor,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
@@ -62,7 +63,21 @@ export function DateTimePicker({
   ...slotProps
 }: DateTimePickerProps) {
   const [open, setOpen] = React.useState(false);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const anchorRef = React.useRef<HTMLDivElement>(null);
   const selectedDate = parseDateTime(value);
+
+  // Whether the calendar takes focus when it opens - see `date-picker.tsx`.
+  // Opening because the diver focused the field must not, or the first keystroke
+  // of a typed date lands on a day cell instead of in the box.
+  const [focusCalendar, setFocusCalendar] = React.useState(false);
+
+  // What the box shows while it is being typed in; the value moves only when the
+  // diver leaves the field or presses Enter, for the reason `date-picker.tsx`
+  // sets out - a half-typed date passes through other real dates on its way. A
+  // time is optional here: a bare date reads as midnight, exactly as picking one
+  // in the calendar with the time fields untouched does.
+  const [draft, setDraft] = React.useState(value ?? "");
 
   const [hours, setHours] = React.useState(pad(selectedDate?.getHours() ?? 0));
   const [minutes, setMinutes] = React.useState(
@@ -84,6 +99,40 @@ export function DateTimePicker({
       setSeconds(pad(date.getSeconds()));
     }
   }, [value]);
+
+  // The text box tracks the same external changes - the calendar, the time
+  // fields beside it, a dive file being imported. A draft that still *means* the
+  // incoming value is left as typed, so the normalization `handleSettle` just
+  // committed does not arrive twice.
+  React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDraft((current) =>
+      parseDateTimeInput(current) === (value ?? "") ? current : (value ?? ""),
+    );
+  }, [value]);
+
+  // Leaving the field settles it; text that never became a date-time is
+  // discarded rather than left on screen contradicting the value behind it.
+  const handleSettle = () => {
+    const parsed = parseDateTimeInput(draft);
+    setDraft(parsed ?? value ?? "");
+    if (parsed !== null && parsed !== (value ?? "")) onChange(parsed);
+  };
+
+  const openFromField = () => {
+    setFocusCalendar(false);
+    setOpen(true);
+  };
+
+  // The calendar tracks the text as it is typed rather than the committed value,
+  // so one left open under a diver typing a date a year away is not sitting on
+  // last year's month. Display only - `handleTimeChange` still commits against
+  // `selectedDate`, which is safe because reaching the time boxes means clicking
+  // out of the text box, and that blur has already settled the draft.
+  const shownDate = parseDateTime(parseDateTimeInput(draft) ?? value);
+  const shownMonth = shownDate
+    ? `${shownDate.getFullYear()}-${pad(shownDate.getMonth() + 1)}`
+    : "";
 
   // An empty time field means "midnight" only once a date is committed alongside
   // it; while typing it just means "not filled in".
@@ -145,32 +194,83 @@ export function DateTimePicker({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          {...slotProps}
-          type="button"
-          variant="outline"
-          disabled={disabled}
-          className={cn(
-            "w-full justify-start text-left font-normal",
-            !value && "text-muted-foreground",
-          )}
-        >
-          <CalendarIcon className="mr-2 h-4 w-4" />
-          {value || placeholder}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
+      {/* Anchored on the whole field rather than on the icon that opens it, so
+          the calendar hangs off the field's left edge - see `date-picker.tsx`. */}
+      <PopoverAnchor asChild>
+        {/* The calendar button is layered over the input's right edge rather
+            than sitting beside it, so the field keeps one box on a form row. */}
+        <div ref={anchorRef} className="relative">
+          <Input
+            {...slotProps}
+            ref={inputRef}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onFocus={openFromField}
+            // Focus alone isn't enough: a `focus` event doesn't fire on an input
+            // that already has focus, so Escape would leave the calendar
+            // unopenable without clicking away first. `creatable-combobox`
+            // carries the same pair for the same reason.
+            onClick={openFromField}
+            onBlur={handleSettle}
+            // Enter submits the surrounding form, and does it without blurring
+            // first, so the last thing typed has to be committed here or the
+            // form reads the value from before it.
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSettle();
+            }}
+            placeholder={placeholder}
+            disabled={disabled}
+            inputMode="numeric"
+            autoComplete="off"
+            spellCheck={false}
+            className="pr-9"
+          />
+          <IconTooltip label="Choose date and time">
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => setFocusCalendar(true)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+              >
+                <CalendarIcon className="h-4 w-4" />
+              </button>
+            </PopoverTrigger>
+          </IconTooltip>
+        </div>
+      </PopoverAnchor>
+      <PopoverContent
+        className="w-auto p-0"
+        align="start"
+        // Focus stays in the box unless the icon button asked for the grid, so a
+        // calendar that opened because the diver tabbed into the field does not
+        // swallow what they type next.
+        onOpenAutoFocus={(event) => {
+          if (!focusCalendar) event.preventDefault();
+        }}
+        // Radix would send focus back to the trigger; on Escape it has never
+        // left the box, which is where it belongs on a field that is typed in.
+        onCloseAutoFocus={(event) => event.preventDefault()}
+        // Clicking the box or its own button is not "outside" - without this,
+        // Radix closes the calendar on the pointer-down and the field's own
+        // handler reopens it on the click, which reads as a flicker.
+        onInteractOutside={(event) => {
+          if (anchorRef.current?.contains(event.target as Node)) {
+            event.preventDefault();
+          }
+        }}
+      >
         <Calendar
+          key={shownMonth}
           mode="single"
-          selected={selectedDate}
+          selected={shownDate}
           onSelect={handleSelectDate}
           captionLayout="dropdown"
           startMonth={new Date(1900, 0)}
           endMonth={new Date(new Date().getFullYear() + 5, 11)}
           classNames={{ caption_label: "hidden" }}
-          defaultMonth={selectedDate}
-          autoFocus
+          defaultMonth={shownDate}
+          autoFocus={focusCalendar}
         />
         <div className="flex items-center justify-center gap-1 border-t p-3">
           <Input
