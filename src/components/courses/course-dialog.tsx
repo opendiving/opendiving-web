@@ -14,7 +14,6 @@ import {
   DEFAULT_COURSE_STATUS,
 } from "@/lib/api/courses";
 import {
-  CertificationAgency,
   CERTIFICATION_AGENCIES,
   certificationAgencyLabel,
 } from "@/lib/api/certifications";
@@ -47,6 +46,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Button } from "@/components/ui/button";
+
+// The agency picker's "no agency" option. The form itself holds `null` for that
+// state and the API is sent `null`; this string exists only because a Radix
+// `SelectItem` may not carry `""`, which is how that component spells "nothing
+// selected" - so the option needs a value of its own and it never leaves here.
+const NO_AGENCY = "none";
 
 interface CourseDialogProps {
   userId: string;
@@ -84,7 +89,9 @@ export function CourseDialog({
     resolver: zodResolver(courseSchema),
     defaultValues: {
       name: "",
-      agency: "padi",
+      // No agency chosen: a diver who never opens the picker stores nothing
+      // rather than a fabricated PADI.
+      agency: null,
       agency_other: "",
       status: DEFAULT_COURSE_STATUS,
       start_date: "",
@@ -108,7 +115,7 @@ export function CourseDialog({
     if (!open) return;
     reset({
       name: course?.name ?? "",
-      agency: course?.agency ?? "padi",
+      agency: course?.agency ?? null,
       agency_other: course?.agency_other ?? "",
       status: course?.status ?? DEFAULT_COURSE_STATUS,
       start_date: course?.start_date ?? "",
@@ -139,12 +146,16 @@ export function CourseDialog({
       // these fields off `NON_NULLABLE_FIELDS` for that. On create the same nulls
       // simply store nothing.
       //
+      // `agency` is one of them: a course need not name one, and the picker's
+      // own "not set" is already `null`, so clearing it here clears the stored
+      // value rather than being ignored.
+      //
       // `agency_other` is the exception: the API rejects a non-null value unless
       // the agency is "other", so switching away from "other" must send null
       // rather than the stale name still sitting in the form state.
       const shared = {
         name: data.name,
-        agency: data.agency as CertificationAgency,
+        agency: data.agency,
         agency_other:
           data.agency === "other" ? data.agency_other || null : null,
         status: data.status,
@@ -221,14 +232,24 @@ export function CourseDialog({
                 name="agency"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Agency *</FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
+                    <FormLabel>Agency</FormLabel>
+                    <Select
+                      value={field.value ?? NO_AGENCY}
+                      onValueChange={(value) =>
+                        field.onChange(value === NO_AGENCY ? null : value)
+                      }
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
+                        {/* First, because it is what the form opens on: a
+                            course run by a private instructor has no agency,
+                            and the state has to be pickable again after one has
+                            been chosen. */}
+                        <SelectItem value={NO_AGENCY}>No agency</SelectItem>
                         {CERTIFICATION_AGENCIES.map((value) => (
                           <SelectItem key={value} value={value}>
                             {certificationAgencyLabel(value)}

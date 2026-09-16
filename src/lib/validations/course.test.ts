@@ -24,6 +24,14 @@ describe("courseSchema", () => {
     expect(firstIssue(result)?.message).toBe("Course name is required");
   });
 
+  it("accepts a course with no agency", () => {
+    // A course run by a private instructor names none, and `null` is what the
+    // dialog sends for it - the API's own "not set" for this column.
+    expect(courseSchema.safeParse({ ...valid, agency: null }).success).toBe(
+      true,
+    );
+  });
+
   it("rejects an unknown agency", () => {
     // The vocabulary is closed on both sides and has no DB CHECK behind it, so a
     // typo that got through here would be stored and shown as a raw slug.
@@ -62,6 +70,19 @@ describe("courseSchema", () => {
         courseSchema.safeParse({
           ...valid,
           agency: "other",
+          agency_other: "FFESSM",
+        }).success,
+      ).toBe(true);
+    });
+
+    it("asks for no agency name when there is no agency", () => {
+      // Same tolerance as a named agency: the refine fires only on "other", and
+      // `CourseDialog`'s submit mapping nulls the stale name rather than the
+      // schema refusing the diver's own edit mid-flight.
+      expect(
+        courseSchema.safeParse({
+          ...valid,
+          agency: null,
           agency_other: "FFESSM",
         }).success,
       ).toBe(true);
