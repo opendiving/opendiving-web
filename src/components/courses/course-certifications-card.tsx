@@ -36,8 +36,9 @@ const CERTIFICATIONS_LIMIT = 50;
 interface CourseCertificationsCardProps {
   userId: string;
   // The whole course, not just its uuid: "Add certification" opens a dialog
-  // pre-linked to it *and* prefilled from its agency, training center and
-  // instructor, and the page has already loaded every one of those.
+  // pre-linked to it *and* prefilled from its training center, instructor and
+  // agency where it names one, and the page has already loaded every one of
+  // those.
   course: Course;
 }
 

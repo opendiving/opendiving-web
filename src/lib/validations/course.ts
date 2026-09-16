@@ -20,7 +20,10 @@ export const courseSchema = z
       .string()
       .min(1, "Course name is required")
       .max(255, "Course name cannot exceed 255 characters"),
-    agency: z.enum(CERTIFICATION_AGENCIES),
+    // `null` is this field's "not set", mirroring the API's own `agency: None`
+    // rather than the `""` the text fields use: the picker holds a value or it
+    // holds nothing, the way `course_uuid` does on a certification.
+    agency: z.enum(CERTIFICATION_AGENCIES).nullable(),
     // Only meaningful alongside `agency: "other"`, which the refine below
     // enforces - the same pairing rule the API applies to both models.
     agency_other: z

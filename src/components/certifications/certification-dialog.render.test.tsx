@@ -58,6 +58,17 @@ const OTHER_COURSE = course({
   notes: "",
 });
 
+// A course run by a private instructor: no agency to hand over, while every
+// other prefillable field is its own.
+const AGENCYLESS_COURSE = course({
+  uuid: "course-4",
+  name: "Sidemount, with Kim",
+  agency: null,
+  instructor_name: "Kim Solo",
+  instructor_number: "IND-3",
+  training_center: "No shop",
+});
+
 const COURSE = course();
 
 const EXISTING: Certification = {
@@ -242,6 +253,48 @@ describe("picking a course fills the card's own fields in", () => {
     });
   });
 
+  it("leaves the card's own agency alone for a course that names none", async () => {
+    // A course's agency is optional and a certification's is required, so the
+    // one field the prefill must not empty is this one.
+    getCourses.mockImplementation(async () => page([AGENCYLESS_COURSE]));
+
+    open();
+    await pickCourse(AGENCYLESS_COURSE.name);
+
+    await waitFor(() => expect(trainingCenter()).toHaveValue("No shop"));
+    expect(instructor()).toHaveValue("Kim Solo");
+    expect(agency()).toHaveTextContent("PADI");
+    expect(screen.queryByLabelText("Agency name *")).not.toBeInTheDocument();
+
+    await userEvent.type(certificationName(), "Sidemount Diver");
+    await save();
+
+    await waitFor(() => expect(createCertification).toHaveBeenCalled());
+    expect(createCertification.mock.calls[0][0]).toMatchObject({
+      agency: "padi",
+      agency_other: null,
+      training_center: "No shop",
+    });
+  });
+
+  it("keeps an agency it copied itself when the next course names none", async () => {
+    // The one exception to "switching A -> B empties what B lacks": neither
+    // half of the pair is blanked, because the result would be unsubmittable.
+    getCourses.mockImplementation(async () =>
+      page([COURSE, AGENCYLESS_COURSE]),
+    );
+
+    open();
+    await pickCourse(COURSE.name);
+    await waitFor(() => expect(agency()).toHaveTextContent("TDI"));
+
+    await pickCourse(AGENCYLESS_COURSE.name);
+
+    await waitFor(() => expect(instructor()).toHaveValue("Kim Solo"));
+    expect(instructorNumber()).toHaveValue("IND-3");
+    expect(agency()).toHaveTextContent("TDI");
+  });
+
   it("sends the agency pair the API validates together", async () => {
     // A named agency carrying an `agency_other` is a 422, and so is "other"
     // without one - so the two are only ever copied as a pair.
@@ -323,6 +376,25 @@ describe("a dialog opened from a course page starts on that course", () => {
       name: "Advanced Nitrox",
       course_uuid: COURSE.uuid,
       training_center: "Blue Ocean, Koh Tao",
+    });
+  });
+
+  it("opens on its own agency when the seed course names none", async () => {
+    // The seeded path is the only one that could open a create dialog with its
+    // required agency unset, so it answers the field from the form's default.
+    open({ initialCourse: AGENCYLESS_COURSE });
+
+    await waitFor(() => expect(trainingCenter()).toHaveValue("No shop"));
+    expect(agency()).toHaveTextContent("PADI");
+
+    await userEvent.type(certificationName(), "Sidemount Diver");
+    await save();
+
+    await waitFor(() => expect(createCertification).toHaveBeenCalled());
+    expect(createCertification.mock.calls[0][0]).toMatchObject({
+      agency: "padi",
+      agency_other: null,
+      course_uuid: AGENCYLESS_COURSE.uuid,
     });
   });
 

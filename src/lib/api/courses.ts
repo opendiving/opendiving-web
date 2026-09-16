@@ -43,7 +43,10 @@ export const DEFAULT_COURSE_STATUS: CourseStatus = "completed";
 export interface Course {
   uuid: string;
   name: string;
-  agency: CertificationAgency;
+  // Optional, unlike a certification's: a course run by a private instructor
+  // has no agency to name, and inventing one would store a fact the diver
+  // never gave.
+  agency?: CertificationAgency | null;
   // Only set when `agency` is `other` - the name of the training body.
   agency_other?: string | null;
   status: CourseStatus;
@@ -62,7 +65,7 @@ export interface Course {
 export interface CourseCreate {
   user_uuid: string;
   name: string;
-  agency: CertificationAgency;
+  agency?: CertificationAgency | null;
   agency_other?: string | null;
   status?: CourseStatus;
   start_date?: string | null;

@@ -61,7 +61,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 // plausible-but-wrong values saved without being read - and `name` is the
 // required, identity-bearing field, so an empty box is what makes the diver
 // look at their card.
-interface CourseFieldValues {
+interface CertificationFieldValues {
   agency: CertificationAgency;
   agency_other: string;
   training_center: string;
@@ -69,10 +69,17 @@ interface CourseFieldValues {
   instructor_number: string;
 }
 
+// The same five as a course holds them. A course need not name an agency and a
+// certification must, so that half is nullable here - and a course without one
+// contributes nothing to the pair rather than emptying the required field.
+type CourseFieldValues = Omit<CertificationFieldValues, "agency"> & {
+  agency: CertificationAgency | null;
+};
+
 // What a course puts in those fields.
 function courseFieldValues(course: Course): CourseFieldValues {
   return {
-    agency: course.agency,
+    agency: course.agency ?? null,
     agency_other: course.agency_other ?? "",
     training_center: course.training_center ?? "",
     instructor_name: course.instructor_name ?? "",
@@ -147,7 +154,7 @@ export function CertificationDialog({
   // Deliberately *not* react-hook-form's `dirtyFields`, which is the obvious
   // mechanism and does not survive contact with this form - see DECISIONS.md,
   // "A silently prefilled field is not a clean field".
-  const autofilledRef = useRef<CourseFieldValues>({
+  const autofilledRef = useRef<CertificationFieldValues>({
     agency: DEFAULT_CERTIFICATION_AGENCY,
     agency_other: "",
     training_center: "",
@@ -164,7 +171,7 @@ export function CertificationDialog({
     // fields already filled in. An edit dialog ignores it outright: its values
     // are a pure function of the card being edited.
     const seed = certification ? undefined : initialCourse;
-    const opening: CourseFieldValues = seed
+    const from: CourseFieldValues = seed
       ? courseFieldValues(seed)
       : {
           agency: certification?.agency ?? DEFAULT_CERTIFICATION_AGENCY,
@@ -173,6 +180,14 @@ export function CertificationDialog({
           instructor_name: certification?.instructor_name ?? "",
           instructor_number: certification?.instructor_number ?? "",
         };
+    // A certification's agency is required, so a seed course that names none
+    // hands over no pair and the form opens on its own default - this is the
+    // one path that could otherwise open with a required field unset.
+    const opening: CertificationFieldValues = {
+      ...from,
+      agency: from.agency ?? DEFAULT_CERTIFICATION_AGENCY,
+      agency_other: from.agency ? from.agency_other : "",
+    };
     autofilledRef.current = { ...opening };
 
     reset({
@@ -202,14 +217,18 @@ export function CertificationDialog({
 
       // The agency pair is considered together and written together: the API
       // rejects a named agency carrying an `agency_other`, and "other" without
-      // one. A course always has an agency, so the pair is always copyable.
-      if (getValues("agency") === autofilled.agency) {
-        setValue("agency", next.agency, AUTOFILL);
-        autofilled.agency = next.agency;
-      }
-      if ((getValues("agency_other") ?? "") === autofilled.agency_other) {
-        setValue("agency_other", next.agency_other, AUTOFILL);
-        autofilled.agency_other = next.agency_other;
+      // one. A course that names no agency has no pair to hand over, so both
+      // halves are left as they stand - blanking them would empty a required
+      // field on a value the diver never chose.
+      if (next.agency) {
+        if (getValues("agency") === autofilled.agency) {
+          setValue("agency", next.agency, AUTOFILL);
+          autofilled.agency = next.agency;
+        }
+        if ((getValues("agency_other") ?? "") === autofilled.agency_other) {
+          setValue("agency_other", next.agency_other, AUTOFILL);
+          autofilled.agency_other = next.agency_other;
+        }
       }
       if ((getValues("training_center") ?? "") === autofilled.training_center) {
         setValue("training_center", next.training_center, AUTOFILL);
@@ -332,7 +351,7 @@ export function CertificationDialog({
                     {/* Only true of a create dialog - relinking an existing
                         card changes the link and nothing else. */}
                     {!isEdit &&
-                      " Picking one fills in the agency, training center and instructor below."}
+                      " Picking one fills in the training center and instructor below, and the agency if the course names one."}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

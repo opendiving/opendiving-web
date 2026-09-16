@@ -16,12 +16,14 @@ import type { PaginatedResponse } from "./client";
  * the API.
  *
  * **Value for value, and in order, the DiveJSON vocabulary** (spec §6.16, shared
- * with §6.17's courses). `agency` is a REQUIRED member of a closed set and the
- * format freezes those at 1.0, so this list cannot grow again without a major
- * version - the five that arrived with the importer (`andi`, `snsi`, `acuc`,
- * `pss`, `ida`) are the last additions there will be. They are here rather than
- * laundered through `other`/`agency_other` on the way in, which would have made a
- * round trip lossy on a member the format guarantees.
+ * with §6.17's courses). On a certification `agency` is a REQUIRED member of a
+ * closed set; on a course it is OPTIONAL, drawn from this same set when it is
+ * there at all. The format freezes a closed set's values at 1.0, so this list
+ * cannot grow again without a major version - the five that arrived with the
+ * importer (`andi`, `snsi`, `acuc`, `pss`, `ida`) are the last additions there
+ * will be. They are here rather than laundered through `other`/`agency_other`
+ * on the way in, which would have made a round trip lossy on a member the
+ * format guarantees where it appears at all.
  */
 export const CERTIFICATION_AGENCIES = [
   "padi",

@@ -149,6 +149,30 @@ the script checks before the shutter that it still lands between two rows rather
 So read the comments there before changing them, and see [DECISIONS.md](DECISIONS.md) for the rest
 of the reasoning.
 
+## Timing soft navigations
+
+`scripts/measure-navigations.mjs` times what happens between a click and the destination being done
+— when the RSC round trip ends, when the screen first changes, when the page's own data lands, and
+how much the source page prefetched before the click — over a list of navigations through the app.
+Run it when a change is meant to alter how a navigation feels, so that "feels faster" has a figure
+behind it.
+
+It needs a _production_ build, because prefetching is only enabled in production, and that build
+wants a port of its own:
+
+```bash
+NEXT_PUBLIC_API_URL= npm run build
+API_INTERNAL_URL=http://localhost:8000 npx next start -p 3001
+WEB_URL=http://localhost:3001 npm run measure-navigations -- you@example.com
+```
+
+Emptying `NEXT_PUBLIC_API_URL` is what puts that build on the same-origin route handler: the API's
+CORS allowlist names `:3000` only, so a split-origin build fails every request made from `:3001`.
+Next writes `next dev`'s output under `.next/dev/`, so none of this disturbs a dev server you have
+running. It signs itself in the way `npm run screenshots` does, off a magic link in the API
+container's log, so it needs the same local stack. The script's header carries the rest — which
+navigations it walks, what each column means, and what to set when the defaults do not fit.
+
 ## Design expectations
 
 - **Dark mode and light mode both work.** Use the Tailwind theme tokens rather than hardcoded
