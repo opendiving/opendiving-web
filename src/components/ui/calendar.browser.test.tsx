@@ -61,3 +61,81 @@ describe("the month arrows against the caption they steer", () => {
     expect(next.left).toBeGreaterThanOrEqual(month.right);
   });
 });
+
+// The grid follows the finger and slides between months, and neither is a
+// question jsdom can answer: it lays nothing out, so `offsetWidth` is 0 and
+// every offset computes to 0, and it implements no Web Animations API at all.
+describe("the grid sliding between months", () => {
+  const TOUCH = {
+    pointerType: "touch",
+    pointerId: 1,
+    isPrimary: true,
+    bubbles: true,
+    cancelable: true,
+  };
+
+  function finger(el: Element, type: string, x: number, y = 300) {
+    el.dispatchEvent(
+      new PointerEvent(type, { ...TOUCH, clientX: x, clientY: y }),
+    );
+  }
+
+  const atRest = (el: Element) =>
+    expect
+      .poll(() => el.getAnimations().length === 0 && !el.getAttribute("style"))
+      .toBe(true);
+
+  it("follows the finger, and goes back when the drag falls short", async () => {
+    await page.viewport(NARROW, 800);
+    const { getByRole } = renderCalendar();
+    const grid = getByRole("grid");
+    const home = grid.getBoundingClientRect().left;
+
+    finger(grid, "pointerdown", 200);
+    finger(grid, "pointermove", 170);
+    expect(grid.getBoundingClientRect().left).toBeCloseTo(home - 30, 0);
+
+    finger(grid, "pointerup", 170);
+    await atRest(grid);
+    expect(grid.getBoundingClientRect().left).toBeCloseTo(home, 0);
+    expect(grid.getAttribute("aria-label")).toMatch(/April 2026/);
+  });
+
+  it("carries the month off the edge and brings the next one back", async () => {
+    await page.viewport(NARROW, 800);
+    const { getByRole } = renderCalendar();
+    const grid = getByRole("grid");
+    const home = grid.getBoundingClientRect().left;
+
+    finger(grid, "pointerdown", 200);
+    finger(grid, "pointermove", 80);
+    finger(grid, "pointerup", 80);
+
+    // Leaving to the left, since the month arriving is the later one.
+    await expect
+      .poll(() => grid.getBoundingClientRect().left < home - 30)
+      .toBe(true);
+
+    await atRest(grid);
+    expect(grid.getBoundingClientRect().left).toBeCloseTo(home, 0);
+    expect(grid.getAttribute("aria-label")).toMatch(/May 2026/);
+  });
+
+  it("slides for the arrows too, which have no finger to follow", async () => {
+    await page.viewport(NARROW, 800);
+    const { getByLabelText, getByRole } = renderCalendar();
+    const grid = getByRole("grid");
+    const home = grid.getBoundingClientRect().left;
+
+    getByLabelText(/next month/i).click();
+
+    // The new month starts off the right edge and comes back.
+    await expect
+      .poll(() => grid.getBoundingClientRect().left > home + 30)
+      .toBe(true);
+
+    await atRest(grid);
+    expect(grid.getBoundingClientRect().left).toBeCloseTo(home, 0);
+    expect(grid.getAttribute("aria-label")).toMatch(/May 2026/);
+  });
+});

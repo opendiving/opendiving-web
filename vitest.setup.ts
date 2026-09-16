@@ -52,3 +52,14 @@ Element.prototype.scrollIntoView = vi.fn();
 Element.prototype.hasPointerCapture = () => false;
 Element.prototype.setPointerCapture = () => {};
 Element.prototype.releasePointerCapture = () => {};
+
+// jsdom implements no Web Animations API, and `ui/calendar.tsx` slides between
+// months with `Element.animate`. The stub finishes at once and reports itself
+// idle, which is the right answer for a test asking which month is on screen
+// rather than how it got there - the sliding itself is a browser's to show.
+Element.prototype.animate = () =>
+  ({
+    finished: Promise.resolve(),
+    cancel: () => {},
+    playState: "finished",
+  }) as unknown as Animation;

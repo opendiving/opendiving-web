@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { flushSync } from "react-dom";
 import { DayPicker, useDayPicker } from "react-day-picker";
 
 import { cn } from "@/lib/utils";
@@ -11,39 +12,150 @@ import { buttonVariants } from "@/components/ui/button";
 // for most of a month's width.
 const SWIPE_THRESHOLD_PX = 48;
 
+// Under this the finger is still tapping a day. Past it the grid is following
+// it, and the lift that ends the drag can no longer pick anything.
+const DRAG_SLOP_PX = 10;
+
+// One leg of a page turn - a month arriving, or the swiped one leaving first.
+const SLIDE_MS = 140;
+
+function prefersReducedMotion() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
 /**
- * The day grid, with a horizontal drag paging it a month at a time.
+ * The day grid, sliding between months and following a horizontal drag.
  *
- * Touch and pen only, since a mouse dragged across a grid means selecting.
- * Declared at module scope because `components` is read by identity - one
- * written inside `Calendar` would be a fresh type on every render, remounting
- * the grid and dropping focus out of whichever day held it.
+ * Every month change arrives from the side it came from, whichever control
+ * asked for it - an arrow, the dropdowns, or a swipe. A swipe adds the other
+ * half, carrying the month the finger is already holding off the far edge
+ * first; nothing else has anything on screen to carry.
+ *
+ * The drag itself is touch and pen only, since a mouse dragged across a grid
+ * means selecting. Declared at module scope because `components` is read by
+ * identity - one written inside `Calendar` would be a fresh type on every
+ * render, remounting the grid and dropping focus out of whichever day held it.
  */
 function SwipeableMonthGrid({
   className,
   ...props
 }: React.TableHTMLAttributes<HTMLTableElement>) {
-  const { goToMonth, nextMonth, previousMonth } = useDayPicker();
+  const { goToMonth, months, nextMonth, previousMonth } = useDayPicker();
+  const tableRef = React.useRef<HTMLTableElement>(null);
   const gesture = React.useRef<{
     id: number;
     x: number;
     y: number;
   } | null>(null);
 
-  // A qualifying drag still ends over a day cell, and the browser fires a click
-  // there as the finger lifts - so without this the page turn would also pick
-  // whatever day happened to be under it.
-  const swiped = React.useRef(false);
+  // A drag still ends over a day cell, and the browser fires a click there as
+  // the finger lifts - so without this the page turn would also pick whatever
+  // day happened to be under it.
+  const dragging = React.useRef(false);
+
+  // The leg currently playing. Its continuation runs after an await, so an
+  // unmount mid-turn has to stop it rather than let it write to a table that
+  // has left the page.
+  const playing = React.useRef<Animation | null>(null);
+
+  React.useEffect(() => () => playing.current?.cancel(), []);
+
+  // Where the grid rests between legs. A finished animation falls back to the
+  // inline transform, so that is set before the animation's fill is dropped.
+  const settleAt = (px: number) => {
+    const el = tableRef.current;
+    if (!el) return;
+    el.style.transform = px === 0 ? "" : `translateX(${px}px)`;
+    playing.current?.cancel();
+  };
+
+  // Far enough that the grid also clears the calendar's padding; past that it
+  // is behind the clipped edge and costs nothing.
+  const offscreen = () => (tableRef.current?.offsetWidth ?? 0) + 32;
+
+  // What the grid actually moves under the finger. Free travel while there is a
+  // month that way, rubber-banded to a fraction of it when there is not, so the
+  // end of `startMonth`/`endMonth` reads as an end rather than a dead gesture.
+  const resist = (dx: number) => {
+    if (!(dx < 0 ? nextMonth : previousMonth)) {
+      return Math.sign(dx) * Math.sqrt(Math.abs(dx)) * 3;
+    }
+    const width = tableRef.current?.offsetWidth ?? 0;
+    return Math.max(-width, Math.min(width, dx));
+  };
+
+  // One leg. `false` means it was cancelled and whatever follows it is off.
+  const slide = async (from: number, to: number) => {
+    const el = tableRef.current;
+    if (!el) return false;
+    const at = (px: number) => (px === 0 ? "none" : `translateX(${px}px)`);
+    playing.current = el.animate(
+      [{ transform: at(from) }, { transform: at(to) }],
+      { duration: SLIDE_MS, easing: "ease-out", fill: "forwards" },
+    );
+    try {
+      await playing.current.finished;
+    } catch {
+      return false;
+    }
+    return true;
+  };
+
+  // The arrival, for every route into a new month. Positioned in a layout
+  // effect so the grid is already off the edge when the frame paints - after
+  // paint it would show one frame of the new month in place before jumping.
+  const shown = months.length === 1 ? months[0].date.getTime() : undefined;
+  const previousShown = React.useRef(shown);
+  React.useLayoutEffect(() => {
+    const from = previousShown.current;
+    previousShown.current = shown;
+    if (from === undefined || shown === undefined || from === shown) return;
+    if (prefersReducedMotion()) return;
+    const away = shown > from ? offscreen() : -offscreen();
+    settleAt(away);
+    void slide(away, 0).then((finished) => {
+      if (finished) settleAt(0);
+    });
+  }, [shown]);
+
+  // Ends a drag: the page turns to `target`, or the grid goes back where it
+  // started when there is nothing to turn to.
+  const release = async (target: Date | undefined, offset: number) => {
+    if (prefersReducedMotion()) {
+      if (target) goToMonth(target);
+      settleAt(0);
+      return;
+    }
+    if (!target) {
+      if (await slide(offset, 0)) settleAt(0);
+      return;
+    }
+    // Which way it leaves is the same fact the arrival reads, so the two legs
+    // cannot disagree - the finger's own direction would, once the rubber band
+    // at the end of the range has flattened it.
+    const away =
+      shown !== undefined && target.getTime() > shown
+        ? -offscreen()
+        : offscreen();
+    if (!(await slide(offset, away))) return;
+    // Flushed, so the arrival is positioned in this task rather than after a
+    // tick in which the grid sits parked off the edge.
+    flushSync(() => goToMonth(target));
+  };
 
   return (
     <table
       {...props}
+      ref={tableRef}
       // `pan-y`, not `none`: sideways movement is ours and vertical is still the
       // page scrolling past, which also abandons the gesture via `pointercancel`.
       className={cn("touch-pan-y", className)}
       onPointerDown={(event) => {
-        swiped.current = false;
+        dragging.current = false;
         if (event.pointerType === "mouse" || gesture.current) return;
+        // A turn already in flight owns the transform. Let it finish rather than
+        // race it - cancelling a leg abandons the month change with it.
+        if (playing.current?.playState === "running") return;
         gesture.current = {
           id: event.pointerId,
           x: event.clientX,
@@ -52,36 +164,52 @@ function SwipeableMonthGrid({
       }}
       onPointerMove={(event) => {
         const start = gesture.current;
-        if (!start || start.id !== event.pointerId || swiped.current) return;
+        if (!start || start.id !== event.pointerId) return;
         const dx = event.clientX - start.x;
-        if (Math.abs(dx) < SWIPE_THRESHOLD_PX) return;
-        if (Math.abs(dx) <= Math.abs(event.clientY - start.y)) return;
-        swiped.current = true;
-        // Captured only now, never on the way down: the lift then arrives here
-        // even if the finger has left the grid, while a tap - which never gets
-        // this far - keeps the click on its day. Capturing on pointerdown would
-        // retarget every tap's click to the table and no day could be picked.
-        event.currentTarget.setPointerCapture(event.pointerId);
+        if (!dragging.current) {
+          if (Math.abs(dx) < DRAG_SLOP_PX) return;
+          if (Math.abs(dx) <= Math.abs(event.clientY - start.y)) return;
+          dragging.current = true;
+          // Captured only now, never on the way down: the lift then arrives here
+          // even if the finger has left the grid, while a tap - which never gets
+          // this far - keeps the click on its day. Capturing on pointerdown would
+          // retarget every tap's click to the table and no day could be picked.
+          // It throws for a pointer that is no longer active, which costs the
+          // drag nothing that is worth abandoning it over.
+          try {
+            event.currentTarget.setPointerCapture(event.pointerId);
+          } catch {
+            // Tracked without it.
+          }
+        }
+        settleAt(resist(dx));
       }}
       onPointerUp={(event) => {
         const start = gesture.current;
         if (!start || start.id !== event.pointerId) return;
         gesture.current = null;
-        if (!swiped.current) return;
-        // Dragged back under the threshold before lifting: no page turn, but the
-        // click stays swallowed - that finger was never picking a day.
+        if (!dragging.current) return;
         const dx = event.clientX - start.x;
-        if (Math.abs(dx) < SWIPE_THRESHOLD_PX) return;
-        // Either is `undefined` at the far end of `startMonth`/`endMonth`.
-        const target = dx < 0 ? nextMonth : previousMonth;
-        if (target) goToMonth(target);
+        // Short of the threshold, or at the far end of `startMonth`/`endMonth`:
+        // the grid goes back where it was. The click stays swallowed either way,
+        // since that finger was never picking a day.
+        const target =
+          Math.abs(dx) < SWIPE_THRESHOLD_PX
+            ? undefined
+            : dx < 0
+              ? nextMonth
+              : previousMonth;
+        void release(target, resist(dx));
       }}
-      onPointerCancel={() => {
+      onPointerCancel={(event) => {
+        const start = gesture.current;
         gesture.current = null;
+        if (!start || !dragging.current) return;
+        void release(undefined, resist(event.clientX - start.x));
       }}
       onClickCapture={(event) => {
-        if (!swiped.current) return;
-        swiped.current = false;
+        if (!dragging.current) return;
+        dragging.current = false;
         event.stopPropagation();
       }}
     />
@@ -102,7 +230,7 @@ function Calendar({
       // Puts the two arrows inside the month, flanking the caption, instead of
       // in a `<nav>` above it. See `month` for why they are laid out in flow.
       navLayout="around"
-      className={cn("p-3", className)}
+      className={cn("overflow-hidden p-3", className)}
       classNames={{
         months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
         // Previous arrow, caption and next arrow share the first row; the day
