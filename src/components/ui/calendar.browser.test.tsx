@@ -62,7 +62,7 @@ describe("the month arrows against the caption they steer", () => {
   });
 });
 
-// The grid follows the finger and slides between months, and neither is a
+// The grid follows the finger and slides between months, and none of it is a
 // question jsdom can answer: it lays nothing out, so `offsetWidth` is 0 and
 // every offset computes to 0, and it implements no Web Animations API at all.
 describe("the grid sliding between months", () => {
@@ -80,10 +80,23 @@ describe("the grid sliding between months", () => {
     );
   }
 
-  const atRest = (el: Element) =>
+  // The months either side are mounted only while one is moving, so the track
+  // holding them is also the thing that carries the transform.
+  const track = (grid: Element) => grid.parentElement as HTMLElement;
+
+  const atRest = (grid: Element) =>
     expect
-      .poll(() => el.getAnimations().length === 0 && !el.getAttribute("style"))
+      .poll(() => {
+        const el = track(grid);
+        return el.getAnimations().length === 0 && !el.getAttribute("style");
+      })
       .toBe(true);
+
+  /** Every month grid on the page, the one on screen and its neighbours. */
+  const grids = (grid: Element) =>
+    [...track(grid).querySelectorAll("table")].map((el) =>
+      el.getBoundingClientRect(),
+    );
 
   it("follows the finger, and goes back when the drag falls short", async () => {
     await page.viewport(NARROW, 800);
@@ -99,6 +112,30 @@ describe("the grid sliding between months", () => {
     await atRest(grid);
     expect(grid.getBoundingClientRect().left).toBeCloseTo(home, 0);
     expect(grid.getAttribute("aria-label")).toMatch(/April 2026/);
+  });
+
+  // The whole point of the track: what follows the finger into view is the
+  // month being pulled in, not the gap where it will eventually be.
+  it("keeps the neighbouring months waiting either side while it moves", async () => {
+    await page.viewport(NARROW, 800);
+    const { getByRole } = renderCalendar();
+    const grid = getByRole("grid");
+
+    expect(grids(grid)).toHaveLength(1);
+
+    finger(grid, "pointerdown", 200);
+    finger(grid, "pointermove", 140);
+
+    // They are mounted by the render the drag schedules, not by the event.
+    await expect.poll(() => grids(grid).length).toBe(3);
+
+    const [before, shown, after] = grids(grid).sort((a, b) => a.left - b.left);
+    expect(before.right).toBeCloseTo(shown.left, 0);
+    expect(shown.right).toBeCloseTo(after.left, 0);
+
+    finger(grid, "pointerup", 140);
+    await atRest(grid);
+    expect(grids(grid)).toHaveLength(1);
   });
 
   it("carries the month off the edge and brings the next one back", async () => {
