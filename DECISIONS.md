@@ -167,6 +167,26 @@ trace files, `Cannot find module for page: /some-route`) while TypeScript and li
 `rm -rf .next && npm run build`. Try it before assuming the code is broken whenever a build failure
 does not match the change just made.
 
+A running dev server is not a cause and does not have to be stopped: `next dev` writes its output
+under `.next/dev/` and a build writes beside it, so the two share no cache. The remedy clears both,
+and a dev server recompiles on the next request.
+
+## Soft navigations are timed against a production build, on its own port
+
+`scripts/measure-navigations.mjs` times a click — when the RSC round trip ends, when `<main>` first
+changes, when the destination's data lands — and needs `npm run build` rather than `npm run dev`.
+Prefetching is a production-only behaviour, so a dev measurement describes a navigation the app
+never performs.
+
+The build serves itself on `:3001` and talks to the API same-origin:
+`NEXT_PUBLIC_API_URL= npm run build`, then
+`API_INTERNAL_URL=http://localhost:8000 npx next start -p 3001`. _Rejected:_ the default
+split-origin build, whose baked API base sends every request from `:3001` at an origin the API's
+CORS allowlist does not name; and copying a `.env` into a worktree, which bakes that base back in.
+
+The commands, the columns and the method for timing the same hop against the flagship are in the
+script's header.
+
 ## Layout width convention
 
 Every page inside the shared chrome uses `max-w-6xl mx-auto px-4 sm:px-6 lg:px-8` for its content
