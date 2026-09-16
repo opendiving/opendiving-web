@@ -138,6 +138,22 @@ describe("paging the calendar by swiping the day grid", () => {
     expect(shownMonth()).toMatch(/May 2026/);
   });
 
+  // A pinch cancels every pointer that is down, the second finger's included,
+  // and that cancel is not the end of the drag the first one is holding.
+  it("carries on when a second finger's pointer is cancelled", async () => {
+    const { grid } = renderCalendar();
+
+    const second = { ...TOUCH, pointerId: 2, clientX: 260 };
+    fireEvent.pointerDown(grid, TOUCH);
+    fireEvent.pointerMove(grid, { ...TOUCH, clientX: TOUCH.clientX - FAR });
+    fireEvent.pointerDown(grid, second);
+    fireEvent.pointerCancel(grid, second);
+    fireEvent.pointerUp(grid, { ...TOUCH, clientX: TOUCH.clientX - FAR });
+    await turned();
+
+    expect(shownMonth()).toMatch(/May 2026/);
+  });
+
   it("does not also pick the day the finger lifted from", async () => {
     const { grid, onSelect } = renderCalendar();
 

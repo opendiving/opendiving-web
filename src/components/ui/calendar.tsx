@@ -252,8 +252,13 @@ function SwipeableMonthGrid({
       }}
       onPointerCancel={(event) => {
         const start = gesture.current;
+        // A pinch or a scroll taking over cancels every pointer that is down,
+        // in an order nobody chose, so the same identity check the lift makes:
+        // another finger's cancel carries another finger's `clientX`, and the
+        // track would slide home from an offset it was never at.
+        if (!start || start.id !== event.pointerId) return;
         gesture.current = null;
-        if (!start || !dragging.current) return;
+        if (!dragging.current) return;
         void release(undefined, resist(event.clientX - start.x));
       }}
       onClickCapture={(event) => {
