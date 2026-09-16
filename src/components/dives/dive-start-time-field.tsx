@@ -65,7 +65,12 @@ export function DiveStartTimeField({
       <DateTimePicker
         {...slotProps}
         value={localDateTime}
-        onChange={(next) => onChange(combineStartTime(next, offsetMinutes))}
+        // An emptied box is no start time: `combineStartTime("", 120)` is the
+        // bare string "+02:00", which reads back as an unparseable date. The
+        // offset select below already guards the mirror case.
+        onChange={(next) =>
+          onChange(next ? combineStartTime(next, offsetMinutes) : "")
+        }
         disabled={disabled}
       />
       <UtcOffsetSelect

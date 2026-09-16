@@ -958,12 +958,10 @@ describe("persisting a toggle", () => {
       expect(screen.getByLabelText(/water type/i)).toHaveValue("brackish"),
     );
     // Role-scoped from here on: opening the panel puts a "Water type" switch on the
-    // page beside the form's own select, and both answer to the label. Start time
-    // reads its button's text rather than a `value`: the control the label names is
-    // the picker's trigger, and a `<button>` has no `value` to compare.
-    const startTimeButton = () =>
-      screen.getByRole("button", { name: /start time/i });
-    const startTime = startTimeButton().textContent;
+    // page beside the form's own select, and both answer to the label.
+    const startTimeBox = () =>
+      screen.getByRole("textbox", { name: /start time/i });
+    const startTime = (startTimeBox() as HTMLInputElement).value;
     const waterType = () =>
       screen.getByRole("combobox", { name: /water type/i });
 
@@ -982,7 +980,7 @@ describe("persisting a toggle", () => {
     expect(divesAPI.getDives).toHaveBeenCalledTimes(1);
     expect(divesAPI.getDive).toHaveBeenCalledTimes(1);
     expect(waterType()).toHaveValue("brackish");
-    expect(startTimeButton().textContent).toBe(startTime);
+    expect(startTimeBox()).toHaveValue(startTime);
   });
 
   it("says so out loud when the save fails", async () => {
