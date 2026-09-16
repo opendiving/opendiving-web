@@ -21,7 +21,7 @@ the symbol you are touching. The bar for a new entry is in `AGENTS.md`.
   the caller.
 
 `authAPI.updateProfile` and `diveStatsAPI.getDiveStats` take no user identifier at all — see
-"Current-user endpoints moved off `/user/me`/`/user/{uuid}` onto a bare `/user`" below.
+"Current-user endpoints live on a bare `/user`, not `/user/me`/`/user/{uuid}`" below.
 
 ## Never use `z.preprocess()`/`.transform()` on fields feeding `z.input<>`-derived types
 
@@ -69,7 +69,7 @@ and has no off-by-one-day problem, but displaying and editing it still cannot go
 
 `Dive.start_time` is an ISO 8601 string whose offset, if any, is the dive's own timezone, not the
 viewer's (an imported dive may carry none — see "An unknown UTC offset is a third state, and
-`new Date()` used to silently invent one"). `new Date(start_time)` with
+`new Date()` never sees an offset-less string"). `new Date(start_time)` with
 `.getHours()`/`toLocaleString()` converts to the browser's zone. `lib/date-time.ts` uses the
 embedded offset:
 
@@ -272,12 +272,12 @@ dynamic (`ƒ`); accepted. Node server only (`output: "standalone"`): a static ex
   any `purpose: prefetch`/`next-router-prefetch` header skip the CSP; `src/proxy.test.ts` pins that.
   `cacheComponents`/PPR, incompatible anyway, would reopen this.
 
-## Unified auth flow: `/signin`/`/signup` are gone, replaced by `AuthForm` on the landing page
+## Unified auth flow: one passwordless `AuthForm`, no password-based `/signin`/`/signup` pair
 
 There is one auth form, `components/auth/AuthForm.tsx` (email, "Continue", "Continue with Google"),
 for the passwordless flow; Settings has no "Change Password" card. Its host page depends on
 `REGISTRATION_MODE`; see "The landing hero holds one of two forms, and the API is what says which"
-and "`/signin` is back, and carries where the visitor was headed".
+and "`/signin` is a dedicated sign-in page, and carries where the visitor was headed".
 
 - `app/auth/verify/page.tsx` is the magic-link target (`{FRONTEND_URL}/auth/verify?token=...`): a
   page rather than the `POST /auth/email/verify` call, so a scanner's GET never burns the single-use
@@ -358,7 +358,7 @@ The check returns the token's target email, shown in `"ready"` ("Click below to 
 stops at zero and restarts on resend. The real limit is server-side (`MagicLinkSettings` in the
 API's `core/config.py`); a resend past it surfaces `RateLimitException`'s message.
 
-## Current-user endpoints moved off `/user/me`/`/user/{uuid}` onto a bare `/user`
+## Current-user endpoints live on a bare `/user`, not `/user/me`/`/user/{uuid}`
 
 The API serves current-user-only routes on a bare `/user` (no `/me`, no `{uuid}` — see the API's
 `DECISIONS.md`), separating "my account" (full data, always the signed-in caller) from a future
@@ -404,7 +404,7 @@ result through `DiveFormCard` to `DiveFormFields`/`MixtureFields` and `DiveFileI
 create their own. `ParsedDive` (`lib/api/dives.ts`) declares `mixtures: ParsedDiveMixture[]`
 explicitly.
 
-## `dives/new`/`dives/[id]/edit` pages' shared structure extracted into `DiveFormCard`/`PageHeader`/`PageSpinner`
+## `dives/new`/`dives/[id]/edit` pages share `DiveFormCard`/`PageHeader`/`PageSpinner`
 
 A dive form page is its own data-loading effects, its own `onSubmit` and its early-return states,
 then one `PageHeader` and one `DiveFormCard`. `useMixtureFieldArray(control)` (`mixture-fields.tsx`)
@@ -423,7 +423,7 @@ footer, so their spinners use `min-h-[60vh]` inline. `SectionSpinner`
 omit the outer container `div`, whose class differs between edit pages
 (`container mx-auto px-4 py-8`) and detail pages (`max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8`).
 
-## Mixture form/display numbers needed updating to match the API's 2-decimal precision
+## Mixture form/display numbers match the API's 2-decimal precision
 
 The API rounds parsed `oxygen`/`helium`/`start_pressure`/`end_pressure` to two decimals, so
 `mixture-fields.tsx`'s `<Input type="number">`s for those use `step="0.01"`, like
@@ -473,7 +473,7 @@ one creates — and `/gear` is one page listing items and sets together. A gear 
 dive form, where navigating away would lose the form or need draft persistence. `/gear/[id]` remains
 as a detail page because it hosts the "Dives with this Gear" list.
 
-## The gear delete dialog offers "Archive instead", and had to stop lying first
+## The gear delete dialog offers "Archive instead", and its wording is pinned by a test
 
 Both gear delete confirmations read:
 
@@ -545,7 +545,7 @@ Type is optional: `""` is the form's "not set" state, sent as explicit `null` on
 on create. Radix `SelectItem` cannot take an empty string, so "No type" uses a `__none__` sentinel,
 like `GearSetDialog`'s "Create a new set".
 
-## `ComboboxItem.location` was renamed to `hint`
+## `ComboboxItem.hint` is a cosmetic second line, not a `location`
 
 `CreatableCombobox` items carry an optional `hint`: a purely cosmetic second line after the name.
 Dive sites put a location there; the gear picker puts the item's type ("Apeks XTX50, Regulator"),
@@ -704,7 +704,7 @@ would bake today's date into a cached response and go wrong at midnight — and 
 through the same `serviceStatus()` every other surface uses. The gear list needs no extra request:
 `GET /gear-items` embeds each item's schedules as `item.service`, and the badge derives from those.
 
-## The dashboard's "Service due" card: And it logs the service too, without leaving the dashboard
+## The dashboard's "Service due" card: each row logs its service without leaving the dashboard
 
 Each row carries the gear detail card's icon-only `ClipboardCheck` button, opening the same
 `GearServiceRecordDialog`. The row is a flex container with link and button as siblings, not one
@@ -854,7 +854,7 @@ a tank, showing the figures or the reason, because an absence despite filled-in 
 bug. Its branches mirror the guards of `compute_gas_use()` and `compute_multi_tank_gas_use()` and
 change with them (`grep gas_use` finds the set). It returns `null` when `mixtures` is absent (the
 list response carries neither `mixtures` nor `gas_use`), and the multi-tank branch names a
-limitation rather than asking for a field, except the one case in "The multi-tank branch now splits
+limitation rather than asking for a field, except the one case in "The multi-tank branch splits
 three ways, and tests attribution first".
 
 ## The air-consumption chart is hand-rolled SVG, and breaks its trend line at gaps
@@ -925,7 +925,7 @@ card: 17.9:1 light, 1.22:1 dark, where shadow and hairline border do the separat
 The border is `border-white/10`, not `--border`, which is invisible on a near-black chip in light
 mode and merges with it in dark.
 
-## `niceDomain`/`axisTicks` moved to `lib/chart-scale.ts` when a second chart needed them
+## `niceDomain`/`axisTicks` live in `lib/chart-scale.ts`, not `lib/dive-gas.ts`
 
 `niceDomain` and `axisTicks` live in `lib/chart-scale.ts`, with their tests, not in
 `lib/dive-gas.ts`: a depth axis has nothing to do with gas use, and importing a gas module to scale
@@ -1011,7 +1011,7 @@ The form prefills empty fields from `useAuth()`; `defaultValues` cannot, since t
 after the auth bootstrap resolves. The page is a Server Component for `metadata`; only the form is
 `"use client"`.
 
-## `/signin` is back, and carries where the visitor was headed
+## `/signin` is a dedicated sign-in page, and carries where the visitor was headed
 
 `app/signin/page.tsx` is a dedicated sign-in page: the shared `AuthForm`, a "Sign in" heading, and
 no chrome (`NO_CHROME_ROUTES` in `app-shell.tsx`, like `/auth/verify` and `/onboarding`). Sending
@@ -1106,11 +1106,11 @@ the mounted-flag treatment `ThemeToggle` uses.
 The greeting is fixed for the life of the mount; no timer ticks it over at midnight.
 `scripts/screenshots.mjs` pins the browser clock to 09:00 for the README image.
 
-## `/profile` is gone until there is someone else to show it to
+## There is no `/profile` until there is someone else to show it to
 
 There is no `/profile`. A profile page exists to be someone else's view of a diver, and the API
 cannot serve one yet: the public profile endpoint is deliberately not built (see "Current-user
-endpoints moved off `/user/me`/`/user/{uuid}` onto a bare `/user`"), so a `/profile` could only read
+endpoints live on a bare `/user`, not `/user/me`/`/user/{uuid}`"), so a `/profile` could only read
 the signed-in caller. That only duplicates the dashboard — the same `getDiveStats()` numbers behind
 the same `hasDives` gate, the same `RecentDivesCard`, and an identity header that is a read-only
 copy of what `/settings` edits — at a second URL reachable only from the avatar dropdown.
@@ -1118,7 +1118,7 @@ copy of what `/settings` edits — at a second URL reachable only from the avata
 When the public endpoint lands, the page comes back as `/divers/[username]`, written fresh: it takes
 a username parameter, must not render `email`, and shares no fetch with the dashboard.
 
-## `/profile`: The certifications summary went with it rather than moving to the dashboard
+## `/profile`: the dashboard carries no certifications summary in its place
 
 `CertificationsCard` and `certificationsByRecency` (`lib/certification.ts`) have no caller without
 `/profile`, so they are removed rather than left exported; both are recoverable from git when
@@ -1134,10 +1134,10 @@ their Open Water card last gets it above the Divemaster it led to. `/certificati
 the API's order — it is a paginated table, and reordering one page client-side lies about the pages
 either side.
 
-## The Gravatar line moved to `/settings`, reworded
+## There is no Gravatar line; `/settings` shows the avatar itself
 
 There is no Gravatar line: `/settings` shows the avatar itself, with the controls that change it
-(see "Avatars are this instance's own, and Gravatar left rather than becoming a fallback").
+(see "Avatars are this instance's own, and there is no Gravatar fallback").
 
 The username hint under the profile form states the rule the field enforces (`profileSchema`:
 lowercase letters and numbers, unique), not "used in your profile URL and for mentions": there is no
@@ -1220,7 +1220,7 @@ column. A diver at UTC+13 can see "Overdue" up to a day before the email agrees.
 time that is cosmetic, and the API-side fix (run hourly, gate on the offset of the most recent dive)
 is not worth it. Documented, not fixed.
 
-## One paging helper, and the dashboard cards no longer page at all
+## One paging helper, and neither dashboard card pages
 
 `fetchAllPages` in `lib/api/client.ts` is the one `while (hasMore)` loop: page cap, abort signal,
 dedup. Runaway is not the hazard (the API clamps `items_per_page` to 100); snapshots are. List pages
@@ -1288,7 +1288,7 @@ returns zeroed stats for a diver with no dives, so anything landing there is exc
 slower earlier page cannot overwrite newer rows or `currentPage`, and superseded requests leave the
 spinner alone.
 
-## Assorted fixes whose comments were lying
+## Assorted rules: `useDragSort`, `use-toast`, downloads, `DateTimePicker`, `AuthContext`
 
 - `useDragSort` removes its window listeners on unmount: `handleMove`/`handleEnd` are closures
   inside `startDrag`, so `endDrag` calls a remover stored in a ref.
@@ -1320,7 +1320,7 @@ Detail-page deletes go through `useDeleteResource`, which formats the failure wi
 `getApiErrorMessage` itself, so a 409 ("this dive site is used by 3 dives") reaches the diver
 instead of a generic "Please try again."
 
-## `PaginatedResponse` moved down a layer, and dialogs share their error state
+## `PaginatedResponse` lives in `lib/api/client.ts`, and dialogs share their error state
 
 `PaginatedResponse<T>` lives in `lib/api/client.ts`, beside the client that produces it, and the
 eight `lib/api/` modules are type aliases over it; nothing in `lib/api/` imports upward from
@@ -1355,12 +1355,12 @@ The markup looks correct either way; this check surfaces it:
 For a composite field the slot props go on the primary control (the date picker in
 `DiveStartTimeField`) and the secondary one keeps its own `aria-label`.
 
-## `--coral-solid`, for the same reason as `--teal-solid`
+## `--coral-solid` and `--teal-solid` do not exist: the brand accents are one hue each
 
 `--coral-solid`, `--coral-text` and `--teal-solid` do not exist; the brand accents are one hue each
-(see "The brand accents are their CSS named colours again, and the contrast split went with them").
-The arithmetic is the price: `--coral` as a filled button background under white text reaches 2.3:1,
-which axe flags on the sign-in button.
+(see "The brand accents are their CSS named colours, and `--coral-solid` and `--teal-solid` do not
+exist"). The arithmetic is the price: `--coral` as a filled button background under white text
+reaches 2.3:1, which axe flags on the sign-in button.
 
 Two other contrast rules hold. The landing page's stats strip does not use
 `text-primary-foreground/70` on `bg-primary` (3.4:1 in dark mode). `text-primary` is not a link
@@ -1447,7 +1447,7 @@ them with an in-page script that walks every text node, resolves the nearest opa
 applies WCAG's large-text threshold. A scan run while the dev server is mid-recompile reads a
 half-updated stylesheet; re-run before believing a sudden spike.
 
-## Component and hook tests are possible now, and coverage says where the gaps are
+## Component and hook tests run on Testing Library, and coverage says where the gaps are
 
 `@testing-library/react`, `/dom`, `/jest-dom` and `/user-event` are dev dependencies;
 `vitest.setup.ts` registers jest-dom's matchers plus the browser APIs Radix needs on mount that
@@ -1612,7 +1612,7 @@ The subject is the placed site with the most dives; a position is required, sinc
 renders nothing without coordinates. Dive count costs a scoped `/dives` request per placed site
 after paging `/dive-sites` (capped at 100).
 
-## The gear frame is the lever under the README row, and it has now been pulled
+## The gear frame's `HEIGHT` is the lever under the README row, written down rather than measured
 
 `gear-item`'s `HEIGHT` is 911, the one figure written down rather than measured: the README row sets
 it, not the page, because `gear-item.png` stacks over `dive-site.png` beside `dive-detail.png` and
@@ -1684,7 +1684,7 @@ text. Its consumers: `courseStatusBadgeVariant` (`incomplete`, `provisional`), `
 `dive-exposure-card`, `dive-mixtures-card` and `mixture-fields`, and `terms/page.tsx`
 (`border-warning/40`, `bg-warning/10`, `text-warning`). `lib/gear-service.ts` does not touch it.
 
-## And then the token itself, because every other secondary chip had it too
+## Dark `--secondary` is 22%, because every secondary chip renders on a card
 
 Dark `--secondary` is 22%, nine points above `--card`, because every `secondary` chip (the count
 chips on dives, sites, trips, certifications, gear and gear sets; "Rented" in `gear-items-card`,
@@ -1700,7 +1700,7 @@ disappearing before it reads as a button.
 `bg-secondary` is also the selected segment of the gas-consumption time-range control and the unused
 `Button` `secondary` variant. `--muted` stays at 16%: a large-area wash at 22% reads as a panel.
 
-## Correction: the service scale is three brand fills now, and the amber was a fourth accent
+## The service scale is three brand fills, and `--warning`'s amber would be a fourth accent
 
 `serviceStatusBadgeVariant` returns `"teal"` for `ok`, `"coral"` for `due_soon` and `"destructive"`
 (`bg-destructive-solid`) for `overdue`; `warning` and `outline` are out of it. The scale reads by
@@ -1899,7 +1899,7 @@ deepest-capable gas cannot reach `max_depth`" is reported, at 1.6 only.
 The warning is spelled out under the table, not in a `title` tooltip. `text-warning`, not
 `text-warning-foreground`, which is the white on `bg-warning`.
 
-## The `o2 + he <= 100` rule was missing from the form, and only the DB CHECK caught it
+## `diveMixtureSchema` refines `o2 + he <= 100`, mirroring `ck_dive_mixture_oxygen_helium_sum`
 
 `diveMixtureSchema` carries a refine mirroring `ck_dive_mixture_oxygen_helium_sum`, so a 50/60
 trimix fails as a field error rather than a 500. It reports on `path: ["helium"]`: helium is the box
@@ -1972,16 +1972,17 @@ limits.
 
 The remaining width is not paid for by moving `bar` into the headers or dropping `O₂`/`He`, which
 hold the unrounded fractions. Cell padding is the real cost (at `p-4` a seven-column table spends
-224 px on it) and `He` is dropped on a dive with no helium; see "Both gas tables finally fit their
-slot". A `usage` badge in the same cell reproduces the clipping and lives outside the table; see
-"The usage badge left the table, and the flag is stated under it".
+224 px on it) and `He` is dropped on a dive with no helium; see "Both gas tables fit their slot,
+with no `overflow-x-auto` wrapper". A `usage` badge in the same cell reproduces the clipping and
+lives outside the table; see "The mixtures table carries no usage badge; `tankUsageSentences` states
+the flags under it".
 
-## The API sends `null`, the form schema only understood `""` — and the save button did nothing
+## The API sends `null` and the form schema wants `""`, so `toDiveMixtureInput` converts at the boundary
 
 `DiveMixtureBase` declares optional fields `X | None` with no `exclude_none`, so an unrecorded field
 arrives as an explicit `null`. `DiveMixture`'s optional fields are `| null` for that reason, and the
 same rule covers `volume`, `oxygen` and `helium` (see _"A cylinder may record a mix with no vessel,
-and three fields stopped being numbers"_). A `null` reaching `zodResolver` fails silently:
+and three fields are `number | null`"_). A `null` reaching `zodResolver` fails silently:
 `handleSubmit`'s valid callback never fires, so no request, no toast, no error, and `gas_number`,
 having no input, has no `FormMessage`.
 
@@ -2007,7 +2008,7 @@ region per segment from `segmentByTimeGap`: a gap here is a stretch with no obli
 it would shade a no-decompression descent. The line is dashed because it is the only curve never
 measured, a computed limit rather than a reading.
 
-## Adding a channel meant bumping the remembered-selection key
+## Adding a channel needs a remembered-selection key bump; removing one does not
 
 `DIVE_PROFILE_SERIES_KEY` carries a `-v2` suffix. `parseSeriesVisibility` filters a stored selection
 down to the keys the build plots, right for a key that has gone and wrong for one that has arrived:
@@ -2022,7 +2023,7 @@ A bump owes no `removeItem` on the old key: that starts a list of dead names car
 every bump. The device-memory switch clears orphans by prefix, walking live storage rather than a
 list; see _"One switch against every remembered preference on this device"_.
 
-## `--ceiling` is one value for both themes, and the original design asked for two
+## `--ceiling` is one value for both themes, like `--teal`, `--coral` and `--pressure`
 
 `--ceiling` is a single `0 80% 55%`, never redeclared under `.dark`, like `--teal`, `--coral` and
 `--pressure`: a per-theme pair is tuned twice and drifts. Computed contrast is 4.3:1 against the
@@ -2038,8 +2039,8 @@ the work, which is what makes the overlap acceptable.
 ## Markers are annotations, so they have no axis
 
 `events` render as a tick on the x-axis with a glyph on top at `x(t)`, the anchor surviving depth
-toggled off; not a fifth `PROFILE_CHANNELS` entry (switch: _"The markers got a switch, and it is not
-a fifth channel"_).
+toggled off; not a fifth `PROFILE_CHANNELS` entry (switch: _"The markers have a legend switch, and
+it is not a fifth channel"_).
 
 Three glyph families, not five. Colour marks only what joins elsewhere: a gas switch is `--pressure`
 violet for its `gas_number`. A stop is not the ceiling's red: both types arrive via
@@ -2054,7 +2055,7 @@ violet for its `gas_number`. A stop is not the ceiling's red: both types arrive 
 
 Resting opacity is 0.9; 0.55 puts `--ceiling` and `--pressure` under 3:1.
 
-## The crosshair quoted readings from stretches the chart refused to draw
+## The crosshair quotes a channel only within its `gapSeconds`, the threshold that breaks its line
 
 `nearestSampleIndex` clamps at both ends, so a naive readout quotes a channel across stretches it
 has no samples for — on the ceiling that invents a deco obligation.
@@ -2070,7 +2071,7 @@ with `MIN_GAP_SECONDS`. A sentinel meaning "unbounded" is safe in "should I spli
 dangerous in "is this close enough?". The floor errs toward silence: no number beats an invented one
 on the ceiling.
 
-## Crosshair readout: And fixing the readout half left the drawing half wrong for another round
+## Crosshair readout: `runs()` derives segments and `gapSeconds` from one threshold, and drops single-point runs
 
 Segmenting the ceiling at an infinite threshold joins two isolated deco samples into one run, and
 `ceilingAreas` shades a forbidden zone across water the diver owed nothing — the readout's lie in
@@ -2081,7 +2082,7 @@ a one-sample `<polyline>` draws nothing and `buildAreaPath` turns one point into
 so dropping them makes "no ceiling here" true of the DOM, which is what a test can assert.
 `max_ceiling` still puts the obligation in the card's description.
 
-## Crosshair readout: Third round: a tolerance cannot express "was this drawn?", and a sample is always near itself
+## Crosshair readout: a tolerance cannot answer "was this drawn?", so `PlottedChannel.drawn` does
 
 `gapSeconds` answers whether a sample is near enough to quote, and a sample dropped for sitting in
 an undrawable run of one is trivially near itself — so a readout could name a ceiling, plant a dot
@@ -2095,7 +2096,7 @@ Without it a two-sample series claims a toggle reading "on", a labelled axis and
 `aria-label` over an empty plot, and a two-sample depth series draws its area fill with no line,
 `depthArea` being built from the whole series.
 
-## Crosshair readout: Fourth round: the same disagreement, one granularity down
+## Crosshair readout: `drawnValues` feeds the axis and summary, and `drawnSampleIndexAt` skips undrawn samples
 
 The `segments.length > 0` gate asks whether a channel is on the chart; runs are dropped per sample,
 one level below it. A ceiling keeping one drawable run passes the gate and hands its raw series to
@@ -2108,7 +2109,7 @@ means "not on screen".
 A nearer undrawn sample must not mask a drawn one: `drawnSampleIndexAt` walks outward from the
 nearest sample and takes the first drawn one — the nearest drawn sample within tolerance.
 
-## The third round also broke two-sample measured channels, and `gapsAreMeaningful` is the fix
+## `gapsAreMeaningful` says what a gap means: only the ceiling refuses to join two samples
 
 Segmenting every channel at `readoutTolerance` applies ceiling reasoning to measured channels: below
 three samples `Infinity` becomes 15 s, so a two-sample channel more than 15 s apart splits into two
@@ -2146,7 +2147,7 @@ reads off a gauge, so it stays in the table. `gas-use-chart.tsx` and `gas-use-ca
 and label with `gas_used`, so the dashboard is untouched. The total row renders a greyed `-` rather
 than omitting the cell: an empty cell reads as a layout bug, a dash as "no answer here".
 
-## The multi-tank branch now splits three ways, and tests attribution first
+## The multi-tank branch splits three ways, and tests attribution first
 
 `compute_multi_tank_gas_use` gives up for five reasons: no attribution; two mixtures sharing a
 `gas_number` (whole dive refused); a cylinder the attribution never names; a cylinder failing
@@ -2181,7 +2182,7 @@ the headers is forbidden by the card's rule: units stay with the values, never d
 "Depth" beside a per-tank row invites reading it as that gas's deepest point — the misreading
 `diveModWarning` refuses to warn per tank over, a mean depth being the wrong input for a MOD. Before
 shortening a header, check what fraction of the table is `p-4` padding; halving it is what made this
-table fit. Widths: see "Both gas tables finally fit their slot".
+table fit. Widths: see "Both gas tables fit their slot, with no `overflow-x-auto` wrapper".
 
 ## The tank↔mixture join applies the API's duplicate rule rather than trusting it
 
@@ -2223,7 +2224,7 @@ through an invariant. The layout switch is `rows.length > 0`; there `tanks.lengt
 the deco bottle's row on every one-transmitter dive. The "Not attributed" row stays regardless: on
 such a dive it is the card's second fact, a bottle carried whose cost this log can't say.
 
-## The dashboard chart stopped naming a depth the rate wasn't divided by
+## The dashboard chart names no depth the rate is not divided by
 
 Multi-cylinder dives reach `GET /user/gas-use-history` with RMV normalized against each cylinder's
 own mean depth, so the single-tank framing — `{avg_depth}m average · {gas_used} L used` in the
@@ -2242,14 +2243,14 @@ has to be chased to every consumer of it.
 multi-tank derivation whatever the diver types; `gasUseUnavailableReason` tests that first. The
 guard reads `primaryRecording(dive)?.profile == null` — the primary recording's deliberately, since
 the API joins gas attribution through `ordinal == 0` and a second computer's profile puts no
-`gas_attribution` on the dive; see "A dive has recordings, and the first one is what every old
-single-file reading meant". 18 of the corpus's 19 multi-gas dives are hand-logged, with no profile
-and no source file, so "needs an import whose gas switches account for every cylinder" describes an
+`gas_attribution` on the dive; see "A dive has recordings, and the first one is primary, picked only
+by `primaryRecording()`". 18 of the corpus's 19 multi-gas dives are hand-logged, with no profile and
+no source file, so "needs an import whose gas switches account for every cylinder" describes an
 import that does not exist. The `mixtures` guard above has already returned for a list dive, so a
 missing profile here is a real absence, not a withheld field. Test user-facing strings against the
 corpus's ordinary case, not the one the code was written for.
 
-## "Not attributed" named one of the two states behind an empty row
+## An empty tank row says "No pressures recorded" or "No figures", never "Not attributed"
 
 `TankGasUseRow.use` is null for two server outcomes: the attribution never mentioned the cylinder,
 or it did and `_tank_arithmetic` declined it — no pressures, no drop, or a degenerate stretch
@@ -2271,14 +2272,14 @@ accessible name lets a regression that puts `avg_depth` back into the tooltip sh
 the accessible name is not a proxy for testing the visible one, even where both come from the same
 data.
 
-## The dive's clock went up to the header, and two cards became one
+## The dive's clock sits in the page header, and one `Duration & Depth` card holds the rest
 
 The start time belongs with the date, already in the page header: `formatDiveStartTime` prints date,
 clock time and, where the dive records one, its offset as one line. The offset stays because a dive
 displays in its own timezone (see "A dive's `start_time` displays/edits in its own timezone, never
 the browser's") and `10:04` alone cannot be checked; a DiveJSON import may carry no offset, and the
 line then stops after the clock rather than inventing `(UTC+00:00)` — see "An unknown UTC offset is
-a third state, and `new Date()` used to silently invent one". It is composed from
+a third state, and `new Date()` never sees an offset-less string". It is composed from
 `formatDiveDateTime` + `formatDiveTimeOnly` rather than one `Intl` call: the separator a locale
 picks is an ICU detail, and the offset is appended by hand regardless. What remains is one
 `Duration & Depth` card: three stat blocks at one weight, `md:grid-cols-3`, depths individually
@@ -2313,7 +2314,7 @@ the last channel off keeps the plot: same box, time axis and markers, the senten
 with `pointer-events-none`, neither edge labelled. A `??` chain that runs out is a case, not an
 absence.
 
-## The depth fill was built from the whole series while its line was built from segments
+## The depth fill is built per segment, from the same `segments` as its line
 
 `segmentByTimeGap` cuts every channel into runs so no line spans data that isn't there (see "The
 profile's line breaks are derived from the series' own cadence"). `depthArea` is one `buildAreaPath`
@@ -2324,7 +2325,7 @@ about. The test `leaves the dropout unfilled rather than spanning it` reads the 
 and checks where the first path ends and the second starts; a count alone passes on two overlapping
 fills.
 
-## The markers got a switch, and it is not a fifth channel
+## The markers have a legend switch, and it is not a fifth channel
 
 A dozen markers on one dive is a picket fence, and opacity only trades marker legibility against the
 plot's, so the legend switches them. `ProfileChannelKey` stays "a thing with a domain", which
@@ -2352,15 +2353,16 @@ leaving markers untouched. The toggle's base is `visible` lifted over the full l
 selection. `DiveProfileChart selection across dives` and
 `DiveProfileChart remembered selection that plots no curve here` pin it.
 
-## The mixture `name` is gone, and position is what a cylinder is called now
+## A cylinder is named by its 1-based position, and `DiveMixture` has no `name`
 
-`DiveMixture.name` is gone from the API and so from here: schema field, form input, column, label
-fallbacks and `getDefaultMixtureName`. A cylinder is named by 1-based position;
-`ParsedDiveMixture.name` was always `null`, so imports were already positional. The mixtures card's
-first column is `Tank`, cells `Tank 1`, `Tank 2`: the consumption card's format, since the tables
-are read row against row and `TankGasUseRow.label` derives the same string; an unmatched cylinder
-stays `Gas N`. The column stays: the consumption card joins to it, the profile's pressure channels
-are numbered against it, and `Tank 1` fits the slot. `mergeMixture` lost `index`.
+`DiveMixture.name` is not a field: the label is a pure function of the fractions from the API and so
+from here: schema field, form input, column, label fallbacks and `getDefaultMixtureName`. A cylinder
+is named by 1-based position; `ParsedDiveMixture.name` was always `null`, so imports were already
+positional. The mixtures card's first column is `Tank`, cells `Tank 1`, `Tank 2`: the consumption
+card's format, since the tables are read row against row and `TankGasUseRow.label` derives the same
+string; an unmatched cylinder stays `Gas N`. The column stays: the consumption card joins to it, the
+profile's pressure channels are numbered against it, and `Tank 1` fits the slot. `mergeMixture` lost
+`index`.
 
 The per-tank form is eight boxes in a two-column grid, nothing widened (`Volume | ppO₂`, `O₂ | He`,
 `Start | End`, `Role | Usage`), so pairs read as pairs and the two `<select>`s sit adjacent.
@@ -2427,7 +2429,7 @@ node and drops keyboard focus. Unavailable is `aria-disabled` plus `pointer-even
 `aria-busy` marks not-yet-known. A failed fetch is silent, as in `DiveNumberingStatus`.
 `dive-neighbor-nav.render.test.tsx` pins node identity across the `href` swap.
 
-## Both gas tables finally fit their slot
+## Both gas tables fit their slot, with no `overflow-x-auto` wrapper
 
 Both tables fit their 582 px slot at the 1024 px `lg:col-span-2` pinch. `px-2` cells did most of it;
 see "Cell padding is `px-2` app-wide". The cards add no `overflow-x-auto` wrapper: shadcn's `Table`
@@ -2493,9 +2495,9 @@ The geocoded name goes straight into Location, keyed to the clicked coordinates,
 empty), `200` with `null` could-not-ask (leave alone); branch on `response.status`, as axios gives a
 204 `data` of `""`.
 
-Gesture rules are MapLibre configuration ("The picker's contract outlived its renderer"). The
-basemap host sees divers' IPs and tile areas (`/privacy` §4.4); the CSP follows
-`NEXT_PUBLIC_MAP_TILE_URL` to a self-hosted server.
+Gesture rules are MapLibre configuration ("The picker's contract is its own, and MapLibre is
+configured to meet it"). The basemap host sees divers' IPs and tile areas (`/privacy` §4.4); the CSP
+follows `NEXT_PUBLIC_MAP_TILE_URL` to a self-hosted server.
 
 ## A trip's locations are self-describing objects, so nothing has to be resolved
 
@@ -2661,7 +2663,7 @@ that knows nothing about line breaks, so a footer that did wrap (320px, a longer
 text size) would lose its spacing. `flex-wrap-reverse` keeps the buttons on one line when they fit
 and puts the action above Cancel when they cannot, with 8px between rows.
 
-## The dive's duration and depths lost their card title
+## The dive's duration and depths card has no title
 
 The dive page's duration and depth card has no header. Each figure is already labelled `Duration`,
 `Maximum Depth`, `Average Depth`, so a `Duration & Depth` title restated the labels beneath it in a
@@ -2723,7 +2725,7 @@ trip hydration. Its row count is `itemsPerPage`, known before the first response
 does not grow when the rows land; it overshoots only on a short last page, and the first load is
 page 1.
 
-## Holding the shape means the header can no longer claim a count it doesn't have
+## Holding the shape means the header cannot claim a count it doesn't have
 
 `totalCount` is 0 until the first response, and the list cards' title badges read straight off it;
 over ten placeholder rows a badge saying "0 total dives" states something false. `CountBadge`
@@ -2747,8 +2749,8 @@ spent its animation sliding a `Loader2` and then cut hard to the content.
 The root template is keyed at the first path segment, so the fade runs on `/dives` to `/dashboard`
 and not on `/dives` to `/dives/[id]` or a pager step. Widening it is deliberately not done: a client
 wrapper keyed on `usePathname()`, or a `dives/template.tsx`, remounts the subtree on a pager step,
-blanking the page and dropping keyboard focus (see "The step remounted the page, and hoisting the
-fetch into a route-group layout is what stopped it").
+blanking the page and dropping keyboard focus (see "`dives/(detail)/layout.tsx` owns the dive fetch,
+so a step keeps the page mounted").
 
 ## The placeholders are hidden from assistive tech, rows and all
 
@@ -2873,7 +2875,7 @@ and a value-equality guard makes exactly that cylinder unsavable. `MixtureFields
 `mixtures: []` with "No cylinders recorded for this dive." and its Trash button has no `index > 0`
 gate, so zero is reachable by hand.
 
-## If `dirtyFields` ever comes back, it has to be read during render
+## `dirtyFields` is maintained only when it is read during render
 
 `formState` is a Proxy. React Hook Form maintains a key only once something has read it during
 render, and `useFieldArray`'s `replace` checks that flag before recomputing dirty state. Read inside
@@ -2898,7 +2900,7 @@ Rejected: moving client-side by paging `GET /dives?trip_uuid=`, sending one `PAT
 deleting. A failure partway leaves some dives moved and the trip standing, a liveaboard costs forty
 round trips, and any dive added between the last page fetch and the delete is stranded.
 
-## Delete with move: The dialog says what deleting does, and stopped asking whether to count
+## Delete with move: The dialog says what deleting does, and asks the API for no count
 
 The dialog states that deleting removes this trip from every dive logged on it and touches no dive.
 That is true at any count, zero included, because the API hides soft-deleted trips, dive sites and
@@ -3108,7 +3110,7 @@ converting; depth and deco ceiling share one `CHANNEL_DIMENSION`. Not converted:
 column), relabelled only; see "Cylinder presets are named AL/HP/LP, and every one of them is offered
 in both systems".
 
-## The trip form's map is always on screen, and its fields are asked in a different order
+## The trip form's map is always on screen, and its fields run name, dates, place, notes
 
 `TripDialog` renders `LocationsMap` unconditionally; `showWhenEmpty`, an opt-in prop, draws the
 whole world until the first place is picked. A frame appearing with the first place shoves the lower
@@ -3192,7 +3194,7 @@ matches the tile credit's size and has no `Place search:` label, which only made
 credits stay separate: tiles come from `NEXT_PUBLIC_MAP_TILE_URL`/`_ATTRIBUTION`, place names from
 the API's `GEOCODER_URL`, and a self-hoster may run two providers.
 
-## Three roads to a position, so the geocoding moved above the map
+## Three roads to a position, so the geocoding lives in a hook above the map
 
 A position arrives three ways — pin, place search, pasted latitude/longitude pair — and only
 `DiveSiteDialog` sees all three, so the reverse geocode and its guards live in
@@ -3209,7 +3211,7 @@ The dialog stays mounted, so the hook takes `open` and resets on it in an effect
 `react-hooks/set-state-in-effect` disable `useDialogApiError` uses (synchronising to an external
 prop is the rule's escape hatch), bumping the request counter so a reply in flight is discarded.
 
-## The dive site form searches for a place too, and the map shrank to make room
+## The dive site form searches for a place too, above an `h-40 sm:h-48` map
 
 `PlaceSearch` is the trip picker's field without list, reordering, creation or value, handing back
 one pick to fill coordinates, Location and, for a catalog site, Name (see "The site search has two
@@ -3242,7 +3244,7 @@ verbatim, any language. `"unknown"` is the API's rank sentinel from both `_wikid
 "Species") keeps a live guard. Ranks vary by register; never key on one. The picker keeps the API's
 order (`visibleItems`, no `sort`) and `hintFor`'s row-relative redundancy check.
 
-## The Species Seen tile is back, because the number is real now
+## The Species Seen tile shows the derived `species_seen`, one of four figures in one `Card`
 
 The API derives `species_seen` as the distinct species over a diver's live dives, recomputed on
 every dive write, so the dashboard shows it. The four figures sit in one headerless `Card` as a
@@ -3285,17 +3287,17 @@ attribution. `useConfig()` has a real default, unlike `useAuth()`, for component
 lands in `connect-src`; `img-src` is `'self' data: blob:` plus this instance's API origin when
 split-origin, no third party.
 
-## Gravatar is off unless an instance turns it on, and the privacy page stops inventing analytics
+## The privacy page describes no usage analytics, because none exist
 
-The Gravatar gate is gone with Gravatar itself; see "Avatars are this instance's own, and Gravatar
-left rather than becoming a fallback". What stands is the analytics half: the privacy page describes
-no usage analytics, because none exist and the CSP forbids one structurally (`connect-src` names the
-API and nothing else). Template claims like "Usage Data: pages visited, features used, time spent",
-"analyze usage patterns" or an "Analytics Cookies" bullet do not belong there: a policy that
-overstates what is collected is not the safe direction to be wrong, since it is the document a
-reader uses to decide whether to trust the rest.
+The Gravatar gate is gone with Gravatar itself; see "Avatars are this instance's own, and there is
+no Gravatar fallback". What stands is the analytics half: the privacy page describes no usage
+analytics, because none exist and the CSP forbids one structurally (`connect-src` names the API and
+nothing else). Template claims like "Usage Data: pages visited, features used, time spent", "analyze
+usage patterns" or an "Analytics Cookies" bullet do not belong there: a policy that overstates what
+is collected is not the safe direction to be wrong, since it is the document a reader uses to decide
+whether to trust the rest.
 
-## HSTS is decided per request, and no longer asks for `preload`
+## HSTS is decided per request, and omits `preload`
 
 `Strict-Transport-Security` is set per request in `src/proxy.ts`, not in `next.config.js`'s
 build-time `headers()`, where the build machine decides a security header for someone else's domain.
@@ -3443,7 +3445,7 @@ is legal in a nonce (`base64-value` ends in up to two `=`), which matters becaus
 yields `==`. `src/proxy.test.ts` reads the nonce with `/'nonce-([^']+)'/` and asserts two requests
 differ; base64 contains no `'`.
 
-## A pin is a promise to renew, and nothing here was renewing anything
+## A pin is a promise to renew, and `.github/renovate.json5` is the renewer
 
 `.github/renovate.json5` is the renewer. Renovate, not Dependabot, which cannot read `.nvmrc`, group
 across ecosystems, or match `customManagers`. The regex `customManagers` entry covers the four
@@ -3463,7 +3465,7 @@ manager, so an automatic bump ships a runtime CI does not test, and odd majors a
 `aquasecurity/trivy` (`setup-trivy`'s `version:` input, `currentValue: latest`) is disabled by name:
 a number there freezes the scanner's advisory knowledge.
 
-## The scan that matters runs on a schedule, and it replaced the audit that ran on every PR
+## The scan that matters runs on a schedule, and both jobs use Trivy, not `npm audit`
 
 `.github/workflows/vulnerability-scan.yml`'s PR job asks whether a change is vulnerable; the
 scheduled job asks whether what people already run is, and only that drives the rebuild
@@ -3496,7 +3498,7 @@ applies; its footer builds absolute URLs from `github.server_url` and `github.re
 page depth changes where a relative link lands. A third-party upload carries its own tool name and
 category and does not collide with CodeQL default setup.
 
-## `dependency-review` is a gate on the diff, and its licence list was derived
+## `dependency-review` is a gate on the diff, and its licence list is derived, not edited
 
 The action compares the PR's manifests against the base commit's and reports only what the change
 introduces — not a second Trivy check. `fail-on-severity: moderate` is stricter than Trivy's HIGH
@@ -3553,7 +3555,7 @@ effect shares `focusFirstCodeBox`, because `CheckEmailCard` replaces `AuthForm`,
 field is `readOnly`, since `disabled` drops focus out of the group. Boxes are `flex-1 min-w-0`,
 since six 40px boxes overflow a 320px viewport.
 
-## `/signin`'s heading moved inside the card, and the level had to travel with it
+## `/signin`'s heading sits inside the card, and `titleAs` carries the level with it
 
 `AuthForm` renders an icon/heading/blurb block inside its card only when a page passes `title`;
 `/signin` is the only caller, since the landing page's hero already introduces the form. The heading
@@ -3624,7 +3626,7 @@ a passkey, and `cause` is unreachable with `lib` at `es2020`. Not touching the m
 slot for flows that leave the tab; a test pins it. Starting the explicit ceremony cancels the armed
 conditional one (v13 allows one at a time); re-arming after the modal settles is not built.
 
-## The divider moved up, and the header that has to keep quiet
+## The divider sits above the optional methods, and the header that has to keep quiet
 
 `AuthForm` draws the single "Or" divider above the optional methods, gated on
 `googleClientId || passkey.supported`, because neither `GoogleAuthButton` nor the passkey button can
@@ -3750,7 +3752,7 @@ the in-memory one would be a client pretending to hold a session the API has end
 call (rate limited, offline) changed nothing server-side, and clearing there would sign a diver out
 of an account they still have. Same asymmetry as `signOut` after a failed `POST /auth/logout`.
 
-## Signing in offers a deleted account back, and four entry points had to learn a third answer
+## Signing in offers a deleted account back, and four entry points branch on `deletion_pending`
 
 `AuthOutcome.status` has a third value, `deletion_pending`: the identity was verified, an account
 exists inside its deletion grace period, and nothing was written and no session issued.
@@ -3816,7 +3818,7 @@ both can receive something unusable — an edited query string, or the `null` th
 with no clock to count from — and rendering "Invalid Date" to somebody reading for a date is the
 failure both avoid.
 
-## Avatars are this instance's own, and Gravatar left rather than becoming a fallback
+## Avatars are this instance's own, and there is no Gravatar fallback
 
 Avatars are uploaded to this instance's API, and there is no Gravatar fallback behind a flag. A
 fallback would carry every cost a gate exists to bound: a third-party host in the CSP, a disclosure
@@ -3881,14 +3883,14 @@ Failures raised in the browser are `AvatarImageError` (`lib/avatar-crop.ts`), be
 else — never a plain `Error`'s `message` — so the card shows `message` for those and
 `getApiErrorMessage` for the rest.
 
-## Avatars: Onboarding gained nothing
+## Avatars: Onboarding has no avatar step
 
 The profile-completion form stays two fields. A Google sign-up arrives with its Google picture
 already imported by the API, an email sign-up arrives with initials and finds the editor in
 Settings, and an upload-and-crop step at the door is friction where the funnel is most fragile. The
 form's `UserAvatar` passes no digest: there is no account yet to fetch one from.
 
-## Signing stopped being a demand on contributors, and the hook learned to check
+## Signing is a maintainer's setting, and the hook checks before it blocks
 
 Contributors do not sign (`CONTRIBUTING.md`, _Pull requests_), and `core.hooksPath .githooks` sits
 under _For maintainers_. No hook reaches a stranger's clone; `main`'s provenance is the squash
@@ -3940,7 +3942,7 @@ form lives here; that funnel is opendiving-api's.
 repository a stranger meets first — and security reports where [SECURITY.md](SECURITY.md) does.
 `blank_issues_enabled` stays `true`: the forms are the paved path, not a gate.
 
-## Two checks could not have been _required_, and a passing run said nothing about it
+## `lint-and-build` uses no matrix and `pr-title.yml` runs on `synchronize`, so both can be _required_
 
 A ruleset binds a required check by name and by the events it runs on; a passing run displays
 neither.
@@ -3959,7 +3961,7 @@ check stale and the PR hanging. `label` re-runs harmlessly and is skipped on for
 six occurrences of `24.x` unreachable by the `github-actions` manager: three step names and three
 `node-version:` inputs.
 
-## The Prettier check fails the build now, and it is the only advisory step that should
+## The Prettier check fails the build, and the other advisory steps stay advisory
 
 `code-quality.yml`'s Prettier step carries no `continue-on-error`: it gates with ESLint,
 `tsc --strict` and `npm run build`, because the tool that reports formatting also fixes it —
@@ -3995,7 +3997,7 @@ and renders only while `fields.length > 0`; the gear-set dialog keeps its own we
 `UnitNumberInput` discards its draft on a flip during render. Tests must install
 `useStorage(memoryStorage())`.
 
-## The toggle sits in the label row without being laid out in it, and both halves of that were bugs
+## The toggle sits in the label row without being laid out in it, and a flex wrapper is wrong twice
 
 `EntryUnitLabelRow` leaves the `FormLabel` inline in an ordinary block and takes the toggle out of
 flow, absolutely positioned and vertically centred. A `flex items-center` wrapper is wrong twice.
@@ -4024,7 +4026,7 @@ requested). UK PECR Schedule A1 ¶¶3–7 has five; ¶5 (statistical), ¶6 (appe
 medium. ¶44's "does not leave the device" reading covers only the access limb; the write is still
 storage.
 
-## Privacy page: "We" is the operator, and §1 now says so before anything else
+## Privacy page: "We" is the operator, and §1 says so before anything else
 
 "We" on `/privacy` means the operator of this copy, not the OpenDiving project. §1 states it first:
 the software is something anyone can run, this page describes this copy, and under GDPR Art. 4(7)
@@ -4060,7 +4062,7 @@ The conclusion is phrased "not required", never "prohibited"; the second is not 
 same overclaim the page exists to avoid. CNIL Recommandation del. 2020-092 Art. 5 ¶49 recommends
 informing users of exempt trackers "dans la politique de confidentialité", which is what §10 is.
 
-## The objection-condition gap, and the control that closed it
+## The objection condition, and the device-memory switch that meets it
 
 UK Sch. A1 ¶6(1)(d) requires "a simple means of objecting, free of charge, to the storage or access"
 — to the storage, not the value, so rewriting a preference is not objecting and a key with `setItem`
@@ -4128,7 +4130,7 @@ the old address and cannot be silenced. A message added to a group inherits ever
 prose makes, not just the numeral; the invitation has its own reason for being unpreventable. "Three
 kinds" in the opening counts groups.
 
-## What the CSP actually buys, and the sentence above that oversold it
+## What the CSP actually buys, and why the storage-key rule is the guard
 
 The CSP does not forbid analytics; the storage-key rule is the guard, and the CSP only narrows the
 quiet ways to break it. `connect-src` lists `'self'`, the API origin and the basemap hosts
@@ -4137,7 +4139,7 @@ carries `'strict-dynamic'`, so a bundled analytics script loads with no violatio
 `'self' data: blob:` — plus the API origin on a split-origin build — so a `data:` or `blob:` pixel
 passes. A shorter list is not a stronger guarantee.
 
-## Privacy page: The numbering in §4 is load-bearing, and §4.8 has changed hands
+## Privacy page: The numbering in §4 is load-bearing, and conditional sections sit last
 
 This file pins privacy sections by number and by quoted content — §4.4 map tiles, §4.5 geocoder,
 §4.6 species cache, §4.7 Legal Requirements, §4.8 invitations, §4.9 Google sign-in — so a reword at
@@ -4161,7 +4163,7 @@ the device-memory switch being the second half. A preference removed on request 
 timer answers the suggestion without discarding a choice the diver still wants, so chart-view state
 carries no TTL.
 
-## Privacy page: What was deliberately left alone
+## Privacy page: §7 keeps the API's 30 days, and §13 promises nothing about delivery
 
 Two sentences at the page's edges stay as they are. §7's "Personal information is permanently
 deleted within 30 days" is byte-identical to what ships, because documents in the API repo,
@@ -4236,7 +4238,7 @@ different things, and only one is a copyright question: shared dives need an ope
 probably per act of sharing; a dive-centre view of certifications is a lawful-basis question under
 GDPR Art. 6, possibly Art. 9; aggregate statistics need no content licence at all.
 
-## Correction: `--warning` is no longer the safety notice's private token
+## `--warning` is a shared token, not the safety notice's private one
 
 `--warning` has several users: `dive-exposure-card.tsx` colours an alert exposure figure with
 `text-warning`, `dive-mixtures-card.tsx` and `mixture-fields.tsx` use it on mixture warnings,
@@ -4246,7 +4248,7 @@ GDPR Art. 6, possibly Art. 9; aggregate statistics need no content licence at al
 token; it stays on its own merits, because a dive log disclaiming safety advice should not look like
 a footnote, and reads "software for logging dives".
 
-## The footer's column labels were headings, and the footer is shared chrome
+## The footer's column labels are not headings, because the footer is shared chrome
 
 `layout/footer.tsx` renders under every page, so no fixed heading level for its column labels is
 correct — it depends on the page's tree. The columns are group labels over link lists, so each is a
@@ -4263,7 +4265,7 @@ drive the vendored `axe-core` through `playwright-core` — launch as `scripts/s
 `runOnly`, `page.emulateMedia({ colorScheme })` per theme. In a worktree, drop `NEXT_PUBLIC_API_URL`
 from the copied `.env` (CORS) and rewrite the magic link's port.
 
-## The chrome-free routes had no `<main>`, and now share the layout that carries one
+## The chrome-free routes share `standalone-shell.tsx`, which carries their one `<main>`
 
 `AppShell` alone renders a `<main>`, and the `NO_CHROME_ROUTES` (`/signin`, `/onboarding`,
 `/restore`, `/auth/verify`, `/settings/confirm-email`, `/goodbye`) never reach it.
@@ -4281,7 +4283,7 @@ and `/goodbye`'s home link (`link-in-text-block`, dark `color-contrast`). Let a 
 settle before trusting `color-contrast`; a worktree production build needs
 `API_INTERNAL_URL=http://localhost:8000`.
 
-## Finishing the `CardTitle` sweep the footer change scoped out
+## `CardTitle` takes `as="h2"` on every card that is a section of its page
 
 `CardTitle` takes `as="h2"` on every card that is a section of its page — settings, dive detail,
 gear, dashboard. The test is "is this card a section", not "is this page failing". The landing
@@ -4359,7 +4361,7 @@ item, which axe reports as `button-name`. An `aria-label`, or `aria-labelledby` 
 alone, replaces the trigger's text instead of prefixing it and takes the current period out of the
 announcement.
 
-## The unit toggle's off half was `text-muted-foreground/60`
+## The unit toggle's off half is `text-muted-foreground`, not `text-muted-foreground/60`
 
 `EntryUnitToggle` renders the unselected system in full-strength `text-muted-foreground`, not 60% of
 it. The token clears AA on both surfaces it lands on (see `globals.css`); at 60% the 12px text fails
@@ -4446,7 +4448,7 @@ and its code is worthless without the API's client secret and the verifier. `?er
 error state: cancelling at Google's chooser returns `error=access_denied`, which lands at `/signin`
 with every method available and the destination carried along.
 
-## Google sign-in: What went away with it
+## Google sign-in: The button is one ordinary `Button`, with no GSI script and no CSP entry
 
 The control is one ordinary `Button`: one accessible name, one tab stop, Enter and Space for free.
 No injected script, no `initialize`/`renderButton` effects, no `ResizeObserver` for GSI's fixed
@@ -4459,7 +4461,7 @@ its popup flows. The policy therefore no longer discloses whether an instance ha
 Google's branding guidelines are not newly engaged: the visible button is fully custom and Google's
 rendered pixels are never shown.
 
-## The sign-in form no longer remembers which method this browser used
+## The sign-in form does not remember which method this browser used
 
 `lib/last-auth-method.ts`, the `opendiving:last-auth-method` key, the writes at `AuthContext`'s
 entry points and the "Last time you signed in with …" line in `components/auth/auth-form.tsx` do not
@@ -4505,7 +4507,7 @@ word per flag; `TANK_USAGE_OPTION_LABELS` in `mixture-fields.tsx` is longer ("Pa
 independent)") because an option row has no sentence around it and the flag changes what the API
 computes.
 
-## `gasUseUnavailableReason` gained a nudge, and where it sits is the whole design
+## `gasUseUnavailableReason` nudges toward Parallel, and where the nudge sits is the whole design
 
 Flagged-parallel reasons come first in `lib/dive-gas.ts`'s multi-mixture branch:
 `compute_parallel_gas_use` sums a set flagged `parallel` throughout against the dive's duration and
@@ -4532,7 +4534,7 @@ both to "EAN32"; `helium` normalizes to `0` because `OxygenFractions` allows it 
 form and parsers write a flat zero. `DiveMixturesCard`'s amber MOD cell follows the same predicate,
 marking every row, since every row holds the gas named.
 
-## The falsified doc comments were a superset of the ones anyone listed
+## `DiveGasUse`'s doc comments are swept by claim, not by list
 
 `DiveGasUse`'s comments in `lib/api/dives.ts` mirror the `schemas/dive.py` docstrings in claim, not
 wording ("multi-tank" for the API's "multi-cylinder"). The claims: `sac_bar_per_min` is null on a
@@ -4551,7 +4553,7 @@ and a whole-dive RMV divided by `dive.avg_depth`; position guarantees the claim,
 arm renders only where `tanks` is empty, exactly the derivations taken against the dive's average
 depth.
 
-## The usage badge left the table, and the flag is stated under it
+## The mixtures table carries no usage badge; `tankUsageSentences` states the flags under it
 
 The mixtures table carries no usage badge; `tankUsageSentences` in `lib/dive-mixtures.ts` states the
 flags beneath it ("Cylinders 1 and 2 are flagged Parallel — …"). Every recorded flag stays visible
@@ -4680,7 +4682,7 @@ Carto's 5M, non-commercial use only, a hard limit for the rest of the month once
 from $20/month. The attribution example adds an OpenMapTiles credit, because Alidade is built on it;
 attribution is operator-set for provider differences like this.
 
-## The new-dive render test was in a loop with itself, and the cost was only time
+## The new-dive render test's mocks are identity-stable, so the prefill effect runs once
 
 A mock that rebuilds its return value per call is only safe while nothing depends on its identity.
 `src/app/dives/new/page.render.test.tsx` mocks `useAuth`, `useRouter`, `useSearchParams` and
@@ -4740,7 +4742,7 @@ control reads as "not a thing you do here"; a disabled one reads as broken.
 approximates it. The toast reports the count from the response body, the only honest source: the
 confirmation fires before the request, so the dialog never knows how many rows there are to end.
 
-## The privacy page's other closed lists have pins now
+## Every closed list on the privacy page has a pin
 
 `app/privacy/page.test.tsx` pins every section whose prose closes a list: §2.2 ("Five things … all
 five") by list length plus the word in both places; §3, numberless, by both §2.2 records appearing
@@ -4852,7 +4854,7 @@ passes regardless. A change spanning two repositories is two changes, so the bun
 job; the names to copy across are those in `lib/runtime-config.ts`, the only authority on what this
 app reads.
 
-## The picker's contract outlived its renderer
+## The picker's contract is its own, and MapLibre is configured to meet it
 
 `components/sites/map-picker.tsx` sets `cooperativeGestures: true`, which covers the
 one-finger-scroll, two-finger-pan, ctrl/⌘-wheel rules. Its screen fires on every blocked gesture,
@@ -4871,7 +4873,7 @@ sits outside `MapCanvas` to survive its fallback, and MapLibre's canvas gets `ta
 jump; zoom state is seeded, not set (`react-hooks/set-state-in-effect`). `clampCenter` is absorbed;
 `emit` still folds through `clampLatitude` and `wrapLongitude`.
 
-## What `lib/map-tiles.ts` actually left behind
+## `lib/map-tiles.ts` does not exist; `lib/basemap.ts` bounds the picker and MapLibre owns the rest
 
 `lib/map-tiles.ts` does not exist. `clampLatitude`, `wrapLongitude`, `MAX_LATITUDE`, `LatLon`,
 `LatLonBounds`, `WORLD_CENTER` and `DEFAULT_TILE_ATTRIBUTION` are in `lib/basemap.ts`, which bounds
@@ -4934,7 +4936,7 @@ has already loaded. Creating from here chains into the same `CertificationCardFi
 refresh-and-re-point handoff the certifications page uses, because photographing the card is the
 point.
 
-## The documentation caught up with the renderer, and where the sweep for it was blind
+## Operator prose describes the basemap, and a renderer sweep anchors on identifiers, not vocabulary
 
 Operator-facing prose describes the basemap, not raster tiles: `README.md` names the basemap as the
 second source `connect-src` is derived from; `SECURITY.md`'s out-of-scope list says "the basemap";
@@ -5041,7 +5043,7 @@ the rest of `vitest.setup.ts`, which stands in for browser APIs jsdom lacks; thi
 An empty `env` is correct: every value Next looks for there is optional, and real ones would be
 inventing build configuration. The jsdom project is unaffected.
 
-## The row-height guard was watched failing, and the stylesheet is what decides whether it can
+## The row-height guard can only fail with the stylesheet loaded, and an assertion pins the import
 
 `dive-detail-main.browser.test.tsx` pins that a species with no photo still reserves the thumbnail's
 box — `SpeciesThumbnail` renders an empty div, never `null` — so rows stay level down the dive
@@ -5084,7 +5086,7 @@ _Self-hosting_ README section, install links) nothing changes. `SECURITY.md` rou
 reports, so its no-access sentence is conditioned on the operator not being this project. Who a
 sentence talks to is fine; what it claims the reader _is_ is the defect.
 
-## Errors are coral, and the recolour fixed a contrast bug it did not set out to fix
+## Errors are coral at hue 10, and the lightness is the load-bearing half
 
 `--destructive` is `10 88% 42%` light and `10 100% 68%` dark; `--destructive-solid` is `10 88% 40%`
 in both. Every other accent is warm-or-cool — `--coral` at 16, `--teal` at 180, `--pressure` at 265
@@ -5098,7 +5100,7 @@ per-field validation message; shadcn's 60.2% default is 3.76:1 on `--background`
 at 42% is 5.5:1 there and 4.6:1 over its own `/10` tint. `StatusMessage` body text stays on
 `foreground` at ~17:1: a passing token is no reason to spend contrast.
 
-## Two points apart is a real gap, and the toast was leaning on eighteen
+## Two points apart is a real gap, and nothing may encode the distance between the pair
 
 The `--destructive` / `--destructive-solid` split exists because a colour tuned to sit behind white
 text cannot also be read as text. In the light theme the two are two lightness points apart (42%
@@ -5110,7 +5112,7 @@ invisible on this pair, so both controls on the destructive toast are drawn in
 `--destructive-foreground` at varying opacity — a white wash for `ToastAction`'s hover, `/80` for
 the close button — which lifts in both themes. `bg-x/10` over `bg-x` is the pattern to look for.
 
-## The last raw red in the app was on the close button nobody looks at
+## `ToastClose` uses tokens, and `--ceiling` is the only true red in the app
 
 `ToastClose` uses tokens, not shadcn's
 `text-red-300 hover:text-red-50 focus:ring-red-400 focus:ring-offset-red-600` — hardcoded palette
@@ -5119,7 +5121,7 @@ classes on a control small and faint enough to slip past a token sweep and a con
 purpose: red for a limit is every dive computer's convention, it is a chart stroke rather than UI
 chrome, and the two never share a surface.
 
-## Measured, and the colour-parsing trap that made the first pass wrong
+## Contrast figures are read off the rendered page, and computed colours are never parsed
 
 Every destructive-token contrast figure is read off the rendered page, per _Verifying colour work_.
 `ToastClose`'s glyph on the fill measures 4.1:1 light and 4.2:1 dark against a 3:1 bar; it sits at
@@ -5134,7 +5136,7 @@ Tailwind scans source, so `bg-destructive-foreground/15` does not exist when the
 `group-[.destructive]:hover:bg-destructive-foreground/15`. Where a state cannot be forced
 (`:hover`), read the generated rule out of the served stylesheet.
 
-## The brand mark is original now, and marketplace artwork cannot ship here
+## The brand mark is original, and marketplace artwork cannot ship here
 
 The mark is three original bubbles (`components/logo.tsx`, `app/icon.svg`): a stock icon is neither
 distinctive nor exclusive and smears at 16px. The same component is exported as `DiveIcon` where the
@@ -5151,7 +5153,7 @@ upstream (`LICENSE.md`, fork chain, byte comparison). `NOTICE.md` covers the tre
 `git log --branches --tags --remotes`, never `--all`, which walks `refs/stash`. The runner stage
 copies `LICENSE` and `NOTICE.md` with `COPY --from=builder`.
 
-## The licensed artwork came out of the history, and the history paid for it
+## `main`'s history carries no licensed artwork, and the rewrite that keeps it out has costs
 
 `main`'s history carries no purchased artwork: `coral.png`, `octo.png` and
 `coral-reef-background.tsx` are removed from every commit with `git filter-repo --invert-paths`,
@@ -5184,7 +5186,7 @@ token in both themes. `mask-mode: luminance` is required: the file has no alpha,
 svgsilh stops hosting it. `scripts/generate-reef-mask.mjs` reproduces the committed mask byte for
 byte, same sha256; check that after any change; an approximating script is how the two diverge.
 
-## The brand accents are their CSS named colours again, and the contrast split went with them
+## The brand accents are their CSS named colours, and `--coral-solid` and `--teal-solid` do not exist
 
 One coral, one teal, each its CSS named colour: `--coral` is `16 100% 65.7%` (`#FF7F50`, matching
 `icon.svg`) and `--teal` is `180 100% 25%` (`#008080`). `--coral-solid`, `--coral-text` and
@@ -5200,7 +5202,7 @@ dark card, past 3:1 for graphical objects. `--destructive`/`--destructive-solid`
 pair because that colour carries meaning. `code-quality.yml`'s axe step ends in `|| true`, so its
 `color-contrast` violation fails nothing.
 
-## The step remounted the page, and hoisting the fetch into a route-group layout is what stopped it
+## `dives/(detail)/layout.tsx` owns the dive fetch, so a step keeps the page mounted
 
 A dynamic segment is keyed on its param value, so a step under `dives/[id]` unmounts the page,
 losing the dive `useResource` holds and the pager `<a>`'s focus. The fix is a route group above it:
@@ -5215,7 +5217,7 @@ The trip and course lookups outlive the dive, so each is stored with the uuid it
 only while the dive names it — keyed on `trip_uuid`, not the dive, so a step within a trip keeps the
 row. `layout.render.test.tsx` holds the second `getTrip` unresolved to pin it.
 
-## The prev/next chevrons left the date line, and the header stopped fighting the phone
+## The adjacent-dive pager is two buttons on the title line, and the title row wraps on a phone
 
 The adjacent-dive pager is `‹ Previous` and `Next ›`, two `outline`/`sm` buttons on the title's line
 after the dive number, opposite Edit and Delete, not chevrons inside the date subtitle, which read
@@ -5276,7 +5278,7 @@ prepended row, local or another tab's, shifts page 2 onto page 1's last row, so 
 renders it twice under one key. `fetchAllPages` in `lib/api/client.ts` carries the same `keyOf`
 dedup; the gap a removed row leaves cannot arise here, since a revoke never deletes.
 
-## Courses no longer record a cost, and the null-on-clear test had to move off it
+## `Course` has no `cost`: money is modelled once, and a course references it
 
 `Course` has no `cost`: the free-text field is gone from the `Course` and `CourseCreate` types,
 `courseSchema`, `CourseDialog` and the `/courses/[id]` info list. Cost is cross-cutting — gear has a
@@ -5287,7 +5289,7 @@ This is not scaffolding for money handling: when the app models money it does so
 course references it rather than carrying a copy. No currency helper exists in `src/` —
 `lib/format.ts` exports `formatFileSize` only.
 
-## The `""` → `null` contract was being tested on cost, and belongs to no particular field
+## The `""` → `null` contract belongs to no particular field, and is pinned on `instructor_number`
 
 `course-dialog.render.test.tsx`'s _"sends an explicit null for every field the diver cleared"_ is
 written around `instructor_number`, not cost. The contract is `onSubmit`'s mapping: `""` is the
@@ -5313,7 +5315,7 @@ is a course-cost site. `gear-service-record-dialog.tsx`'s
 `placeholder="Parts replaced, cost, test pressure..."` is a service record's free text and stays.
 `README.md`'s courses bullet must not name cost.
 
-## The profile read shape speaks DiveJSON, and the rename came through rather than around
+## The profile read shape speaks DiveJSON, and the export speaks the same vocabulary
 
 Series come from `GET /dive/{uuid}/recording/{rid}/profile`, serving `RecordingProfileRead`
 (`DiveProfileRead` plus `provenance`); the export carries them as `ExportRecording.profile` and the
@@ -5333,7 +5335,7 @@ No CI job runs both repos (`CONTRIBUTING.md`, _Changes that span both repos_) an
 independently, so a cross-repo contract break lands on the hosted instance in halves, minutes apart;
 sequence it API first, web second.
 
-## A fourth export row, and the count came out of the sentences around it
+## The `GET /export/divejson` row is three edits, and prose carries no row count
 
 The `GET /export/divejson` row is three edits: a `"divejson"` member on `ExportFormat`, an
 `EXPORT_EXTENSIONS` entry that `Record<ExportFormat, string>` forces, and an `EXPORT_ROWS` entry
@@ -5349,7 +5351,7 @@ Probes: `git grep -w three` in `src/`,
 `lib/api-proxy.test.ts` and `lib/download.test.ts` use `.uddf` as a generic `Content-Disposition`
 filename: classify per line, not per file.
 
-## An unknown UTC offset is a third state, and `new Date()` used to silently invent one
+## An unknown UTC offset is a third state, and `new Date()` never sees an offset-less string
 
 `Dive.start_time` may carry no offset (`utc_offset_minutes` NULL): wall clock recorded, instant
 unknown. ECMAScript parses an offset-less date-time as local, so `shiftByEmbeddedOffset` appends `Z`
@@ -5471,7 +5473,7 @@ Offsets span −12 to +14, so no instant is the same calendar day everywhere. An
 derived from the fixture through `localDay()` in `test/local-day.ts`, which spells out
 `toLocaleDateString("en-US", { year, month: "short", day })` rather than reusing `formatDateTime`.
 
-## A cylinder may record a mix with no vessel, and three fields stopped being numbers
+## A cylinder may record a mix with no vessel, and three fields are `number | null`
 
 `DiveMixture.volume`, `.oxygen` and `.helium` are `?: number | null` in `lib/api/dives.ts`: a UDDF
 `<tankdata>` without `<tankvolume>` is a real cylinder. ESLint has no type-aware rules, so a wrong
@@ -5629,7 +5631,7 @@ The variant is a prop decided once, so `invite-request-form.render.test.tsx` pin
 without the hook; `useInstanceConfig` returns the whole body, `null` when unknown. The sign-in line
 names accounts and invitations only; the operator has the install guide.
 
-## An icon button's name is now also its hover hint, and one string is both
+## An icon button's name is also its hover hint, and one string is both
 
 `IconTooltip` (`components/ui/tooltip.tsx`) takes one `label` and emits it as the child's
 `aria-label` and a hover chip. Call sites never set `aria-label`: a hint and a name that disagree
@@ -5647,7 +5649,7 @@ the focus open with `preventDefault`; refusing from `onOpenChange` leaves the de
 Inside a dialog the first Escape closes the hint, not the dialog: the tooltip is the higher
 dismissable layer, and the APG gives Escape to it. `tooltip.render.test.tsx` pins both.
 
-## Icon button hints: The guard is structural, and it found four buttons a manual sweep missed
+## Icon button hints: The guard is structural, reading the source rather than the DOM
 
 `components/icon-button-hints.test.ts` reads the source, not the DOM: a `<Button>` or `<button>`
 whose children render no words may not declare its own `aria-label`. A missing hint has nothing to
@@ -5658,14 +5660,14 @@ JSX elements, so `{isBusy ? <Loader2 /> : <Trash2 />}` is an icon while `{label}
 leaves `entry-unit-toggle`, `data-export-card` and `dive-form-fields-menu`, whose `aria-label`
 overrides visible text on purpose, untouched.
 
-## A mocked `useToast` made one card refetch forever, and it was only ever winning a race
+## A mocked `useToast` returns one `toast` for the file, or the card refetches forever
 
 `GearServiceCard`'s mount effect lists `toast` in its dependencies — safe against the real hook,
 whose `toast` is module-level, and an infinite fetch-render-fetch loop against a mock returning a
 new function per render. `gear-service-card.render.test.tsx` mocks `useToast` with one `toast` for
 the file, never one per call.
 
-## A dive has recordings, and the first one is what every old single-file reading meant
+## A dive has recordings, and the first one is primary, picked only by `primaryRecording()`
 
 A dive has `recordings`, an ordered list in which ordinal 0 is primary: its files write the dive's
 oxygen-exposure readings, its profile opens the chart, and its samples go into the UDDF export.
@@ -5832,7 +5834,7 @@ wordmark stacks over four lines instead of one. `md:col-span-1` is not redundant
 at `sm:` persists upward, and without the reset the brand block spans three of four desktop columns
 and pushes the links off the grid, silently in the class list.
 
-## The lists load on scroll, and a delete no longer collapses the one you are reading
+## The lists load on scroll, and a delete leaves the one you are reading in place
 
 `useInfiniteResource` accumulates pages and `LoadMoreTrigger` fetches the next. The Load more button
 is the observed sentinel, a real control for keyboard users; the 400px `rootMargin` fires it before
@@ -5880,7 +5882,7 @@ needs two); absent it passes with a notice, set-but-empty fails. Each hook is `:
 (substrings are not), and whitespace is stripped with `tr -d ' \t\r'`, not `[:space:]`, which eats
 the separators.
 
-## Dead commented-out blocks came out before the repository went public
+## `code-quality.yml` carries no commented-out steps: Renovate skips them and git keeps the text
 
 `code-quality.yml` carries no commented-out steps. A commented-out block is a claim about intent
 nobody maintains, and Renovate's `github-actions` manager skips any line whose first non-space
@@ -5889,11 +5891,11 @@ held. Git keeps the text; `git log -S` returns it with a date attached, which de
 still worth having.
 
 The `dependency-review` job is written against the current action rather than restored from a
-comment — "`dependency-review` is a gate on the diff, and its licence list was derived" has the
-detail. Nothing replaces a Snyk step or a PR quality comment: `vulnerability-scan.yml` watches the
-published image, `.github/renovate.json5` watches the manifests, and a report that is a comment
-rather than a failing check gets scrolled past. The permissions rationale atop `code-quality.yml`
-states its rule directly; `pr-title.yml` is the worked example.
+comment — "`dependency-review` is a gate on the diff, and its licence list is derived, not edited"
+has the detail. Nothing replaces a Snyk step or a PR quality comment: `vulnerability-scan.yml`
+watches the published image, `.github/renovate.json5` watches the manifests, and a report that is a
+comment rather than a failing check gets scrolled past. The permissions rationale atop
+`code-quality.yml` states its rule directly; `pr-title.yml` is the worked example.
 
 ## The legal pages name the operator where the project runs the copy, and only there
 
@@ -5930,7 +5932,7 @@ different claim.
 `app/terms/page.test.tsx` and `app/privacy/page.test.tsx` assert the clause that keeps the request
 leading, so an edit collapsing either page to "the repositories are public, follow the link" fails.
 
-## The species credit became a link on the API's side, and the picker needed nothing
+## The species credit is a link on the API's side, and the picker renders it through `Attribution`
 
 `_WORMS_ATTRIBUTION` in the API is
 `[World Register of Marine Species](https://www.marinespecies.org) (CC BY)`. The picker renders
@@ -5961,7 +5963,7 @@ and leaves one labelled fact silently clickable. Wikidata gets no line: its half
 names, CC0 asks for nothing, and the picker's second credit exists only for search results naming
 upstream Wikidata rows the catalog never stored.
 
-## The deco readouts got a panel, because the depth plot has two edges and they need three
+## The deco readouts have a panel, because the depth plot has two edges and they need three
 
 The six deco channels carry three units the depth plot's two edges cannot hold, so a second plot
 beneath it shares the time axis, one row per unit: minutes for NDL and TTS, bar for ppO₂, percent
@@ -5982,13 +5984,14 @@ scaled from its shown channels only, unlike `depthDomain`: a hidden `gf99` of 12
 The crosshair does not quote a channel the diver has switched off, even though with ten toggles and
 two labelled edges the crosshair is where an NDL is actually read. `shownValues` and `eventsShown`
 keep their guards and `shown` stays the filter; the deco channels widen the vocabulary `shown` draws
-from without changing what `shown` means. "The markers got a switch, and it is not a fifth channel"
-and "Markers are clipped to the plot" record why: a thing drawn in one view and named in another is
-the two views disagreeing about what the chart contains. The variant that sounds like a compromise —
-crosshair reads everything, accessible summary names only what is shown — is that disagreement by
-name. Reversing the rule is its own change and its own entry, not a side effect of adding channels.
+from without changing what `shown` means. "The markers have a legend switch, and it is not a fifth
+channel" and "Markers are clipped to the plot" record why: a thing drawn in one view and named in
+another is the two views disagreeing about what the chart contains. The variant that sounds like a
+compromise — crosshair reads everything, accessible summary names only what is shown — is that
+disagreement by name. Reversing the rule is its own change and its own entry, not a side effect of
+adding channels.
 
-## The chart's `scale` stopped being the API's constant, for two channels
+## The chart's `scale` is not the API's constant for `ndl` and `tts`
 
 `ProfileChannel.scale` pairs with `DEPTH_SCALE`/`TEMPERATURE_SCALE`/`PRESSURE_SCALE` in the API's
 `schemas/dive_profile.py` for the depth plot's four channels. For `ndl` and `tts` it does not: the
@@ -6000,7 +6003,7 @@ an elapsed-time axis labelled `18:00` is two quantities in one notation. `scale`
 both cases on the field, because "these two lists are a pair" is the kind of sentence a reader
 trusts.
 
-## The six deco channels have no `Dimension`, and `CHANNEL_DIMENSION` widened rather than `units.ts`
+## The six deco channels have no `Dimension`, and `CHANNEL_DIMENSION` carries the exception, not `units.ts`
 
 `lib/units.ts` deliberately omits ppO₂, CNS and duration from `Dimension` (the same in both unit
 systems), and gradient factors are percentages, so six of ten channels have nothing to look up.
@@ -6029,7 +6032,7 @@ The two gradient factors are not one hue at two lightnesses: olives far enough a
 at 1.97:1 on the light card. The panel's curves are solid: the ceiling's dash marks the one
 depth-plot line never measured, and every panel curve is the device's own arithmetic.
 
-## A profile event can arrive with no type, and `other` left the wire
+## A profile event can arrive with no type, and `other` is not on the wire
 
 DiveJSON §6.6 makes `type` OPTIONAL: an unrecognised event is an absent type beside a required
 `label`. The API stores it as `OTHER` and sends null, so `DiveProfileEvent.type` is
@@ -6059,7 +6062,7 @@ The device's model name beats the family (`Suunto Fused RGBM 2` over `RGBM`), as
 Gradient factors attach to the model, both halves or neither. Conservatism is its own clause on the
 device's scale; `0` is a setting (`== null`) and a positive value keeps its sign.
 
-## `-v4`: the fourth bump of the remembered-selection key
+## `-v4`: adding a series key bumps `DIVE_PROFILE_SERIES_KEY`, and a bump has three followers
 
 `DIVE_PROFILE_SERIES_KEY` is `-v4`, under the rule that adding a key to a `parseSeriesVisibility`
 list needs a bump and removing one does not: an older selection would restore with the six deco
@@ -6209,7 +6212,7 @@ the anchor is in document coordinates.
 A desktop browser at iPhone dimensions cannot reproduce Safari's clipping of fixed layers; put a
 readout on the device (`opendiving-web-lan-preview` skill).
 
-## Leaving `fixed` cost the scrim the window, on the other axis
+## The absolute scrim is `w-screen`, because `body`'s scrollbar margin shortens `right: 0`
 
 `react-remove-scroll`, which Radix wraps the overlay in, puts a `margin-right` on `body` equal to
 the scrollbar it removes so the page does not jump sideways as the dialog opens. An absolutely
@@ -6296,7 +6299,7 @@ their arrival remounts it on the real answer — cheaper than an effect.
 Rejected by this repo's lint: a ref frozen in the render body (`react-hooks/refs`) and a `useEffect`
 seeding the child when the prop arrives (`react-hooks/set-state-in-effect`).
 
-## A debounce test that raced the debounce
+## A debounce test fakes timers between async helpers, never across one
 
 `"debounces a burst into one request"` in `src/app/dives/new/page.render.test.tsx` runs on a frozen
 clock: `vi.useFakeTimers()`, three flips, `expect(updateProfile).not.toHaveBeenCalled()`, then one
@@ -6433,7 +6436,7 @@ in `tsconfig.json` (TS5101; removed, `paths` being tsconfig-relative, rather tha
 `src/test/intersection.ts`. With those, TS 7's native compiler typechecks the tree clean; the
 eventual bump is one line in `package.json`, and `npm run lint` is the check.
 
-## Vitest 5 put its scratch output in one place, and `__screenshots__/` is no longer part of it
+## `.gitignore` carries `/.vitest/` whole, and no `__screenshots__/` entry
 
 `.gitignore` carries `/.vitest/` whole and no `__screenshots__/` entry.
 

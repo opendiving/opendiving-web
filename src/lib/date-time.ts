@@ -35,13 +35,14 @@ export function parseFormDateTime(value: string): Date {
 // that state through as a naive `start_time` ("2026-04-17T11:49:23") and accepts
 // one back on a dive that already has none.
 //
-// **That state is a `null` offset, and it has to survive every helper here.** It
-// is not the same as UTC and must never be shown or saved as one: printing
+// **That state is a `null` offset, and it has to survive every helper here.**
+// It is not the same as UTC and must never be shown or saved as one: printing
 // "+00:00" beside the clock is a claim about the world that nothing recorded.
-// `parseUtcOffsetMinutes()` returns `null` for it, `splitStartTime()` hands that
-// `null` on, `combineStartTime()` writes no offset when it gets one back, and
-// `formatDiveStartTime()` prints no zone at all. See DECISIONS.md, "An unknown
-// UTC offset is a third state, and `new Date()` used to silently invent one".
+// `parseUtcOffsetMinutes()` returns `null` for it, `splitStartTime()` hands
+// that `null` on, `combineStartTime()` writes no offset when it gets one back,
+// and `formatDiveStartTime()` prints no zone at all. See DECISIONS.md, "An
+// unknown UTC offset is a third state, and `new Date()` never sees an
+// offset-less string".
 
 // Matches a trailing UTC offset ("Z", "+HH:MM", "+HHMM", or "+HH") on an ISO
 // 8601 datetime string.

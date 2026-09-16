@@ -214,11 +214,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
     [],
   );
 
-  // The entry points below deliberately record nothing about which one was used.
-  // Each wrote a key the sign-in form read back as a hint; that was dropped on
-  // the owner's product call rather than by attrition, so re-adding it is a
-  // decision to make again - see "The sign-in form no longer remembers which
-  // method this browser used" in `DECISIONS.md`.
+  // The entry points below deliberately record nothing about which one was
+  // used. Each wrote a key the sign-in form read back as a hint; that was
+  // dropped on the owner's product call rather than by attrition, so re-adding
+  // it is a decision to make again - see "The sign-in form does not remember
+  // which method this browser used" in `DECISIONS.md`.
   const verifyEmailLink = useCallback(
     async (token: string) => {
       const outcome = await authAPI.verifyEmailLink(token);

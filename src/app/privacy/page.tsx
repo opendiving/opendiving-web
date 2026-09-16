@@ -652,7 +652,7 @@ export default async function PrivacyPage() {
                 would be a page that changes under a reader for a reason nothing
                 on it explains. It is hedged in prose instead - the same shape §5's
                 passwordless bullet uses for Google. See "The numbering in §4 is
-                load-bearing, and §4.8 has changed hands" in DECISIONS.md. */}
+                load-bearing, and conditional sections sit last" in DECISIONS.md. */}
             <h3 className="text-xl font-semibold text-foreground mb-3">
               4.8 Inviting Someone to This Copy
             </h3>

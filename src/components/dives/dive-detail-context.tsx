@@ -32,11 +32,11 @@ const DiveDetailContext = createContext<DiveDetailValue | null>(null);
  * that renders it.
  *
  * The split exists because the App Router keys `[id]` on the param, so the page
- * is destroyed and rebuilt on every step of the prev/next pager. The layout sits
- * above that segment and survives, which is what lets the outgoing dive stay on
- * screen while the next one loads - and what keeps the pager's own `<a>` alive
- * under the focus that is on it. See "The step remounted the page, and hoisting
- * the fetch into a route-group layout is what stopped it" in DECISIONS.md.
+ * is destroyed and rebuilt on every step of the prev/next pager. The layout
+ * sits above that segment and survives, which is what lets the outgoing dive
+ * stay on screen while the next one loads - and what keeps the pager's own
+ * `<a>` alive under the focus that is on it. See "`dives/(detail)/layout.tsx`
+ * owns the dive fetch, so a step keeps the page mounted" in DECISIONS.md.
  */
 export function DiveDetailProvider({
   value,
