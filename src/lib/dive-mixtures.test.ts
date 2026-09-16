@@ -232,9 +232,8 @@ describe("modWarning", () => {
   });
 
   it("stays quiet at a limit binary arithmetic lands just under", () => {
-    // EAN28's 1.4 limit is exactly 40 m in decimal and 39.999999999999993 in
-    // floats, so a 40 m dive on it used to be reported as past a limit the same
-    // sentence printed as "40.0 m". EAN32 above is float-exact and never showed it.
+    // The gases whose 1.4 limit is a round number in decimal and a few ULPs under
+    // it in floats. EAN32 above is float-exact, so only these exercise the tolerance.
     expect(modWarning({ oxygen: 28, helium: 0 }, 40, "metric")).toBeNull();
     expect(modWarning({ oxygen: 40, helium: 0 }, 25, "metric")).toBeNull();
     expect(modWarning({ oxygen: 100, helium: 0 }, 4, "metric")).toBeNull();
