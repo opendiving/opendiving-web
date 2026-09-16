@@ -429,6 +429,50 @@ export function formatDepth(
   return formatValue(meters, "depth", units, options);
 }
 
+/**
+ * How fine a foot is written when two depths are being compared. A tenth, which is
+ * 3 cm - the nearest imperial has to the centimetre the metric side stores.
+ */
+const COMPARABLE_IMPERIAL_DECIMALS = 1;
+
+/**
+ * Rounds *down* to `decimals` places.
+ *
+ * Settles the float noise two places finer first: flooring 39.999999999999993 at two
+ * decimals gives 39.99, which is the arithmetic's representation error rather than
+ * anything the caller meant to say.
+ */
+function floorTo(value: number, decimals: number): number {
+  const factor = 10 ** decimals;
+  return Math.floor(roundTo(value, decimals + 2) * factor) / factor;
+}
+
+/**
+ * A depth written at the scale two depths can be told apart at: two decimals in
+ * metric, a tenth of a foot in imperial.
+ *
+ * `formatDepth` writes imperial as whole feet, which is the resolution a single
+ * reading is honest at and too coarse to state a comparison in - a gas breached by a
+ * few centimetres prints the same number on both sides, and the sentence reads as a
+ * depth past itself.
+ *
+ * `floor` rounds down rather than to nearest, for a value that is itself a ceiling: a
+ * limit rounded up names a depth that is past it, and it is the rounding, not the
+ * limit, that then collides with the depth beside it.
+ */
+export function formatComparableDepth(
+  meters: number,
+  units: UnitSystem,
+  { floor = false }: { floor?: boolean } = {},
+): string {
+  const shown = toDisplayUnits(meters, "depth", units);
+  const places =
+    units === "imperial" ? COMPARABLE_IMPERIAL_DECIMALS : METRIC_DECIMALS;
+  const value = floor ? floorTo(shown, places) : roundTo(shown, places);
+
+  return `${value}${unitSeparator("depth")}${unitLabel("depth", units)}`;
+}
+
 /** A temperature in Celsius, as `"23.89°C"` or `"75°F"`. */
 export function formatTemperature(
   celsius: number,

@@ -243,13 +243,22 @@ describe("modWarning", () => {
     // The tolerance is a nanometre, so the centimetre a recorded depth resolves to
     // is nowhere near it: EAN28 one centimetre past 40 m is still a breach.
     expect(modWarning({ oxygen: 28, helium: 0 }, 40.01, "metric")).toContain(
-      "40.0 m working limit",
+      "40 m working limit",
+    );
+  });
+
+  it("names a limit the depth is genuinely past, not the depth again", () => {
+    // 33.8 m is 5 cm past EAN32's 33.75 m. The limit prints at the scale it is true
+    // at and rounds down, so the sentence never puts one number on both sides of
+    // "is past".
+    expect(modWarning({ oxygen: 32, helium: 0 }, 33.8, "metric")).toContain(
+      "33.8 m is past this mix's 33.75 m working limit",
     );
   });
 
   it("flags a working-limit breach as a planning note, naming the working limit", () => {
     const warning = modWarning({ oxygen: 32, helium: 0 }, 36, "metric");
-    expect(warning).toContain("33.8 m working limit");
+    expect(warning).toContain("33.75 m working limit");
     expect(warning).toContain(String(PPO2_WORKING));
     // The distinguishing half: still legal for a stop, which is why this is not
     // the louder sentence.
@@ -259,7 +268,7 @@ describe("modWarning", () => {
   it("flags a deco-ceiling breach as the harder finding", () => {
     // EAN32's 1.6 ceiling is 40 m.
     const warning = modWarning({ oxygen: 32, helium: 0 }, 45, "metric");
-    expect(warning).toContain("40.0 m limit");
+    expect(warning).toContain("40 m limit");
     expect(warning).toContain(String(PPO2_DECO));
     expect(warning).not.toContain("decompression");
   });
@@ -275,7 +284,7 @@ describe("modWarning", () => {
   it("catches a deco bottle taken to the bottom", () => {
     // EAN50 tops out at 22 m even on the 1.6 ceiling.
     expect(modWarning({ oxygen: 50, helium: 0 }, 40, "metric")).toContain(
-      "22.0 m limit",
+      "22 m limit",
     );
   });
 
@@ -293,7 +302,7 @@ describe("modWarning", () => {
   });
 
   it("leaves a normal trimix bottom gas alone at depth", () => {
-    // 18/45 works to 67.8 m - the whole point of the mix.
+    // 18/45 works to 67.77 m - the whole point of the mix.
     expect(modWarning({ oxygen: 18, helium: 45 }, 60, "metric")).toBeNull();
   });
 });
@@ -302,13 +311,13 @@ describe("gasHintParts", () => {
   it("always leads with the gas name and its MOD", () => {
     expect(
       gasHintParts({ oxygen: 32, helium: 0, depth: null, units: "metric" }),
-    ).toEqual(["EAN32", "MOD 33.8 m @ ppO₂ 1.4"]);
+    ).toEqual(["EAN32", "MOD 33.75 m @ ppO₂ 1.4"]);
   });
 
   it("adds EAD for nitrox once a depth is known", () => {
     expect(
       gasHintParts({ oxygen: 32, helium: 0, depth: 30, units: "metric" }),
-    ).toEqual(["EAN32", "MOD 33.8 m @ ppO₂ 1.4", "EAD 24.4 m at 30 m"]);
+    ).toEqual(["EAN32", "MOD 33.75 m @ ppO₂ 1.4", "EAD 24.4 m at 30 m"]);
   });
 
   it("adds END rather than EAD for a helium mix", () => {
@@ -325,7 +334,7 @@ describe("gasHintParts", () => {
   it("gives air neither, since both would just restate the depth", () => {
     expect(
       gasHintParts({ oxygen: 21, helium: 0, depth: 30, units: "metric" }),
-    ).toEqual(["Air", "MOD 56.7 m @ ppO₂ 1.4"]);
+    ).toEqual(["Air", "MOD 56.66 m @ ppO₂ 1.4"]);
   });
 
   it("treats the whole air band as air, not just exactly 21", () => {
@@ -343,7 +352,7 @@ describe("gasHintParts", () => {
     // What a multi-cylinder dive passes: which gas saw which depth is unknowable.
     expect(
       gasHintParts({ oxygen: 54, helium: 0, depth: null, units: "metric" }),
-    ).toEqual(["EAN54", "MOD 15.9 m @ ppO₂ 1.4"]);
+    ).toEqual(["EAN54", "MOD 15.92 m @ ppO₂ 1.4"]);
   });
 
   it("returns nothing at all while the gas is unidentifiable", () => {
@@ -396,7 +405,7 @@ describe("diveModWarning", () => {
 
   it("judges a single cylinder against the dive's max depth", () => {
     // One tank was breathed throughout, so max depth is a depth this gas saw.
-    expect(diveModWarning([EAN32], 45, "metric")).toContain("40.0 m limit");
+    expect(diveModWarning([EAN32], 45, "metric")).toContain("40 m limit");
   });
 
   it("keeps the working-limit note for a single cylinder", () => {
@@ -409,24 +418,24 @@ describe("diveModWarning", () => {
 
   it("does not blame a staged deco bottle for the dive's max depth", () => {
     // The bug this function exists to fix: air + EAN54 to 45.91 m is a normal
-    // planned deco dive. EAN54 tops out at 19.6 m and was breathed on the
+    // planned deco dive. EAN54 tops out at 19.62 m and was breathed on the
     // ascent, never at the bottom - warning about it fires on every correctly
     // planned technical dive.
     expect(diveModWarning([AIR, EAN54], 45.91, "metric")).toBeNull();
   });
 
   it("still catches a dive no gas on board could have been breathed at", () => {
-    // Air is the deepest-capable of the two and tops out at 66.2 m; nothing here
+    // Air is the deepest-capable of the two and tops out at 66.19 m; nothing here
     // reaches 80 m, whichever order they were breathed in.
     const warning = diveModWarning([AIR, EAN54], 80, "metric");
     expect(warning).toContain("No gas logged for this dive");
-    expect(warning).toContain("66.2 m");
+    expect(warning).toContain("66.19 m");
   });
 
   it("names the deepest-capable gas, not the first or the worst", () => {
     const warning = diveModWarning([EAN54, EAN32, AIR], 80, "metric");
-    // Air's 66.2 m, not EAN54's 19.6 m or EAN32's 40.0 m.
-    expect(warning).toContain("66.2 m");
+    // Air's 66.19 m, not EAN54's 19.62 m or EAN32's 40 m.
+    expect(warning).toContain("66.19 m");
   });
 
   it("judges a flagged parallel pair holding one gas as that gas", () => {
@@ -440,7 +449,7 @@ describe("diveModWarning", () => {
       { ...EAN32, usage: "parallel" as const },
     ];
 
-    expect(diveModWarning(pair, 45, "metric")).toContain("40.0 m limit");
+    expect(diveModWarning(pair, 45, "metric")).toContain("40 m limit");
   });
 
   it("keeps the working-limit note for a flagged parallel pair too", () => {
@@ -461,7 +470,7 @@ describe("diveModWarning", () => {
     // two rows. The diver's answer is what makes the single-mix reading sound.
     //
     // The dive-wide sentence, not the single-mix one, and the difference is
-    // visible: the flagged pair above names EAN32's own 40.0 m *limit*, while
+    // visible: the flagged pair above names EAN32's own 40 m *limit*, while
     // this reports that no gas on board reaches the depth. Same number, two
     // different claims.
     const warning = diveModWarning([EAN32, EAN32], 45, "metric");
@@ -479,12 +488,12 @@ describe("diveModWarning", () => {
       { oxygen: 32, helium: 0, usage: "parallel" as const },
     ];
 
-    expect(diveModWarning(pair, 45, "metric")).toContain("40.0 m limit");
+    expect(diveModWarning(pair, 45, "metric")).toContain("40 m limit");
   });
 
   it("needs the shared gas as well as the flag", () => {
     // A flagged pair holding *different* gases is a switch plan again, and the
-    // multi-cylinder rule is what applies: EAN54 tops out at 19.6 m and was not
+    // multi-cylinder rule is what applies: EAN54 tops out at 19.62 m and was not
     // necessarily what saw 45 m.
     const mixed = [
       { ...AIR, usage: "parallel" as const },
@@ -505,7 +514,7 @@ describe("diveModWarning", () => {
   });
 
   it("does not apply the 1.4 working limit across several cylinders", () => {
-    // 45.91 m is past air's 56.7 m working limit? No - but EAN32's is 33.8 m,
+    // 45.91 m is past air's 56.66 m working limit? No - but EAN32's is 33.75 m,
     // and a multi-cylinder dive must not report that as a problem.
     expect(diveModWarning([AIR, EAN32], 45, "metric")).toBeNull();
   });
@@ -518,7 +527,7 @@ describe("diveModWarning", () => {
   it("says nothing for a dive logging no cylinders", () => {
     expect(diveModWarning([], 40, "metric")).toBeNull();
     // Pinned at a depth that *would* warn against air, which is what the create form
-    // used to seed: 60 m is past air's 56.7 m working limit, so a dive whose gas card
+    // used to seed: 60 m is past air's 56.66 m working limit, so a dive whose gas card
     // the diver never opened raised a warning about a cylinder the page invented.
     // Both forms can now hold zero cylinders, so this guard is reachable rather than
     // theoretical.
@@ -544,7 +553,7 @@ describe("diveModWarning", () => {
   it("ignores an unusable cylinder when judging the rest", () => {
     // A half-typed row must not drag the deepest-capable figure around.
     expect(diveModWarning([AIR, { oxygen: null }], 80, "metric")).toContain(
-      "66.2 m",
+      "66.19 m",
     );
   });
 });
@@ -572,21 +581,29 @@ describe("gasHintParts in imperial", () => {
   it("writes the MOD in feet and leaves the ppO₂ in bar", () => {
     expect(
       gasHintParts({ oxygen: 21, helium: 0, depth: null, units: "imperial" }),
-    ).toEqual(["Air", "MOD 186 ft @ ppO₂ 1.4"]);
+    ).toEqual(["Air", "MOD 185.9 ft @ ppO₂ 1.4"]);
   });
 
   it("writes both depths of an EAD in feet", () => {
     expect(
       gasHintParts({ oxygen: 32, helium: 0, depth: 30, units: "imperial" }),
-    ).toEqual(["EAN32", "MOD 111 ft @ ppO₂ 1.4", "EAD 80 ft at 98 ft"]);
+    ).toEqual(["EAN32", "MOD 110.7 ft @ ppO₂ 1.4", "EAD 80 ft at 98 ft"]);
   });
 });
 
 describe("the warnings in imperial", () => {
+  it("keeps the two depths apart at a tenth of a foot", () => {
+    // Whole feet cannot state this comparison: 40.02 m and EAN28's 40 m limit are
+    // both 131 ft. A tenth is 3 cm, the nearest imperial has to what the API stores.
+    expect(modWarning({ oxygen: 28, helium: 0 }, 40.02, "imperial")).toContain(
+      "131.3 ft is past this mix's 131.2 ft working limit",
+    );
+  });
+
   it("names both depths in feet", () => {
     const warning = modWarning({ oxygen: 32, helium: 0 }, 45, "imperial");
 
-    expect(warning).toContain("148 ft is past this mix's 131 ft limit");
+    expect(warning).toContain("147.6 ft is past this mix's 131.2 ft limit");
     expect(warning).toContain("ppO₂ 1.6");
   });
 });
@@ -603,7 +620,7 @@ describe("gasHintParts with a recorded ppO2 limit", () => {
       units: "metric",
     });
 
-    expect(parts).toContain("MOD 22.0 m @ ppO₂ 1.6");
+    expect(parts).toContain("MOD 22 m @ ppO₂ 1.6");
   });
 
   it("names the fallback it used when the dive recorded none", () => {
@@ -616,7 +633,7 @@ describe("gasHintParts with a recorded ppO2 limit", () => {
       units: "metric",
     });
 
-    expect(parts).toContain(`MOD 18.0 m @ ppO₂ ${PPO2_WORKING}`);
+    expect(parts).toContain(`MOD 18 m @ ppO₂ ${PPO2_WORKING}`);
   });
 });
 
@@ -633,7 +650,7 @@ describe("a recorded ppO2 limit does not move the warning thresholds", () => {
     );
 
     expect(warning).not.toBeNull();
-    expect(warning).toContain("22.0 m");
+    expect(warning).toContain("22 m");
   });
 });
 

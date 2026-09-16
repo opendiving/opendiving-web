@@ -23,7 +23,7 @@ import {
 } from "@/lib/dive-mixtures";
 import { AlertTriangle, Wind } from "lucide-react";
 import { useUnits } from "@/hooks/useUnits";
-import { formatDepth, formatPressure } from "@/lib/units";
+import { formatComparableDepth, formatPressure } from "@/lib/units";
 
 interface DiveMixturesCardProps {
   dive: Dive;
@@ -181,7 +181,7 @@ export function DiveMixturesCard({ dive }: DiveMixturesCardProps) {
                 : null;
 
               return (
-                // Nothing in a body row wraps: a broken "212 bar" or "56.7 m" reads
+                // Nothing in a body row wraps: a broken "212 bar" or "56.66 m" reads
                 // as two values. The table scrolls instead, inside the wrapper
                 // shadcn's `Table` already provides.
                 // Set once here rather than on seven cells, since `white-space`
@@ -293,8 +293,13 @@ export function DiveMixturesCard({ dive }: DiveMixturesCardProps) {
                             aria-hidden
                           />
                         )}
+                        {/* Rounded down and at the same scale as the warning under
+                            the table, so the two never name different depths for
+                            one gas - see `formatComparableDepth`. */}
                         <span>
-                          {formatDepth(workingMod, units, { decimals: 1 })}
+                          {formatComparableDepth(workingMod, units, {
+                            floor: true,
+                          })}
                         </span>
                         {/* `@ 1.4`, not `@ ppO₂ 1.4`: "@" in a MOD column is not
                             ambiguous, and the long form cost 36 px on every row

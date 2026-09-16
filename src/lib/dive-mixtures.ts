@@ -20,7 +20,11 @@
 // one implementation, here.
 
 import type { GasRole, TankUsage } from "@/lib/api/dives";
-import { formatDepth, type UnitSystem } from "@/lib/units";
+import {
+  formatComparableDepth,
+  formatDepth,
+  type UnitSystem,
+} from "@/lib/units";
 
 // Every depth this module *computes* is metres, and every depth it *prints* goes
 // through `formatDepth`. The maths below is unit-blind on purpose - `METERS_PER_BAR`
@@ -503,7 +507,7 @@ function recordedFraction(
 // `mod` divides by a fraction with no exact binary form, so a limit that is round in
 // decimal comes back a few ULPs under it: EAN28's 1.4 limit is 39.999999999999993, so
 // a bare `>` puts a 40 m dive on EAN28 past a limit the same sentence prints as
-// "40.0 m". EAN40 at 25 m and oxygen at 4 m sit the same way and EAN32's 33.75 m does
+// "40 m". EAN40 at 25 m and oxygen at 4 m sit the same way and EAN32's 33.75 m does
 // not - which side the error falls on is a property of the constants rather than of
 // the question, so every depth-against-limit comparison here goes through this.
 //
@@ -553,14 +557,13 @@ export function modWarning(
   const workingLimit = mod(oxygen, PPO2_WORKING);
   if (decoLimit == null || workingLimit == null) return null;
 
-  // The limits keep the one decimal they have always printed; the depth keeps the
-  // precision it was recorded at. In imperial both are whole feet, which is the
-  // resolution the number is honest at anyway.
+  // Both figures print at one scale and the limit rounds down, so the sentence cannot
+  // put the same number on both sides of "is past" - see `formatComparableDepth`.
   if (isPastLimit(breathedDepth, decoLimit)) {
-    return `${formatDepth(breathedDepth, units)} is past this mix's ${formatDepth(decoLimit, units, { decimals: 1 })} limit at ppO₂ ${PPO2_DECO}.`;
+    return `${formatComparableDepth(breathedDepth, units)} is past this mix's ${formatComparableDepth(decoLimit, units, { floor: true })} limit at ppO₂ ${PPO2_DECO}.`;
   }
   if (isPastLimit(breathedDepth, workingLimit)) {
-    return `${formatDepth(breathedDepth, units)} is past this mix's ${formatDepth(workingLimit, units, { decimals: 1 })} working limit (ppO₂ ${PPO2_WORKING}); it is within the ${PPO2_DECO} ceiling used for decompression.`;
+    return `${formatComparableDepth(breathedDepth, units)} is past this mix's ${formatComparableDepth(workingLimit, units, { floor: true })} working limit (ppO₂ ${PPO2_WORKING}); it is within the ${PPO2_DECO} ceiling used for decompression.`;
   }
 
   return null;
@@ -618,7 +621,7 @@ export function gasHintParts({
   const workingMod = mod(oxygen, limit);
   if (workingMod !== null) {
     parts.push(
-      `MOD ${formatDepth(workingMod, units, { decimals: 1 })} @ ppO₂ ${limit}`,
+      `MOD ${formatComparableDepth(workingMod, units, { floor: true })} @ ppO₂ ${limit}`,
     );
   }
 
@@ -780,5 +783,5 @@ export function diveModWarning(
   const deepest = Math.max(...limits);
   if (!isPastLimit(maxDepth, deepest)) return null;
 
-  return `No gas logged for this dive can be breathed at ${formatDepth(maxDepth, units)} - the deepest-capable of them reaches ${formatDepth(deepest, units, { decimals: 1 })} at ppO₂ ${PPO2_DECO}.`;
+  return `No gas logged for this dive can be breathed at ${formatComparableDepth(maxDepth, units)} - the deepest-capable of them reaches ${formatComparableDepth(deepest, units, { floor: true })} at ppO₂ ${PPO2_DECO}.`;
 }

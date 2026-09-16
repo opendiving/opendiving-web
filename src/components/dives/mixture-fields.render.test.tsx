@@ -88,7 +88,7 @@ describe("MixtureFields announcements", () => {
     });
 
     expect(screen.getByRole("status")).toHaveTextContent(
-      /past this mix's 19.6 m limit/i,
+      /past this mix's 19.62 m limit/i,
     );
   });
 
@@ -97,7 +97,7 @@ describe("MixtureFields announcements", () => {
     // keystroke, once from the settled region.
     render(<Harness mixtures={[EAN54]} maxDepth={45} />);
 
-    const visible = screen.getByText(/past this mix's 19.6 m limit/i, {
+    const visible = screen.getByText(/past this mix's 19.62 m limit/i, {
       ignore: '[role="status"]',
     });
     expect(visible.closest("[aria-hidden]")).not.toBeNull();
@@ -200,9 +200,9 @@ describe("MixtureFields ppO₂ limit picker", () => {
     render(<Harness mixtures={[{ ...EAN54, po2_limit: 1.6 }]} maxDepth={20} />);
 
     expect(screen.getByLabelText(/ppO₂ limit/i)).toHaveValue("1.6");
-    // EAN54 at 1.6 is 19.6 m; at the 1.4 default it would be 15.9 m. The hint and
+    // EAN54 at 1.6 is 19.62 m; at the 1.4 default it would be 15.92 m. The hint and
     // the box have to agree, which is the whole reason `ppO2Limit` is one function.
-    expect(screen.getByText(/MOD 19\.6 m @ ppO₂ 1\.6/)).toBeInTheDocument();
+    expect(screen.getByText(/MOD 19\.62 m @ ppO₂ 1\.6/)).toBeInTheDocument();
   });
 
   it("offers only limits inside the band the API enforces", () => {
@@ -263,7 +263,7 @@ describe("MixtureFields ppO₂ limit picker", () => {
     expect(select).toHaveValue("1.6");
     // And the number reaches the form as a number, not as the option's string -
     // `normalizeMixtures` passes `po2_limit` straight to the API.
-    expect(screen.getByText(/MOD 19\.6 m @ ppO₂ 1\.6/)).toBeInTheDocument();
+    expect(screen.getByText(/MOD 19\.62 m @ ppO₂ 1\.6/)).toBeInTheDocument();
   });
 });
 
@@ -570,7 +570,7 @@ describe("MixtureFields entry units", () => {
     writeEntryUnits({ depth: "imperial" });
     render(<Harness mixtures={[EAN54]} maxDepth={30} />);
 
-    expect(screen.getByText(/MOD \d+ ft @/)).toBeInTheDocument();
+    expect(screen.getByText(/MOD [\d.]+ ft @/)).toBeInTheDocument();
     expect(screen.queryByText(/MOD [\d.]+ m @/)).not.toBeInTheDocument();
   });
 

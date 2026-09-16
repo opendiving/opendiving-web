@@ -2443,7 +2443,7 @@ helium; header `#` plus `sr-only` "Tank", `TankGasUseRow.label` `"1"`, unmatched
 footer `Total`; every MOD carries its muted ppO₂, so `sharedPpO2Limit` is gone. `GAS_BADGE_CLASS`
 (`lib/dive-mixtures.ts`) is a 4.5 rem `min-width` sized to `Oxygen`. A shared `w-16` aligning both
 badges is rejected: it collapses under `table-layout: auto`. The MOD cell's accessible name is
-`56.7 m@ 1.4` (`dom-accessibility-api` trims nodes); tests assert `textContent`.
+`56.66 m@ 1.4` (`dom-accessibility-api` trims nodes); tests assert `textContent`.
 
 ## Cell padding is `px-2` app-wide
 
