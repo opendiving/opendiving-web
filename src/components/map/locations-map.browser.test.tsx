@@ -16,12 +16,15 @@ import { ConfigProvider } from "@/contexts/ConfigContext";
 // this file gained a geometry case: "fills its own frame with the map" measures
 // boxes that only have a size while these classes apply, so the import is now
 // load-bearing loudly as well as quietly. Louder still for "refits when its
-// frame narrows", where a missing height stops the behaviour under test from
-// happening at all rather than merely stopping it from being measurable:
-// MapLibre ignores its container's first resize observation unless the box has
-// grown or shrunk since the map was built, and reads a zero height as "no size
-// yet" and so never as a change. See "jsdom answers no layout question, and the
-// browser lane only answers one with the stylesheet loaded" in DECISIONS.md.
+// frame narrows", where a missing height can stop the behaviour under test from
+// happening rather than merely stop it being measurable: MapLibre acts on its
+// container's first resize observation only where the box differs from the one
+// the map was built at, and reads a zero height as no size rather than as a
+// difference. Whether the narrowing lands in that first observation turns on
+// whether a rendering update has intervened, which nothing here orders - so a
+// frame with no height does not make that test fail, it makes it a coin toss.
+// See "jsdom answers no layout question, and the browser lane only answers one
+// with the stylesheet loaded" in DECISIONS.md.
 import "@/app/globals.css";
 
 // **A real browser, not jsdom.** MapLibre needs a WebGL2 context, which jsdom
@@ -559,10 +562,11 @@ describe("LocationsMap", () => {
           marker.getBoundingClientRect(),
         );
 
-      // MapLibre acts on the resize below only if the box differs from the one
-      // the map was built at, and a zero height never differs. Asserted here so
-      // a frame with no size fails as itself, rather than as a map that refits
-      // when it feels like it. See the stylesheet import above.
+      // Where the resize below lands in MapLibre's first observation of this
+      // container, it is acted on only if the box differs from the one the map
+      // was built at - and a zero height never differs. Asserted here so a frame
+      // with no size fails as itself, rather than as a map that refits when it
+      // feels like it. See the stylesheet import above.
       expect(box().height).toBeGreaterThan(0);
 
       frame.style.width = "240px";
