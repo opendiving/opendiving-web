@@ -560,7 +560,8 @@ export function modWarning(
 
   // Both figures print at one scale and the limit rounds down, which is what keeps a
   // metric sentence from putting the same number on both sides of "is past". Imperial
-  // still can, inside the first centimetre - see `formatComparableDepth`.
+  // still can, for a breach under a tenth of a foot and depending where in that tenth
+  // the limit falls - see `formatComparableDepth`.
   if (isPastLimit(breathedDepth, decoLimit)) {
     return `${formatComparableDepth(breathedDepth, units)} is past this mix's ${formatComparableDepth(decoLimit, units, { floor: true })} limit at ppO₂ ${PPO2_DECO}.`;
   }
