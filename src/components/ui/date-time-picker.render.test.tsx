@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DateTimePicker } from "./date-time-picker";
@@ -160,6 +160,36 @@ describe("DateTimePicker text entry", () => {
     expect(screen.queryByRole("grid")).not.toBeInTheDocument();
     expect(document.body).not.toHaveFocus();
     expect(icon).toHaveFocus();
+  });
+
+  it("never paints the value it held before an outside change", async () => {
+    // The dive form re-stamps `start_time` once the last dive lands, so a box
+    // that trails its prop by a commit shows the earlier stamp. See the same
+    // test in `date-picker.render.test.tsx` for why a layout effect is what
+    // catches it.
+    const painted: string[] = [];
+
+    function Harness() {
+      const [value, setValue] = useState("2024-06-01 10:04:47");
+      useLayoutEffect(() => {
+        painted.push((screen.getByRole("textbox") as HTMLInputElement).value);
+      });
+      return (
+        <>
+          <DateTimePicker value={value} onChange={setValue} />
+          <button type="button" onClick={() => setValue("2024-06-01 10:04:48")}>
+            Replace
+          </button>
+        </>
+      );
+    }
+
+    render(<Harness />);
+    painted.length = 0;
+    await userEvent.click(screen.getByRole("button", { name: "Replace" }));
+
+    expect(painted).not.toContain("2024-06-01 10:04:47");
+    expect(box()).toHaveValue("2024-06-01 10:04:48");
   });
 
   it("puts the form's label on the box a diver types into", () => {

@@ -74,12 +74,18 @@ export function DatePicker({
   // dive file being imported. A draft that still *means* the incoming value is
   // left alone, so the normalization `handleSettle` just committed does not
   // arrive twice.
-  React.useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setDraft((current) =>
-      parseDateInput(current) === (value ?? "") ? current : (value ?? ""),
-    );
-  }, [value]);
+  //
+  // Adjusted during render rather than from an effect, which is the difference
+  // between the box and the value ever disagreeing. An effect runs after the
+  // commit, so the box paints the text it held *before* the reset and corrects
+  // itself a tick later - on the dive form, whose `start_time` is stamped again
+  // when the last dive lands, that is a stale timestamp on screen. React re-runs
+  // the component with the new state before committing instead.
+  const [syncedValue, setSyncedValue] = React.useState(value ?? "");
+  if (syncedValue !== (value ?? "")) {
+    setSyncedValue(value ?? "");
+    if (parseDateInput(draft) !== (value ?? "")) setDraft(value ?? "");
+  }
 
   // Leaving the field settles it. Text that never became a date is discarded
   // rather than left on screen contradicting the value behind it - there is no

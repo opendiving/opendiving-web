@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DatePicker } from "./date-picker";
@@ -180,6 +180,37 @@ describe("DatePicker text entry", () => {
 
     expect(committed()).toBe("2024-06-15");
     expect(box()).toHaveValue("2024-06-15");
+  });
+
+  it("never paints the value it held before an outside change", async () => {
+    // The box lives one render behind its prop if the re-sync runs from an
+    // effect, and an ordinary assertion cannot see that: Testing Library
+    // flushes effects before handing control back. A layout effect runs against
+    // the committed DOM *before* passive effects do, so it reads exactly the
+    // frame a diver would have seen.
+    const painted: string[] = [];
+
+    function Harness() {
+      const [value, setValue] = useState("2024-06-01");
+      useLayoutEffect(() => {
+        painted.push((screen.getByRole("textbox") as HTMLInputElement).value);
+      });
+      return (
+        <>
+          <DatePicker value={value} onChange={setValue} />
+          <button type="button" onClick={() => setValue("2025-01-02")}>
+            Replace
+          </button>
+        </>
+      );
+    }
+
+    render(<Harness />);
+    painted.length = 0;
+    await userEvent.click(screen.getByRole("button", { name: "Replace" }));
+
+    expect(painted).not.toContain("2024-06-01");
+    expect(box()).toHaveValue("2025-01-02");
   });
 
   it("puts the form's label on the box a diver types into", () => {

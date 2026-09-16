@@ -100,15 +100,15 @@ export function DateTimePicker({
   }, [value]);
 
   // The text box tracks the same external changes - the calendar, the time
-  // fields beside it, a dive file being imported. A draft that still *means* the
-  // incoming value is left as typed, so the normalization `handleSettle` just
-  // committed does not arrive twice.
-  React.useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setDraft((current) =>
-      parseDateTimeInput(current) === (value ?? "") ? current : (value ?? ""),
-    );
-  }, [value]);
+  // fields beside it, a dive file being imported. Adjusted during render, not
+  // from an effect, for the reason `date-picker.tsx` gives: an effect leaves the
+  // box showing the pre-reset text for one commit. A draft that still *means*
+  // the incoming value is left as typed.
+  const [syncedValue, setSyncedValue] = React.useState(value ?? "");
+  if (syncedValue !== (value ?? "")) {
+    setSyncedValue(value ?? "");
+    if (parseDateTimeInput(draft) !== (value ?? "")) setDraft(value ?? "");
+  }
 
   // An empty time field means "midnight" only once a date is committed alongside
   // it; while typing it just means "not filled in".
