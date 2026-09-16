@@ -26,6 +26,7 @@
     "test:coverage": "vitest run --coverage",
     "coverage:summary": "node scripts/coverage-summary.mjs",
     "screenshots": "node scripts/screenshots.mjs",
+    "measure-navigations": "node scripts/measure-navigations.mjs",
     "clean": "rm -rf .next out",
     "ci": "npm run lint && npm run type-check && npm run test && npm run build"
   },
