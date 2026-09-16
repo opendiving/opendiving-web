@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/react";
-import { page } from "vitest/browser";
+import { page, userEvent } from "vitest/browser";
 
 import { Calendar } from "./calendar";
 
@@ -135,8 +135,9 @@ describe("the grid sliding between months", () => {
     expect(after.left - shown.right).toBeCloseTo(shown.left - before.right, 0);
 
     finger(grid, "pointerup", 140);
-    await atRest(grid);
-    expect(grids(grid)).toHaveLength(1);
+    // Polled, not read once: they are unmounted by the render that follows the
+    // last leg, which is a tick after the track itself comes to rest.
+    await expect.poll(() => grids(grid).length).toBe(1);
   });
 
   // The distance the track travels and the distance the months sit apart are
@@ -183,21 +184,51 @@ describe("the grid sliding between months", () => {
     expect(grid.getAttribute("aria-label")).toMatch(/May 2026/);
   });
 
-  it("slides for the arrows too, which have no finger to follow", async () => {
+  // A key that changes the month focuses a day in the new one while that month
+  // is still mid-slide, which is the one route into this that hands a clipped,
+  // moving box an element the browser has been told to reveal. It settles where
+  // every other route settles: home, unscrolled, on the month that was asked
+  // for.
+  it("lands square when a key moves the month", async () => {
     await page.viewport(NARROW, 800);
-    const { getByLabelText, getByRole } = renderCalendar();
+    const { getByRole } = renderCalendar();
     const grid = getByRole("grid");
     const home = grid.getBoundingClientRect().left;
+    const clip = track(grid).parentElement as HTMLElement;
 
-    getByLabelText(/next month/i).click();
-
-    // The new month starts off the right edge and comes back.
-    await expect
-      .poll(() => grid.getBoundingClientRect().left > home + 30)
-      .toBe(true);
+    // A day of April's own, not one of the outside days the grid opens with -
+    // a month step from those lands back inside the month on screen.
+    getByRole("button", { name: /April 15th/ }).focus();
+    await userEvent.keyboard("{PageDown}");
 
     await atRest(grid);
+    expect(clip.scrollLeft).toBe(0);
     expect(grid.getBoundingClientRect().left).toBeCloseTo(home, 0);
     expect(grid.getAttribute("aria-label")).toMatch(/May 2026/);
   });
+
+  // Each arrow opens the track on the side the month is coming from, so the one
+  // being replaced leaves the way it would have been read.
+  it.each([
+    ["next", /next month/i, 1, /May 2026/],
+    ["previous", /previous month/i, -1, /March 2026/],
+  ])(
+    "slides for the %s arrow, which has no finger to follow",
+    async (_, label, direction, expected) => {
+      await page.viewport(NARROW, 800);
+      const { getByLabelText, getByRole } = renderCalendar();
+      const grid = getByRole("grid");
+      const home = grid.getBoundingClientRect().left;
+
+      getByLabelText(label).click();
+
+      await expect
+        .poll(() => (grid.getBoundingClientRect().left - home) * direction > 30)
+        .toBe(true);
+
+      await atRest(grid);
+      expect(grid.getBoundingClientRect().left).toBeCloseTo(home, 0);
+      expect(grid.getAttribute("aria-label")).toMatch(expected);
+    },
+  );
 });

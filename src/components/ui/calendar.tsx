@@ -76,10 +76,6 @@ function SwipeableMonthGrid({
   // Mounts the neighbours and clips the track to one month.
   const [sliding, setSliding] = React.useState(false);
 
-  // A drag arrives at the new month itself, so the arrival below has nothing
-  // left to play when the swap it made lands.
-  const swiped = React.useRef(false);
-
   // The leg currently playing. Its continuation runs after an await, so an
   // unmount mid-slide has to stop it rather than let it write to a track that
   // has left the page.
@@ -117,7 +113,13 @@ function SwipeableMonthGrid({
     const at = (px: number) => (px === 0 ? "none" : `translateX(${px}px)`);
     playing.current = el.animate(
       [{ transform: at(from) }, { transform: at(to) }],
-      { duration: SLIDE_MS, easing: "ease-out", fill: "forwards" },
+      {
+        // Reduced motion gets the same choreography with nothing to watch: the
+        // track is put where it belongs rather than travelling there.
+        duration: prefersReducedMotion() ? 0 : SLIDE_MS,
+        easing: "ease-out",
+        fill: "forwards",
+      },
     );
     try {
       await playing.current.finished;
@@ -127,47 +129,49 @@ function SwipeableMonthGrid({
     return true;
   };
 
-  // The arrival, for every month change a drag did not make itself. The track
-  // opens one month away, which puts the month being replaced - now a
-  // neighbour of the one that replaced it - where it already was, and the two
-  // travel together.
+  // The month on screen, and where it arrived from when something other than a
+  // drag moved it.
   //
-  // Positioned in a layout effect so the track is already off the edge when the
-  // frame paints; after paint it would show one frame of the new month in place
-  // before jumping.
+  // Decided during render rather than from an effect, so the neighbours are
+  // mounted by the commit that moves the track instead of a render later - the
+  // same shape as the draft sync in `date-picker`. A drag is already sliding
+  // and arrives at its own month, which is what `sliding` rules out here.
   const shown = months.length === 1 ? months[0].date.getTime() : undefined;
-  const previousShown = React.useRef(shown);
+  const [lastShown, setLastShown] = React.useState(shown);
+  const [arrival, setArrival] = React.useState<{
+    from: number;
+    to: number;
+  } | null>(null);
+  if (lastShown !== shown) {
+    setLastShown(shown);
+    const next =
+      !sliding && lastShown !== undefined && shown !== undefined
+        ? { from: lastShown, to: shown }
+        : null;
+    setArrival(next);
+    if (next) setSliding(true);
+  }
+
+  // The track opens one month away from where it will rest, which puts the
+  // month being replaced - by now a neighbour of the one replacing it - exactly
+  // where it already was, and slides the pair home together. In a layout effect
+  // so the track is off the edge before the frame paints; after paint it would
+  // show one frame of the new month in place before jumping.
   React.useLayoutEffect(() => {
-    const from = previousShown.current;
-    previousShown.current = shown;
-    const bySwipe = swiped.current;
-    swiped.current = false;
-    if (bySwipe) return;
-    if (from === undefined || shown === undefined || from === shown) return;
-    if (prefersReducedMotion()) return;
-    // Arrow keys move the month by moving focus into the new one, and a focused
-    // day sliding in and out of a clipped box is worse than no animation.
-    if (trackRef.current?.contains(document.activeElement)) return;
-    setSliding(true);
-    const away = shown > from ? step() : -step();
+    if (!arrival) return;
+    const away = arrival.to > arrival.from ? step() : -step();
     settleAt(away);
     void slide(away, 0).then((finished) => {
       if (!finished) return;
       settleAt(0);
       setSliding(false);
     });
-  }, [shown]);
+  }, [arrival]);
 
   // Ends a drag: the month the track has pulled into view becomes the month on
   // screen, or the track goes back where it started when there is nothing to
   // turn to.
   const release = async (target: Date | undefined, offset: number) => {
-    if (prefersReducedMotion()) {
-      if (target) goToMonth(target);
-      settleAt(0);
-      setSliding(false);
-      return;
-    }
     if (!target) {
       if (!(await slide(offset, 0))) return;
       settleAt(0);
@@ -179,8 +183,8 @@ function SwipeableMonthGrid({
     // The neighbour is already sitting where the month on screen belongs, so
     // the swap is a re-base rather than a second animation: the new grid takes
     // the position its copy is holding. Both happen in this task, before a
-    // frame can paint the track a month out of place.
-    swiped.current = true;
+    // frame can paint the track a month out of place, and `sliding` is still
+    // set while the swap renders, so no arrival is scheduled for it.
     flushSync(() => goToMonth(target));
     settleAt(0);
     setSliding(false);
