@@ -169,13 +169,14 @@ function RenumberForm({ onDone }: { onDone: (renumbered: boolean) => void }) {
           <div className="space-y-2">
             <Label htmlFor="renumber-from">Only dives from</Label>
             <DatePicker
+              id="renumber-from"
               value={fromDate}
               onChange={setFromDate}
               placeholder="All dives"
               disabled={isApplying}
             />
             <p className="text-xs text-muted-foreground">
-              Leave empty to renumber the whole log.
+              Dates are YYYY-MM-DD. Leave empty to renumber the whole log.
             </p>
           </div>
         </div>
