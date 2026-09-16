@@ -19,7 +19,7 @@ import { LoadMoreTrigger } from "./load-more-trigger";
 // clipped by every intervening scroll container, the iframe boundary included.
 // Measured: with the trigger 20px below the fold, nothing fires; it fires only
 // once genuinely on screen. That is the harness, not the component - the app is
-// not in an iframe - and the two tests below are the part of the behaviour this
+// not in an iframe - and what is left below is the part of the behaviour this
 // lane can actually hold. A margin regression is invisible to the whole suite,
 // so it is a browser walk that would catch one.
 
@@ -27,12 +27,12 @@ const SPACER = 3000;
 
 function renderTrigger() {
   const onLoadMore = vi.fn();
-  const view = render(
+  const trigger = (spacer: number, isLoading: boolean) => (
     <>
-      <div style={{ height: `${SPACER}px` }} data-testid="spacer" />
+      <div style={{ height: `${spacer}px` }} data-testid="spacer" />
       <LoadMoreTrigger
         hasMore
-        isLoading={false}
+        isLoading={isLoading}
         hasFailed={false}
         loadedCount={10}
         totalCount={100}
@@ -40,9 +40,25 @@ function renderTrigger() {
         itemLabel="dives"
         onLoadMore={onLoadMore}
       />
-    </>,
+    </>
   );
-  return { onLoadMore, ...view };
+  const view = render(trigger(SPACER, false));
+
+  /**
+   * Play out a page landing: the spinner goes on, `spacer` more pixels of rows
+   * appear above the trigger, and the spinner goes off. The scroll position
+   * does not move, so growing the spacer is what puts the trigger back below
+   * the fold - the same thing a page of dives does to it.
+   */
+  const landAPage = async (spacer: number) => {
+    view.rerender(trigger(SPACER, true));
+    view.rerender(trigger(spacer, false));
+    // Several frames: long enough for the re-observation to be delivered, and
+    // for a stale-answer re-fire to have happened if it were going to.
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  };
+
+  return { onLoadMore, landAPage, ...view };
 }
 
 beforeEach(() => {
@@ -66,5 +82,31 @@ describe("LoadMoreTrigger in a real viewport", () => {
     window.scrollTo(0, document.documentElement.scrollHeight);
 
     await vi.waitFor(() => expect(onLoadMore).toHaveBeenCalled());
+  });
+
+  // What the unit lane can only state with a stub: a real observer reports
+  // threshold crossings, so it says nothing at all about a trigger that has
+  // merely been pushed further down, and its last word is no answer about where
+  // the trigger is now.
+  it("stops when the page that landed pushed the trigger off screen", async () => {
+    const { onLoadMore, landAPage } = renderTrigger();
+
+    window.scrollTo(0, document.documentElement.scrollHeight);
+    await vi.waitFor(() => expect(onLoadMore).toHaveBeenCalledTimes(1));
+
+    await landAPage(SPACER * 2);
+
+    expect(onLoadMore).toHaveBeenCalledTimes(1);
+  });
+
+  it("carries on when the page that landed left it on screen", async () => {
+    const { onLoadMore, landAPage } = renderTrigger();
+
+    window.scrollTo(0, document.documentElement.scrollHeight);
+    await vi.waitFor(() => expect(onLoadMore).toHaveBeenCalledTimes(1));
+
+    await landAPage(SPACER);
+
+    expect(onLoadMore).toHaveBeenCalledTimes(2);
   });
 });

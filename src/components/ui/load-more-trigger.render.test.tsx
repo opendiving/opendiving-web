@@ -149,38 +149,65 @@ describe("LoadMoreTrigger", () => {
     });
   });
 
-  // A page that lands without pushing the button back off screen - a short
-  // page, or a tall viewport - has to pull the next one straight after it,
-  // rather than stalling until the reader scrolls again.
-  it("keeps going while the trigger stays on screen", async () => {
-    const onLoadMore = vi.fn();
-    const { rerender } = render(
-      <LoadMoreTrigger
-        hasMore
-        isLoading={false}
-        hasFailed={false}
-        loadedCount={10}
-        totalCount={100}
-        itemsPerPage={10}
-        itemLabel="dives"
-        onLoadMore={onLoadMore}
-      />,
-    );
+  // A page that lands moves the button, so where it was when the observer last
+  // spoke says nothing about where it is now. The two tests below are the same
+  // sequence of props, and differ only in whether the reader is still at the
+  // end of the list once the rows have landed.
+  describe("when a page lands", () => {
+    function landAPage() {
+      const onLoadMore = vi.fn();
+      const props = {
+        hasMore: true,
+        hasFailed: false,
+        totalCount: 100,
+        itemsPerPage: 10,
+        itemLabel: "dives",
+        onLoadMore,
+      };
+      const { rerender } = render(
+        <LoadMoreTrigger {...props} isLoading={false} loadedCount={10} />,
+      );
+      const settle = async () => {
+        rerender(<LoadMoreTrigger {...props} isLoading loadedCount={10} />);
+        rerender(
+          <LoadMoreTrigger {...props} isLoading={false} loadedCount={20} />,
+        );
+        await act(async () => {});
+      };
+      return { onLoadMore, settle };
+    }
 
-    await act(async () => reveal());
-    expect(onLoadMore).toHaveBeenCalledTimes(1);
+    // The reason the re-check is a re-check and not a stop: a short page, or a
+    // tall viewport, leaves the button on screen, and the list has to go on
+    // rather than stalling until the reader scrolls again.
+    it("keeps going while the trigger is still on screen", async () => {
+      const { onLoadMore, settle } = landAPage();
 
-    const props = {
-      hasMore: true,
-      hasFailed: false,
-      totalCount: 100,
-      itemsPerPage: 10,
-      itemLabel: "dives",
-      onLoadMore,
-    };
-    rerender(<LoadMoreTrigger {...props} isLoading={true} loadedCount={10} />);
-    rerender(<LoadMoreTrigger {...props} isLoading={false} loadedCount={20} />);
+      await act(async () => reveal());
+      expect(onLoadMore).toHaveBeenCalledTimes(1);
 
-    expect(onLoadMore).toHaveBeenCalledTimes(2);
+      await settle();
+      // The reader is still at the end of the list: the fresh observation says
+      // so, exactly as the first one did.
+      await act(async () => reveal());
+
+      expect(onLoadMore).toHaveBeenCalledTimes(2);
+    });
+
+    // The other side of it, and what a stale answer costs: rows that push the
+    // button below the fold end the run, rather than buying another page, and
+    // another, off a first glimpse of the end of the list.
+    it("stops once the rows have pushed the trigger off screen", async () => {
+      const { onLoadMore, settle } = landAPage();
+
+      await act(async () => reveal());
+      expect(onLoadMore).toHaveBeenCalledTimes(1);
+
+      // No `reveal()` this time: the button is no longer near the viewport, so
+      // the re-observation reports nothing.
+      await settle();
+
+      expect(onLoadMore).toHaveBeenCalledTimes(1);
+    });
   });
 });

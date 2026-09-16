@@ -5842,6 +5842,10 @@ pointer users see it. A failed page latches `loadFailed`, outside `loadMore` so 
 otherwise `hasMore` stays true and the auto-fire loops behind one `destructive` toast (`TOAST_LIMIT`
 is 1).
 
+A page that lands moves the sentinel, and an observer reports only crossings - so `isNear` still
+answers for the layout before those rows, and firing on it pours the whole list out. The trigger
+calls `useNearViewport`'s `recheck` instead, which re-observes for a fresh answer either way.
+
 `removeItem` drops the row locally and re-derives the cursor
 (`floor(items.length / itemsPerPage) + 1`), because offsets below a deletion shift; `keyOf` dedup is
 required. `applySaved` swaps the row in place and rewinds the cursor the same derived way, since
@@ -5859,11 +5863,12 @@ selection, not its own `checked`.
 so the call states the scenario: the reader has scrolled to the end of the list, or far enough down
 `/gear` to reach the sets card (`gear/page.render.test.tsx` needs it).
 
-The browser lane holds that the trigger stays quiet far below the fold and fires on a scroll to the
-end. It cannot hold the `rootMargin`, and no test in this repository can: that lane runs each test
-inside an iframe, and an implicit-root observer's expanded rect is clipped by every intervening
-scroll container, the iframe boundary included, so the trigger fires only once genuinely on screen.
-A margin regression is invisible to the suite and is a browser walk to catch.
+The browser lane holds that the trigger stays quiet far below the fold, fires on a scroll to the
+end, and - the one only a real observer can answer - stops when a landing page pushes it off screen.
+It cannot hold the `rootMargin`, and no test in this repository can: that lane runs each test inside
+an iframe, and an implicit-root observer's expanded rect is clipped by every intervening scroll
+container, the iframe boundary included, so the trigger fires only once genuinely on screen. A
+margin regression is invisible to the suite and is a browser walk to catch.
 
 ## A merge to `main` publishes `:edge`, and something has to tell Render
 

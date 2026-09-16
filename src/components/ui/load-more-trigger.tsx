@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { useNearViewport } from "@/hooks/useNearViewport";
@@ -53,16 +53,25 @@ export function LoadMoreTrigger({
   itemLabel,
   onLoadMore,
 }: LoadMoreTriggerProps) {
-  const [sentinelRef, isNear] = useNearViewport<HTMLDivElement>();
+  const [sentinelRef, isNear, recheckSentinel] =
+    useNearViewport<HTMLDivElement>();
+  const wasLoading = useRef(false);
 
   useEffect(() => {
-    if (isNear && hasMore && !isLoading && !hasFailed) onLoadMore();
-    // Re-runs when `isLoading` settles, so a page that lands without pushing the
-    // button back off screen - a short page, or a tall viewport - pulls the next
-    // one straight after it instead of stalling until the diver scrolls again.
-    // `hasFailed` is what stops that same re-fire from becoming a retry loop
-    // when the page didn't land at all.
-  }, [isNear, hasMore, isLoading, hasFailed, onLoadMore]);
+    const settled = wasLoading.current && !isLoading;
+    wasLoading.current = isLoading;
+
+    if (!isNear || !hasMore || isLoading || hasFailed) return;
+
+    // The rows that just landed sit above this button and have pushed it down,
+    // so `isNear` is an answer about where it used to be. Asking again is the
+    // difference between a page that lands without pushing the button off
+    // screen - a short page, or a tall viewport - pulling the next one straight
+    // after it, and a list that pours itself out to the last row because the
+    // observer had not got round to saying otherwise yet.
+    if (settled) recheckSentinel();
+    else onLoadMore();
+  }, [isNear, hasMore, isLoading, hasFailed, onLoadMore, recheckSentinel]);
 
   if (totalCount === 0) return null;
   if (!hasMore && loadedCount <= itemsPerPage) return null;
