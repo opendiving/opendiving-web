@@ -498,6 +498,24 @@ function recordedFraction(
   return typeof value === "number" ? value : null;
 }
 
+// The margin a depth has to clear a limit by to count as past it, in meters.
+//
+// `mod` divides by a fraction with no exact binary form, so a limit that is round in
+// decimal comes back a few ULPs under it: EAN28's 1.4 limit is 39.999999999999993, so
+// a bare `>` puts a 40 m dive on EAN28 past a limit the same sentence prints as
+// "40.0 m". EAN40 at 25 m and oxygen at 4 m sit the same way and EAN32's 33.75 m does
+// not - which side the error falls on is a property of the constants rather than of
+// the question, so every depth-against-limit comparison here goes through this.
+//
+// A nanometre: far above the ~1e-14 at stake, far below the centimetre a dive file
+// records.
+const DEPTH_TOLERANCE = 1e-9;
+
+// Whether `depth` is past `limit` by more than the rounding error above.
+function isPastLimit(depth: number, limit: number): boolean {
+  return depth > limit + DEPTH_TOLERANCE;
+}
+
 /**
  * Why this mix is a problem at `breathedDepth`, phrased for the diver, or `null` when
  * it isn't one.
@@ -538,10 +556,10 @@ export function modWarning(
   // The limits keep the one decimal they have always printed; the depth keeps the
   // precision it was recorded at. In imperial both are whole feet, which is the
   // resolution the number is honest at anyway.
-  if (breathedDepth > decoLimit) {
+  if (isPastLimit(breathedDepth, decoLimit)) {
     return `${formatDepth(breathedDepth, units)} is past this mix's ${formatDepth(decoLimit, units, { decimals: 1 })} limit at ppO₂ ${PPO2_DECO}.`;
   }
-  if (breathedDepth > workingLimit) {
+  if (isPastLimit(breathedDepth, workingLimit)) {
     return `${formatDepth(breathedDepth, units)} is past this mix's ${formatDepth(workingLimit, units, { decimals: 1 })} working limit (ppO₂ ${PPO2_WORKING}); it is within the ${PPO2_DECO} ceiling used for decompression.`;
   }
 
@@ -760,7 +778,7 @@ export function diveModWarning(
   if (limits.length === 0) return null;
 
   const deepest = Math.max(...limits);
-  if (maxDepth <= deepest) return null;
+  if (!isPastLimit(maxDepth, deepest)) return null;
 
   return `No gas logged for this dive can be breathed at ${formatDepth(maxDepth, units)} - the deepest-capable of them reaches ${formatDepth(deepest, units, { decimals: 1 })} at ppO₂ ${PPO2_DECO}.`;
 }
