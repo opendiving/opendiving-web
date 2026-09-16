@@ -42,9 +42,12 @@ const RenderNeighbour = React.createContext<
  * neighbours waiting either side of it.
  *
  * Every month change slides, whichever control asked for it - an arrow, the
- * dropdowns, or a drag - and the month being replaced leaves as its replacement
- * arrives. A drag moves the track under the finger, so the month it is pulling
- * in is on screen the whole way rather than following a blank gap.
+ * dropdowns, or a drag - carrying a neighbour out as the new month comes in.
+ * One month's step carries out the month actually being replaced; a dropdown
+ * jump of years carries out a neighbour of wherever it landed, which reads the
+ * same, a neighbour showing no caption to say otherwise. A drag moves the track
+ * under the finger, so the month it is pulling in is on screen the whole way
+ * rather than following a blank gap.
  *
  * The neighbours are mounted only while something is moving. At rest the track
  * has nothing either side of it and needs no clipping, which is what keeps a
@@ -153,10 +156,10 @@ function SwipeableMonthGrid({
   }
 
   // The track opens one month away from where it will rest, which puts the
-  // month being replaced - by now a neighbour of the one replacing it - exactly
-  // where it already was, and slides the pair home together. In a layout effect
-  // so the track is off the edge before the frame paints; after paint it would
-  // show one frame of the new month in place before jumping.
+  // neighbour on that side exactly where the outgoing grid was, and slides the
+  // pair home together. In a layout effect so the track is off the edge before
+  // the frame paints; after paint it would show one frame of the new month in
+  // place before jumping.
   React.useLayoutEffect(() => {
     if (!arrival) return;
     const away = arrival.to > arrival.from ? step() : -step();
