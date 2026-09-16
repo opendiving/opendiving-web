@@ -248,9 +248,14 @@ export function DateTimePicker({
         onOpenAutoFocus={(event) => {
           if (!focusCalendar) event.preventDefault();
         }}
-        // Radix would send focus back to the trigger; on Escape it has never
-        // left the box, which is where it belongs on a field that is typed in.
-        onCloseAutoFocus={(event) => event.preventDefault()}
+        // Radix puts focus on the icon button here, and that is right for the
+        // one path that hands focus to the grid: Escape there unmounts the day
+        // cell holding it, and with no restore focus falls to `document.body`.
+        // Prevented on the focus-opened path instead, where focus never left
+        // the box and Radix would be taking it away rather than restoring it.
+        onCloseAutoFocus={(event) => {
+          if (!focusCalendar) event.preventDefault();
+        }}
         // Clicking the box or its own button is not "outside" - without this,
         // Radix closes the calendar on the pointer-down and the field's own
         // handler reopens it on the click, which reads as a flicker.

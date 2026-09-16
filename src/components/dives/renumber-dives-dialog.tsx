@@ -176,7 +176,7 @@ function RenumberForm({ onDone }: { onDone: (renumbered: boolean) => void }) {
               disabled={isApplying}
             />
             <p className="text-xs text-muted-foreground">
-              Leave empty to renumber the whole log.
+              Dates are YYYY-MM-DD. Leave empty to renumber the whole log.
             </p>
           </div>
         </div>

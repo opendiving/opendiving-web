@@ -156,6 +156,21 @@ describe("DatePicker text entry", () => {
     expect(screen.getByRole("grid")).toBeInTheDocument();
   });
 
+  it("hands focus back to the icon button when Escape closes the grid", async () => {
+    // The icon button is the one path that puts focus inside the calendar, so
+    // it is the one close that needs Radix's restore: without it Escape
+    // unmounts the focused day cell and focus falls to the document body.
+    render(<Field initial="2024-06-01" />);
+
+    const icon = screen.getByRole("button", { name: "Choose date" });
+    await userEvent.click(icon);
+    await userEvent.keyboard("{Escape}");
+
+    expect(screen.queryByRole("grid")).not.toBeInTheDocument();
+    expect(document.body).not.toHaveFocus();
+    expect(icon).toHaveFocus();
+  });
+
   it("still picks from the calendar, and shows what was picked", async () => {
     render(<Field initial="2024-06-01" />);
 

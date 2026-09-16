@@ -8,7 +8,8 @@
 // Day-first and month-first orders are not accepted at any price: "01/06/2024"
 // is the 1st of June to most of the world and the 6th of January to the rest,
 // and a picker that guesses stores a dive on the wrong day without ever saying
-// so. The placeholder on every field says which order to type.
+// so. `DatePicker`'s placeholder spells the order out; a field that overrides it
+// for something more useful owes the same hint in the copy beside the box.
 
 function pad(value: number): string {
   return String(value).padStart(2, "0");

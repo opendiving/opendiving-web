@@ -131,6 +131,18 @@ describe("DateTimePicker text entry", () => {
     expect(box()).toHaveValue("2024-06-01 18:04:47");
   });
 
+  it("hands focus back to the icon button when Escape closes the grid", async () => {
+    render(<Field initial="2024-06-01 10:04:47" />);
+
+    const icon = screen.getByRole("button", { name: "Choose date and time" });
+    await userEvent.click(icon);
+    await userEvent.keyboard("{Escape}");
+
+    expect(screen.queryByRole("grid")).not.toBeInTheDocument();
+    expect(document.body).not.toHaveFocus();
+    expect(icon).toHaveFocus();
+  });
+
   it("puts the form's label on the box a diver types into", () => {
     render(
       <>
