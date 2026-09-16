@@ -125,9 +125,13 @@ describe("paging the calendar by swiping the day grid", () => {
   it("finishes the drag when a second finger has come and gone", async () => {
     const { grid } = renderCalendar();
 
+    const second = { ...TOUCH, pointerId: 2, clientX: 260 };
     fireEvent.pointerDown(grid, TOUCH);
     fireEvent.pointerMove(grid, { ...TOUCH, clientX: TOUCH.clientX - FAR });
-    fireEvent.pointerDown(grid, { ...TOUCH, pointerId: 2, clientX: 260 });
+    fireEvent.pointerDown(grid, second);
+    // Its lift is not the one the drag is waiting for, and it travelled the
+    // other way - taken for the first finger's, it would page backwards.
+    fireEvent.pointerUp(grid, second);
     fireEvent.pointerUp(grid, { ...TOUCH, clientX: TOUCH.clientX - FAR });
     await turned();
 
