@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/react";
 import { page } from "vitest/browser";
 
-import { Input, inputClassName } from "./input";
+import { Input } from "./input";
+import { NativeSelect } from "./native-select";
 import { Textarea } from "./textarea";
 
 // **Load-bearing, and it looks like a stray import** - the same one the other
@@ -53,16 +54,16 @@ describe("focusable fields against iOS's focus zoom", () => {
     expect(fontSizeOf(textarea)).toBe(14);
   });
 
-  it("does the same for a native `<select>` wearing `inputClassName`", async () => {
+  it("does the same for a `NativeSelect`", async () => {
     // The dive form's ppO₂ limit, Role, Usage and water type are plain
     // `<select>`s rather than the Radix one, because they need an empty option -
     // and a `<select>` is a field iOS zooms for exactly like a text box. They
-    // borrow their box from `inputClassName`, so this is where that reaches
-    // them.
+    // borrow their box from `inputClassName` through `NativeSelect`, so this is
+    // where that reaches them.
     const { getByRole } = render(
-      <select aria-label="Role" className={inputClassName}>
+      <NativeSelect aria-label="Role">
         <option value="">Not recorded</option>
-      </select>,
+      </NativeSelect>,
     );
     const select = getByRole("combobox");
 

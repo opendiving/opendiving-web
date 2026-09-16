@@ -37,9 +37,11 @@ const NativeSelect = React.forwardRef<HTMLSelectElement, NativeSelectProps>(
       >
         {children}
       </select>
+      {/* 13px, not `mr-3`: the Radix trigger's chevron is a flex child inside
+      `px-3` *and* a 1px border, so 12px here would miss it by the border. */}
       <ChevronDown
         aria-hidden
-        className="pointer-events-none col-start-1 row-start-1 mr-3 h-4 w-4 self-center justify-self-end opacity-50"
+        className="pointer-events-none col-start-1 row-start-1 mr-[13px] h-4 w-4 self-center justify-self-end opacity-50"
       />
     </div>
   ),
