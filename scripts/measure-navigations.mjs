@@ -12,8 +12,9 @@
 // way `screenshots.mjs` does: request a magic link and read the token back out of the API
 // container's log, so this only runs against a local stack whose logs you can read.
 // `API_DIR` is where `docker compose logs` is run, and it defaults to the sibling
-// `../opendiving-api` - a git worktree is one level deeper than a checkout, so a run from
-// one has to name it.
+// `../opendiving-api`. That default is right in a checkout and wrong in a git worktree,
+// which sits under `.claude/worktrees/` and so resolves `..` inside itself: name the
+// checkout there rather than counting the levels back to it.
 //
 // ------------------------------------------------------------ the build it needs
 //
