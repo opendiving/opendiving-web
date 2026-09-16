@@ -11,7 +11,8 @@ import {
 } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { IconTooltip } from "@/components/ui/tooltip";
-import { Input, inputClassName } from "@/components/ui/input";
+import { Input } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/native-select";
 import {
   FormControl,
   FormField,
@@ -398,8 +399,7 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                         only things free entry bought were typos and a 422 on
                         save. */}
                       <FormControl>
-                        <select
-                          className={inputClassName}
+                        <NativeSelect
                           {...field}
                           // From the offered list rather than from the raw value,
                           // so the two can't disagree about formatting: `1.0` on
@@ -428,7 +428,7 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                               {option}
                             </option>
                           ))}
-                        </select>
+                        </NativeSelect>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -589,12 +589,7 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                       four-option optional field is worth. Most cylinders have no
                       recorded role and that has to stay easy to leave alone. */}
                     <FormControl>
-                      <select
-                        // `Input`'s own classes rather than a copy of them: this
-                        // sits in a grid row beside other boxes, and the copy it
-                        // started as had drifted to a shorter, differently-ringed
-                        // control beside them.
-                        className={inputClassName}
+                      <NativeSelect
                         {...field}
                         value={field.value ?? ""}
                         // `""` straight through, not `|| undefined`: react-hook-form
@@ -611,7 +606,7 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                             {GAS_ROLE_LABELS[role]}
                           </option>
                         ))}
-                      </select>
+                      </NativeSelect>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -635,8 +630,7 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                       shape the API refuses by design and can only refuse if
                       the form can say it. */}
                     <FormControl>
-                      <select
-                        className={inputClassName}
+                      <NativeSelect
                         {...field}
                         value={field.value ?? ""}
                         // `""` straight through, same sentinel and same
@@ -649,7 +643,7 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
                             {TANK_USAGE_OPTION_LABELS[usage]}
                           </option>
                         ))}
-                      </select>
+                      </NativeSelect>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
