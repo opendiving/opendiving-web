@@ -18,6 +18,10 @@ const DRAG_SLOP_PX = 10;
 
 const SLIDE_MS = 140;
 
+// Daylight between one month and the next, so a drag reads as two pages passing
+// rather than as one grid that has grown extra columns.
+const MONTH_GAP_PX = 16;
+
 function prefersReducedMotion() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
@@ -92,8 +96,9 @@ function SwipeableMonthGrid({
     playing.current?.cancel();
   };
 
-  // One month's travel, which is exactly where the neighbours are pinned.
-  const step = () => trackRef.current?.offsetWidth ?? 0;
+  // One month's travel, which is exactly where the neighbours are pinned: the
+  // grid's own width and the gap it keeps from them.
+  const step = () => (trackRef.current?.offsetWidth ?? 0) + MONTH_GAP_PX;
 
   // What the track moves under the finger. Free travel while there is a month
   // that way, rubber-banded to a fraction of it when there is not, so the end
@@ -287,13 +292,13 @@ function Neighbour({
       inert
       aria-hidden
       className="pointer-events-none absolute inset-y-0 w-full"
-      // Inline rather than `left-full`/`right-full`: this offset is what makes
-      // the track a track, and a utility class is only as reliable as the
-      // stylesheet that happens to be loaded. Tailwind generates one the first
-      // time its name appears in the source, so a page already open when it did
-      // runs the new markup against a sheet that never had it - the neighbours
-      // then stack on the month they are meant to flank.
-      style={{ [side]: "100%" }}
+      // Inline rather than a utility class: this offset is what makes the track
+      // a track, and a class is only as reliable as the stylesheet that happens
+      // to be loaded. Tailwind generates one the first time its name appears in
+      // the source, so a page already open when it did runs the new markup
+      // against a sheet that never had it - and the neighbours then stack on
+      // the month they are meant to flank.
+      style={{ [side]: `calc(100% + ${MONTH_GAP_PX}px)` }}
     >
       {children(month)}
     </div>

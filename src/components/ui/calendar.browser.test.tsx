@@ -129,13 +129,38 @@ describe("the grid sliding between months", () => {
     // They are mounted by the render the drag schedules, not by the event.
     await expect.poll(() => grids(grid).length).toBe(3);
 
+    // Evenly spaced, with daylight between them rather than butted together.
     const [before, shown, after] = grids(grid).sort((a, b) => a.left - b.left);
-    expect(before.right).toBeCloseTo(shown.left, 0);
-    expect(shown.right).toBeCloseTo(after.left, 0);
+    expect(shown.left - before.right).toBeGreaterThan(8);
+    expect(after.left - shown.right).toBeCloseTo(shown.left - before.right, 0);
 
     finger(grid, "pointerup", 140);
     await atRest(grid);
     expect(grids(grid)).toHaveLength(1);
+  });
+
+  // The distance the track travels and the distance the months sit apart are
+  // two expressions of one number. Read off the animation rather than the
+  // clock: a keyframe does not move, and the spacing between three grids in one
+  // track is the same at every point of the slide.
+  it("travels exactly as far as the months are spaced apart", async () => {
+    await page.viewport(NARROW, 800);
+    const { getByLabelText, getByRole } = renderCalendar();
+    const grid = getByRole("grid");
+
+    getByLabelText(/next month/i).click();
+    await expect
+      .poll(() => track(grid).getAnimations().length)
+      .toBeGreaterThan(0);
+
+    const effect = track(grid).getAnimations()[0].effect as KeyframeEffect;
+    const [opening] = effect.getKeyframes();
+    const travel = Math.abs(
+      Number(/-?[\d.]+/.exec(String(opening.transform))?.[0]),
+    );
+    const [first, second] = grids(grid).sort((a, b) => a.left - b.left);
+
+    expect(travel).toBeCloseTo(second.left - first.left, 0);
   });
 
   it("carries the month off the edge and brings the next one back", async () => {
