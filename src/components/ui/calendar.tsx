@@ -2,10 +2,91 @@
 
 import * as React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { DayPicker } from "react-day-picker";
+import { DayPicker, useDayPicker } from "react-day-picker";
 
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
+
+// A day cell is 36px wide, so this clears the slop around a tap without asking
+// for most of a month's width.
+const SWIPE_THRESHOLD_PX = 48;
+
+/**
+ * The day grid, with a horizontal drag paging it a month at a time.
+ *
+ * Touch and pen only, since a mouse dragged across a grid means selecting.
+ * Declared at module scope because `components` is read by identity - one
+ * written inside `Calendar` would be a fresh type on every render, remounting
+ * the grid and dropping focus out of whichever day held it.
+ */
+function SwipeableMonthGrid({
+  className,
+  ...props
+}: React.TableHTMLAttributes<HTMLTableElement>) {
+  const { goToMonth, nextMonth, previousMonth } = useDayPicker();
+  const gesture = React.useRef<{
+    id: number;
+    x: number;
+    y: number;
+  } | null>(null);
+
+  // A qualifying drag still ends over a day cell, and the browser fires a click
+  // there as the finger lifts - so without this the page turn would also pick
+  // whatever day happened to be under it.
+  const swiped = React.useRef(false);
+
+  return (
+    <table
+      {...props}
+      // `pan-y`, not `none`: sideways movement is ours and vertical is still the
+      // page scrolling past, which also abandons the gesture via `pointercancel`.
+      className={cn("touch-pan-y", className)}
+      onPointerDown={(event) => {
+        swiped.current = false;
+        if (event.pointerType === "mouse" || gesture.current) return;
+        gesture.current = {
+          id: event.pointerId,
+          x: event.clientX,
+          y: event.clientY,
+        };
+      }}
+      onPointerMove={(event) => {
+        const start = gesture.current;
+        if (!start || start.id !== event.pointerId || swiped.current) return;
+        const dx = event.clientX - start.x;
+        if (Math.abs(dx) < SWIPE_THRESHOLD_PX) return;
+        if (Math.abs(dx) <= Math.abs(event.clientY - start.y)) return;
+        swiped.current = true;
+        // Captured only now, never on the way down: the lift then arrives here
+        // even if the finger has left the grid, while a tap - which never gets
+        // this far - keeps the click on its day. Capturing on pointerdown would
+        // retarget every tap's click to the table and no day could be picked.
+        event.currentTarget.setPointerCapture(event.pointerId);
+      }}
+      onPointerUp={(event) => {
+        const start = gesture.current;
+        if (!start || start.id !== event.pointerId) return;
+        gesture.current = null;
+        if (!swiped.current) return;
+        // Dragged back under the threshold before lifting: no page turn, but the
+        // click stays swallowed - that finger was never picking a day.
+        const dx = event.clientX - start.x;
+        if (Math.abs(dx) < SWIPE_THRESHOLD_PX) return;
+        // Either is `undefined` at the far end of `startMonth`/`endMonth`.
+        const target = dx < 0 ? nextMonth : previousMonth;
+        if (target) goToMonth(target);
+      }}
+      onPointerCancel={() => {
+        gesture.current = null;
+      }}
+      onClickCapture={(event) => {
+        if (!swiped.current) return;
+        swiped.current = false;
+        event.stopPropagation();
+      }}
+    />
+  );
+}
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>;
 
@@ -68,6 +149,7 @@ function Calendar({
         ...classNames,
       }}
       components={{
+        MonthGrid: SwipeableMonthGrid,
         Chevron: ({ orientation, className: chevronClassName }) => {
           const Icon = orientation === "left" ? ChevronLeft : ChevronRight;
           return <Icon className={cn("h-4 w-4", chevronClassName)} />;
