@@ -15,9 +15,11 @@ import { ConfigProvider } from "@/contexts/ConfigContext";
 // stops it from being able to fail. That was the whole of the import's job until
 // this file gained a geometry case: "fills its own frame with the map" measures
 // boxes that only have a size while these classes apply, so the import is now
-// load-bearing loudly as well as quietly. See "jsdom answers no layout question,
-// and the browser lane only answers one with the stylesheet loaded" in
-// DECISIONS.md.
+// load-bearing loudly as well as quietly. Louder still for "refits when its
+// frame narrows", where a missing height can stop the behaviour under test from
+// happening rather than merely stop it being measurable; that test's own height
+// assertion says how. See "jsdom answers no layout question, and the browser
+// lane only answers one with the stylesheet loaded" in DECISIONS.md.
 import "@/app/globals.css";
 
 // **A real browser, not jsdom.** MapLibre needs a WebGL2 context, which jsdom
@@ -514,6 +516,66 @@ describe("LocationsMap", () => {
       frame.top + frame.height / 2,
     );
     expect(document.querySelector(".maplibregl-map")!.contains(hit)).toBe(true);
+  });
+
+  // **MapLibre does not refit on its own.** Its `trackResize` calls `resize()`,
+  // which recomputes the projection for the new box and leaves centre and zoom
+  // where they were - so without an explicit refit a frame that narrows keeps a
+  // camera fitted to the wider one and pushes the outermost pins outside it. The
+  // hand-rolled renderer got this for free by recomputing from a measured size;
+  // this is the test that says the behaviour survived the move.
+  it("refits when its frame narrows", async () => {
+    const frame = document.createElement("div");
+    frame.style.width = "640px";
+    document.body.appendChild(frame);
+
+    try {
+      render(
+        withConfig(
+          <LocationsMap
+            subject="the trip's locations"
+            locations={[
+              { name: "Moalboal", latitude: 9.9494, longitude: 123.3986 },
+              { name: "Red Sea", latitude: 27.0, longitude: 34.0 },
+            ]}
+          />,
+        ),
+        { container: frame },
+      );
+      // The first fit, before anything is resized.
+      await waitFor(() =>
+        expect(frame.querySelectorAll("[data-marker]").length).toBe(2),
+      );
+
+      // Everything below is scoped to the frame this test owns rather than to
+      // the document: the queries elsewhere in this file are document-wide, and
+      // a map from an earlier test still being torn down would answer them.
+      const box = () =>
+        frame.querySelector('[role="img"]')!.getBoundingClientRect();
+      const pins = () =>
+        Array.from(frame.querySelectorAll("[data-marker]")).map((marker) =>
+          marker.getBoundingClientRect(),
+        );
+
+      // Where the resize below lands in MapLibre's first observation of this
+      // container, it is acted on only if the box differs from the one the map
+      // was built at - and a zero height never differs. Asserted here so a frame
+      // with no size fails as itself, rather than as a map that refits when it
+      // feels like it. See the stylesheet import above.
+      expect(box().height).toBeGreaterThan(0);
+
+      frame.style.width = "240px";
+      await waitFor(() => {
+        expect(box().width).toBeLessThan(300);
+        expect(pins()).toHaveLength(2);
+        for (const at of pins()) {
+          expect(at.left).toBeGreaterThanOrEqual(box().left - 1);
+          expect(at.right).toBeLessThanOrEqual(box().right + 1);
+        }
+      });
+    } finally {
+      frame.remove();
+    }
   });
 
   // The dark theme is now a different *style*, not a CSS filter over the light
