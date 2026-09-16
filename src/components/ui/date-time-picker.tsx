@@ -102,8 +102,10 @@ export function DateTimePicker({
   // The text box tracks the same external changes - the calendar, the time
   // fields beside it, a dive file being imported. Adjusted during render, not
   // from an effect, for the reason `date-picker.tsx` gives: an effect leaves the
-  // box showing the pre-reset text for one commit. A draft that still *means*
-  // the incoming value is left as typed.
+  // box showing the pre-reset text for one commit. The dive form is where that
+  // shows - it stamps `start_time` a second time when the last dive lands, so
+  // the box sat on the earlier stamp. A draft that still *means* the incoming
+  // value is left as typed.
   const [syncedValue, setSyncedValue] = React.useState(value ?? "");
   if (syncedValue !== (value ?? "")) {
     setSyncedValue(value ?? "");

@@ -76,11 +76,11 @@ export function DatePicker({
   // arrive twice.
   //
   // Adjusted during render rather than from an effect, which is the difference
-  // between the box and the value ever disagreeing. An effect runs after the
-  // commit, so the box paints the text it held *before* the reset and corrects
-  // itself a tick later - on the dive form, whose `start_time` is stamped again
-  // when the last dive lands, that is a stale timestamp on screen. React re-runs
-  // the component with the new state before committing instead.
+  // between the box and the value ever disagreeing: an effect runs after the
+  // commit, so a `form.reset()` under the field paints the text it held before
+  // the reset and corrects itself a tick later. React re-runs the component with
+  // the new state before committing instead. Same shape as the per-target reset
+  // in `delete-with-reassign-dialog.tsx`.
   const [syncedValue, setSyncedValue] = React.useState(value ?? "");
   if (syncedValue !== (value ?? "")) {
     setSyncedValue(value ?? "");
