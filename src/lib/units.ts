@@ -438,13 +438,17 @@ const COMPARABLE_IMPERIAL_DECIMALS = 1;
 /**
  * Rounds *down* to `decimals` places.
  *
- * Settles the float noise two places finer first: flooring 39.999999999999993 at two
- * decimals gives 39.99, which is the arithmetic's representation error rather than
- * anything the caller meant to say.
+ * The scaled value is settled before it is floored, because scaling is itself
+ * inexact: `9.2 * 100` is 919.9999999999999 and `Math.floor` takes a whole step off
+ * it, so a limit already on the grid would print a centimetre shallower than it is.
+ * Six decimals is far below the grid step and far above the error. Settling the
+ * *unscaled* value instead does not work - rounding it to a couple of places finer
+ * carries 39.46996 up to 39.47, which the floor then keeps, and a limit that rounds
+ * up names a depth past itself.
  */
 function floorTo(value: number, decimals: number): number {
   const factor = 10 ** decimals;
-  return Math.floor(roundTo(value, decimals + 2) * factor) / factor;
+  return Math.floor(roundTo(value * factor, 6)) / factor;
 }
 
 /**
@@ -462,11 +466,11 @@ function floorTo(value: number, decimals: number): number {
  *
  * That closes metric and only narrows imperial. A stored depth and a floored limit
  * sit on the same centimetre grid, so a metric breach always prints two different
- * numbers; a tenth of a foot is 3 cm, so an imperial breach inside the first
- * centimetre still prints one number twice - air at 56.67 m gives "185.9 ft is past
- * this mix's 185.9 ft working limit". Hundredths of a foot would close that too, at
- * two digits on every MOD the app shows, which is precision no cylinder is analysed
- * to.
+ * numbers; a tenth of a foot is 3 cm, so an imperial breach can still print one
+ * number twice, depending on where the limit falls inside the tenth - air at 56.67 m
+ * gives "185.9 ft is past this mix's 185.9 ft working limit", while EAN28 breached by
+ * 9 mm gives 131.3 against 131.2. Hundredths of a foot would close that too, at two
+ * digits on every MOD the app shows, which is precision no cylinder is analysed to.
  */
 export function formatComparableDepth(
   meters: number,

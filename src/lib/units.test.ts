@@ -172,6 +172,23 @@ describe("formatComparableDepth", () => {
       formatComparableDepth(39.999999999999993, "metric", { floor: true }),
     ).toBe("40 m");
   });
+
+  // The scaling is noisy in its own right: 9.2 * 100 is 919.9999999999999, and
+  // EAN62.5 planned to ppO₂ 1.2 - both values the form offers - lands there.
+  it("keeps a limit that is already on the grid", () => {
+    expect(formatComparableDepth(9.2, "metric", { floor: true })).toBe("9.2 m");
+    expect(
+      formatComparableDepth(18.49002849002849, "metric", { floor: true }),
+    ).toBe("18.49 m");
+  });
+
+  // The other direction, and the one that matters more: a limit that floors *up*
+  // names a depth past itself, which is what the floor exists to prevent.
+  it("never floors a value above itself", () => {
+    expect(
+      formatComparableDepth(39.46996466431094, "metric", { floor: true }),
+    ).toBe("39.46 m");
+  });
 });
 
 describe("labels", () => {
