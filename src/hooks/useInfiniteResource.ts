@@ -18,6 +18,11 @@ export type { PaginatedResponse };
  */
 export const DEFAULT_ITEMS_PER_PAGE = 10;
 
+// What `revalidate` asks for per request. Matches `fetchAllPages`' own default in
+// `lib/api/client.ts`, which is the established evidence that the API serves a page
+// this size; it is a batch size for a re-read, not a page size a list renders.
+const REVALIDATE_PAGE_SIZE = 100;
+
 interface UseInfiniteResourceOptions<T> {
   itemsPerPage?: number;
   errorMessage?: string;
@@ -174,6 +179,62 @@ export function useInfiniteResource<T>(
     return load(1, false);
   }, [load]);
 
+  /**
+   * Re-read the rows already on screen, keeping their number, without the
+   * spinners or the jump back to page one that `reload` brings.
+   *
+   * For the way back to a route that was kept mounted. Keeping what the diver
+   * had is the point of not reloading there, but what they had can be wrong by
+   * then: a dive logged from `/dives/new` or deleted from a detail page never
+   * reaches this list, and a diver who returned to find their new dive missing
+   * would reasonably think it had not saved. So the rows are re-read in place -
+   * same count, same scroll, contents caught up.
+   *
+   * Asked for in whole pages of `REVALIDATE_PAGE_SIZE` rather than one row at a
+   * time: a list six pages deep is one request, and the loop only runs for a
+   * diver who has scrolled past a hundred rows.
+   */
+  const revalidate = useCallback(async () => {
+    const loaded = itemsRef.current.length;
+    if (loaded === 0) return;
+
+    const requestId = latestRequest.current + 1;
+    latestRequest.current = requestId;
+
+    try {
+      const identify = keyOfRef.current;
+      const seen = new Set<string>();
+      const rows: T[] = [];
+      let response: PaginatedResponse<T> | null = null;
+
+      for (let page = 1; rows.length < loaded; page += 1) {
+        response = await fetchFn(page, REVALIDATE_PAGE_SIZE);
+        if (latestRequest.current !== requestId) return;
+        for (const item of response.data) {
+          const key = identify(item);
+          if (seen.has(key)) continue;
+          seen.add(key);
+          rows.push(item);
+        }
+        if (!response.has_more) break;
+      }
+      if (!response) return;
+
+      commitItems(rows.slice(0, Math.max(loaded, rows.length)));
+      setTotalCount(response.total_count);
+      // The rows held now, not the ones asked for: a list that shrank server-side
+      // has a nearer boundary, and `loadMore` must ask for the page containing it.
+      nextPage.current = Math.floor(rows.length / itemsPerPage) + 1;
+      setHasMore(rows.length < response.total_count);
+    } catch (error) {
+      // The rows on screen stay: they are still the best answer available, and a
+      // re-read the diver did not ask for has no business toasting at them.
+      if (latestRequest.current === requestId) {
+        console.error(errorMessage, error);
+      }
+    }
+  }, [fetchFn, itemsPerPage, errorMessage, commitItems]);
+
   const loadMore = useCallback(() => {
     if (!hasMore || isFetching.current) return;
     return load(nextPage.current, true);
@@ -269,6 +330,18 @@ export function useInfiniteResource<T>(
   useEffectOnChange(() => {
     if (enabled) reload();
   }, [enabled, reload]);
+
+  // The other half of that guard. Not reloading is what keeps the diver's place;
+  // re-reading in place is what keeps the rows true - see `revalidate`.
+  useEffect(() => {
+    if (!enabled) return;
+    // A no-op before the first load has committed anything, which is what makes
+    // this safe to run on mount beside the load itself.
+    void revalidate();
+    // Deliberately once per effect creation, which under `<Activity>` is once per
+    // return to the route. `revalidate` is stable and is not a trigger.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled]);
 
   return {
     items,

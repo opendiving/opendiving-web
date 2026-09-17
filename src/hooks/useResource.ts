@@ -52,20 +52,30 @@ export function useResource<T>(
     onLoadedRef.current = onLoaded;
   });
 
-  // Re-reads the resource *without* touching `isLoading`, so a refresh after an
-  // edit swaps the card that changed instead of blanking the page into a spinner.
-  // A failure here is non-fatal - whatever prompted the refresh already succeeded -
-  // so it doesn't redirect.
-  const refetch = useCallback(async () => {
-    if (!id) return;
-    try {
-      const data = await fetchFn(id);
-      setResource(data);
-      onLoadedRef.current?.(data);
-    } catch (error) {
-      console.error(errorMessage, error);
-    }
-  }, [id, fetchFn, errorMessage]);
+  // Re-reads the resource *without* touching `isLoading`, so a refresh swaps the card
+  // that changed instead of blanking the page into a spinner. A failure here is
+  // non-fatal - whatever prompted the refresh already succeeded - so it doesn't
+  // redirect.
+  //
+  // `seed` is what separates the two callers. A refresh the page asked for after its
+  // own edit wants `onLoaded` to run, so a form follows the record; a re-read on the
+  // way back to a kept-mounted route does not, because the diver may have typed into
+  // that form since and re-seeding would discard it.
+  const reread = useCallback(
+    async (seed: boolean) => {
+      if (!id) return;
+      try {
+        const data = await fetchFn(id);
+        setResource(data);
+        if (seed) onLoadedRef.current?.(data);
+      } catch (error) {
+        console.error(errorMessage, error);
+      }
+    },
+    [id, fetchFn, errorMessage],
+  );
+
+  const refetch = useCallback(() => reread(true), [reread]);
 
   // What the effect below last *finished* loading. A route the diver has left is kept
   // mounted, and its effects are destroyed on hide and re-created on show - so without
@@ -85,6 +95,12 @@ export function useResource<T>(
       loadedFor.current[0] === key[0] &&
       loadedFor.current[1] === key[1]
     ) {
+      // A return to a route that was kept mounted, where the page is already drawn.
+      // Re-read rather than skip: an edit saved from `/dives/[id]/edit` pushes back
+      // here, and a page that only trusted what it was holding would show the dive as
+      // it was before the save. Quietly, though - no `isLoading`, so the record does
+      // not blank into its skeleton, and no re-seed, so a form keeps what was typed.
+      void reread(false);
       return;
     }
     let cancelled = false;
@@ -118,7 +134,7 @@ export function useResource<T>(
     return () => {
       cancelled = true;
     };
-  }, [enabled, id, fetchFn, errorMessage, redirectTo, toast, router]);
+  }, [enabled, id, fetchFn, errorMessage, redirectTo, toast, router, reread]);
 
   return { id, resource, setResource, isLoading, refetch };
 }

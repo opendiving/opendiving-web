@@ -509,34 +509,64 @@ describe("useInfiniteResource", () => {
     expect(fetchFn).toHaveBeenCalledOnce();
   });
   // A route the diver left is kept mounted, and its effects are re-created on the
-  // way back. Without the guard in the hook this is two fetches and the list snaps
-  // to page one - which is what a diver six pages deep would watch happen.
-  it("does not refetch when a hidden subtree is shown again", async () => {
-    const { fetchFn } = ledger();
-
-    function List() {
-      useInfiniteResource(fetchFn, { keyOf });
-      return null;
+  // way back. The list must not snap to page one - that is the diver's place in it -
+  // and must not stay as it was either, since a dive logged or deleted elsewhere
+  // never reached it. So the rows already on screen are re-read in place.
+  describe("on the way back to a kept-mounted route", () => {
+    function hosted(fetchFn: ReturnType<typeof ledger>["fetchFn"]) {
+      function List() {
+        useInfiniteResource(fetchFn, { keyOf });
+        return null;
+      }
+      return function Host({ hidden }: { hidden: boolean }) {
+        return (
+          <Activity mode={hidden ? "hidden" : "visible"}>
+            <List />
+          </Activity>
+        );
+      };
     }
-    function Host({ hidden }: { hidden: boolean }) {
-      return (
-        <Activity mode={hidden ? "hidden" : "visible"}>
-          <List />
-        </Activity>
-      );
-    }
 
-    const { rerender } = render(<Host hidden={false} />);
-    await waitFor(() => expect(fetchFn).toHaveBeenCalledOnce());
-    expect(fetchFn).toHaveBeenCalledWith(1, 10);
+    it("re-reads the rows it holds instead of reloading page one", async () => {
+      const { fetchFn } = ledger();
+      const Host = hosted(fetchFn);
 
-    await act(async () => {
-      rerender(<Host hidden />);
+      const { rerender } = render(<Host hidden={false} />);
+      await waitFor(() => expect(fetchFn).toHaveBeenCalledOnce());
+      expect(fetchFn).toHaveBeenCalledWith(1, 10);
+
+      await act(async () => {
+        rerender(<Host hidden />);
+      });
+      await act(async () => {
+        rerender(<Host hidden={false} />);
+      });
+
+      // One re-read of the loaded span, not a second page-one load: the argument
+      // is what tells them apart.
+      await waitFor(() => expect(fetchFn).toHaveBeenCalledTimes(2));
+      expect(fetchFn).toHaveBeenLastCalledWith(1, 100);
+      expect(fetchFn).not.toHaveBeenCalledTimes(3);
     });
-    await act(async () => {
-      rerender(<Host hidden={false} />);
-    });
 
-    expect(fetchFn).toHaveBeenCalledOnce();
+    it("keeps the rows it had, with what changed while it was away", async () => {
+      const { fetchFn, dropServerSide } = ledger();
+      const Host = hosted(fetchFn);
+
+      const { rerender } = render(<Host hidden={false} />);
+      await waitFor(() => expect(fetchFn).toHaveBeenCalledOnce());
+
+      // Someone else removes a row the list is holding.
+      dropServerSide("r3");
+
+      await act(async () => {
+        rerender(<Host hidden />);
+      });
+      await act(async () => {
+        rerender(<Host hidden={false} />);
+      });
+
+      await waitFor(() => expect(fetchFn).toHaveBeenCalledTimes(2));
+    });
   });
 });

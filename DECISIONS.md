@@ -340,15 +340,16 @@ _Rejected:_ a hash-based or SRI CSP.
 With Cache Components on, the router keeps the route a diver left mounted under
 `<Activity mode="hidden">`, whose effects are destroyed on hide and re-created on show. State
 survives; an effect that loads on mount runs again on the way back and overwrites it. A list
-scrolled six pages deep snaps to its first page, a half-typed settings form repaints from the
-account, an open dialog blanks the fields still in it.
+scrolled six pages deep snaps to page one, a half-typed form repaints from the account, an open
+dialog blanks the fields still in it.
 
-`hooks/useEffectOnChange.ts` is the guard: it holds the dependencies the effect last ran for and
-skips a re-run against the same ones, so a genuinely new list or a saved account still loads. An
-effect whose work can be interrupted cannot use it - the hide abandons the request and the show
-would skip it - so `useResource` records its key when the load settles instead.
+`hooks/useEffectOnChange.ts` holds the dependencies an effect last ran for and skips a re-run
+against the same ones. Skipping alone would leave the route showing what it showed before, which a
+dive logged or deleted elsewhere has already made wrong - so the data hooks re-read instead,
+quietly: `useResource` without its loading state or its `onLoaded` re-seed, `useInfiniteResource`
+over the rows on screen rather than back at page one.
 
-_Rejected:_ counting mounts, which cannot tell a return from something that genuinely changed.
+_Rejected:_ counting mounts, which cannot tell a return from a genuine change.
 
 ## Unified auth flow: one passwordless `AuthForm`, no password-based `/signin`/`/signup` pair
 
