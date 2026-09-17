@@ -49,6 +49,17 @@ import { UserAvatar } from "@/components/ui/user-avatar";
 const INK = "print:text-black";
 const MUTED = `text-sm text-muted-foreground ${INK}`;
 
+// A card image is the only thing on this sheet that is not a line of text, so it gets
+// a column of its own on the left and every line starts clear of it. `SLOT` is that
+// column - held even where there is no picture, so the text below a diver's avatar
+// and the text beside a c-card start at the same place - and `GUTTER` is the same
+// width plus the gap, for the blocks that have no image to put in it.
+const SLOT = "w-16 shrink-0 sm:w-24";
+const GUTTER = "ml-20 sm:ml-28";
+// A card row lives inside a section that already carries `GUTTER`, and hangs its own
+// image back out into it.
+const NEGATIVE_GUTTER = "-ml-20 sm:-ml-28";
+
 export interface CheckInPageFrameProps {
   /** Every card the diver holds, in the list endpoint's own order. */
   certifications?: Certification[];
@@ -186,14 +197,17 @@ export function CheckInPageFrame({
             {/* Only a picture the diver actually stored. The initials Radix falls
                 back to are a placeholder for a face on screen; printed at the top of
                 a sheet handed to a stranger they are a monogram nobody chose, and a
-                bare name reads better than a circle with "SR" in it. */}
-            {user.avatar_sha256 && (
-              <UserAvatar
-                name={user.name}
-                avatarSha={user.avatar_sha256}
-                size={64}
-              />
-            )}
+                bare name reads better than a circle with "SR" in it. The slot stays
+                either way, so the name sits over the c-cards' own column. */}
+            <div className={SLOT}>
+              {user.avatar_sha256 && (
+                <UserAvatar
+                  name={user.name}
+                  avatarSha={user.avatar_sha256}
+                  size={64}
+                />
+              )}
+            </div>
             <h2 className={`text-2xl font-semibold ${INK}`}>{user.name}</h2>
             <div className="ml-auto">
               <EditControl
@@ -208,7 +222,7 @@ export function CheckInPageFrame({
               is always there, and dropped from the print when it holds nothing. A
               `<dl>` with every row absent is 24px of blank page on a sheet handed to
               somebody, and an "empty" heading is worse. */}
-          <div className={hasAboutYou ? undefined : "print:hidden"}>
+          <div className={cn(GUTTER, !hasAboutYou && "print:hidden")}>
             {hasAboutYou ? (
               <DetailList>
                 <Detail
@@ -227,11 +241,10 @@ export function CheckInPageFrame({
           <Section
             title="Certifications"
             busy={isLoading}
-            className={
-              isLoading || certifications.length > 0
-                ? undefined
-                : "print:hidden"
-            }
+            className={cn(
+              GUTTER,
+              !isLoading && certifications.length === 0 && "print:hidden",
+            )}
             action={
               <Button
                 type="button"
@@ -285,7 +298,7 @@ export function CheckInPageFrame({
             // screen regardless, because the control that emptied it is the only
             // way back to "Use logged figures", and a section that removed itself
             // would leave a correction in force with nothing on screen saying so.
-            className={hasFigures ? undefined : "print:hidden"}
+            className={cn(GUTTER, !hasFigures && "print:hidden")}
             action={
               <EditControl
                 label="Correct these figures"
@@ -334,7 +347,7 @@ export function CheckInPageFrame({
               person to call only if something goes wrong. */}
           <Section
             title="Dive insurance"
-            className={hasInsurance ? undefined : "print:hidden"}
+            className={cn(GUTTER, !hasInsurance && "print:hidden")}
             action={
               <EditControl
                 label="Edit your dive insurance"
@@ -364,7 +377,7 @@ export function CheckInPageFrame({
 
           <Section
             title="Emergency contact"
-            className={hasEmergencyContact ? undefined : "print:hidden"}
+            className={cn(GUTTER, !hasEmergencyContact && "print:hidden")}
             action={
               <EditControl
                 label="Edit your emergency contact"
@@ -386,7 +399,7 @@ export function CheckInPageFrame({
             )}
           </Section>
 
-          <p className={`text-xs text-muted-foreground ${INK}`}>
+          <p className={cn("text-xs text-muted-foreground", INK, GUTTER)}>
             Printed {formatDateOnly(todayIsoDate())} from {user.name}&rsquo;s
             own dive log. These are entries this diver made; a certification is
             verified with the agency that issued it, not here.
@@ -455,10 +468,14 @@ function CertificationSummary({
   return (
     // Keeps a card off a page boundary: the alternative is a printed summary whose
     // last certification is cut in half, which is the one thing a desk cannot read.
-    <div className="flex gap-4 break-inside-avoid">
+    <div className={cn("flex gap-4 break-inside-avoid", NEGATIVE_GUTTER)}>
       {isPdf ? (
         <div
-          className={`flex h-16 w-24 shrink-0 flex-col items-center justify-center gap-1 rounded-md border bg-muted px-1 text-center text-muted-foreground print:bg-white ${INK}`}
+          className={cn(
+            SLOT,
+            "flex h-12 flex-col items-center justify-center gap-1 rounded-md border bg-muted px-1 text-center text-muted-foreground sm:h-16 print:bg-white",
+            INK,
+          )}
         >
           <FileText className="h-4 w-4" aria-hidden />
           <span className="text-[10px] leading-tight">card on file as PDF</span>
@@ -470,7 +487,7 @@ function CertificationSummary({
             side="front"
             file={front}
             compact
-            className="h-16 w-24 shrink-0"
+            className={cn(SLOT, "h-12 sm:h-16")}
           />
         )
       )}
