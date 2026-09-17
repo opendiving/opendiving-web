@@ -89,8 +89,8 @@ const loaded = (over: Parameters<typeof CheckInPageFrame>[0] = {}) => (
   <CheckInPageFrame isLoading={false} stats={stats} {...over} />
 );
 
-// Everything a desk asks for, which is what leaves the suggestion panel off the
-// screen - it would otherwise sit above the summary in every test here.
+// Everything a desk asks for. Most tests here are about something other than an empty
+// group, and this is what keeps every section's "Not filled in yet." out of their way.
 const COMPLETE: Partial<User> = {
   date_of_birth: "1988-04-02",
   phone: "+44 7700 900000",
@@ -192,6 +192,20 @@ describe("what the summary prints", () => {
     expect(
       screen.getByRole("button", { name: "Edit your emergency contact" }),
     ).toBeInTheDocument();
+  });
+
+  it("never reads a failed fetch as an empty account", () => {
+    Object.assign(auth.user, COMPLETE);
+    // A rejected list leaves the same empty array a diver with no cards has, and a
+    // rejected `/user/dive-stats` the same null - so neither section may claim
+    // emptiness here. The banner above says what happened and offers the retry.
+    render(loaded({ loadFailed: true, stats: null }));
+
+    expect(screen.queryByText("No certifications yet.")).toBeNull();
+    const diving = screen.getByText("Diving").closest("section");
+    expect(
+      within(diving as HTMLElement).queryByText("Not filled in yet."),
+    ).toBeNull();
   });
 
   it("says so where a diver holds no cards at all", () => {

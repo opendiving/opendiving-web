@@ -27,10 +27,11 @@ interface EmailChangeCardProps {
   currentEmail: string;
 }
 
-// Email can't be edited as a plain field (see `lib/validations/settings.ts`'s
-// `profileSchema`) - changing it requires confirming ownership of the new address
-// via a magic link first (`authAPI.requestEmailChange`/`verifyEmailChange`), so this
-// is its own small request/confirm form rather than part of the profile form.
+// Email can't be edited as a plain field, which is why `USER_FIELDS` in
+// `lib/validations/user-fields.ts` leaves it out: changing it requires confirming
+// ownership of the new address via a magic link first
+// (`authAPI.requestEmailChange`/`verifyEmailChange`), so this is its own small
+// request/confirm form rather than a box on the profile form.
 // Always operates on the signed-in caller's own account - no uuid prop needed.
 export function EmailChangeCard({ currentEmail }: EmailChangeCardProps) {
   const [sentTo, setSentTo] = useState<string | null>(null);

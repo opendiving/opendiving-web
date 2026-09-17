@@ -369,13 +369,12 @@ Figma's fallback `<path>` beside the `<foreignObject>` paints solid black over t
 
 ## Changing your account email is a request/confirm flow, not a plain field edit
 
-`lib/validations/settings.ts`'s `profileSchema` has no `email` field, matching the API's
-`UserUpdate`; `app/settings/page.tsx`'s profile form touches only name/username. Email lives in
-`components/settings/EmailChangeCard.tsx`: enter a new address, submit via
-`authAPI.requestEmailChange(newEmail)`, get the same generic "check your new email" message even for
-a taken address, and the change applies only once the emailed link is confirmed.
-`POST /user/email-change/request` always acts on the caller's own account, so there is no address to
-name but the new one.
+`USER_FIELDS` in `lib/validations/user-fields.ts` has no `email`, matching the API's `UserUpdate`;
+`ProfileCard` touches only name/username. Email lives in `components/settings/EmailChangeCard.tsx`:
+enter a new address, submit via `authAPI.requestEmailChange(newEmail)`, get the same generic "check
+your new email" message even for a taken address, and the change applies only once the emailed link
+is confirmed. `POST /user/email-change/request` always acts on the caller's own account, so there is
+no address to name but the new one.
 
 The field is always visible with one full-width "Send confirmation link" button — no edit toggle, no
 cancel — matching the Profile Information card beside it. Both cards use `flex flex-col h-full` /
@@ -1203,9 +1202,9 @@ either side. `/checkin` renders it too, so the two agree about which card leads.
 There is no Gravatar line: `/settings` shows the avatar itself, with the controls that change it
 (see "Avatars are this instance's own, and there is no Gravatar fallback").
 
-The username hint under the profile form states the rule the field enforces (`profileSchema`:
-lowercase letters and numbers, unique), not "used in your profile URL and for mentions": there is no
-profile URL and mentions are not a feature.
+The username hint under the profile form states the rule the field enforces
+(`FIELD_SCHEMAS.username`: lowercase letters and numbers, unique), not "used in your profile URL and
+for mentions": there is no profile URL and mentions are not a feature.
 
 ## Dive numbering: the suggestion follows the date, and only the diver renumbers
 

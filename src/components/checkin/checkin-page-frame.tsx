@@ -312,7 +312,12 @@ export function CheckInPageFrame({
                 ))}
               </div>
             ) : certifications.length === 0 ? (
-              <EmptyNote>No certifications yet.</EmptyNote>
+              // Silent rather than "No certifications yet." when the list never
+              // arrived: an empty array is what a rejected fetch leaves behind too,
+              // and telling a diver who holds six cards that they hold none is the
+              // page inventing a fact about the account out of a network failure.
+              // The banner above already says what happened and offers the retry.
+              !loadFailed && <EmptyNote>No certifications yet.</EmptyNote>
             ) : (
               <div className="space-y-4">
                 {/* The list endpoint's own order, taken as it arrives rather
@@ -375,7 +380,12 @@ export function CheckInPageFrame({
                 />
               </DetailList>
             )}
-            {!hasFigures && <EmptyNote>Not filled in yet.</EmptyNote>}
+            {/* Same rule: a rejected `/user/dive-stats` leaves `stats` null, which is
+                indistinguishable here from a diver who has filled nothing in -
+                except that it isn't, and only `loadFailed` knows. */}
+            {!hasFigures && !loadFailed && (
+              <EmptyNote>Not filled in yet.</EmptyNote>
+            )}
             {corrected && (
               <p className="text-xs text-muted-foreground print:hidden">
                 Corrected for this summary. Nothing was saved to your log.
