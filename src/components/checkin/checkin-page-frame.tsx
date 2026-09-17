@@ -54,11 +54,22 @@ const MUTED = `text-sm text-muted-foreground ${INK}`;
 // column - held even where there is no picture, so the text below a diver's avatar
 // and the text beside a c-card start at the same place - and `GUTTER` is the same
 // width plus the gap, for the blocks that have no image to put in it.
-const SLOT = "w-16 shrink-0 sm:w-24";
-const GUTTER = "ml-20 sm:ml-28";
+//
+// Each carries a `print:` twin of its `sm:` value. Tailwind's `sm:` is a min-width
+// query, and under print media the width is the paper's - so a narrow sheet, or a
+// browser scaling one down, would otherwise drop the whole column to its phone size
+// on paper alone, and only half of what has to line up would move.
+const SLOT = "w-16 shrink-0 sm:w-24 print:w-24";
+const GUTTER = "ml-20 sm:ml-28 print:ml-28";
 // A card row lives inside a section that already carries `GUTTER`, and hangs its own
 // image back out into it.
-const NEGATIVE_GUTTER = "-ml-20 sm:-ml-28";
+const NEGATIVE_GUTTER = "-ml-20 sm:-ml-28 print:-ml-28";
+
+// The page header is outside the card, so on paper - where it is the only thing above
+// the sheet that still prints - landing on the sheet's own left edge means clearing
+// `CardContent`'s `p-6` as well as `GUTTER`: 1.5rem + 7rem. On screen it stays where
+// every other page's heading is, at the page's edge.
+const PRINTED_HEADER_GUTTER = "print:ml-[8.5rem]";
 
 export interface CheckInPageFrameProps {
   /** Every card the diver holds, in the list endpoint's own order. */
@@ -142,7 +153,12 @@ export function CheckInPageFrame({
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
+      <div
+        className={cn(
+          "flex flex-wrap items-start justify-between gap-4",
+          PRINTED_HEADER_GUTTER,
+        )}
+      >
         <div>
           {/* "Diver" earns its place on the printed sheet rather than on screen:
               the line under this one is `print:hidden`, so the heading is the only
@@ -199,7 +215,10 @@ export function CheckInPageFrame({
                 a sheet handed to a stranger they are a monogram nobody chose, and a
                 bare name reads better than a circle with "SR" in it. The slot stays
                 either way, so the name sits over the c-cards' own column. */}
-            <div className={SLOT}>
+            {/* Centred rather than flush left: the avatar is narrower than a c-card
+                and everything else in this column is one, so centring is what puts
+                it on the same axis as the cards below it. */}
+            <div className={cn(SLOT, "flex justify-center")}>
               {user.avatar_sha256 && (
                 <UserAvatar
                   name={user.name}
@@ -473,7 +492,7 @@ function CertificationSummary({
         <div
           className={cn(
             SLOT,
-            "flex h-12 flex-col items-center justify-center gap-1 rounded-md border bg-muted px-1 text-center text-muted-foreground sm:h-16 print:bg-white",
+            "flex h-12 flex-col items-center justify-center gap-1 rounded-md border bg-muted px-1 text-center text-muted-foreground sm:h-16 print:h-16 print:bg-white",
             INK,
           )}
         >
@@ -487,7 +506,7 @@ function CertificationSummary({
             side="front"
             file={front}
             compact
-            className={cn(SLOT, "h-12 sm:h-16")}
+            className={cn(SLOT, "h-12 sm:h-16 print:h-16")}
           />
         )
       )}
@@ -612,7 +631,7 @@ function Section({
 // the alignment back.
 function DetailList({ children }: { children: ReactNode }) {
   return (
-    <dl className="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-1 sm:grid-cols-[minmax(8rem,auto)_1fr]">
+    <dl className="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-1 sm:grid-cols-[minmax(8rem,auto)_1fr] print:grid-cols-[minmax(8rem,auto)_1fr]">
       {children}
     </dl>
   );
