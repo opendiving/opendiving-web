@@ -93,13 +93,18 @@ beforeEach(() => {
   getDives.mockReset().mockResolvedValue(noDives);
 });
 
+// Keyed on the retry control rather than on the banner's prose: the sentence carries
+// a typographic apostrophe, and a straight one in the pattern matches nothing and
+// asserts nothing.
+const retry = () => screen.queryByRole("button", { name: "Try again" });
+
 describe("CheckInPage", () => {
   it("draws the whole summary when every request answers", async () => {
     render(<CheckInPage />);
 
     expect(await screen.findByText("PADI Rescue Diver")).toBeInTheDocument();
     expect(screen.getByText("142")).toBeInTheDocument();
-    expect(screen.queryByText(/didn't load/)).toBeNull();
+    expect(retry()).toBeNull();
   });
 
   it("keeps the c-cards when the dive stats fail, and says the summary is short", async () => {
@@ -109,7 +114,10 @@ describe("CheckInPage", () => {
     // The half a dive shop actually reads survives a failure that has nothing to
     // do with it.
     expect(await screen.findByText("PADI Rescue Diver")).toBeInTheDocument();
-    expect(screen.getByText(/some of this didn’t load/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/the summary below is incomplete/i),
+    ).toBeInTheDocument();
+    expect(retry()).not.toBeNull();
   });
 
   it("keeps the dive count when the certifications fail", async () => {
@@ -129,6 +137,6 @@ describe("CheckInPage", () => {
     );
 
     expect(await screen.findByText("PADI Rescue Diver")).toBeInTheDocument();
-    expect(screen.queryByText(/didn’t load/i)).toBeNull();
+    expect(retry()).toBeNull();
   });
 });
