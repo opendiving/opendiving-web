@@ -170,9 +170,10 @@ const NO_GREY_UP_TO_MS = 100;
 
 // How long after the click a fallback still counts as having painted *at* it. A frame
 // drawn from what the browser is already holding lands in a frame or two; measured, the
-// boundaries here mutate `<main>` between 10 and 19 ms after the click at every latency.
-// Generous enough for a busy machine, and an order of magnitude under the round trip it
-// is there to beat.
+// boundaries here mutate `<main>` within 40 ms of the click at every latency, most of
+// them inside 20 - `/dives/new` is the slow one and pays about 25 ms more under the
+// flags than without them. Generous enough for a busy machine, and an order of magnitude
+// under the round trip it is there to beat.
 const FRAME_BUDGET_MS = 60;
 
 const RUNS = Number(process.env.RUNS ?? 1);

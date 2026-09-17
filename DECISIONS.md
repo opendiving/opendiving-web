@@ -3432,19 +3432,18 @@ With the flag set, `app/robots.ts` answers `Disallow: /` and `src/proxy.ts` adds
 `X-Robots-Tag: noindex, nofollow` to every page. Doing only the first is the common mistake:
 `robots.txt` asks a crawler not to fetch, which is no promise not to list. A URL learned elsewhere
 can be indexed unfetched, and a page never fetched is one whose `noindex` is never seen, so the two
-directives cover disjoint cases. `robots.ts` needs `export const dynamic = "force-dynamic"`: Next
-prerenders a route handler that reads nothing request-scoped, which would resolve `WEB_NOINDEX` on
-the build machine and freeze the answer into the image, the trap `lib/runtime-config.ts` exists to
-avoid, arriving through a file convention. The default is allow: no `robots.txt` reads as no
-restriction.
+directives cover disjoint cases. `robots.ts` needs `await connection()`: Next prerenders a route
+handler that reads nothing request-scoped, which would resolve `WEB_NOINDEX` on the build machine
+and freeze the answer into the image, the trap `lib/runtime-config.ts` exists to avoid, arriving
+through a file convention. The default is allow: no `robots.txt` reads as no restriction.
 
 ## `/healthz` is shallow on purpose
 
 The container healthcheck in `Dockerfile` asks this route, which reports only that the process
 serves HTTP. It checks neither Postgres nor Redis: the web container talks to neither, and a slow
 database it never uses must not restart a container that renders fine; the API has its own readiness
-probe. `force-dynamic`, because a handler with no request-time API is prerendered and served from
-disk, and a health endpoint running none of the app's code is a strange thing to trust. The
+probe. `await connection()`, because a handler with no request-time API is prerendered and served
+from disk, and a health endpoint running none of the app's code is a strange thing to trust. The
 `src/proxy.ts` matcher excludes it, like `api/`: a policy about scripts and styles says nothing
 about two words of text, and it keeps a fresh nonce off a path hit every thirty seconds. The check
 is a `node -e` one-liner in exec form: `node:24-alpine` ships neither `curl` nor `wget`, and with no
@@ -6034,8 +6033,9 @@ byte-identical because the block renders whole or not at all.
 
 The switch is `project_operated` from `GET /config`, nothing else. `lib/api/config.server.ts` asks
 the API at `API_INTERNAL_URL`; every outcome but `true` is `false`, with no error path, so a
-self-hosted copy with its API down renders unchanged. Both pages set `dynamic = "force-dynamic"`: a
-CI-built image has no API to ask and would bake the failed answer in.
+self-hosted copy with its API down renders unchanged. That module awaits `connection()` before the
+fetch, which covers both pages at once: a CI-built image has no API to ask and would bake the failed
+answer in.
 
 `lib/operator.ts` holds name, email and jurisdiction; no postal address, deliberately. The beta-end
 export window is 90 days and §7's deletion ceiling is 30: different things, so do not harmonise
