@@ -6541,9 +6541,11 @@ rejected because the long CTAs (`Log A Dive For This Course`) read as headings t
 
 ## One `EmptyState`, and the filtered list is not one
 
-`components/ui/empty-state.tsx` draws every "nothing here yet": icon, `No X yet` heading, a muted
-line, one action. Every list page and card goes through it, so two cards side by side on the
-dashboard cannot centre their contents at different heights.
+`components/ui/empty-state.tsx` draws the centred "nothing here yet" a collection of records shows
+when it has none: icon, `No X yet` heading, a muted line, one action. Every list page and every card
+listing records goes through it, so two cards side by side on the dashboard cannot centre their
+contents at different heights. A card whose empty list is a one-line aside rather than a screen of
+its own — a passkey list, a service history — keeps its muted `<p>`.
 
 A list filtered to nothing is not empty and does not use it — `No courses match that name.` keeps a
 bare centred line, because an icon and an `Add your first course` beneath it would answer a question
