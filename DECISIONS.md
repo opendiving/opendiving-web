@@ -108,12 +108,12 @@ on a day cell.
 `useCoarsePointer` - `(hover: none) and (pointer: coarse)` - says a finger is driving, and the text
 box and calendar elsewhere. Pointer, not viewport: a tablet at desktop width is still a finger. Its
 server snapshot is `false`, so the desktop branch renders server-side and a phone switches after
-hydration; rendering both would put two controls under one `FormControl` id.
+hydration; rendering both would put two controls under one `FormControl` id. `DatePicker` keeps its
+clear button: the iOS picker has none.
 
 The date-time field is two inputs, not `datetime-local`, which Android chains two dialogs for and
 iOS strips the seconds from when only the date changes. A date change rewrites the date alone, so an
-imported dive keeps its seconds; a time change writes `HH:mm:00`, since no wheel offers seconds. The
-clear button stays: the iOS picker has none.
+imported dive keeps its seconds; a time change writes `HH:mm:00`, since no wheel offers seconds.
 
 ## FastAPI 422 errors can be an array, not a string - never render `detail` directly
 
