@@ -8,7 +8,12 @@ import { QuickCreateProvider } from "@/components/layout/quick-create";
 // Routes that render their own standalone, chrome-free layout. They share
 // `StandaloneShell`, which carries the `<main>` element this component would
 // otherwise be the app's only source of.
-const NO_CHROME_ROUTES = [
+//
+// Exported because it is half the definition of a *destination* - a route a
+// signed-in diver navigates to inside the chrome - which is what decides where a
+// `loading.tsx` belongs. `loading-placement.test.ts` derives that set from here
+// rather than listing it.
+export const NO_CHROME_ROUTES = [
   "/signin",
   "/onboarding",
   // The offer to undo a deletion, and `/onboarding`'s counterpart in every way that

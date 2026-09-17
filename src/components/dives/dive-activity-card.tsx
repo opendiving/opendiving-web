@@ -32,6 +32,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ChartSkeleton } from "@/components/dives/chart-skeleton";
+import type { ChartCardProps } from "@/components/dives/chart-card-props";
 import { ChartStat } from "@/components/dives/chart-stat";
 import { DiveActivityChart } from "@/components/dives/dive-activity-chart";
 import { diveStatsAPI, DiveActivityPoint } from "@/lib/api/dive-stats";
@@ -72,7 +73,7 @@ import { cn } from "@/lib/utils";
 // the start of a day that has diving in it. Everything downstream of that -
 // stepping to the next period with dives, the dropdown of periods worth offering,
 // restoring the remembered one - is the same code in both cards.
-export function DiveActivityCard() {
+export function DiveActivityCard({ pending = false }: ChartCardProps) {
   const [points, setPoints] = useState<DiveActivityPoint[] | null>(null);
   // This visit's choices, both null until the diver makes one - which is what
   // leaves room for the remembered view underneath. The anchor is always the
@@ -125,8 +126,8 @@ export function DiveActivityCard() {
       }
     };
 
-    fetchActivity();
-  }, []);
+    if (!pending) fetchActivity();
+  }, [pending]);
 
   const days = useMemo(() => activityDays(points ?? []), [points]);
 

@@ -78,7 +78,13 @@ export function InviteRequestsTable({
   }
 
   return (
-    <Table>
+    <Table
+      // Busy on the outside, hidden on each placeholder row within - the split
+      // `ListRowsSkeleton` documents, applied here because the rows themselves
+      // are `aria-hidden` and would otherwise leave a reader with a table that
+      // is silently empty rather than one that is loading.
+      aria-busy={requests.length === 0 || undefined}
+    >
       <TableHeader>
         <TableRow>
           <TableHead className="w-10">

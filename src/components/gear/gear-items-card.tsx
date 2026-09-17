@@ -28,7 +28,7 @@ import {
   Trash2,
 } from "lucide-react";
 
-interface GearItemsCardProps {
+export interface GearItemsCardProps {
   items: GearItem[];
   isLoading: boolean;
   /** True while a further page is in flight, as opposed to the first. */
@@ -116,7 +116,13 @@ export function GearItemsCard({
             </Button>
           </div>
         ) : (
-          <Table>
+          <Table
+            // Busy on the outside, hidden on each placeholder row within - the
+            // split `ListRowsSkeleton` documents, applied here because the rows
+            // themselves are `aria-hidden` and would otherwise leave a reader with
+            // a table that is silently empty rather than one that is loading.
+            aria-busy={items.length === 0 || undefined}
+          >
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>

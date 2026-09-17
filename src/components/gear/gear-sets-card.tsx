@@ -19,7 +19,7 @@ import { Edit, Loader2, Plus, Trash2 } from "lucide-react";
 import { useUnits } from "@/hooks/useUnits";
 import { formatWeight } from "@/lib/units";
 
-interface GearSetsCardProps {
+export interface GearSetsCardProps {
   sets: GearSet[];
   isLoading: boolean;
   /** True while a further page is in flight, as opposed to the first. */
@@ -88,7 +88,13 @@ export function GearSetsCard({
             </Button>
           </div>
         ) : (
-          <Table>
+          <Table
+            // Busy on the outside, hidden on each placeholder row within - the
+            // split `ListRowsSkeleton` documents, applied here because the rows
+            // themselves are `aria-hidden` and would otherwise leave a reader with
+            // a table that is silently empty rather than one that is loading.
+            aria-busy={sets.length === 0 || undefined}
+          >
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
