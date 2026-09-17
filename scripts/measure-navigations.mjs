@@ -6,6 +6,7 @@
 //
 //   LATENCIES=0,100,300 npm run measure-navigations -- you@example.com
 //   RUNS=2 npm run measure-navigations -- you@example.com       # figures joined with `·`
+//   REDUCED_MOTION=1 npm run measure-navigations -- you@example.com
 //
 // Chromium comes from CHROME_PATH, or from the usual Chrome install; playwright-core
 // only drives it, so `npm install` never downloads a browser. Signing in works the same
@@ -51,14 +52,24 @@
 //
 //   RSC round trip ends   the navigation's own RSC request finishes (`responseEnd`)
 //   Screen changes        the first DOM mutation under `<main>`
+//   First visible grey    the first animation frame on which any skeleton element under
+//                         `<main>` has a computed opacity above zero
 //   First API call done   the first `/api/v1/` response that reached the server finishes
 //   Settled               the last DOM mutation under `<main>`: the screen stopped moving
 //   Prefetches            what the *source* page fetched before the click: requests
 //                         carrying `next-router-prefetch` or `next-router-segment-prefetch`
 //
-// The claim these numbers exist to check is the *order*: the round trip ends before the
-// screen changes, which is the whole "nothing happens" phase of a click. The figures are
-// the calibration and move between runs; the order does not.
+// The two change columns are both here because they diverge, and the divergence is the
+// point. A route fallback is inserted at the click and held at `opacity: 0`, so the DOM
+// mutates immediately while nothing is *seen* for the length of the hold - a mutation
+// timestamp is not a moment anything was visible, and a change that moved only the first
+// column changed nothing a diver sees.
+//
+// What these numbers exist to check is the *order*, and it now differs by row. Where the
+// destination is behind a loading boundary the screen changes at the click, before the
+// round trip ends. Where it is not - a pager step, or a Back the router answers from its
+// own cache - the round trip still comes first, which is the "nothing happens" phase the
+// boundaries removed everywhere else. Each navigation below says which it is.
 //
 // Origin is a capture-phase `click` listener on `document`, so it is the click itself and
 // not the navigation the click eventually causes. The one navigation with no click - Back
@@ -66,6 +77,12 @@
 //
 // Latency comes from CDP `Network.emulateNetworkConditions` and is applied to the source
 // page's load as well as the navigation, so the prefetch traffic pays it too.
+//
+// `REDUCED_MOTION=1` runs the whole walk in a browser asking for reduced motion, where
+// every skeleton carries `motion-reduce:animate-none` and so has no hold at all: the
+// destination's frame paints at the click with its grey already visible. That is accepted
+// behaviour rather than a defect, and the run asserts it so a later change cannot alter it
+// in silence. The acceptance rules below invert for it.
 //
 // ------------------------------------------------------- timing the flagship's hop
 //
@@ -135,6 +152,17 @@ if (latencies.some((value) => !Number.isFinite(value) || value < 0)) {
   process.exit(1);
 }
 
+const REDUCED_MOTION = process.env.REDUCED_MOTION === "1";
+
+// The route fallback's hold, counted from the click - `src/lib/route-hold.ts`. Repeated
+// here because the script is asked to fail a reveal that beats it, and a browser is the
+// only thing that can read the app's own constant.
+const ROUTE_FALLBACK_HOLD_MS = 330;
+
+// The latencies at which the destination's data lands before the hold elapses, so a
+// diver sees no grey at all - which is what the boundaries are calibrated not to change.
+const NO_GREY_UP_TO_MS = 100;
+
 const RUNS = Number(process.env.RUNS ?? 1);
 if (!Number.isInteger(RUNS) || RUNS < 1) {
   console.error(
@@ -149,13 +177,18 @@ if (!Number.isInteger(RUNS) || RUNS < 1) {
 // opening a URL.
 //
 // The first three are the ones the timing story is told about. The fourth and fifth are
-// where a per-route loading fallback is expected to paint a *different* frame from the one
-// the source page drew. The sixth is Back, which is the case a kept-mounted route would
-// change and which no click can express.
+// where a per-route loading fallback paints a *different* frame from the one the source
+// page drew. The sixth is the form page whose whole wait is its own RSC response, and so
+// the one that decides how long the hold can be. The last is Back, which is the case a
+// kept-mounted route would change and which no click can express.
+//
+// `boundary` says whether the destination is behind a loading boundary that is *new* for
+// this navigation, which is what decides the order the row is held to.
 const NAVIGATIONS = [
   {
     id: "dives-gear",
     label: "Dives → Gear",
+    boundary: true,
     from: () => "/dives",
     target: (page) =>
       page.locator("header").getByRole("link", { name: "Gear", exact: true }),
@@ -163,31 +196,51 @@ const NAVIGATIONS = [
   {
     id: "dives-dive",
     label: "Dives → dive detail",
+    boundary: true,
     from: () => "/dives",
     target: (page) => diveLink(page),
   },
   {
     id: "dive-pager",
     label: "Dive → neighbouring dive (pager)",
+    // The `(detail)` slot is the same key for every dive, so nothing new mounts and the
+    // dive on screen holds - which is the invariant the pager depends on.
+    boundary: false,
     from: (subjects) => subjects.dive,
     target: (page) => pagerStep(page),
   },
   {
     id: "dashboard-dive",
     label: "Dashboard → dive detail",
+    boundary: true,
     from: () => "/dashboard",
     target: (page) => diveLink(page),
   },
   {
     id: "dive-edit",
     label: "Dive detail → its edit page",
+    boundary: true,
     from: (subjects) => subjects.dive,
     target: (page) =>
       page.locator("main").getByRole("link", { name: "Edit", exact: true }),
   },
   {
+    id: "dives-new",
+    label: "Dives → log a new dive",
+    // The one destination with no data wait of its own: it draws its form as soon as the
+    // auth check has settled, so its "data" is the RSC response and it is the shortest
+    // window the hold has to clear. Measured for that reason rather than for its traffic.
+    boundary: true,
+    from: () => "/dives",
+    target: (page) =>
+      page.locator("main").getByRole("link", { name: "Log New Dive" }),
+  },
+  {
     id: "dives-back",
     label: `Back to /dives from a dive (${BACK_ROWS} rows loaded)`,
+    // The list is in the router's client cache, so nothing suspends and no fallback is
+    // rendered - the boundary the forward navigation used is not new on the way back.
+    boundary: false,
     back: true,
     // Not a URL: the whole point of this row is a list that has been scrolled, and a
     // history entry that remembers it. So it walks in, and resets the prefetch tally on
@@ -389,13 +442,21 @@ const arm = (page) =>
     const main = document.querySelector("main");
     if (!main) throw new Error("this page draws no <main> to watch");
 
-    const mark = { t0: null, firstDom: null, lastDom: null };
+    const mark = {
+      t0: null,
+      firstDom: null,
+      lastDom: null,
+      firstGrey: null,
+      lastGrey: null,
+      greyBreak: null,
+    };
     window.__navigationMark = mark;
 
     document.addEventListener(
       "click",
       () => {
         if (mark.t0 === null) mark.t0 = performance.now();
+        sampleGrey();
       },
       true,
     );
@@ -409,6 +470,48 @@ const arm = (page) =>
       if (mark.firstDom === null) mark.firstDom = now;
       mark.lastDom = now;
     }).observe(main, { childList: true, subtree: true, characterData: true });
+
+    // The *visible* half, which a MutationObserver cannot answer: a fallback is inserted
+    // at the click and held at `opacity: 0`, so the frame it is seen on is a question
+    // about computed style rather than about the tree. Sampled per animation frame,
+    // because that is the granularity a diver has.
+    //
+    // The same loop answers continuity. The placeholder count is allowed to fall when the
+    // data replaces the placeholders, and not otherwise: a hold that restarted on the
+    // Suspense swap would blank bars that were already on screen while the same number of
+    // them was still in the document, which is `greyBreak`.
+    const SKELETONS = ".animate-skeleton, .animate-skeleton-reveal";
+    let previous = null;
+    let frames = 0;
+
+    function sampleGrey() {
+      if (mark.t0 === null) return;
+      const present = main.querySelectorAll(SKELETONS);
+      let visible = 0;
+      for (const node of present) {
+        if (Number(getComputedStyle(node).opacity) > 0) visible++;
+      }
+      const now = performance.now();
+      if (visible > 0) {
+        if (mark.firstGrey === null) mark.firstGrey = now;
+        mark.lastGrey = now;
+      }
+      if (
+        previous &&
+        mark.greyBreak === null &&
+        visible < previous.visible &&
+        present.length >= previous.present
+      ) {
+        mark.greyBreak = now;
+      }
+      previous = { visible, present: present.length };
+
+      // Stops once the destination has nothing left to hold and the screen has had a
+      // moment to prove it - `getComputedStyle` per frame over sixty bars is not free,
+      // and the figures it perturbs are the ones being read.
+      if (frames++ > 1200 || (previous.present === 0 && frames > 60)) return;
+      requestAnimationFrame(sampleGrey);
+    }
   });
 
 // Waits for the page to stop doing things: no request finishing and no mutation under
@@ -513,6 +616,8 @@ async function measure(page, navigation, subjects) {
           // Both would be counted by a last-response rule, and neither is a page that is
           // still becoming itself.
           last: mark.lastDom,
+          grey: mark.firstGrey,
+          greyBreak: mark.greyBreak,
         };
       },
       [...navigationUrls],
@@ -523,6 +628,8 @@ async function measure(page, navigation, subjects) {
     return {
       rsc: since(timings.rsc),
       dom: since(timings.dom),
+      grey: since(timings.grey),
+      greyBreak: since(timings.greyBreak),
       api: since(timings.api),
       settled: since(timings.last),
       prefetchCount,
@@ -544,39 +651,95 @@ const kb = (bytes) =>
 
 function table(rows) {
   const header = [
-    "| Navigation | Added latency | RSC round trip ends | Screen changes | First API call done | Settled | Prefetches before the click |",
-    "| --- | --- | --- | --- | --- | --- | --- |",
+    "| Navigation | Added latency | RSC round trip ends | Screen changes | First visible grey | First API call done | Settled | Prefetches before the click |",
+    "| --- | --- | --- | --- | --- | --- | --- | --- |",
   ];
   const body = rows.map(
     ({ label, latency, runs }) =>
       `| ${label} | ${latency === 0 ? "0" : `+${latency}`} | ${cell(runs, "rsc")} | ` +
-      `${cell(runs, "dom")} | ${cell(runs, "api")} | ${cell(runs, "settled")} | ` +
+      `${cell(runs, "dom")} | ${cell(runs, "grey")} | ${cell(runs, "api")} | ${cell(runs, "settled")} | ` +
       `${cell(runs, "prefetchCount")} req, ${runs.map((run) => kb(run.prefetchBytes)).join(" · ")} |`,
   );
   return [...header, ...body].join("\n");
 }
 
-// The acceptance test, asked of the figures rather than of a reader: where there is a
-// round trip it ends before the screen changes, in every row, at every latency.
+// The acceptance test, asked of the figures rather than of a reader.
+//
+// **Where the destination is behind a new loading boundary, the screen changes before the
+// round trip ends**, which is the inversion the boundaries exist to make: the frame is
+// drawn from what the browser already has, and the response fills it. Where there is no
+// new boundary - a pager step, a Back the router answers from its own cache - the old
+// direction stands and is checked as such, so a boundary appearing where none belongs
+// fails the run rather than passing it quietly.
+//
+// **And the hold is checked in pixels.** No row may show grey before the hold has
+// elapsed, at any latency; and at the latencies where the destination's data lands first,
+// no row may show grey at all - which is the property this app has without any of these
+// boundaries, and the one the calibration is there to keep. A run against a build of
+// `main` is how that premise is confirmed rather than assumed: the column is measured
+// from computed style and needs nothing from this branch to report.
 //
 // A row with no round trip is a note and not a failure - Back can be answered entirely
 // from the router's client cache, and a navigation that needs no server is the outcome
 // this whole exercise is aiming at rather than a broken measurement. A row where the
 // screen never changed is a failure, because that is the instrument and not the app.
-function checkOrder(rows) {
+//
+// Under `REDUCED_MOTION=1` the grey rules invert: `motion-reduce:animate-none` drops the
+// hold along with the animation, so a boundary's frame is seen at the click, grey and
+// all. That is accepted behaviour, and asserting it is what keeps a later change from
+// altering it in silence.
+function checkAcceptance(rows) {
   const failures = [];
   const notes = [];
-  for (const { label, latency, runs } of rows) {
+  for (const { label, latency, boundary, runs } of rows) {
     runs.forEach((run, index) => {
       const at = `${label} at +${latency} ms${runs.length > 1 ? ` (run ${index + 1})` : ""}`;
-      if (run.dom === null)
+
+      if (run.dom === null) {
         failures.push(`${at}: nothing changed under <main>`);
-      else if (run.rsc === null)
+        return;
+      }
+
+      if (run.rsc === null) {
         notes.push(`${at}: no RSC round trip - answered from the client cache`);
-      else if (run.rsc > run.dom)
+      } else if (boundary && run.dom > run.rsc) {
         failures.push(
-          `${at}: the screen changed at ${run.dom} ms, before the round trip ended at ${run.rsc} ms`,
+          `${at}: the screen changed at ${run.dom} ms, after the round trip ended at ${run.rsc} ms - the boundary drew nothing at the click`,
         );
+      } else if (!boundary && run.rsc > run.dom) {
+        failures.push(
+          `${at}: the screen changed at ${run.dom} ms, before the round trip ended at ${run.rsc} ms - this navigation is behind no new boundary`,
+        );
+      }
+
+      if (run.greyBreak !== null) {
+        failures.push(
+          `${at}: placeholders that were visible went blank at ${run.greyBreak} ms with the same number still on the page - the hold restarted`,
+        );
+      }
+
+      if (REDUCED_MOTION) {
+        if (boundary && run.grey === null) {
+          failures.push(
+            `${at}: reduced motion showed no grey at all - the frame is expected to paint with its placeholders visible`,
+          );
+        } else if (boundary && run.grey > run.dom + 32) {
+          failures.push(
+            `${at}: reduced motion showed grey at ${run.grey} ms, ${run.grey - run.dom} ms after the screen changed at ${run.dom} ms - it is expected at the click`,
+          );
+        }
+        return;
+      }
+
+      if (run.grey !== null && run.grey < ROUTE_FALLBACK_HOLD_MS) {
+        failures.push(
+          `${at}: grey at ${run.grey} ms, inside the ${ROUTE_FALLBACK_HOLD_MS} ms hold`,
+        );
+      } else if (run.grey !== null && latency <= NO_GREY_UP_TO_MS) {
+        failures.push(
+          `${at}: grey at ${run.grey} ms, where this navigation shows none today`,
+        );
+      }
     });
   }
   return { failures, notes };
@@ -586,7 +749,10 @@ function checkOrder(rows) {
 const link = await magicLink();
 
 const browser = await chromium.launch({ executablePath: chromePath });
-const context = await browser.newContext({ viewport: VIEWPORT });
+const context = await browser.newContext({
+  viewport: VIEWPORT,
+  ...(REDUCED_MOTION ? { reducedMotion: "reduce" } : {}),
+});
 context.setDefaultTimeout(60_000);
 // The default buffer is 250 entries, and `/dives` alone makes more than that between its
 // prefetches and its rows - silently, by dropping the ones that would have been read here.
@@ -620,7 +786,12 @@ for (const latency of latencies) {
     for (let run = 0; run < RUNS; run++) {
       runs.push(await measure(page, navigation, subjects));
     }
-    rows.push({ label: navigation.label, latency, runs });
+    rows.push({
+      label: navigation.label,
+      boundary: Boolean(navigation.boundary),
+      latency,
+      runs,
+    });
     console.log(`✓ ${navigation.label} at +${latency} ms`);
   }
 }
@@ -634,14 +805,16 @@ console.log(
     ".",
 );
 
-const { failures, notes } = checkOrder(rows);
+const { failures, notes } = checkAcceptance(rows);
 for (const note of notes) console.log(`· ${note}`);
 if (failures.length) {
   console.error(
-    `\nThe round trip did not come first:\n- ${failures.join("\n- ")}`,
+    `\nThe navigations did not behave:\n- ${failures.join("\n- ")}`,
   );
   process.exit(1);
 }
 console.log(
-  "The RSC round trip ends before the screen changes in every row that made one.",
+  REDUCED_MOTION
+    ? "Every boundary's frame paints at the click with its placeholders already visible, and no placeholder blinks."
+    : "Every boundary draws its frame before the round trip ends, no placeholder is seen inside the hold, and none blinks.",
 );
