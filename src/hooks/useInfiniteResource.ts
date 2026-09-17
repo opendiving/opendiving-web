@@ -10,6 +10,13 @@ import type { PaginatedResponse } from "@/lib/api/client";
 // `lib/api/*` modules into each declaring their own copy.
 export type { PaginatedResponse };
 
+/**
+ * Rows a list asks for when it does not say. Exported because a route loading
+ * fallback has to draw the same number of placeholder rows the page is about to
+ * ask for, and a second literal somewhere else is a second place to be wrong.
+ */
+export const DEFAULT_ITEMS_PER_PAGE = 10;
+
 interface UseInfiniteResourceOptions<T> {
   itemsPerPage?: number;
   errorMessage?: string;
@@ -37,7 +44,7 @@ interface UseInfiniteResourceOptions<T> {
 export function useInfiniteResource<T>(
   fetchFn: (page: number, perPage: number) => Promise<PaginatedResponse<T>>,
   {
-    itemsPerPage = 10,
+    itemsPerPage = DEFAULT_ITEMS_PER_PAGE,
     errorMessage = "Failed to load data. Please try again.",
     enabled = true,
     keyOf,

@@ -1,17 +1,15 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Mail, Trash2 } from "lucide-react";
 import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { adminAPI, type AdminInviteRequest } from "@/lib/api/admin";
 import { getApiErrorMessage } from "@/lib/api/error";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { CountBadge } from "@/components/ui/count-badge";
-import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
 import { useToast } from "@/components/ui/use-toast";
-import { InviteRequestsTable } from "@/components/admin/invite-requests-table";
+import {
+  InviteQueueFrame,
+  MAX_SELECTED,
+} from "@/components/admin/invite-queue-frame";
 import { summarizeInvitationOutcomes } from "@/components/admin/invitation-outcomes";
 
 type PendingAction = "invite" | "remove";
@@ -31,18 +29,8 @@ type PendingAction = "invite" | "remove";
  * never carried into a batch the operator has stopped looking at. It used to be
  * cleared on a page turn too, which is what kept it inside the API's cap without
  * this page having to repeat the number; the queue loads on scroll now and
- * accumulates, so `MAX_SELECTED` below states the cap outright.
+ * accumulates, so `MAX_SELECTED` states the cap outright.
  */
-// Mirrors `MAX_ADDRESSES_PER_BATCH` in the API's invitation schema, which both
-// batch routes enforce with a 422 rather than a partial send.
-//
-// This page used to get the limit for free and said so: selection was per page,
-// a page was ten rows, and ten is comfortably inside a hundred. Loading on
-// scroll is what took that away - the queue accumulates now, so a select-all
-// after enough scrolling can reach every row the operator has passed. The number
-// is repeated here because the API publishes no endpoint that states it; if it
-// ever moves, this is the second place.
-const MAX_SELECTED = 100;
 
 export default function AdminInvitesPage() {
   const { toast } = useToast();
@@ -160,89 +148,22 @@ export default function AdminInvitesPage() {
   const addresses = `${count} ${count === 1 ? "address" : "addresses"}`;
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">Invite Queue</h1>
-        <p className="text-muted-foreground mt-2">
-          Addresses that have asked for an invitation to this instance.
-        </p>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle
-            as="h2"
-            className="flex items-center justify-between gap-4"
-          >
-            <span>Requests</span>
-            <CountBadge
-              count={totalCount}
-              isLoading={isLoading}
-              label="pending request"
-            />
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2 mb-4">
-            <Button
-              onClick={() => setPendingAction("invite")}
-              disabled={count === 0 || isActing}
-            >
-              <Mail className="h-4 w-4 mr-2" />
-              Send invitations
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setPendingAction("remove")}
-              disabled={count === 0 || isActing}
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Remove
-            </Button>
-            <span
-              className="text-sm text-muted-foreground self-center"
-              // Ticking a row is a pointer gesture with no announcement of its
-              // own, so the running total is spoken as it changes. The select-all's
-              // `indeterminate` dash carries the same news, and a screen reader does
-              // read it - a native checkbox exposes the mixed state - but only to
-              // someone who goes back to the header box for it. This region is the
-              // half that arrives unasked.
-              aria-live="polite"
-            >
-              {count === 0
-                ? "Nothing selected"
-                : count >= MAX_SELECTED
-                  ? `${addresses} selected - the most one batch can hold`
-                  : `${addresses} selected`}
-            </span>
-          </div>
-
-          <InviteRequestsTable
-            requests={requests}
-            isLoading={isLoading}
-            itemsPerPage={itemsPerPage}
-            selected={selected}
-            onToggle={toggle}
-            onToggleAll={toggleAll}
-          />
-
-          {/* No selection reset here, unlike the Previous/Next footer this
-              replaced: that cleared the ticks because a page turn carried the
-              selected addresses off screen, and sending invitations the operator
-              can no longer see is the thing it was guarding against. Loading
-              more only appends, so everything ticked stays visible. */}
-          <LoadMoreTrigger
-            hasMore={hasMore}
-            isLoading={isLoadingMore}
-            hasFailed={loadFailed}
-            loadedCount={requests.length}
-            totalCount={totalCount}
-            itemsPerPage={itemsPerPage}
-            itemLabel="requests"
-            onLoadMore={loadMore}
-          />
-        </CardContent>
-      </Card>
+    <>
+      <InviteQueueFrame
+        isLoading={isLoading}
+        totalCount={totalCount}
+        itemsPerPage={itemsPerPage}
+        requests={requests}
+        selected={selected}
+        onToggle={toggle}
+        onToggleAll={toggleAll}
+        isActing={isActing}
+        onAct={setPendingAction}
+        isLoadingMore={isLoadingMore}
+        loadFailed={loadFailed}
+        hasMore={hasMore}
+        onLoadMore={loadMore}
+      />
 
       <ConfirmDialog
         open={pendingAction !== null}
@@ -262,6 +183,6 @@ export default function AdminInvitesPage() {
           if (pendingAction) runAction(pendingAction);
         }}
       />
-    </div>
+    </>
   );
 }

@@ -33,8 +33,13 @@ const DIVES_PER_PAGE = 10;
 
 export interface RecentDivesCardProps {
   // False until there's a signed-in user - the list reads the caller's own log
-  // and takes no user uuid, so this is the card's only fetch gate.
+  // and takes no user uuid, so the page has to say when the session is known.
   enabled: boolean;
+  /**
+   * Rendered inside a route loading fallback: hold the pre-data shape and make
+   * no request, because the page mounting behind this one makes it.
+   */
+  pending?: boolean;
   // Only show dives belonging to this trip. When omitted, shows the user's
   // most recent dives across all trips.
   tripId?: string;
@@ -76,6 +81,7 @@ export interface RecentDivesCardProps {
 // species - so they all stay in sync.
 export function RecentDivesCard({
   enabled,
+  pending = false,
   tripId,
   diveSiteId,
   gearItemId,
@@ -122,7 +128,7 @@ export function RecentDivesCard({
     loadMore,
   } = useInfiniteResource<Dive>(fetchDives, {
     keyOf: (dive) => dive.uuid,
-    enabled,
+    enabled: !pending && enabled,
     itemsPerPage: complete ? DIVES_PER_PAGE : RECENT_DIVES_COUNT,
     errorMessage: "Failed to load dives. Please try again.",
   });

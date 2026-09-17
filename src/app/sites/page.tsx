@@ -7,21 +7,11 @@ import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
 import { Button } from "@/components/ui/button";
 import { IconTooltip } from "@/components/ui/tooltip";
-import { CountBadge } from "@/components/ui/count-badge";
-import { TableRowsSkeleton } from "@/components/ui/table-skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
+import { SitesPageFrame } from "@/components/sites/sites-page-frame";
+import { TableCell, TableRow } from "@/components/ui/table";
 import { DeleteWithReassignDialog } from "@/components/dives/delete-with-reassign-dialog";
 import { DiveSiteDialog } from "@/components/sites/dive-site-dialog";
-import { Plus, Eye, Edit, Trash2, Loader2 } from "lucide-react";
+import { Eye, Edit, Trash2, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { PageSpinner } from "@/components/ui/page-spinner";
 
@@ -82,122 +72,67 @@ export default function SitesPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">Dive Sites</h1>
-          <p className="text-muted-foreground mt-2">
-            Keep track of the dive sites you&apos;ve visited
-          </p>
-        </div>
-        <Button onClick={() => setEditingSite(undefined)}>
-          <Plus className="h-4 w-4 mr-2" />
-          New Dive Site
-        </Button>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle as="h2" className="flex items-center justify-between">
-            <span>Dive Site List</span>
-            <CountBadge
-              count={totalCount}
-              isLoading={isLoadingDiveSites}
-              label="total dive site"
-            />
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {!isLoadingDiveSites && diveSites.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="text-muted-foreground mb-4">
-                No dive sites yet. Add your first dive site to start tracking
-                your favorite spots!
-              </div>
-              <Button onClick={() => setEditingSite(undefined)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Your First Dive Site
-              </Button>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {diveSites.length === 0 && (
-                  <TableRowsSkeleton columns={3} rows={itemsPerPage} />
-                )}
-                {diveSites.map((diveSite) => (
-                  <TableRow key={diveSite.uuid}>
-                    <TableCell className="font-medium">
-                      <Link
-                        href={`/sites/${diveSite.uuid}`}
-                        className="hover:underline"
-                      >
-                        {diveSite.name}
-                      </Link>
-                    </TableCell>
-                    <TableCell>{diveSite.location || "-"}</TableCell>
-                    <TableCell className="text-right">
-                      {/* Named per row, not per action: ten identical "Edit"s tell a
+    <>
+      <SitesPageFrame
+        isLoading={isLoadingDiveSites}
+        totalCount={totalCount}
+        itemsPerPage={itemsPerPage}
+        isLoadingMore={isLoadingMore}
+        loadFailed={loadFailed}
+        hasMore={hasMore}
+        onLoadMore={loadMore}
+        onNew={() => setEditingSite(undefined)}
+        rows={diveSites.map((diveSite) => (
+          <TableRow key={diveSite.uuid}>
+            <TableCell className="font-medium">
+              <Link
+                href={`/sites/${diveSite.uuid}`}
+                className="hover:underline"
+              >
+                {diveSite.name}
+              </Link>
+            </TableCell>
+            <TableCell>{diveSite.location || "-"}</TableCell>
+            <TableCell className="text-right">
+              {/* Named per row, not per action: ten identical "Edit"s tell a
                           screen reader's controls list nothing about which site.
                           See DECISIONS.md on the export card's Downloads. */}
-                      <div className="flex justify-end gap-2">
-                        <IconTooltip label={`View ${diveSite.name}`}>
-                          <Button variant="ghost" size="sm" asChild>
-                            <Link href={`/sites/${diveSite.uuid}`}>
-                              <Eye className="h-4 w-4" />
-                            </Link>
-                          </Button>
-                        </IconTooltip>
-                        <IconTooltip label={`Edit ${diveSite.name}`}>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setEditingSite(diveSite)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </IconTooltip>
-                        <IconTooltip label={`Delete ${diveSite.name}`}>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => requestDeleteDiveSite(diveSite.uuid)}
-                            disabled={deletingId === diveSite.uuid}
-                          >
-                            {deletingId === diveSite.uuid ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </IconTooltip>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-
-          <LoadMoreTrigger
-            hasMore={hasMore}
-            isLoading={isLoadingMore}
-            hasFailed={loadFailed}
-            loadedCount={diveSites.length}
-            totalCount={totalCount}
-            itemsPerPage={itemsPerPage}
-            itemLabel="dive sites"
-            onLoadMore={loadMore}
-          />
-        </CardContent>
-      </Card>
+              <div className="flex justify-end gap-2">
+                <IconTooltip label={`View ${diveSite.name}`}>
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link href={`/sites/${diveSite.uuid}`}>
+                      <Eye className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                </IconTooltip>
+                <IconTooltip label={`Edit ${diveSite.name}`}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setEditingSite(diveSite)}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                </IconTooltip>
+                <IconTooltip label={`Delete ${diveSite.name}`}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => requestDeleteDiveSite(diveSite.uuid)}
+                    disabled={deletingId === diveSite.uuid}
+                  >
+                    {deletingId === diveSite.uuid ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                  </Button>
+                </IconTooltip>
+              </div>
+            </TableCell>
+          </TableRow>
+        ))}
+      />
 
       <DiveSiteDialog
         open={editingSite !== null}
@@ -218,6 +153,6 @@ export default function SitesPage() {
           )
         }
       />
-    </div>
+    </>
   );
 }

@@ -2757,6 +2757,21 @@ fade without the pulse, goes on those containers.
 `motion-reduce:animate-none` drops both, leaving the skeleton visible from the start: no delay beats
 a delay you cannot see coming.
 
+## The click paints the destination's frame, and the boundary that does it is keyed on the child
+
+One `loading.tsx` per top-level segment a diver navigates to, drawing the destination's own pre-data
+frame. Every page that interleaved that frame with its data render now renders it from a shared
+component the fallback renders too, so the two cannot describe the screen differently. The router
+keys a loading boundary on the child segment it wraps, so one file covers a segment's list, its
+records and its forms, and the fallback reads the pathname to pick between them.
+
+The route fallback's hold is its own: longer than the in-place 150ms above, and counted from the
+click rather than from each placeholder's insertion. `--skeleton-delay` (`lib/route-hold.ts`)
+carries what is left of it across the Suspense swap, so the reveal happens once.
+
+_Rejected:_ a boundary beside `[id]`, which mounts afresh on every pager step; and one fixed
+fallback at `dives/`, which paints a table on the way into a dive.
+
 ## Loading skeletons: What renders for real, and what doesn't
 
 `DetailPageSkeleton` draws the real back button rather than a bar: where it goes is known before the

@@ -8,6 +8,7 @@ import { divesAPI, Dive } from "@/lib/api/dives";
 import { DELETE_DIVE_CONFIRMATION } from "@/lib/dive-recordings";
 import { DiveSitesLabel } from "@/components/dives/dive-sites-label";
 import { DiveNumberingStatus } from "@/components/dives/dive-numbering-status";
+import { DivesPageFrame } from "@/components/dives/dives-page-frame";
 import {
   formatDiveDateTime,
   formatDurationHoursMinutes,
@@ -15,22 +16,11 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { IconTooltip } from "@/components/ui/tooltip";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
+import { TableCell, TableRow } from "@/components/ui/table";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Plus, Eye, Edit, Trash2, Loader2 } from "lucide-react";
+import { Eye, Edit, Trash2, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { PageSpinner } from "@/components/ui/page-spinner";
-import { CountBadge } from "@/components/ui/count-badge";
-import { TableRowsSkeleton } from "@/components/ui/table-skeleton";
 import { useUnits } from "@/hooks/useUnits";
 import { formatDepth } from "@/lib/units";
 
@@ -98,147 +88,80 @@ export default function DivesPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">Dives</h1>
-          <p className="text-muted-foreground mt-2">
-            Manage and track your diving activities
-          </p>
-        </div>
-        <Button asChild>
-          <Link href="/dives/new">
-            <Plus className="h-4 w-4 mr-2" />
-            Log New Dive
-          </Link>
-        </Button>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle as="h2" className="flex items-center justify-between">
-            <span>Dive Log</span>
-            <CountBadge
-              count={totalCount}
-              isLoading={isLoadingDives}
-              label="total dive"
-            />
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+    <>
+      <DivesPageFrame
+        isLoading={isLoadingDives}
+        totalCount={totalCount}
+        itemsPerPage={itemsPerPage}
+        isLoadingMore={isLoadingMore}
+        loadFailed={loadFailed}
+        hasMore={hasMore}
+        onLoadMore={loadMore}
+        numbering={
           <DiveNumberingStatus
             enabled={!!user}
             reloadToken={numberingToken}
             onRenumbered={reload}
           />
-
-          {!isLoadingDives && dives.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="text-muted-foreground mb-4">
-                No dives logged yet. Start by adding your first dive!
-              </div>
-              <Button asChild>
-                <Link href="/dives/new">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Log Your First Dive
-                </Link>
-              </Button>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>#</TableHead>
-                  <TableHead>Date & Time</TableHead>
-                  <TableHead>Dive Site</TableHead>
-                  <TableHead>Duration</TableHead>
-                  <TableHead>Max Depth</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {dives.length === 0 && (
-                  <TableRowsSkeleton columns={6} rows={itemsPerPage} />
-                )}
-                {dives.map((dive) => (
-                  <TableRow key={dive.uuid}>
-                    <TableCell className="font-medium">
-                      #{dive.dive_number}
-                    </TableCell>
-                    <TableCell>
-                      <Link
-                        href={`/dives/${dive.uuid}`}
-                        className="text-sm font-medium hover:underline"
-                      >
-                        {formatDiveDateTime(dive.start_time)}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      <DiveSitesLabel sites={dive.dive_sites} />
-                    </TableCell>
-                    <TableCell>
-                      {formatDurationHoursMinutes(dive.duration)}
-                    </TableCell>
-                    <TableCell>
-                      {dive.max_depth
-                        ? formatDepth(dive.max_depth, units)
-                        : "-"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {/* Every row's three controls are icon-only, so each needs a
+        }
+        rows={dives.map((dive) => (
+          <TableRow key={dive.uuid}>
+            <TableCell className="font-medium">#{dive.dive_number}</TableCell>
+            <TableCell>
+              <Link
+                href={`/dives/${dive.uuid}`}
+                className="text-sm font-medium hover:underline"
+              >
+                {formatDiveDateTime(dive.start_time)}
+              </Link>
+            </TableCell>
+            <TableCell className="text-muted-foreground">
+              <DiveSitesLabel sites={dive.dive_sites} />
+            </TableCell>
+            <TableCell>{formatDurationHoursMinutes(dive.duration)}</TableCell>
+            <TableCell>
+              {dive.max_depth ? formatDepth(dive.max_depth, units) : "-"}
+            </TableCell>
+            <TableCell className="text-right">
+              {/* Every row's three controls are icon-only, so each needs a
                           name - and the name has to say *which* dive, or a screen
                           reader's controls list is thirty entries reading
                           "View, Edit, Delete" ten times over. Same reasoning as the
                           export card's Download buttons; see DECISIONS.md. */}
-                      <div className="flex justify-end gap-2">
-                        <IconTooltip label={`View dive #${dive.dive_number}`}>
-                          <Button variant="ghost" size="sm" asChild>
-                            <Link href={`/dives/${dive.uuid}`}>
-                              <Eye className="h-4 w-4" />
-                            </Link>
-                          </Button>
-                        </IconTooltip>
-                        <IconTooltip label={`Edit dive #${dive.dive_number}`}>
-                          <Button variant="ghost" size="sm" asChild>
-                            <Link href={`/dives/${dive.uuid}/edit?from=/dives`}>
-                              <Edit className="h-4 w-4" />
-                            </Link>
-                          </Button>
-                        </IconTooltip>
-                        <IconTooltip label={`Delete dive #${dive.dive_number}`}>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => requestDeleteDive(dive.uuid)}
-                            disabled={deletingId === dive.uuid}
-                          >
-                            {deletingId === dive.uuid ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </IconTooltip>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-
-          <LoadMoreTrigger
-            hasMore={hasMore}
-            isLoading={isLoadingMore}
-            hasFailed={loadFailed}
-            loadedCount={dives.length}
-            totalCount={totalCount}
-            itemsPerPage={itemsPerPage}
-            itemLabel="dives"
-            onLoadMore={loadMore}
-          />
-        </CardContent>
-      </Card>
+              <div className="flex justify-end gap-2">
+                <IconTooltip label={`View dive #${dive.dive_number}`}>
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link href={`/dives/${dive.uuid}`}>
+                      <Eye className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                </IconTooltip>
+                <IconTooltip label={`Edit dive #${dive.dive_number}`}>
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link href={`/dives/${dive.uuid}/edit?from=/dives`}>
+                      <Edit className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                </IconTooltip>
+                <IconTooltip label={`Delete dive #${dive.dive_number}`}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => requestDeleteDive(dive.uuid)}
+                    disabled={deletingId === dive.uuid}
+                  >
+                    {deletingId === dive.uuid ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                  </Button>
+                </IconTooltip>
+              </div>
+            </TableCell>
+          </TableRow>
+        ))}
+      />
 
       <ConfirmDialog
         open={pendingId !== null}
@@ -249,6 +172,6 @@ export default function DivesPage() {
         isLoading={deletingId === pendingId}
         onConfirm={confirmDeleteDive}
       />
-    </div>
+    </>
   );
 }
