@@ -316,7 +316,25 @@ dynamic (`ƒ`); accepted. Node server only (`output: "standalone"`): a static ex
   render, before descendants' effects.
 - The matcher omits Next's guide's `missing:` clause: prefetch payloads carry no nonce, and it lets
   any `purpose: prefetch`/`next-router-prefetch` header skip the CSP; `src/proxy.test.ts` pins that.
-  `cacheComponents`/PPR, incompatible anyway, would reopen this.
+  `cacheComponents`/PPR does not reopen it, for the reason the section below gives.
+
+## Cache Components asks for one opt-out, and leaves the nonce CSP alone
+
+Under `cacheComponents` and `partialPrefetching` the root layout's `headers()` read is request-time
+data outside a boundary, so every route's static shell is empty and the build fails.
+`export const instant = false` on the root layout allows a blocking route, and it is the only
+placement that reaches them: every page a diver reaches, and both non-root layouts, are Client
+Components, which cannot carry the export. No URL hook needs a Suspense boundary of its own, and a
+route fallback still reads its URL.
+
+The nonce holds. Every document render mints its own; a prefetched shell carries the nonce of the
+request that produced it, never the document's, and its scripts load under `'strict-dynamic'`
+regardless.
+
+The flag rejects `dynamic = "force-dynamic"`. `connection()` is what keeps `robots.txt` and
+`/healthz` reading their environment per request, not the build machine's.
+
+_Rejected:_ a hash-based or SRI CSP, which none of this needs.
 
 ## Unified auth flow: one passwordless `AuthForm`, no password-based `/signin`/`/signup` pair
 
@@ -5281,8 +5299,9 @@ losing the dive `useResource` holds and the pager `<a>`'s focus. The fix is a ro
 `dives/(detail)/[id]/page.tsx` reads `DiveDetailProvider` for the card grid. The group leaves every
 URL, `/dives/[id]/edit` included, unchanged. A step dims the grid (`opacity-50`);
 `dives/(detail)/[id]/page.render.test.tsx` pins the dim, and no test reaches the step itself.
-Rejected: `cacheComponents` (app-wide, and it keeps the route left, not the one reached) and
-refocusing on mount (the skeleton would still flash).
+Rejected as the fix for this: `cacheComponents` (app-wide, and it keeps the route left, not the one
+reached) and refocusing on mount (the skeleton would still flash). The flag as a thing in its own
+right is "Cache Components asks for one opt-out, and leaves the nonce CSP alone".
 
 The trip and course lookups outlive the dive, so each is stored with the uuid it resolved and read
 only while the dive names it — keyed on `trip_uuid`, not the dive, so a step within a trip keeps the
