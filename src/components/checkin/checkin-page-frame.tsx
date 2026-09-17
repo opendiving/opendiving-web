@@ -1,13 +1,7 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
-import {
-  AlertTriangle,
-  FileText,
-  Plus,
-  Printer,
-  SquarePen,
-} from "lucide-react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { AlertTriangle, FileText, Printer, SquarePen } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useUnits } from "@/hooks/useUnits";
@@ -79,6 +73,25 @@ const PRINTED_HEADER_GUTTER = "print:ml-[8.5rem]";
 // unit is the individual card, which carries this itself.
 const KEEP_TOGETHER = "break-inside-avoid";
 
+/**
+ * What the browser offers as the filename when this page is saved as a PDF.
+ *
+ * There is no API for it: the name comes from `document.title` at the moment the
+ * print dialog opens, and the tab's own title is the site's. So the swap happens on
+ * `beforeprint` and is undone on `afterprint` - which also means Cmd+P gets the same
+ * name as the Print button, rather than only the route the button takes.
+ *
+ * The date is ISO so a diver's saved sheets sort chronologically in a folder, and the
+ * separators a filesystem would choke on are replaced rather than left to the
+ * browser - a name is a diver's own text and may hold anything.
+ */
+function printedFileName(name: string): string {
+  return `${name} - diver check-in - ${todayIsoDate()}`.replace(
+    /[/\\:*?"<>|]/g,
+    "-",
+  );
+}
+
 export interface CheckInPageFrameProps {
   /** Every card the diver holds, in the list endpoint's own order. */
   certifications?: Certification[];
@@ -127,6 +140,29 @@ export function CheckInPageFrame({
   const [editingCertification, setEditingCertification] =
     useState<Certification | null>(null);
 
+  const printedTitle = user ? printedFileName(user.name) : null;
+  useEffect(() => {
+    if (!printedTitle) return;
+
+    let previous: string | null = null;
+    const before = () => {
+      previous = document.title;
+      document.title = printedTitle;
+    };
+    const after = () => {
+      if (previous !== null) document.title = previous;
+      previous = null;
+    };
+
+    window.addEventListener("beforeprint", before);
+    window.addEventListener("afterprint", after);
+    return () => {
+      window.removeEventListener("beforeprint", before);
+      window.removeEventListener("afterprint", after);
+      after();
+    };
+  }, [printedTitle]);
+
   // Memoised because `DivingFiguresDialog` resets its form whenever this changes: a
   // fresh object each render would re-seed the boxes under the diver's keystrokes.
   const logged = useMemo(
@@ -154,7 +190,7 @@ export function CheckInPageFrame({
   const diving = corrected ?? logged;
   const hasFigures = isLoading || hasDivingFigures(diving);
 
-  const openCertification = (certification: Certification | null) => {
+  const openCertification = (certification: Certification) => {
     setEditingCertification(certification);
     setEditing("certification");
   };
@@ -287,17 +323,6 @@ export function CheckInPageFrame({
               GUTTER,
               !isLoading && certifications.length === 0 && "print:hidden",
             )}
-            action={
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => openCertification(null)}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add
-              </Button>
-            }
           >
             {isLoading ? (
               <div aria-hidden className="space-y-4">
@@ -477,7 +502,8 @@ export function CheckInPageFrame({
       {/* One instance of each, hosted here rather than reached through
           `useQuickCreate`: that provider's certification dialog navigates to
           `/certifications` on save, and a diver correcting a card at a desk wants
-          the summary they were about to print, not another page. */}
+          the summary they were about to print, not another page. Correcting is all
+          this page offers - a card is added where cards are kept. */}
       <UserFieldsDialog
         open={editing === "about"}
         onOpenChange={(open) => setEditing(open ? "about" : null)}

@@ -294,6 +294,24 @@ describe("what the summary prints", () => {
 });
 
 describe("what the print leaves behind", () => {
+  it("names the saved PDF after the diver and the day, and gives the tab back", () => {
+    Object.assign(auth.user, COMPLETE);
+    const tabTitle = "OpenDiving";
+    document.title = tabTitle;
+    render(loaded({ certifications: [certification()] }));
+
+    // There is no API for the filename: the browser takes it from `document.title`
+    // as the dialog opens, so the swap rides `beforeprint` - which is also what
+    // gives Cmd+P the same name as the Print button.
+    window.dispatchEvent(new Event("beforeprint"));
+    expect(document.title).toMatch(
+      /^Sam Reef - diver check-in - \d{4}-\d{2}-\d{2}$/,
+    );
+
+    window.dispatchEvent(new Event("afterprint"));
+    expect(document.title).toBe(tabTitle);
+  });
+
   it("hides its own controls, keeping the summary", () => {
     render(loaded());
 
@@ -472,30 +490,39 @@ describe("editing from the sheet", () => {
     );
   });
 
-  it("re-reads the list rather than placing a saved card itself", async () => {
+  it("re-reads the list rather than editing the card it holds", async () => {
     Object.assign(auth.user, COMPLETE);
     const onCertificationsChanged = vi.fn();
     render(
       loaded({ certifications: [certification()], onCertificationsChanged }),
     );
 
-    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Edit Rescue Diver" }),
+    );
     const dialog = await screen.findByRole("dialog", {
-      name: "New Certification",
+      name: "Edit Certification",
     });
-
+    await userEvent.clear(within(dialog).getByLabelText("Certification *"));
     await userEvent.type(
       within(dialog).getByLabelText("Certification *"),
-      "Nitrox",
+      "Rescue Diver (2026)",
     );
     await userEvent.click(
-      within(dialog).getByRole("button", { name: /create certification/i }),
+      within(dialog).getByRole("button", { name: /save changes/i }),
     );
 
-    // The page re-reads `GET /certifications` rather than this component splicing
-    // the new card in: the order is the endpoint's, and a card created here has to
-    // land where that puts it.
+    // The page re-reads `GET /certifications` rather than this component patching
+    // its own copy: the order is the endpoint's, and a `certified_on` edited here
+    // has to land where that puts it.
     await waitFor(() => expect(onCertificationsChanged).toHaveBeenCalled());
+  });
+
+  it("offers no way to add a card, cards being kept where cards are kept", () => {
+    Object.assign(auth.user, COMPLETE);
+    render(loaded({ certifications: [certification()] }));
+
+    expect(screen.queryByRole("button", { name: "Add" })).toBeNull();
   });
 });
 
