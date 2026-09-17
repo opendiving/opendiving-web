@@ -8,12 +8,17 @@
  * to cover before the page it stands in for can draw anything. At 150ms it
  * would show grey on navigations that finish in 230ms and show none today.
  *
- * 330ms is the middle of the window the two round trips leave: the destination's
- * data lands around 225-229ms on a 100ms link, so a reveal after 330ms adds no
- * grey that a diver does not already see; the form pages, whose "data" is the
- * RSC response itself, arrive by ~313ms on a 300ms link, which is the floor this
- * sits above; and on that same link a list's data is still 550ms away, so the
- * skeleton is revealed and continuous well before it.
+ * 330ms is the middle of the window the two round trips leave. Behind no
+ * boundary the destination's data lands around 225-229ms on a 100ms link, so a
+ * reveal after 330ms adds no grey that a diver does not already see; the form
+ * pages, whose "data" is the RSC response itself, arrive by ~313ms on a 300ms
+ * link, which is the floor this sits above; and on that same link a list's data
+ * is still 550ms away, so the skeleton is revealed and continuous well before
+ * it.
+ *
+ * Behind a boundary the data arrives later than any of those figures, and this
+ * constant is not what moves it - see "A Suspense fallback committed at the
+ * click holds the page behind it for ~300ms" in DECISIONS.md.
  */
 export const ROUTE_FALLBACK_HOLD_MS = 330;
 
