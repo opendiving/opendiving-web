@@ -71,6 +71,14 @@ const NEGATIVE_GUTTER = "-ml-20 sm:-ml-28 print:-ml-28";
 // every other page's heading is, at the page's edge.
 const PRINTED_HEADER_GUTTER = "print:ml-[8.5rem]";
 
+// What a page break may not fall inside. Each of these is read as one thing - an
+// emergency contact split over a fold is a name on one sheet and the number to ring
+// on another. The Certifications *section* is deliberately not one of them: a diver
+// with a handful of cards is taller than a page, and `break-inside: avoid` on
+// something that cannot fit only moves the break to the top and wastes the page. Its
+// unit is the individual card, which carries this itself.
+const KEEP_TOGETHER = "break-inside-avoid";
+
 export interface CheckInPageFrameProps {
   /** Every card the diver holds, in the list endpoint's own order. */
   certifications?: Certification[];
@@ -209,7 +217,7 @@ export function CheckInPageFrame({
         className={`print:border-0 print:shadow-none print:bg-white ${INK}`}
       >
         <CardContent className="pt-6 space-y-6">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 break-after-avoid">
             {/* Only a picture the diver actually stored. The initials Radix falls
                 back to are a placeholder for a face on screen; printed at the top of
                 a sheet handed to a stranger they are a monogram nobody chose, and a
@@ -241,7 +249,13 @@ export function CheckInPageFrame({
               is always there, and dropped from the print when it holds nothing. A
               `<dl>` with every row absent is 24px of blank page on a sheet handed to
               somebody, and an "empty" heading is worse. */}
-          <div className={cn(GUTTER, !hasAboutYou && "print:hidden")}>
+          <div
+            className={cn(
+              GUTTER,
+              KEEP_TOGETHER,
+              !hasAboutYou && "print:hidden",
+            )}
+          >
             {hasAboutYou ? (
               <DetailList>
                 <Detail
@@ -317,7 +331,7 @@ export function CheckInPageFrame({
             // screen regardless, because the control that emptied it is the only
             // way back to "Use logged figures", and a section that removed itself
             // would leave a correction in force with nothing on screen saying so.
-            className={cn(GUTTER, !hasFigures && "print:hidden")}
+            className={cn(GUTTER, KEEP_TOGETHER, !hasFigures && "print:hidden")}
             action={
               <EditControl
                 label="Correct these figures"
@@ -366,7 +380,11 @@ export function CheckInPageFrame({
               person to call only if something goes wrong. */}
           <Section
             title="Dive insurance"
-            className={cn(GUTTER, !hasInsurance && "print:hidden")}
+            className={cn(
+              GUTTER,
+              KEEP_TOGETHER,
+              !hasInsurance && "print:hidden",
+            )}
             action={
               <EditControl
                 label="Edit your dive insurance"
@@ -396,7 +414,11 @@ export function CheckInPageFrame({
 
           <Section
             title="Emergency contact"
-            className={cn(GUTTER, !hasEmergencyContact && "print:hidden")}
+            className={cn(
+              GUTTER,
+              KEEP_TOGETHER,
+              !hasEmergencyContact && "print:hidden",
+            )}
             action={
               <EditControl
                 label="Edit your emergency contact"
@@ -418,7 +440,14 @@ export function CheckInPageFrame({
             )}
           </Section>
 
-          <p className={cn("text-xs text-muted-foreground", INK, GUTTER)}>
+          <p
+            className={cn(
+              "text-xs text-muted-foreground",
+              INK,
+              GUTTER,
+              KEEP_TOGETHER,
+            )}
+          >
             Printed {formatDateOnly(todayIsoDate())} from {user.name}&rsquo;s
             own dive log. These are entries this diver made; a certification is
             verified with the agency that issued it, not here.
@@ -603,7 +632,9 @@ function Section({
       aria-busy={busy || undefined}
       className={cn("space-y-2", className)}
     >
-      <div className="flex items-center justify-between gap-2">
+      {/* A heading stranded at the foot of a page, with its rows over the fold, is
+          the one break a reader has to work around. */}
+      <div className="flex items-center justify-between gap-2 break-after-avoid">
         <h3
           className={`text-sm font-semibold uppercase tracking-wide ${MUTED}`}
         >

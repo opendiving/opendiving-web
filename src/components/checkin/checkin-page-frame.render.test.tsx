@@ -288,10 +288,29 @@ describe("what the print leaves behind", () => {
     );
   });
 
-  it("keeps a certification off a page boundary", () => {
+  it("keeps each block a reader takes as one thing off a page boundary", () => {
+    Object.assign(auth.user, COMPLETE);
     const { container } = render(loaded({ certifications: [certification()] }));
 
-    expect(container.querySelector(".break-inside-avoid")).not.toBeNull();
+    // An emergency contact split over a fold is a name on one sheet and the number
+    // to ring on another.
+    for (const title of ["Diving", "Dive insurance", "Emergency contact"]) {
+      expect(screen.getByText(title).closest("section")).toHaveClass(
+        "break-inside-avoid",
+      );
+    }
+    expect(
+      screen.getByText(/^Printed /).closest("p") ??
+        screen.getByText(/^Printed /),
+    ).toHaveClass("break-inside-avoid");
+    expect(container.querySelector(".flex.break-inside-avoid")).not.toBeNull();
+
+    // Not the certifications section itself: a diver with a handful of cards is
+    // taller than a page, and refusing to break something that cannot fit only moves
+    // the break to the top and wastes the page. Its unit is the card.
+    expect(
+      screen.getByText("Certifications").closest("section"),
+    ).not.toHaveClass("break-inside-avoid");
   });
 });
 
