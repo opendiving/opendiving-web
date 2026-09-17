@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useToast } from "@/components/ui/use-toast";
-import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 import type { PaginatedResponse } from "@/lib/api/client";
 
 // Re-exported for the pages that import the type alongside this hook. The
@@ -18,9 +17,9 @@ export type { PaginatedResponse };
  */
 export const DEFAULT_ITEMS_PER_PAGE = 10;
 
-// What `revalidate` asks for per request. Matches `fetchAllPages`' own default in
-// `lib/api/client.ts`, which is the established evidence that the API serves a page
-// this size; it is a batch size for a re-read, not a page size a list renders.
+// The most `revalidate` asks for in one request; it asks for fewer when fewer are on
+// screen. Matches `fetchAllPages`' own default in `lib/api/client.ts` and the API's
+// own ceiling, so it is the largest single request that is answered whole.
 const REVALIDATE_PAGE_SIZE = 100;
 
 interface UseInfiniteResourceOptions<T> {
@@ -206,13 +205,17 @@ export function useInfiniteResource<T>(
     // the re-read would have their page swallowed silently. A `loadMore` here simply
     // takes the newer ticket and wins; this re-read's commit is the one dropped.
     try {
+      // No larger than what is on screen: the same one request at every depth a
+      // list actually reaches, and five rows asked for where five are shown rather
+      // than a hundred to refresh the dashboard's recent dives.
+      const batch = Math.min(loaded, REVALIDATE_PAGE_SIZE);
       const identify = keyOfRef.current;
       const seen = new Set<string>();
       const rows: T[] = [];
       let response: PaginatedResponse<T> | null = null;
 
       for (let page = 1; rows.length < loaded; page += 1) {
-        response = await fetchFn(page, REVALIDATE_PAGE_SIZE);
+        response = await fetchFn(page, batch);
         if (latestRequest.current !== requestId) return;
         for (const item of response.data) {
           const key = identify(item);
@@ -339,27 +342,45 @@ export function useInfiniteResource<T>(
     [commitItems, reload, itemsPerPage],
   );
 
-  // Not a plain effect: a diver six pages into the log who opens a dive and comes
-  // back would watch the list snap to its first page, because the route is kept
-  // mounted and its effects are re-created on the way back. `reload` changes
-  // identity with `fetchFn`, the page size and anything they close over, so a list
-  // that genuinely changed still gets its first page - and so does one switched off
-  // and on again, which is what the gear sets card does once it is scrolled near.
-  useEffectOnChange(() => {
-    if (enabled) reload();
-  }, [enabled, reload]);
+  // The deps this effect last ran for. A route kept mounted has its effects destroyed
+  // on hide and re-created on show, so running on creation would reload a list the
+  // diver had already scrolled six pages into - `useEffectOnChange` states the rule
+  // this follows, and this hook applies it by hand because what to do on the way back
+  // is not "nothing".
+  const ranFor = useRef<readonly [boolean, () => void] | null>(null);
 
-  // The other half of that guard. Not reloading is what keeps the diver's place;
-  // re-reading in place is what keeps the rows true - see `revalidate`.
   useEffect(() => {
-    if (!enabled) return;
-    // A no-op before the first load has committed anything, which is what makes
-    // this safe to run on mount beside the load itself.
+    if (!enabled) {
+      // Forgotten rather than kept: a list switched off and on again owes its first
+      // page, which is what the gear sets card does once it is scrolled near.
+      ranFor.current = null;
+      return;
+    }
+
+    const previous = ranFor.current;
+    ranFor.current = [enabled, reload];
+
+    // A list this hook has not loaded yet, or a genuinely different one: `reload`
+    // changes identity with `fetchFn`, the page size and anything they close over.
+    if (!previous || previous[0] !== enabled || previous[1] !== reload) {
+      reload();
+      return;
+    }
+
+    // Back to a route that was kept mounted, holding nothing. Either the first load
+    // failed or the list really is empty, and both want the same thing. It matters
+    // because the retry a diver used to get by leaving and returning is gone: the
+    // page no longer remounts, and `LoadMoreTrigger` draws no "Try again" while
+    // `totalCount` is 0, so an empty list would otherwise stay empty until a reload.
+    if (itemsRef.current.length === 0) {
+      reload();
+      return;
+    }
+
+    // Holding rows, so keep them and the diver's place in them, and catch their
+    // contents up - see `revalidate`.
     void revalidate();
-    // Deliberately once per effect creation, which under `<Activity>` is once per
-    // return to the route. `revalidate` is stable and is not a trigger.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled]);
+  }, [enabled, reload, revalidate]);
 
   return {
     items,

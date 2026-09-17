@@ -542,10 +542,11 @@ describe("useInfiniteResource", () => {
         rerender(<Host hidden={false} />);
       });
 
-      // One re-read of the loaded span, not a second page-one load: the argument
-      // is what tells them apart.
+      // One re-read of the loaded span rather than a second page-one load. Both ask
+      // for page one here, so the count is what separates them - the span is asserted
+      // on its own below, where a deeper list makes the size legible.
       await waitFor(() => expect(fetchFn).toHaveBeenCalledTimes(2));
-      expect(fetchFn).toHaveBeenLastCalledWith(1, 100);
+      expect(fetchFn).toHaveBeenLastCalledWith(1, 10);
       expect(fetchFn).not.toHaveBeenCalledTimes(3);
     });
 
@@ -586,14 +587,22 @@ describe("useInfiniteResource", () => {
     // a page asked for during the re-read would be dropped with nothing to retry it.
     it("lets a `loadMore` during the re-read through", async () => {
       let releaseReRead: (value: PaginatedResponse<Row>) => void = () => {};
+      let calls = 0;
       const fetchFn = vi.fn(
-        async (pageNumber: number, size: number): Promise<PaginatedResponse<Row>> => {
-          if (size === 100) {
+        async (
+          pageNumber: number,
+          size: number,
+        ): Promise<PaginatedResponse<Row>> => {
+          calls += 1;
+          // The first call is the mount's own load; the second is the re-read the
+          // return starts, and holding it open is what puts `loadMore` inside its
+          // window. They ask for the same span, so order is what tells them apart.
+          if (calls === 2) {
             return new Promise((resolve) => {
               releaseReRead = resolve;
             });
           }
-          return page(pageNumber, { total: 30, perPage: 10 });
+          return page(pageNumber, { total: 30, perPage: Math.min(size, 10) });
         },
       );
       let latest: ReturnType<typeof useInfiniteResource<Row>> | null = null;
@@ -620,9 +629,7 @@ describe("useInfiniteResource", () => {
       await act(async () => {
         rerender(<Host hidden={false} />);
       });
-      await waitFor(() =>
-        expect(fetchFn.mock.calls.some(([, size]) => size === 100)).toBe(true),
-      );
+      await waitFor(() => expect(fetchFn).toHaveBeenCalledTimes(2));
 
       const during = fetchFn.mock.calls.length;
       act(() => {
@@ -645,7 +652,10 @@ describe("useInfiniteResource", () => {
     it("leaves `loadMore` usable when the return superseded one in flight", async () => {
       let hangingResolve: (value: PaginatedResponse<Row>) => void = () => {};
       const fetchFn = vi.fn(
-        async (pageNumber: number, size: number): Promise<PaginatedResponse<Row>> => {
+        async (
+          pageNumber: number,
+          size: number,
+        ): Promise<PaginatedResponse<Row>> => {
           if (size === 10 && pageNumber === 2) {
             return new Promise((resolve) => {
               hangingResolve = resolve;
@@ -696,13 +706,26 @@ describe("useInfiniteResource", () => {
     });
 
     it("keeps the rows it had, with what changed while it was away", async () => {
-      const { fetchFn, dropServerSide } = ledger();
-      const Host = hosted(fetchFn);
+      const { fetchFn, dropServerSide } = ledger(30, 10);
+      let latest: ReturnType<typeof useInfiniteResource<Row>> | null = null;
+
+      function List() {
+        latest = useInfiniteResource(fetchFn, { keyOf });
+        return null;
+      }
+      function Host({ hidden }: { hidden: boolean }) {
+        return (
+          <Activity mode={hidden ? "hidden" : "visible"}>
+            <List />
+          </Activity>
+        );
+      }
 
       const { rerender } = render(<Host hidden={false} />);
-      await waitFor(() => expect(fetchFn).toHaveBeenCalledOnce());
+      await waitFor(() => expect(latest!.items).toHaveLength(10));
+      expect(latest!.items.map(keyOf)).toContain("r3");
 
-      // Someone else removes a row the list is holding.
+      // Someone else removes a row this list is holding.
       dropServerSide("r3");
 
       await act(async () => {
@@ -712,7 +735,44 @@ describe("useInfiniteResource", () => {
         rerender(<Host hidden={false} />);
       });
 
-      await waitFor(() => expect(fetchFn).toHaveBeenCalledTimes(2));
+      // Same number of rows, and the one that went is gone - the row that slid up
+      // into its place is what proves the contents were re-read rather than kept.
+      await waitFor(() => expect(latest!.items.map(keyOf)).not.toContain("r3"));
+      expect(latest!.items).toHaveLength(10);
+      expect(latest!.items.map(keyOf)).toContain("r10");
+    });
+
+    // The retry a diver used to get by leaving and coming back. The route no longer
+    // remounts, and an empty list draws no "Try again", so the return has to be it.
+    it("retries a first load that failed", async () => {
+      const { fetchFn } = ledger(30, 10);
+      fetchFn.mockRejectedValueOnce(new Error("the API is down"));
+      let latest: ReturnType<typeof useInfiniteResource<Row>> | null = null;
+
+      function List() {
+        latest = useInfiniteResource(fetchFn, { keyOf });
+        return null;
+      }
+      function Host({ hidden }: { hidden: boolean }) {
+        return (
+          <Activity mode={hidden ? "hidden" : "visible"}>
+            <List />
+          </Activity>
+        );
+      }
+
+      const { rerender } = render(<Host hidden={false} />);
+      await waitFor(() => expect(latest!.loadFailed).toBe(true));
+      expect(latest!.items).toHaveLength(0);
+
+      await act(async () => {
+        rerender(<Host hidden />);
+      });
+      await act(async () => {
+        rerender(<Host hidden={false} />);
+      });
+
+      await waitFor(() => expect(latest!.items).toHaveLength(10));
     });
   });
 });

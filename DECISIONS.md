@@ -339,15 +339,15 @@ _Rejected:_ a hash-based or SRI CSP.
 
 With Cache Components on, the router keeps the route a diver left mounted under
 `<Activity mode="hidden">`, whose effects are destroyed on hide and re-created on show. State
-survives; an effect that loads on mount runs again on the way back and overwrites it. A list
-scrolled six pages deep snaps to page one, a half-typed form repaints from the account, an open
-dialog blanks the fields still in it.
+survives, so an effect that loads on mount runs again and overwrites it: a list scrolled six pages
+deep snaps to page one, a half-typed form repaints, an open dialog blanks.
 
 `hooks/useEffectOnChange.ts` holds the dependencies an effect last ran for and skips a re-run
-against the same ones. Skipping alone would leave the route showing what it showed before, which a
-dive logged or deleted elsewhere has already made wrong - so the data hooks re-read instead,
-quietly: `useResource` without its loading state or its `onLoaded` re-seed, `useInfiniteResource`
-over the rows on screen rather than back at page one.
+against the same ones. The data hooks compare the same way but re-read rather than skip, since a
+dive logged elsewhere has already made what they hold wrong: `useResource` without its loading state
+or its `onLoaded` re-seed, `useInfiniteResource` over the rows on screen rather than page one
+
+- and reloading where it holds none, the return being the only retry a failed first load gets.
 
 _Rejected:_ counting mounts, which cannot tell a return from a genuine change.
 
