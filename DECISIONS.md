@@ -335,6 +335,22 @@ in the container.
 
 _Rejected:_ a hash-based or SRI CSP.
 
+## A route stays mounted, so an effect that loads on mount guards on what it loaded for
+
+With Cache Components on, the router keeps the route a diver left mounted under
+`<Activity mode="hidden">`, and a hidden tree has its effects destroyed and re-created. State
+survives the hide; an effect that loads on mount runs again on the way back and overwrites it.
+`useInfiniteResource` would snap a list six pages deep back to its first page, and
+`CheckInDetailsCard` would repaint a half-filled card while every other card on that page kept what
+was typed.
+
+Both hold a ref of what they last ran for — `reload`'s identity in `hooks/useInfiniteResource.ts`,
+the account object in `components/settings/check-in-details-card.tsx` — and skip the run when it is
+unchanged, so a return costs no request and loses no edit. A new list or a saved account changes the
+value and still loads.
+
+_Rejected:_ counting mounts, which cannot tell a return from a list that genuinely changed.
+
 ## Unified auth flow: one passwordless `AuthForm`, no password-based `/signin`/`/signup` pair
 
 There is one auth form, `components/auth/AuthForm.tsx` (email, "Continue", "Continue with Google"),
