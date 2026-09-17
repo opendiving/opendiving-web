@@ -4998,8 +4998,8 @@ makes the refresh a function call. That is also why the card takes the whole `Co
 `courseUuid`: the dialog wants the course's agency, training centre and instructor, which the page
 has already loaded. Creating from here chains into the same `CertificationCardFiles` upload step and
 refresh-and-re-point handoff the certifications page uses, because photographing the card is the
-point. Where the buttons that set that flag live is "A detail page's sidebar holds its add actions,
-named short".
+point. The card does not own the button: `isAdding`/`onAddingChange` come from the page, and where
+those buttons live is "A detail page's sidebar holds its add actions, named short".
 
 ## Operator prose describes the basemap, and a renderer sweep anchors on identifiers, not vocabulary
 
@@ -6558,5 +6558,5 @@ named without it: `Log a dive`, `Add a certification`. The page is that record, 
 costs the sidebar's width and buys nothing — and `Add a Certification for this Course` does not fit.
 Each card below then carries one button, only while it is empty, worded in full
 (`Log a dive for this course`): two routes to one form that a flat controls list can tell apart. The
-certifications card's own header button is gone, so `CourseCertificationsCard` takes
+certifications card carries no header button, so `CourseCertificationsCard` takes
 `isAdding`/`onAddingChange` and the page owns the flag both buttons set.

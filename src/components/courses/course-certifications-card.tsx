@@ -131,7 +131,7 @@ export function CourseCertificationsCard({
     <>
       <Card>
         {/* Title and description as direct children, with no wrapper: this
-            card carries no header control any more, and a `<div>` around the
+            card carries no header control, and a `<div>` around the
             pair would eat `CardHeader`'s own 6px gap. */}
         <CardHeader>
           <CardTitle as="h2" className="flex items-center gap-2">
