@@ -322,12 +322,12 @@ export function GearServiceScheduleDialog({
                 ) : isEdit ? (
                   <>
                     <Save className="h-4 w-4 mr-2" />
-                    Save Changes
+                    Save changes
                   </>
                 ) : (
                   <>
                     <Plus className="h-4 w-4 mr-2" />
-                    Create Schedule
+                    Create schedule
                   </>
                 )}
               </Button>

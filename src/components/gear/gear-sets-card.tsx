@@ -15,7 +15,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Edit, Loader2, Plus, Trash2 } from "lucide-react";
+import { Edit, Layers, Loader2, Plus, Trash2 } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 import { useUnits } from "@/hooks/useUnits";
 import { formatWeight } from "@/lib/units";
 
@@ -70,23 +71,24 @@ export function GearSetsCard({
             <CountBadge count={totalCount} isLoading={isLoading} label="set" />
             <Button variant="outline" size="sm" onClick={onCreate}>
               <Plus className="h-4 w-4 mr-2" />
-              New Set
+              New set
             </Button>
           </div>
         </CardTitle>
       </CardHeader>
       <CardContent>
         {!isLoading && sets.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="text-muted-foreground mb-4">
-              No gear sets yet. Group the kit you use together — sidemount,
-              tech, warm water — and load it into a dive in one click.
-            </div>
-            <Button onClick={onCreate}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Your First Set
-            </Button>
-          </div>
+          <EmptyState
+            icon={Layers}
+            title="No gear sets yet"
+            description="Group the kit you use together — sidemount, tech, warm water — and load it into a dive in one click."
+            action={
+              <Button onClick={onCreate}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add your first set
+              </Button>
+            }
+          />
         ) : (
           <Table
             // Busy on the outside, hidden on each placeholder row within - the

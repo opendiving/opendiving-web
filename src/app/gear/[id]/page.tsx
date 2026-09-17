@@ -186,7 +186,7 @@ export default function GearItemDetailPage() {
             viewAllHref={null}
             emptyTitle="Not used on any dive yet"
             emptyDescription="Add this item to a dive's gear list to see it here."
-            newDiveLabel="Log a Dive"
+            newDiveLabel="Log a dive"
           />
         </div>
 

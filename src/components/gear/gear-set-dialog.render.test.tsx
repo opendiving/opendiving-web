@@ -88,7 +88,7 @@ const patchedBody = async () => {
 };
 
 const save = () =>
-  userEvent.click(screen.getByRole("button", { name: /Save Changes/ }));
+  userEvent.click(screen.getByRole("button", { name: /Save changes/ }));
 
 // The picker names each row's remove button after the item it drops, so these
 // say which one they mean rather than taking whatever is first.
@@ -207,7 +207,7 @@ describe("the gear set dialog's other save paths", () => {
     saveDivesGear();
 
     await userEvent.type(screen.getByLabelText("Set name *"), "Warm water rec");
-    await userEvent.click(screen.getByRole("button", { name: /Create Set/ }));
+    await userEvent.click(screen.getByRole("button", { name: /Create set/ }));
 
     await waitFor(() => expect(createGearSet).toHaveBeenCalled());
     expect(createGearSet.mock.calls[0][0]).toMatchObject({

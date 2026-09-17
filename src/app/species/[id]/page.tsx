@@ -120,7 +120,7 @@ export default function SpeciesDetailPage() {
             emptyTitle="No dives with this species yet"
             emptyDescription="Record it on a dive and it will appear here."
             newDiveHref="/dives/new"
-            newDiveLabel="Log a Dive"
+            newDiveLabel="Log a dive"
           />
         </div>
 

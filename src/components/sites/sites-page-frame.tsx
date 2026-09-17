@@ -1,7 +1,8 @@
 "use client";
 
 import { type ReactNode } from "react";
-import { Plus } from "lucide-react";
+import { MapPin, Plus } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -55,7 +56,7 @@ export function SitesPageFrame({
         </div>
         <Button onClick={onNew}>
           <Plus className="h-4 w-4 mr-2" />
-          New Dive Site
+          New dive site
         </Button>
       </div>
 
@@ -72,16 +73,17 @@ export function SitesPageFrame({
         </CardHeader>
         <CardContent>
           {!isLoading && rows.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="text-muted-foreground mb-4">
-                No dive sites yet. Add your first dive site to start tracking
-                your favorite spots!
-              </div>
-              <Button onClick={onNew}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Your First Dive Site
-              </Button>
-            </div>
+            <EmptyState
+              icon={MapPin}
+              title="No dive sites yet"
+              description="Add your first dive site to start tracking your favorite spots!"
+              action={
+                <Button onClick={onNew}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add your first dive site
+                </Button>
+              }
+            />
           ) : (
             <Table
               // Busy on the outside, hidden on each placeholder row within - the

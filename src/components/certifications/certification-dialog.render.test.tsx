@@ -141,7 +141,7 @@ const certificationName = () => screen.getByLabelText("Certification *");
 
 const save = () =>
   userEvent.click(
-    screen.getByRole("button", { name: /Create Certification|Save Changes/ }),
+    screen.getByRole("button", { name: /Create certification|Save changes/ }),
   );
 
 describe("picking a course fills the card's own fields in", () => {

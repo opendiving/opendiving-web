@@ -262,7 +262,7 @@ function EditDivePageContent() {
         isSubmitting={isSubmitting}
         cancelHref={returnTo.href}
         submittingLabel="Saving..."
-        submitLabel="Save Changes"
+        submitLabel="Save changes"
         onFileAdded={(item) => setPendingFiles((files) => [...files, item])}
         pendingFiles={pendingFiles}
         onRemovePendingFile={(id) =>

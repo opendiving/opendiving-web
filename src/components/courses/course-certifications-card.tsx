@@ -23,6 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { EmptyState } from "@/components/ui/empty-state";
 import { ListRowsSkeleton } from "@/components/ui/skeleton";
 import { CertificationDialog } from "@/components/certifications/certification-dialog";
 import { CertificationCardFiles } from "@/components/certifications/certification-card-files";
@@ -34,11 +35,17 @@ import { CertificationViewDialog } from "@/components/certifications/certificati
 const CERTIFICATIONS_LIMIT = 50;
 
 interface CourseCertificationsCardProps {
-  // The whole course, not just its uuid: "Add certification" opens a dialog
+  // The whole course, not just its uuid: adding a certification opens a dialog
   // pre-linked to it *and* prefilled from its training center, instructor and
   // agency where it names one, and the page has already loaded every one of
   // those.
   course: Course;
+  /**
+   * Opened by the page's sidebar button as well as by this card's own empty
+   * state, so the page holds the flag and the card is told about it.
+   */
+  isAdding: boolean;
+  onAddingChange: (adding: boolean) => void;
 }
 
 /**
@@ -48,18 +55,20 @@ interface CourseCertificationsCardProps {
  * the same read-only view dialog the certifications list opens - which is what
  * makes a card reachable from here rather than merely listed.
  *
- * It also owns the create flow, rather than the page owning it and pushing a
- * refresh signal down: the list this card fetches is the thing a new
- * certification has to appear in, and keeping both here means the refetch is a
- * call rather than a prop contract to keep in step.
+ * It owns the dialogs the create flow needs, rather than the page owning them
+ * and pushing a refresh signal down: the list this card fetches is the thing a
+ * new certification has to appear in, and keeping both here means the refetch
+ * is a call rather than a prop contract to keep in step. Only the "is the
+ * create dialog open" flag lives above it, because the sidebar opens it too.
  */
 export function CourseCertificationsCard({
   course,
+  isAdding,
+  onAddingChange,
 }: CourseCertificationsCardProps) {
   const [certifications, setCertifications] = useState<Certification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [viewing, setViewing] = useState<Certification | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
   // The certification whose card images are being managed, if any.
   const [managingFiles, setManagingFiles] = useState<Certification | null>(
     null,
@@ -118,50 +127,40 @@ export function CourseCertificationsCard({
     await refresh();
   }, [managingFiles, refresh]);
 
-  // Two ways to the same dialog, named differently on purpose: a screen
-  // reader's controls list is flat, and two identical "Add certification"
-  // entries in one card say nothing about which is which. Same reason the
-  // certifications page pairs "New Certification" with "Add Your First
-  // Certification" - see DECISIONS.md, "Ten rows of 'Edit' name nothing".
-  const addButton = (label: string) => (
-    <Button size="sm" onClick={() => setIsCreating(true)}>
-      <Plus className="h-4 w-4 mr-2" />
-      {label}
-    </Button>
-  );
-
   return (
     <>
       <Card>
+        {/* Title and description as direct children, with no wrapper: this
+            card carries no header control any more, and a `<div>` around the
+            pair would eat `CardHeader`'s own 6px gap. */}
         <CardHeader>
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="space-y-1.5">
-              <CardTitle as="h2" className="flex items-center gap-2">
-                <BadgeCheck className="h-5 w-5" />
-                Certifications from this Course
-              </CardTitle>
-              {/* "Link one from its own form" until this card grew a button
-                  of its own, which made that the long way round rather than
-                  the only way. Linking from the certification form still
-                  works, so it stays in the sentence as the alternative. */}
-              <CardDescription>
-                The cards this training issued. Add one here, or link an
-                existing card from its own form.
-              </CardDescription>
-            </div>
-            {addButton("Add certification")}
-          </div>
+          <CardTitle as="h2" className="flex items-center gap-2">
+            <BadgeCheck className="h-5 w-5" />
+            Certifications from this Course
+          </CardTitle>
+          {/* The sidebar's button is not the only way in: an existing card can
+              name this course from its own form, which is how a card logged
+              before the course was. */}
+          <CardDescription>
+            The cards this training issued. An existing card can name this
+            course from its own form too.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <ListRowsSkeleton rows={2} />
           ) : certifications.length === 0 ? (
-            <div className="space-y-4">
-              <p className="text-muted-foreground text-sm">
-                No certifications linked to this course yet.
-              </p>
-              {addButton("Add the first certification")}
-            </div>
+            <EmptyState
+              icon={BadgeCheck}
+              title="No certifications from this course yet"
+              description="Add the card this training issued and it will appear here."
+              action={
+                <Button onClick={() => onAddingChange(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add the first certification
+                </Button>
+              }
+            />
           ) : (
             <ul className="space-y-3">
               {certifications.map((certification) => (
@@ -195,8 +194,8 @@ export function CourseCertificationsCard({
       </Card>
 
       <CertificationDialog
-        open={isCreating}
-        onOpenChange={setIsCreating}
+        open={isAdding}
+        onOpenChange={onAddingChange}
         initialCourse={course}
         onSaved={(saved) => {
           refresh();

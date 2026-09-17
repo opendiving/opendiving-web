@@ -3,6 +3,7 @@
 import { type ReactNode } from "react";
 import Link from "next/link";
 import { Fish, Search } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -121,29 +122,29 @@ export function SpeciesPageFrame({
           </div>
 
           {!isLoading && cards.length === 0 ? (
-            <div className="text-center py-12">
-              {isSearching ? (
-                // A filtered list with nothing in it is a different statement
-                // from an empty life list, and offering "log your first dive"
-                // here would be answering a question nobody asked.
-                <div className="text-muted-foreground">
-                  No species match that name.
-                </div>
-              ) : (
-                <>
-                  <div className="text-muted-foreground mb-4">
-                    No species yet. Record what you saw on a dive and it will
-                    appear here.
-                  </div>
+            // A filtered list with nothing in it is a different statement from
+            // an empty life list, so it keeps its one line: no icon, no
+            // heading, and pointedly no "log your first dive", which would be
+            // answering a question nobody asked.
+            isSearching ? (
+              <div className="text-center py-12 text-muted-foreground">
+                No species match that name.
+              </div>
+            ) : (
+              <EmptyState
+                icon={Fish}
+                title="No species yet"
+                description="Record what you saw on a dive and it will appear here."
+                action={
                   <Button asChild>
                     <Link href="/dives">
                       <Fish className="h-4 w-4 mr-2" />
-                      Go to Your Dives
+                      Go to your dives
                     </Link>
                   </Button>
-                </>
-              )}
-            </div>
+                }
+              />
+            )
           ) : (
             // Placeholders inside the real grid rather than a spinner in place
             // of it, and chosen by the card count inside the container the way

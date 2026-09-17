@@ -82,7 +82,7 @@ export function GearPageFrame({
         </div>
         <Button onClick={onNew}>
           <Plus className="h-4 w-4 mr-2" />
-          New Gear
+          New gear
         </Button>
       </div>
 

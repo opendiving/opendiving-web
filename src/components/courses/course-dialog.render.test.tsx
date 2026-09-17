@@ -52,7 +52,7 @@ function open(course?: Course, onSaved = vi.fn()) {
 }
 
 const save = () =>
-  userEvent.click(screen.getByRole("button", { name: /Create Course|Save/ }));
+  userEvent.click(screen.getByRole("button", { name: /Create course|Save/ }));
 
 describe("CourseDialog", () => {
   it("seeds every field from the course being edited", async () => {

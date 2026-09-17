@@ -80,7 +80,7 @@ export const MIXTURE_FORM_FIELDS = DIVE_FORM_FIELDS.filter(isMixtureField);
  * `volume` and `oxygen` became blank-able when a cylinder was allowed to record a mix
  * with no vessel, and they are exempt on the substance rather than on the type: they
  * are what a cylinder *is*. A tank card that can lose both records a row with nothing
- * in it, and "Add Mixture" would propose `DEFAULT_MIXTURE` where the diver could
+ * in it, and "Add mixture" would propose `DEFAULT_MIXTURE` where the diver could
  * neither see nor change it - which is the half of that change the split was chosen to
  * protect.
  *

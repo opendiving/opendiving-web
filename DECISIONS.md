@@ -6530,3 +6530,33 @@ matcher writes it and still fails ("Review it before running tests again."), und
 writes nothing ("No existing reference screenshot found."), every run. `page.screenshot()`
 (`save: true` by default) also writes there, but an untracked debug PNG is visible and deletable,
 while an ignored baseline is invisible by construction. No test calls either today.
+
+## Controls are sentence case; headings are Title Case
+
+Every button, link-button and menu item capitalizes its first word and nothing else: `New trip`,
+`Add your first gear`, `Log a dive for this course`, `Save changes`. Headings keep Title Case — card
+titles, page titles, dialog titles — so `New Certification` over `Create certification` in one
+dialog is the rule holding, not breaking. The split is what no single call site can carry: roughly
+forty labels across the app, and a new one is written by copying a neighbour. Title Case for
+controls was rejected because the long CTAs (`Log A Dive For This Course`) read as headings
+themselves, and because the newer half of the app was already sentence case.
+
+## One `EmptyState`, and the filtered list is not one
+
+`components/ui/empty-state.tsx` draws every "nothing here yet": icon, `No X yet` heading, a muted
+line, one action. Every list page and card goes through it, so two cards side by side on the
+dashboard cannot centre their contents at different heights.
+
+A list filtered to nothing is not empty and does not use it — `No courses match that name.` keeps a
+bare centred line, because an icon and an `Add your first course` beneath it would answer a question
+nobody asked.
+
+## A detail page's sidebar holds its add actions, named short
+
+`/courses/[id]`, `/trips/[id]` and `/sites/[id]` put every "add" for the record in the sidebar,
+named without it: `Log a dive`, `Add a certification`. The page is that record, so naming it again
+costs the sidebar's width and buys nothing — and `Add a Certification for this Course` does not fit.
+Each card below then carries one button, only while it is empty, worded in full
+(`Log a dive for this course`): two routes to one form that a flat controls list can tell apart. The
+certifications card's own header button is gone, so `CourseCertificationsCard` takes
+`isAdding`/`onAddingChange` and the page owns the flag both buttons set.

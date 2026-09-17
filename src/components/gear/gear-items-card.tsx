@@ -22,11 +22,13 @@ import {
 import {
   Archive,
   ArchiveRestore,
+  Backpack,
   Edit,
   Loader2,
   Plus,
   Trash2,
 } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export interface GearItemsCardProps {
   items: GearItem[];
@@ -104,17 +106,21 @@ export function GearItemsCard({
       </CardHeader>
       <CardContent>
         {!isLoading && items.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="text-muted-foreground mb-4">
-              {showArchived
-                ? "No gear yet. Add your first piece of kit to start tracking what you dive with!"
-                : "No active gear. Add a piece of kit, or turn on “Show archived” to see gear you've retired."}
-            </div>
-            <Button onClick={onCreate}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Your First Gear
-            </Button>
-          </div>
+          <EmptyState
+            icon={Backpack}
+            title={showArchived ? "No gear yet" : "No active gear"}
+            description={
+              showArchived
+                ? "Add your first piece of kit to start tracking what you dive with!"
+                : "Add a piece of kit, or turn on “Show archived” to see gear you've retired."
+            }
+            action={
+              <Button onClick={onCreate}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add your first gear
+              </Button>
+            }
+          />
         ) : (
           <Table
             // Busy on the outside, hidden on each placeholder row within - the

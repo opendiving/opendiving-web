@@ -664,7 +664,7 @@ describe("MixtureFields under a hidden set", () => {
   });
 });
 
-describe("Add Mixture", () => {
+describe("Add mixture", () => {
   it("adds a tank without taking the focus into it", async () => {
     // react-hook-form's `append` focuses the first field of the new row that
     // registered a focusable ref, and `VolumeCombobox` registers none - so the

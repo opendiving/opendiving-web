@@ -143,7 +143,7 @@ export default function DiveSiteDetailPage() {
             emptyTitle="No dives logged at this site yet"
             emptyDescription="Log a dive and assign it to this dive site to see it here."
             newDiveHref={`/dives/new?dive_site_uuid=${diveSite.uuid}`}
-            newDiveLabel="Log a Dive at this Site"
+            newDiveLabel="Log a dive at this site"
           />
         </div>
 
@@ -194,10 +194,14 @@ export default function DiveSiteDetailPage() {
                 </div>
                 <div className="text-sm">{formatDate(diveSite.created_at)}</div>
               </div>
+              {/* Short: the page is this site, so naming it again would only
+                  cost the sidebar's width. The card below words its own button
+                  in full, which is what keeps two routes to one form apart in a
+                  flat controls list. */}
               <Button className="w-full" asChild>
                 <Link href={`/dives/new?dive_site_uuid=${diveSite.uuid}`}>
                   <Plus className="h-4 w-4 mr-2" />
-                  Log a Dive at this Site
+                  Log a dive
                 </Link>
               </Button>
             </CardContent>

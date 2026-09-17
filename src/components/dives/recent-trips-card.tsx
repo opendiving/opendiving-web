@@ -11,6 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { ListRowsSkeleton } from "@/components/ui/skeleton";
 import { useQuickCreate } from "@/components/layout/quick-create";
 import { formatTripDateRange } from "@/lib/date-time";
@@ -75,7 +76,7 @@ export function RecentTripsCard({ pending = false }: RecentTripsCardProps) {
             <CardDescription>Your latest diving trips</CardDescription>
           </div>
           <Button variant="outline" size="sm" asChild>
-            <Link href="/trips">View All Trips</Link>
+            <Link href="/trips">View all trips</Link>
           </Button>
         </div>
       </CardHeader>
@@ -83,19 +84,17 @@ export function RecentTripsCard({ pending = false }: RecentTripsCardProps) {
         {isLoadingTrips ? (
           <ListRowsSkeleton rows={RECENT_TRIPS_COUNT} />
         ) : recentTrips.length === 0 ? (
-          <div className="text-center py-8">
-            <Luggage className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-foreground mb-2">
-              No trips yet
-            </h3>
-            <p className="text-muted-foreground mb-4">
-              Create a trip to group your dives together!
-            </p>
-            <Button onClick={() => openCreate("trip")}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Your First Trip
-            </Button>
-          </div>
+          <EmptyState
+            icon={Luggage}
+            title="No trips yet"
+            description="Create a trip to group your dives together!"
+            action={
+              <Button onClick={() => openCreate("trip")}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add your first trip
+              </Button>
+            }
+          />
         ) : (
           <div className="space-y-3">
             {recentTrips.map((trip) => (

@@ -65,7 +65,7 @@ export function DiveNumberingStatus({
           <ListOrdered className="h-4 w-4 shrink-0" />
           {description}
         </span>
-        {/* Matches the "New Set" button on `/gear` - the same outline/sm shape
+        {/* Matches the "New set" button on `/gear` - the same outline/sm shape
             every card-level action in the app uses. `ListRestart` for the action,
             distinct from the `ListOrdered` labelling the line itself. */}
         <Button

@@ -178,7 +178,7 @@ export default function SettingsPage() {
                 ) : (
                   <div className="flex items-center space-x-2">
                     <Save className="h-4 w-4" />
-                    <span>Save Changes</span>
+                    <span>Save changes</span>
                   </div>
                 )}
               </Button>

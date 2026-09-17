@@ -1,7 +1,8 @@
 "use client";
 
 import { type ReactNode } from "react";
-import { Plus, Search } from "lucide-react";
+import { GraduationCap, Plus, Search } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -64,7 +65,7 @@ export function CoursesPageFrame({
         </div>
         <Button onClick={onNew}>
           <Plus className="h-4 w-4 mr-2" />
-          New Course
+          New course
         </Button>
       </div>
 
@@ -99,27 +100,27 @@ export function CoursesPageFrame({
           </div>
 
           {!isLoading && rows.length === 0 ? (
-            <div className="text-center py-12">
-              {isSearching ? (
-                // A filtered list with nothing in it is a different statement
-                // from an empty logbook, and offering "add your first course"
-                // here would be answering a question nobody asked.
-                <div className="text-muted-foreground">
-                  No courses match that name.
-                </div>
-              ) : (
-                <>
-                  <div className="text-muted-foreground mb-4">
-                    No courses yet. Add the training you have done to group its
-                    dives and cards.
-                  </div>
+            // A filtered list with nothing in it is a different statement from
+            // an empty logbook, so it keeps its one line: no icon, no heading,
+            // and pointedly no "add your first course", which would be
+            // answering a question nobody asked.
+            isSearching ? (
+              <div className="text-center py-12 text-muted-foreground">
+                No courses match that name.
+              </div>
+            ) : (
+              <EmptyState
+                icon={GraduationCap}
+                title="No courses yet"
+                description="Add the training you have done to group its dives and cards."
+                action={
                   <Button onClick={onNew}>
                     <Plus className="h-4 w-4 mr-2" />
-                    Add Your First Course
+                    Add your first course
                   </Button>
-                </>
-              )}
-            </div>
+                }
+              />
+            )
           ) : (
             <Table
               // Busy on the outside, hidden on each placeholder row within - the

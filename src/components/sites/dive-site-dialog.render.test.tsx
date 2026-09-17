@@ -202,7 +202,7 @@ describe("DiveSiteDialog coordinate accessibility", () => {
       target: { value: "Blue Hole" },
     });
     fireEvent.change(latitude(), { target: { value: "-8.7" } });
-    fireEvent.click(screen.getByRole("button", { name: /Create Dive Site/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Create dive site/ }));
 
     await screen.findByText("Longitude is required when latitude is given");
 
@@ -365,7 +365,7 @@ describe("DiveSiteDialog API refusal", () => {
 
     await userEvent.type(screen.getByLabelText("Name *"), "Diving Spot");
     await userEvent.click(
-      screen.getByRole("button", { name: /Create Dive Site/ }),
+      screen.getByRole("button", { name: /Create dive site/ }),
     );
 
     await waitFor(() =>
@@ -388,7 +388,7 @@ describe("DiveSiteDialog API refusal", () => {
 
     await userEvent.type(screen.getByLabelText("Name *"), "Diving Spot");
     await userEvent.click(
-      screen.getByRole("button", { name: /Create Dive Site/ }),
+      screen.getByRole("button", { name: /Create dive site/ }),
     );
     await waitFor(() =>
       expect(screen.getByRole("alert")).toHaveTextContent(/already exists/),

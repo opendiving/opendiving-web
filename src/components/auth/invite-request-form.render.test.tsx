@@ -177,7 +177,7 @@ describe("InviteRequestForm", () => {
   // It used to name a third, the operator "setting this instance up", and no
   // longer does: that audience exists for one moment, before the first account
   // is created, and the install and troubleshooting docs already send the
-  // operator to Sign In for it. A clause on every stranger's screen for a
+  // operator to Sign in for it. A clause on every stranger's screen for a
   // one-time reader was the wrong place to say it.
   it.each(BOTH)(
     "points members and invitees at /signin in the %s voice",

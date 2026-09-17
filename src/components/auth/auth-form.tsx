@@ -193,7 +193,7 @@ export function AuthForm({
             </div>
           ) : (
             <div className="flex items-center space-x-2">
-              <span>Sign In</span>
+              <span>Sign in</span>
               <ArrowRight size={16} />
             </div>
           )}

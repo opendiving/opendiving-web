@@ -211,7 +211,7 @@ describe("GearServiceCard row controls", () => {
       [record(), record({ uuid: "record-2", serviced_on: "2024-02-05" })],
     );
 
-    // The page's two standing buttons are "Add Schedule" and "Log Service"; everything
+    // The page's two standing buttons are "Add schedule" and "Log service"; everything
     // else is a row control, and no two of them may share a name.
     const names = screen
       .getAllByRole("button")
@@ -221,7 +221,9 @@ describe("GearServiceCard row controls", () => {
     expect(names).not.toContain("Delete");
     expect(names).not.toContain("Pause");
     expect(names).not.toContain("Resume");
-    expect(names).not.toContain("Log service");
+    // The history section's own button is the one bare "Log service" on the
+    // card; a row control repeating it would make two.
+    expect(names.filter((name) => name === "Log service")).toHaveLength(1);
     expect(new Set(names).size).toBe(names.length);
   });
 });

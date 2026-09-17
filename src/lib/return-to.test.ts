@@ -45,7 +45,7 @@ describe("resolveReturnTarget", () => {
       href: "/sites/abc",
       label: "Back to Dive Site",
     });
-    // What "Log a Dive for this Course" hands the form, with no `?from=` of its
+    // What "Log a dive for this course" hands the form, with no `?from=` of its
     // own - the same wiring the trip's own button gets for free.
     expect(resolveReturnTarget({ course_uuid: "abc" }, FALLBACK)).toEqual({
       href: "/courses/abc",

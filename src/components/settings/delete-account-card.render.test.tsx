@@ -58,7 +58,7 @@ const confirmButton = () =>
 
 async function openDialog() {
   await userEvent.click(
-    screen.getByRole("button", { name: "Delete My Account" }),
+    screen.getByRole("button", { name: "Delete my account" }),
   );
 }
 
