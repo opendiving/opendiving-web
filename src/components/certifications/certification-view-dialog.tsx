@@ -10,7 +10,7 @@ import {
   Certification,
   CertificationSide,
   CERTIFICATION_SIDES,
-  CERTIFICATION_SIDE_LABELS,
+  CERTIFICATION_SIDE_HEADINGS,
 } from "@/lib/api/certifications";
 import {
   certificationExpiryBadgeVariant,
@@ -162,7 +162,7 @@ export function CertificationViewDialog({
               return (
                 <div key={side} className="space-y-2">
                   <p className="text-sm font-medium">
-                    {CERTIFICATION_SIDE_LABELS[side]}
+                    {CERTIFICATION_SIDE_HEADINGS[side]}
                   </p>
                   <CertificationCardImage
                     certificationUuid={certification.uuid}

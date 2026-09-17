@@ -120,10 +120,29 @@ export function certificationLabel(certification: {
 export const CERTIFICATION_SIDES = ["front", "back"] as const;
 export type CertificationSide = (typeof CERTIFICATION_SIDES)[number];
 
-/** Display names for each card side, so the UI never renders the raw enum value. */
+/**
+ * Display names for each card side, so the UI never renders the raw enum value.
+ * Bare nouns, because these are interpolated into sentences - a slot's heading
+ * wants `CERTIFICATION_SIDE_HEADINGS` instead.
+ */
 export const CERTIFICATION_SIDE_LABELS: Record<CertificationSide, string> = {
   front: "Front",
   back: "Back",
+};
+
+/**
+ * How each slot is headed above its own upload control and preview.
+ *
+ * The second slot says it is optional because most modern e-cards are one-sided:
+ * PADI issues a single card image alongside a details web page, RAID prints a
+ * decorative back, and only TDI/SDI still carries anything on it. An empty back
+ * is the normal state rather than a gap, and the heading is where a diver finds
+ * that out. Kept apart from the labels above, which the upload and removal
+ * toasts read into a sentence the parenthetical would not survive.
+ */
+export const CERTIFICATION_SIDE_HEADINGS: Record<CertificationSide, string> = {
+  front: "Front",
+  back: "Back or details (optional)",
 };
 
 /**
