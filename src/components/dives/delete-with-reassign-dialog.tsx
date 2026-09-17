@@ -52,11 +52,7 @@ const COPY: Record<DeleteTargetKind, KindCopy> = {
     unresolvedHint:
       "Pick a trip from the list, or clear the field to delete without moving.",
     search: async (query) => {
-      const response = await tripsAPI.getTrips(
-        1,
-        OPTIONS_PER_SEARCH,
-        query,
-      );
+      const response = await tripsAPI.getTrips(1, OPTIONS_PER_SEARCH, query);
       return {
         items: response.data.map((trip) => ({
           id: trip.uuid,

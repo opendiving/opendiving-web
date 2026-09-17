@@ -38,7 +38,7 @@ beforeEach(() => {
 
 function Field() {
   const [value, setValue] = useState<string[]>([]);
-  return <DiveSiteMultiSelect userId="u1" value={value} onChange={setValue} />;
+  return <DiveSiteMultiSelect value={value} onChange={setValue} />;
 }
 
 const rows = () =>
@@ -115,7 +115,6 @@ describe("DiveSiteMultiSelect", () => {
     // "Remove Blue Hole" are equally unambiguous.
     render(
       <DiveSiteMultiSelect
-        userId="u1"
         value={[SITE.uuid, SECOND_SITE.uuid]}
         knownSites={[SITE, SECOND_SITE]}
         onChange={() => {}}
@@ -144,7 +143,6 @@ describe("DiveSiteMultiSelect", () => {
     const onChange = vi.fn();
     render(
       <DiveSiteMultiSelect
-        userId="u1"
         value={[SITE.uuid, SECOND_SITE.uuid]}
         knownSites={[SITE, SECOND_SITE]}
         onChange={onChange}

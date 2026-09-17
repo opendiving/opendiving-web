@@ -49,7 +49,6 @@ function Dialog({
   return (
     <DeleteWithReassignDialog
       kind="trip"
-      userId="u1"
       targetId={targetId}
       isDeleting={false}
       onCancel={vi.fn()}
@@ -221,7 +220,6 @@ describe("DeleteWithReassignDialog, deleting a dive site", () => {
   const SiteDialog = ({ onConfirm = vi.fn() }) => (
     <DeleteWithReassignDialog
       kind="dive-site"
-      userId="u1"
       targetId="site-1"
       isDeleting={false}
       onCancel={vi.fn()}
@@ -248,7 +246,7 @@ describe("DeleteWithReassignDialog, deleting a dive site", () => {
     await waitFor(() =>
       expect(onConfirm).toHaveBeenCalledWith("site-2", "Blue Hole"),
     );
-    expect(getDiveSites).toHaveBeenCalledWith("u1", 1, 25, "");
+    expect(getDiveSites).toHaveBeenCalledWith(1, 25, "");
     expect(getTrips).not.toHaveBeenCalled();
   });
 });

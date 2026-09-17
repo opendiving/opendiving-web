@@ -42,7 +42,7 @@ const getDue = vi.mocked(gearServiceAPI.getDue);
 
 const renderCard = async (entries: GearServiceDueEntry[]) => {
   getDue.mockResolvedValue({ data: entries });
-  render(<ServiceDueCard userId="user-1" />);
+  render(<ServiceDueCard />);
   await screen.findByText("Service due");
 };
 

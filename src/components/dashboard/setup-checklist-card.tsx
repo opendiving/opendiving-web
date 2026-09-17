@@ -40,9 +40,7 @@ interface ChecklistStep {
 //
 // The two counts it needs are fetched with `items_per_page: 1`: only `total_count` is
 // read, and nothing here renders the rows themselves.
-export function SetupChecklistCard({
-  totalDives,
-}: SetupChecklistCardProps) {
+export function SetupChecklistCard({ totalDives }: SetupChecklistCardProps) {
   const [gearCount, setGearCount] = useState<number | null>(null);
   const [certificationCount, setCertificationCount] = useState<number | null>(
     null,

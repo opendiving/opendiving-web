@@ -51,10 +51,7 @@ function recordName(record: GearServiceRecord): string {
 
 // Service schedules and history for one gear item. Sits above the dive list on the gear
 // detail page: service is the thing you can act on here, the dive list is reference.
-export function GearServiceCard({
-  gearItem,
-  onChanged,
-}: GearServiceCardProps) {
+export function GearServiceCard({ gearItem, onChanged }: GearServiceCardProps) {
   const { toast } = useToast();
 
   const [schedules, setSchedules] = useState<GearServiceSchedule[]>([]);

@@ -28,14 +28,7 @@ vi.mock("@/components/map/locations-map-lazy", () => ({
 }));
 
 function renderDialog() {
-  return render(
-    <TripDialog
-      userId="user-1"
-      open
-      onOpenChange={() => {}}
-      onSaved={() => {}}
-    />,
-  );
+  return render(<TripDialog open onOpenChange={() => {}} onSaved={() => {}} />);
 }
 
 describe("TripDialog", () => {

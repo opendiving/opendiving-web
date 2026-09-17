@@ -37,8 +37,7 @@ export default function SitesPage() {
   );
 
   const fetchDiveSites = useCallback(
-    (page: number, perPage: number) =>
-      diveSitesAPI.getDiveSites(page, perPage),
+    (page: number, perPage: number) => diveSitesAPI.getDiveSites(page, perPage),
     [],
   );
 

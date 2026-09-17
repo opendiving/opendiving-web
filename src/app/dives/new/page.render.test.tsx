@@ -1471,7 +1471,6 @@ describe("the preset list", () => {
 
     await waitFor(() =>
       expect(presets.diveFormPresetsAPI.createPreset).toHaveBeenCalledWith({
-        user_uuid: "user-1",
         name: "Warm water",
         hidden_fields: ["notes"],
       }),

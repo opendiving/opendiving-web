@@ -66,11 +66,7 @@ export function TripCombobox({
 
   const searchTrips = useCallback(
     async (query: string): Promise<ComboboxSearchResult> => {
-      const response = await tripsAPI.getTrips(
-        1,
-        TRIPS_PER_SEARCH,
-        query,
-      );
+      const response = await tripsAPI.getTrips(1, TRIPS_PER_SEARCH, query);
       response.data.forEach(remember);
       return {
         // Trips have `locations` too, but unlike dive sites they aren't shown

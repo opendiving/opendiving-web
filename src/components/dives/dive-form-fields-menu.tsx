@@ -50,9 +50,7 @@ interface DiveFormFieldsMenuProps {
  * afterwards changes the state rather than the preset - at which point the trigger
  * says "Custom" until the diver writes it back from Configure.
  */
-export function DiveFormFieldsMenu({
-  visibility,
-}: DiveFormFieldsMenuProps) {
+export function DiveFormFieldsMenu({ visibility }: DiveFormFieldsMenuProps) {
   const presets = useDiveFormPresets();
   const [isConfigureOpen, setIsConfigureOpen] = useState(false);
 

@@ -75,12 +75,7 @@ beforeEach(() => {
 
 function renderDialog() {
   return render(
-    <DiveSiteDialog
-      userId="user-1"
-      open
-      onOpenChange={() => {}}
-      onSaved={() => {}}
-    />,
+    <DiveSiteDialog open onOpenChange={() => {}} onSaved={() => {}} />,
   );
 }
 

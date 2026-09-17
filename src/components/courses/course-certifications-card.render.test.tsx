@@ -78,8 +78,7 @@ beforeEach(() => {
   getCourse.mockImplementation(async () => COURSE);
 });
 
-const render_ = () =>
-  render(<CourseCertificationsCard userId="user-1" course={COURSE} />);
+const render_ = () => render(<CourseCertificationsCard course={COURSE} />);
 
 describe("the course's certifications card", () => {
   it("reads the list once, not once per render", async () => {
@@ -87,12 +86,7 @@ describe("the course's certifications card", () => {
     await screen.findByText("No certifications linked to this course yet.");
 
     expect(getCertifications).toHaveBeenCalledTimes(1);
-    expect(getCertifications).toHaveBeenCalledWith(
-      "user-1",
-      1,
-      50,
-      COURSE.uuid,
-    );
+    expect(getCertifications).toHaveBeenCalledWith(1, 50, COURSE.uuid);
   });
 
   it("names its two ways into the same dialog differently", async () => {
@@ -138,7 +132,6 @@ describe("the course's certifications card", () => {
 
     await waitFor(() => expect(createCertification).toHaveBeenCalled());
     expect(createCertification.mock.calls[0][0]).toMatchObject({
-      user_uuid: "user-1",
       name: "Advanced Nitrox",
       course_uuid: COURSE.uuid,
       training_center: "Blue Ocean, Koh Tao",

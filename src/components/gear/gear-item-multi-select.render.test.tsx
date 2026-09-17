@@ -49,7 +49,6 @@ beforeEach(() => {
 const renderBoth = (onChange = () => {}) =>
   render(
     <GearItemMultiSelect
-      userId="u1"
       value={[REGULATOR.uuid, COMPUTER.uuid]}
       knownItems={[REGULATOR, COMPUTER]}
       onChange={onChange}
