@@ -439,7 +439,7 @@ export function DataImportCard() {
               ) : (
                 <div className="flex items-center space-x-2">
                   <Upload className="h-4 w-4" />
-                  <span>Choose File</span>
+                  <span>Choose file</span>
                 </div>
               )}
             </Button>
@@ -476,7 +476,7 @@ export function DataImportCard() {
                     <span>Importing...</span>
                   </div>
                 ) : (
-                  <span>Import This Logbook</span>
+                  <span>Import this logbook</span>
                 )}
               </Button>
               <Button

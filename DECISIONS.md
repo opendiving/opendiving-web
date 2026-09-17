@@ -4965,7 +4965,7 @@ strand after switching to B); always replace (clobbers typing).
 The copy replaces exactly the fields it filled; switching A → B empties what B lacks; clearing the
 course unlinks and touches nothing. The agency pair is the exception — a course's agency is
 optional, a certification's required — so a course naming none copies neither half and the form
-keeps its own default. Rejected: blanking it, which would make the seeded "Add certification" the
+keeps its own default. Rejected: blanking it, which would make the seeded "Add a certification" the
 one flow opening on an unset required field.
 
 The edit dialog gets no prefill: `reset(...)` from the stored card makes every value baseline.
