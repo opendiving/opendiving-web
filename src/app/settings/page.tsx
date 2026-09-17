@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AvatarCard } from "@/components/settings/avatar-card";
+import { CheckInDetailsCard } from "@/components/settings/check-in-details-card";
 import { DataExportCard } from "@/components/settings/data-export-card";
 import { DataImportCard } from "@/components/settings/data-import-card";
 import { DeleteAccountCard } from "@/components/settings/delete-account-card";
@@ -189,6 +190,8 @@ export default function SettingsPage() {
         <AvatarCard />
 
         <EmailChangeCard currentEmail={user.email} />
+
+        <CheckInDetailsCard />
 
         <NotificationsCard />
 

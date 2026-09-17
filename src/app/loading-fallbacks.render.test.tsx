@@ -150,6 +150,11 @@ const DESTINATIONS = [
     loading: () => import("./certifications/loading"),
     page: () => import("./certifications/page"),
   },
+  {
+    path: "/checkin",
+    loading: () => import("./checkin/loading"),
+    page: () => import("./checkin/page"),
+  },
 ];
 
 const draw = drawFrame;

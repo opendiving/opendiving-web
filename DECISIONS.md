@@ -6578,3 +6578,16 @@ Each card below then carries one button, only while it is empty, worded in full
 (`Log a dive for this course`): two routes to one form that a flat controls list can tell apart. The
 certifications card carries no header button, so `CourseCertificationsCard` takes
 `isAdding`/`onAddingChange` and the page owns the flag both buttons set.
+
+## The check-in summary is a list the diver hands over, and it carries no agency marks
+
+`/checkin` prints what a dive shop asks for — date of birth, phone, an emergency contact, insurance,
+the c-cards, the dive count — as a list, each card's stored front beside it as a thumbnail. No
+agency artwork or logo is drawn: those marks are licensed to members and centres rather than to
+divers, and a card-shaped tile carrying one reads as agency-issued. A card stored as a PDF prints as
+a placeholder, never rasterised.
+
+Printing is the browser's, through Tailwind's `print:` variant on the chrome and the page's own
+controls — no PDF library, no `@media print` block. Handing that print to a shop is the diver
+showing their own entries to someone, not the software doing it, so terms §5's grant ("store your
+entries, show them back to you") is unchanged by it.
