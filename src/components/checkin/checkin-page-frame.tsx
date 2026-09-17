@@ -133,7 +133,13 @@ export function CheckInPageFrame({
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className={`text-3xl font-bold ${INK}`}>Check-in</h1>
+          {/* "Diver" earns its place on the printed sheet rather than on screen:
+              the line under this one is `print:hidden`, so the heading is the only
+              thing naming the document a shop is handed, and "Check-in" alone above
+              a stranger's name and card numbers leaves them to infer what it is. The
+              account menu stays "Check-in" - there the reader is the diver, and
+              "Diver" would be telling them whose page it is. */}
+          <h1 className={`text-3xl font-bold ${INK}`}>Diver Check-in</h1>
           <p className="text-muted-foreground mt-2 print:hidden">
             What a dive shop asks for at the desk, on one page you can hand over
           </p>
