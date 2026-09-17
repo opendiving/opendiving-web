@@ -532,6 +532,11 @@ const arm = (page) =>
       firstGrey: null,
       lastGrey: null,
       greyBreak: null,
+      // Whether a route fallback was ever in the document at all, at any opacity. Under
+      // the flags a warm route can commit no fallback, and "no grey" then means the real
+      // page arrived rather than that a hold hid one - two outcomes the grey column alone
+      // cannot tell apart.
+      fallbackRendered: false,
     };
     window.__navigationMark = mark;
 
@@ -575,6 +580,7 @@ const arm = (page) =>
         if (Number(getComputedStyle(node).opacity) > 0) visible++;
       }
       const now = performance.now();
+      if (present.length > 0) mark.fallbackRendered = true;
       if (visible > 0) {
         if (mark.firstGrey === null) mark.firstGrey = now;
         mark.lastGrey = now;
@@ -705,6 +711,7 @@ async function measure(page, navigation, subjects) {
           last: mark.lastDom,
           grey: mark.firstGrey,
           greyBreak: mark.greyBreak,
+          fallbackRendered: mark.fallbackRendered,
         };
       },
       [...navigationUrls],
@@ -722,6 +729,7 @@ async function measure(page, navigation, subjects) {
       prefetchCount,
       prefetchBytes,
       destinationPrefetched,
+      fallbackRendered: timings.fallbackRendered,
     };
   } finally {
     traffic.stop();
@@ -788,6 +796,11 @@ function table(rows) {
 // hold along with the animation, so a boundary's frame is seen at the click, grey and
 // all. That is accepted behaviour, and asserting it is what keeps a later change from
 // altering it in silence.
+//
+// It is asserted only of a navigation that actually committed a fallback. Under the flags
+// a warm route can render itself without one - `/dives/new` does - and then there is no
+// hold to see through and no grey to expect; the run says so and moves on. Without that
+// distinction the assertion reads a route that got faster as a route that broke.
 function checkAcceptance(rows) {
   const failures = [];
   const notes = [];
@@ -831,7 +844,11 @@ function checkAcceptance(rows) {
 
       if (REDUCED_MOTION) {
         if (!boundary || !run.destinationPrefetched) return;
-        if (run.grey === null) {
+        if (!run.fallbackRendered) {
+          notes.push(
+            `${at}: no fallback committed, so there is no hold to see through - the destination rendered itself`,
+          );
+        } else if (run.grey === null) {
           failures.push(
             `${at}: reduced motion showed no grey at all - the frame is expected to paint with its placeholders visible`,
           );

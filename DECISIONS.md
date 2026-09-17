@@ -2812,15 +2812,16 @@ fallback at `dives/`, which paints a table on the way into a dive.
 ## A Suspense fallback committed at the click holds the page behind it for ~300ms
 
 React holds a boundary's content commit until roughly 300ms after its fallback committed, so a
-`loading.tsx` drawn at the click cannot be replaced before then however fast the round trip. Pages
-fetch on mount, so a held commit is a held request: at +100ms the navigations whose boundary is
-prefetched reach their data near 420ms, against 225ms without one — about 190ms. The cost is absent
-wherever no fallback commits — an unprefetched link, a pager step, Back — and wherever the round
-trip outruns the throttle.
+`loading.tsx` drawn at the click cannot be replaced before then.
 
-A frame painted at the click is bought with time to data, unless the route is warm enough that no
-fallback commits. `ROUTE_FALLBACK_HOLD_MS` is not the lever on that: it is an opacity delay, and at
-0 the data figures do not move.
+What it costs depends on whether the page can fetch before committing. With Cache Components on, a
+prefetched route mounts from the shell the browser already holds, so its own request goes out at the
+click and the held commit costs nothing: the data is there when the content is. Without that, the
+page cannot mount until the response arrives and the throttle elapses, and a held commit is a held
+request — about 190ms at +100ms on every navigation whose boundary is prefetched.
+
+`ROUTE_FALLBACK_HOLD_MS` is not the lever: it is an opacity delay, and at 0 the data figures do not
+move.
 
 _Rejected:_ patching the throttle out of the vendored `react-dom`, which recovers the figures and
 owns a fork of React.
