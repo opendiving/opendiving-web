@@ -74,12 +74,12 @@ export default function CheckInPage() {
     return () => controller.abort();
   }, [userUuid, attempt]);
 
-  // After a card is added or edited from the summary itself. Only the list is
-  // re-read - the stats and the last dive cannot have moved - and the loading flag
-  // is left alone, so the cards already on screen stay put rather than flashing back
-  // to skeletons. A re-read rather than splicing the saved card in: the order is
-  // `GET /certifications`' (`certified_on` descending, nulls last), and a card added
-  // here has to land where that puts it.
+  // After a card is edited from the summary itself. Only the list is re-read - the
+  // stats and the last dive cannot have moved - and the loading flag is left alone,
+  // so the cards already on screen stay put rather than flashing back to skeletons.
+  // A re-read rather than patching the saved card in place: the order is
+  // `GET /certifications`' (`certified_on` descending, nulls last), and an edited
+  // `certified_on` has to land where that puts it.
   const refreshCertifications = useCallback(async () => {
     try {
       setCertifications(await fetchAllCertifications());

@@ -6583,12 +6583,12 @@ certifications card carries no header button, so `CourseCertificationsCard` take
 
 ## The check-in summary is a list the diver hands over, and it carries no agency marks
 
-`/checkin` prints what a dive shop asks for — date of birth and phone, the c-cards, the dive count,
-then insurance and an emergency contact — as a list, each card's stored front beside it as a
-thumbnail. That order is a desk's: what the diver may do and what they have done, then the two
-things it needs only if something goes wrong. No agency artwork or logo is drawn: those marks are
-licensed to members and centres rather than to divers, and a card-shaped tile carrying one reads as
-agency-issued. A card stored as a PDF prints as a placeholder, never rasterised.
+`/checkin` prints what a dive shop asks for: date of birth and phone, the c-cards, the dive count,
+then insurance and an emergency contact — a desk's order, what a diver may do and has done before
+what is needed only if something goes wrong. Each card's stored front sits beside it, but no agency
+artwork is drawn: those marks are licensed to members and centres rather than to divers, and a
+card-shaped tile carrying one reads as agency-issued. A PDF card prints as a placeholder, never
+rasterised.
 
 Printing is the browser's, through Tailwind's `print:` variant on the chrome and the page's own
 controls — no PDF library, no `@media print` block. Handing that print to a shop is the diver

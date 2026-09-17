@@ -105,8 +105,9 @@ export interface CheckInPageFrameProps {
   loadFailed?: boolean;
   onRetry?: () => void;
   /**
-   * Re-reads the card list after one was added or edited here, so the summary keeps
+   * Re-reads the card list after one was edited here, so the summary keeps
    * `GET /certifications`' own order rather than an order this page invented.
+   * Editing is all this page offers - a card is added where cards are kept.
    */
   onCertificationsChanged?: () => void;
 }
