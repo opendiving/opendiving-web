@@ -1,13 +1,18 @@
 "use client";
 
 import { type ReactNode } from "react";
-import { Plus, Search } from "lucide-react";
+import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CountBadge } from "@/components/ui/count-badge";
-import { Input } from "@/components/ui/input";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
+import {
+  CoursesFilters,
+  hasCourseFilters,
+  NO_COURSE_FILTERS,
+  type CourseListFilters,
+} from "@/components/courses/courses-filters";
 import {
   Table,
   TableBody,
@@ -25,7 +30,14 @@ export interface CoursesPageFrameProps {
   /** What the search box holds. Empty on arrival, which is the fallback's case. */
   search?: string;
   onSearchChange?: (value: string) => void;
-  /** True when the empty state is a filtered list rather than an empty logbook. */
+  /** The date, agency and status the list is narrowed by, if any. */
+  filters?: CourseListFilters;
+  onFiltersChange?: (filters: CourseListFilters) => void;
+  /**
+   * Whether a search *term* is in effect - which is not what the box holds, the
+   * page debouncing one into the other. `filters` needs no twin, its controls
+   * committing whole values that are asked for at once.
+   */
   isSearching?: boolean;
   isLoadingMore?: boolean;
   loadFailed?: boolean;
@@ -46,6 +58,8 @@ export function CoursesPageFrame({
   rows = [],
   search = "",
   onSearchChange = noop,
+  filters = NO_COURSE_FILTERS,
+  onFiltersChange = noop,
   isSearching = false,
   isLoadingMore = false,
   loadFailed = false,
@@ -83,29 +97,25 @@ export function CoursesPageFrame({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <label htmlFor="course-search" className="sr-only">
-              Search courses by name
-            </label>
-            <Input
-              id="course-search"
-              type="search"
-              className="pl-9"
-              placeholder="Search by name..."
-              value={search}
-              onChange={(event) => onSearchChange(event.target.value)}
-            />
-          </div>
+          <CoursesFilters
+            search={search}
+            onSearchChange={onSearchChange}
+            filters={filters}
+            onFiltersChange={onFiltersChange}
+          />
 
           {!isLoading && rows.length === 0 ? (
             <div className="text-center py-12">
-              {isSearching ? (
-                // A filtered list with nothing in it is a different statement
+              {isSearching || hasCourseFilters(filters) ? (
+                // A narrowed list with nothing in it is a different statement
                 // from an empty logbook, and offering "add your first course"
-                // here would be answering a question nobody asked.
+                // here would be answering a question nobody asked. Which
+                // sentence depends on what is actually narrowing it: a diver who
+                // only typed a name is told about the name.
                 <div className="text-muted-foreground">
-                  No courses match that name.
+                  {hasCourseFilters(filters)
+                    ? "No courses match those filters."
+                    : "No courses match that name."}
                 </div>
               ) : (
                 <>

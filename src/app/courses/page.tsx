@@ -12,6 +12,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { CoursesPageFrame } from "@/components/courses/courses-page-frame";
+import {
+  NO_COURSE_FILTERS,
+  type CourseListFilters,
+} from "@/components/courses/courses-filters";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { CourseDialog } from "@/components/courses/course-dialog";
@@ -34,6 +38,9 @@ export default function CoursesPage() {
   // what keeps the debounce off the input's own responsiveness.
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
+  // No debounce twin: each of these commits a whole value at once, so what is
+  // held and what has been asked for are the same thing.
+  const [filters, setFilters] = useState<CourseListFilters>(NO_COURSE_FILTERS);
 
   useEffect(() => {
     const timer = setTimeout(
@@ -43,16 +50,19 @@ export default function CoursesPage() {
     return () => clearTimeout(timer);
   }, [searchInput]);
 
+  // Straight through, empties and all: `getCourses` drops an unset filter from
+  // the query string itself, so there is no per-field conversion here to fall
+  // out of step with the controls.
   const fetchCourses = useCallback(
     (page: number, perPage: number) =>
-      coursesAPI.getCourses(page, perPage, search || undefined),
-    [search],
+      coursesAPI.getCourses(page, perPage, { search, ...filters }),
+    [search, filters],
   );
 
-  // Changing the search term changes this callback's identity, which is what
-  // makes `useInfiniteResource` throw away every page it has loaded and read the
-  // new query from the first - rows of the unfiltered list are not rows of the
-  // filtered one, however many of them are already on screen.
+  // Changing the search term or any filter changes this callback's identity,
+  // which is what makes `useInfiniteResource` throw away every page it has
+  // loaded and read the new query from the first - rows of the unfiltered list
+  // are not rows of the filtered one, however many are already on screen.
   const {
     items: courses,
     isLoading: isLoadingCourses,
@@ -109,6 +119,8 @@ export default function CoursesPage() {
         itemsPerPage={itemsPerPage}
         search={searchInput}
         onSearchChange={setSearchInput}
+        filters={filters}
+        onFiltersChange={setFilters}
         isSearching={isSearching}
         isLoadingMore={isLoadingMore}
         loadFailed={loadFailed}
