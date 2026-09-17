@@ -191,13 +191,10 @@ export function CertificationCardFiles({
         })}
       </div>
 
-      {/* The CSP sets `object-src 'none'` (see `proxy.ts`), so a stored PDF can
-          only ever be downloaded - `CertificationCardImage` shows it as a
-          labelled file. Worth saying here rather than after the upload, because
-          RAID hands out a PNG and a PDF of the same card and the choice is the
-          diver's. The image formats named are every non-PDF entry in
-          `CERTIFICATION_FILE_ACCEPT`, and the test holds them to that: naming
-          fewer would warn a diver off a format that displays perfectly well. */}
+      {/* Said before the upload rather than after it: RAID hands out a PNG and
+          a PDF of the same card, so the choice is the diver's to make here. The
+          formats named are every non-PDF entry in `CERTIFICATION_FILE_ACCEPT`.
+          Why a PDF cannot be shown is `CertificationCardImage`'s to explain. */}
       <p className="text-xs text-muted-foreground">
         PNG, JPEG and WEBP images are shown here. A PDF is stored and can be
         downloaded, but not displayed — if your agency offers both, pick the
