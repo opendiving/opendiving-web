@@ -82,11 +82,9 @@ export function CourseCombobox({
 
   const searchCourses = useCallback(
     async (query: string): Promise<ComboboxSearchResult> => {
-      const response = await coursesAPI.getCourses(
-        1,
-        COURSES_PER_SEARCH,
-        query,
-      );
+      const response = await coursesAPI.getCourses(1, COURSES_PER_SEARCH, {
+        search: query,
+      });
       response.data.forEach(remember);
       return {
         items: response.data.map((course) => ({
