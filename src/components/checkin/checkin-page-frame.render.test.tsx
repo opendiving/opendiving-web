@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { CheckInPageFrame } from "./checkin-page-frame";
 import type { User } from "@/lib/api/auth";
 import type { Certification } from "@/lib/api/certifications";
@@ -19,11 +20,41 @@ const auth = vi.hoisted(() => ({
     units: "metric",
     dive_form_hidden_fields: [],
   } as User,
+  refreshUser: vi.fn(),
 }));
 
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => auth,
 }));
+
+// The three dialogs this page hosts reach the API on save. The agency vocabulary and
+// `certificationFile` stay real - the summary's own rendering is built on them.
+vi.mock("@/lib/api/auth", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api/auth")>()),
+  authAPI: { updateProfile: vi.fn(), getAvatarBlob: vi.fn() },
+}));
+
+vi.mock("@/lib/api/certifications", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api/certifications")>()),
+  certificationsAPI: {
+    createCertification: vi.fn(),
+    updateCertification: vi.fn(),
+  },
+}));
+
+vi.mock("@/lib/api/courses", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api/courses")>()),
+  coursesAPI: { getCourses: vi.fn(), getCourse: vi.fn() },
+}));
+
+vi.mock("@/components/ui/use-toast", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  useToast: () => ({ toast: vi.fn(), dismiss: vi.fn(), toasts: [] }),
+}));
+
+const { authAPI } = await import("@/lib/api/auth");
+const { coursesAPI } = await import("@/lib/api/courses");
+const updateProfile = vi.mocked(authAPI.updateProfile);
 
 // Both the avatar and a card thumbnail fetch their bytes through this, the endpoints
 // being owner-only. Answering with a URL is what puts an `<img>` on the page.
@@ -58,9 +89,21 @@ const loaded = (over: Parameters<typeof CheckInPageFrame>[0] = {}) => (
   <CheckInPageFrame isLoading={false} stats={stats} {...over} />
 );
 
+// Everything a desk asks for, which is what leaves the suggestion panel off the
+// screen - it would otherwise sit above the summary in every test here.
+const COMPLETE: Partial<User> = {
+  date_of_birth: "1988-04-02",
+  phone: "+44 7700 900000",
+  emergency_contact_name: "Alex Reef",
+  emergency_contact_phone: "+44 7700 900111",
+  insurance_provider: "DAN Europe",
+  insurance_policy_number: "P-42",
+};
+
 beforeEach(() => {
   Object.assign(auth.user, {
     units: "metric",
+    avatar_sha256: null,
     date_of_birth: null,
     phone: null,
     emergency_contact_name: null,
@@ -69,6 +112,15 @@ beforeEach(() => {
     insurance_provider: null,
     insurance_policy_number: null,
     insurance_expires_on: null,
+  });
+  auth.refreshUser.mockReset().mockResolvedValue(undefined);
+  updateProfile.mockReset().mockResolvedValue(undefined);
+  vi.mocked(coursesAPI.getCourses).mockReset().mockResolvedValue({
+    data: [],
+    total_count: 0,
+    has_more: false,
+    page: 1,
+    items_per_page: 10,
   });
 });
 
@@ -221,5 +273,258 @@ describe("before the requests land", () => {
 
     expect(screen.getByText("Sam Reef")).toBeInTheDocument();
     expect(screen.getByText("+44 7700 900000")).toBeInTheDocument();
+  });
+});
+
+describe("the picture at the top", () => {
+  it("draws the one the diver stored", () => {
+    Object.assign(auth.user, { ...COMPLETE, avatar_sha256: "abc123" });
+    render(loaded({ certifications: [certification()] }));
+
+    // Radix holds `AvatarImage` back until the bytes have loaded, which jsdom never
+    // reports - so the initials standing in are the tile itself being on the page.
+    expect(screen.getByText("SR")).toBeInTheDocument();
+  });
+
+  it("leaves a monogram nobody chose off a sheet handed to a stranger", () => {
+    Object.assign(auth.user, COMPLETE);
+    render(loaded({ certifications: [certification()] }));
+
+    expect(
+      screen.getByRole("heading", { name: "Sam Reef" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("SR")).toBeNull();
+  });
+});
+
+describe("labels and values line up", () => {
+  it("puts both halves of every pair straight into the list's own grid", () => {
+    Object.assign(auth.user, COMPLETE);
+    const { container } = render(
+      loaded({
+        certifications: [certification({ certification_number: "12345" })],
+      }),
+    );
+
+    const lists = [...container.querySelectorAll("dl")];
+    expect(lists.length).toBeGreaterThan(0);
+    for (const list of lists) {
+      expect(list.className).toContain("grid-cols-[auto_1fr]");
+      // A pair wrapped in a `<div>` of its own would occupy one cell, and each value
+      // would start wherever its own label happened to end - which is the ragged
+      // edge the grid exists to remove. jsdom does no layout, so the structure is
+      // what can be pinned here.
+      for (const cell of list.querySelectorAll("dt, dd")) {
+        expect(cell.parentElement).toBe(list);
+      }
+    }
+  });
+});
+
+describe("what is still missing", () => {
+  it("names it on screen, and never on the sheet", () => {
+    const { container } = render(loaded());
+
+    expect(container.textContent).toContain(
+      "Not on your summary yet: date of birth, phone number, emergency contact, dive insurance, certifications.",
+    );
+    const fillIn = screen.getByRole("button", { name: /fill in details/i });
+    expect(fillIn.closest(".print\\:hidden")).not.toBeNull();
+    expect(
+      screen.getByRole("button", { name: /add a certification/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("says nothing once a desk has everything it asks for", () => {
+    Object.assign(auth.user, COMPLETE);
+    const { container } = render(loaded({ certifications: [certification()] }));
+
+    expect(container.textContent).not.toContain("Not on your summary yet");
+  });
+
+  it("holds its tongue about cards still in flight, and about cards that failed", () => {
+    Object.assign(auth.user, COMPLETE);
+
+    const inFlight = render(<CheckInPageFrame />);
+    expect(inFlight.container.textContent).not.toContain("certifications.");
+    inFlight.unmount();
+
+    // A list that never arrived is not an empty one, and "add your first card" to a
+    // diver who holds six is the page inventing an emptiness.
+    const failed = render(loaded({ loadFailed: true }));
+    expect(failed.container.textContent).not.toContain(
+      "Not on your summary yet",
+    );
+  });
+});
+
+describe("editing from the sheet", () => {
+  it("opens the settings form over the summary, and gives the summary back on save", async () => {
+    Object.assign(auth.user, COMPLETE);
+    render(loaded({ certifications: [certification()] }));
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Edit check-in details" }),
+    );
+
+    // Named rather than "the dialog": `DatePicker` opens its calendar - a popover
+    // Radix also gives `role="dialog"` - when the details dialog takes the focus.
+    const dialog = await screen.findByRole("dialog", {
+      name: "Check-in details",
+    });
+    // The very fields `/settings` shows, because they are the same component.
+    expect(within(dialog).getByLabelText("Phone number")).toHaveValue(
+      "+44 7700 900000",
+    );
+
+    await userEvent.clear(within(dialog).getByLabelText("Phone number"));
+    await userEvent.type(within(dialog).getByLabelText("Phone number"), "0123");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: /save changes/i }),
+    );
+
+    await waitFor(() =>
+      expect(updateProfile).toHaveBeenCalledWith(
+        expect.objectContaining({ phone: "0123" }),
+      ),
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: "Check-in details" }),
+      ).toBeNull(),
+    );
+  });
+
+  it("opens a card in the certification form it is edited in everywhere else", async () => {
+    Object.assign(auth.user, COMPLETE);
+    render(loaded({ certifications: [certification()] }));
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Edit Rescue Diver" }),
+    );
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Edit Certification",
+    });
+    expect(within(dialog).getByLabelText("Certification *")).toHaveValue(
+      "Rescue Diver",
+    );
+  });
+
+  it("re-reads the list rather than placing a saved card itself", async () => {
+    Object.assign(auth.user, COMPLETE);
+    const onCertificationsChanged = vi.fn();
+    render(
+      loaded({ certifications: [certification()], onCertificationsChanged }),
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Add" }));
+    const dialog = await screen.findByRole("dialog", {
+      name: "New Certification",
+    });
+
+    await userEvent.type(
+      within(dialog).getByLabelText("Certification *"),
+      "Nitrox",
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: /create certification/i }),
+    );
+
+    // The page re-reads `GET /certifications` rather than this component splicing
+    // the new card in: the order is the endpoint's, and a card created here has to
+    // land where that puts it.
+    await waitFor(() => expect(onCertificationsChanged).toHaveBeenCalled());
+  });
+});
+
+describe("correcting the diving figures", () => {
+  const withDiving = () =>
+    loaded({
+      certifications: [certification()],
+      lastDiveAt: "2026-08-14T09:30:00+02:00",
+    });
+
+  it("prints what the diver typed, and says it went nowhere", async () => {
+    Object.assign(auth.user, COMPLETE);
+    render(withDiving());
+    expect(screen.getByText("142")).toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Correct these figures" }),
+    );
+    const dialog = await screen.findByRole("dialog", { name: "Diving" });
+    const dives = within(dialog).getByLabelText("Dives logged");
+    await userEvent.clear(dives);
+    await userEvent.type(dives, "310");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: /use on this summary/i }),
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Diving" })).toBeNull(),
+    );
+    expect(screen.getByText("310")).toBeInTheDocument();
+    expect(screen.queryByText("142")).toBeNull();
+    expect(
+      screen.getByText(/nothing was saved to your log/i),
+    ).toBeInTheDocument();
+  });
+
+  it("hands the log's own figures back", async () => {
+    Object.assign(auth.user, COMPLETE);
+    render(withDiving());
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Correct these figures" }),
+    );
+    const dives = within(
+      await screen.findByRole("dialog", { name: "Diving" }),
+    ).getByLabelText("Dives logged");
+    await userEvent.clear(dives);
+    await userEvent.type(dives, "310");
+    await userEvent.click(
+      screen.getByRole("button", { name: /use on this summary/i }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Diving" })).toBeNull(),
+    );
+
+    // The undo only exists once there is something to undo, which is why it is
+    // looked for after the correction rather than before it.
+    await userEvent.click(
+      screen.getByRole("button", { name: "Correct these figures" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: /use logged figures/i }),
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Diving" })).toBeNull(),
+    );
+    expect(screen.getByText("142")).toBeInTheDocument();
+    expect(screen.queryByText(/nothing was saved to your log/i)).toBeNull();
+  });
+
+  it("keeps the correction off the sheet's own ink", async () => {
+    Object.assign(auth.user, COMPLETE);
+    render(withDiving());
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Correct these figures" }),
+    );
+    await userEvent.click(
+      within(await screen.findByRole("dialog", { name: "Diving" })).getByRole(
+        "button",
+        { name: /use on this summary/i },
+      ),
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Diving" })).toBeNull(),
+    );
+    expect(screen.getByText(/nothing was saved to your log/i)).toHaveClass(
+      "print:hidden",
+    );
   });
 });

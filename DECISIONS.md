@@ -6594,3 +6594,16 @@ Printing is the browser's, through Tailwind's `print:` variant on the chrome and
 controls — no PDF library, no `@media print` block. Handing that print to a shop is the diver
 showing their own entries to someone, not the software doing it, so terms §5's grant ("store your
 entries, show them back to you") is unchanged by it.
+
+## The diving figures are corrected for one printout and stored nowhere
+
+`/checkin` lets a diver retype the dive count, the max depth and the last dive before printing, and
+holds the correction in component state for that visit only. A career predating this app, or a
+fortnight logged on paper, makes the honest number one the log cannot know. Storing it would need it
+reconciled against every dive logged afterwards — a running offset nobody can keep true — while a
+figure typed for one desk needs no reconciliation at all. So there is no column for it in
+`opendiving-api` and no request behind the dialog, its submit reads "Use on this summary", and a
+reload brings the logged figures back, which is the right default for the next check-in.
+
+The check-in details beside them are the opposite: `CheckInDetailsForm` is the `/settings` card's
+own form, opened in a dialog here, and it saves.
