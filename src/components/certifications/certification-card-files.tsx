@@ -9,6 +9,7 @@ import {
   CertificationSide,
   CERTIFICATION_FILE_ACCEPT,
   CERTIFICATION_SIDES,
+  CERTIFICATION_SIDE_HEADINGS,
   CERTIFICATION_SIDE_LABELS,
   MAX_CERTIFICATION_FILE_SIZE,
 } from "@/lib/api/certifications";
@@ -26,11 +27,13 @@ interface CertificationCardFilesProps {
   onChanged: () => void | Promise<void>;
 }
 
-// Upload / replace / remove the front and back images of one certification card.
+// Upload / replace / remove the stored images of one certification card.
 //
-// Both sides are always shown, empty or not: a card has two of them, and the
-// number on the back is usually what a dive shop asks for, so an empty back
-// should look like something missing rather than something that doesn't exist.
+// Both slots are always shown, empty or not, but only the first is expected to
+// be filled: modern e-cards are usually one-sided, so the second slot is
+// optional and its heading says so. Keeping it on screen is what lets the diver
+// holding a two-sided card - TDI/SDI still prints one - find somewhere to put
+// the back without hunting for a control that only appears once it is needed.
 export function CertificationCardFiles({
   certification,
   onChanged,
@@ -116,75 +119,87 @@ export function CertificationCardFiles({
   };
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      {CERTIFICATION_SIDES.map((side) => {
-        const file = certificationFile(certification, side);
-        const isBusy = busySide === side;
+    <div className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-2">
+        {CERTIFICATION_SIDES.map((side) => {
+          const file = certificationFile(certification, side);
+          const isBusy = busySide === side;
 
-        return (
-          <div key={side} className="space-y-2">
-            <p className="text-sm font-medium">
-              {CERTIFICATION_SIDE_LABELS[side]}
-            </p>
+          return (
+            <div key={side} className="space-y-2">
+              <p className="text-sm font-medium">
+                {CERTIFICATION_SIDE_HEADINGS[side]}
+              </p>
 
-            <CertificationCardImage
-              certificationUuid={certification.uuid}
-              side={side}
-              file={file}
-            />
+              <CertificationCardImage
+                certificationUuid={certification.uuid}
+                side={side}
+                file={file}
+              />
 
-            <input
-              ref={inputRefs[side]}
-              type="file"
-              accept={CERTIFICATION_FILE_ACCEPT}
-              className="hidden"
-              onChange={(event) => handleFileSelected(side, event)}
-            />
+              <input
+                ref={inputRefs[side]}
+                type="file"
+                accept={CERTIFICATION_FILE_ACCEPT}
+                className="hidden"
+                onChange={(event) => handleFileSelected(side, event)}
+              />
 
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={isBusy}
-                onClick={() => inputRefs[side].current?.click()}
-              >
-                {isBusy ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Working...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="h-4 w-4 mr-2" />
-                    {file ? "Replace" : "Upload"}
-                  </>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isBusy}
+                  onClick={() => inputRefs[side].current?.click()}
+                >
+                  {isBusy ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Working...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4 mr-2" />
+                      {file ? "Replace" : "Upload"}
+                    </>
+                  )}
+                </Button>
+
+                {file && (
+                  <IconTooltip label={`Remove ${side} image`}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      disabled={isBusy}
+                      onClick={() => handleRemove(side)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </IconTooltip>
                 )}
-              </Button>
+              </div>
 
               {file && (
-                <IconTooltip label={`Remove ${side} image`}>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    disabled={isBusy}
-                    onClick={() => handleRemove(side)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </IconTooltip>
+                <p className="text-xs text-muted-foreground truncate">
+                  {file.original_filename} · {formatFileSize(file.byte_size)}
+                </p>
               )}
             </div>
+          );
+        })}
+      </div>
 
-            {file && (
-              <p className="text-xs text-muted-foreground truncate">
-                {file.original_filename} · {formatFileSize(file.byte_size)}
-              </p>
-            )}
-          </div>
-        );
-      })}
+      {/* Said before the upload rather than after it: RAID hands out a PNG and
+          a PDF of the same card, so the choice is the diver's to make here. The
+          formats named are every non-PDF entry in `CERTIFICATION_FILE_ACCEPT`.
+          Why a PDF cannot be shown is `CertificationCardImage`'s to explain. */}
+      <p className="text-xs text-muted-foreground">
+        PNG, JPEG and WEBP images are shown here. A PDF is stored and can be
+        downloaded, but not displayed — if your agency offers both, pick the
+        image.
+      </p>
     </div>
   );
 }

@@ -71,13 +71,17 @@ export function CertificationCardImage({
   );
 
   if (!file) {
+    // An empty slot is a normal state rather than a gap - most modern e-cards
+    // are one-sided, so a card with nothing on the back is the common case. The
+    // label names the side and the visible text does not, because the compact
+    // list view renders this with no heading beside it to say which slot it is.
     return (
       <div
         className={cn(frame, "border-dashed")}
-        aria-label={`No ${side} image`}
+        aria-label={`No ${side} image uploaded`}
       >
         {!compact && (
-          <span className="text-xs text-muted-foreground">No {side} image</span>
+          <span className="text-xs text-muted-foreground">Not uploaded</span>
         )}
       </div>
     );

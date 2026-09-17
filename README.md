@@ -73,8 +73,8 @@ one.
   it and the cards it issued, so a course is one record instead of a shape you have to remember.
 - **Full export** — one click to take _everything_ out in open formats: a **DiveJSON** document
   holding the whole logbook, a **UDDF** one other programs import, a **CSV** for a spreadsheet, or a
-  complete **archive** carrying all three alongside every dive-computer file you uploaded and both
-  sides of every c-card. [DiveJSON](https://divejson.org) is the open dive-log interchange format
+  complete **archive** carrying all three alongside every dive-computer file you uploaded and every
+  c-card image you stored. [DiveJSON](https://divejson.org) is the open dive-log interchange format
   this project maintains, and this app is its reference implementation. A data-ownership log without
   an exit door is a contradiction.
 - **Logbook import** — and a door that only opens outwards is half a promise, so a whole logbook
