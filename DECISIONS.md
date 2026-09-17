@@ -321,20 +321,20 @@ dynamic (`ƒ`); accepted. Node server only (`output: "standalone"`): a static ex
 ## Cache Components asks for one opt-out, and leaves the nonce CSP alone
 
 Under `cacheComponents` and `partialPrefetching` the root layout's `headers()` read is request-time
-data outside a boundary, so every route's static shell is empty and the build fails.
-`export const instant = false` on the root layout allows a blocking route, and it is the only
-placement that reaches them: every page a diver reaches, and both non-root layouts, are Client
-Components, which cannot carry the export. No URL hook needs a Suspense boundary of its own, and a
-route fallback still reads its URL.
+data outside a boundary: every static shell is empty and the build fails.
+`export const instant = false` on the root layout allows a blocking route. The shells stay empty: a
+shell is rendered per request, and the gain is one per route rather than one prefetch per link. The
+root is the placement: every page a _signed-in_ diver reaches, and both non-root layouts, are Client
+Components, which cannot carry the export. No URL hook needs a Suspense boundary of its own, in a
+page or a fallback.
 
 The nonce holds. Every document render mints its own; a prefetched shell carries the nonce of the
-request that produced it, never the document's, and its scripts load under `'strict-dynamic'`
-regardless.
+request that produced it, and its scripts load under `'strict-dynamic'`.
 
-The flag rejects `dynamic = "force-dynamic"`. `connection()` is what keeps `robots.txt` and
-`/healthz` reading their environment per request, not the build machine's.
+`connection()` replaces `dynamic = "force-dynamic"`, which the flag rejects, where a read must stay
+in the container.
 
-_Rejected:_ a hash-based or SRI CSP, which none of this needs.
+_Rejected:_ a hash-based or SRI CSP.
 
 ## Unified auth flow: one passwordless `AuthForm`, no password-based `/signin`/`/signup` pair
 

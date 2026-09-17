@@ -284,13 +284,14 @@ export const config = {
       // speculation rules and Google's prefetch proxy actually send never matched the
       // `purpose` key and kept the CSP regardless. Only a hand-written header stripped it.
       //
-      // One switch would reopen this: `cacheComponents`/PPR, which `next.config.js` has
-      // no `experimental` block for today. App-shell prefetches (`next-router-prefetch: 3`,
-      // `FetchStrategy.RuntimeShell`) are written into the client cache as prerenders, and
-      // a per-request nonce baked into one is exactly the stale nonce above. The same
-      // guide already calls PPR incompatible with nonce-based CSP - "static shell scripts
-      // won't have access to the nonce" - so enabling it means rethinking this whole file,
-      // not handing these four lines back.
+      // `cacheComponents`/PPR - which `next.config.js` has no flag for today - is the
+      // switch this was expected to turn on. App-shell prefetches
+      // (`next-router-prefetch: 3`, `FetchStrategy.RuntimeShell`) do carry the nonce of
+      // the request that produced them, and the guide calls PPR incompatible with a
+      // nonce-based CSP because "static shell scripts won't have access to the nonce" -
+      // but nothing here serves a static shell, and the document that runs those scripts
+      // mints its own nonce. See "Cache Components asks for one opt-out, and leaves the
+      // nonce CSP alone" in DECISIONS.md; this file is not what enabling it changes.
       source: "/((?!api/|_next/static/|_next/image/|favicon.ico$|healthz$).*)",
     },
   ],
