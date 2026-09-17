@@ -18,7 +18,7 @@
  *
  * Behind a boundary the data arrives later than any of those figures, and this
  * constant is not what moves it - see "A Suspense fallback committed at the
- * click costs ~300ms to the data behind it" in DECISIONS.md.
+ * click holds the page behind it for ~300ms" in DECISIONS.md.
  */
 export const ROUTE_FALLBACK_HOLD_MS = 330;
 

@@ -715,8 +715,8 @@ function table(rows) {
 // where none belongs fails the run rather than passing it quietly.
 //
 // **And the hold is checked in pixels.** No row may show grey before the hold has
-// elapsed, at any latency; and at the latencies where the destination's data lands first,
-// no row may show grey at all - which is the property this app has without any of these
+// elapsed, at any latency; and up to `NO_GREY_UP_TO_MS`, whose own comment says why, no
+// row may show grey at all - which is the property this app has without any of these
 // boundaries, and the one the calibration is there to keep. A run against a build of
 // `main` is how that premise is confirmed rather than assumed: the column is measured
 // from computed style and needs nothing from this branch to report.

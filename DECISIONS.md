@@ -2789,14 +2789,14 @@ carries what is left of it across the Suspense swap, so the reveal happens once.
 _Rejected:_ a boundary beside `[id]`, which mounts afresh on every pager step; and one fixed
 fallback at `dives/`, which paints a table on the way into a dive.
 
-## A Suspense fallback committed at the click costs ~300ms to the data behind it
+## A Suspense fallback committed at the click holds the page behind it for ~300ms
 
 React holds a boundary's content commit until roughly 300ms after its fallback committed, so a
 `loading.tsx` drawn at the click cannot be replaced before then however fast the round trip. Pages
 fetch on mount, so a held commit is a held request: at +100ms the navigations whose boundary is
-prefetched reach their data near 420ms, against 225ms without one. It is absent wherever no fallback
-commits — an unprefetched link, a pager step, Back — and wherever the round trip outruns the
-throttle.
+prefetched reach their data near 420ms, against 225ms without one — about 190ms. The cost is absent
+wherever no fallback commits — an unprefetched link, a pager step, Back — and wherever the round
+trip outruns the throttle.
 
 A frame painted at the click is bought with time to data, unless the route is warm enough that no
 fallback commits. `ROUTE_FALLBACK_HOLD_MS` is not the lever on that: it is an opacity delay, and at
