@@ -88,11 +88,11 @@ falls back to the browser's for naive ones.
 
 ## Date fields are typed into, and settle only when the field is left
 
-Every date field is a text box with a calendar button in it (`ui/date-picker.tsx`,
-`ui/date-time-picker.tsx`); `lib/date-input.ts` reads it. Separators are loose (`2024/6/1`,
-`20240601`), the order always year-first: `01/06/2024` is two different days depending on who typed
-it. `parseDateTimeInput()` refuses a trailing `Z` or `+02:00`, since the offset belongs to
-`UtcOffsetSelect` and dropping a pasted one moves the dive in silence.
+Where a pointer hovers, every date field is a text box with a calendar button in it
+(`ui/date-picker.tsx`, `ui/date-time-picker.tsx`); `lib/date-input.ts` reads it. Separators are
+loose (`2024/6/1`, `20240601`), the order always year-first: `01/06/2024` is two different days
+depending on who typed it. `parseDateTimeInput()` refuses a trailing `Z` or `+02:00`, since the
+offset belongs to `UtcOffsetSelect` and dropping a pasted one moves the dive in silence.
 
 The box holds a draft and commits on blur or Enter, never per keystroke, because a half-typed date
 passes through other real ones. Unparseable text is discarded; a date typed without a time takes the
@@ -101,6 +101,19 @@ time the popover holds, as a picked one does.
 Focus opens the calendar, which follows the draft as typed; `onClick` reopens it, since `focus` does
 not fire on a focused input. Only the icon button hands the grid focus, or the first keystroke lands
 on a day cell.
+
+## Touch devices get the OS date pickers, chosen by pointer
+
+`DatePicker` and `DateTimePicker` render native `<input type="date">`/`"time"` where
+`useCoarsePointer` - `(hover: none) and (pointer: coarse)` - says a finger is driving, and the text
+box and calendar elsewhere. Pointer, not viewport: a tablet at desktop width is still a finger. Its
+server snapshot is `false`, so the desktop branch renders server-side and a phone switches after
+hydration; rendering both would put two controls under one `FormControl` id.
+
+The date-time field is two inputs, not `datetime-local`, which Android chains two dialogs for and
+iOS strips the seconds from when only the date changes. A date change rewrites the date alone, so an
+imported dive keeps its seconds; a time change writes `HH:mm:00`, since no wheel offers seconds. The
+clear button stays: the iOS picker has none.
 
 ## FastAPI 422 errors can be an array, not a string - never render `detail` directly
 
