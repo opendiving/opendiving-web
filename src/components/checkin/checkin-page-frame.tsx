@@ -159,8 +159,11 @@ export function CheckInPageFrame({
     setEditing("certification");
   };
 
+  // `print:pb-0` on the wrapper: the bottom padding is breathing room on a screen and
+  // dead space on paper, where the printer's own margin already sits below it - and
+  // 32px of it is enough to push a sheet that fits onto a second page.
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 print:pb-0">
       <div
         className={cn(
           "flex flex-wrap items-start justify-between gap-4",

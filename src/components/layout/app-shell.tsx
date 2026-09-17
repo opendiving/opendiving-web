@@ -55,7 +55,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <QuickCreateProvider>
-      <div className="flex min-h-screen flex-col">
+      {/* `print:min-h-0` because `vh` under print media is the *paper's* height, not
+          the printable area inside the browser's own margins - so `min-h-screen`
+          makes this box taller than the page it is on and spills an empty sheet out
+          of the printer. It only has to hold the footer down on a short screen, and
+          the footer does not print. */}
+      <div className="flex min-h-screen flex-col print:min-h-0">
         <Header />
         <main className="flex-1">{children}</main>
         <Footer />
