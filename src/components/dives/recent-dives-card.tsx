@@ -17,6 +17,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import { ListRowsSkeleton } from "@/components/ui/skeleton";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
 import { Plus, Clock, ArrowDownToLine } from "lucide-react";
@@ -91,11 +92,11 @@ export function RecentDivesCard({
   title = "Recent Dives",
   description = "Your latest underwater adventures",
   viewAllHref = "/dives",
-  viewAllLabel = "View All Dives",
+  viewAllLabel = "View all dives",
   emptyTitle = "No dives logged yet",
   emptyDescription = "Start your diving journey by logging your first dive!",
   newDiveHref = "/dives/new",
-  newDiveLabel = "Log Your First Dive",
+  newDiveLabel = "Log your first dive",
 }: RecentDivesCardProps) {
   const units = useUnits();
 
@@ -115,7 +116,7 @@ export function RecentDivesCard({
 
   // The preview asks for its few rows once and stops; a complete list pages
   // through in tens. `hasMore` is forced false for the preview so the trigger
-  // below renders nothing - the header's "View All Dives" button is where that
+  // below renders nothing - the header's "View all dives" button is where that
   // card's "more" lives, and offering both would be two answers to one question.
   const {
     items: recentDives,
@@ -163,19 +164,19 @@ export function RecentDivesCard({
           // screen of them.
           <ListRowsSkeleton rows={RECENT_DIVES_COUNT} />
         ) : recentDives.length === 0 ? (
-          <div className="text-center py-12">
-            <DiveIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-foreground mb-2">
-              {emptyTitle}
-            </h3>
-            <p className="text-muted-foreground mb-4">{emptyDescription}</p>
-            <Button asChild>
-              <Link href={newDiveHref}>
-                <Plus className="h-4 w-4 mr-2" />
-                {newDiveLabel}
-              </Link>
-            </Button>
-          </div>
+          <EmptyState
+            icon={DiveIcon}
+            title={emptyTitle}
+            description={emptyDescription}
+            action={
+              <Button asChild>
+                <Link href={newDiveHref}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  {newDiveLabel}
+                </Link>
+              </Button>
+            }
+          />
         ) : (
           <div className="space-y-3">
             {recentDives.map((dive) => (

@@ -11,9 +11,9 @@ import { Table, TableBody } from "./table";
 
 describe("DetailPageSkeleton", () => {
   it("offers the real back link, so the wait is escapable", () => {
-    render(<DetailPageSkeleton backHref="/dives" backLabel="Back to Dives" />);
+    render(<DetailPageSkeleton backHref="/dives" backLabel="Back to dives" />);
 
-    expect(screen.getByRole("link", { name: "Back to Dives" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Back to dives" })).toHaveAttribute(
       "href",
       "/dives",
     );
@@ -21,7 +21,7 @@ describe("DetailPageSkeleton", () => {
 
   it("marks the region busy rather than announcing its placeholders", () => {
     const { container } = render(
-      <DetailPageSkeleton backHref="/dives" backLabel="Back to Dives" />,
+      <DetailPageSkeleton backHref="/dives" backLabel="Back to dives" />,
     );
 
     expect(container.querySelector("[aria-busy='true']")).toBeInTheDocument();
@@ -35,7 +35,7 @@ describe("DetailPageSkeleton", () => {
   it("stands in for the title inside the heading it will fill", () => {
     // The placeholder has to sit *in* the `h1`, not beside it - that's what keeps the
     // header the same height before and after the record lands.
-    render(<DetailPageSkeleton backHref="/gear" backLabel="Back to Gear" />);
+    render(<DetailPageSkeleton backHref="/gear" backLabel="Back to gear" />);
 
     const heading = screen.getByRole("heading", { level: 1 });
     expect(heading.querySelector(".animate-skeleton")).toBeInTheDocument();
@@ -47,7 +47,7 @@ describe("FormPageSkeleton", () => {
     const { container } = render(
       <FormPageSkeleton
         backHref="/dives"
-        backLabel="Back to Dives"
+        backLabel="Back to dives"
         fields={4}
       />,
     );

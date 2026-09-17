@@ -19,15 +19,15 @@ export interface ReturnTarget {
 }
 
 // Section labels for the back link, in both their list and single-record forms:
-// `/trips` is "Back to Trips", `/trips/{uuid}` is "Back to Trip".
+// `/trips` is "Back to trips", `/trips/{uuid}` is "Back to trip".
 const SECTIONS: Record<string, { index: string; item: string }> = {
-  dashboard: { index: "Dashboard", item: "Dashboard" },
-  dives: { index: "Dives", item: "Dive" },
-  trips: { index: "Trips", item: "Trip" },
-  sites: { index: "Dive Sites", item: "Dive Site" },
-  gear: { index: "Gear", item: "Gear" },
-  certifications: { index: "Certifications", item: "Certification" },
-  courses: { index: "Courses", item: "Course" },
+  dashboard: { index: "dashboard", item: "dashboard" },
+  dives: { index: "dives", item: "dive" },
+  trips: { index: "trips", item: "trip" },
+  sites: { index: "dive sites", item: "dive site" },
+  gear: { index: "gear", item: "gear" },
+  certifications: { index: "certifications", item: "certification" },
+  courses: { index: "courses", item: "course" },
 };
 
 export function labelForPath(path: string): string {
@@ -38,7 +38,7 @@ export function labelForPath(path: string): string {
 }
 
 // A form must never send someone back to a form. The header's create menu is
-// present on the dive form itself, so without this a "New Dive" opened from
+// present on the dive form itself, so without this a "New dive" opened from
 // `/dives/new` would hand that same path back to Cancel.
 export function isFormPath(path: string): boolean {
   const route = path.split(/[?#]/)[0].replace(/\/$/, "");
@@ -77,21 +77,21 @@ export function resolveReturnTarget(
   if (params.trip_uuid) {
     return {
       href: `/trips/${params.trip_uuid}`,
-      label: "Back to Trip",
+      label: "Back to trip",
     };
   }
 
   if (params.dive_site_uuid) {
     return {
       href: `/sites/${params.dive_site_uuid}`,
-      label: "Back to Dive Site",
+      label: "Back to dive site",
     };
   }
 
   if (params.course_uuid) {
     return {
       href: `/courses/${params.course_uuid}`,
-      label: "Back to Course",
+      label: "Back to course",
     };
   }
 

@@ -82,7 +82,7 @@ export default function TripDetailPage() {
   }
 
   if (isLoadingTrip) {
-    return <DetailPageSkeleton backHref="/trips" backLabel="Back to Trips" />;
+    return <DetailPageSkeleton backHref="/trips" backLabel="Back to trips" />;
   }
 
   if (!trip) {
@@ -91,7 +91,7 @@ export default function TripDetailPage() {
         <NotFoundState
           message="Trip not found."
           backHref="/trips"
-          backLabel="Back to Trips"
+          backLabel="Back to trips"
         />
       </div>
     );
@@ -101,7 +101,7 @@ export default function TripDetailPage() {
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <PageHeader
         backHref="/trips"
-        backLabel="Back to Trips"
+        backLabel="Back to trips"
         title={trip.name}
         subtitle={
           tripLocationNames && tripDateRange
@@ -162,7 +162,7 @@ export default function TripDetailPage() {
             emptyTitle="No dives logged for this trip yet"
             emptyDescription="Log a dive and assign it to this trip to see it here."
             newDiveHref={`/dives/new?trip_uuid=${trip.uuid}`}
-            newDiveLabel="Log a Dive for this Trip"
+            newDiveLabel="Log a dive for this trip"
           />
         </div>
 
@@ -234,7 +234,7 @@ export default function TripDetailPage() {
               <Button className="w-full" asChild>
                 <Link href={`/dives/new?trip_uuid=${trip.uuid}`}>
                   <Plus className="h-4 w-4 mr-2" />
-                  Log a Dive for this Trip
+                  Log a dive
                 </Link>
               </Button>
             </CardContent>

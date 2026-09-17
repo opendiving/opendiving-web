@@ -216,7 +216,7 @@ export function InviteRequestForm({
           instance. Two audiences are named, a member and an invitee. The line used
           to name a third, the operator "setting this instance up", and does not:
           that reader exists for one moment, before the first account is created,
-          and the install docs send them to Sign In for it. */}
+          and the install docs send them to Sign in for it. */}
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Have an account or an invitation?{" "}
         <Link href="/signin" className="underline underline-offset-4">

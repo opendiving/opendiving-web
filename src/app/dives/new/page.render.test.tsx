@@ -282,7 +282,7 @@ describe("logging a dive without touching the gas card", () => {
 });
 
 describe("the gas card, once the diver opens it", () => {
-  it("proposes a cylinder on Add Mixture, and lets it be taken back off", async () => {
+  it("proposes a cylinder on Add mixture, and lets it be taken back off", async () => {
     render(<NewDivePage />);
     await screen.findByLabelText(/duration/i);
 
@@ -910,7 +910,7 @@ describe("what the prefill does to a hidden field", () => {
 
   it("sends the same helium for a carried cylinder and a hand-added one", async () => {
     // The two paths into the cylinder list disagreed: a carried tank went through
-    // the hide rule and got helium `""` -> null, while "Add Mixture" takes
+    // the hide rule and got helium `""` -> null, while "Add mixture" takes
     // `DEFAULT_MIXTURE` whole and kept 0. Two rows of one dive, one of them
     // un-nameable by `gasName`, in a column neither was showing.
     lastDiveWith({
@@ -1055,7 +1055,7 @@ describe("persisting a toggle", () => {
 
 describe("a course handed in the URL", () => {
   it("is on screen and on the wire even under a set that hides it", async () => {
-    // "Log a Dive for this Course" is the click this protects: `course_uuid` is one
+    // "Log a dive for this course" is the click this protects: `course_uuid` is one
     // of the fourteen Basic hides, so without the reveal the dive would be filed
     // against no course and nothing on the form would say so.
     stable.searchParams = new URLSearchParams("course_uuid=course-9");

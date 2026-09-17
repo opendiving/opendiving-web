@@ -546,7 +546,7 @@ export function DiveFileImport<TFieldValues extends DiveFormValues>({
             ) : (
               <>
                 <Upload className="h-4 w-4 mr-2" />
-                Upload Dive Files
+                Upload dive files
               </>
             )}
           </Button>

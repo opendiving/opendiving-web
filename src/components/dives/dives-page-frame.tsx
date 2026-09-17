@@ -3,6 +3,8 @@
 import { type ReactNode } from "react";
 import Link from "next/link";
 import { Plus } from "lucide-react";
+import { DiveIcon } from "@/components/logo";
+import { EmptyState } from "@/components/ui/empty-state";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -63,7 +65,7 @@ export function DivesPageFrame({
         <Button asChild>
           <Link href="/dives/new">
             <Plus className="h-4 w-4 mr-2" />
-            Log New Dive
+            Log new dive
           </Link>
         </Button>
       </div>
@@ -83,17 +85,19 @@ export function DivesPageFrame({
           {numbering}
 
           {!isLoading && rows.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="text-muted-foreground mb-4">
-                No dives logged yet. Start by adding your first dive!
-              </div>
-              <Button asChild>
-                <Link href="/dives/new">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Log Your First Dive
-                </Link>
-              </Button>
-            </div>
+            <EmptyState
+              icon={DiveIcon}
+              title="No dives logged yet"
+              description="Start by adding your first dive!"
+              action={
+                <Button asChild>
+                  <Link href="/dives/new">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Log your first dive
+                  </Link>
+                </Button>
+              }
+            />
           ) : (
             <Table
               // Busy on the outside, hidden on each placeholder row within - the

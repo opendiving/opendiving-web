@@ -19,7 +19,14 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { PageHeader } from "@/components/ui/page-header";
 import { DetailPageSkeleton } from "@/components/ui/page-skeleton";
 import { NotFoundState } from "@/components/ui/not-found-state";
-import { Edit, Trash2, Plus, GraduationCap, Loader2 } from "lucide-react";
+import {
+  BadgeCheck,
+  Edit,
+  Trash2,
+  Plus,
+  GraduationCap,
+  Loader2,
+} from "lucide-react";
 import Link from "next/link";
 import { PageSpinner } from "@/components/ui/page-spinner";
 
@@ -46,6 +53,9 @@ export default function CourseDetailPage() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
   const [isEditOpen, setIsEditOpen] = useState(false);
+  // Held here rather than in the certifications card, because the sidebar's
+  // button opens the same dialog the card's empty state does.
+  const [isAddingCertification, setIsAddingCertification] = useState(false);
 
   const {
     resource: course,
@@ -86,7 +96,7 @@ export default function CourseDetailPage() {
 
   if (isLoadingCourse) {
     return (
-      <DetailPageSkeleton backHref="/courses" backLabel="Back to Courses" />
+      <DetailPageSkeleton backHref="/courses" backLabel="Back to courses" />
     );
   }
 
@@ -96,7 +106,7 @@ export default function CourseDetailPage() {
         <NotFoundState
           message="Course not found."
           backHref="/courses"
-          backLabel="Back to Courses"
+          backLabel="Back to courses"
         />
       </div>
     );
@@ -111,7 +121,7 @@ export default function CourseDetailPage() {
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <PageHeader
         backHref="/courses"
-        backLabel="Back to Courses"
+        backLabel="Back to courses"
         title={course.name}
         subtitle={
           agencyLabel && courseDateRange
@@ -169,10 +179,14 @@ export default function CourseDetailPage() {
             emptyTitle="No dives logged for this course yet"
             emptyDescription="Log a dive and assign it to this course to see it here."
             newDiveHref={`/dives/new?course_uuid=${course.uuid}`}
-            newDiveLabel="Log a Dive for this Course"
+            newDiveLabel="Log a dive for this course"
           />
 
-          <CourseCertificationsCard course={course} />
+          <CourseCertificationsCard
+            course={course}
+            isAdding={isAddingCertification}
+            onAddingChange={setIsAddingCertification}
+          />
         </div>
 
         <div className="space-y-6">
@@ -218,12 +232,24 @@ export default function CourseDetailPage() {
                   day: "numeric",
                 })}
               </InfoRow>
-              <Button className="w-full" asChild>
-                <Link href={`/dives/new?course_uuid=${course.uuid}`}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Log a Dive for this Course
-                </Link>
-              </Button>
+              {/* Two columns exactly where the sidebar is wide: it is the full
+                  content width until `lg`, where it becomes a third of it and
+                  the pair no longer fits across. */}
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
+                <Button asChild>
+                  <Link href={`/dives/new?course_uuid=${course.uuid}`}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Log a dive
+                  </Link>
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsAddingCertification(true)}
+                >
+                  <BadgeCheck className="h-4 w-4 mr-2" />
+                  Add a certification
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>

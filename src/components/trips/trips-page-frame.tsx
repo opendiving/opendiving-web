@@ -1,7 +1,8 @@
 "use client";
 
 import { type ReactNode } from "react";
-import { Plus } from "lucide-react";
+import { Luggage, Plus } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -55,7 +56,7 @@ export function TripsPageFrame({
         </div>
         <Button onClick={onNew}>
           <Plus className="h-4 w-4 mr-2" />
-          New Trip
+          New trip
         </Button>
       </div>
 
@@ -72,15 +73,17 @@ export function TripsPageFrame({
         </CardHeader>
         <CardContent>
           {!isLoading && rows.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="text-muted-foreground mb-4">
-                No trips yet. Create your first trip to group your dives!
-              </div>
-              <Button onClick={onNew}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Your First Trip
-              </Button>
-            </div>
+            <EmptyState
+              icon={Luggage}
+              title="No trips yet"
+              description="Create your first trip to group your dives!"
+              action={
+                <Button onClick={onNew}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add your first trip
+                </Button>
+              }
+            />
           ) : (
             <Table
               // Busy on the outside, hidden on each placeholder row within - the

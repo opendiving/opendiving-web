@@ -302,7 +302,7 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
             Gated on there being a cylinder, because the create form seeds no
             mixtures and an ungated control would govern no visible field. The
             stored override is untouched by the gate, so it comes back exactly
-            as the diver left it with the first "Add Mixture".
+            as the diver left it with the first "Add mixture".
 
             And gated a second time on one of the two pressure boxes being on
             screen, for the same reason rather than a new one: a diver who hides
@@ -692,7 +692,7 @@ export function MixtureFields<TFieldValues extends MixtureFieldsValues>({
         onClick={() => append({ ...DEFAULT_MIXTURE }, { shouldFocus: false })}
       >
         <Plus className="h-4 w-4 mr-2" />
-        Add Mixture
+        Add mixture
       </Button>
 
       <MixtureSetWarning

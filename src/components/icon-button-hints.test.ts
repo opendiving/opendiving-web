@@ -248,7 +248,7 @@ describe("the visible-text rule", () => {
   it("reads a rendered value as words", () => {
     expect(icon('<CalendarIcon className="mr-2 h-4 w-4" />{label}')).toBe(true);
     expect(icon("{value || placeholder}")).toBe(true);
-    expect(icon('<Plus className="h-4 w-4 mr-2" />\n Add Schedule')).toBe(true);
+    expect(icon('<Plus className="h-4 w-4 mr-2" />\n Add schedule')).toBe(true);
   });
 
   it("reads a choice between words as words", () => {

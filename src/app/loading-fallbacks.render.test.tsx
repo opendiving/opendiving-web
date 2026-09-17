@@ -258,18 +258,18 @@ describe("/dives/new", () => {
   };
 
   it.each([
-    ["nothing in the URL", new URLSearchParams(), "/dives", "Back to Dives"],
+    ["nothing in the URL", new URLSearchParams(), "/dives", "Back to dives"],
     [
       "?from=/dashboard",
       new URLSearchParams("from=/dashboard"),
       "/dashboard",
-      "Back to Dashboard",
+      "Back to dashboard",
     ],
     [
       "?trip_uuid=",
       new URLSearchParams("trip_uuid=trip-1"),
       "/trips/trip-1",
-      "Back to Trip",
+      "Back to trip",
     ],
   ])("takes its back link from %s", async (_name, params, href, label) => {
     stable.searchParams = params;
@@ -299,7 +299,7 @@ describe("/dives/new", () => {
 });
 
 describe("the edit form's back link survives the swap", () => {
-  // A fallback with a constant link would swap "Back to Dives" for "Back to Trip" a round
+  // A fallback with a constant link would swap "Back to dives" for "Back to trip" a round
   // trip later, on the one control the skeleton exists to keep honest.
   it.each([
     ["nothing in the URL", new URLSearchParams(), "/dives/dive-1"],

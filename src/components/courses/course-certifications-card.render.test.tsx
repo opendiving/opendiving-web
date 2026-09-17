@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -78,37 +79,49 @@ beforeEach(() => {
   getCourse.mockImplementation(async () => COURSE);
 });
 
-const render_ = () => render(<CourseCertificationsCard course={COURSE} />);
+// The page owns "is the create dialog open", because its sidebar opens the same
+// dialog this card's empty state does. This stands in for the page.
+function Harness() {
+  const [isAdding, setIsAdding] = useState(false);
+  return (
+    <CourseCertificationsCard
+      course={COURSE}
+      isAdding={isAdding}
+      onAddingChange={setIsAdding}
+    />
+  );
+}
+
+const render_ = () => render(<Harness />);
 
 describe("the course's certifications card", () => {
   it("reads the list once, not once per render", async () => {
     render_();
-    await screen.findByText("No certifications linked to this course yet.");
+    await screen.findByText("No certifications from this course yet");
 
     expect(getCertifications).toHaveBeenCalledTimes(1);
     expect(getCertifications).toHaveBeenCalledWith(1, 50, COURSE.uuid);
   });
 
-  it("names its two ways into the same dialog differently", async () => {
-    // A screen reader's controls list is flat, so two identically named
-    // buttons in one card would be indistinguishable in it.
+  it("carries exactly one way into the dialog, worded apart from the sidebar's", async () => {
+    // A screen reader's controls list is flat, so the page's sidebar button
+    // ("Add a certification") and this one must not share a name.
     render_();
-    await screen.findByText("No certifications linked to this course yet.");
+    await screen.findByText("No certifications from this course yet");
 
     expect(
-      screen.getByRole("button", { name: "Add certification" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Add the first certification" }),
-    ).toBeInTheDocument();
+      screen
+        .getAllByRole("button", { name: /certification/i })
+        .map((button) => button.textContent),
+    ).toEqual(["Add the first certification"]);
   });
 
   it("shows a certification created from here without a reload, then asks for the card photos", async () => {
     render_();
-    await screen.findByText("No certifications linked to this course yet.");
+    await screen.findByText("No certifications from this course yet");
 
     await userEvent.click(
-      screen.getByRole("button", { name: "Add certification" }),
+      screen.getByRole("button", { name: "Add the first certification" }),
     );
 
     // The dialog arrives linked to this course and filled in from it, which is
@@ -127,7 +140,7 @@ describe("the course's certifications card", () => {
       "Advanced Nitrox",
     );
     await userEvent.click(
-      screen.getByRole("button", { name: /Create Certification/ }),
+      screen.getByRole("button", { name: /Create certification/ }),
     );
 
     await waitFor(() => expect(createCertification).toHaveBeenCalled());

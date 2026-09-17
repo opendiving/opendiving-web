@@ -11,6 +11,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { TableRowsSkeleton } from "@/components/ui/table-skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Mail } from "lucide-react";
 import { formatDateTime } from "@/lib/date-time";
 import type { AdminInviteRequest } from "@/lib/api/admin";
 
@@ -70,10 +72,11 @@ export function InviteRequestsTable({
 
   if (!isLoading && requests.length === 0) {
     return (
-      <div className="text-center py-12 text-muted-foreground">
-        Nobody is waiting for an invitation. Addresses entered on the home page
-        show up here.
-      </div>
+      <EmptyState
+        icon={Mail}
+        title="Nobody is waiting for an invitation"
+        description="Addresses entered on the home page show up here."
+      />
     );
   }
 

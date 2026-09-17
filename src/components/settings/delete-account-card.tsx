@@ -173,7 +173,7 @@ export function DeleteAccountCard({ username }: DeleteAccountCardProps) {
             account back.
           </p>
           <Button variant="destructive" size="sm" onClick={openConfirm}>
-            Delete My Account
+            Delete my account
           </Button>
         </div>
       </CardContent>

@@ -64,7 +64,7 @@ export default function DiveSiteDetailPage() {
 
   if (isLoadingDiveSite) {
     return (
-      <DetailPageSkeleton backHref="/sites" backLabel="Back to Dive Sites" />
+      <DetailPageSkeleton backHref="/sites" backLabel="Back to dive sites" />
     );
   }
 
@@ -74,7 +74,7 @@ export default function DiveSiteDetailPage() {
         <NotFoundState
           message="Dive site not found."
           backHref="/sites"
-          backLabel="Back to Dive Sites"
+          backLabel="Back to dive sites"
         />
       </div>
     );
@@ -86,7 +86,7 @@ export default function DiveSiteDetailPage() {
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <PageHeader
         backHref="/sites"
-        backLabel="Back to Dive Sites"
+        backLabel="Back to dive sites"
         title={diveSite.name}
         subtitle={diveSite.location ? diveSite.location : undefined}
         actions={
@@ -143,7 +143,7 @@ export default function DiveSiteDetailPage() {
             emptyTitle="No dives logged at this site yet"
             emptyDescription="Log a dive and assign it to this dive site to see it here."
             newDiveHref={`/dives/new?dive_site_uuid=${diveSite.uuid}`}
-            newDiveLabel="Log a Dive at this Site"
+            newDiveLabel="Log a dive at this site"
           />
         </div>
 
@@ -197,7 +197,7 @@ export default function DiveSiteDetailPage() {
               <Button className="w-full" asChild>
                 <Link href={`/dives/new?dive_site_uuid=${diveSite.uuid}`}>
                   <Plus className="h-4 w-4 mr-2" />
-                  Log a Dive at this Site
+                  Log a dive
                 </Link>
               </Button>
             </CardContent>

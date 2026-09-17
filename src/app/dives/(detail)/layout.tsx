@@ -175,7 +175,7 @@ export default function DiveDetailLayout({
   // and this component staying mounted across the step is what makes that hold
   // worth anything.
   if (isLoadingDive && !dive) {
-    return <DetailPageSkeleton backHref="/dives" backLabel="Back to Dives" />;
+    return <DetailPageSkeleton backHref="/dives" backLabel="Back to dives" />;
   }
 
   if (!dive) {
@@ -184,7 +184,7 @@ export default function DiveDetailLayout({
         <NotFoundState
           message="Dive not found."
           backHref="/dives"
-          backLabel="Back to Dives"
+          backLabel="Back to dives"
         />
       </div>
     );
@@ -197,7 +197,7 @@ export default function DiveDetailLayout({
     >
       <PageHeader
         backHref="/dives"
-        backLabel="Back to Dives"
+        backLabel="Back to dives"
         title={`Dive #${dive.dive_number}`}
         // The time of day sits here with the date rather than in a card of its
         // own below: the two are one fact, and splitting them put the dive's

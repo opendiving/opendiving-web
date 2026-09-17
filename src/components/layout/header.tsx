@@ -44,7 +44,7 @@ import {
 // enough to warrant its own page; the rest open a dialog over whatever the
 // diver is looking at.
 // `icon` is typed by what this menu actually renders - a component taking a
-// `className` - rather than as `LucideIcon`: "New Dive" carries the brand mark,
+// `className` - rather than as `LucideIcon`: "New dive" carries the brand mark,
 // which is a plain function component and not one of lucide's forward-ref
 // exports.
 type CreateAction = {
@@ -53,12 +53,12 @@ type CreateAction = {
 } & ({ href: string } | { kind: QuickCreateKind });
 
 const CREATE_ACTIONS: CreateAction[] = [
-  { label: "New Dive", icon: DiveIcon, href: "/dives/new" },
-  { label: "New Trip", icon: Luggage, kind: "trip" },
-  { label: "New Dive Site", icon: MapPin, kind: "site" },
-  { label: "New Gear", icon: Backpack, kind: "gear" },
-  { label: "New Certification", icon: BadgeCheck, kind: "certification" },
-  { label: "New Course", icon: GraduationCap, kind: "course" },
+  { label: "New dive", icon: DiveIcon, href: "/dives/new" },
+  { label: "New trip", icon: Luggage, kind: "trip" },
+  { label: "New dive site", icon: MapPin, kind: "site" },
+  { label: "New gear", icon: Backpack, kind: "gear" },
+  { label: "New certification", icon: BadgeCheck, kind: "certification" },
+  { label: "New course", icon: GraduationCap, kind: "course" },
 ];
 
 // The create menu is reachable from every page, so the form it opens is told
@@ -369,7 +369,7 @@ export function Header() {
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleSignOut}>
                       <LogOut className="mr-2 h-4 w-4" />
-                      Sign Out
+                      Sign out
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -380,7 +380,7 @@ export function Header() {
                 size="sm"
                 className="bg-coral text-primary-foreground hover:bg-coral/90"
               >
-                <Link href="/signin">Sign In</Link>
+                <Link href="/signin">Sign in</Link>
               </Button>
             )}
 

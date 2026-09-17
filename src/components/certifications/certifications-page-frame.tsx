@@ -1,7 +1,8 @@
 "use client";
 
 import { type ReactNode } from "react";
-import { Plus } from "lucide-react";
+import { BadgeCheck, Plus } from "lucide-react";
+import { EmptyState } from "@/components/ui/empty-state";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -57,7 +58,7 @@ export function CertificationsPageFrame({
         </div>
         <Button onClick={onNew}>
           <Plus className="h-4 w-4 mr-2" />
-          New Certification
+          New certification
         </Button>
       </div>
 
@@ -77,16 +78,17 @@ export function CertificationsPageFrame({
         </CardHeader>
         <CardContent>
           {!isLoading && rows.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="text-muted-foreground mb-4">
-                No certifications yet. Add your c-cards so you always have them
-                on hand at the dive shop.
-              </div>
-              <Button onClick={onNew}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Your First Certification
-              </Button>
-            </div>
+            <EmptyState
+              icon={BadgeCheck}
+              title="No certifications yet"
+              description="Add your c-cards so you always have them on hand at the dive shop."
+              action={
+                <Button onClick={onNew}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add your first certification
+                </Button>
+              }
+            />
           ) : (
             <Table
               // Busy on the outside, hidden on each placeholder row within - the

@@ -85,7 +85,7 @@ export function LandingPage() {
             {/* Which form the hero holds is the one thing on this page that
                 depends on the instance. In `invite` mode there is nothing a
                 stranger can do with a sign-in form, so the column holds the
-                request form instead; every other route in - the header's Sign In
+                request form instead; every other route in - the header's Sign in
                 button, "Sign in to this instance" below, and the link inside the
                 request form - still reaches `/signin`, which is unchanged in both
                 modes.
@@ -112,7 +112,7 @@ export function LandingPage() {
                 What the swap costs, accepted deliberately: `AuthForm` is the only
                 mount of the conditional passkey ceremony and of the passkey and
                 Google buttons, so in `invite` mode the landing page arms none of
-                them. A returning member takes Sign In and has all three on
+                them. A returning member takes Sign in and has all three on
                 `/signin`, one tap away. */}
             <div className="flex justify-center">
               {config?.registration_mode === "invite" ? (
@@ -352,7 +352,7 @@ export function LandingPage() {
               </a>
             </Button>
             {/* `/signin`, not the `#get-started` anchor back up the page: it is
-                where the header's own Sign In button goes, and a dedicated page
+                where the header's own Sign in button goes, and a dedicated page
                 is a better answer this far down than a scroll that lands the
                 visitor on a hero they have already read past. */}
             <Button asChild size="lg" variant="outline">

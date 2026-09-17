@@ -240,7 +240,7 @@ const NAVIGATIONS = [
     boundary: true,
     from: () => "/dives",
     target: (page) =>
-      page.locator("main").getByRole("link", { name: "Log New Dive" }),
+      page.locator("main").getByRole("link", { name: "Log new dive" }),
   },
   {
     id: "dives-back",

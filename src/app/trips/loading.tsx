@@ -16,7 +16,7 @@ export default function TripsLoading() {
   if (pathname?.startsWith("/trips/")) {
     return (
       <RouteFallback>
-        <DetailPageSkeleton backHref="/trips" backLabel="Back to Trips" />
+        <DetailPageSkeleton backHref="/trips" backLabel="Back to trips" />
       </RouteFallback>
     );
   }

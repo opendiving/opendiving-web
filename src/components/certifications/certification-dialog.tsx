@@ -98,7 +98,7 @@ interface CertificationDialogProps {
   // Pass an existing certification to edit it; omit to create a new one.
   certification?: Certification | null;
   // Opens a *create* dialog already linked to this course and prefilled from
-  // it - how the course page's own "Add certification" hands the course over.
+  // it - how the course page's sidebar "Add a certification" hands it over.
   // Ignored alongside `certification`: editing a card is never a prefill.
   initialCourse?: Course;
   onSaved: (certification: Certification) => void;
@@ -559,12 +559,12 @@ export function CertificationDialog({
                 ) : isEdit ? (
                   <>
                     <Save className="h-4 w-4 mr-2" />
-                    Save Changes
+                    Save changes
                   </>
                 ) : (
                   <>
                     <Plus className="h-4 w-4 mr-2" />
-                    Create Certification
+                    Create certification
                   </>
                 )}
               </Button>

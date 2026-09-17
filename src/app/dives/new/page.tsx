@@ -53,7 +53,7 @@ function NewDivePageContent() {
 
   // Back/Cancel return to wherever this form was opened from - the trip or dive
   // site being logged against, an explicit `?from=`, or the dive list.
-  const returnTo = useReturnTo({ href: "/dives", label: "Back to Dives" });
+  const returnTo = useReturnTo({ href: "/dives", label: "Back to dives" });
 
   const form = useForm<DiveCreateInput>({
     resolver: zodResolver(diveCreateSchema),
@@ -84,7 +84,7 @@ function NewDivePageContent() {
       // never opened the gas card could not tell it from something they logged - and
       // `diveModWarning` would then raise a depth-safety warning derived from it. The
       // prefill below still carries the last dive's cylinders over, which is where
-      // the convenience actually lives; "Add Mixture" still starts from
+      // the convenience actually lives; "Add mixture" still starts from
       // `DEFAULT_MIXTURE`.
       mixtures: [],
     },
@@ -103,7 +103,7 @@ function NewDivePageContent() {
 
   // The fourth moment a value arrives from outside the diver's typing, and the one
   // that happens at mount: a trip, dive site or course a page passed in the URL. A
-  // diver who clicked "Log a Dive for this Course" asked for that field, and Basic
+  // diver who clicked "Log a dive for this course" asked for that field, and Basic
   // hides `course_uuid` - so without this the click would file the dive against no
   // course. Derived from the values rather than from the three parameters, so the
   // rule is the same one the other three moments use.
@@ -187,8 +187,8 @@ function NewDivePageContent() {
           // Deliberately *not* inherited from the last dive, unlike the trip
           // above: a course ends, and silently tagging the first fun dive after
           // it as training is a worse default than one extra pick. The mid-course
-          // streak is covered by the course page's own "Log a Dive for this
-          // Course", which arrives here as `initialCourseId` - already revealed at
+          // streak is covered by the course page's own "Log a dive for this
+          // course", which arrives here as `initialCourseId` - already revealed at
           // mount, so hiding `course_uuid` never loses it.
           course_uuid: initialCourseId,
           dive_site_uuids:
@@ -396,8 +396,8 @@ function NewDivePageContent() {
         onSubmit={onSubmit}
         isSubmitting={isSubmitting}
         cancelHref={returnTo.href}
-        submittingLabel="Logging Dive..."
-        submitLabel="Log Dive"
+        submittingLabel="Logging dive..."
+        submitLabel="Log dive"
         onFileAdded={(item) => setPendingFiles((files) => [...files, item])}
         pendingFiles={pendingFiles}
         onRemovePendingFile={(id) =>

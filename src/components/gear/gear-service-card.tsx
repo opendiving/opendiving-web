@@ -175,7 +175,7 @@ export function GearServiceCard({ gearItem, onChanged }: GearServiceCardProps) {
             onClick={() => setEditingSchedule(undefined)}
           >
             <Plus className="h-4 w-4 mr-2" />
-            Add Schedule
+            Add schedule
           </Button>
         </CardTitle>
       </CardHeader>
@@ -312,7 +312,7 @@ export function GearServiceCard({ gearItem, onChanged }: GearServiceCardProps) {
                   onClick={() => setLoggingFor(undefined)}
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Log Service
+                  Log service
                 </Button>
               </div>
 

@@ -44,7 +44,7 @@ export function Logo({ className, ...props }: React.SVGProps<SVGSVGElement>) {
 /**
  * The same three bubbles under the name the dive UI reads them by. Wherever the
  * app needs an icon that means *a dive* - the Total Dives figure, the Recent
- * Dives card, "New Dive" in the create menu - this is it, and importing `Logo`
+ * Dives card, "New dive" in the create menu - this is it, and importing `Logo`
  * there would have every one of those call sites claim to be drawing the site's
  * logo. Nothing about the mark changes between the two names; only what it is
  * standing for does.
