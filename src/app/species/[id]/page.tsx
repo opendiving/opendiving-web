@@ -112,7 +112,7 @@ export default function SpeciesDetailPage() {
               what a life-list row leads to instead of a filtered /dives. */}
           <RecentDivesCard
             complete
-            userId={user?.uuid ?? ""}
+            enabled={!!user}
             speciesId={species.uuid}
             title={`Dives with ${displayName}`}
             description="Every dive you logged this species on"

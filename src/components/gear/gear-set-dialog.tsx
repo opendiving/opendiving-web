@@ -49,7 +49,6 @@ import { unitLabel } from "@/lib/units";
 const NEW_SET_VALUE = "__new__";
 
 interface GearSetDialogProps {
-  userId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   // Pass an existing set to edit it in place (gear page). Omit to create one.
@@ -71,7 +70,6 @@ interface GearSetDialogProps {
 // sheet: same form, but prefilled with the dive's gear and with a picker for
 // whether to overwrite an existing set or start a new one.
 export function GearSetDialog({
-  userId,
   open,
   onOpenChange,
   gearSet,
@@ -116,10 +114,10 @@ export function GearSetDialog({
 
   // The target picker needs the user's sets; only fetched when it's actually shown.
   useEffect(() => {
-    if (!open || !showTargetPicker || !userId) return;
+    if (!open || !showTargetPicker) return;
     const controller = new AbortController();
 
-    fetchAllGearSets(userId, controller.signal)
+    fetchAllGearSets(controller.signal)
       .then((sets) => {
         if (!controller.signal.aborted) setExistingSets(sets);
       })
@@ -129,7 +127,7 @@ export function GearSetDialog({
       });
 
     return () => controller.abort();
-  }, [open, showTargetPicker, userId]);
+  }, [open, showTargetPicker]);
 
   // Picking an existing set only decides *where* the items are saved - the items
   // and weight themselves stay as they came in from the dive form. The name field
@@ -175,7 +173,6 @@ export function GearSetDialog({
       } else {
         onSaved(
           await gearAPI.createGearSet({
-            user_uuid: userId,
             name: data.name,
             weight,
             gear_item_uuids: items,
@@ -274,7 +271,6 @@ export function GearSetDialog({
                   <FormLabel>Gear</FormLabel>
                   <FormControl>
                     <GearItemMultiSelect
-                      userId={userId}
                       value={field.value ?? []}
                       // An edited set already carries its members' details, so
                       // the picker needn't fetch each one back by uuid.

@@ -93,9 +93,7 @@ const renderCard = async (
     items_per_page: 100,
   });
   getRecords.mockResolvedValue(records);
-  render(
-    <GearServiceCard userId="user-1" gearItem={gearItem} onChanged={vi.fn()} />,
-  );
+  render(<GearServiceCard gearItem={gearItem} onChanged={vi.fn()} />);
   await screen.findByText("Service history");
 };
 

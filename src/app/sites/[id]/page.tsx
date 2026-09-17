@@ -112,7 +112,6 @@ export default function DiveSiteDetailPage() {
       />
 
       <DiveSiteDialog
-        userId={user?.uuid ?? ""}
         open={isEditOpen}
         onOpenChange={setIsEditOpen}
         diveSite={diveSite}
@@ -121,7 +120,6 @@ export default function DiveSiteDetailPage() {
 
       <DeleteWithReassignDialog
         kind="dive-site"
-        userId={user?.uuid ?? ""}
         targetId={del.pendingId}
         isDeleting={isDeleting}
         onCancel={del.cancelDelete}
@@ -137,7 +135,7 @@ export default function DiveSiteDetailPage() {
         <div className="lg:col-span-2">
           <RecentDivesCard
             complete
-            userId={user?.uuid ?? ""}
+            enabled={!!user}
             diveSiteId={diveSite.uuid}
             title="Dives at this Site"
             description="All dives logged at this dive site"

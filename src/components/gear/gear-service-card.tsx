@@ -36,7 +36,6 @@ import { GearServiceScheduleDialog } from "@/components/gear/gear-service-schedu
 import { GearServiceRecordDialog } from "@/components/gear/gear-service-record-dialog";
 
 interface GearServiceCardProps {
-  userId: string;
   gearItem: GearItem;
   // Called after any write, so the page can refetch the item - its embedded `service`
   // summaries carry the due dates this card renders.
@@ -52,11 +51,7 @@ function recordName(record: GearServiceRecord): string {
 
 // Service schedules and history for one gear item. Sits above the dive list on the gear
 // detail page: service is the thing you can act on here, the dive list is reference.
-export function GearServiceCard({
-  userId,
-  gearItem,
-  onChanged,
-}: GearServiceCardProps) {
+export function GearServiceCard({ gearItem, onChanged }: GearServiceCardProps) {
   const { toast } = useToast();
 
   const [schedules, setSchedules] = useState<GearServiceSchedule[]>([]);
@@ -85,17 +80,16 @@ export function GearServiceCard({
   const load = useCallback(
     async (signal?: AbortSignal) => {
       const [schedulePage, allRecords] = await Promise.all([
-        gearServiceAPI.getSchedules(userId, gearItem.uuid, 1, 100),
-        fetchAllServiceRecords(userId, gearItem.uuid, signal),
+        gearServiceAPI.getSchedules(gearItem.uuid, 1, 100),
+        fetchAllServiceRecords(gearItem.uuid, signal),
       ]);
       setSchedules(schedulePage.data);
       setRecords(allRecords);
     },
-    [userId, gearItem.uuid],
+    [gearItem.uuid],
   );
 
   useEffect(() => {
-    if (!userId) return;
     const controller = new AbortController();
 
     // Wrapped in an async function rather than called straight from the effect body,
@@ -123,7 +117,7 @@ export function GearServiceCard({
     fetchService();
 
     return () => controller.abort();
-  }, [userId, load, toast]);
+  }, [load, toast]);
 
   // Any write can move a due date, so both this card and the page's copy of the item
   // (which carries the embedded summaries) are refreshed.

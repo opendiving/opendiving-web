@@ -48,7 +48,6 @@ import { Button } from "@/components/ui/button";
 const NO_TYPE_VALUE = "__none__";
 
 interface GearItemDialogProps {
-  userId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   // Pass an existing item to edit it; omit to create a new one.
@@ -66,7 +65,6 @@ interface GearItemDialogProps {
 // less disruptive than navigating away from a half-filled dive form to a
 // dedicated page and back.
 export function GearItemDialog({
-  userId,
   open,
   onOpenChange,
   gearItem,
@@ -130,7 +128,6 @@ export function GearItemDialog({
         });
       } else {
         const created = await gearAPI.createGearItem({
-          user_uuid: userId,
           name: data.name,
           brand: data.brand || undefined,
           type: type ?? undefined,

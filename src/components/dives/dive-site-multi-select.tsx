@@ -19,7 +19,6 @@ import { cn } from "@/lib/utils";
 const SITES_PER_SEARCH = 25;
 
 export interface DiveSiteMultiSelectProps extends FormControlSlotProps {
-  userId: string;
   // Ordered list of selected dive site uuids - the first entry is the primary
   // site (e.g. shown as "Site Name +2" wherever only one site fits).
   value: string[];
@@ -43,7 +42,6 @@ export interface DiveSiteMultiSelectProps extends FormControlSlotProps {
 // names of *selected* sites are therefore tracked separately, in `labels`,
 // since a picked site drops out of the results as soon as the query changes.
 export function DiveSiteMultiSelect({
-  userId,
   value,
   knownSites,
   onChange,
@@ -108,7 +106,6 @@ export function DiveSiteMultiSelect({
   const searchDiveSites = useCallback(
     async (query: string): Promise<ComboboxSearchResult> => {
       const response = await diveSitesAPI.getDiveSites(
-        userId,
         1,
         SITES_PER_SEARCH,
         query,
@@ -125,7 +122,7 @@ export function DiveSiteMultiSelect({
         hasMore: response.has_more,
       };
     },
-    [userId, rememberLabel],
+    [rememberLabel],
   );
 
   const addSite = (id: string | undefined) => {
@@ -249,7 +246,6 @@ export function DiveSiteMultiSelect({
       />
 
       <DiveSiteDialog
-        userId={userId}
         open={showNewDialog}
         onOpenChange={setShowNewDialog}
         onSaved={handleCreated}

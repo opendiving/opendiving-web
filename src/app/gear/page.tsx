@@ -30,19 +30,14 @@ export default function GearPage() {
   const [isArchiving, setIsArchiving] = useState(false);
 
   const fetchGearItems = useCallback(
-    (page: number, perPage: number) => {
-      if (!user) return Promise.reject(new Error("Not authenticated"));
-      return gearAPI.getGearItems(user.uuid, page, perPage, showArchived);
-    },
-    [user, showArchived],
+    (page: number, perPage: number) =>
+      gearAPI.getGearItems(page, perPage, showArchived),
+    [showArchived],
   );
 
   const fetchGearSets = useCallback(
-    (page: number, perPage: number) => {
-      if (!user) return Promise.reject(new Error("Not authenticated"));
-      return gearAPI.getGearSets(user.uuid, page, perPage);
-    },
-    [user],
+    (page: number, perPage: number) => gearAPI.getGearSets(page, perPage),
+    [],
   );
 
   const {
@@ -229,7 +224,6 @@ export default function GearPage() {
       />
 
       <GearItemDialog
-        userId={user?.uuid ?? ""}
         open={editingItem !== null}
         onOpenChange={(open) => !open && setEditingItem(null)}
         gearItem={editingItem}
@@ -237,7 +231,6 @@ export default function GearPage() {
       />
 
       <GearSetDialog
-        userId={user?.uuid ?? ""}
         open={editingSet !== null}
         onOpenChange={(open) => !open && setEditingSet(null)}
         gearSet={editingSet}

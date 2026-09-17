@@ -141,7 +141,6 @@ export default function CourseDetailPage() {
       />
 
       <CourseDialog
-        userId={user?.uuid ?? ""}
         open={isEditOpen}
         onOpenChange={setIsEditOpen}
         course={course}
@@ -162,7 +161,7 @@ export default function CourseDetailPage() {
         <div className="lg:col-span-2 space-y-6">
           <RecentDivesCard
             complete
-            userId={user?.uuid ?? ""}
+            enabled={!!user}
             courseId={course.uuid}
             title="Dives on this Course"
             description="All dives logged as part of this course"
@@ -173,7 +172,7 @@ export default function CourseDetailPage() {
             newDiveLabel="Log a Dive for this Course"
           />
 
-          <CourseCertificationsCard userId={user?.uuid ?? ""} course={course} />
+          <CourseCertificationsCard course={course} />
         </div>
 
         <div className="space-y-6">

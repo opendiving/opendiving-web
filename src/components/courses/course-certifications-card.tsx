@@ -34,7 +34,6 @@ import { CertificationViewDialog } from "@/components/certifications/certificati
 const CERTIFICATIONS_LIMIT = 50;
 
 interface CourseCertificationsCardProps {
-  userId: string;
   // The whole course, not just its uuid: "Add certification" opens a dialog
   // pre-linked to it *and* prefilled from its training center, instructor and
   // agency where it names one, and the page has already loaded every one of
@@ -55,7 +54,6 @@ interface CourseCertificationsCardProps {
  * call rather than a prop contract to keep in step.
  */
 export function CourseCertificationsCard({
-  userId,
   course,
 }: CourseCertificationsCardProps) {
   const [certifications, setCertifications] = useState<Certification[]>([]);
@@ -74,7 +72,7 @@ export function CourseCertificationsCard({
   const fetchCertifications = useCallback(
     () =>
       certificationsAPI
-        .getCertifications(userId, 1, CERTIFICATIONS_LIMIT, courseUuid)
+        .getCertifications(1, CERTIFICATIONS_LIMIT, courseUuid)
         .then((response) => response.data)
         // Supplementary to the page, like the dashboard's own cards: a failed
         // fetch leaves this empty rather than turning the course page into an
@@ -83,11 +81,10 @@ export function CourseCertificationsCard({
           console.error("Failed to fetch the course's certifications:", error);
           return null;
         }),
-    [userId, courseUuid],
+    [courseUuid],
   );
 
   useEffect(() => {
-    if (!userId) return;
     let cancelled = false;
 
     fetchCertifications()
@@ -102,7 +99,7 @@ export function CourseCertificationsCard({
     return () => {
       cancelled = true;
     };
-  }, [userId, fetchCertifications]);
+  }, [fetchCertifications]);
 
   const refresh = useCallback(async () => {
     const data = await fetchCertifications();
@@ -198,7 +195,6 @@ export function CourseCertificationsCard({
       </Card>
 
       <CertificationDialog
-        userId={userId}
         open={isCreating}
         onOpenChange={setIsCreating}
         initialCourse={course}

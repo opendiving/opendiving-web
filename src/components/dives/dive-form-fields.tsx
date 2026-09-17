@@ -96,9 +96,6 @@ export interface DiveFormFieldsProps<TFieldValues extends DiveFormValues> {
   // so no asterisks are shown and a cleared value resolves to `undefined`
   // rather than falling back to a default.
   mode: "create" | "edit";
-  // UUID of the currently signed-in user, used to fetch/create trips and
-  // dive sites scoped to their account for the trip/dive site comboboxes.
-  userId: string;
   // Which of the optional fields this form renders at all. A hidden field's
   // `FormField` is not rendered, so its input is out of the DOM, the tab order and
   // the accessibility tree - and its *value* is untouched by that, which is
@@ -139,7 +136,6 @@ export interface DiveFormFieldsProps<TFieldValues extends DiveFormValues> {
 export function DiveFormFields<TFieldValues extends DiveFormValues>({
   control,
   mode,
-  userId,
   visibility,
   mixtureFieldArray,
   knownDiveSites,
@@ -211,7 +207,6 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                   <FormLabel>Trip</FormLabel>
                   <FormControl>
                     <TripCombobox
-                      userId={userId}
                       value={field.value}
                       onChange={field.onChange}
                     />
@@ -231,7 +226,6 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                   <FormLabel>Course</FormLabel>
                   <FormControl>
                     <CourseCombobox
-                      userId={userId}
                       value={field.value}
                       onChange={field.onChange}
                     />
@@ -254,7 +248,6 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
               <FormLabel>Dive site(s)</FormLabel>
               <FormControl>
                 <DiveSiteMultiSelect
-                  userId={userId}
                   value={field.value ?? []}
                   knownSites={knownDiveSites}
                   onChange={field.onChange}
@@ -670,7 +663,6 @@ export function DiveFormFields<TFieldValues extends DiveFormValues>({
                       <FormLabel>Gear</FormLabel>
                       <FormControl>
                         <DiveGearField
-                          userId={userId}
                           value={field.value ?? []}
                           knownItems={knownGearItems}
                           onChange={field.onChange}

@@ -37,7 +37,6 @@ import { TripLocationMultiSelect } from "@/components/trips/trip-location-multi-
 import { LocationsMap } from "@/components/map/locations-map-lazy";
 
 interface TripDialogProps {
-  userId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   // Pass an existing trip to edit it; omit to create a new one.
@@ -53,7 +52,6 @@ interface TripDialogProps {
 // matters most in the dive form, where a page would mean abandoning a
 // half-filled dive.
 export function TripDialog({
-  userId,
   open,
   onOpenChange,
   trip,
@@ -133,7 +131,6 @@ export function TripDialog({
         });
       } else {
         const created = await tripsAPI.createTrip({
-          user_uuid: userId,
           name: data.name,
           locations: data.locations ?? [],
           start_date: data.start_date,

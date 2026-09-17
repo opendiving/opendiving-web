@@ -27,11 +27,8 @@ export default function TripsPage() {
   const [editingTrip, setEditingTrip] = useState<Trip | null | undefined>(null);
 
   const fetchTrips = useCallback(
-    (page: number, perPage: number) => {
-      if (!user) return Promise.reject(new Error("Not authenticated"));
-      return tripsAPI.getTrips(user.uuid, page, perPage);
-    },
-    [user],
+    (page: number, perPage: number) => tripsAPI.getTrips(page, perPage),
+    [],
   );
 
   const {
@@ -140,7 +137,6 @@ export default function TripsPage() {
       />
 
       <TripDialog
-        userId={user?.uuid ?? ""}
         open={editingTrip !== null}
         onOpenChange={(open) => !open && setEditingTrip(null)}
         trip={editingTrip}
@@ -149,7 +145,6 @@ export default function TripsPage() {
 
       <DeleteWithReassignDialog
         kind="trip"
-        userId={user?.uuid ?? ""}
         targetId={pendingId}
         isDeleting={deletingId === pendingId}
         onCancel={cancelDeleteTrip}

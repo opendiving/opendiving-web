@@ -48,7 +48,6 @@ const COORDINATE_HINT =
   "Paste a “27.8506, 34.3136” pair into either field to fill both, or place the site on the map below.";
 
 interface DiveSiteDialogProps {
-  userId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   // Pass an existing dive site to edit it; omit to create a new one.
@@ -64,7 +63,6 @@ interface DiveSiteDialogProps {
 // which matters most in the dive form, where a page would mean abandoning a
 // half-filled dive.
 export function DiveSiteDialog({
-  userId,
   open,
   onOpenChange,
   diveSite,
@@ -241,7 +239,6 @@ export function DiveSiteDialog({
         onSaved({ ...diveSite, ...update });
       } else {
         const created = await diveSitesAPI.createDiveSite({
-          user_uuid: userId,
           name: data.name,
           location: data.location || undefined,
           latitude,

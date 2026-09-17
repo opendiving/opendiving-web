@@ -211,14 +211,12 @@ export const gearServiceAPI = {
   },
 
   async getSchedules(
-    userUuid: string,
     gearItemUuid?: string,
     page: number = 1,
     items_per_page: number = 10,
   ): Promise<PaginatedServiceSchedulesResponse> {
     const response = await apiClient.get(`/gear-service-schedules`, {
       params: {
-        user_uuid: userUuid,
         gear_item_uuid: gearItemUuid,
         page,
         items_per_page,
@@ -260,14 +258,12 @@ export const gearServiceAPI = {
   },
 
   async getRecords(
-    userUuid: string,
     gearItemUuid?: string,
     page: number = 1,
     items_per_page: number = 10,
   ): Promise<PaginatedServiceRecordsResponse> {
     const response = await apiClient.get(`/gear-service-records`, {
       params: {
-        user_uuid: userUuid,
         gear_item_uuid: gearItemUuid,
         page,
         items_per_page,
@@ -297,10 +293,8 @@ export const gearServiceAPI = {
   // Every active schedule the user owns - no date horizon, deliberately. A server-side
   // "due within N days" filter would bake today's date into the cached response, which
   // then goes wrong at midnight; the client buckets these itself.
-  async getDue(userUuid: string): Promise<GearServiceDueResponse> {
-    const response = await apiClient.get(`/gear-service-due`, {
-      params: { user_uuid: userUuid },
-    });
+  async getDue(): Promise<GearServiceDueResponse> {
+    const response = await apiClient.get(`/gear-service-due`);
     return response.data;
   },
 };
@@ -310,13 +304,12 @@ export const gearServiceAPI = {
  * list rather than paging it - a diver has a handful of records per item, not hundreds.
  */
 export async function fetchAllServiceRecords(
-  userUuid: string,
   gearItemUuid: string,
   signal?: AbortSignal,
 ): Promise<GearServiceRecord[]> {
   return fetchAllPages(
     (page, itemsPerPage) =>
-      gearServiceAPI.getRecords(userUuid, gearItemUuid, page, itemsPerPage),
+      gearServiceAPI.getRecords(gearItemUuid, page, itemsPerPage),
     { signal, label: "service records", keyOf: (record) => record.uuid },
   );
 }

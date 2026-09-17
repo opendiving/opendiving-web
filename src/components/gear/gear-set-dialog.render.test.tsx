@@ -98,7 +98,6 @@ const removeItem = (label: string) =>
 const editSidemount = () =>
   render(
     <GearSetDialog
-      userId="user-1"
       open
       onOpenChange={vi.fn()}
       gearSet={SIDEMOUNT}
@@ -174,7 +173,6 @@ describe("the gear set dialog's PATCH body", () => {
     // walked away from has to be gone by the next open, not still sitting in the
     // picker and about to be saved as a real one.
     const props = {
-      userId: "user-1",
       onOpenChange: vi.fn(),
       gearSet: SIDEMOUNT,
       onSaved: vi.fn(),
@@ -196,7 +194,6 @@ describe("the gear set dialog's other save paths", () => {
   const saveDivesGear = () =>
     render(
       <GearSetDialog
-        userId="user-1"
         open
         onOpenChange={vi.fn()}
         initialItemUuids={["item-9", "item-8"]}
@@ -312,7 +309,6 @@ describe("the gear set dialog's weight entry units", () => {
       <>
         <FormWeightField />
         <GearSetDialog
-          userId="user-1"
           open
           onOpenChange={vi.fn()}
           gearSet={SIDEMOUNT}

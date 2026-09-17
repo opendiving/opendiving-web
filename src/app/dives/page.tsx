@@ -37,11 +37,8 @@ export default function DivesPage() {
   );
 
   const fetchDives = useCallback(
-    (page: number, perPage: number) => {
-      if (!user) return Promise.reject(new Error("Not authenticated"));
-      return divesAPI.getDives(user.uuid, page, perPage);
-    },
-    [user],
+    (page: number, perPage: number) => divesAPI.getDives(page, perPage),
+    [],
   );
 
   const {

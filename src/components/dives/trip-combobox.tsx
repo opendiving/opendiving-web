@@ -14,7 +14,6 @@ import { TripDialog } from "@/components/trips/trip-dialog";
 const TRIPS_PER_SEARCH = 25;
 
 export interface TripComboboxProps extends FormControlSlotProps {
-  userId: string;
   value?: string | null;
   // `null`, not `undefined`, for "no trip" - and the distinction is load-bearing
   // on the edit form, which builds its PATCH body by skipping fields that are
@@ -30,7 +29,6 @@ export interface TripComboboxProps extends FormControlSlotProps {
 // list - see DECISIONS.md. It used to request a single page of 100 and drop the
 // rest silently, so a 101st trip simply couldn't be selected.
 export function TripCombobox({
-  userId,
   value,
   onChange,
   disabled,
@@ -68,12 +66,7 @@ export function TripCombobox({
 
   const searchTrips = useCallback(
     async (query: string): Promise<ComboboxSearchResult> => {
-      const response = await tripsAPI.getTrips(
-        userId,
-        1,
-        TRIPS_PER_SEARCH,
-        query,
-      );
+      const response = await tripsAPI.getTrips(1, TRIPS_PER_SEARCH, query);
       response.data.forEach(remember);
       return {
         // Trips have `locations` too, but unlike dive sites they aren't shown
@@ -85,7 +78,7 @@ export function TripCombobox({
         hasMore: response.has_more,
       };
     },
-    [userId, remember],
+    [remember],
   );
 
   const handleCreated = (newTrip: Trip) => {
@@ -112,7 +105,6 @@ export function TripCombobox({
       />
 
       <TripDialog
-        userId={userId}
         open={showNewDialog}
         onOpenChange={setShowNewDialog}
         onSaved={handleCreated}

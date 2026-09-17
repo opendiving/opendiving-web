@@ -177,7 +177,6 @@ export interface Certification {
 }
 
 export interface CertificationCreate {
-  user_uuid: string;
   agency: CertificationAgency;
   agency_other?: string | null;
   name: string;
@@ -195,9 +194,7 @@ export interface CertificationCreate {
 // the key leaves whatever course it already has alone. The API takes this shape
 // as its own `CertificationUpdateRequest`, kept apart from the schema its admin
 // panel writes through - `course_uuid` is not a column there.
-export type CertificationUpdate = Partial<
-  Omit<CertificationCreate, "user_uuid">
->;
+export type CertificationUpdate = Partial<CertificationCreate>;
 
 export type PaginatedCertificationsResponse = PaginatedResponse<Certification>;
 
@@ -237,8 +234,8 @@ export function certificationFile(
  * card cannot be used as a plain `<img src>` - `useAuthedBlobUrl` is what bridges that.
  */
 export const certificationsAPI = {
-  // Create a certification. `data.user_uuid` must be the signed-in user's uuid.
-  // Card images are attached afterwards with `uploadCertificationFile`.
+  // Create a certification, owned by the signed-in user. Card images are
+  // attached afterwards with `uploadCertificationFile`.
   async createCertification(data: CertificationCreate): Promise<Certification> {
     const response = await apiClient.post(`/certification`, data);
     return response.data;
@@ -249,14 +246,12 @@ export const certificationsAPI = {
   // own page reads; one naming a course that doesn't exist or isn't the caller's
   // returns an empty page rather than an error.
   async getCertifications(
-    userUuid: string,
     page: number = 1,
     items_per_page: number = 10,
     courseUuid?: string,
   ): Promise<PaginatedCertificationsResponse> {
     const response = await apiClient.get(`/certifications`, {
       params: {
-        user_uuid: userUuid,
         page,
         items_per_page,
         ...(courseUuid !== undefined ? { course_uuid: courseUuid } : {}),
@@ -275,10 +270,8 @@ export const certificationsAPI = {
   // horizon: a server-side "expiring within N days" filter would bake today's date
   // into the cached response and go wrong at midnight, so the client buckets these
   // itself (see `certificationRenewals`).
-  async getExpiring(userUuid: string): Promise<CertificationExpiringResponse> {
-    const response = await apiClient.get(`/certifications-expiring`, {
-      params: { user_uuid: userUuid },
-    });
+  async getExpiring(): Promise<CertificationExpiringResponse> {
+    const response = await apiClient.get(`/certifications-expiring`);
     return response.data;
   },
 
@@ -358,12 +351,11 @@ export const certificationsAPI = {
  * fields the renewals card renders.
  */
 export async function fetchAllCertifications(
-  userUuid: string,
   signal?: AbortSignal,
 ): Promise<Certification[]> {
   return fetchAllPages(
     (page, itemsPerPage) =>
-      certificationsAPI.getCertifications(userUuid, page, itemsPerPage),
+      certificationsAPI.getCertifications(page, itemsPerPage),
     {
       signal,
       label: "certifications",

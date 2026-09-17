@@ -42,7 +42,6 @@ beforeEach(() => {
 function open(course?: Course, onSaved = vi.fn()) {
   render(
     <CourseDialog
-      userId="user-1"
       open
       onOpenChange={vi.fn()}
       course={course}
@@ -100,7 +99,6 @@ describe("CourseDialog", () => {
 
     await waitFor(() => expect(createCourse).toHaveBeenCalled());
     expect(createCourse.mock.calls[0][0]).toMatchObject({
-      user_uuid: "user-1",
       name: "PADI Open Water",
       status: "completed",
       // Both dates absent rather than empty strings - a course can legitimately

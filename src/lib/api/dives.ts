@@ -726,7 +726,6 @@ export function diveParserLabel(key: string | null | undefined): string | null {
 }
 
 export interface DiveCreate {
-  user_uuid: string;
   dive_number: number;
   // Must be an offset-aware ISO 8601 string, e.g.
   // "2021-04-04T10:04:47.910+02:00" - see `Dive.start_time` above. Build one
@@ -999,7 +998,7 @@ export interface ParsedDiveMatch {
  * correct the parsed values before anything is stored.
  */
 export const divesAPI = {
-  // Create a new dive. `diveData.user_uuid` must be the currently signed-in user's uuid.
+  // Create a new dive, owned by the signed-in user.
   async createDive(diveData: DiveCreate): Promise<Dive> {
     const response = await apiClient.post(`/dive`, diveData);
     return response.data;
@@ -1017,7 +1016,6 @@ export const divesAPI = {
   // silently re-point every existing call's site and gear filters. Appending is
   // the only safe direction, which is why each new filter joins the end.
   async getDives(
-    userUuid: string,
     page: number = 1,
     items_per_page: number = 10,
     tripUuid?: string,
@@ -1028,7 +1026,6 @@ export const divesAPI = {
   ): Promise<PaginatedDivesResponse> {
     const response = await apiClient.get(`/dives`, {
       params: {
-        user_uuid: userUuid,
         page,
         items_per_page,
         ...(tripUuid !== undefined ? { trip_uuid: tripUuid } : {}),

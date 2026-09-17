@@ -166,7 +166,6 @@ export default function GearItemDetailPage() {
           {/* Above the dive list on purpose: service is the thing you can act on
               from this page, the dive list is reference. */}
           <GearServiceCard
-            userId={user?.uuid ?? ""}
             gearItem={gearItem}
             onChanged={() => {
               // Refetches the item so its embedded `service` summaries (and so the
@@ -180,7 +179,7 @@ export default function GearItemDetailPage() {
 
           <RecentDivesCard
             complete
-            userId={user?.uuid ?? ""}
+            enabled={!!user}
             gearItemId={gearItem.uuid}
             title="Dives with this Gear"
             description="Every dive this item was used on"
@@ -265,7 +264,6 @@ export default function GearItemDetailPage() {
       </div>
 
       <GearItemDialog
-        userId={user?.uuid ?? ""}
         open={isEditOpen}
         onOpenChange={setIsEditOpen}
         gearItem={gearItem}

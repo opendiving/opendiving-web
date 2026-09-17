@@ -5,23 +5,20 @@ the symbol you are touching. The bar for a new entry is in `AGENTS.md`.
 
 ## Dive/trip/dive-site API calls take `uuid` strings, not `username`/numeric ids
 
-`divesAPI`/`tripsAPI`/`diveSitesAPI` in `lib/api/*.ts` identify users and resources by string
-`uuid`, never by `username` or a numeric `id`, matching the API's flat routes (`/dive`, `/dives`,
-`/dive/{id}`). Every caller (`RecentDivesCard`, `RecentTripsCard`, `TripCombobox`,
-`DiveSiteMultiSelect`, `NewTripDialog`, `NewDiveSiteDialog`, `DiveFormFields`, the
-`dives/`/`sites/`/`trips/` pages) reads `user.uuid` from `AuthContext`, not `user.id` or
-`user.username`.
+`divesAPI`/`tripsAPI`/`diveSitesAPI` in `lib/api/*.ts` identify resources by string `uuid`, never by
+`username` or a numeric `id`, matching the API's flat routes (`/dive`, `/dives`, `/dive/{id}`).
 
-- Create calls (`createDive`/`createTrip`/`createDiveSite`) take the full request object as a single
-  argument, with `user_uuid` in its body.
-- List calls (`getDives`/`getTrips`/`getDiveSites`) take `userUuid` as their first argument and send
-  it as the `user_uuid` query param.
+- No request names its owner. A create call (`createDive`/`createTrip`/`createDiveSite`) takes the
+  full request object as a single argument and puts no `user_uuid` in it; a list call
+  (`getDives`/`getTrips`/`getDiveSites`) takes its page, size and filters and sends no `user_uuid`
+  query param. The bearer token scopes both, so there is no owner id to pass — and none to thread
+  down a prop chain to reach a request with.
 - Single-resource calls (`getDive`/`updateDive`/`deleteDive` and the trip/dive-site equivalents)
   take only the resource `uuid`; the backend authorizes by comparing the fetched object's owner to
   the caller.
 
-`authAPI.updateProfile` and `diveStatsAPI.getDiveStats` take no user identifier at all — see
-"Current-user endpoints live on a bare `/user`, not `/user/me`/`/user/{uuid}`" below.
+`authAPI.updateProfile` and `diveStatsAPI.getDiveStats` are the same rule on the current-user routes
+— see "Current-user endpoints live on a bare `/user`, not `/user/me`/`/user/{uuid}`" below.
 
 ## Never use `z.preprocess()`/`.transform()` on fields feeding `z.input<>`-derived types
 
@@ -360,8 +357,8 @@ Figma's fallback `<path>` beside the `<foreignObject>` paints solid black over t
 `components/settings/EmailChangeCard.tsx`: enter a new address, submit via
 `authAPI.requestEmailChange(newEmail)`, get the same generic "check your new email" message even for
 a taken address, and the change applies only once the emailed link is confirmed.
-`POST /user/email-change/request` always acts on the caller's own account, so the card takes no
-`userUuid` prop.
+`POST /user/email-change/request` always acts on the caller's own account, so there is no address to
+name but the new one.
 
 The field is always visible with one full-width "Send confirmation link" button — no edit toggle, no
 cancel — matching the Profile Information card beside it. Both cards use `flex flex-col h-full` /
@@ -413,10 +410,9 @@ The API serves current-user-only routes on a bare `/user` (no `/me`, no `{uuid}`
 `DECISIONS.md`), separating "my account" (full data, always the signed-in caller) from a future
 public-profile endpoint for other users (limited fields, no `email`, not built). `lib/api/auth.ts`
 matches: `authAPI.getCurrentUser()` calls `GET /user`, and `authAPI.updateProfile(profileData)`
-calls `PATCH /user` with no `userUuid` argument. `lib/api/dive-stats.ts`'s
-`diveStatsAPI.getDiveStats()` calls `GET /user/dive-stats`, also without `userUuid`; its callers are
-`dashboard/page.tsx` and `profile/page.tsx`. There is no way to fetch or manage another user's data
-through this API until the public-profile endpoint exists.
+calls `PATCH /user`. `lib/api/dive-stats.ts`'s `diveStatsAPI.getDiveStats()` calls
+`GET /user/dive-stats`; its callers are `dashboard/page.tsx` and `profile/page.tsx`. There is no way
+to fetch or manage another user's data through this API until the public-profile endpoint exists.
 
 ## FIT imports: one vendor-neutral label, and gas gaps filled here but declared
 
@@ -459,10 +455,9 @@ A dive form page is its own data-loading effects, its own `onSubmit` and its ear
 then one `PageHeader` and one `DiveFormCard`. `useMixtureFieldArray(control)` (`mixture-fields.tsx`)
 holds the `useFieldArray` generic parameter and cast in one place. `DiveFormCard`
 (`dive-form-card.tsx`) wraps `Card`/`Form`/`form` + `DiveFileImport` + `DiveFormFields` +
-`DiveFormActions`; the per-page inputs are `mode`, `userId`, `onSubmit`, `cancelHref`,
-`submittingLabel` and `submitLabel`. `PageHeader` (`components/ui/page-header.tsx`) is the
-resource-agnostic back-button + title/subtitle block, with an optional `actions` slot for the `[id]`
-detail pages' Edit/Delete row.
+`DiveFormActions`; the per-page inputs are `mode`, `onSubmit`, `cancelHref`, `submittingLabel` and
+`submitLabel`. `PageHeader` (`components/ui/page-header.tsx`) is the resource-agnostic back-button +
+title/subtitle block, with an optional `actions` slot for the `[id]` detail pages' Edit/Delete row.
 
 `PageSpinner` (`components/ui/page-spinner.tsx`) is the full-viewport `min-h-screen` `<Loader2>` for
 the top-level auth-loading gate. The list and detail pages render below `AppShell`'s header and

@@ -39,7 +39,6 @@ export interface Trip {
 }
 
 export interface TripCreate {
-  user_uuid: string;
   name: string;
   locations?: TripLocationInput[];
   start_date: string;
@@ -61,7 +60,7 @@ export type PaginatedTripsResponse = PaginatedResponse<Trip>;
 
 /** Trip CRUD. Every call is scoped to the signed-in user by the API. */
 export const tripsAPI = {
-  // Create a new trip. `tripData.user_uuid` must be the currently signed-in user's uuid.
+  // Create a new trip, owned by the signed-in user.
   async createTrip(tripData: TripCreate): Promise<Trip> {
     const response = await apiClient.post(`/trip`, tripData);
     return response.data;
@@ -72,14 +71,12 @@ export const tripsAPI = {
   // - the API caps `items_per_page` at 100, so this is a page of matches, never
   // the whole set.
   async getTrips(
-    userUuid: string,
     page: number = 1,
     items_per_page: number = 10,
     search?: string,
   ): Promise<PaginatedTripsResponse> {
     const response = await apiClient.get(`/trips`, {
       params: {
-        user_uuid: userUuid,
         page,
         items_per_page,
         ...(search ? { search } : {}),

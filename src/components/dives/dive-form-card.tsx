@@ -28,7 +28,6 @@ export interface DiveFormCardProps<TFieldValues extends DiveFormValues> {
   form: UseFormReturn<TFieldValues>;
   mixtureFieldArray: MixtureFieldArray;
   mode: "create" | "edit";
-  userId: string;
   // Created by the page alongside `form`, because the page also owns the moments a
   // value arrives from outside the diver's typing (the edit load, the URL parameters)
   // and the prefill the show/hide rules are defined against.
@@ -63,13 +62,12 @@ export interface DiveFormCardProps<TFieldValues extends DiveFormValues> {
 // The "Dive Details" card shared by the create and edit dive pages: file
 // import, the main form fields (including gas mixtures), and the
 // cancel/submit action row - identical between the two pages apart from
-// `mode`/`userId`/`onSubmit`/the action labels, which are the only pieces
+// `mode`/`onSubmit`/the action labels, which are the only pieces
 // that actually differ between logging a new dive and editing an existing one.
 export function DiveFormCard<TFieldValues extends DiveFormValues>({
   form,
   mixtureFieldArray,
   mode,
-  userId,
   visibility,
   onSubmit,
   isSubmitting,
@@ -173,7 +171,7 @@ export function DiveFormCard<TFieldValues extends DiveFormValues>({
               the Configure dialog's name prompt taking Enter - would otherwise reach
               `handleSubmit` through the React tree even when the DOM says it
               cannot. */}
-          <DiveFormFieldsMenu visibility={visibility} userId={userId} />
+          <DiveFormFieldsMenu visibility={visibility} />
         </div>
       </CardHeader>
       <CardContent>
@@ -209,7 +207,6 @@ export function DiveFormCard<TFieldValues extends DiveFormValues>({
             <DiveFormFields
               control={form.control}
               mode={mode}
-              userId={userId}
               visibility={visibility}
               mixtureFieldArray={mixtureFieldArray}
               knownDiveSites={knownDiveSites}

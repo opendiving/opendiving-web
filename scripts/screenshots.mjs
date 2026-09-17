@@ -245,14 +245,12 @@ async function pickSubjects(token, asked) {
     return response.ok ? response.json() : null;
   };
 
-  const user = await get("user");
-
   const { dive, chartedRecordings } = asked("dive-detail")
-    ? await pickDive(get, user.uuid)
+    ? await pickDive(get)
     : { dive: null, chartedRecordings: 0 };
 
   const gear = asked("gear-item")
-    ? await get(`gear-items?user_uuid=${user.uuid}&page=1&items_per_page=100`)
+    ? await get(`gear-items?page=1&items_per_page=100`)
     : { data: [] };
   const ranked = gear.data
     .filter((item) => (item.service ?? []).length > 0)
@@ -262,7 +260,7 @@ async function pickSubjects(token, asked) {
     );
 
   const { site, siteDives } = asked("dive-site")
-    ? await pickSite(get, user.uuid)
+    ? await pickSite(get)
     : { site: null, siteDives: 0 };
 
   return {
@@ -293,7 +291,7 @@ const chartedIn = (detail) =>
 // (see DECISIONS.md). They throw while the subjects are still being picked, before the
 // first shutter press, so a mistyped uuid costs a run and not an image - and only on a run
 // that is actually shooting this page, since `asked` skips the search otherwise.
-async function pickDive(get, userUuid) {
+async function pickDive(get) {
   if (DIVE_UUID) {
     const detail = await get(`dive/${DIVE_UUID}`);
     if (!detail)
@@ -308,9 +306,7 @@ async function pickDive(get, userUuid) {
     return { dive: DIVE_UUID, chartedRecordings };
   }
 
-  const dives = await get(
-    `dives?user_uuid=${userUuid}&page=1&items_per_page=30`,
-  );
+  const dives = await get(`dives?page=1&items_per_page=30`);
 
   // Ranked, not filtered, and the rank is how many of the dive's recordings carry
   // samples. Two of those draw the page's whole recordings story - the Recordings card
@@ -356,11 +352,11 @@ async function pickDive(get, userUuid) {
 // The first placed site seeds the answer, so a log whose sites are all placed and none
 // dived still produces a picture rather than an error. Ties keep the earliest seen, which
 // is name order, the order `/dive-sites` returns.
-async function pickSite(get, userUuid) {
+async function pickSite(get) {
   const sites = [];
   for (let page = 1; ; page++) {
     const response = await get(
-      `dive-sites?user_uuid=${userUuid}&page=${page}&items_per_page=100`,
+      `dive-sites?page=${page}&items_per_page=100`,
     );
     if (!response) break;
     sites.push(...response.data);
@@ -375,7 +371,7 @@ async function pickSite(get, userUuid) {
   let siteDives = 0;
   for (const candidate of placed) {
     const scoped = await get(
-      `dives?user_uuid=${userUuid}&dive_site_uuid=${candidate.uuid}&page=1&items_per_page=1`,
+      `dives?dive_site_uuid=${candidate.uuid}&page=1&items_per_page=1`,
     );
     const count = scoped?.total_count ?? 0;
     if (count > siteDives) {

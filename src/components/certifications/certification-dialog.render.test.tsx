@@ -115,7 +115,6 @@ function open({
   const onSaved = vi.fn();
   render(
     <CertificationDialog
-      userId="user-1"
       open
       onOpenChange={vi.fn()}
       certification={certification}
@@ -372,7 +371,6 @@ describe("a dialog opened from a course page starts on that course", () => {
 
     await waitFor(() => expect(createCertification).toHaveBeenCalled());
     expect(createCertification.mock.calls[0][0]).toMatchObject({
-      user_uuid: "user-1",
       name: "Advanced Nitrox",
       course_uuid: COURSE.uuid,
       training_center: "Blue Ocean, Koh Tao",

@@ -58,7 +58,7 @@ export interface DiveFormPresets {
  * see the change - one request per keystroke-sized edit, for a list this caller
  * already holds in full.
  */
-export function useDiveFormPresets(userId: string): DiveFormPresets {
+export function useDiveFormPresets(): DiveFormPresets {
   const { toast } = useToast();
   const [presets, setPresets] = useState<DiveFormPreset[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -67,12 +67,11 @@ export function useDiveFormPresets(userId: string): DiveFormPresets {
   const [isWorking, setIsWorking] = useState(false);
 
   useEffect(() => {
-    if (!userId) return;
     const controller = new AbortController();
 
     const load = async () => {
       try {
-        const rows = await fetchAllDiveFormPresets(userId, controller.signal);
+        const rows = await fetchAllDiveFormPresets(controller.signal);
         if (controller.signal.aborted) return;
         setPresets(rows);
       } catch (fetchError) {
@@ -91,7 +90,7 @@ export function useDiveFormPresets(userId: string): DiveFormPresets {
 
     load();
     return () => controller.abort();
-  }, [userId]);
+  }, []);
 
   const sortByName = (rows: DiveFormPreset[]) =>
     [...rows].sort((a, b) => a.name.localeCompare(b.name));
@@ -123,7 +122,6 @@ export function useDiveFormPresets(userId: string): DiveFormPresets {
     (name: string, hidden: readonly DiveFormFieldKey[]) =>
       run(null, async () => {
         const created = await diveFormPresetsAPI.createPreset({
-          user_uuid: userId,
           name,
           hidden_fields: canonicalHiddenFields(hidden),
         });
@@ -133,7 +131,7 @@ export function useDiveFormPresets(userId: string): DiveFormPresets {
           description: `"${created.name}" holds the fields on this form.`,
         });
       }),
-    [run, toast, userId],
+    [run, toast],
   );
 
   const renamePreset = useCallback(
