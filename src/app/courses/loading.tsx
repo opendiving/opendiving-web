@@ -16,7 +16,7 @@ export default function CoursesLoading() {
   if (pathname?.startsWith("/courses/")) {
     return (
       <RouteFallback>
-        <DetailPageSkeleton backHref="/courses" backLabel="Back to Courses" />
+        <DetailPageSkeleton backHref="/courses" backLabel="Back to courses" />
       </RouteFallback>
     );
   }

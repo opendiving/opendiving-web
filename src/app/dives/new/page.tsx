@@ -53,7 +53,7 @@ function NewDivePageContent() {
 
   // Back/Cancel return to wherever this form was opened from - the trip or dive
   // site being logged against, an explicit `?from=`, or the dive list.
-  const returnTo = useReturnTo({ href: "/dives", label: "Back to Dives" });
+  const returnTo = useReturnTo({ href: "/dives", label: "Back to dives" });
 
   const form = useForm<DiveCreateInput>({
     resolver: zodResolver(diveCreateSchema),

@@ -64,7 +64,7 @@ export default function DiveSiteDetailPage() {
 
   if (isLoadingDiveSite) {
     return (
-      <DetailPageSkeleton backHref="/sites" backLabel="Back to Dive Sites" />
+      <DetailPageSkeleton backHref="/sites" backLabel="Back to dive sites" />
     );
   }
 
@@ -74,7 +74,7 @@ export default function DiveSiteDetailPage() {
         <NotFoundState
           message="Dive site not found."
           backHref="/sites"
-          backLabel="Back to Dive Sites"
+          backLabel="Back to dive sites"
         />
       </div>
     );
@@ -86,7 +86,7 @@ export default function DiveSiteDetailPage() {
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <PageHeader
         backHref="/sites"
-        backLabel="Back to Dive Sites"
+        backLabel="Back to dive sites"
         title={diveSite.name}
         subtitle={diveSite.location ? diveSite.location : undefined}
         actions={

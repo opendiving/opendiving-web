@@ -96,7 +96,7 @@ export default function CourseDetailPage() {
 
   if (isLoadingCourse) {
     return (
-      <DetailPageSkeleton backHref="/courses" backLabel="Back to Courses" />
+      <DetailPageSkeleton backHref="/courses" backLabel="Back to courses" />
     );
   }
 
@@ -106,7 +106,7 @@ export default function CourseDetailPage() {
         <NotFoundState
           message="Course not found."
           backHref="/courses"
-          backLabel="Back to Courses"
+          backLabel="Back to courses"
         />
       </div>
     );
@@ -121,7 +121,7 @@ export default function CourseDetailPage() {
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <PageHeader
         backHref="/courses"
-        backLabel="Back to Courses"
+        backLabel="Back to courses"
         title={course.name}
         subtitle={
           agencyLabel && courseDateRange

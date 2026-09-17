@@ -82,7 +82,7 @@ export default function TripDetailPage() {
   }
 
   if (isLoadingTrip) {
-    return <DetailPageSkeleton backHref="/trips" backLabel="Back to Trips" />;
+    return <DetailPageSkeleton backHref="/trips" backLabel="Back to trips" />;
   }
 
   if (!trip) {
@@ -91,7 +91,7 @@ export default function TripDetailPage() {
         <NotFoundState
           message="Trip not found."
           backHref="/trips"
-          backLabel="Back to Trips"
+          backLabel="Back to trips"
         />
       </div>
     );
@@ -101,7 +101,7 @@ export default function TripDetailPage() {
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <PageHeader
         backHref="/trips"
-        backLabel="Back to Trips"
+        backLabel="Back to trips"
         title={trip.name}
         subtitle={
           tripLocationNames && tripDateRange

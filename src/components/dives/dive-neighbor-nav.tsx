@@ -43,7 +43,7 @@ function neighborLabel(
 
 /**
  * The dive detail page's pager: one step back and one step forward through the
- * log, sitting opposite the "Back to Dives" link in the page header.
+ * log, sitting opposite the "Back to dives" link in the page header.
  *
  * Chronological, not list-order - "Previous" is the earlier dive and "Next" the
  * later one, so a trip reads front to back however the log page happens to be

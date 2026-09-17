@@ -15,7 +15,7 @@ export default function GearLoading() {
   if (pathname?.startsWith("/gear/")) {
     return (
       <RouteFallback>
-        <DetailPageSkeleton backHref="/gear" backLabel="Back to Gear" />
+        <DetailPageSkeleton backHref="/gear" backLabel="Back to gear" />
       </RouteFallback>
     );
   }

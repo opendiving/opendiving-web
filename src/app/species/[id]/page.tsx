@@ -75,7 +75,7 @@ export default function SpeciesDetailPage() {
 
   if (isLoadingSpecies) {
     return (
-      <DetailPageSkeleton backHref="/species" backLabel="Back to Species" />
+      <DetailPageSkeleton backHref="/species" backLabel="Back to species" />
     );
   }
 
@@ -85,7 +85,7 @@ export default function SpeciesDetailPage() {
         <NotFoundState
           message="Species not found."
           backHref="/species"
-          backLabel="Back to Species"
+          backLabel="Back to species"
         />
       </div>
     );
@@ -100,7 +100,7 @@ export default function SpeciesDetailPage() {
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <PageHeader
         backHref="/species"
-        backLabel="Back to Species"
+        backLabel="Back to species"
         title={displayName}
         subtitle={secondary !== displayName ? secondary : undefined}
       />

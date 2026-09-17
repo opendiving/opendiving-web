@@ -29,8 +29,8 @@ export default function DivesLoading() {
 
   const returnTo = useReturnTo(
     isEdit
-      ? { href: `/dives/${segments[1]}`, label: "Back to Dive" }
-      : { href: "/dives", label: "Back to Dives" },
+      ? { href: `/dives/${segments[1]}`, label: "Back to dive" }
+      : { href: "/dives", label: "Back to dives" },
   );
 
   if (isNew || isEdit) {
@@ -51,7 +51,7 @@ export default function DivesLoading() {
   if (segments.length > 1) {
     return (
       <RouteFallback>
-        <DetailPageSkeleton backHref="/dives" backLabel="Back to Dives" />
+        <DetailPageSkeleton backHref="/dives" backLabel="Back to dives" />
       </RouteFallback>
     );
   }

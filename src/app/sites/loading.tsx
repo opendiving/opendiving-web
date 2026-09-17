@@ -16,7 +16,7 @@ export default function SitesLoading() {
   if (pathname?.startsWith("/sites/")) {
     return (
       <RouteFallback>
-        <DetailPageSkeleton backHref="/sites" backLabel="Back to Dive Sites" />
+        <DetailPageSkeleton backHref="/sites" backLabel="Back to dive sites" />
       </RouteFallback>
     );
   }

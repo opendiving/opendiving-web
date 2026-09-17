@@ -6530,13 +6530,14 @@ while an ignored baseline is invisible by construction. No test calls either tod
 
 ## Controls are sentence case; headings are Title Case
 
-Every button, link-button and menu item capitalizes its first word and nothing else: `New trip`,
-`Add your first gear`, `Log a dive for this course`, `Save changes`. Headings keep Title Case — card
-titles, page titles, dialog titles — so `New Certification` over `Create certification` in one
-dialog is the rule holding, not breaking. The split is what no single call site can carry: roughly
-forty labels across the app, and a new one is written by copying a neighbour. Title Case for
-controls was rejected because the long CTAs (`Log A Dive For This Course`) read as headings
-themselves, and because the newer half of the app was already sentence case.
+Every button, link-button and menu item capitalizes its first word and its proper nouns, nothing
+else: `New trip`, `Add your first gear`, `Save changes`, `Back to dive sites`,
+`Continue with Google`. A page's own name is not a proper noun here — `View all dives` and
+`Back to dives` point at the page the nav calls `Dives`, and both lowercase it. Headings keep Title
+Case — card titles, page titles, dialog titles — so `New Certification` over `Create certification`
+in one dialog is the rule holding, not breaking. The split is what no single call site can carry:
+over a hundred labels, and a new one is written by copying a neighbour. Title Case for controls was
+rejected because the long CTAs (`Log A Dive For This Course`) read as headings themselves.
 
 ## One `EmptyState`, and the filtered list is not one
 

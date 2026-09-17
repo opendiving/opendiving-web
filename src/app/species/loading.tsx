@@ -18,7 +18,7 @@ export default function SpeciesLoading() {
   if (pathname?.startsWith("/species/")) {
     return (
       <RouteFallback>
-        <DetailPageSkeleton backHref="/species" backLabel="Back to Species" />
+        <DetailPageSkeleton backHref="/species" backLabel="Back to species" />
       </RouteFallback>
     );
   }

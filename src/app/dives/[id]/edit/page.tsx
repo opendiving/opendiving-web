@@ -122,7 +122,7 @@ function EditDivePageContent() {
   // trip, an explicit `?from=` - falling back to the dive itself.
   const returnTo = useReturnTo({
     href: `/dives/${diveId}`,
-    label: "Back to Dive",
+    label: "Back to dive",
   });
 
   // What to call a struck-off file in a failure toast. Read off the loaded dive
@@ -238,7 +238,7 @@ function EditDivePageContent() {
         <NotFoundState
           message="Dive not found."
           backHref="/dives"
-          backLabel="Back to Dives"
+          backLabel="Back to dives"
         />
       </div>
     );

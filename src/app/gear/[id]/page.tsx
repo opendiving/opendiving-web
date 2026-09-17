@@ -101,7 +101,7 @@ export default function GearItemDetailPage() {
   }
 
   if (isLoadingGear) {
-    return <DetailPageSkeleton backHref="/gear" backLabel="Back to Gear" />;
+    return <DetailPageSkeleton backHref="/gear" backLabel="Back to gear" />;
   }
 
   if (!gearItem) {
@@ -110,7 +110,7 @@ export default function GearItemDetailPage() {
         <NotFoundState
           message="Gear not found."
           backHref="/gear"
-          backLabel="Back to Gear"
+          backLabel="Back to gear"
         />
       </div>
     );
@@ -120,7 +120,7 @@ export default function GearItemDetailPage() {
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <PageHeader
         backHref="/gear"
-        backLabel="Back to Gear"
+        backLabel="Back to gear"
         title={gearItem.name}
         subtitle={gearItem.brand ?? undefined}
         actions={
