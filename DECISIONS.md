@@ -1131,9 +1131,11 @@ logging a dive, is a single primary button in the page header. `SetupChecklistCa
 real counts (`/user/dive-stats`, `/gear-items`, `/certifications`, the last two fetched with
 `items_per_page: 1` for `total_count` alone) and removes itself once all three are done.
 
-`CertificationExpiryCard` is the certification twin of `ServiceDueCard`: it renders `null` when
-nothing needs renewing and when its fetch fails, and its rows link to `/certifications`, where
-certifications are edited in dialogs and have no URL of their own. Filtering and ordering live in
+`CertificationExpiryCard` is the twin of `ServiceDueCard`: headed "Renewals", it renders `null` when
+nothing needs renewing and when its fetch fails. Certification rows link to `/certifications`, where
+certifications are edited in dialogs and have no URL of their own; the dive-insurance row links to
+`/settings`, where the policy is entered, and sorts among them rather than after them, a lapsed
+policy stopping a dive at the desk as a lapsed card does. Filtering and ordering live in
 `certificationRenewals()` in `lib/certification.ts`, not the component, so "expired sorts above
 expiring soon" is tested without rendering.
 

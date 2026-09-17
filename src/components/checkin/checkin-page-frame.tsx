@@ -1,7 +1,7 @@
 "use client";
 
 import { type ReactNode } from "react";
-import { FileText, Printer } from "lucide-react";
+import { AlertTriangle, FileText, Printer } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useUnits } from "@/hooks/useUnits";
@@ -37,7 +37,12 @@ export interface CheckInPageFrameProps {
   lastDiveAt?: string | null;
   /** True until the certifications, the stats and the last dive have all landed. */
   isLoading?: boolean;
+  /** True when at least one of the three requests failed and its part is missing. */
+  loadFailed?: boolean;
+  onRetry?: () => void;
 }
+
+const noop = () => {};
 
 // Everything `/checkin` draws, rendered by the page and by the route fallback alike
 // so the two cannot describe the screen differently. Every data-varying prop
@@ -48,6 +53,8 @@ export function CheckInPageFrame({
   stats = null,
   lastDiveAt = null,
   isLoading = true,
+  loadFailed = false,
+  onRetry = noop,
 }: CheckInPageFrameProps) {
   const { user } = useAuth();
   const units = useUnits();
@@ -93,6 +100,23 @@ export function CheckInPageFrame({
         Your browser&rsquo;s print dialog can save this as a PDF too &mdash;
         worth keeping on your phone for a desk with no signal.
       </p>
+
+      {/* On screen only: a sheet handed across a desk should not carry this app's
+          troubles, but the diver about to print one has to know it is short. */}
+      {loadFailed && (
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-md border border-destructive/40 px-4 py-3 print:hidden">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">
+              Some of this didn&rsquo;t load, so the summary below is
+              incomplete.
+            </p>
+          </div>
+          <Button type="button" variant="outline" size="sm" onClick={onRetry}>
+            Try again
+          </Button>
+        </div>
+      )}
 
       <Card
         className={`print:border-0 print:shadow-none print:bg-white ${INK}`}

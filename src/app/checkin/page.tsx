@@ -21,6 +21,8 @@ export default function CheckInPage() {
   const [stats, setStats] = useState<UserDiveStats | null>(null);
   const [lastDiveAt, setLastDiveAt] = useState<string | null>(null);
   const [isSummaryLoading, setIsSummaryLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   // Keyed on the uuid rather than on `user`: the auth context replaces that object
   // whenever anything on the account is saved, and a re-fetch of the whole summary
@@ -31,37 +33,46 @@ export default function CheckInPage() {
 
     const controller = new AbortController();
 
+    // Settled rather than `all`: the three answer different questions, and one of
+    // them failing must not take the two that arrived off the page with it. The
+    // c-cards are the half a desk actually reads, and they do not depend on the
+    // dive count.
     const load = async () => {
-      try {
+      const [cards, diveStats, recent] = await Promise.allSettled([
         // Every page of them: a diver holds a handful of cards, and a summary that
         // stopped at ten would leave one off the page at the desk.
-        const [cards, diveStats, dives] = await Promise.all([
-          fetchAllCertifications(controller.signal),
-          diveStatsAPI.getDiveStats(),
-          // The last dive is read off the list rather than stored: `GET /dives` is
-          // sorted by start time descending, so the first row of the first page is
-          // it. Same read the new-dive form makes to carry a dive forward.
-          divesAPI.getDives(1, 1),
-        ]);
-        if (controller.signal.aborted) return;
+        fetchAllCertifications(controller.signal),
+        diveStatsAPI.getDiveStats(),
+        // The last dive is read off the list rather than stored: `GET /dives` is
+        // sorted by start time descending, so the first row of the first page is
+        // it. Same read the new-dive form makes to carry a dive forward.
+        divesAPI.getDives(1, 1),
+      ]);
+      if (controller.signal.aborted) return;
 
-        setCertifications(cards);
-        setStats(diveStats);
-        setLastDiveAt(dives.data[0]?.start_time ?? null);
-      } catch (error) {
-        if (controller.signal.aborted) return;
-        // Swallowed the way the dashboard's supplementary cards swallow theirs: the
-        // profile half of this page is already on screen and correct, and a summary
-        // missing its dive count is more use at a desk than an error page.
-        console.error("Failed to load the check-in summary:", error);
-      } finally {
-        if (!controller.signal.aborted) setIsSummaryLoading(false);
+      if (cards.status === "fulfilled") setCertifications(cards.value);
+      if (diveStats.status === "fulfilled") setStats(diveStats.value);
+      if (recent.status === "fulfilled") {
+        setLastDiveAt(recent.value.data[0]?.start_time ?? null);
       }
+
+      // Said out loud rather than swallowed the way the dashboard's supplementary
+      // cards swallow theirs: this page is handed to somebody else, and a summary
+      // quietly missing its certifications is worse than one that says so. What
+      // did arrive stays on screen regardless.
+      const failed = [cards, diveStats, recent].filter(
+        (result) => result.status === "rejected",
+      );
+      for (const result of failed) {
+        console.error("Failed to load part of the check-in summary:", result);
+      }
+      setLoadFailed(failed.length > 0);
+      setIsSummaryLoading(false);
     };
 
     load();
     return () => controller.abort();
-  }, [userUuid]);
+  }, [userUuid, attempt]);
 
   if (isLoading) {
     return <PageSpinner />;
@@ -77,6 +88,12 @@ export default function CheckInPage() {
       stats={stats}
       lastDiveAt={lastDiveAt}
       isLoading={isSummaryLoading}
+      loadFailed={loadFailed}
+      onRetry={() => {
+        setIsSummaryLoading(true);
+        setLoadFailed(false);
+        setAttempt((n) => n + 1);
+      }}
     />
   );
 }
