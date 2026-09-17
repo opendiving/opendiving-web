@@ -1,5 +1,7 @@
 "use client";
 
+import { useRef } from "react";
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -27,9 +29,23 @@ export function CheckInDetailsDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const panel = useRef<HTMLDivElement>(null);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent
+        ref={panel}
+        // Date of birth is the first field, and `DatePicker` opens its calendar
+        // whenever the box takes focus - so Radix focusing the first tabbable child
+        // would open this dialog with a calendar over the form. Focusing the panel
+        // instead is Radix's own fallback for a dialog with nothing tabbable in it:
+        // the dialog is still announced and still traps focus, and Tab reaches the
+        // date box the way a click does.
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          panel.current?.focus();
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Check-in details</DialogTitle>
           <DialogDescription>

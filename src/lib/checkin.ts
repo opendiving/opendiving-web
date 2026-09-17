@@ -55,14 +55,14 @@ const CHECK_IN_DETAILS: {
   { label: "date of birth", isFilled: (user) => !!user.date_of_birth },
   { label: "phone number", isFilled: (user) => !!user.phone },
   {
-    label: "emergency contact",
-    isFilled: (user) =>
-      !!user.emergency_contact_name && !!user.emergency_contact_phone,
-  },
-  {
     label: "dive insurance",
     isFilled: (user) =>
       !!user.insurance_provider && !!user.insurance_policy_number,
+  },
+  {
+    label: "emergency contact",
+    isFilled: (user) =>
+      !!user.emergency_contact_name && !!user.emergency_contact_phone,
   },
 ];
 

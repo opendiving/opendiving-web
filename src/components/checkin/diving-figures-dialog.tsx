@@ -7,6 +7,7 @@ import { Printer, RotateCcw } from "lucide-react";
 
 import { useUnits } from "@/hooks/useUnits";
 import { type DivingFigures } from "@/lib/checkin";
+import { unitLabel } from "@/lib/units";
 import { dialogFormSubmit } from "@/lib/dialog-form";
 import {
   divingFiguresFromForm,
@@ -133,7 +134,10 @@ export function DivingFiguresDialog({
               name="max_depth"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Max depth</FormLabel>
+                  {/* The unit in the label, as every other depth box in the app
+                      writes it: the number is the diver's own system and nothing
+                      else on the row says which. */}
+                  <FormLabel>Max depth ({unitLabel("depth", units)})</FormLabel>
                   <FormControl>
                     {/* Shows and takes the diver's own units while the value
                         behind it stays metric, like every other depth box. */}

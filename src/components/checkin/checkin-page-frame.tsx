@@ -248,38 +248,6 @@ export function CheckInPageFrame({
             </DetailList>
           )}
 
-          {hasEmergencyContact && (
-            <Section title="Emergency contact">
-              <DetailList>
-                <Detail label="Name" value={user.emergency_contact_name} />
-                <Detail label="Phone" value={user.emergency_contact_phone} />
-                <Detail
-                  label="Relationship"
-                  value={user.emergency_contact_relationship}
-                />
-              </DetailList>
-            </Section>
-          )}
-
-          {hasInsurance && (
-            <Section title="Dive insurance">
-              <DetailList>
-                <Detail label="Provider" value={user.insurance_provider} />
-                <Detail
-                  label="Policy number"
-                  value={user.insurance_policy_number}
-                />
-                <Detail
-                  label="Expires"
-                  value={
-                    user.insurance_expires_on &&
-                    formatDateOnly(user.insurance_expires_on)
-                  }
-                />
-              </DetailList>
-            </Section>
-          )}
-
           {(isLoading || certifications.length > 0) && (
             <Section
               title="Certifications"
@@ -378,6 +346,42 @@ export function CheckInPageFrame({
                   Corrected for this summary. Nothing was saved to your log.
                 </p>
               )}
+            </Section>
+          )}
+
+          {/* Insurance and the emergency contact come after the diving rather than
+              before it: a desk works down what the diver is certified to do and what
+              they have actually dived, and reaches for the policy to quote and the
+              person to call only if something goes wrong. */}
+          {hasInsurance && (
+            <Section title="Dive insurance">
+              <DetailList>
+                <Detail label="Provider" value={user.insurance_provider} />
+                <Detail
+                  label="Policy number"
+                  value={user.insurance_policy_number}
+                />
+                <Detail
+                  label="Expires"
+                  value={
+                    user.insurance_expires_on &&
+                    formatDateOnly(user.insurance_expires_on)
+                  }
+                />
+              </DetailList>
+            </Section>
+          )}
+
+          {hasEmergencyContact && (
+            <Section title="Emergency contact">
+              <DetailList>
+                <Detail label="Name" value={user.emergency_contact_name} />
+                <Detail label="Phone" value={user.emergency_contact_phone} />
+                <Detail
+                  label="Relationship"
+                  value={user.emergency_contact_relationship}
+                />
+              </DetailList>
             </Section>
           )}
 
@@ -529,12 +533,18 @@ function Section({
 // inline: a desk reads this by scanning for the value it was asked for, and a ragged
 // left edge on the values is what makes that a search rather than a glance.
 //
+// The floor on the label track is what lines the *sections* up too, each being a list
+// of its own: a track sized purely by content puts "Provider" and "Name" in columns
+// 14px apart. It lifts from `sm` because the narrowest case is a card's details beside
+// its 96px thumbnail on a phone, where a fixed 8rem of label would leave the training
+// centre wrapping in what is left.
+//
 // `Detail` renders its `<dt>` and `<dd>` as a fragment so both are direct children of
 // this grid; wrapping each pair in a `<div>` would put the pair in one cell and take
 // the alignment back.
 function DetailList({ children }: { children: ReactNode }) {
   return (
-    <dl className="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-1">
+    <dl className="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-1 sm:grid-cols-[minmax(8rem,auto)_1fr]">
       {children}
     </dl>
   );

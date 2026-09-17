@@ -130,49 +130,6 @@ export function CheckInDetailsForm({
           </fieldset>
 
           <fieldset className="space-y-4">
-            <legend className="text-sm font-medium">Emergency contact</legend>
-            <FormField
-              control={form.control}
-              name="emergency_contact_name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Name</FormLabel>
-                  <FormControl>
-                    <Input {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="emergency_contact_phone"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Their phone number</FormLabel>
-                  <FormControl>
-                    <Input type="tel" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="emergency_contact_relationship"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Relationship to you</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Partner, parent, friend…" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </fieldset>
-
-          <fieldset className="space-y-4">
             <legend className="text-sm font-medium">Dive insurance</legend>
             <FormField
               control={form.control}
@@ -208,6 +165,49 @@ export function CheckInDetailsForm({
                   <FormLabel>Expires on</FormLabel>
                   <FormControl>
                     <DatePicker value={field.value} onChange={field.onChange} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </fieldset>
+
+          <fieldset className="space-y-4">
+            <legend className="text-sm font-medium">Emergency contact</legend>
+            <FormField
+              control={form.control}
+              name="emergency_contact_name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Name</FormLabel>
+                  <FormControl>
+                    <Input {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="emergency_contact_phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Their phone number</FormLabel>
+                  <FormControl>
+                    <Input type="tel" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="emergency_contact_relationship"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Relationship to you</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Partner, parent, friend…" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

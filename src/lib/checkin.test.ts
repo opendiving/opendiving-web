@@ -41,8 +41,8 @@ describe("missingCheckInDetails", () => {
     expect(missingCheckInDetails(user())).toEqual([
       "date of birth",
       "phone number",
-      "emergency contact",
       "dive insurance",
+      "emergency contact",
     ]);
   });
 

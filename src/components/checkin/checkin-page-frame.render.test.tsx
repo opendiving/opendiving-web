@@ -145,10 +145,10 @@ describe("what the summary prints", () => {
       "Sam Reef",
       "Date of birth",
       "Phone",
-      "Emergency contact",
-      "Dive insurance",
       "Certifications",
       "Diving",
+      "Dive insurance",
+      "Emergency contact",
     ].map((label) => text.indexOf(label));
 
     expect(order.every((at) => at >= 0)).toBe(true);
@@ -326,7 +326,7 @@ describe("what is still missing", () => {
     const { container } = render(loaded());
 
     expect(container.textContent).toContain(
-      "Not on your summary yet: date of birth, phone number, emergency contact, dive insurance, certifications.",
+      "Not on your summary yet: date of birth, phone number, dive insurance, emergency contact, certifications.",
     );
     const fillIn = screen.getByRole("button", { name: /fill in details/i });
     expect(fillIn.closest(".print\\:hidden")).not.toBeNull();
