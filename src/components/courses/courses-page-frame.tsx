@@ -33,11 +33,7 @@ export interface CoursesPageFrameProps {
   /** The date, agency and status the list is narrowed by, if any. */
   filters?: CourseListFilters;
   onFiltersChange?: (filters: CourseListFilters) => void;
-  /**
-   * Whether a search *term* is in effect - which is not what the box holds, the
-   * page debouncing one into the other. `filters` needs no twin, its controls
-   * committing whole values that are asked for at once.
-   */
+  /** Whether a search *term* is in effect, which is not what the box holds. */
   isSearching?: boolean;
   isLoadingMore?: boolean;
   loadFailed?: boolean;

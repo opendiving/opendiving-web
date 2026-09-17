@@ -55,11 +55,6 @@ export interface CoursesFiltersProps {
 // Search and the three filters beside it, above the course table. They narrow
 // the same query rather than competing: whatever is set here is AND-ed by the
 // API, so a name and a status answer the courses matching both.
-//
-// Only the search term is debounced (by the page that owns it). Each control
-// here commits a whole value at once - a select on pick, a date picker only on a
-// date that parses - so there is no half-entered state to wait out, and a
-// debounce would just delay the list.
 export function CoursesFilters({
   search,
   onSearchChange,
