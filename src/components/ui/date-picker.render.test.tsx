@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { useLayoutEffect, useState } from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { usePointer } from "@/test/pointer";
 import { DatePicker } from "./date-picker";
 
 // The field is typed into as often as it is picked from - a diver back-filling a
@@ -222,5 +223,71 @@ describe("DatePicker text entry", () => {
     );
 
     expect(screen.getByLabelText("Certified on")).toBe(box());
+  });
+});
+
+// The same field on a phone, where it is the OS wheel instead. Nothing here
+// tests the wheel - no test runner can open one - only what the field does with
+// the value one hands back.
+
+function TouchField({ initial = "" }: { initial?: string }) {
+  const [value, setValue] = useState(initial);
+  return (
+    <>
+      <label htmlFor="certified-on">Certified on</label>
+      <DatePicker id="certified-on" value={value} onChange={setValue} />
+      <output data-testid="committed">{value}</output>
+    </>
+  );
+}
+
+// Also the assertion that the form's label reaches the native input: it is a
+// different element from the desktop branch's box, carrying the same id.
+const wheel = () => screen.getByLabelText("Certified on");
+
+// A wheel hands its whole answer over at once, so there is no typing to play
+// back - setting the value and firing `change` is what the browser does.
+const hand = (value: string) =>
+  fireEvent.change(wheel(), { target: { value } });
+
+describe("DatePicker on a touch device", () => {
+  beforeEach(() => usePointer("coarse"));
+
+  it("is the OS date picker, with no calendar behind it", () => {
+    render(<TouchField initial="2024-06-01" />);
+
+    expect(wheel()).toHaveAttribute("type", "date");
+    expect(
+      screen.queryByRole("button", { name: "Choose date" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("commits the date the wheel hands back", () => {
+    render(<TouchField />);
+
+    hand("2024-06-01");
+
+    expect(committed()).toBe("2024-06-01");
+  });
+
+  it("clears the field, which the wheel itself cannot", async () => {
+    // iOS offers no way to empty a date input from inside the picker, so an
+    // optional date filled in by mistake would be stuck there.
+    render(<TouchField initial="2024-06-01" />);
+
+    await userEvent.click(screen.getByRole("button", { name: "Clear" }));
+
+    expect(committed()).toBe("");
+    expect(wheel()).toHaveValue("");
+  });
+
+  it("empties the value when the picker itself clears the date", () => {
+    // Android's dialog has a Clear of its own, and an empty date input is the
+    // same "no date" the desktop branch commits for emptied text.
+    render(<TouchField initial="2024-06-01" />);
+
+    hand("");
+
+    expect(committed()).toBe("");
   });
 });

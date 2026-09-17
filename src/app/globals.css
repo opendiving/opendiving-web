@@ -396,6 +396,31 @@
   input:where([type="checkbox"], [type="file"]):not(:disabled) {
     cursor: pointer;
   }
+
+  /* The OS date and time wheels, which every date field becomes on a touch
+     device (`hooks/useCoarsePointer.ts`). Two WebKit behaviours to undo, both
+     iOS-only, and neither of them visible in a desktop browser at phone
+     dimensions - check these on a device (`opendiving-web-lan-preview`).
+
+     WebKit sizes the box to the value inside it, and an empty one has no value:
+     an optional date - a course with no end date yet - renders as a sliver
+     rather than as a field. Dropping the native appearance is what lets
+     `Input`'s own `h-10 w-full` hold the row instead, and `min-width: 0` is the
+     same fight one level out, where the widget's intrinsic width would stop a
+     grid or flex cell narrowing to a phone's. */
+  input[type="date"],
+  input[type="time"] {
+    -webkit-appearance: none;
+    appearance: none;
+    min-width: 0;
+  }
+
+  /* And the value is centred in the box it is given, so a date would sit in the
+     middle of a field whose label and every neighbouring value start at the
+     left edge. */
+  input::-webkit-date-and-time-value {
+    text-align: start;
+  }
 }
 
 /* MapLibre's cooperative-gesture screen, hidden so the app can draw its own.
