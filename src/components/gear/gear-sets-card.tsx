@@ -66,7 +66,10 @@ export function GearSetsCard({
           as="h2"
           className="flex flex-wrap items-center justify-between gap-3"
         >
-          <span>Gear Sets</span>
+          <span className="flex items-center gap-2">
+            <Layers className="h-5 w-5" />
+            Gear Sets
+          </span>
           <div className="flex items-center gap-3">
             <CountBadge count={totalCount} isLoading={isLoading} label="set" />
             <Button variant="outline" size="sm" onClick={onCreate}>

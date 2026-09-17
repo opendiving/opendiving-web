@@ -85,7 +85,10 @@ export function GearItemsCard({
           as="h2"
           className="flex flex-wrap items-center justify-between gap-3"
         >
-          <span>Your Gear</span>
+          <span className="flex items-center gap-2">
+            <Backpack className="h-5 w-5" />
+            Your Gear
+          </span>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
               <Switch
