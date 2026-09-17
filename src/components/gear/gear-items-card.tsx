@@ -28,7 +28,7 @@ import {
   Trash2,
 } from "lucide-react";
 
-interface GearItemsCardProps {
+export interface GearItemsCardProps {
   items: GearItem[];
   isLoading: boolean;
   /** True while a further page is in flight, as opposed to the first. */

@@ -19,7 +19,7 @@ import { Edit, Loader2, Plus, Trash2 } from "lucide-react";
 import { useUnits } from "@/hooks/useUnits";
 import { formatWeight } from "@/lib/units";
 
-interface GearSetsCardProps {
+export interface GearSetsCardProps {
   sets: GearSet[];
   isLoading: boolean;
   /** True while a further page is in flight, as opposed to the first. */

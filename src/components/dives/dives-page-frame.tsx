@@ -1,0 +1,132 @@
+"use client";
+
+import { type ReactNode } from "react";
+import Link from "next/link";
+import { Plus } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CountBadge } from "@/components/ui/count-badge";
+import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
+import {
+  Table,
+  TableBody,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { TableRowsSkeleton } from "@/components/ui/table-skeleton";
+
+export interface DivesPageFrameProps {
+  isLoading: boolean;
+  totalCount: number;
+  itemsPerPage: number;
+  /** The log's rows. Empty while the first page is in flight. */
+  rows?: ReactNode[];
+  /**
+   * The numbering line above the table. It draws nothing until its own request
+   * lands, which is why the fallback can leave it out and still match.
+   */
+  numbering?: ReactNode;
+  isLoadingMore?: boolean;
+  loadFailed?: boolean;
+  hasMore?: boolean;
+  onLoadMore?: () => void;
+}
+
+const noop = () => {};
+
+// Everything /dives draws before its rows exist, so the route fallback and the
+// page render one component rather than two descriptions of the same screen.
+// The page passes its real rows; the fallback passes none and gets the
+// placeholder ones, which is exactly the page's own first render.
+export function DivesPageFrame({
+  isLoading,
+  totalCount,
+  itemsPerPage,
+  rows = [],
+  numbering,
+  isLoadingMore = false,
+  loadFailed = false,
+  hasMore = false,
+  onLoadMore = noop,
+}: DivesPageFrameProps) {
+  return (
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-3xl font-bold">Dives</h1>
+          <p className="text-muted-foreground mt-2">
+            Manage and track your diving activities
+          </p>
+        </div>
+        <Button asChild>
+          <Link href="/dives/new">
+            <Plus className="h-4 w-4 mr-2" />
+            Log New Dive
+          </Link>
+        </Button>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle as="h2" className="flex items-center justify-between">
+            <span>Dive Log</span>
+            <CountBadge
+              count={totalCount}
+              isLoading={isLoading}
+              label="total dive"
+            />
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {numbering}
+
+          {!isLoading && rows.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-muted-foreground mb-4">
+                No dives logged yet. Start by adding your first dive!
+              </div>
+              <Button asChild>
+                <Link href="/dives/new">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Log Your First Dive
+                </Link>
+              </Button>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>#</TableHead>
+                  <TableHead>Date & Time</TableHead>
+                  <TableHead>Dive Site</TableHead>
+                  <TableHead>Duration</TableHead>
+                  <TableHead>Max Depth</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.length === 0 && (
+                  <TableRowsSkeleton columns={6} rows={itemsPerPage} />
+                )}
+                {rows}
+              </TableBody>
+            </Table>
+          )}
+
+          <LoadMoreTrigger
+            hasMore={hasMore}
+            isLoading={isLoadingMore}
+            hasFailed={loadFailed}
+            loadedCount={rows.length}
+            totalCount={totalCount}
+            itemsPerPage={itemsPerPage}
+            itemLabel="dives"
+            onLoadMore={onLoadMore}
+          />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

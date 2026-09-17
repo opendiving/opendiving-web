@@ -33,6 +33,11 @@ const DIVES_PER_PAGE = 10;
 
 export interface RecentDivesCardProps {
   userId: string;
+  /**
+   * Rendered inside a route loading fallback: hold the pre-data shape and make
+   * no request, because the page mounting behind this one makes it.
+   */
+  pending?: boolean;
   // Only show dives belonging to this trip. When omitted, shows the user's
   // most recent dives across all trips.
   tripId?: string;
@@ -74,6 +79,7 @@ export interface RecentDivesCardProps {
 // species - so they all stay in sync.
 export function RecentDivesCard({
   userId,
+  pending = false,
   tripId,
   diveSiteId,
   gearItemId,
@@ -121,7 +127,7 @@ export function RecentDivesCard({
     loadMore,
   } = useInfiniteResource<Dive>(fetchDives, {
     keyOf: (dive) => dive.uuid,
-    enabled: !!userId,
+    enabled: !pending && !!userId,
     itemsPerPage: complete ? DIVES_PER_PAGE : RECENT_DIVES_COUNT,
     errorMessage: "Failed to load dives. Please try again.",
   });

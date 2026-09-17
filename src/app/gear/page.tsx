@@ -7,15 +7,12 @@ import { useNearViewport } from "@/hooks/useNearViewport";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { gearAPI, gearItemLabel, GearItem, GearSet } from "@/lib/api/gear";
 import { getApiErrorMessage } from "@/lib/api/error";
-import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { PageSpinner } from "@/components/ui/page-spinner";
 import { useToast } from "@/components/ui/use-toast";
 import { GearItemDialog } from "@/components/gear/gear-item-dialog";
 import { GearSetDialog } from "@/components/gear/gear-set-dialog";
-import { GearItemsCard } from "@/components/gear/gear-items-card";
-import { GearSetsCard } from "@/components/gear/gear-sets-card";
-import { Plus } from "lucide-react";
+import { GearPageFrame } from "@/components/gear/gear-page-frame";
 
 export default function GearPage() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
@@ -193,56 +190,43 @@ export default function GearPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">Gear</h1>
-          <p className="text-muted-foreground mt-2">
-            Track the equipment you dive with, and group it into sets you can
-            load into a dive in one click
-          </p>
-        </div>
-        <Button onClick={() => setEditingItem(undefined)}>
-          <Plus className="h-4 w-4 mr-2" />
-          New Gear
-        </Button>
-      </div>
-
-      <GearItemsCard
-        items={gearItems}
-        isLoading={isLoadingItems}
-        isLoadingMore={isLoadingMoreItems}
-        hasFailed={itemsFailed}
-        totalCount={itemsTotal}
-        itemsPerPage={itemsPerPage}
-        hasMore={itemsHaveMore}
-        onLoadMore={loadMoreItems}
-        showArchived={showArchived}
-        onShowArchivedChange={setShowArchived}
-        onCreate={() => setEditingItem(undefined)}
-        onEdit={setEditingItem}
-        onArchiveToggle={handleArchiveToggle}
-        isArchiving={isArchiving}
-        deletingId={deletingItemId}
-        onDelete={requestDeleteItem}
+    <>
+      <GearPageFrame
+        onNew={() => setEditingItem(undefined)}
+        setsCardRef={setsCardRef}
+        items={{
+          items: gearItems,
+          isLoading: isLoadingItems,
+          isLoadingMore: isLoadingMoreItems,
+          hasFailed: itemsFailed,
+          totalCount: itemsTotal,
+          itemsPerPage,
+          hasMore: itemsHaveMore,
+          onLoadMore: loadMoreItems,
+          showArchived,
+          onShowArchivedChange: setShowArchived,
+          onCreate: () => setEditingItem(undefined),
+          onEdit: setEditingItem,
+          onArchiveToggle: handleArchiveToggle,
+          isArchiving,
+          deletingId: deletingItemId,
+          onDelete: requestDeleteItem,
+        }}
+        sets={{
+          sets: gearSets,
+          isLoading: isLoadingSets,
+          isLoadingMore: isLoadingMoreSets,
+          hasFailed: setsFailed,
+          totalCount: setsTotal,
+          itemsPerPage: setsPerPage,
+          hasMore: setsHaveMore,
+          onLoadMore: loadMoreSets,
+          onCreate: () => setEditingSet(undefined),
+          onEdit: setEditingSet,
+          deletingId: deletingSetId,
+          onDelete: requestDeleteSet,
+        }}
       />
-
-      <div ref={setsCardRef}>
-        <GearSetsCard
-          sets={gearSets}
-          isLoading={isLoadingSets}
-          isLoadingMore={isLoadingMoreSets}
-          hasFailed={setsFailed}
-          totalCount={setsTotal}
-          itemsPerPage={setsPerPage}
-          hasMore={setsHaveMore}
-          onLoadMore={loadMoreSets}
-          onCreate={() => setEditingSet(undefined)}
-          onEdit={setEditingSet}
-          deletingId={deletingSetId}
-          onDelete={requestDeleteSet}
-        />
-      </div>
 
       <GearItemDialog
         userId={user?.uuid ?? ""}
@@ -315,6 +299,6 @@ export default function GearPage() {
         isLoading={deletingSetId === pendingSetId}
         onConfirm={confirmDeleteSet}
       />
-    </div>
+    </>
   );
 }

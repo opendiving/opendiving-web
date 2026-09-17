@@ -11,22 +11,11 @@ import { formatTripDateRange } from "@/lib/date-time";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { IconTooltip } from "@/components/ui/tooltip";
-import { CountBadge } from "@/components/ui/count-badge";
-import { Input } from "@/components/ui/input";
-import { TableRowsSkeleton } from "@/components/ui/table-skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
+import { CoursesPageFrame } from "@/components/courses/courses-page-frame";
+import { TableCell, TableRow } from "@/components/ui/table";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { CourseDialog } from "@/components/courses/course-dialog";
-import { Plus, Eye, Edit, Trash2, Loader2, Search } from "lucide-react";
+import { Eye, Edit, Trash2, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { PageSpinner } from "@/components/ui/page-spinner";
 
@@ -120,113 +109,44 @@ export default function CoursesPage() {
   const isSearching = search.length > 0;
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">Courses</h1>
-          <p className="text-muted-foreground mt-2">
-            The training you did, with the dives and cards it produced
-          </p>
-        </div>
-        <Button onClick={() => setEditingCourse(undefined)}>
-          <Plus className="h-4 w-4 mr-2" />
-          New Course
-        </Button>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle
-            as="h2"
-            className="flex flex-wrap items-center justify-between gap-3"
-          >
-            <span>Course List</span>
-            <CountBadge
-              count={totalCount}
-              isLoading={isLoadingCourses}
-              label="total course"
-            />
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <label htmlFor="course-search" className="sr-only">
-              Search courses by name
-            </label>
-            <Input
-              id="course-search"
-              type="search"
-              className="pl-9"
-              placeholder="Search by name..."
-              value={searchInput}
-              onChange={(event) => setSearchInput(event.target.value)}
-            />
-          </div>
-
-          {!isLoadingCourses && courses.length === 0 ? (
-            <div className="text-center py-12">
-              {isSearching ? (
-                // A filtered list with nothing in it is a different statement
-                // from an empty logbook, and offering "add your first course"
-                // here would be answering a question nobody asked.
-                <div className="text-muted-foreground">
-                  No courses match that name.
-                </div>
-              ) : (
-                <>
-                  <div className="text-muted-foreground mb-4">
-                    No courses yet. Add the training you have done to group its
-                    dives and cards.
-                  </div>
-                  <Button onClick={() => setEditingCourse(undefined)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Your First Course
-                  </Button>
-                </>
-              )}
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Agency</TableHead>
-                  <TableHead>Dates</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {courses.length === 0 && (
-                  <TableRowsSkeleton columns={5} rows={itemsPerPage} />
-                )}
-                {courses.map((course) => (
-                  <TableRow key={course.uuid}>
-                    <TableCell className="font-medium">
-                      <Link
-                        href={`/courses/${course.uuid}`}
-                        className="hover:underline"
-                      >
-                        {course.name}
-                      </Link>
-                    </TableCell>
-                    {/* A course need not name an agency, so this cell gets the
+    <>
+      <CoursesPageFrame
+        isLoading={isLoadingCourses}
+        totalCount={totalCount}
+        itemsPerPage={itemsPerPage}
+        search={searchInput}
+        onSearchChange={setSearchInput}
+        isSearching={isSearching}
+        isLoadingMore={isLoadingMore}
+        loadFailed={loadFailed}
+        hasMore={hasMore}
+        onLoadMore={loadMore}
+        onNew={() => setEditingCourse(undefined)}
+        rows={courses.map((course) => (
+          <TableRow key={course.uuid}>
+            <TableCell className="font-medium">
+              <Link
+                href={`/courses/${course.uuid}`}
+                className="hover:underline"
+              >
+                {course.name}
+              </Link>
+            </TableCell>
+            {/* A course need not name an agency, so this cell gets the
                         same dash the Dates one does rather than a gap that
                         reads as a rendering fault. */}
-                    <TableCell>
-                      {certificationAgencyLabel(
-                        course.agency,
-                        course.agency_other,
-                      ) ?? <span className="text-muted-foreground">-</span>}
-                    </TableCell>
-                    <TableCell>
-                      {formatTripDateRange(
-                        course.start_date ?? undefined,
-                        course.end_date ?? undefined,
-                      ) ?? <span className="text-muted-foreground">-</span>}
-                    </TableCell>
-                    {/* A status column, so the chips get one width the way the
+            <TableCell>
+              {certificationAgencyLabel(course.agency, course.agency_other) ?? (
+                <span className="text-muted-foreground">-</span>
+              )}
+            </TableCell>
+            <TableCell>
+              {formatTripDateRange(
+                course.start_date ?? undefined,
+                course.end_date ?? undefined,
+              ) ?? <span className="text-muted-foreground">-</span>}
+            </TableCell>
+            {/* A status column, so the chips get one width the way the
                         gear table's Service column does - `min-w-24` is the same
                         6rem, and clears "Not passed" at 88px, the widest of the
                         six labels. Only the layout is shared: these variants are
@@ -237,70 +157,55 @@ export default function CoursesPage() {
                         `courseStatusLabel` falls back to the raw wire value for a
                         status this build doesn't know, so the label is not drawn
                         from a fixed set of six and can be arbitrarily long. */}
-                    <TableCell>
-                      <Badge
-                        variant={courseStatusBadgeVariant(course.status)}
-                        className="min-w-24 justify-center whitespace-nowrap"
-                      >
-                        {courseStatusLabel(course.status)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {/* Named per row, not per action: ten identical "Edit"s
+            <TableCell>
+              <Badge
+                variant={courseStatusBadgeVariant(course.status)}
+                className="min-w-24 justify-center whitespace-nowrap"
+              >
+                {courseStatusLabel(course.status)}
+              </Badge>
+            </TableCell>
+            <TableCell className="text-right">
+              {/* Named per row, not per action: ten identical "Edit"s
                           tell a screen reader's controls list nothing about
                           which course. See DECISIONS.md, "Ten rows of 'Edit'
                           name nothing". */}
-                      <div className="flex justify-end gap-2">
-                        <IconTooltip label={`View ${course.name}`}>
-                          <Button variant="ghost" size="sm" asChild>
-                            <Link href={`/courses/${course.uuid}`}>
-                              <Eye className="h-4 w-4" />
-                            </Link>
-                          </Button>
-                        </IconTooltip>
-                        <IconTooltip label={`Edit ${course.name}`}>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setEditingCourse(course)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </IconTooltip>
-                        <IconTooltip label={`Delete ${course.name}`}>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => requestDelete(course.uuid)}
-                            disabled={deletingId === course.uuid}
-                          >
-                            {deletingId === course.uuid ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </IconTooltip>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-
-          <LoadMoreTrigger
-            hasMore={hasMore}
-            isLoading={isLoadingMore}
-            hasFailed={loadFailed}
-            loadedCount={courses.length}
-            totalCount={totalCount}
-            itemsPerPage={itemsPerPage}
-            itemLabel="courses"
-            onLoadMore={loadMore}
-          />
-        </CardContent>
-      </Card>
+              <div className="flex justify-end gap-2">
+                <IconTooltip label={`View ${course.name}`}>
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link href={`/courses/${course.uuid}`}>
+                      <Eye className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                </IconTooltip>
+                <IconTooltip label={`Edit ${course.name}`}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setEditingCourse(course)}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                </IconTooltip>
+                <IconTooltip label={`Delete ${course.name}`}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => requestDelete(course.uuid)}
+                    disabled={deletingId === course.uuid}
+                  >
+                    {deletingId === course.uuid ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                  </Button>
+                </IconTooltip>
+              </div>
+            </TableCell>
+          </TableRow>
+        ))}
+      />
 
       <CourseDialog
         userId={user?.uuid ?? ""}
@@ -319,6 +224,6 @@ export default function CoursesPage() {
         isLoading={deletingId === pendingId}
         onConfirm={confirmDelete}
       />
-    </div>
+    </>
   );
 }
