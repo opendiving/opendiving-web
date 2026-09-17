@@ -217,15 +217,20 @@ export function CheckInPageFrame({
         className={`print:border-0 print:shadow-none print:bg-white ${INK}`}
       >
         <CardContent className="pt-6 space-y-6">
-          <div className="flex items-center gap-4 break-after-avoid">
+          {/* The same shape a certification row has: the picture in the image
+              column, and the name and its two rows in one column beside it. That is
+              what makes the name read as this block's heading and puts the gap under
+              it on the sheet's own rhythm - the name centred against a 64px avatar
+              instead would sit 8px further off its rows than any section heading
+              does. */}
+          <div className={cn("flex gap-4", KEEP_TOGETHER)}>
             {/* Only a picture the diver actually stored. The initials Radix falls
                 back to are a placeholder for a face on screen; printed at the top of
                 a sheet handed to a stranger they are a monogram nobody chose, and a
                 bare name reads better than a circle with "SR" in it. The slot stays
-                either way, so the name sits over the c-cards' own column. */}
-            {/* Centred rather than flush left: the avatar is narrower than a c-card
-                and everything else in this column is one, so centring is what puts
-                it on the same axis as the cards below it. */}
+                either way, so the name sits over the c-cards' own column - centred in
+                it, the avatar being narrower than a card and everything else in that
+                column being one. */}
             <div className={cn(SLOT, "flex justify-center")}>
               {user.avatar_sha256 && (
                 <UserAvatar
@@ -235,40 +240,41 @@ export function CheckInPageFrame({
                 />
               )}
             </div>
-            <h2 className={`text-2xl font-semibold ${INK}`}>{user.name}</h2>
-            <div className="ml-auto">
-              <EditControl
-                label="Edit your name, date of birth and phone number"
-                onClick={() => setEditing("about")}
-              />
-            </div>
-          </div>
-
-          {/* No heading of its own - the name above is it - but on the same rule as
-              every section below: always on screen, so the control beside the name
-              is always there, and dropped from the print when it holds nothing. A
-              `<dl>` with every row absent is 24px of blank page on a sheet handed to
-              somebody, and an "empty" heading is worse. */}
-          <div
-            className={cn(
-              GUTTER,
-              KEEP_TOGETHER,
-              !hasAboutYou && "print:hidden",
-            )}
-          >
-            {hasAboutYou ? (
-              <DetailList>
-                <Detail
-                  label="Date of birth"
-                  value={
-                    user.date_of_birth && formatDateOnly(user.date_of_birth)
-                  }
+            <div className="min-w-0 flex-1 space-y-4">
+              {/* `-my-1` pulls the control's margin box inside the name's line, as a
+                  certification row does with its own: left to set the row height the
+                  button is taller than the text, and the gap under the name would
+                  come out short of every section's by those two pixels. */}
+              <div className="flex items-center gap-2">
+                <h2 className={`flex-1 text-2xl font-semibold ${INK}`}>
+                  {user.name}
+                </h2>
+                <EditControl
+                  className="-my-1"
+                  label="Edit your name, date of birth and phone number"
+                  onClick={() => setEditing("about")}
                 />
-                <Detail label="Phone" value={user.phone} />
-              </DetailList>
-            ) : (
-              <EmptyNote>Not filled in yet.</EmptyNote>
-            )}
+              </div>
+
+              {/* Always on screen, so the control beside the name is always there,
+                  and dropped from the print when it holds nothing: a `<dl>` with
+                  every row absent is blank page on a sheet handed to somebody. */}
+              <div className={cn(!hasAboutYou && "print:hidden")}>
+                {hasAboutYou ? (
+                  <DetailList>
+                    <Detail
+                      label="Date of birth"
+                      value={
+                        user.date_of_birth && formatDateOnly(user.date_of_birth)
+                      }
+                    />
+                    <Detail label="Phone" value={user.phone} />
+                  </DetailList>
+                ) : (
+                  <EmptyNote>Not filled in yet.</EmptyNote>
+                )}
+              </div>
+            </div>
           </div>
 
           <Section
