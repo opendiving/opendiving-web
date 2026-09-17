@@ -324,9 +324,8 @@ Under `cacheComponents` and `partialPrefetching` the root layout's `headers()` r
 data outside a boundary: every static shell is empty and the build fails.
 `export const instant = false` on the root layout allows a blocking route. The shells stay empty: a
 shell is rendered per request, and the gain is one per route rather than one prefetch per link. The
-root is the placement: every page a _signed-in_ diver reaches, and both non-root layouts, are Client
-Components, which cannot carry the export. No URL hook needs a Suspense boundary of its own, in a
-page or a fallback.
+root is the placement because the read is in it, and nothing lower covers the app. No URL hook needs
+a Suspense boundary of its own, in a page or in a route fallback.
 
 The nonce holds. Every document render mints its own; a prefetched shell carries the nonce of the
 request that produced it, and its scripts load under `'strict-dynamic'`.
