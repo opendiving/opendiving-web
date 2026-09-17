@@ -69,6 +69,9 @@ one.
   snapshot of it**.
 - **Certifications** — keep photos of your c-cards on hand at the dive shop without digging out the
   plastic.
+- **Check-in** — the details a dive shop asks for at the desk, kept once: date of birth, phone, an
+  emergency contact and your dive insurance. One page gathers them with your c-cards, dive count and
+  last dive, and prints — your browser's save-as-PDF is the copy for a desk with no signal.
 - **Courses** — the training itself, with the agency, instructor and shop: link the dives you did on
   it and the cards it issued, so a course is one record instead of a shape you have to remember.
 - **Full export** — one click to take _everything_ out in open formats: a **DiveJSON** document

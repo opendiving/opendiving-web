@@ -28,6 +28,7 @@ import {
   Luggage,
   Backpack,
   BadgeCheck,
+  ClipboardList,
   GraduationCap,
   Fish,
   Shield,
@@ -78,6 +79,7 @@ const NAV_SECTIONS: { prefix: string; page: string }[] = [
   { prefix: "/sites", page: "sites" },
   { prefix: "/gear", page: "gear" },
   { prefix: "/certifications", page: "certifications" },
+  { prefix: "/checkin", page: "checkin" },
   { prefix: "/courses", page: "courses" },
   { prefix: "/species", page: "species" },
 ];
@@ -139,10 +141,12 @@ export function Header() {
     };
   }, [isMobileMenuOpen]);
 
+  // `print:hidden` because `/checkin` prints, and the summary it prints is the page
+  // alone - a nav bar on a sheet handed across a dive-shop desk is noise.
   return (
     <header
       ref={headerRef}
-      className="sticky top-0 z-50 bg-background shadow-sm border-b"
+      className="sticky top-0 z-50 bg-background shadow-sm border-b print:hidden"
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center py-4">
@@ -319,6 +323,15 @@ export function Header() {
                       >
                         <BadgeCheck className="mr-2 h-4 w-4" />
                         Certifications
+                      </Link>
+                    </DropdownMenuItem>
+                    {/* Beside Certifications because it is mostly made of them,
+                        and out of the main nav because a diver opens it at a dive
+                        shop rather than on every visit. */}
+                    <DropdownMenuItem asChild>
+                      <Link href="/checkin" className="flex items-center">
+                        <ClipboardList className="mr-2 h-4 w-4" />
+                        Check-in
                       </Link>
                     </DropdownMenuItem>
                     {/* Beside Certifications rather than in the main nav: both

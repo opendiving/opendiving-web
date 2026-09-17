@@ -1131,9 +1131,11 @@ logging a dive, is a single primary button in the page header. `SetupChecklistCa
 real counts (`/user/dive-stats`, `/gear-items`, `/certifications`, the last two fetched with
 `items_per_page: 1` for `total_count` alone) and removes itself once all three are done.
 
-`CertificationExpiryCard` is the certification twin of `ServiceDueCard`: it renders `null` when
-nothing needs renewing and when its fetch fails, and its rows link to `/certifications`, where
-certifications are edited in dialogs and have no URL of their own. Filtering and ordering live in
+`CertificationExpiryCard` is the twin of `ServiceDueCard`: headed "Renewals", it renders `null` when
+nothing needs renewing and when its fetch fails. Certification rows link to `/certifications`, where
+certifications are edited in dialogs and have no URL of their own; the dive-insurance row links to
+`/settings`, where the policy is entered, and sorts among them rather than after them, a lapsed
+policy stopping a dive at the desk as a lapsed card does. Filtering and ordering live in
 `certificationRenewals()` in `lib/certification.ts`, not the component, so "expired sorts above
 expiring soon" is tested without rendering.
 
@@ -1190,10 +1192,11 @@ The dashboard deliberately does not get the card in exchange. It already carries
 hold, newest first" is not an alert, and `/certifications` is one nav click away with images, dates
 and dialogs. A read-only echo of a page in the nav is the duplication that took `/profile` down.
 
-Before writing that ordering again: `GET /certifications` is newest-row-first, so a diver who enters
-their Open Water card last gets it above the Divemaster it led to. `/certifications` still renders
-the API's order — it is a paginated table, and reordering one page client-side lies about the pages
-either side.
+Before writing that ordering again: `GET /certifications` sorts by `certified_on` descending with
+nulls last, tie-broken by uuid — not by when the row was entered, so a card with no date on it sits
+at the bottom rather than wherever it was typed in. `/certifications` renders that order rather than
+one of its own: it is a paginated table, and reordering one page client-side lies about the pages
+either side. `/checkin` renders it too, so the two agree about which card leads.
 
 ## There is no Gravatar line; `/settings` shows the avatar itself
 
@@ -6578,3 +6581,16 @@ Each card below then carries one button, only while it is empty, worded in full
 (`Log a dive for this course`): two routes to one form that a flat controls list can tell apart. The
 certifications card carries no header button, so `CourseCertificationsCard` takes
 `isAdding`/`onAddingChange` and the page owns the flag both buttons set.
+
+## The check-in summary is a list the diver hands over, and it carries no agency marks
+
+`/checkin` prints what a dive shop asks for — date of birth, phone, an emergency contact, insurance,
+the c-cards, the dive count — as a list, each card's stored front beside it as a thumbnail. No
+agency artwork or logo is drawn: those marks are licensed to members and centres rather than to
+divers, and a card-shaped tile carrying one reads as agency-issued. A card stored as a PDF prints as
+a placeholder, never rasterised.
+
+Printing is the browser's, through Tailwind's `print:` variant on the chrome and the page's own
+controls — no PDF library, no `@media print` block. Handing that print to a shop is the diver
+showing their own entries to someone, not the software doing it, so terms §5's grant ("store your
+entries, show them back to you") is unchanged by it.

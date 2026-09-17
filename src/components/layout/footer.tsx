@@ -8,8 +8,10 @@ import Link from "next/link";
 // document, so each column is a named `nav` landmark instead: reachable by landmark
 // navigation, and out of the heading outline where no fixed level can be correct.
 export function Footer() {
+  // `print:hidden` for the same reason as the header's: `/checkin` prints the
+  // summary alone, and no page wants the chrome on paper.
   return (
-    <footer className="bg-muted text-foreground py-12">
+    <footer className="bg-muted text-foreground py-12 print:hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Three tiers, not two. Below `sm:` everything stacks; from `md:` up the brand
             block is the first of four equal columns. Between the two - the tablet widths

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { BadgeCheck } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   certificationAgencyLabel,
   certificationsAPI,
@@ -12,30 +13,44 @@ import {
   certificationExpiryBadgeVariant,
   certificationExpiryLabel,
   certificationRenewals,
-  type CertificationRenewal,
 } from "@/lib/certification";
 import { formatDateOnly } from "@/lib/date-time";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TruncatedNote } from "@/components/ui/truncated-note";
 
-// Dashboard card listing certifications that have run out, or are about to.
+// One line of the card, whatever it is a renewal of: what runs out, what kind of
+// thing it is, where the diver goes to deal with it, and the date it runs out on.
+interface Renewable {
+  key: string;
+  title: string;
+  detail: string | null;
+  href: string;
+  expires_on: string;
+}
+
+// Dashboard card listing what a diver has to renew - certifications that have run out
+// or are about to, and the dive insurance beside them, since a lapsed policy stops a
+// dive at the desk exactly as a lapsed rescue card does.
 //
 // The gear twin of this is `ServiceDueCard`, and it follows the same rule: it renders
-// **nothing at all** when no card needs renewing (and when the fetch fails), because a
+// **nothing at all** when nothing needs renewing (and when the fetch fails), because a
 // permanent "your certifications are fine" tile is exactly the kind of dashboard filler
 // that teaches people to stop reading the dashboard.
 //
-// Rows all link to `/certifications` rather than to a card of their own - certifications
-// are edited in dialogs on that one page, so there is no per-certification URL to send
-// anyone to.
+// Certification rows link to `/certifications` rather than to a card of their own -
+// certifications are edited in dialogs on that one page, so there is no
+// per-certification URL to send anyone to. The insurance row links to `/settings`,
+// where the policy is entered.
 //
 // The API returns every dated certification with no horizon - a server-side "expiring
 // within N days" filter would bake today's date into a cached response and go wrong at
-// midnight - so the bucketing happens here, exactly as it does for gear.
+// midnight - so the bucketing happens here, exactly as it does for gear, and the
+// insurance goes through the same one.
 export function CertificationExpiryCard() {
-  const [flagged, setFlagged] = useState<
-    CertificationRenewal<CertificationExpiringEntry>[]
+  const { user } = useAuth();
+  const [certifications, setCertifications] = useState<
+    CertificationExpiringEntry[]
   >([]);
   const [truncated, setTruncated] = useState(false);
 
@@ -46,7 +61,7 @@ export function CertificationExpiryCard() {
       .getExpiring()
       .then((response) => {
         if (cancelled) return;
-        setFlagged(certificationRenewals(response.data));
+        setCertifications(response.data);
         setTruncated(response.truncated === true);
       })
       // Swallowed on purpose, like `ServiceDueCard`: a supplementary card that failed to
@@ -58,6 +73,35 @@ export function CertificationExpiryCard() {
     };
   }, []);
 
+  const renewable: Renewable[] = certifications.map((certification) => ({
+    key: certification.uuid,
+    title: certification.name,
+    detail: certificationAgencyLabel(
+      certification.agency,
+      certification.agency_other,
+    ),
+    href: "/certifications",
+    expires_on: certification.expires_on,
+  }));
+
+  // A policy with a date on it and no provider named is still a policy running out,
+  // so the row falls back to saying what it is.
+  const provider = user?.insurance_provider?.trim();
+  if (user?.insurance_expires_on) {
+    renewable.push({
+      key: "dive-insurance",
+      title: provider || "Dive insurance",
+      detail: provider ? "Dive insurance" : null,
+      href: "/settings",
+      expires_on: user.insurance_expires_on,
+    });
+  }
+
+  // One list rather than a section each, so the soonest thing to run out is the first
+  // line whichever kind it is - which is what `certificationRenewals` sorts for, and
+  // why it is generic over anything carrying an `expires_on`.
+  const flagged = certificationRenewals(renewable);
+
   if (flagged.length === 0) return null;
 
   return (
@@ -65,24 +109,23 @@ export function CertificationExpiryCard() {
       <CardHeader>
         <CardTitle as="h2" className="flex items-center gap-2 text-base">
           <BadgeCheck className="h-4 w-4" />
-          Certification renewals
+          Renewals
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        {flagged.map(({ certification, status, expiresOn }) => (
+        {flagged.map(({ certification: row, status, expiresOn }) => (
           <Link
-            key={certification.uuid}
-            href="/certifications"
+            key={row.key}
+            href={row.href}
             className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 hover:underline"
           >
             <div className="min-w-0">
-              <div className="text-sm font-medium">{certification.name}</div>
-              <div className="text-xs text-muted-foreground">
-                {certificationAgencyLabel(
-                  certification.agency,
-                  certification.agency_other,
-                )}
-              </div>
+              <div className="text-sm font-medium">{row.title}</div>
+              {row.detail && (
+                <div className="text-xs text-muted-foreground">
+                  {row.detail}
+                </div>
+              )}
             </div>
             {/* Detail first, then the chip, and one width for both chips - the same
                 treatment as the service-due card directly above this one on the
