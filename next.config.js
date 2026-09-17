@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
+  cacheComponents: true,
+  partialPrefetching: true,
   // Off, or Next sends `X-Powered-By: Next.js` on every response by default.
   // It names the framework and nothing else, which is free reconnaissance for
   // anyone scanning a self-hosted instance for a version worth an exploit, and

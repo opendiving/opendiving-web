@@ -16,13 +16,13 @@ describe("robots", () => {
   it("lets crawlers in by default", async () => {
     const robots = await loadRobots();
 
-    expect(robots().rules).toEqual({ userAgent: "*", allow: "/" });
+    expect((await robots()).rules).toEqual({ userAgent: "*", allow: "/" });
   });
 
   it("closes the whole site when WEB_NOINDEX is set", async () => {
     const robots = await loadRobots({ WEB_NOINDEX: "true" });
 
-    expect(robots().rules).toEqual({ userAgent: "*", disallow: "/" });
+    expect((await robots()).rules).toEqual({ userAgent: "*", disallow: "/" });
   });
 
   // Same vocabulary as every other flag in `lib/runtime-config.ts`, rather than
@@ -30,6 +30,6 @@ describe("robots", () => {
   it("takes the other spellings of yes", async () => {
     const robots = await loadRobots({ WEB_NOINDEX: "ON" });
 
-    expect(robots().rules).toEqual({ userAgent: "*", disallow: "/" });
+    expect((await robots()).rules).toEqual({ userAgent: "*", disallow: "/" });
   });
 });

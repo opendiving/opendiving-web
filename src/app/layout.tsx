@@ -13,6 +13,12 @@ import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
 
+// SPIKE: the root layout reads `headers()` for the CSP nonce, which under
+// cacheComponents is runtime data outside any Suspense boundary - every route's
+// static shell would be empty and the build fails on it. `false` here allows a
+// blocking route and disables static-shell validation app-wide.
+export const instant = false;
+
 // A function rather than an exported `metadata` object because `siteUrl` is read from
 // the environment at request time (`lib/runtime-config.ts`), and a module-level constant
 // would be evaluated while the image is being built - freezing whatever the build

@@ -259,14 +259,26 @@ export function useInfiniteResource<T>(
     [commitItems, reload, itemsPerPage],
   );
 
+  // What the effect below last loaded for. A route kept mounted under
+  // `<Activity mode="hidden">` has its effects destroyed on hide and re-created on
+  // show, so without this a diver six pages into the log who opens a dive and comes
+  // back would watch the list snap to its first page. Refs survive the hide, and
+  // comparing the dependencies rather than counting mounts keeps the load that a
+  // genuinely changed `enabled` or `fetchFn` still owes.
+  const loadedFor = useRef<{ enabled: boolean; reload: () => void } | null>(
+    null,
+  );
+
   useEffect(() => {
-    // Deliberate fetch-on-mount pattern (setIsLoading(true) runs synchronously
-    // before the network await). This is a known, contentious false-positive for
-    // react-hooks/set-state-in-effect - see https://github.com/facebook/react/issues/34743.
-    if (enabled) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      reload();
+    if (!enabled) return;
+    if (
+      loadedFor.current?.enabled === enabled &&
+      loadedFor.current?.reload === reload
+    ) {
+      return;
     }
+    loadedFor.current = { enabled, reload };
+    reload();
   }, [enabled, reload]);
 
   return {
