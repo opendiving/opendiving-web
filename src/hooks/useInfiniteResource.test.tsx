@@ -581,6 +581,64 @@ describe("useInfiniteResource", () => {
       expect(latest!.items).toHaveLength(10);
     });
 
+    // The re-read must not hold `isFetching`: `loadMore` returns on that flag without
+    // moving any state, and the load-more trigger only re-fires on a state change, so
+    // a page asked for during the re-read would be dropped with nothing to retry it.
+    it("lets a `loadMore` during the re-read through", async () => {
+      let releaseReRead: (value: PaginatedResponse<Row>) => void = () => {};
+      const fetchFn = vi.fn(
+        async (pageNumber: number, size: number): Promise<PaginatedResponse<Row>> => {
+          if (size === 100) {
+            return new Promise((resolve) => {
+              releaseReRead = resolve;
+            });
+          }
+          return page(pageNumber, { total: 30, perPage: 10 });
+        },
+      );
+      let latest: ReturnType<typeof useInfiniteResource<Row>> | null = null;
+
+      function List() {
+        latest = useInfiniteResource(fetchFn, { keyOf });
+        return null;
+      }
+      function Host({ hidden }: { hidden: boolean }) {
+        return (
+          <Activity mode={hidden ? "hidden" : "visible"}>
+            <List />
+          </Activity>
+        );
+      }
+
+      const { rerender } = render(<Host hidden={false} />);
+      await waitFor(() => expect(latest!.isLoading).toBe(false));
+
+      // The return starts a re-read that has not answered yet.
+      await act(async () => {
+        rerender(<Host hidden />);
+      });
+      await act(async () => {
+        rerender(<Host hidden={false} />);
+      });
+      await waitFor(() =>
+        expect(fetchFn.mock.calls.some(([, size]) => size === 100)).toBe(true),
+      );
+
+      const during = fetchFn.mock.calls.length;
+      act(() => {
+        void latest!.loadMore();
+      });
+
+      // Asked for, not swallowed.
+      await waitFor(() =>
+        expect(fetchFn.mock.calls.length).toBeGreaterThan(during),
+      );
+
+      await act(async () => {
+        releaseReRead(page(1, { total: 30, perPage: 10 }));
+      });
+    });
+
     // `load` declines to clear the spinners for a superseded request, on the
     // understanding that whoever superseded it will. The re-read has to hold up its
     // end, or a `loadMore` caught in flight by the return strands the list.

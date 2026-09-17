@@ -200,8 +200,11 @@ export function useInfiniteResource<T>(
 
     const requestId = latestRequest.current + 1;
     latestRequest.current = requestId;
-    isFetching.current = true;
-
+    // Deliberately not `isFetching`. That flag makes `loadMore` return without
+    // starting anything and without moving any state, and the load-more trigger only
+    // re-fires on a state change - so a diver who reached the foot of the list during
+    // the re-read would have their page swallowed silently. A `loadMore` here simply
+    // takes the newer ticket and wins; this re-read's commit is the one dropped.
     try {
       const identify = keyOfRef.current;
       const seen = new Set<string>();
