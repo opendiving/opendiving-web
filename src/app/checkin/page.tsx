@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { CheckInPageFrame } from "@/components/checkin/checkin-page-frame";
@@ -74,6 +74,21 @@ export default function CheckInPage() {
     return () => controller.abort();
   }, [userUuid, attempt]);
 
+  // After a card is added or edited from the summary itself. Only the list is
+  // re-read - the stats and the last dive cannot have moved - and the loading flag
+  // is left alone, so the cards already on screen stay put rather than flashing back
+  // to skeletons. A re-read rather than splicing the saved card in: the order is
+  // `GET /certifications`' (`certified_on` descending, nulls last), and a card added
+  // here has to land where that puts it.
+  const refreshCertifications = useCallback(async () => {
+    try {
+      setCertifications(await fetchAllCertifications());
+    } catch (error) {
+      console.error("Failed to re-read the certifications:", error);
+      setLoadFailed(true);
+    }
+  }, []);
+
   if (isLoading) {
     return <PageSpinner />;
   }
@@ -89,6 +104,7 @@ export default function CheckInPage() {
       lastDiveAt={lastDiveAt}
       isLoading={isSummaryLoading}
       loadFailed={loadFailed}
+      onCertificationsChanged={refreshCertifications}
       onRetry={() => {
         setIsSummaryLoading(true);
         setLoadFailed(false);
