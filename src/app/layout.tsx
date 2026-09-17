@@ -13,10 +13,11 @@ import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
 
-// SPIKE: the root layout reads `headers()` for the CSP nonce, which under
-// cacheComponents is runtime data outside any Suspense boundary - every route's
-// static shell would be empty and the build fails on it. `false` here allows a
-// blocking route and disables static-shell validation app-wide.
+// This layout reads `headers()` for the CSP nonce, which under `cacheComponents` is
+// runtime data outside any Suspense boundary: every route's static shell is empty and
+// the build fails on it. `false` allows a blocking route, and the root is the only
+// placement that reaches the routes needing it - every page a diver reaches, and both
+// non-root layouts, are Client Components, which cannot carry this export.
 export const instant = false;
 
 // A function rather than an exported `metadata` object because `siteUrl` is read from

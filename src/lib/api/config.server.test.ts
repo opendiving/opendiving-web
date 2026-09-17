@@ -2,6 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { projectOperatesThisInstance } from "./config.server";
 
+// `connection()` is how these modules tell `cacheComponents` to stop prerendering, and
+// it throws outside a request scope - which a unit test calling the function directly
+// always is.
+vi.mock("next/server", () => ({ connection: async () => {} }));
+
 // Every one of these cases resolves rather than throws, and that is the thing under
 // test: the legal pages call this while rendering, and an instance whose API is down
 // must still serve them. What varies is only whether the answer is `true`.

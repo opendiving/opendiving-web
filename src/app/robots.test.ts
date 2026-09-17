@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+// `connection()` is how these modules tell `cacheComponents` to stop prerendering, and
+// it throws outside a request scope - which a unit test calling the function directly
+// always is.
+vi.mock("next/server", () => ({ connection: async () => {} }));
+
 // `runtimeConfig()` memoizes, so each case needs its own module instance - see
 // `src/proxy.test.ts` for the same dance.
 async function loadRobots(env: Record<string, string> = {}) {
