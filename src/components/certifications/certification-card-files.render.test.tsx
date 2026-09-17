@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { CertificationCardFiles } from "./certification-card-files";
-import type { Certification } from "@/lib/api/certifications";
+import {
+  CERTIFICATION_FILE_ACCEPT,
+  type Certification,
+} from "@/lib/api/certifications";
 
 const certification: Certification = {
   uuid: "cert-1",
@@ -38,11 +41,22 @@ describe("the second card slot presents itself as optional", () => {
     expect(screen.getAllByText("Not uploaded")).toHaveLength(2);
   });
 
-  it("says which formats are shown, since a PDF can only be downloaded", () => {
+  // Derived from the accept list rather than spelled out, so widening what the
+  // picker takes fails here instead of quietly warning a diver off a format that
+  // displays perfectly well - `CertificationCardImage` renders everything except
+  // a PDF through an `<img>`.
+  it("names every image format the picker accepts, and only the PDF as download-only", () => {
     renderFiles();
 
-    expect(
-      screen.getByText(/PNG and JPEG images are shown here/),
-    ).toBeInTheDocument();
+    const guidance = screen.getByText(/images are shown here/);
+    const displayable = CERTIFICATION_FILE_ACCEPT.split(",")
+      .filter((type) => type !== "application/pdf")
+      .map((type) => type.replace("image/", "").toUpperCase());
+
+    expect(displayable.length).toBeGreaterThan(0);
+    for (const format of displayable) {
+      expect(guidance).toHaveTextContent(format);
+    }
+    expect(guidance).toHaveTextContent("PDF");
   });
 });

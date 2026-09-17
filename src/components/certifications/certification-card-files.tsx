@@ -195,9 +195,11 @@ export function CertificationCardFiles({
           only ever be downloaded - `CertificationCardImage` shows it as a
           labelled file. Worth saying here rather than after the upload, because
           RAID hands out a PNG and a PDF of the same card and the choice is the
-          diver's. */}
+          diver's. The image formats named are every non-PDF entry in
+          `CERTIFICATION_FILE_ACCEPT`, and the test holds them to that: naming
+          fewer would warn a diver off a format that displays perfectly well. */}
       <p className="text-xs text-muted-foreground">
-        PNG and JPEG images are shown here. A PDF is stored and can be
+        PNG, JPEG and WEBP images are shown here. A PDF is stored and can be
         downloaded, but not displayed — if your agency offers both, pick the
         image.
       </p>
