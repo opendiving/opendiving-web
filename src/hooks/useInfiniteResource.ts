@@ -189,9 +189,9 @@ export function useInfiniteResource<T>(
    * would reasonably think it had not saved. So the rows are re-read in place -
    * same count, same scroll, contents caught up.
    *
-   * Asked for in whole pages of `REVALIDATE_PAGE_SIZE` rather than one row at a
-   * time: a list six pages deep is one request, and the loop only runs for a
-   * diver who has scrolled past a hundred rows.
+   * Asked for in one request wherever it fits - the span on screen, up to
+   * `REVALIDATE_PAGE_SIZE` - so a list six pages deep costs one round trip and the
+   * loop only runs for a diver who has scrolled past a hundred rows.
    */
   const revalidate = useCallback(async () => {
     const loaded = itemsRef.current.length;
@@ -227,9 +227,10 @@ export function useInfiniteResource<T>(
       }
       if (!response) return;
 
-      // Trimmed to what was on screen: the re-read asks in hundreds, and a ten-row
-      // list that came back holding a hundred would have grown by going away. A
-      // shorter answer is kept whole - that is a list someone else has shrunk.
+      // Trimmed to what was on screen, which bites only past `REVALIDATE_PAGE_SIZE`:
+      // below it the batch already asks for exactly the span, and above it the last
+      // request overshoots. A shorter answer is kept whole - that is a list someone
+      // else has shrunk.
       const kept = rows.slice(0, loaded);
       commitItems(kept);
       setTotalCount(response.total_count);
@@ -372,7 +373,13 @@ export function useInfiniteResource<T>(
     // because the retry a diver used to get by leaving and returning is gone: the
     // page no longer remounts, and `LoadMoreTrigger` draws no "Try again" while
     // `totalCount` is 0, so an empty list would otherwise stay empty until a reload.
-    if (itemsRef.current.length === 0) {
+    //
+    // Unless one is already running. An empty list is also what the first load looks
+    // like before it commits, and this effect is re-created on StrictMode's second
+    // pass and on a hide during that load - both of which would otherwise fire a
+    // second request for page one. A failed load clears the flag on its way out, so
+    // the retry above still gets through.
+    if (itemsRef.current.length === 0 && !isFetching.current) {
       reload();
       return;
     }

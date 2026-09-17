@@ -345,9 +345,8 @@ deep snaps to page one, a half-typed form repaints, an open dialog blanks.
 `hooks/useEffectOnChange.ts` holds the dependencies an effect last ran for and skips a re-run
 against the same ones. The data hooks compare the same way but re-read rather than skip, since a
 dive logged elsewhere has already made what they hold wrong: `useResource` without its loading state
-or its `onLoaded` re-seed, `useInfiniteResource` over the rows on screen rather than page one
-
-- and reloading where it holds none, the return being the only retry a failed first load gets.
+or its `onLoaded` re-seed, `useInfiniteResource` over the rows on screen rather than page one, and
+reloading where it holds none, the return being the only retry a failed first load gets.
 
 _Rejected:_ counting mounts, which cannot tell a return from a genuine change.
 
