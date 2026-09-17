@@ -347,6 +347,21 @@ describe("what the print leaves behind", () => {
 });
 
 describe("before the requests land", () => {
+  it("puts each placeholder card where its row will land", () => {
+    const { container } = render(<CheckInPageFrame />);
+
+    // jsdom lays nothing out, so what is checkable is that the placeholder carries
+    // the same geometry classes as `CertificationSummary` - the gutter cancel and
+    // the image slot. Without them the whole list jumps left and resizes the moment
+    // the fetch returns, and `loading.tsx` renders exactly this state.
+    const rows = container.querySelectorAll("[aria-hidden] .flex.gap-4");
+    expect(rows.length).toBeGreaterThan(0);
+    rows.forEach((row) => {
+      expect(row).toHaveClass("-ml-20", "sm:-ml-28");
+      expect(row.firstElementChild).toHaveClass("w-16", "sm:w-24", "h-12");
+    });
+  });
+
   it("holds the shape with placeholders, and announces the regions as busy", () => {
     const { container } = render(<CheckInPageFrame />);
 
@@ -654,6 +669,12 @@ describe("correcting the diving figures", () => {
     expect(
       screen.getByText(/nothing was saved to your log/i),
     ).toBeInTheDocument();
+    // Not "Not filled in yet." beside it: the one diver who can reach this state is
+    // the one who just emptied figures that were there.
+    const diving = screen.getByText("Diving").closest("section");
+    expect(
+      within(diving as HTMLElement).queryByText("Not filled in yet."),
+    ).toBeNull();
     // A desk is handed no heading with nothing under it.
     expect(screen.getByText("Diving").closest("section")).toHaveClass(
       "print:hidden",

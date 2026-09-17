@@ -325,10 +325,15 @@ export function CheckInPageFrame({
             )}
           >
             {isLoading ? (
+              // Same geometry as `CertificationSummary`, down to the `SLOT` and the
+              // `NEGATIVE_GUTTER` that hangs the image back out of the section's
+              // indent: a placeholder that sits where its row will not is a list that
+              // jumps left and resizes the moment the fetch lands, and `loading.tsx`
+              // renders exactly this as the route fallback.
               <div aria-hidden className="space-y-4">
                 {[0, 1].map((row) => (
-                  <div key={row} className="flex gap-4">
-                    <Skeleton className="h-16 w-24 shrink-0" />
+                  <div key={row} className={cn("flex gap-4", NEGATIVE_GUTTER)}>
+                    <Skeleton className={cn(SLOT, "h-12 sm:h-16 print:h-16")} />
                     <div className="flex-1 space-y-2">
                       <Skeleton className="h-5 w-48" />
                       <Skeleton className="h-4 w-32" />
@@ -405,10 +410,14 @@ export function CheckInPageFrame({
                 />
               </DetailList>
             )}
-            {/* Same rule: a rejected `/user/dive-stats` leaves `stats` null, which is
-                indistinguishable here from a diver who has filled nothing in -
-                except that it isn't, and only `loadFailed` knows. */}
-            {!hasFigures && !loadFailed && (
+            {/* Two states are empty here without being unfilled, and neither is
+                visible from `hasFigures` alone: a rejected `/user/dive-stats` leaves
+                `stats` null, and a diver who cleared all three boxes leaves a
+                `corrected` whose every field is null. The second would otherwise
+                read "Not filled in yet." directly above "Corrected for this
+                summary", which is the page contradicting itself to the one diver who
+                knows better. */}
+            {!hasFigures && !loadFailed && !corrected && (
               <EmptyNote>Not filled in yet.</EmptyNote>
             )}
             {corrected && (
