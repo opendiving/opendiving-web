@@ -729,7 +729,7 @@ explicit `null` on PATCH so an interval can be removed rather than ignored as an
 
 ## Per-gear-type service presets are prefills, not safety advice
 
-`defaultSchedulesForGearType()` prefills "Add Schedule" — "visual inspection, every 12 months" for a
+`defaultSchedulesForGearType()` prefills "Add schedule" — "visual inspection, every 12 months" for a
 cylinder, "service, every 12 months or 100 dives" for a regulator — purely to save typing. The
 presets are not authoritative: manufacturer intervals differ, and cylinder test periods are set by
 jurisdiction (five years across much of the US and EU, two and a half in some regimes). Every field
@@ -769,7 +769,7 @@ awaited call in an effect body as a synchronous `setState`.
 
 `NotificationsCard` is factored out like `EmailChangeCard` rather than bolted onto the profile form:
 a different concern that grows if more email preferences appear. It saves on change rather than
-behind "Save Changes" — a single boolean, and a toggle that needs confirming reads as broken — and
+behind "Save changes" — a single boolean, and a toggle that needs confirming reads as broken — and
 sends only `{ gear_service_emails }`, since `PATCH /user` is `extra="forbid"` and anything else
 alongside would 422. `User.gear_service_emails` is optional in the TS type and falls back to `true`
 when absent, matching the server default.
@@ -1066,7 +1066,7 @@ instance the landing hero hosts its own `AuthForm`; on `invite`-mode, the defaul
 the invite-request form and `/signin` is `AuthForm`'s only mount, which makes this page
 load-bearing.
 
-`Header`'s signed-out state shows a coral "Sign In" button linking here, kept in the actions row at
+`Header`'s signed-out state shows a coral "Sign in" button linking here, kept in the actions row at
 every breakpoint rather than folded into the mobile menu: on a phone it is the most important thing
 a signed-out visitor can do.
 
@@ -2702,7 +2702,7 @@ tooltip primitive.
 
 shadcn's footer is `flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2`, a column with no
 spacing below `sm:`, so on a phone Cancel and the action sit flush. Every dialog ends in Cancel plus
-one action; the widest pair (`Cancel` beside `Create Certification` with its `Plus` icon) needs
+one action; the widest pair (`Cancel` beside `Create certification` with its `Plus` icon) needs
 about 326px against a content box of viewport minus 50px (`p-6` plus borders), so it fits on one row
 at 360 and wraps only at 320. The column spent a second row on something that never needed one.
 
@@ -3112,7 +3112,7 @@ Gas alone goes unproposed: `diveModWarning` computes a MOD from whatever cylinde
 so a seeded cylinder of air raises an oxygen-exposure warning past ~56.7 m about gas the diver never
 entered.
 
-`DEFAULT_MIXTURE` stays for "Add Mixture" and the placeholders; `prefillFromLastDive` copies the
+`DEFAULT_MIXTURE` stays for "Add mixture" and the placeholders; `prefillFromLastDive` copies the
 previous dive's cylinders and invents none. The ungated remove button also lets the edit form clear
 a dive's cylinders (`DiveUpdate.mixtures` accepts `[]`) and carries an `aria-label` naming its tank.
 
@@ -4690,7 +4690,7 @@ Do not untrack the script too: the next `git pull` deletes an ignored-but-tracke
 a missing hook command exits non-blocking, so the guard would go quiet in the primary checkout as
 well.
 
-## "Add Mixture" sits under the tanks
+## "Add mixture" sits under the tanks
 
 The button renders after the tank cards, at the foot of the Gas Mixtures section, not in its header.
 It sits where the tank it adds appears, so control and effect are adjacent; in the header it would
@@ -4990,11 +4990,7 @@ its opening value reads as untouched and takes the next course's value.
 `certification-dialog.render.test.tsx` pins the `dirtyFields` failure mode so a later simplification
 fails a test.
 
-## "Add certification" lives in the card that lists them, and the card owns the create flow
-
-The course page's certifications card carries the add button, in its header and empty state, next to
-the list it changes. They are named differently ("Add certification", "Add the first certification")
-because a screen reader's controls list is flat — see "Ten rows of 'Edit' name nothing".
+## The course's certifications card owns the create flow, not the button that opens it
 
 The card owns the dialog because it fetches its own list in an effect and has no refetch seam; a
 `refreshKey` prop or lifting the fetch to the page would work, but a create flow inside the card
@@ -5002,7 +4998,8 @@ makes the refresh a function call. That is also why the card takes the whole `Co
 `courseUuid`: the dialog wants the course's agency, training centre and instructor, which the page
 has already loaded. Creating from here chains into the same `CertificationCardFiles` upload step and
 refresh-and-re-point handoff the certifications page uses, because photographing the card is the
-point.
+point. Where the buttons that set that flag live is "A detail page's sidebar holds its add actions,
+named short".
 
 ## Operator prose describes the basemap, and a renderer sweep anchors on identifiers, not vocabulary
 
@@ -5551,7 +5548,7 @@ derived from the fixture through `localDay()` in `test/local-day.ts`, which spel
 type compiles clean; `toDiveMixtureInput` and `normalizeMixtures` convert at the boundary.
 
 Blank means blank on import; the manual path keeps its prefill. `mergeMixture` in
-`lib/dive-import.ts` has no `DEFAULT_MIXTURE` tier; that default lives only on "Add Mixture".
+`lib/dive-import.ts` has no `DEFAULT_MIXTURE` tier; that default lives only on "Add mixture".
 Defaulting everywhere invents a number for a stored NULL; blank everywhere makes air divers type
 `21` and `0`. `MixtureValueSource` reports only `"form"`. `""` is the cleared spelling, never
 `undefined`, which react-hook-form refills, via `UnitNumberInput`'s `emptyValue`.
@@ -6212,12 +6209,12 @@ the one still open. And each caller registers its own closure rather than the sh
 `syncViewportVars`: `addEventListener` de-duplicates identical `(type, listener)` pairs, so a shared
 function is one registration that the first `removeEventListener` takes from everybody.
 
-## "Add Mixture" takes the focus nowhere, because iOS opens a focused `<select>`
+## "Add mixture" takes the focus nowhere, because iOS opens a focused `<select>`
 
 `useFieldArray().append()` defaults to `shouldFocus: true`, focusing the first field of the new row
 that registered a focusable ref. `VolumeCombobox` registers none, so focus lands on the next box —
 the ppO₂ limit `<select>`, or the O₂ box where that column is hidden — and on iOS focusing a
-`<select>` opens its picker wheel, so one tap on Add Mixture adds a tank and opens a dropdown nobody
+`<select>` opens its picker wheel, so one tap on Add mixture adds a tank and opens a dropdown nobody
 asked for. Hence `append({ ...DEFAULT_MIXTURE }, { shouldFocus: false })`.
 
 The app's plain `<select>`s (ppO₂ limit, Role, Usage, water type) are chosen over the shadcn

@@ -232,12 +232,6 @@ export default function CourseDetailPage() {
                   day: "numeric",
                 })}
               </InfoRow>
-              {/* Both of the course's "add" actions, side by side, so the
-                  cards below carry one apiece and only while they are empty.
-                  Named short: the page is this course, so spelling that out
-                  again would only cost the sidebar's width. Each card's own
-                  button is worded differently, which is what keeps the two
-                  routes to one dialog apart in a flat controls list. */}
               <div className="space-y-2">
                 <Button className="w-full" asChild>
                   <Link href={`/dives/new?course_uuid=${course.uuid}`}>

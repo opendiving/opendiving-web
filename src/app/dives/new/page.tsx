@@ -188,7 +188,7 @@ function NewDivePageContent() {
           // above: a course ends, and silently tagging the first fun dive after
           // it as training is a worse default than one extra pick. The mid-course
           // streak is covered by the course page's own "Log a dive for this
-          // Course", which arrives here as `initialCourseId` - already revealed at
+          // course", which arrives here as `initialCourseId` - already revealed at
           // mount, so hiding `course_uuid` never loses it.
           course_uuid: initialCourseId,
           dive_site_uuids:
@@ -396,7 +396,7 @@ function NewDivePageContent() {
         onSubmit={onSubmit}
         isSubmitting={isSubmitting}
         cancelHref={returnTo.href}
-        submittingLabel="Logging Dive..."
+        submittingLabel="Logging dive..."
         submitLabel="Log dive"
         onFileAdded={(item) => setPendingFiles((files) => [...files, item])}
         pendingFiles={pendingFiles}

@@ -231,10 +231,6 @@ export default function TripDetailPage() {
                 </div>
                 <div className="text-sm">{formatDate(trip.created_at)}</div>
               </div>
-              {/* Short: the page is this trip, so naming it again would only
-                  cost the sidebar's width. The card below words its own button
-                  in full, which is what keeps two routes to one form apart in a
-                  flat controls list. */}
               <Button className="w-full" asChild>
                 <Link href={`/dives/new?trip_uuid=${trip.uuid}`}>
                   <Plus className="h-4 w-4 mr-2" />

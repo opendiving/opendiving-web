@@ -194,10 +194,6 @@ export default function DiveSiteDetailPage() {
                 </div>
                 <div className="text-sm">{formatDate(diveSite.created_at)}</div>
               </div>
-              {/* Short: the page is this site, so naming it again would only
-                  cost the sidebar's width. The card below words its own button
-                  in full, which is what keeps two routes to one form apart in a
-                  flat controls list. */}
               <Button className="w-full" asChild>
                 <Link href={`/dives/new?dive_site_uuid=${diveSite.uuid}`}>
                   <Plus className="h-4 w-4 mr-2" />

@@ -44,7 +44,7 @@ import {
 // enough to warrant its own page; the rest open a dialog over whatever the
 // diver is looking at.
 // `icon` is typed by what this menu actually renders - a component taking a
-// `className` - rather than as `LucideIcon`: "New Dive" carries the brand mark,
+// `className` - rather than as `LucideIcon`: "New dive" carries the brand mark,
 // which is a plain function component and not one of lucide's forward-ref
 // exports.
 type CreateAction = {
