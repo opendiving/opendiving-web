@@ -1,31 +1,7 @@
 import { describe, it, expect } from "vitest";
 
-import {
-  hasDivingFigures,
-  loggedDivingFigures,
-  missingCheckInDetails,
-} from "./checkin";
-import type { User } from "@/lib/api/auth";
+import { hasDivingFigures, loggedDivingFigures } from "./checkin";
 import type { UserDiveStats } from "@/lib/api/dive-stats";
-
-const user = (over: Partial<User> = {}): User => ({
-  uuid: "user-1",
-  name: "Sam Reef",
-  username: "sam",
-  email: "sam@example.com",
-  units: "metric",
-  dive_form_hidden_fields: [],
-  ...over,
-});
-
-const filled: Partial<User> = {
-  date_of_birth: "1988-04-02",
-  phone: "+44 7700 900000",
-  emergency_contact_name: "Alex Reef",
-  emergency_contact_phone: "+44 7700 900111",
-  insurance_provider: "DAN Europe",
-  insurance_policy_number: "P-42",
-};
 
 const stats: UserDiveStats = {
   user_uuid: "user-1",
@@ -35,38 +11,6 @@ const stats: UserDiveStats = {
   species_seen: 12,
   created_at: "2026-01-01T00:00:00+00:00",
 };
-
-describe("missingCheckInDetails", () => {
-  it("names all four for an account nobody has filled in", () => {
-    expect(missingCheckInDetails(user())).toEqual([
-      "date of birth",
-      "phone number",
-      "dive insurance",
-      "emergency contact",
-    ]);
-  });
-
-  it("is empty once a desk has everything it asks for", () => {
-    expect(missingCheckInDetails(user(filled))).toEqual([]);
-  });
-
-  it("counts a contact nobody can call as missing", () => {
-    // A name with no number is not somebody a shop can reach, so the pair is the
-    // unit - the same for a policy number with no provider to quote it to.
-    expect(
-      missingCheckInDetails(user({ ...filled, emergency_contact_phone: null })),
-    ).toEqual(["emergency contact"]);
-    expect(
-      missingCheckInDetails(user({ ...filled, insurance_provider: null })),
-    ).toEqual(["dive insurance"]);
-  });
-
-  it("reads an empty string as unfilled, which is what a cleared field sends", () => {
-    expect(missingCheckInDetails(user({ ...filled, phone: "" }))).toEqual([
-      "phone number",
-    ]);
-  });
-});
 
 describe("loggedDivingFigures", () => {
   it("takes the last dive's own calendar day, not the reader's", () => {

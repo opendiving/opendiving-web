@@ -1,4 +1,3 @@
-import type { User } from "@/lib/api/auth";
 import type { UserDiveStats } from "@/lib/api/dive-stats";
 import { splitStartTime } from "@/lib/date-time";
 
@@ -38,45 +37,5 @@ export function hasDivingFigures(figures: DivingFigures): boolean {
     figures.totalDives !== null ||
     figures.maxDepth !== null ||
     figures.lastDiveOn !== null
-  );
-}
-
-// What a desk asks for, and what counts as having it. An emergency contact is a name
-// *and* a number - either alone is not somebody a shop can call - and insurance is
-// the provider and the policy number, which is what gets quoted down a phone.
-//
-// Only what the summary itself prints, so this list and the sheet cannot drift: a
-// field added to `checkInDetailsSchema` without a line here is one the diver is never
-// reminded of.
-const CHECK_IN_DETAILS: {
-  label: string;
-  isFilled: (user: User) => boolean;
-}[] = [
-  { label: "date of birth", isFilled: (user) => !!user.date_of_birth },
-  { label: "phone number", isFilled: (user) => !!user.phone },
-  {
-    label: "dive insurance",
-    isFilled: (user) =>
-      !!user.insurance_provider && !!user.insurance_policy_number,
-  },
-  {
-    label: "emergency contact",
-    isFilled: (user) =>
-      !!user.emergency_contact_name && !!user.emergency_contact_phone,
-  },
-];
-
-/**
- * The check-in details this diver has not filled in, in the order the summary prints
- * them.
- *
- * A suggestion rather than a requirement: a diver with no dive insurance is not
- * holding an incomplete record, and the surface that shows this says so. It stays off
- * the printed sheet entirely - a page handed to a stranger listing what its author
- * left blank is the opposite of what it is for.
- */
-export function missingCheckInDetails(user: User): string[] {
-  return CHECK_IN_DETAILS.filter(({ isFilled }) => !isFilled(user)).map(
-    ({ label }) => label,
   );
 }

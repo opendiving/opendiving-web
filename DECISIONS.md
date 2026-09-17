@@ -6599,12 +6599,21 @@ entries, show them back to you") is unchanged by it.
 ## The diving figures are corrected for one printout and stored nowhere
 
 `/checkin` lets a diver retype the dive count, the max depth and the last dive before printing, and
-holds the correction in component state for that visit only. A career predating this app, or a
-fortnight logged on paper, makes the honest number one the log cannot know. Storing it would need it
-reconciled against every dive logged afterwards — a running offset nobody can keep true — while a
-figure typed for one desk needs no reconciliation at all. So there is no column for it in
-`opendiving-api` and no request behind the dialog, its submit reads "Use on this summary", and a
-reload brings the logged figures back, which is the right default for the next check-in.
+holds the correction in component state for that visit only. The reasoning is in
+`DivingFiguresDialog`'s docstring; what it cannot hold is the consequence for the other repo — there
+is no column for this in `opendiving-api` and no request behind the dialog, deliberately, so a
+schema change is not the way to "finish" the feature.
 
-The check-in details beside them are the opposite: `CheckInDetailsForm` is the `/settings` card's
-own form, opened in a dialog here, and it saves.
+## One form module for every field of the diver's own record
+
+`UserFieldsForm` renders any subset of `USER_FIELDS`, and both surfaces are it: `/settings` shows
+them in cards, `/checkin` in a dialog per section of the sheet that prints them, so a diver at a
+desk corrects the group they were just asked for without leaving the page. Bounds, labels and the
+`"" -> null` clearing rule therefore exist once — `PATCH /user` is `extra="forbid"`, so a second
+copy of a bound is a second thing to keep in step with the column. The resolver is built from the
+fields shown, not the whole record: a dialog about insurance must not fail on a stored name it never
+displayed.
+
+The sheet keeps every section's heading and edit control on screen however little is under it, and
+drops an empty section from the print — a heading with nothing beneath it is the labelled blank this
+page refuses, in another form.

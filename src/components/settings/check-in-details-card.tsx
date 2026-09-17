@@ -3,6 +3,11 @@
 import { ClipboardList } from "lucide-react";
 
 import {
+  ABOUT_YOU_FIELDS,
+  EMERGENCY_CONTACT_FIELDS,
+  INSURANCE_FIELDS,
+} from "@/lib/validations/user-fields";
+import {
   Card,
   CardContent,
   CardDescription,
@@ -10,14 +15,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  CheckInDetailsForm,
-  CheckInDetailsSubmitButton,
-} from "@/components/checkin/check-in-details-form";
+  UserFieldsForm,
+  UserFieldsSubmitButton,
+} from "@/components/user/user-fields-form";
 
-// The settings home for the check-in details. The fields and the save are
-// `CheckInDetailsForm`'s, shared with the dialog `/checkin` opens over the summary -
-// a diver correcting a phone number at a dive-shop desk is filling in this same card
-// from the page that prints it.
+// The settings home for the check-in details: three groups under one save, because a
+// diver filling this in is filling in all of it. `/checkin` opens the same groups one
+// at a time beside the sections that print them, which is where a diver already at a
+// desk corrects one of them - `UserFieldsForm` is both.
 export function CheckInDetailsCard() {
   return (
     <Card className="flex flex-col h-full">
@@ -32,9 +37,19 @@ export function CheckInDetailsCard() {
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col flex-1">
-        <CheckInDetailsForm>
-          <CheckInDetailsSubmitButton className="w-full mt-4" />
-        </CheckInDetailsForm>
+        <UserFieldsForm
+          groups={[
+            { legend: "About you", fields: [...ABOUT_YOU_FIELDS] },
+            { legend: "Dive insurance", fields: [...INSURANCE_FIELDS] },
+            {
+              legend: "Emergency contact",
+              fields: [...EMERGENCY_CONTACT_FIELDS],
+            },
+          ]}
+          savedMessage="Your check-in details are up to date."
+        >
+          <UserFieldsSubmitButton className="w-full mt-4" />
+        </UserFieldsForm>
       </CardContent>
     </Card>
   );

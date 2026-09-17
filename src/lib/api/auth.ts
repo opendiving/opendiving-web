@@ -126,11 +126,11 @@ export interface UpdateProfileData {
   // cannot differ. An explicit `null` is a 422.
   dive_form_hidden_fields?: DiveFormFieldKey[];
   // The check-in details. An explicit `null` clears one, unlike
-  // `dive_form_hidden_fields` above, and the check-in card sends all eight on
+  // `dive_form_hidden_fields` above, and a form sends every field it showed on
   // every save - so a group the diver emptied arrives as nulls rather than being
   // left behind. The string bounds are the columns' own, and `PATCH /user` is
-  // `extra="forbid"`, so an over-long value is a 422; `checkInDetailsSchema`
-  // mirrors them.
+  // `extra="forbid"`, so an over-long value is a 422;
+  // `validations/user-fields.ts` mirrors them.
   date_of_birth?: string | null;
   phone?: string | null;
   emergency_contact_name?: string | null;

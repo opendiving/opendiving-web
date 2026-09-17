@@ -1,7 +1,13 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import { AlertTriangle, FileText, Pencil, Plus, Printer } from "lucide-react";
+import {
+  AlertTriangle,
+  FileText,
+  Plus,
+  Printer,
+  SquarePen,
+} from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useUnits } from "@/hooks/useUnits";
@@ -14,16 +20,21 @@ import type { UserDiveStats } from "@/lib/api/dive-stats";
 import {
   hasDivingFigures,
   loggedDivingFigures,
-  missingCheckInDetails,
   type DivingFigures,
 } from "@/lib/checkin";
 import { formatDateOnly } from "@/lib/date-time";
 import { todayIsoDate } from "@/lib/gear-service";
 import { formatDepth } from "@/lib/units";
+import {
+  ABOUT_YOU_FIELDS,
+  EMERGENCY_CONTACT_FIELDS,
+  INSURANCE_FIELDS,
+} from "@/lib/validations/user-fields";
+import { cn } from "@/lib/utils";
 import { CertificationCardImage } from "@/components/certifications/certification-card-image";
 import { CertificationDialog } from "@/components/certifications/certification-dialog";
-import { CheckInDetailsDialog } from "@/components/checkin/check-in-details-dialog";
 import { DivingFiguresDialog } from "@/components/checkin/diving-figures-dialog";
+import { UserFieldsDialog } from "@/components/user/user-fields-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -78,8 +89,10 @@ export function CheckInPageFrame({
   // The diver's own correction to the three diving figures, held for this visit and
   // nowhere else - see `DivingFiguresDialog` for why it is not saved.
   const [corrected, setCorrected] = useState<DivingFigures | null>(null);
+  // One at a time, and named for the section it sits in: each control opens exactly
+  // the group it is beside.
   const [editing, setEditing] = useState<
-    "details" | "diving" | "certification" | null
+    "about" | "insurance" | "emergency" | "diving" | "certification" | null
   >(null);
   const [editingCertification, setEditingCertification] =
     useState<Certification | null>(null);
@@ -107,12 +120,9 @@ export function CheckInPageFrame({
     !!user.insurance_policy_number ||
     !!user.insurance_expires_on;
 
+  const hasAboutYou = !!user.date_of_birth || !!user.phone;
   const diving = corrected ?? logged;
-  const missingDetails = missingCheckInDetails(user);
-  // Only once the list has actually landed: "add your first card" over a fetch still
-  // in flight, or over one that failed, is the page inventing an emptiness.
-  const hasNoCertifications =
-    !isLoading && !loadFailed && certifications.length === 0;
+  const hasFigures = isLoading || hasDivingFigures(diving);
 
   const openCertification = (certification: Certification | null) => {
     setEditingCertification(certification);
@@ -162,47 +172,6 @@ export function CheckInPageFrame({
         </div>
       )}
 
-      {/* Above the sheet and `print:hidden`, for the reason `missingCheckInDetails`
-          gives: a page that lists what its author left blank is the opposite of what
-          this one is for. */}
-      {(missingDetails.length > 0 || hasNoCertifications) && (
-        <div className="space-y-3 rounded-md border border-dashed px-4 py-3 print:hidden">
-          <p className="text-sm text-muted-foreground">
-            Not on your summary yet:{" "}
-            {[
-              ...missingDetails,
-              ...(hasNoCertifications ? ["certifications"] : []),
-            ].join(", ")}
-            . A desk usually asks for these &mdash; add what you want to hand
-            over.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {missingDetails.length > 0 && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setEditing("details")}
-              >
-                <Pencil className="h-4 w-4 mr-2" />
-                Fill in details
-              </Button>
-            )}
-            {hasNoCertifications && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => openCertification(null)}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Add a certification
-              </Button>
-            )}
-          </div>
-        </div>
-      )}
-
       <Card
         className={`print:border-0 print:shadow-none print:bg-white ${INK}`}
       >
@@ -220,102 +189,105 @@ export function CheckInPageFrame({
               />
             )}
             <h2 className={`text-2xl font-semibold ${INK}`}>{user.name}</h2>
-            <div className="ml-auto print:hidden">
-              <IconTooltip label="Edit check-in details">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setEditing("details")}
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
-              </IconTooltip>
+            <div className="ml-auto">
+              <EditControl
+                label="Edit your name, date of birth and phone number"
+                onClick={() => setEditing("about")}
+              />
             </div>
           </div>
 
-          {/* Guarded rather than left to render an empty list: this stack spaces
-              its children, so a `<dl>` with nothing in it is 24px of blank page
-              above whatever comes next. Every group below is guarded for the same
-              reason. */}
-          {(user.date_of_birth || user.phone) && (
-            <DetailList>
-              <Detail
-                label="Date of birth"
-                value={user.date_of_birth && formatDateOnly(user.date_of_birth)}
-              />
-              <Detail label="Phone" value={user.phone} />
-            </DetailList>
-          )}
+          {/* No heading of its own - the name above is it - but on the same rule as
+              every section below: always on screen, so the control beside the name
+              is always there, and dropped from the print when it holds nothing. A
+              `<dl>` with every row absent is 24px of blank page on a sheet handed to
+              somebody, and an "empty" heading is worse. */}
+          <div className={hasAboutYou ? undefined : "print:hidden"}>
+            {hasAboutYou ? (
+              <DetailList>
+                <Detail
+                  label="Date of birth"
+                  value={
+                    user.date_of_birth && formatDateOnly(user.date_of_birth)
+                  }
+                />
+                <Detail label="Phone" value={user.phone} />
+              </DetailList>
+            ) : (
+              <EmptyNote>Not filled in yet.</EmptyNote>
+            )}
+          </div>
 
-          {(isLoading || certifications.length > 0) && (
-            <Section
-              title="Certifications"
-              busy={isLoading}
-              action={
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => openCertification(null)}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add
-                </Button>
-              }
-            >
-              {isLoading ? (
-                <div aria-hidden className="space-y-4">
-                  {[0, 1].map((row) => (
-                    <div key={row} className="flex gap-4">
-                      <Skeleton className="h-16 w-24 shrink-0" />
-                      <div className="flex-1 space-y-2">
-                        <Skeleton className="h-5 w-48" />
-                        <Skeleton className="h-4 w-32" />
-                      </div>
+          <Section
+            title="Certifications"
+            busy={isLoading}
+            className={
+              isLoading || certifications.length > 0
+                ? undefined
+                : "print:hidden"
+            }
+            action={
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => openCertification(null)}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add
+              </Button>
+            }
+          >
+            {isLoading ? (
+              <div aria-hidden className="space-y-4">
+                {[0, 1].map((row) => (
+                  <div key={row} className="flex gap-4">
+                    <Skeleton className="h-16 w-24 shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-5 w-48" />
+                      <Skeleton className="h-4 w-32" />
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {/* The list endpoint's own order, taken as it arrives rather
-                      than re-imposed here: `GET /certifications` sorts by
-                      `certified_on` descending with nulls last, tie-broken by
-                      uuid, so the card a diver is most often asked to show leads.
-                      Sorting again here could only disagree with
-                      `/certifications`. */}
-                  {certifications.map((certification) => (
-                    <CertificationSummary
-                      key={certification.uuid}
-                      certification={certification}
-                      onEdit={() => openCertification(certification)}
-                    />
-                  ))}
-                </div>
-              )}
-            </Section>
-          )}
+                  </div>
+                ))}
+              </div>
+            ) : certifications.length === 0 ? (
+              <EmptyNote>No certifications yet.</EmptyNote>
+            ) : (
+              <div className="space-y-4">
+                {/* The list endpoint's own order, taken as it arrives rather
+                    than re-imposed here: `GET /certifications` sorts by
+                    `certified_on` descending with nulls last, tie-broken by
+                    uuid, so the card a diver is most often asked to show leads.
+                    Sorting again here could only disagree with
+                    `/certifications`. */}
+                {certifications.map((certification) => (
+                  <CertificationSummary
+                    key={certification.uuid}
+                    certification={certification}
+                    onEdit={() => openCertification(certification)}
+                  />
+                ))}
+              </div>
+            )}
+          </Section>
 
-          {/* A failed stats fetch leaves the profile half of this page correct and
-              this section with nothing to say, so it goes rather than heading an
-              empty list. */}
-          {(isLoading || hasDivingFigures(diving)) && (
-            <Section
-              title="Diving"
-              busy={isLoading}
-              action={
-                <IconTooltip label="Correct these figures">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setEditing("diving")}
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                </IconTooltip>
-              }
-            >
+          <Section
+            title="Diving"
+            busy={isLoading}
+            // A diver who cleared every figure has said to leave the diving off the
+            // sheet, and the sheet obeys - heading and all. The section stays on
+            // screen regardless, because the control that emptied it is the only
+            // way back to "Use logged figures", and a section that removed itself
+            // would leave a correction in force with nothing on screen saying so.
+            className={hasFigures ? undefined : "print:hidden"}
+            action={
+              <EditControl
+                label="Correct these figures"
+                onClick={() => setEditing("diving")}
+              />
+            }
+          >
+            {hasFigures && (
               <DetailList>
                 <Detail
                   label="Dives logged"
@@ -341,20 +313,30 @@ export function CheckInPageFrame({
                   pending={isLoading && !lastDiveAt}
                 />
               </DetailList>
-              {corrected && (
-                <p className="text-xs text-muted-foreground print:hidden">
-                  Corrected for this summary. Nothing was saved to your log.
-                </p>
-              )}
-            </Section>
-          )}
+            )}
+            {!hasFigures && <EmptyNote>Not filled in yet.</EmptyNote>}
+            {corrected && (
+              <p className="text-xs text-muted-foreground print:hidden">
+                Corrected for this summary. Nothing was saved to your log.
+              </p>
+            )}
+          </Section>
 
           {/* Insurance and the emergency contact come after the diving rather than
               before it: a desk works down what the diver is certified to do and what
               they have actually dived, and reaches for the policy to quote and the
               person to call only if something goes wrong. */}
-          {hasInsurance && (
-            <Section title="Dive insurance">
+          <Section
+            title="Dive insurance"
+            className={hasInsurance ? undefined : "print:hidden"}
+            action={
+              <EditControl
+                label="Edit your dive insurance"
+                onClick={() => setEditing("insurance")}
+              />
+            }
+          >
+            {hasInsurance ? (
               <DetailList>
                 <Detail label="Provider" value={user.insurance_provider} />
                 <Detail
@@ -369,11 +351,22 @@ export function CheckInPageFrame({
                   }
                 />
               </DetailList>
-            </Section>
-          )}
+            ) : (
+              <EmptyNote>Not filled in yet.</EmptyNote>
+            )}
+          </Section>
 
-          {hasEmergencyContact && (
-            <Section title="Emergency contact">
+          <Section
+            title="Emergency contact"
+            className={hasEmergencyContact ? undefined : "print:hidden"}
+            action={
+              <EditControl
+                label="Edit your emergency contact"
+                onClick={() => setEditing("emergency")}
+              />
+            }
+          >
+            {hasEmergencyContact ? (
               <DetailList>
                 <Detail label="Name" value={user.emergency_contact_name} />
                 <Detail label="Phone" value={user.emergency_contact_phone} />
@@ -382,8 +375,10 @@ export function CheckInPageFrame({
                   value={user.emergency_contact_relationship}
                 />
               </DetailList>
-            </Section>
-          )}
+            ) : (
+              <EmptyNote>Not filled in yet.</EmptyNote>
+            )}
+          </Section>
 
           <p className={`text-xs text-muted-foreground ${INK}`}>
             Printed {formatDateOnly(todayIsoDate())} from {user.name}&rsquo;s
@@ -397,9 +392,26 @@ export function CheckInPageFrame({
           `useQuickCreate`: that provider's certification dialog navigates to
           `/certifications` on save, and a diver correcting a card at a desk wants
           the summary they were about to print, not another page. */}
-      <CheckInDetailsDialog
-        open={editing === "details"}
-        onOpenChange={(open) => setEditing(open ? "details" : null)}
+      <UserFieldsDialog
+        open={editing === "about"}
+        onOpenChange={(open) => setEditing(open ? "about" : null)}
+        title="About you"
+        description="Your own details, as a desk asks for them."
+        groups={[{ fields: ["name", ...ABOUT_YOU_FIELDS] }]}
+      />
+      <UserFieldsDialog
+        open={editing === "insurance"}
+        onOpenChange={(open) => setEditing(open ? "insurance" : null)}
+        title="Dive insurance"
+        description="The provider and policy number a shop takes down, and when the cover runs out."
+        groups={[{ fields: [...INSURANCE_FIELDS] }]}
+      />
+      <UserFieldsDialog
+        open={editing === "emergency"}
+        onOpenChange={(open) => setEditing(open ? "emergency" : null)}
+        title="Emergency contact"
+        description="Who a shop calls if something goes wrong, and how they know you."
+        groups={[{ fields: [...EMERGENCY_CONTACT_FIELDS] }]}
       />
       <DivingFiguresDialog
         open={editing === "diving"}
@@ -461,19 +473,11 @@ function CertificationSummary({
           <div className={`flex-1 font-medium ${INK}`}>
             {agency ? `${agency} ${certification.name}` : certification.name}
           </div>
-          <div className="print:hidden">
-            <IconTooltip label={`Edit ${certification.name}`}>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="-my-1"
-                onClick={onEdit}
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
-            </IconTooltip>
-          </div>
+          <EditControl
+            label={`Edit ${certification.name}`}
+            className="-my-1"
+            onClick={onEdit}
+          />
         </div>
         <DetailList>
           <Detail label="Number" value={certification.certification_number} />
@@ -502,20 +506,61 @@ function CertificationSummary({
   );
 }
 
+// Every section's edit control, and the one on the name row: an icon button whose
+// hover hint is also its accessible name, and which never reaches the page a diver
+// hands over.
+function EditControl({
+  label,
+  onClick,
+  className,
+}: {
+  label: string;
+  onClick: () => void;
+  className?: string;
+}) {
+  return (
+    <div className="print:hidden">
+      <IconTooltip label={label}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className={className}
+          onClick={onClick}
+        >
+          <SquarePen className="h-4 w-4" />
+        </Button>
+      </IconTooltip>
+    </div>
+  );
+}
+
+// What a section with nothing in it says on screen. It never prints: the section
+// around it is already dropped from the page when it is showing this, and a sheet
+// that announced its own gaps is the opposite of what a diver hands over.
+function EmptyNote({ children }: { children: ReactNode }) {
+  return <p className={`${MUTED} print:hidden`}>{children}</p>;
+}
+
 function Section({
   title,
   busy = false,
   action,
+  className,
   children,
 }: {
   title: string;
   busy?: boolean;
   /** The control this section is edited through. On screen only. */
   action?: ReactNode;
+  className?: string;
   children: ReactNode;
 }) {
   return (
-    <section aria-busy={busy || undefined} className="space-y-2">
+    <section
+      aria-busy={busy || undefined}
+      className={cn("space-y-2", className)}
+    >
       <div className="flex items-center justify-between gap-2">
         <h3
           className={`text-sm font-semibold uppercase tracking-wide ${MUTED}`}

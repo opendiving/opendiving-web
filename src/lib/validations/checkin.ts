@@ -21,7 +21,11 @@ export const divingFiguresSchema = z.object({
     .int("Use a whole number of dives")
     .min(0, "Dives logged cannot be negative")
     .nullable(),
-  max_depth: z.number().positive("Max depth must be positive").nullable(),
+  // `min(0)` rather than `positive()`, which every depth the dive form takes uses:
+  // `/user/dive-stats` answers a diver with nothing logged with zeroes rather than a
+  // 404, so `0` is the value this box is *seeded* with for exactly the diver this
+  // dialog exists for. Rejecting it blocks the submit on a field they never touched.
+  max_depth: z.number().min(0, "Max depth cannot be negative").nullable(),
   last_dive_on: z
     .union([
       z.literal(""),

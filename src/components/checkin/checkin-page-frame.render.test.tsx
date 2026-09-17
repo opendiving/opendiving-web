@@ -163,8 +163,46 @@ describe("what the summary prints", () => {
     // Not "Date of birth: —": a blank line on a page handed to a stranger reads as
     // something withheld rather than something not held.
     expect(screen.queryByText("Date of birth")).toBeNull();
-    expect(screen.queryByText("Emergency contact")).toBeNull();
-    expect(screen.queryByText("Dive insurance")).toBeNull();
+  });
+
+  it("keeps every section on screen, and takes the empty ones off the print", () => {
+    Object.assign(auth.user, {
+      ...COMPLETE,
+      emergency_contact_name: null,
+      emergency_contact_phone: null,
+    });
+    render(loaded({ certifications: [certification()] }));
+
+    // Every heading is there with its own control, however little is under it -
+    // which is what makes each group reachable without leaving the page.
+    for (const title of ["Certifications", "Diving", "Dive insurance"]) {
+      expect(screen.getByText(title)).toBeInTheDocument();
+    }
+    expect(
+      screen.getByText("Dive insurance").closest("section"),
+    ).not.toHaveClass("print:hidden");
+
+    // A group the diver never filled in says so on screen and is gone from the
+    // sheet: a heading with nothing under it is the labelled blank in another form.
+    const emergency = screen.getByText("Emergency contact").closest("section");
+    expect(emergency).toHaveClass("print:hidden");
+    expect(
+      within(emergency as HTMLElement).getByText("Not filled in yet."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Edit your emergency contact" }),
+    ).toBeInTheDocument();
+  });
+
+  it("says so where a diver holds no cards at all", () => {
+    Object.assign(auth.user, COMPLETE);
+    render(loaded());
+
+    const cards = screen.getByText("Certifications").closest("section");
+    expect(cards).toHaveClass("print:hidden");
+    expect(
+      within(cards as HTMLElement).getByText("No certifications yet."),
+    ).toBeInTheDocument();
   });
 
   it("names the agency in words and never draws its mark", () => {
@@ -321,57 +359,18 @@ describe("labels and values line up", () => {
   });
 });
 
-describe("what is still missing", () => {
-  it("names it on screen, and never on the sheet", () => {
-    const { container } = render(loaded());
-
-    expect(container.textContent).toContain(
-      "Not on your summary yet: date of birth, phone number, dive insurance, emergency contact, certifications.",
-    );
-    const fillIn = screen.getByRole("button", { name: /fill in details/i });
-    expect(fillIn.closest(".print\\:hidden")).not.toBeNull();
-    expect(
-      screen.getByRole("button", { name: /add a certification/i }),
-    ).toBeInTheDocument();
-  });
-
-  it("says nothing once a desk has everything it asks for", () => {
-    Object.assign(auth.user, COMPLETE);
-    const { container } = render(loaded({ certifications: [certification()] }));
-
-    expect(container.textContent).not.toContain("Not on your summary yet");
-  });
-
-  it("holds its tongue about cards still in flight, and about cards that failed", () => {
-    Object.assign(auth.user, COMPLETE);
-
-    const inFlight = render(<CheckInPageFrame />);
-    expect(inFlight.container.textContent).not.toContain("certifications.");
-    inFlight.unmount();
-
-    // A list that never arrived is not an empty one, and "add your first card" to a
-    // diver who holds six is the page inventing an emptiness.
-    const failed = render(loaded({ loadFailed: true }));
-    expect(failed.container.textContent).not.toContain(
-      "Not on your summary yet",
-    );
-  });
-});
-
 describe("editing from the sheet", () => {
   it("opens the settings form over the summary, and gives the summary back on save", async () => {
     Object.assign(auth.user, COMPLETE);
     render(loaded({ certifications: [certification()] }));
 
     await userEvent.click(
-      screen.getByRole("button", { name: "Edit check-in details" }),
+      screen.getByRole("button", {
+        name: "Edit your name, date of birth and phone number",
+      }),
     );
 
-    // Named rather than "the dialog": `DatePicker` opens its calendar - a popover
-    // Radix also gives `role="dialog"` - when the details dialog takes the focus.
-    const dialog = await screen.findByRole("dialog", {
-      name: "Check-in details",
-    });
+    const dialog = await screen.findByRole("dialog", { name: "About you" });
     // The very fields `/settings` shows, because they are the same component.
     expect(within(dialog).getByLabelText("Phone number")).toHaveValue(
       "+44 7700 900000",
@@ -389,9 +388,38 @@ describe("editing from the sheet", () => {
       ),
     );
     await waitFor(() =>
-      expect(
-        screen.queryByRole("dialog", { name: "Check-in details" }),
-      ).toBeNull(),
+      expect(screen.queryByRole("dialog", { name: "About you" })).toBeNull(),
+    );
+  });
+
+  it("gives each section a control that opens that group and nothing else", async () => {
+    Object.assign(auth.user, COMPLETE);
+    render(loaded({ certifications: [certification()] }));
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Edit your dive insurance" }),
+    );
+    const insurance = await screen.findByRole("dialog", {
+      name: "Dive insurance",
+    });
+    expect(within(insurance).getByLabelText("Provider")).toHaveValue(
+      "DAN Europe",
+    );
+    // The emergency contact has its own control and its own dialog, so a diver
+    // correcting one group is never handed the other two to scroll past.
+    expect(
+      within(insurance).queryByLabelText("Relationship to you"),
+    ).toBeNull();
+
+    await userEvent.click(
+      within(insurance).getByRole("button", { name: /save changes/i }),
+    );
+    await waitFor(() =>
+      expect(updateProfile).toHaveBeenCalledWith({
+        insurance_provider: "DAN Europe",
+        insurance_policy_number: "P-42",
+        insurance_expires_on: null,
+      }),
     );
   });
 
@@ -504,6 +532,83 @@ describe("correcting the diving figures", () => {
     );
     expect(screen.getByText("142")).toBeInTheDocument();
     expect(screen.queryByText(/nothing was saved to your log/i)).toBeNull();
+  });
+
+  it("lets a diver whose log has nothing in it correct the count", async () => {
+    Object.assign(auth.user, COMPLETE);
+    // What `/user/dive-stats` answers for a diver with nothing logged, which is the
+    // diver this dialog is for: the box opens on that zero, and a schema refusing it
+    // would block the submit on a field nobody touched.
+    render(
+      loaded({
+        stats: { ...stats, total_dives: 0, max_depth: 0 },
+        certifications: [certification()],
+      }),
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Correct these figures" }),
+    );
+    const dialog = await screen.findByRole("dialog", { name: "Diving" });
+    expect(within(dialog).getByLabelText("Max depth (m)")).toHaveValue(0);
+
+    const dives = within(dialog).getByLabelText("Dives logged");
+    await userEvent.clear(dives);
+    await userEvent.type(dives, "400");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: /use on this summary/i }),
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Diving" })).toBeNull(),
+    );
+    expect(screen.getByText("400")).toBeInTheDocument();
+  });
+
+  it("keeps the way back when every figure is cleared, and drops the heading from the sheet", async () => {
+    Object.assign(auth.user, COMPLETE);
+    render(withDiving());
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Correct these figures" }),
+    );
+    const dialog = await screen.findByRole("dialog", { name: "Diving" });
+    await userEvent.clear(within(dialog).getByLabelText("Dives logged"));
+    await userEvent.clear(within(dialog).getByLabelText("Max depth (m)"));
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Clear" }),
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: /use on this summary/i }),
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Diving" })).toBeNull(),
+    );
+    expect(screen.queryByText("Dives logged")).toBeNull();
+    // The section that removed itself would take the only route back to the logged
+    // figures with it, leaving a correction in force with nothing on screen saying so.
+    expect(
+      screen.getByRole("button", { name: "Correct these figures" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/nothing was saved to your log/i),
+    ).toBeInTheDocument();
+    // A desk is handed no heading with nothing under it.
+    expect(screen.getByText("Diving").closest("section")).toHaveClass(
+      "print:hidden",
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Correct these figures" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: /use logged figures/i }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Diving" })).toBeNull(),
+    );
+    expect(screen.getByText("142")).toBeInTheDocument();
   });
 
   it("keeps the correction off the sheet's own ink", async () => {
