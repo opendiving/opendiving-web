@@ -37,11 +37,9 @@ export default function SitesPage() {
   );
 
   const fetchDiveSites = useCallback(
-    (page: number, perPage: number) => {
-      if (!user) return Promise.reject(new Error("Not authenticated"));
-      return diveSitesAPI.getDiveSites(user.uuid, page, perPage);
-    },
-    [user],
+    (page: number, perPage: number) =>
+      diveSitesAPI.getDiveSites(page, perPage),
+    [],
   );
 
   const {
@@ -203,7 +201,6 @@ export default function SitesPage() {
       </Card>
 
       <DiveSiteDialog
-        userId={user?.uuid ?? ""}
         open={editingSite !== null}
         onOpenChange={(open) => !open && setEditingSite(null)}
         diveSite={editingSite}
@@ -212,7 +209,6 @@ export default function SitesPage() {
 
       <DeleteWithReassignDialog
         kind="dive-site"
-        userId={user?.uuid ?? ""}
         targetId={pendingId}
         isDeleting={deletingId === pendingId}
         onCancel={cancelDeleteDiveSite}

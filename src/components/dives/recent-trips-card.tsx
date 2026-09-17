@@ -25,27 +25,21 @@ function formatTripDisplayDate(trip: Trip) {
   return formatTripDateRange(trip.start_date, trip.end_date);
 }
 
-export interface RecentTripsCardProps {
-  userId: string;
-}
-
 // Shows the user's most recent trips by trip date (up to 5). Used on the
 // dashboard so divers can quickly jump back into a trip they're logging dives for.
-export function RecentTripsCard({ userId }: RecentTripsCardProps) {
+export function RecentTripsCard() {
   const [recentTrips, setRecentTrips] = useState<Trip[]>([]);
   const [isLoadingTrips, setIsLoadingTrips] = useState(true);
   const openCreate = useQuickCreate();
 
   useEffect(() => {
     const fetchRecentTrips = async () => {
-      if (!userId) return;
-
       try {
         setIsLoadingTrips(true);
         // The trips list endpoint already sorts by start_date descending, so the
         // first page is exactly the most recent trips - no client-side sorting
         // (which would disagree with the ordering on /trips).
-        const response = await tripsAPI.getTrips(userId, 1, RECENT_TRIPS_COUNT);
+        const response = await tripsAPI.getTrips(1, RECENT_TRIPS_COUNT);
         setRecentTrips(response.data);
       } catch (error) {
         console.error("Failed to fetch recent trips:", error);
@@ -55,7 +49,7 @@ export function RecentTripsCard({ userId }: RecentTripsCardProps) {
     };
 
     fetchRecentTrips();
-  }, [userId]);
+  }, []);
 
   return (
     <Card>

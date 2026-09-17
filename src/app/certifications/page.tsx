@@ -60,11 +60,9 @@ export default function CertificationsPage() {
   );
 
   const fetchCertifications = useCallback(
-    (page: number, perPage: number) => {
-      if (!user) return Promise.reject(new Error("Not authenticated"));
-      return certificationsAPI.getCertifications(user.uuid, page, perPage);
-    },
-    [user],
+    (page: number, perPage: number) =>
+      certificationsAPI.getCertifications(page, perPage),
+    [],
   );
 
   const {
@@ -292,7 +290,6 @@ export default function CertificationsPage() {
 
       {user && (
         <CertificationDialog
-          userId={user.uuid}
           open={editing !== null}
           onOpenChange={(open) => !open && setEditing(null)}
           certification={editing}

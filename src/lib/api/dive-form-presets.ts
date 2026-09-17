@@ -22,7 +22,6 @@ export interface DiveFormPreset {
 }
 
 export interface DiveFormPresetCreate {
-  user_uuid: string;
   name: string;
   hidden_fields: DiveFormFieldKey[];
 }
@@ -48,12 +47,11 @@ export const diveFormPresetsAPI = {
 
   /** One page of the account's presets, ordered by name. */
   async getPresets(
-    userUuid: string,
     page: number = 1,
     items_per_page: number = 100,
   ): Promise<PaginatedDiveFormPresetsResponse> {
     const response = await apiClient.get(`/dive-form-presets`, {
-      params: { user_uuid: userUuid, page, items_per_page },
+      params: { page, items_per_page },
     });
     return response.data;
   },
@@ -103,12 +101,10 @@ export const diveFormPresetsAPI = {
  * reasoning as `fetchAllGearSets`, which the panel's own dropdown neighbour uses.
  */
 export async function fetchAllDiveFormPresets(
-  userUuid: string,
   signal?: AbortSignal,
 ): Promise<DiveFormPreset[]> {
   return fetchAllPages(
-    (page, itemsPerPage) =>
-      diveFormPresetsAPI.getPresets(userUuid, page, itemsPerPage),
+    (page, itemsPerPage) => diveFormPresetsAPI.getPresets(page, itemsPerPage),
     { signal, label: "dive form presets", keyOf: (preset) => preset.uuid },
   );
 }

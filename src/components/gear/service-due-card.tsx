@@ -18,10 +18,6 @@ import { TruncatedNote } from "@/components/ui/truncated-note";
 import { ServiceStatusBadge } from "@/components/gear/service-status-badge";
 import { GearServiceRecordDialog } from "@/components/gear/gear-service-record-dialog";
 
-interface ServiceDueCardProps {
-  userId: string;
-}
-
 // How a row names its gear item: brand and model where there is a brand. Unlike the gear
 // detail card, this list spans every item a diver owns, so the item is what tells one row
 // from the next - and the kind is only what separates two rows of the same item.
@@ -40,7 +36,7 @@ function gearItemLabel(entry: GearServiceDueEntry): string {
 // The API returns every active schedule with no date horizon - a server-side "due within
 // N days" filter would bake today's date into a cached response and go wrong at
 // midnight - so the bucketing happens here.
-export function ServiceDueCard({ userId }: ServiceDueCardProps) {
+export function ServiceDueCard() {
   const [due, setDue] = useState<GearServiceDueEntry[]>([]);
   // The API caps how many schedules it returns. Without surfacing that, a diver past
   // the cap sees a card that looks complete while some overdue kit isn't in it.
@@ -63,7 +59,7 @@ export function ServiceDueCard({ userId }: ServiceDueCardProps) {
   const load = useCallback(
     (isCancelled: () => boolean = () => false) =>
       gearServiceAPI
-        .getDue(userId)
+        .getDue()
         .then((response) => {
           if (isCancelled()) return;
           setDue(
@@ -80,11 +76,10 @@ export function ServiceDueCard({ userId }: ServiceDueCardProps) {
         // Swallowed on purpose: this is a supplementary card, and a failed fetch should
         // leave the dashboard looking normal rather than showing an error tile.
         .catch((error) => console.error("Failed to load service due:", error)),
-    [userId],
+    [],
   );
 
   useEffect(() => {
-    if (!userId) return;
     let cancelled = false;
 
     void load(() => cancelled);
@@ -92,7 +87,7 @@ export function ServiceDueCard({ userId }: ServiceDueCardProps) {
     return () => {
       cancelled = true;
     };
-  }, [userId, load]);
+  }, [load]);
 
   // Memoised because the dialog resets its form whenever this prop's identity changes:
   // a fresh view built during render would wipe half-typed notes on the card's next

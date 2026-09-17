@@ -93,7 +93,6 @@ function courseFieldValues(course: Course): CourseFieldValues {
 const AUTOFILL = { shouldDirty: false } as const;
 
 interface CertificationDialogProps {
-  userId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   // Pass an existing certification to edit it; omit to create a new one.
@@ -113,7 +112,6 @@ interface CertificationDialogProps {
 // are a handful of fields typed off a card the diver is holding, not a
 // multi-section form like a dive.
 export function CertificationDialog({
-  userId,
   open,
   onOpenChange,
   certification,
@@ -290,7 +288,6 @@ export function CertificationDialog({
         onSaved({ ...certification, ...shared });
       } else {
         const created = await certificationsAPI.createCertification({
-          user_uuid: userId,
           ...shared,
         });
         onSaved(created);
@@ -340,7 +337,6 @@ export function CertificationDialog({
                         keeps that inner submit out of this form - see
                         DECISIONS.md. */}
                     <CourseCombobox
-                      userId={userId}
                       value={field.value}
                       onChange={field.onChange}
                       onCourseSelected={prefillFromCourse}

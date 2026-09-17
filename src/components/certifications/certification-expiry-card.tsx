@@ -19,10 +19,6 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TruncatedNote } from "@/components/ui/truncated-note";
 
-interface CertificationExpiryCardProps {
-  userId: string;
-}
-
 // Dashboard card listing certifications that have run out, or are about to.
 //
 // The gear twin of this is `ServiceDueCard`, and it follows the same rule: it renders
@@ -37,20 +33,17 @@ interface CertificationExpiryCardProps {
 // The API returns every dated certification with no horizon - a server-side "expiring
 // within N days" filter would bake today's date into a cached response and go wrong at
 // midnight - so the bucketing happens here, exactly as it does for gear.
-export function CertificationExpiryCard({
-  userId,
-}: CertificationExpiryCardProps) {
+export function CertificationExpiryCard() {
   const [flagged, setFlagged] = useState<
     CertificationRenewal<CertificationExpiringEntry>[]
   >([]);
   const [truncated, setTruncated] = useState(false);
 
   useEffect(() => {
-    if (!userId) return;
     let cancelled = false;
 
     certificationsAPI
-      .getExpiring(userId)
+      .getExpiring()
       .then((response) => {
         if (cancelled) return;
         setFlagged(certificationRenewals(response.data));
@@ -63,7 +56,7 @@ export function CertificationExpiryCard({
     return () => {
       cancelled = true;
     };
-  }, [userId]);
+  }, []);
 
   if (flagged.length === 0) return null;
 

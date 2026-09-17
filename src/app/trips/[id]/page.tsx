@@ -131,7 +131,6 @@ export default function TripDetailPage() {
       />
 
       <TripDialog
-        userId={user?.uuid ?? ""}
         open={isEditOpen}
         onOpenChange={setIsEditOpen}
         trip={trip}
@@ -140,7 +139,6 @@ export default function TripDetailPage() {
 
       <DeleteWithReassignDialog
         kind="trip"
-        userId={user?.uuid ?? ""}
         targetId={del.pendingId}
         isDeleting={isDeleting}
         onCancel={del.cancelDelete}
@@ -156,7 +154,7 @@ export default function TripDetailPage() {
         <div className="lg:col-span-2">
           <RecentDivesCard
             complete
-            userId={user?.uuid ?? ""}
+            enabled={!!user}
             tripId={trip.uuid}
             title="Dives in this Trip"
             description="All dives logged as part of this trip"

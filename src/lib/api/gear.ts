@@ -119,7 +119,6 @@ export interface GearItemSummary {
 }
 
 export interface GearItemCreate {
-  user_uuid: string;
   name: string;
   brand?: string;
   type?: GearType;
@@ -152,7 +151,6 @@ export interface GearSet {
 }
 
 export interface GearSetCreate {
-  user_uuid: string;
   name: string;
   weight?: number | null;
   gear_item_uuids: string[];
@@ -173,7 +171,7 @@ export type PaginatedGearSetsResponse = PaginatedResponse<GearSet>;
  * default weight the dive form pre-fills.
  */
 export const gearAPI = {
-  // Create a gear item. `data.user_uuid` must be the currently signed-in user's uuid.
+  // Create a gear item, owned by the signed-in user.
   async createGearItem(data: GearItemCreate): Promise<GearItem> {
     const response = await apiClient.post(`/gear-item`, data);
     return response.data;
@@ -185,7 +183,6 @@ export const gearAPI = {
   // the API caps `items_per_page` at 100, so this is a page of matches, never the
   // whole set.
   async getGearItems(
-    userUuid: string,
     page: number = 1,
     items_per_page: number = 10,
     includeArchived: boolean = false,
@@ -193,7 +190,6 @@ export const gearAPI = {
   ): Promise<PaginatedGearItemsResponse> {
     const response = await apiClient.get(`/gear-items`, {
       params: {
-        user_uuid: userUuid,
         page,
         items_per_page,
         include_archived: includeArchived,
@@ -232,12 +228,11 @@ export const gearAPI = {
   },
 
   async getGearSets(
-    userUuid: string,
     page: number = 1,
     items_per_page: number = 10,
   ): Promise<PaginatedGearSetsResponse> {
     const response = await apiClient.get(`/gear-sets`, {
-      params: { user_uuid: userUuid, page, items_per_page },
+      params: { page, items_per_page },
     });
     return response.data;
   },
@@ -272,11 +267,10 @@ export const gearAPI = {
  * does - it searches server-side (see `GearItemMultiSelect`).
  */
 export async function fetchAllGearSets(
-  userUuid: string,
   signal?: AbortSignal,
 ): Promise<GearSet[]> {
   return fetchAllPages(
-    (page, itemsPerPage) => gearAPI.getGearSets(userUuid, page, itemsPerPage),
+    (page, itemsPerPage) => gearAPI.getGearSets(page, itemsPerPage),
     { signal, label: "gear sets", keyOf: (set) => set.uuid },
   );
 }

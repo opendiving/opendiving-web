@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/card";
 
 interface SetupChecklistCardProps {
-  userId: string;
   // The diver's dive count, straight from the dashboard's `/user/dive-stats` call
   // rather than re-fetched here. `null` while that request is still in flight, which
   // holds the card back - a checklist that renders "0 dives logged" for a moment and
@@ -42,7 +41,6 @@ interface ChecklistStep {
 // The two counts it needs are fetched with `items_per_page: 1`: only `total_count` is
 // read, and nothing here renders the rows themselves.
 export function SetupChecklistCard({
-  userId,
   totalDives,
 }: SetupChecklistCardProps) {
   const [gearCount, setGearCount] = useState<number | null>(null);
@@ -51,12 +49,11 @@ export function SetupChecklistCard({
   );
 
   useEffect(() => {
-    if (!userId) return;
     let cancelled = false;
 
     Promise.all([
-      gearAPI.getGearItems(userId, 1, 1),
-      certificationsAPI.getCertifications(userId, 1, 1),
+      gearAPI.getGearItems(1, 1),
+      certificationsAPI.getCertifications(1, 1),
     ])
       .then(([gear, certifications]) => {
         if (cancelled) return;
@@ -72,7 +69,7 @@ export function SetupChecklistCard({
     return () => {
       cancelled = true;
     };
-  }, [userId]);
+  }, []);
 
   if (
     totalDives === null ||

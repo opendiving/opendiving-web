@@ -54,7 +54,6 @@ import { Button } from "@/components/ui/button";
 const NO_AGENCY = "none";
 
 interface CourseDialogProps {
-  userId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   // Pass an existing course to edit it; omit to create a new one.
@@ -75,7 +74,6 @@ interface CourseDialogProps {
 // out of here for the same reason it stays out of `TripDialog` - a dive picks
 // its course on the dive form, a certification on its own.
 export function CourseDialog({
-  userId,
   open,
   onOpenChange,
   course,
@@ -174,7 +172,6 @@ export function CourseDialog({
         onSaved({ ...course, ...shared });
       } else {
         const created = await coursesAPI.createCourse({
-          user_uuid: userId,
           ...shared,
         });
         onSaved(created);

@@ -27,8 +27,6 @@ const CUSTOM_LABEL = "Custom";
 
 interface DiveFormFieldsMenuProps {
   visibility: DiveFormVisibility;
-  /** The signed-in diver, whose presets these are - the API refuses anyone else's. */
-  userId: string;
 }
 
 /**
@@ -54,9 +52,8 @@ interface DiveFormFieldsMenuProps {
  */
 export function DiveFormFieldsMenu({
   visibility,
-  userId,
 }: DiveFormFieldsMenuProps) {
-  const presets = useDiveFormPresets(userId);
+  const presets = useDiveFormPresets();
   const [isConfigureOpen, setIsConfigureOpen] = useState(false);
 
   const rows = presets.presets;

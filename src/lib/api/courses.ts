@@ -63,7 +63,6 @@ export interface Course {
 }
 
 export interface CourseCreate {
-  user_uuid: string;
   name: string;
   agency?: CertificationAgency | null;
   agency_other?: string | null;
@@ -76,14 +75,14 @@ export interface CourseCreate {
   notes?: string;
 }
 
-export type CourseUpdate = Partial<Omit<CourseCreate, "user_uuid">>;
+export type CourseUpdate = Partial<CourseCreate>;
 
 export type PaginatedCoursesResponse = PaginatedResponse<Course>;
 
 /** Training-course CRUD. Every call is scoped to the signed-in user by the API. */
 export const coursesAPI = {
-  // Create a course. `data.user_uuid` must be the signed-in user's uuid. Dives
-  // and certifications are linked to it from their own forms, not from here.
+  // Create a course, owned by the signed-in user. Dives and certifications
+  // are linked to it from their own forms, not from here.
   async createCourse(data: CourseCreate): Promise<Course> {
     const response = await apiClient.post(`/course`, data);
     return response.data;
@@ -95,14 +94,12 @@ export const coursesAPI = {
    * `items_per_page` at 100, so this is a page of matches, never the whole set.
    */
   async getCourses(
-    userUuid: string,
     page: number = 1,
     items_per_page: number = 10,
     search?: string,
   ): Promise<PaginatedCoursesResponse> {
     const response = await apiClient.get(`/courses`, {
       params: {
-        user_uuid: userUuid,
         page,
         items_per_page,
         ...(search ? { search } : {}),

@@ -18,7 +18,6 @@ import { GearItemMultiSelect } from "@/components/gear/gear-item-multi-select";
 import { GearSetDialog } from "@/components/gear/gear-set-dialog";
 
 export interface DiveGearFieldProps extends FormControlSlotProps {
-  userId: string;
   // Selected gear item uuids for this dive.
   value: string[];
   // Details for those items, when the caller has them - passed straight through
@@ -48,7 +47,6 @@ export interface DiveGearFieldProps extends FormControlSlotProps {
 // records only the resulting items and weight (it holds no reference to the set
 // at all).
 export function DiveGearField({
-  userId,
   value,
   knownItems,
   onChange,
@@ -79,7 +77,7 @@ export function DiveGearField({
 
     const fetchSets = async () => {
       try {
-        const sets = await fetchAllGearSets(userId, controller.signal);
+        const sets = await fetchAllGearSets(controller.signal);
         if (!controller.signal.aborted) setGearSets(sets);
       } catch (error) {
         if (isAbortError(error)) return;
@@ -87,10 +85,10 @@ export function DiveGearField({
       }
     };
 
-    if (userId) fetchSets();
+    fetchSets();
 
     return () => controller.abort();
-  }, [userId]);
+  }, []);
 
   const applySet = (set: GearSet) => {
     onChange(set.gear_items.map((item) => item.uuid));
@@ -167,7 +165,6 @@ export function DiveGearField({
 
       <GearItemMultiSelect
         {...slotProps}
-        userId={userId}
         value={value}
         knownItems={knownItems}
         onChange={onChange}
@@ -191,7 +188,6 @@ export function DiveGearField({
       />
 
       <GearSetDialog
-        userId={userId}
         open={showSaveDialog}
         onOpenChange={setShowSaveDialog}
         initialItemUuids={value}

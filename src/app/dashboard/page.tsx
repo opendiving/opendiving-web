@@ -180,12 +180,9 @@ export default function DashboardPage() {
       {/* Anything needing action comes first - a regulator that is out of service or a
           rescue card that has lapsed matters more than how many dives are in the log.
           Both render nothing on a normal day. */}
-      <ServiceDueCard userId={user.uuid} />
-      <CertificationExpiryCard userId={user.uuid} />
-      <SetupChecklistCard
-        userId={user.uuid}
-        totalDives={stats?.total_dives ?? null}
-      />
+      <ServiceDueCard />
+      <CertificationExpiryCard />
+      <SetupChecklistCard totalDives={stats?.total_dives ?? null} />
       {/* Below the checklist rather than above it: a diver with an empty logbook
           has something better to do first, and this one keeps until they come
           back. It renders nothing at all once taken or dismissed. */}
@@ -284,8 +281,8 @@ export default function DashboardPage() {
       {hasDives && <DiveActivityCard />}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <RecentDivesCard userId={user.uuid} />
-        <RecentTripsCard userId={user.uuid} />
+        <RecentDivesCard enabled={!!user} />
+        <RecentTripsCard />
       </div>
     </div>
   );

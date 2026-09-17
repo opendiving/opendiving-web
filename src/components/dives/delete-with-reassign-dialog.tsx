@@ -33,7 +33,7 @@ interface KindCopy {
   // Shown while the field holds text that isn't a choice yet, since Delete is
   // blocked for that and a disabled button with no explanation reads as broken.
   unresolvedHint: string;
-  search: (userId: string, query: string) => Promise<ComboboxSearchResult>;
+  search: (query: string) => Promise<ComboboxSearchResult>;
 }
 
 // Everything the two kinds of delete disagree about. The flow around it - state
@@ -51,9 +51,8 @@ const COPY: Record<DeleteTargetKind, KindCopy> = {
     noMatchesLabel: "No trips match.",
     unresolvedHint:
       "Pick a trip from the list, or clear the field to delete without moving.",
-    search: async (userId, query) => {
+    search: async (query) => {
       const response = await tripsAPI.getTrips(
-        userId,
         1,
         OPTIONS_PER_SEARCH,
         query,
@@ -77,9 +76,8 @@ const COPY: Record<DeleteTargetKind, KindCopy> = {
     noMatchesLabel: "No dive sites match.",
     unresolvedHint:
       "Pick a dive site from the list, or clear the field to delete without moving.",
-    search: async (userId, query) => {
+    search: async (query) => {
       const response = await diveSitesAPI.getDiveSites(
-        userId,
         1,
         OPTIONS_PER_SEARCH,
         query,
@@ -98,7 +96,6 @@ const COPY: Record<DeleteTargetKind, KindCopy> = {
 
 export interface DeleteWithReassignDialogProps {
   kind: DeleteTargetKind;
-  userId: string;
   // The trip / dive site awaiting confirmation, or null when none is. Doubles as
   // the dialog's open state, matching `useDeleteResource`'s `pendingId`.
   targetId: string | null;
@@ -129,7 +126,6 @@ export interface DeleteWithReassignDialogProps {
  */
 export function DeleteWithReassignDialog({
   kind,
-  userId,
   targetId,
   isDeleting,
   onCancel,
@@ -193,12 +189,12 @@ export function DeleteWithReassignDialog({
   // the one caller that needs it.
   const search = useCallback(
     async (query: string) => {
-      const result = await copy.search(userId, query);
+      const result = await copy.search(query);
       const items = result.items.filter((item) => item.id !== targetId);
       items.forEach((item) => seenRef.current.set(item.id, item));
       return { ...result, items };
     },
-    [copy, userId, targetId],
+    [copy, targetId],
   );
 
   return (

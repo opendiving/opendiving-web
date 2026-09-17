@@ -25,7 +25,6 @@ import { GearItemDialog } from "@/components/gear/gear-item-dialog";
 const GEAR_PER_SEARCH = 25;
 
 export interface GearItemMultiSelectProps extends FormControlSlotProps {
-  userId: string;
   // Selected gear item uuids, in the order they were added.
   value: string[];
   // Details for the items already in `value`, when the caller has them (the dive
@@ -45,7 +44,6 @@ export interface GearItemMultiSelectProps extends FormControlSlotProps {
 // set). Wraps the generic `CreatableCombobox` for the "add an item" input, plus
 // the list of items already added.
 export function GearItemMultiSelect({
-  userId,
   value,
   knownItems,
   onChange,
@@ -108,7 +106,6 @@ export function GearItemMultiSelect({
       // retired kit shouldn't be offered for a new dive, and leaving it in would
       // eat into the page of matches the user can actually pick from.
       const response = await gearAPI.getGearItems(
-        userId,
         1,
         GEAR_PER_SEARCH,
         false,
@@ -126,7 +123,7 @@ export function GearItemMultiSelect({
         hasMore: response.has_more,
       };
     },
-    [userId, remember],
+    [remember],
   );
 
   const addItem = (id: string | undefined) => {
@@ -262,7 +259,6 @@ export function GearItemMultiSelect({
       />
 
       <GearItemDialog
-        userId={userId}
         open={showNewDialog}
         onOpenChange={setShowNewDialog}
         onSaved={handleCreated}

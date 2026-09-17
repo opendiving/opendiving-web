@@ -14,7 +14,6 @@ import { CourseDialog } from "@/components/courses/course-dialog";
 const COURSES_PER_SEARCH = 25;
 
 export interface CourseComboboxProps extends FormControlSlotProps {
-  userId: string;
   value?: string | null;
   // `null`, not `undefined`, for "no course" - and the distinction is
   // load-bearing on the dive edit form, which builds its PATCH body by skipping
@@ -41,7 +40,6 @@ export interface CourseComboboxProps extends FormControlSlotProps {
 // certification came out of. The dropdown searches server-side rather than
 // fetching the user's whole course list - see DECISIONS.md.
 export function CourseCombobox({
-  userId,
   value,
   onChange,
   onCourseSelected,
@@ -85,7 +83,6 @@ export function CourseCombobox({
   const searchCourses = useCallback(
     async (query: string): Promise<ComboboxSearchResult> => {
       const response = await coursesAPI.getCourses(
-        userId,
         1,
         COURSES_PER_SEARCH,
         query,
@@ -99,7 +96,7 @@ export function CourseCombobox({
         hasMore: response.has_more,
       };
     },
-    [userId, remember],
+    [remember],
   );
 
   // The picker's one way in: `CreatableCombobox` reports a pick, a committed
@@ -144,7 +141,6 @@ export function CourseCombobox({
           it" cannot do. In the certification dialog that puts a dialog inside a
           dialog - see DECISIONS.md on why that holds. */}
       <CourseDialog
-        userId={userId}
         open={showNewDialog}
         onOpenChange={setShowNewDialog}
         onSaved={handleCreated}

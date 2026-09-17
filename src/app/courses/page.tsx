@@ -55,16 +55,9 @@ export default function CoursesPage() {
   }, [searchInput]);
 
   const fetchCourses = useCallback(
-    (page: number, perPage: number) => {
-      if (!user) return Promise.reject(new Error("Not authenticated"));
-      return coursesAPI.getCourses(
-        user.uuid,
-        page,
-        perPage,
-        search || undefined,
-      );
-    },
-    [user, search],
+    (page: number, perPage: number) =>
+      coursesAPI.getCourses(page, perPage, search || undefined),
+    [search],
   );
 
   // Changing the search term changes this callback's identity, which is what
@@ -303,7 +296,6 @@ export default function CoursesPage() {
       </Card>
 
       <CourseDialog
-        userId={user?.uuid ?? ""}
         open={editingCourse !== null}
         onOpenChange={(open) => !open && setEditingCourse(null)}
         course={editingCourse}

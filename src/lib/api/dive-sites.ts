@@ -19,7 +19,6 @@ export interface DiveSite {
 }
 
 export interface DiveSiteCreate {
-  user_uuid: string;
   name: string;
   location?: string;
   latitude?: number | null;
@@ -43,7 +42,7 @@ export type PaginatedDiveSitesResponse = PaginatedResponse<DiveSite>;
  * of loading a diver's whole site list.
  */
 export const diveSitesAPI = {
-  // Create a new dive site. `data.user_uuid` must be the currently signed-in user's uuid.
+  // Create a new dive site, owned by the signed-in user.
   async createDiveSite(data: DiveSiteCreate): Promise<DiveSite> {
     const response = await apiClient.post(`/dive-site`, data);
     return response.data;
@@ -53,14 +52,12 @@ export const diveSitesAPI = {
   // whose name *or* location contains it, case-insensitively - the API caps
   // `items_per_page` at 100, so this is a page of matches, never the whole set.
   async getDiveSites(
-    userUuid: string,
     page: number = 1,
     items_per_page: number = 10,
     search?: string,
   ): Promise<PaginatedDiveSitesResponse> {
     const response = await apiClient.get(`/dive-sites`, {
       params: {
-        user_uuid: userUuid,
         page,
         items_per_page,
         ...(search ? { search } : {}),

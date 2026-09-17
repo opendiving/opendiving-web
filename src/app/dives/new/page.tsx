@@ -135,13 +135,16 @@ function NewDivePageContent() {
   // Pre-fill trip, gas mixture and gear defaults from the most recent dive so
   // the user doesn't have to re-enter recurring values for every new log entry.
   //
-  // **Keyed on `user.uuid`, not on `user`.** Persisting a Fields toggle folds the new
-  // hidden set into the auth context, which replaces the `user` object - and with
-  // that object in this dependency list, flipping a switch would re-run the prefill
-  // on a clean form: refetching the last dive and re-stamping `start_time` with
-  // `nowStartTime()`. The invariant is that persisting a toggle never resets the
-  // form, re-runs this effect or refetches the last dive, and the uuid is what it
-  // rests on. Anything added here later has to be a value, not an object.
+  // **`user.uuid` is this effect's trigger, not an argument to it.** The request
+  // below is scoped by the session, so the uuid is here only to say that a
+  // signed-in account is known and which one it is. Depending on `user` itself
+  // would add a second, false trigger: persisting a Fields toggle folds the new
+  // hidden set into the auth context, which replaces that object, and flipping a
+  // switch would re-run the prefill on a clean form - refetching the last dive
+  // and re-stamping `start_time` with `nowStartTime()`. The invariant is that
+  // persisting a toggle never resets the form, re-runs this effect or refetches
+  // the last dive, and the uuid is what it rests on. Anything added here later
+  // has to be a value, not an object.
   const userUuid = user?.uuid;
   useEffect(() => {
     if (!userUuid) return;
@@ -150,7 +153,7 @@ function NewDivePageContent() {
 
     const prefillFromLastDive = async () => {
       try {
-        const response = await divesAPI.getDives(userUuid, 1, 1);
+        const response = await divesAPI.getDives(1, 1);
         if (cancelled || form.formState.isDirty) return;
 
         const lastDiveSummary = response.data[0];
@@ -292,15 +295,12 @@ function NewDivePageContent() {
   }
 
   const onSubmit = async (data: DiveCreateInput) => {
-    if (!user) return;
-
     try {
       setIsSubmitting(true);
 
       // Convert form data to API format
       const diveData = {
         ...data,
-        user_uuid: user.uuid,
         duration: parseFormDuration(data.duration),
         notes: data.notes || "",
         // The picker clears to `null` so the *edit* form can tell "detach this
@@ -393,7 +393,6 @@ function NewDivePageContent() {
         mixtureFieldArray={mixtureFieldArray}
         visibility={visibility}
         mode="create"
-        userId={user?.uuid ?? ""}
         onSubmit={onSubmit}
         isSubmitting={isSubmitting}
         cancelHref={returnTo.href}

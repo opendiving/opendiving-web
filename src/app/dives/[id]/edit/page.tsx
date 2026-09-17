@@ -258,7 +258,6 @@ function EditDivePageContent() {
         mixtureFieldArray={mixtureFieldArray}
         visibility={visibility}
         mode="edit"
-        userId={user?.uuid ?? ""}
         onSubmit={onSubmit}
         isSubmitting={isSubmitting}
         cancelHref={returnTo.href}

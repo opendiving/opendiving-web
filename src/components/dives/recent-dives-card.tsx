@@ -32,7 +32,9 @@ const RECENT_DIVES_COUNT = 5;
 const DIVES_PER_PAGE = 10;
 
 export interface RecentDivesCardProps {
-  userId: string;
+  // False until there's a signed-in user - the list reads the caller's own log
+  // and takes no user uuid, so this is the card's only fetch gate.
+  enabled: boolean;
   // Only show dives belonging to this trip. When omitted, shows the user's
   // most recent dives across all trips.
   tripId?: string;
@@ -73,7 +75,7 @@ export interface RecentDivesCardProps {
 // scope dives to one record - a trip, a dive site, a gear item, a course, a
 // species - so they all stay in sync.
 export function RecentDivesCard({
-  userId,
+  enabled,
   tripId,
   diveSiteId,
   gearItemId,
@@ -94,7 +96,6 @@ export function RecentDivesCard({
   const fetchDives = useCallback(
     (page: number, perPage: number) =>
       divesAPI.getDives(
-        userId,
         page,
         perPage,
         tripId,
@@ -103,7 +104,7 @@ export function RecentDivesCard({
         courseId,
         speciesId,
       ),
-    [userId, tripId, diveSiteId, gearItemId, courseId, speciesId],
+    [tripId, diveSiteId, gearItemId, courseId, speciesId],
   );
 
   // The preview asks for its few rows once and stops; a complete list pages
@@ -121,7 +122,7 @@ export function RecentDivesCard({
     loadMore,
   } = useInfiniteResource<Dive>(fetchDives, {
     keyOf: (dive) => dive.uuid,
-    enabled: !!userId,
+    enabled,
     itemsPerPage: complete ? DIVES_PER_PAGE : RECENT_DIVES_COUNT,
     errorMessage: "Failed to load dives. Please try again.",
   });
