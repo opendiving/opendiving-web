@@ -4,6 +4,7 @@ import * as React from "react";
 import { CalendarIcon } from "lucide-react";
 
 import { parseDateInput, parseDateTimeInput } from "@/lib/date-input";
+import { useCoarsePointer } from "@/hooks/useCoarsePointer";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { IconTooltip } from "@/components/ui/tooltip";
@@ -55,7 +56,104 @@ export interface DateTimePickerProps extends FormControlSlotProps {
   disabled?: boolean;
 }
 
-export function DateTimePicker({
+// The value split into the halves the two native inputs edit. Anything that is
+// not a whole date-time - "" included - is no date and no time.
+function splitDateTime(value: string): [date: string, time: string] {
+  const match = value.match(DATE_TIME_REGEX);
+  return match ? [value.slice(0, 10), value.slice(11)] : ["", ""];
+}
+
+// "HH:mm" as the OS time wheels hand it back, padded to the "HH:mm:ss" the value
+// is written in. A browser that does offer seconds - `step={1}` asks for them -
+// keeps the ones it was given.
+function withSeconds(time: string): string {
+  const match = time.match(/^(\d{2}):(\d{2})(?::(\d{2}))?/);
+  if (!match) return "";
+  const [, hours, minutes, seconds] = match;
+  return `${hours}:${minutes}:${seconds ?? "00"}`;
+}
+
+export function DateTimePicker({ placeholder, ...props }: DateTimePickerProps) {
+  // A finger gets the OS wheels; a hover-capable pointer keeps the text box and
+  // the calendar - including the placeholder, which describes a box that is
+  // typed into. See `date-picker.tsx`, which chooses the same way.
+  return useCoarsePointer() ? (
+    <NativeDateTimePicker {...props} />
+  ) : (
+    <CalendarDateTimePicker placeholder={placeholder} {...props} />
+  );
+}
+
+// Two native inputs rather than one `datetime-local`: Android chains two dialogs
+// for that type, and iOS drops the seconds from the value whenever only the date
+// is changed - which is the one edit an imported dive most often needs.
+function NativeDateTimePicker({
+  value,
+  onChange,
+  disabled,
+  ...slotProps
+}: Omit<DateTimePickerProps, "placeholder">) {
+  const [datePart, timePart] = splitDateTime(value ?? "");
+
+  // What the time box shows, which is the committed time until there is nothing
+  // to commit against: a time set before any date is held here rather than
+  // stamping today onto the value, the same rule `handleTimeChange` keeps on the
+  // desktop branch. Re-synced during render rather than from an effect, for the
+  // reason `date-picker.tsx` gives.
+  const [heldTime, setHeldTime] = React.useState(timePart);
+  const [syncedValue, setSyncedValue] = React.useState(value ?? "");
+  if (syncedValue !== (value ?? "")) {
+    setSyncedValue(value ?? "");
+    setHeldTime(timePart);
+  }
+
+  const handleDateChange = (next: string) => {
+    // The committed time rides through a date change untouched, seconds and all:
+    // a dive a computer stamped 10:04:47 and a diver re-dates is being re-dated,
+    // not re-timed. A time held without a date is what a first date collects.
+    if (!next) {
+      onChange("");
+      return;
+    }
+    onChange(`${next} ${timePart || withSeconds(heldTime) || "00:00:00"}`);
+  };
+
+  const handleTimeChange = (next: string) => {
+    setHeldTime(next);
+    // An emptied box means "not filled in", not midnight, so it commits nothing
+    // and leaves the value as it stands - as clearing an hour on the desktop
+    // branch does.
+    const time = withSeconds(next);
+    if (!datePart || !time) return;
+    onChange(`${datePart} ${time}`);
+  };
+
+  return (
+    <div className="grid grid-cols-[3fr_2fr] gap-2">
+      <Input
+        {...slotProps}
+        type="date"
+        value={datePart}
+        onChange={(e) => handleDateChange(e.target.value)}
+        disabled={disabled}
+      />
+      {/* A composite field behind one label, so the secondary control names
+          itself - see "`FormControl` only labels what it can reach". `step={1}`
+          asks for seconds from the browsers that can show them; the OS wheels
+          cannot, and `withSeconds` says what that means for the value. */}
+      <Input
+        type="time"
+        step={1}
+        aria-label="Time"
+        value={heldTime}
+        onChange={(e) => handleTimeChange(e.target.value)}
+        disabled={disabled}
+      />
+    </div>
+  );
+}
+
+function CalendarDateTimePicker({
   value,
   onChange,
   placeholder = "YYYY-MM-DD HH:mm:ss",

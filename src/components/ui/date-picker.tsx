@@ -5,6 +5,7 @@ import { CalendarIcon, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { parseDateInput } from "@/lib/date-input";
+import { useCoarsePointer } from "@/hooks/useCoarsePointer";
 import { Input } from "@/components/ui/input";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { Calendar } from "@/components/ui/calendar";
@@ -43,7 +44,64 @@ export interface DatePickerProps extends FormControlSlotProps {
   disabled?: boolean;
 }
 
-export function DatePicker({
+export function DatePicker({ placeholder, ...props }: DatePickerProps) {
+  // A finger gets the OS wheel, which is the control a phone diver already knows
+  // and the one that does not raise a keyboard over the form to type a date
+  // with. Anything with a hover-capable pointer keeps the text box and the
+  // calendar: year-first typing beats a wheel wherever there is a keyboard.
+  //
+  // One branch or the other, never both at once - see `useCoarsePointer`.
+  return useCoarsePointer() ? (
+    // The placeholder stops here: it spells out the typing order for a box that
+    // is typed into, and a native date input shows the OS's own format instead.
+    <NativeDatePicker {...props} />
+  ) : (
+    <CalendarDatePicker placeholder={placeholder} {...props} />
+  );
+}
+
+// The OS date picker, opened by the field itself. There is no draft state to
+// keep here, because a native date input hands over a whole date or nothing at
+// all - the half-typed states `CalendarDatePicker` exists to hold cannot occur.
+function NativeDatePicker({
+  value,
+  onChange,
+  disabled,
+  ...slotProps
+}: Omit<DatePickerProps, "placeholder">) {
+  // iOS has no clear control of its own inside the wheel, so an optional date -
+  // a course that has not ended, a certification with no expiry - would be
+  // impossible to empty once filled. Same button as the desktop branch's.
+  const showClear = Boolean(value) && !disabled;
+
+  return (
+    <div className="relative">
+      <Input
+        {...slotProps}
+        type="date"
+        value={value ?? ""}
+        // A native date input fires `change` only on a complete date, so there
+        // is nothing to settle on blur and nothing to discard.
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+        className={cn(showClear && "pr-9")}
+      />
+      {showClear && (
+        <IconTooltip label="Clear">
+          <button
+            type="button"
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            onClick={() => onChange("")}
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </IconTooltip>
+      )}
+    </div>
+  );
+}
+
+function CalendarDatePicker({
   value,
   onChange,
   placeholder = "YYYY-MM-DD",
