@@ -5316,7 +5316,9 @@ URL, `/dives/[id]/edit` included, unchanged. A step dims the grid (`opacity-50`)
 `dives/(detail)/[id]/page.render.test.tsx` pins the dim, and no test reaches the step itself.
 Rejected as the fix for this: `cacheComponents` (app-wide, and it keeps the route left, not the one
 reached) and refocusing on mount (the skeleton would still flash). The flag as a thing in its own
-right is "Cache Components asks for one opt-out, and leaves the nonce CSP alone".
+right is "Cache Components asks for one opt-out, and leaves the nonce CSP alone", and it is on for
+the reasons given there; this hoist still owns the fetch, because keeping the route left is not
+keeping the one a step reaches.
 
 The trip and course lookups outlive the dive, so each is stored with the uuid it resolved and read
 only while the dive names it — keyed on `trip_uuid`, not the dive, so a step within a trip keeps the

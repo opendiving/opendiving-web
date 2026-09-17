@@ -105,7 +105,7 @@
 // `status` and `bytes` in every `-w` and read `bytes=0` as a redirect rather than as a
 // fast response.
 import { execFileSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
@@ -374,6 +374,63 @@ async function loadRows(page, target) {
   return rows();
 }
 
+// -------------------------------------------------------------------- routes
+// Which route a URL belongs to. `partialPrefetching` fetches one reusable App Shell per
+// *route*, so a prefetch of one dive is what the router draws every other dive from, and
+// asking whether some prefetch shares the navigation's *pathname* answers a question the
+// build no longer decides anything by: it reads true for the first dive in a list and
+// false for the second, at the same latency, off the same shell.
+//
+// Derived from the App Router tree rather than listed here, so a new route needs no edit -
+// a directory holding a `page` file is a route, `(groups)` contribute no URL segment, and
+// `_private`/`@slot` directories are not routes.
+function appRoutes(dir, segments = []) {
+  const routes = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.isFile() && /^page\.[jt]sx?$/.test(entry.name)) {
+      routes.push(segments);
+    }
+    if (!entry.isDirectory()) continue;
+    if (entry.name.startsWith("_") || entry.name.startsWith("@")) continue;
+    const grouping = entry.name.startsWith("(") && entry.name.endsWith(")");
+    routes.push(
+      ...appRoutes(
+        path.join(dir, entry.name),
+        grouping ? segments : [...segments, entry.name],
+      ),
+    );
+  }
+  return routes;
+}
+
+const ROUTES = appRoutes(path.join(root, "src", "app"));
+
+// The route pattern a pathname belongs to - `/dives/[id]/edit` - or the pathname itself
+// where nothing matches, which leaves an unrecognised URL in a bucket of its own rather
+// than silently joining another's. That fallback is also what a catch-all page would get:
+// none exists, and matching one by segment count would be untested code for a route the
+// tree does not have.
+//
+// Ties go to the fewest dynamic segments, which is Next's own specificity rule and is
+// load-bearing here: `/dives/new` matches both `dives/new` and `dives/[id]`, and reading
+// it as a dive would call it prefetched off any dive link on the page.
+function routeOf(pathname) {
+  const parts = pathname.split("/").filter(Boolean);
+  const [best] = ROUTES.filter(
+    (route) =>
+      route.length === parts.length &&
+      route.every(
+        (segment, index) =>
+          segment.startsWith("[") || segment === parts[index],
+      ),
+  ).sort(
+    (a, b) =>
+      a.filter((segment) => segment.startsWith("[")).length -
+      b.filter((segment) => segment.startsWith("[")).length,
+  );
+  return best ? `/${best.join("/")}` : pathname;
+}
+
 // ------------------------------------------------------------------ measuring
 // Everything Chrome fetched, classified by the request headers the router sets rather than
 // by the shape of the URL - a prefetch and a navigation go to the same route and differ
@@ -435,16 +492,16 @@ function watchTraffic(page) {
           .filter((entry) => entry.rsc && !entry.prefetch)
           .map((entry) => entry.url),
       );
-      // A prefetch and its navigation go to the same route and differ in the `_rsc`
-      // value the router computed for each, so the path is what they share. Whether the
-      // destination was among them is the variable that decides whether a fallback can
-      // paint at all: an unprefetched route has no client reference for its loading
-      // component, so the router has nothing to draw until the response names one.
-      const pathsOf = (entries) =>
-        new Set(entries.map((url) => new URL(url).pathname));
-      const navigationPaths = pathsOf([...navigationUrls]);
+      // Whether the destination's route was among them is the variable that decides
+      // whether a fallback can paint at all: a route the browser holds no shell for has
+      // no client reference for its loading component, so the router has nothing to draw
+      // until the response names one. Compared by route rather than by pathname - see
+      // `routeOf` - because one shell serves every URL under a route.
+      const navigationRoutes = new Set(
+        [...navigationUrls].map((url) => routeOf(new URL(url).pathname)),
+      );
       const destinationPrefetched = prefetches.some((entry) =>
-        navigationPaths.has(new URL(entry.url).pathname),
+        navigationRoutes.has(routeOf(new URL(entry.url).pathname)),
       );
       return {
         prefetchCount: prefetches.length,
@@ -707,8 +764,8 @@ function table(rows) {
 // fold - the dashboard's Recent Dives card at this window size - is first asked for at
 // the click, and until the response names a loading component the router has none to
 // draw. Scrolling to the card first, which is what a diver does before pressing it, puts
-// the row back on the budget. The reusable per-route shells are what would remove the
-// dependency.
+// the row back on the budget. `partialPrefetching` does not lift this: it changes what a
+// prefetch contains, not when one happens, and an offscreen `<Link>` still makes none.
 //
 // **Where there is no new boundary** - a pager step, a Back the router answers from its
 // own cache - the old direction stands and is checked as such, so a boundary appearing

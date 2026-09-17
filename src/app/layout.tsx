@@ -13,6 +13,13 @@ import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
 
+// This layout reads `headers()` for the CSP nonce, which under `cacheComponents` is
+// runtime data outside any Suspense boundary: every route's static shell is empty and
+// the build fails on it. `false` allows a blocking route, and the root is the only
+// placement that reaches the routes needing it - every page a diver reaches, and both
+// non-root layouts, are Client Components, which cannot carry this export.
+export const instant = false;
+
 // A function rather than an exported `metadata` object because `siteUrl` is read from
 // the environment at request time (`lib/runtime-config.ts`), and a module-level constant
 // would be evaluated while the image is being built - freezing whatever the build

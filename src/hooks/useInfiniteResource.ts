@@ -259,14 +259,26 @@ export function useInfiniteResource<T>(
     [commitItems, reload, itemsPerPage],
   );
 
+  // The `reload` the effect below last ran. A route kept mounted under
+  // `<Activity mode="hidden">` has its effects destroyed on hide and re-created on
+  // show, so without this a diver six pages into the log who opens a dive and comes
+  // back would watch the list snap to its first page. A ref survives the hide where
+  // the effect does not, and `reload` changes identity with `fetchFn`, the page size
+  // and anything they close over - so comparing it, rather than counting mounts,
+  // still owes a genuinely new list its first page.
+  const loadedFor = useRef<(() => void) | null>(null);
+
   useEffect(() => {
-    // Deliberate fetch-on-mount pattern (setIsLoading(true) runs synchronously
-    // before the network await). This is a known, contentious false-positive for
-    // react-hooks/set-state-in-effect - see https://github.com/facebook/react/issues/34743.
-    if (enabled) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      reload();
+    // Cleared rather than left standing: a list switched off and on again owes its
+    // first page either way, and the gear sets card does exactly that once it is
+    // scrolled near.
+    if (!enabled) {
+      loadedFor.current = null;
+      return;
     }
+    if (loadedFor.current === reload) return;
+    loadedFor.current = reload;
+    reload();
   }, [enabled, reload]);
 
   return {

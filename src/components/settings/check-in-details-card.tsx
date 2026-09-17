@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ClipboardList, Save } from "lucide-react";
@@ -56,9 +56,17 @@ export function CheckInDetailsCard() {
 
   // Repaints from what came back, which is what makes `refreshUser()` below the end
   // of a save: the card shows the row rather than what was typed into it.
+  //
+  // Once per account object, not once per effect. `/settings` is kept mounted while
+  // the diver is on another route, and a mounted route has its effects destroyed on
+  // hide and re-created on show - so without the ref, coming back to a half-filled
+  // card would repaint over what was typed. Every other card on this page keeps it.
   const { reset } = form;
+  const paintedFor = useRef<typeof user>(null);
   useEffect(() => {
-    if (user) reset(checkInDetailsFromUser(user));
+    if (!user || paintedFor.current === user) return;
+    paintedFor.current = user;
+    reset(checkInDetailsFromUser(user));
   }, [user, reset]);
 
   const onSubmit = async (data: CheckInDetailsInput) => {
