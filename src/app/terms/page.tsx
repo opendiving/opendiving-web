@@ -223,6 +223,10 @@ export default async function TermsPage() {
                 Record your diving certifications and the courses behind them
               </li>
               <li>
+                Keep the details a dive shop asks for at the desk, and print a
+                summary of them to hand over
+              </li>
+              <li>
                 Note the species you saw, from public registers of marine life
               </li>
             </ul>
@@ -329,9 +333,9 @@ export default async function TermsPage() {
             </h2>
             <p className="text-foreground mb-4">
               What you enter into this copy &mdash; dives, sites, trips, gear,
-              courses, certifications, notes, and the files you import &mdash;
-              is yours, and you are responsible for it. You agree not to use
-              this copy to hold or send:
+              courses, certifications, your check-in details, notes, and the
+              files you import &mdash; is yours, and you are responsible for it.
+              You agree not to use this copy to hold or send:
             </p>
             <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
               <li>
@@ -349,6 +353,14 @@ export default async function TermsPage() {
               </li>
             </ul>
             <p className="text-foreground mb-4">
+              An emergency contact is the one piece of somebody else&rsquo;s
+              data this copy expects you to hold, and holding it is inside the
+              line above rather than an exception to it: a name and a number
+              kept so a dive shop can reach someone if you get into trouble is a
+              basis for keeping them. Telling that person you have written them
+              down here is yours to do, not this copy&rsquo;s.
+            </p>
+            <p className="text-foreground mb-4">
               You keep every right you have in what you enter. Nothing here
               gives the OpenDiving project any rights in your content as the
               software&rsquo;s author &mdash; writing a program grants no claim
@@ -363,9 +375,12 @@ export default async function TermsPage() {
               technically needed to run the Service for you &mdash; to store
               your entries, show them back to you, and include them in exports
               you ask for. Your entries are not published, shared with other
-              users, or shown to anyone else by this software. The next
-              paragraph is the one thing this copy does show one person to
-              another, and it is not an entry.
+              users, or shown to anyone else by this software. Printing your
+              check-in summary and handing it to a dive shop is you showing your
+              own entries to someone, not this copy showing them, and the
+              permission above is unchanged by it. The next paragraph is the one
+              thing this copy does show one person to another, and it is not an
+              entry.
             </p>
             <p className="text-foreground mb-4">
               Where this copy is invite-only and you invite somebody to it, you

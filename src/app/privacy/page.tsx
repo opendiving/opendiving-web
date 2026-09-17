@@ -217,6 +217,14 @@ export default async function PrivacyPage() {
                 training courses behind them, and a profile picture
               </li>
               <li>
+                <strong>Check-in Details:</strong> What a dive shop asks for at
+                the desk, all of it optional: your date of birth and phone
+                number; an emergency contact, meaning somebody else&rsquo;s
+                name, phone number and relationship to you, which you enter; and
+                your dive insurance &mdash; the provider, the policy number and
+                when it expires
+              </li>
+              <li>
                 <strong>Dive Logs:</strong> Dive location, depth, duration,
                 conditions, gas mixes, species seen, and your notes
               </li>
@@ -395,8 +403,8 @@ export default async function PrivacyPage() {
             <ul className="list-disc list-inside text-foreground mb-4 space-y-2">
               <li>
                 <strong>Provide the Service:</strong> Store your dives, sites,
-                trips, gear, courses and certifications, and show them back to
-                you
+                trips, gear, courses, certifications and check-in details, and
+                show them back to you
               </li>
               <li>
                 <strong>Account Management:</strong> Sign you in, keep you

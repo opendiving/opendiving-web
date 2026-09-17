@@ -365,9 +365,10 @@ export const certificationsAPI = {
  * Fetches every page of a user's certifications.
  *
  * The dashboard's renewal card used to be the reason this existed; it now asks
- * `getExpiring` instead, which is one request rather than a page walk. Kept for any
- * caller that genuinely needs whole `Certification` records rather than the four
- * fields the renewals card renders.
+ * `getExpiring` instead, which is one request rather than a page walk. For a caller
+ * that genuinely needs whole `Certification` records rather than the four fields the
+ * renewals card renders - the check-in summary, which prints every card a diver
+ * holds, files included.
  */
 export async function fetchAllCertifications(
   signal?: AbortSignal,

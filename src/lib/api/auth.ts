@@ -40,6 +40,29 @@ export interface User {
   // fetch of its own, which is what lets the form's *first paint* already omit the
   // hidden fields instead of showing them and taking them away.
   dive_form_hidden_fields: DiveFormFieldKey[];
+  // What a dive shop asks for at the desk, kept once instead of written out on
+  // arrival: the diver's own details, somebody to call, and the insurance a desk
+  // wants the name and number of. All eight are nullable columns and a diver who
+  // has filled none of them is the ordinary state, so `null` here means "not
+  // filled in" rather than "unknown" - a reader prints nothing for it rather than
+  // a labelled blank.
+  //
+  // Optional as well as nullable, unlike `units` and `dive_form_hidden_fields`
+  // above: those are `NOT NULL` with a server default, so their absence could only
+  // mean an API this build cannot talk to. These carry no default, so absent and
+  // null say the same thing, and a response from an API that predates them still
+  // type-checks.
+  //
+  // The two dates are bare `YYYY-MM-DD` strings and must be read with
+  // `formatDateOnly` rather than `new Date(...)` - see DECISIONS.md.
+  date_of_birth?: string | null;
+  phone?: string | null;
+  emergency_contact_name?: string | null;
+  emergency_contact_phone?: string | null;
+  emergency_contact_relationship?: string | null;
+  insurance_provider?: string | null;
+  insurance_policy_number?: string | null;
+  insurance_expires_on?: string | null;
   // Whether this account holds the operator's rights - the caller's own record on
   // `GET /user` (the backend's `UserRead.is_superuser`), never a disclosure about
   // anybody else. It is what the header uses to offer the `/admin` section at all.
@@ -102,6 +125,20 @@ export interface UpdateProfileData {
   // this client sends the canonical form anyway so what it holds and what came back
   // cannot differ. An explicit `null` is a 422.
   dive_form_hidden_fields?: DiveFormFieldKey[];
+  // The check-in details. An explicit `null` clears one, unlike
+  // `dive_form_hidden_fields` above, and the check-in card sends all eight on
+  // every save - so a group the diver emptied arrives as nulls rather than being
+  // left behind. The string bounds are the columns' own, and `PATCH /user` is
+  // `extra="forbid"`, so an over-long value is a 422; `checkInDetailsSchema`
+  // mirrors them.
+  date_of_birth?: string | null;
+  phone?: string | null;
+  emergency_contact_name?: string | null;
+  emergency_contact_phone?: string | null;
+  emergency_contact_relationship?: string | null;
+  insurance_provider?: string | null;
+  insurance_policy_number?: string | null;
+  insurance_expires_on?: string | null;
 }
 
 /**
