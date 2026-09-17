@@ -193,10 +193,12 @@ export function CheckInPageFrame({
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {/* The list endpoint's own order, which is what "newest first"
-                      means everywhere else in this app: most recently entered at
-                      the top. Re-sorting by the date on the card would disagree
-                      with `/certifications` for no gain a desk can see. */}
+                  {/* The list endpoint's own order, taken as it arrives rather
+                      than re-imposed here: `GET /certifications` sorts by
+                      `certified_on` descending with nulls last, tie-broken by
+                      uuid, so the card a diver is most often asked to show leads.
+                      Sorting again here could only disagree with
+                      `/certifications`. */}
                   {certifications.map((certification) => (
                     <CertificationSummary
                       key={certification.uuid}

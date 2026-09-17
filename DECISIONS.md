@@ -1192,10 +1192,11 @@ The dashboard deliberately does not get the card in exchange. It already carries
 hold, newest first" is not an alert, and `/certifications` is one nav click away with images, dates
 and dialogs. A read-only echo of a page in the nav is the duplication that took `/profile` down.
 
-Before writing that ordering again: `GET /certifications` is newest-row-first, so a diver who enters
-their Open Water card last gets it above the Divemaster it led to. `/certifications` still renders
-the API's order — it is a paginated table, and reordering one page client-side lies about the pages
-either side.
+Before writing that ordering again: `GET /certifications` sorts by `certified_on` descending with
+nulls last, tie-broken by uuid — not by when the row was entered, so a card with no date on it sits
+at the bottom rather than wherever it was typed in. `/certifications` renders that order rather than
+one of its own: it is a paginated table, and reordering one page client-side lies about the pages
+either side. `/checkin` renders it too, so the two agree about which card leads.
 
 ## There is no Gravatar line; `/settings` shows the avatar itself
 
