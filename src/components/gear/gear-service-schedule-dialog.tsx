@@ -46,6 +46,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Button } from "@/components/ui/button";
+import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 
 interface GearServiceScheduleDialogProps {
   gearItem: GearItem;
@@ -82,7 +83,7 @@ export function GearServiceScheduleDialog({
   });
 
   const { reset } = form;
-  useEffect(() => {
+  useEffectOnChange(() => {
     if (!open) return;
 
     if (schedule) {

@@ -48,6 +48,7 @@ import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 
 interface GearServiceRecordDialogProps {
   // The item the service belongs to. Its uuid is all this dialog needs of it, and taking
@@ -98,7 +99,7 @@ export function GearServiceRecordDialog({
   });
 
   const { reset } = form;
-  useEffect(() => {
+  useEffectOnChange(() => {
     if (!open) return;
     reset({
       kind: record?.kind ?? schedule?.kind ?? "service",

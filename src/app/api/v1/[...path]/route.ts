@@ -4,8 +4,8 @@ import { proxyToApi } from "@/lib/api-proxy";
 // `lib/api-proxy.ts` because a route file may export only handlers and segment config.
 //
 // Nothing marks it dynamic: every handler reads the incoming request, which is
-// request-time data on its own. `dynamic = "force-dynamic"` used to say so and is
-// rejected under `cacheComponents`; the route table still prints it as dynamic.
+// request-time data on its own, and the route table prints it as dynamic.
+// `dynamic = "force-dynamic"` is rejected under `cacheComponents`.
 
 export const GET = proxyToApi;
 export const HEAD = proxyToApi;

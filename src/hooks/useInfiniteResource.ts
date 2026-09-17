@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useToast } from "@/components/ui/use-toast";
+import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 import type { PaginatedResponse } from "@/lib/api/client";
 
 // Re-exported for the pages that import the type alongside this hook. The
@@ -259,26 +260,14 @@ export function useInfiniteResource<T>(
     [commitItems, reload, itemsPerPage],
   );
 
-  // The `reload` the effect below last ran. A route kept mounted under
-  // `<Activity mode="hidden">` has its effects destroyed on hide and re-created on
-  // show, so without this a diver six pages into the log who opens a dive and comes
-  // back would watch the list snap to its first page. A ref survives the hide where
-  // the effect does not, and `reload` changes identity with `fetchFn`, the page size
-  // and anything they close over - so comparing it, rather than counting mounts,
-  // still owes a genuinely new list its first page.
-  const loadedFor = useRef<(() => void) | null>(null);
-
-  useEffect(() => {
-    // Cleared rather than left standing: a list switched off and on again owes its
-    // first page either way, and the gear sets card does exactly that once it is
-    // scrolled near.
-    if (!enabled) {
-      loadedFor.current = null;
-      return;
-    }
-    if (loadedFor.current === reload) return;
-    loadedFor.current = reload;
-    reload();
+  // Not a plain effect: a diver six pages into the log who opens a dive and comes
+  // back would watch the list snap to its first page, because the route is kept
+  // mounted and its effects are re-created on the way back. `reload` changes
+  // identity with `fetchFn`, the page size and anything they close over, so a list
+  // that genuinely changed still gets its first page - and so does one switched off
+  // and on again, which is what the gear sets card does once it is scrolled near.
+  useEffectOnChange(() => {
+    if (enabled) reload();
   }, [enabled, reload]);
 
   return {

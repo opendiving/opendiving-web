@@ -284,7 +284,7 @@ export const config = {
       // speculation rules and Google's prefetch proxy actually send never matched the
       // `purpose` key and kept the CSP regardless. Only a hand-written header stripped it.
       //
-      // `cacheComponents`/PPR is the switch this was expected to reopen it, and it is on
+      // `cacheComponents`/PPR is the switch expected to reopen this, and it is on
       // without doing so. App-shell prefetches (`next-router-prefetch: 3`,
       // `FetchStrategy.RuntimeShell`) do carry the nonce of the request that produced
       // them, and the guide calls PPR incompatible with a nonce-based CSP because

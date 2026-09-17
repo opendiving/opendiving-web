@@ -42,7 +42,7 @@ export async function projectOperatesThisInstance(): Promise<boolean> {
   // Stops the prerender here. Under `cacheComponents` a build renders every route once,
   // and this fetch is rejected mid-prerender - caught below and read as "not
   // project-operated", which is the answer that would be baked in. The pages that call
-  // this used to carry `dynamic = "force-dynamic"`, which the flag rejects.
+  // this cannot say it with `dynamic = "force-dynamic"`, which the flag rejects.
   await connection();
 
   // An explicit controller rather than `AbortSignal.timeout`: this module is exercised

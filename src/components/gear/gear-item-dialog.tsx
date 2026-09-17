@@ -42,6 +42,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
+import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 
 // Radix's `SelectItem` can't take an empty string value, so "no type" needs a
 // real marker in the dropdown - mapped back to `undefined` on save.
@@ -84,7 +85,7 @@ export function GearItemDialog({
   // edited (or a clean slate prefilled with the picker's typed text) rather than
   // whatever the previous invocation left behind.
   const { reset } = form;
-  useEffect(() => {
+  useEffectOnChange(() => {
     if (!open) return;
     reset({
       name: gearItem?.name ?? initialName ?? "",

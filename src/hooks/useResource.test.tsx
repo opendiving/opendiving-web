@@ -1,4 +1,5 @@
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { Activity } from "react";
+import { act, render, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useResource } from "./useResource";
 
@@ -138,5 +139,76 @@ describe("useResource", () => {
       uuid: "dive-1",
       notes: "before",
     });
+  });
+  // A route the diver left is kept mounted and its effects are re-created on the way
+  // back. Unguarded, the return flips `isLoading` - swapping the dive edit form for
+  // its skeleton - and then re-seeds the form from the server over what was typed.
+  it("does not refetch when a hidden subtree is shown again", async () => {
+    const fetchFn = vi.fn().mockResolvedValue({ uuid: "dive-1" });
+
+    function Detail() {
+      useResource(fetchFn, OPTIONS);
+      return null;
+    }
+    function Host({ hidden }: { hidden: boolean }) {
+      return (
+        <Activity mode={hidden ? "hidden" : "visible"}>
+          <Detail />
+        </Activity>
+      );
+    }
+
+    const { rerender } = render(<Host hidden={false} />);
+    await waitFor(() => expect(fetchFn).toHaveBeenCalledOnce());
+
+    await act(async () => {
+      rerender(<Host hidden />);
+    });
+    await act(async () => {
+      rerender(<Host hidden={false} />);
+    });
+
+    expect(fetchFn).toHaveBeenCalledOnce();
+  });
+
+  // The other half of that guard, and the reason it records on settle rather than on
+  // start: hiding mid-flight abandons the request, so the work is still owed and the
+  // return has to make it. A guard recorded at the start would leave the page blank.
+  it("loads on show when the hide interrupted the first fetch", async () => {
+    let settle: (value: unknown) => void = () => {};
+    const fetchFn = vi
+      .fn()
+      .mockImplementationOnce(
+        () => new Promise((resolve) => (settle = resolve)),
+      )
+      .mockResolvedValue({ uuid: "dive-1" });
+
+    function Detail() {
+      useResource(fetchFn, OPTIONS);
+      return null;
+    }
+    function Host({ hidden }: { hidden: boolean }) {
+      return (
+        <Activity mode={hidden ? "hidden" : "visible"}>
+          <Detail />
+        </Activity>
+      );
+    }
+
+    const { rerender } = render(<Host hidden={false} />);
+    await waitFor(() => expect(fetchFn).toHaveBeenCalledOnce());
+
+    await act(async () => {
+      rerender(<Host hidden />);
+    });
+    // Resolves after the cleanup has already abandoned it.
+    await act(async () => {
+      settle({ uuid: "dive-1" });
+    });
+    await act(async () => {
+      rerender(<Host hidden={false} />);
+    });
+
+    await waitFor(() => expect(fetchFn).toHaveBeenCalledTimes(2));
   });
 });

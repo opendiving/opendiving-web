@@ -1,4 +1,5 @@
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { Activity } from "react";
+import { act, render, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useInfiniteResource } from "./useInfiniteResource";
 import type { PaginatedResponse } from "@/lib/api/client";
@@ -504,6 +505,37 @@ describe("useInfiniteResource", () => {
     await waitFor(() => expect(fetchFn).toHaveBeenCalledOnce());
     rerender();
     rerender();
+
+    expect(fetchFn).toHaveBeenCalledOnce();
+  });
+  // A route the diver left is kept mounted, and its effects are re-created on the
+  // way back. Without the guard in the hook this is two fetches and the list snaps
+  // to page one - which is what a diver six pages deep would watch happen.
+  it("does not refetch when a hidden subtree is shown again", async () => {
+    const { fetchFn } = ledger();
+
+    function List() {
+      useInfiniteResource(fetchFn, { keyOf });
+      return null;
+    }
+    function Host({ hidden }: { hidden: boolean }) {
+      return (
+        <Activity mode={hidden ? "hidden" : "visible"}>
+          <List />
+        </Activity>
+      );
+    }
+
+    const { rerender } = render(<Host hidden={false} />);
+    await waitFor(() => expect(fetchFn).toHaveBeenCalledOnce());
+    expect(fetchFn).toHaveBeenCalledWith(1, 10);
+
+    await act(async () => {
+      rerender(<Host hidden />);
+    });
+    await act(async () => {
+      rerender(<Host hidden={false} />);
+    });
 
     expect(fetchFn).toHaveBeenCalledOnce();
   });

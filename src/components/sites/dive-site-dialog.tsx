@@ -43,6 +43,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 
 const COORDINATE_HINT =
   "Paste a “27.8506, 34.3136” pair into either field to fill both, or place the site on the map below.";
@@ -87,7 +88,7 @@ export function DiveSiteDialog({
   // being edited (or a clean slate) rather than whatever the previous
   // invocation left behind.
   const { reset, setValue } = form;
-  useEffect(() => {
+  useEffectOnChange(() => {
     if (!open) return;
     reset({
       name: diveSite?.name ?? "",

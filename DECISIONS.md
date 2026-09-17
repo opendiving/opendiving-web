@@ -339,18 +339,16 @@ _Rejected:_ a hash-based or SRI CSP.
 
 With Cache Components on, the router keeps the route a diver left mounted under
 `<Activity mode="hidden">`, whose effects are destroyed on hide and re-created on show. State
-survives; an effect that loads on mount runs again on the way back and overwrites it.
-`useInfiniteResource` would snap a list six pages deep back to its first page, and `/settings`' two
-account-seeded forms would repaint over what was half typed.
+survives; an effect that loads on mount runs again on the way back and overwrites it. A list
+scrolled six pages deep snaps to its first page, a half-typed settings form repaints from the
+account, an open dialog blanks the fields still in it.
 
-Each holds a ref of what it last ran for — `reload`'s identity in `hooks/useInfiniteResource.ts`,
-the account object in `app/settings/page.tsx` and `components/settings/check-in-details-card.tsx` —
-and skips the run when it is unchanged, so a return costs no request and loses no edit. A new list
-or a saved account changes the value and still loads.
+`hooks/useEffectOnChange.ts` is the guard: it holds the dependencies the effect last ran for and
+skips a re-run against the same ones, so a genuinely new list or a saved account still loads. An
+effect whose work can be interrupted cannot use it - the hide abandons the request and the show
+would skip it - so `useResource` records its key when the load settles instead.
 
-A form that only fills empty fields, as `contact-form.tsx` does, needs no guard.
-
-_Rejected:_ counting mounts, which cannot tell a return from a list that genuinely changed.
+_Rejected:_ counting mounts, which cannot tell a return from something that genuinely changed.
 
 ## Unified auth flow: one passwordless `AuthForm`, no password-based `/signin`/`/signup` pair
 

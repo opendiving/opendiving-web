@@ -67,8 +67,26 @@ export function useResource<T>(
     }
   }, [id, fetchFn, errorMessage]);
 
+  // What the effect below last *finished* loading. A route the diver has left is kept
+  // mounted, and its effects are destroyed on hide and re-created on show - so without
+  // this the return would set `isLoading` again, swapping the dive edit form back to
+  // its skeleton and re-seeding it from the server over whatever was typed.
+  //
+  // Recorded when the load settles rather than when it starts, which is the difference
+  // from `useEffectOnChange`: the cleanup below abandons an in-flight request, so a
+  // hide part-way through has to leave the work owed rather than marking it done.
+  const loadedFor = useRef<readonly unknown[] | null>(null);
+
   useEffect(() => {
     if (!enabled || !id) return;
+    const key = [id, fetchFn] as const;
+    if (
+      loadedFor.current &&
+      loadedFor.current[0] === key[0] &&
+      loadedFor.current[1] === key[1]
+    ) {
+      return;
+    }
     let cancelled = false;
 
     const load = async () => {
@@ -76,6 +94,7 @@ export function useResource<T>(
         setIsLoading(true);
         const data = await fetchFn(id);
         if (cancelled) return;
+        loadedFor.current = key;
         setResource(data);
         onLoadedRef.current?.(data);
       } catch (error) {

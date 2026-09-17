@@ -42,6 +42,7 @@ import { UnitNumberInput } from "@/components/unit-number-input";
 import { EntryUnitLabelRow } from "@/components/entry-unit-toggle";
 import { useEntryUnits } from "@/hooks/useEntryUnits";
 import { unitLabel } from "@/lib/units";
+import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 
 // Sentinel for the "Create a new set" option in the target picker. Radix's
 // `SelectItem` can't take an empty string value, so a real (uuid-shaped-free)
@@ -100,7 +101,7 @@ export function GearSetDialog({
 
   // Reset to the dialog's inputs every time it opens, so a previous invocation's
   // half-filled state never leaks into the next one.
-  useEffect(() => {
+  useEffectOnChange(() => {
     if (!open) return;
     reset({
       name: gearSet?.name ?? "",
@@ -108,7 +109,6 @@ export function GearSetDialog({
       gear_item_uuids:
         initialItemUuids ?? gearSet?.gear_items.map((i) => i.uuid) ?? [],
     });
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setTargetUuid(undefined);
   }, [open, gearSet, initialItemUuids, initialWeight, reset]);
 
