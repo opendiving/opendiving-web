@@ -79,6 +79,37 @@ export type CourseUpdate = Partial<CourseCreate>;
 
 export type PaginatedCoursesResponse = PaginatedResponse<Course>;
 
+/**
+ * What narrows a course list. Every field set is AND-ed with the others, so a
+ * name and a status answer the intersection rather than the union.
+ *
+ * An object rather than four more positional parameters: `getCourses` would
+ * otherwise read `(page, perPage, search, dateFrom, dateTo, agency, status)`,
+ * and a caller wanting only the last would count `undefined`s to reach it - the
+ * shape `getDives` has, and the one DECISIONS.md records as the cost of having
+ * appended `courseUuid` last.
+ */
+export interface CourseFilters {
+  /** Case-insensitive substring of the course's name. */
+  search?: string;
+  /**
+   * Bounds of a window the course's own dates must **overlap**, as bare
+   * "YYYY-MM-DD". Overlap rather than containment, so a course that began in
+   * December and finished in February is training done in both years and
+   * answers a filter on either. A course with no dates at all has no interval to
+   * overlap, so it drops out the moment either bound is set - which is what a
+   * `planned` course should do in a list filtered by date, not a gap.
+   *
+   * The two are one window rather than two independent bounds, so a `dateFrom`
+   * later than `dateTo` is a swapped pair: the API answers it with an empty page
+   * rather than an error, and the list says nothing matches.
+   */
+  dateFrom?: string;
+  dateTo?: string;
+  agency?: CertificationAgency | "";
+  status?: CourseStatus | "";
+}
+
 /** Training-course CRUD. Every call is scoped to the signed-in user by the API. */
 export const coursesAPI = {
   // Create a course, owned by the signed-in user. Dives and certifications
@@ -90,19 +121,31 @@ export const coursesAPI = {
 
   /**
    * A page of the user's courses, most recent start date first and dateless ones
-   * last. `search` is a case-insensitive substring of the name; the API caps
+   * last, narrowed by whichever of `filters` is set. The API caps
    * `items_per_page` at 100, so this is a page of matches, never the whole set.
+   *
+   * `""` is how the controls hold an unset filter, and dropping those is this
+   * function's job rather than each caller's - the one rule, in the one place
+   * that builds the query string. It is not tidiness: `agency` and `status` are
+   * enums on the API, and FastAPI answers `?agency=` with a 422 rather than
+   * reading it as "any", so an empty value sent through would break the list
+   * instead of widening it.
    */
   async getCourses(
     page: number = 1,
     items_per_page: number = 10,
-    search?: string,
+    filters: CourseFilters = {},
   ): Promise<PaginatedCoursesResponse> {
+    const { search, dateFrom, dateTo, agency, status } = filters;
     const response = await apiClient.get(`/courses`, {
       params: {
         page,
         items_per_page,
         ...(search ? { search } : {}),
+        ...(dateFrom ? { date_from: dateFrom } : {}),
+        ...(dateTo ? { date_to: dateTo } : {}),
+        ...(agency ? { agency } : {}),
+        ...(status ? { status } : {}),
       },
     });
     return response.data;
