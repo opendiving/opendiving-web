@@ -168,6 +168,13 @@ const ROUTE_FALLBACK_HOLD_MS = 330;
 // is what the boundaries are calibrated not to change.
 const NO_GREY_UP_TO_MS = 100;
 
+// `tailwind.config.mts`'s flat fallback for `var(--skeleton-delay, 150ms)`, which governs
+// wherever no route hold was opened: every in-place load, and - under the flags - a
+// destination the router draws from a shell it already holds. Which of the two is in force
+// is read off the placeholder rather than assumed, because it is not a property of the
+// build.
+const IN_PLACE_SKELETON_DELAY_MS = 150;
+
 // How long after the click a fallback still counts as having painted *at* it. A frame
 // drawn from what the browser is already holding lands in a frame or two; measured, the
 // boundaries here mutate `<main>` within 40 ms of the click at every latency, most of
@@ -537,6 +544,12 @@ const arm = (page) =>
       // page arrived rather than that a hold hid one - two outcomes the grey column alone
       // cannot tell apart.
       fallbackRendered: false,
+      // The `--skeleton-delay` the first placeholder actually mounted with, in
+      // milliseconds, or null where the variable is unset and `tailwind.config.mts`'s
+      // flat in-place default governs instead. Read rather than assumed: which of the
+      // two delays is in force is the thing a reveal has to be judged against, and it is
+      // not a constant of the build.
+      skeletonDelay: null,
     };
     window.__navigationMark = mark;
 
@@ -580,7 +593,15 @@ const arm = (page) =>
         if (Number(getComputedStyle(node).opacity) > 0) visible++;
       }
       const now = performance.now();
-      if (present.length > 0) mark.fallbackRendered = true;
+      if (present.length > 0) {
+        mark.fallbackRendered = true;
+        if (mark.skeletonDelay === null) {
+          const declared = getComputedStyle(present[0])
+            .getPropertyValue("--skeleton-delay")
+            .trim();
+          mark.skeletonDelay = declared ? Number.parseFloat(declared) : null;
+        }
+      }
       if (visible > 0) {
         if (mark.firstGrey === null) mark.firstGrey = now;
         mark.lastGrey = now;
@@ -712,6 +733,7 @@ async function measure(page, navigation, subjects) {
           grey: mark.firstGrey,
           greyBreak: mark.greyBreak,
           fallbackRendered: mark.fallbackRendered,
+          skeletonDelay: mark.skeletonDelay,
         };
       },
       [...navigationUrls],
@@ -730,6 +752,7 @@ async function measure(page, navigation, subjects) {
       prefetchBytes,
       destinationPrefetched,
       fallbackRendered: timings.fallbackRendered,
+      skeletonDelay: timings.skeletonDelay,
     };
   } finally {
     traffic.stop();
@@ -780,12 +803,20 @@ function table(rows) {
 // own cache - the old direction stands and is checked as such, so a boundary appearing
 // where none belongs fails the run rather than passing it quietly.
 //
-// **And the hold is checked in pixels.** No row may show grey before the hold has
-// elapsed, at any latency; and up to `NO_GREY_UP_TO_MS`, whose own comment says why, no
-// row may show grey at all - which is the property this app has without any of these
-// boundaries, and the one the calibration is there to keep. A run against a build of
-// `main` is how that premise is confirmed rather than assumed: the column is measured
-// from computed style and needs nothing from this branch to report.
+// **And the hold is checked in pixels.** No row may show grey before the delay its
+// placeholders actually mounted with has elapsed, at any latency; and up to
+// `NO_GREY_UP_TO_MS`, whose own comment says why, no row may show grey at all - which is
+// the property this app has without any of these boundaries, and the one the calibration
+// is there to keep. A run against a build of `main` is how that premise is confirmed
+// rather than assumed: the column is measured from computed style and needs nothing from
+// this branch to report.
+//
+// The delay is read off the placeholder rather than taken from `ROUTE_FALLBACK_HOLD_MS`,
+// because the two disagree. A route hold is opened by the fallback's own render, and a
+// destination the router draws from a shell it already holds does not open one: the
+// placeholders mount with the variable unset and the in-place default governs. The run
+// notes every row where that happened, so a reveal moving from 330 ms to 150 ms is
+// visible as a change in mechanism rather than absorbed as a passing number.
 //
 // A row with no round trip is a note and not a failure - Back can be answered entirely
 // from the router's client cache, and a navigation that needs no server is the outcome
@@ -860,9 +891,20 @@ function checkAcceptance(rows) {
         return;
       }
 
-      if (run.grey !== null && run.grey < ROUTE_FALLBACK_HOLD_MS) {
+      // The delay actually in force, not the one this navigation was designed around.
+      // A route hold is opened by the fallback's own render, and a destination the router
+      // draws from a shell it already holds never opens one - so the reveal is judged
+      // against the in-place default there, and the run says which applied.
+      const hold = run.skeletonDelay ?? IN_PLACE_SKELETON_DELAY_MS;
+      if (boundary && run.fallbackRendered && run.skeletonDelay === null) {
+        notes.push(
+          `${at}: no route hold was opened, so the reveal is the in-place ${IN_PLACE_SKELETON_DELAY_MS} ms rather than ${ROUTE_FALLBACK_HOLD_MS} ms`,
+        );
+      }
+
+      if (run.grey !== null && run.grey < hold) {
         failures.push(
-          `${at}: grey at ${run.grey} ms, inside the ${ROUTE_FALLBACK_HOLD_MS} ms hold`,
+          `${at}: grey at ${run.grey} ms, inside the ${hold} ms delay it mounted with`,
         );
       } else if (run.grey !== null && latency <= NO_GREY_UP_TO_MS) {
         failures.push(
