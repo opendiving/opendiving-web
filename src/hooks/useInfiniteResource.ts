@@ -200,6 +200,7 @@ export function useInfiniteResource<T>(
 
     const requestId = latestRequest.current + 1;
     latestRequest.current = requestId;
+    isFetching.current = true;
 
     try {
       const identify = keyOfRef.current;
@@ -220,17 +221,31 @@ export function useInfiniteResource<T>(
       }
       if (!response) return;
 
-      commitItems(rows.slice(0, Math.max(loaded, rows.length)));
+      // Trimmed to what was on screen: the re-read asks in hundreds, and a ten-row
+      // list that came back holding a hundred would have grown by going away. A
+      // shorter answer is kept whole - that is a list someone else has shrunk.
+      const kept = rows.slice(0, loaded);
+      commitItems(kept);
       setTotalCount(response.total_count);
-      // The rows held now, not the ones asked for: a list that shrank server-side
-      // has a nearer boundary, and `loadMore` must ask for the page containing it.
-      nextPage.current = Math.floor(rows.length / itemsPerPage) + 1;
-      setHasMore(rows.length < response.total_count);
+      // Derived from what is held now, not from what was fetched: `loadMore` has to
+      // ask for the page containing the boundary, which a shrunk list moved nearer.
+      nextPage.current = Math.floor(kept.length / itemsPerPage) + 1;
+      setHasMore(kept.length < response.total_count);
     } catch (error) {
       // The rows on screen stay: they are still the best answer available, and a
       // re-read the diver did not ask for has no business toasting at them.
       if (latestRequest.current === requestId) {
         console.error(errorMessage, error);
+      }
+    } finally {
+      // Whoever holds the newest ticket owns the flags, which is what `load` assumes
+      // when it declines to clear them for a superseded request. Without this, a
+      // re-read that supersedes a `loadMore` still in flight strands `isFetching`
+      // true and `loadMore` never runs again.
+      if (latestRequest.current === requestId) {
+        isFetching.current = false;
+        setIsLoading(false);
+        setIsLoadingMore(false);
       }
     }
   }, [fetchFn, itemsPerPage, errorMessage, commitItems]);

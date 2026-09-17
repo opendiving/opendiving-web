@@ -549,6 +549,94 @@ describe("useInfiniteResource", () => {
       expect(fetchFn).not.toHaveBeenCalledTimes(3);
     });
 
+    it("comes back holding the number of rows it had, not the batch it asked for", async () => {
+      // The re-read asks in hundreds; the list was showing ten. Coming back with a
+      // hundred would be growing by going away.
+      const { fetchFn } = ledger(30, 10);
+      let latest: ReturnType<typeof useInfiniteResource<Row>> | null = null;
+
+      function List() {
+        latest = useInfiniteResource(fetchFn, { keyOf });
+        return null;
+      }
+      function Host({ hidden }: { hidden: boolean }) {
+        return (
+          <Activity mode={hidden ? "hidden" : "visible"}>
+            <List />
+          </Activity>
+        );
+      }
+
+      const { rerender } = render(<Host hidden={false} />);
+      await waitFor(() => expect(latest!.items).toHaveLength(10));
+
+      await act(async () => {
+        rerender(<Host hidden />);
+      });
+      await act(async () => {
+        rerender(<Host hidden={false} />);
+      });
+      await waitFor(() => expect(fetchFn).toHaveBeenCalledTimes(2));
+
+      expect(latest!.items).toHaveLength(10);
+    });
+
+    // `load` declines to clear the spinners for a superseded request, on the
+    // understanding that whoever superseded it will. The re-read has to hold up its
+    // end, or a `loadMore` caught in flight by the return strands the list.
+    it("leaves `loadMore` usable when the return superseded one in flight", async () => {
+      let hangingResolve: (value: PaginatedResponse<Row>) => void = () => {};
+      const fetchFn = vi.fn(
+        async (pageNumber: number, size: number): Promise<PaginatedResponse<Row>> => {
+          if (size === 10 && pageNumber === 2) {
+            return new Promise((resolve) => {
+              hangingResolve = resolve;
+            });
+          }
+          return page(pageNumber, { total: 30, perPage: Math.min(size, 30) });
+        },
+      );
+      let latest: ReturnType<typeof useInfiniteResource<Row>> | null = null;
+
+      function List() {
+        latest = useInfiniteResource(fetchFn, { keyOf });
+        return null;
+      }
+      function Host({ hidden }: { hidden: boolean }) {
+        return (
+          <Activity mode={hidden ? "hidden" : "visible"}>
+            <List />
+          </Activity>
+        );
+      }
+
+      const { rerender } = render(<Host hidden={false} />);
+      await waitFor(() => expect(latest!.isLoading).toBe(false));
+
+      // A next page starts and does not finish before the diver leaves.
+      act(() => {
+        void latest!.loadMore();
+      });
+      await act(async () => {
+        rerender(<Host hidden />);
+      });
+      await act(async () => {
+        rerender(<Host hidden={false} />);
+      });
+      await act(async () => {
+        hangingResolve(page(2, { total: 30, perPage: 10 }));
+      });
+
+      const afterReturn = fetchFn.mock.calls.length;
+      act(() => {
+        void latest!.loadMore();
+      });
+
+      await waitFor(() =>
+        expect(fetchFn.mock.calls.length).toBeGreaterThan(afterReturn),
+      );
+    });
+
     it("keeps the rows it had, with what changed while it was away", async () => {
       const { fetchFn, dropServerSide } = ledger();
       const Host = hosted(fetchFn);
