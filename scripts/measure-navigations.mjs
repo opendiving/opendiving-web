@@ -78,6 +78,11 @@
 // Latency comes from CDP `Network.emulateNetworkConditions` and is applied to the source
 // page's load as well as the navigation, so the prefetch traffic pays it too.
 //
+// The first visit to a destination at a given latency also pays for its JS chunks, and the
+// browser keeps them for the rest of the run. So `LATENCIES=0,100` is not the same
+// measurement as `LATENCIES=100`: the 0 ms pass warms those chunks, and without it the
+// boundary rows read about one round trip late. Compare two builds the same way round.
+//
 // `REDUCED_MOTION=1` runs the whole walk in a browser asking for reduced motion, where
 // every skeleton carries `motion-reduce:animate-none` and so has no hold at all: the
 // destination's frame paints at the click with its grey already visible. That is accepted
@@ -159,8 +164,8 @@ const REDUCED_MOTION = process.env.REDUCED_MOTION === "1";
 // only thing that can read the app's own constant.
 const ROUTE_FALLBACK_HOLD_MS = 330;
 
-// The latencies at which the destination's data lands before the hold elapses, so a
-// diver sees no grey at all - which is what the boundaries are calibrated not to change.
+// Up to this latency a diver sees no grey at all, behind a boundary or without one - which
+// is what the boundaries are calibrated not to change.
 const NO_GREY_UP_TO_MS = 100;
 
 // How long after the click a fallback still counts as having painted *at* it. A frame
