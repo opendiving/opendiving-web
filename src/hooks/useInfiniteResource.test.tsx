@@ -652,10 +652,6 @@ describe("useInfiniteResource", () => {
     // `load` declines to clear the spinners for a superseded request, on the
     // understanding that whoever superseded it will. The re-read has to hold up its
     // end, or a `loadMore` caught in flight by the return strands the list.
-
-    // `load` declines to clear the spinners for a superseded request, on the
-    // understanding that whoever superseded it will. The re-read has to hold up its
-    // end, or a `loadMore` caught in flight by the return strands the list.
     it("leaves `loadMore` usable when the return superseded one in flight", async () => {
       let hangingResolve: (value: PaginatedResponse<Row>) => void = () => {};
       const fetchFn = vi.fn(
@@ -749,9 +745,10 @@ describe("useInfiniteResource", () => {
       expect(latest!.items.map(keyOf)).toContain("r10");
     });
 
-    // The other side of that retry: an empty list is also what the first load looks
-    // like before it commits, so the return must not mistake one for the other and
-    // ask for page one twice. StrictMode's second pass is the same shape.
+    // An empty list is also what the first load looks like before it commits, so the
+    // return must not read one as the other and ask for page one twice. StrictMode's
+    // second pass is the same shape. The retry that empty list *does* earn once the
+    // load has failed is the test below.
     it("does not re-ask for page one while the first load is still in flight", async () => {
       let release: (value: PaginatedResponse<Row>) => void = () => {};
       const fetchFn = vi.fn(
