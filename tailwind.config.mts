@@ -129,13 +129,11 @@ const config: Config = {
         // and once seen it breathes so it reads as pending rather than broken.
         // `both` is what holds opacity at 0 through the delay.
         //
-        // The delay is a variable so a route fallback can hand a placeholder the
-        // rest of a hold that started at the click (`lib/route-hold.ts`); unset,
-        // which is every in-place load, it is the 150ms above. The pulse keeps
-        // its 200ms offset from whatever the fade ends up being, so the two abut
-        // however long the hold is - a fixed 350ms would cut a longer fade short.
+        // One flat delay, counted from the placeholder's own insertion, which is
+        // also the click: a route draws its own frame as it mounts, and there is
+        // no second renderer of that frame to carry a delay across.
         skeleton:
-          "skeleton-in 200ms ease-out var(--skeleton-delay, 150ms) both, skeleton-pulse 1.8s ease-in-out calc(var(--skeleton-delay, 150ms) + 200ms) infinite",
+          "skeleton-in 200ms ease-out 150ms both, skeleton-pulse 1.8s ease-in-out 350ms infinite",
         // The reveal half on its own, for the *chrome* a placeholder draws - the
         // card outlines and row borders. Those are real `Card`s and `TableRow`s,
         // so without this they paint instantly and a fast response still flashes
@@ -143,8 +141,7 @@ const config: Config = {
         // to prevent. Deliberately not the full `skeleton` shorthand: a pulsing
         // container multiplied by a pulsing bar would dip the bars to a quarter
         // opacity instead of half.
-        "skeleton-reveal":
-          "skeleton-in 200ms ease-out var(--skeleton-delay, 150ms) both",
+        "skeleton-reveal": "skeleton-in 200ms ease-out 150ms both",
       },
     },
   },

@@ -1,5 +1,4 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { useSkeletonHold } from "@/hooks/useSkeletonHold";
 import { cn } from "@/lib/utils";
 
 /**
@@ -17,10 +16,8 @@ import { cn } from "@/lib/utils";
  */
 export function Skeleton({
   className,
-  style,
   ...props
 }: React.HTMLAttributes<HTMLSpanElement>) {
-  const hold = useSkeletonHold();
   return (
     <span
       aria-hidden
@@ -28,7 +25,6 @@ export function Skeleton({
         "block rounded-md bg-muted animate-skeleton motion-reduce:animate-none",
         className,
       )}
-      style={hold ? { ...hold, ...style } : style}
       {...props}
     />
   );
@@ -46,14 +42,12 @@ export function CardSkeleton({
   lines?: number;
   className?: string;
 }) {
-  const hold = useSkeletonHold();
   return (
     <Card
       className={cn(
         "animate-skeleton-reveal motion-reduce:animate-none",
         className,
       )}
-      style={hold}
     >
       <CardHeader>
         <Skeleton className="h-6 w-40" />
@@ -84,7 +78,6 @@ export function CardSkeleton({
  * actually show - the default of one row is only right for a list of one.
  */
 export function ListRowsSkeleton({ rows = 1 }: { rows?: number }) {
-  const hold = useSkeletonHold();
   return (
     // Busy on the outside, hidden on the inside - the same split
     // `DetailPageSkeleton` uses, and the reason it needs two elements: the two
@@ -95,7 +88,6 @@ export function ListRowsSkeleton({ rows = 1 }: { rows?: number }) {
     <div aria-busy>
       <div
         className="space-y-3 animate-skeleton-reveal motion-reduce:animate-none"
-        style={hold}
         aria-hidden
       >
         {Array.from({ length: rows }, (_, row) => (

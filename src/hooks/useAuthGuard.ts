@@ -18,9 +18,9 @@ import { isLeavingPage } from "@/lib/navigation";
  * The URL being guarded is passed along as `/signin?next=...` so the visitor
  * gets dropped back where they were aiming once they're signed in. It's read
  * from `window.location` inside the effect rather than via `usePathname()`/
- * `useSearchParams()` on purpose: `useSearchParams()` would force every one of
- * the ~15 pages using this hook to grow a `Suspense` boundary or fail the
- * build, and by the time this effect runs there's a real `window` anyway.
+ * `useSearchParams()` on purpose: by the time this effect runs there's a real
+ * `window`, and reading it there keeps the guard out of the render pass
+ * entirely, so a page's first frame never waits on the URL.
  *
  * Pass `redirectTo` to override the destination entirely (no `next` is added).
  *

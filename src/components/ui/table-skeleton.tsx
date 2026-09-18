@@ -1,6 +1,5 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { TableCell, TableRow } from "@/components/ui/table";
-import { useSkeletonHold } from "@/hooks/useSkeletonHold";
 import { cn } from "@/lib/utils";
 
 // Cycled by (row + column) so the placeholder doesn't read as a perfect grid.
@@ -23,7 +22,6 @@ export function TableRowsSkeleton({
   columns: number;
   rows?: number;
 }) {
-  const hold = useSkeletonHold();
   return (
     <>
       {Array.from({ length: rows }, (_, row) => (
@@ -39,7 +37,6 @@ export function TableRowsSkeleton({
           key={row}
           aria-hidden
           className="animate-skeleton-reveal motion-reduce:animate-none"
-          style={hold}
         >
           {Array.from({ length: columns }, (_, column) => (
             <TableCell key={column}>

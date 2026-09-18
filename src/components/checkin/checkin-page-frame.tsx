@@ -333,8 +333,7 @@ export function CheckInPageFrame({
               // Same geometry as `CertificationSummary`, down to the `SLOT` and the
               // `NEGATIVE_GUTTER` that hangs the image back out of the section's
               // indent: a placeholder that sits where its row will not is a list that
-              // jumps left and resizes the moment the fetch lands, and `loading.tsx`
-              // renders exactly this as the route fallback.
+              // jumps left and resizes the moment the fetch lands.
               <div aria-hidden className="space-y-4">
                 {[0, 1].map((row) => (
                   <div key={row} className={cn("flex gap-4", NEGATIVE_GUTTER)}>

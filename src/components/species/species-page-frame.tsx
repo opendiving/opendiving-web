@@ -11,7 +11,6 @@ import { CountBadge } from "@/components/ui/count-badge";
 import { Input } from "@/components/ui/input";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useSkeletonHold } from "@/hooks/useSkeletonHold";
 
 export interface SpeciesPageFrameProps {
   isLoading: boolean;
@@ -48,11 +47,9 @@ export const SPECIES_PER_PAGE = 24;
 // border is a real one and would otherwise paint instantly - a grid of empty
 // ruled boxes is the exact flash the delay exists to prevent.
 function LifeListCardSkeleton() {
-  const hold = useSkeletonHold();
   return (
     <div
       className="rounded-lg border bg-card overflow-hidden animate-skeleton-reveal motion-reduce:animate-none"
-      style={hold}
       aria-hidden
     >
       <Skeleton className="h-36 w-full rounded-none" />

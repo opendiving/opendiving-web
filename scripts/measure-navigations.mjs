@@ -60,16 +60,16 @@
 //                         carrying `next-router-prefetch` or `next-router-segment-prefetch`
 //
 // The two change columns are both here because they diverge, and the divergence is the
-// point. A route fallback is inserted at the click and held at `opacity: 0`, so the DOM
-// mutates immediately while nothing is *seen* for the length of the hold - a mutation
-// timestamp is not a moment anything was visible, and a change that moved only the first
-// column changed nothing a diver sees.
+// point. A frame's placeholders take their space at once and are held at `opacity: 0` for
+// 150 ms, so the DOM mutates while nothing is *seen* - a mutation timestamp is not a
+// moment anything was visible, and a change that moved only the first column changed
+// nothing a diver sees.
 //
-// What these numbers exist to check is the *order*, and it now differs by row. Where the
-// destination is behind a loading boundary the screen changes at the click, before the
-// round trip ends. Where it is not - a pager step, or a Back the router answers from its
-// own cache - the round trip still comes first, which is the "nothing happens" phase the
-// boundaries removed everywhere else. Each navigation below says which it is.
+// What these numbers exist to check is the *order*, and it differs by row. Where the
+// source page prefetched the destination, the router draws it from the App Shell it
+// already holds and the destination's own first render - its frame - reaches the screen
+// at the click, before the round trip ends. Where it did not, nothing can paint until the
+// response arrives. Each navigation below says which it is.
 //
 // Origin is a capture-phase `click` listener on `document`, so it is the click itself and
 // not the navigation the click eventually causes. The one navigation with no click - Back
@@ -81,10 +81,10 @@
 // The first visit to a destination at a given latency also pays for its JS chunks, and the
 // browser keeps them for the rest of the run. So `LATENCIES=0,100` is not the same
 // measurement as `LATENCIES=100`: the 0 ms pass warms those chunks, and without it the
-// boundary rows read about one round trip late. Compare two builds the same way round.
+// prefetched rows read about one round trip late. Compare two builds the same way round.
 //
 // `REDUCED_MOTION=1` runs the whole walk in a browser asking for reduced motion, where
-// every skeleton carries `motion-reduce:animate-none` and so has no hold at all: the
+// every skeleton carries `motion-reduce:animate-none` and so has no delay at all: the
 // destination's frame paints at the click with its grey already visible. That is accepted
 // behaviour rather than a defect, and the run asserts it so a later change cannot alter it
 // in silence. The acceptance rules below invert for it.
@@ -159,28 +159,19 @@ if (latencies.some((value) => !Number.isFinite(value) || value < 0)) {
 
 const REDUCED_MOTION = process.env.REDUCED_MOTION === "1";
 
-// The route fallback's hold, counted from the click - `src/lib/route-hold.ts`. Repeated
-// here because the script is asked to fail a reveal that beats it, and a browser is the
-// only thing that can read the app's own constant.
-const ROUTE_FALLBACK_HOLD_MS = 330;
-
-// Up to this latency a diver sees no grey at all, behind a boundary or without one - which
-// is what the boundaries are calibrated not to change.
+// Up to this latency a diver sees no grey at all, because the destination's data beats
+// the placeholders' delay - which is what the frames are calibrated not to change.
 const NO_GREY_UP_TO_MS = 100;
 
-// `tailwind.config.mts`'s flat fallback for `var(--skeleton-delay, 150ms)`, which governs
-// wherever no route hold was opened: every in-place load, and - under the flags - a
-// destination the router draws from a shell it already holds. Which of the two is in force
-// is read off the placeholder rather than assumed, because it is not a property of the
-// build.
-const IN_PLACE_SKELETON_DELAY_MS = 150;
+// The `skeleton-in` delay in `tailwind.config.mts`, counted from each placeholder's own
+// insertion. One figure, because there is one renderer of a frame: the page itself.
+const SKELETON_DELAY_MS = 150;
 
-// How long after the click a fallback still counts as having painted *at* it. A frame
-// drawn from what the browser is already holding lands in a frame or two; measured, the
-// boundaries here mutate `<main>` within 40 ms of the click at every latency, most of
-// them inside 20 - `/dives/new` is the slow one and pays about 25 ms more under the
-// flags than without them. Generous enough for a busy machine, and an order of magnitude
-// under the round trip it is there to beat.
+// How long after the click a frame still counts as having painted *at* it. A page drawn
+// from an App Shell the browser is already holding lands in a frame or two; measured, the
+// destinations here mutate `<main>` within 45 ms of the click at every latency, most of
+// them inside 25 - `/dives/new` is the slow one. Generous enough for a busy machine, and
+// an order of magnitude under the round trip it is there to beat.
 const FRAME_BUDGET_MS = 60;
 
 const RUNS = Number(process.env.RUNS ?? 1);
@@ -197,18 +188,19 @@ if (!Number.isInteger(RUNS) || RUNS < 1) {
 // opening a URL.
 //
 // The first three are the ones the timing story is told about. The fourth and fifth are
-// where a per-route loading fallback paints a *different* frame from the one the source
-// page drew. The sixth is the form page whose whole wait is its own RSC response, and so
-// the one that decides how long the hold can be. The last is Back, which is the case a
-// kept-mounted route would change and which no click can express.
+// where the destination's frame is a *different* shape from the one the source page drew.
+// The sixth is the form page whose whole wait is its own RSC response. The last is Back,
+// which is the case a kept-mounted route would change and which no click can express.
 //
-// `boundary` says whether the destination is behind a loading boundary that is *new* for
-// this navigation, which is what decides the order the row is held to.
+// `drawsFrame` says whether the destination mounts a frame this navigation did not
+// already have on screen, which is what decides the order the row is held to. A pager
+// step keeps the dive page mounted and Back is answered from the router's own cache, so
+// neither draws one.
 const NAVIGATIONS = [
   {
     id: "dives-gear",
     label: "Dives → Gear",
-    boundary: true,
+    drawsFrame: true,
     from: () => "/dives",
     target: (page) =>
       page.locator("header").getByRole("link", { name: "Gear", exact: true }),
@@ -216,7 +208,7 @@ const NAVIGATIONS = [
   {
     id: "dives-dive",
     label: "Dives → dive detail",
-    boundary: true,
+    drawsFrame: true,
     from: () => "/dives",
     target: (page) => diveLink(page),
   },
@@ -225,21 +217,21 @@ const NAVIGATIONS = [
     label: "Dive → neighbouring dive (pager)",
     // The `(detail)` slot is the same key for every dive, so nothing new mounts and the
     // dive on screen holds - which is the invariant the pager depends on.
-    boundary: false,
+    drawsFrame: false,
     from: (subjects) => subjects.dive,
     target: (page) => pagerStep(page),
   },
   {
     id: "dashboard-dive",
     label: "Dashboard → dive detail",
-    boundary: true,
+    drawsFrame: true,
     from: () => "/dashboard",
     target: (page) => diveLink(page),
   },
   {
     id: "dive-edit",
     label: "Dive detail → its edit page",
-    boundary: true,
+    drawsFrame: true,
     from: (subjects) => subjects.dive,
     target: (page) =>
       page.locator("main").getByRole("link", { name: "Edit", exact: true }),
@@ -249,8 +241,8 @@ const NAVIGATIONS = [
     label: "Dives → log a new dive",
     // The one destination with no data wait of its own: it draws its form as soon as the
     // auth check has settled, so its "data" is the RSC response and it is the shortest
-    // window the hold has to clear. Measured for that reason rather than for its traffic.
-    boundary: true,
+    // window the delay has to clear. Measured for that reason rather than for its traffic.
+    drawsFrame: true,
     from: () => "/dives",
     target: (page) =>
       page.locator("main").getByRole("link", { name: "Log new dive" }),
@@ -258,9 +250,9 @@ const NAVIGATIONS = [
   {
     id: "dives-back",
     label: `Back to /dives from a dive (${BACK_ROWS} rows loaded)`,
-    // The list is in the router's client cache, so nothing suspends and no fallback is
-    // rendered - the boundary the forward navigation used is not new on the way back.
-    boundary: false,
+    // The list is in the router's client cache, so the rows are already on screen and
+    // there is no pre-data state to draw on the way back.
+    drawsFrame: false,
     back: true,
     // Not a URL: the whole point of this row is a list that has been scrolled, and a
     // history entry that remembers it. So it walks in, and resets the prefetch tally on
@@ -479,8 +471,8 @@ function watchTraffic(page) {
     reset: () => {
       requests = [];
     },
-    // Where the click falls in the sequence. Taken while the page is quiet, so there is
-    // nothing in flight for the boundary to cut through.
+    // Where the click falls in the sequence. Taken while the page is quiet, so nothing
+    // already in flight is counted as the navigation's own.
     mark: () => requests.length,
     stop: () => {
       page.off("request", onRequest);
@@ -501,10 +493,9 @@ function watchTraffic(page) {
           .map((entry) => entry.url),
       );
       // Whether the destination's route was among them is the variable that decides
-      // whether a fallback can paint at all: a route the browser holds no shell for has
-      // no client reference for its loading component, so the router has nothing to draw
-      // until the response names one. Compared by route rather than by pathname - see
-      // `routeOf` - because one shell serves every URL under a route.
+      // whether anything can paint at the click: a route the browser holds no App Shell
+      // for cannot be rendered until the response arrives. Compared by route rather than
+      // by pathname - see `routeOf` - because one shell serves every URL under a route.
       const navigationRoutes = new Set(
         [...navigationUrls].map((url) => routeOf(new URL(url).pathname)),
       );
@@ -539,17 +530,11 @@ const arm = (page) =>
       firstGrey: null,
       lastGrey: null,
       greyBreak: null,
-      // Whether a route fallback was ever in the document at all, at any opacity. Under
-      // the flags a warm route can commit no fallback, and "no grey" then means the real
-      // page arrived rather than that a hold hid one - two outcomes the grey column alone
-      // cannot tell apart.
-      fallbackRendered: false,
-      // The `--skeleton-delay` the first placeholder actually mounted with, in
-      // milliseconds, or null where the variable is unset and `tailwind.config.mts`'s
-      // flat in-place default governs instead. Read rather than assumed: which of the
-      // two delays is in force is the thing a reveal has to be judged against, and it is
-      // not a constant of the build.
-      skeletonDelay: null,
+      // Whether any placeholder was in the document at all, at any opacity. A
+      // destination can have nothing to wait for - `/dives/new` draws its real form -
+      // and "no grey" then means the page arrived rather than that the delay hid
+      // something, which is two outcomes the grey column alone cannot tell apart.
+      placeholdersRendered: false,
     };
     window.__navigationMark = mark;
 
@@ -572,15 +557,15 @@ const arm = (page) =>
       mark.lastDom = now;
     }).observe(main, { childList: true, subtree: true, characterData: true });
 
-    // The *visible* half, which a MutationObserver cannot answer: a fallback is inserted
-    // at the click and held at `opacity: 0`, so the frame it is seen on is a question
+    // The *visible* half, which a MutationObserver cannot answer: a placeholder takes its
+    // space at once and is held at `opacity: 0`, so the frame it is seen on is a question
     // about computed style rather than about the tree. Sampled per animation frame,
     // because that is the granularity a diver has.
     //
     // The same loop answers continuity. The placeholder count is allowed to fall when the
-    // data replaces the placeholders, and not otherwise: a hold that restarted on the
-    // Suspense swap would blank bars that were already on screen while the same number of
-    // them was still in the document, which is `greyBreak`.
+    // data replaces the placeholders, and not otherwise: a delay that restarted partway
+    // through would blank bars that were already on screen while the same number of them
+    // was still in the document, which is `greyBreak`.
     const SKELETONS = ".animate-skeleton, .animate-skeleton-reveal";
     let previous = null;
     let frames = 0;
@@ -593,15 +578,7 @@ const arm = (page) =>
         if (Number(getComputedStyle(node).opacity) > 0) visible++;
       }
       const now = performance.now();
-      if (present.length > 0) {
-        mark.fallbackRendered = true;
-        if (mark.skeletonDelay === null) {
-          const declared = getComputedStyle(present[0])
-            .getPropertyValue("--skeleton-delay")
-            .trim();
-          mark.skeletonDelay = declared ? Number.parseFloat(declared) : null;
-        }
-      }
+      if (present.length > 0) mark.placeholdersRendered = true;
       if (visible > 0) {
         if (mark.firstGrey === null) mark.firstGrey = now;
         mark.lastGrey = now;
@@ -732,8 +709,7 @@ async function measure(page, navigation, subjects) {
           last: mark.lastDom,
           grey: mark.firstGrey,
           greyBreak: mark.greyBreak,
-          fallbackRendered: mark.fallbackRendered,
-          skeletonDelay: mark.skeletonDelay,
+          placeholdersRendered: mark.placeholdersRendered,
         };
       },
       [...navigationUrls],
@@ -751,8 +727,7 @@ async function measure(page, navigation, subjects) {
       prefetchCount,
       prefetchBytes,
       destinationPrefetched,
-      fallbackRendered: timings.fallbackRendered,
-      skeletonDelay: timings.skeletonDelay,
+      placeholdersRendered: timings.placeholdersRendered,
     };
   } finally {
     traffic.stop();
@@ -784,39 +759,36 @@ function table(rows) {
 
 // The acceptance test, asked of the figures rather than of a reader.
 //
-// **Where the destination is behind a new loading boundary and the source page prefetched
-// it, its frame paints at the click** - within `FRAME_BUDGET_MS`, which is what "from
-// what the browser already has" means in milliseconds. That is the inversion these
-// boundaries exist to make, and it is stated as a budget rather than as "before the round
-// trip ends" so it says the same thing at every latency: on localhost with no emulation
-// the round trip is five milliseconds, which no paint can beat and which proves nothing.
+// **Where the source page prefetched the destination, the destination's frame paints at
+// the click** - within `FRAME_BUDGET_MS`, which is what "from what the browser already
+// has" means in milliseconds. The router draws the route from the App Shell it is holding
+// and the page renders its own pre-data frame there and then; nothing suspends, so no
+// Suspense fallback is committed and React's fallback-reveal throttle is never armed. It
+// is stated as a budget rather than as "before the round trip ends" so it says the same
+// thing at every latency: on localhost with no emulation the round trip is five
+// milliseconds, which no paint can beat and which proves nothing.
 //
 // **Where the destination was *not* prefetched, nothing can paint**, and that is a note
 // rather than a failure. `<Link>` prefetches what is in the viewport, so a link below the
 // fold - the dashboard's Recent Dives card at this window size - is first asked for at
-// the click, and until the response names a loading component the router has none to
-// draw. Scrolling to the card first, which is what a diver does before pressing it, puts
-// the row back on the budget. `partialPrefetching` does not lift this: it changes what a
+// the click, and the browser holds no shell to draw from until the response arrives.
+// Scrolling to the card first, which is what a diver does before pressing it, puts the
+// row back on the budget. `partialPrefetching` does not lift this: it changes what a
 // prefetch contains, not when one happens, and an offscreen `<Link>` still makes none.
 //
-// **Where there is no new boundary** - a pager step, a Back the router answers from its
-// own cache - the old direction stands and is checked as such, so a boundary appearing
-// where none belongs fails the run rather than passing it quietly.
+// **Where the navigation draws no frame** - a pager step, which keeps the dive page
+// mounted, and a Back the router answers from its own cache - the round trip still comes
+// first where there is one at all, and no placeholder may be seen: a frame appearing
+// where none belongs fails the run rather than passing it quietly. That second half is
+// what makes these two rows a live control rather than a row nothing is asked of, since
+// both are usually answered with no round trip to order against.
 //
-// **And the hold is checked in pixels.** No row may show grey before the delay its
-// placeholders actually mounted with has elapsed, at any latency; and up to
-// `NO_GREY_UP_TO_MS`, whose own comment says why, no row may show grey at all - which is
-// the property this app has without any of these boundaries, and the one the calibration
-// is there to keep. A run against a build of `main` is how that premise is confirmed
-// rather than assumed: the column is measured from computed style and needs nothing from
-// this branch to report.
-//
-// The delay is read off the placeholder rather than taken from `ROUTE_FALLBACK_HOLD_MS`,
-// because the two disagree. A route hold is opened by the fallback's own render, and a
-// destination the router draws from a shell it already holds does not open one: the
-// placeholders mount with the variable unset and the in-place default governs. The run
-// notes every row where that happened, so a reveal moving from 330 ms to 150 ms is
-// visible as a change in mechanism rather than absorbed as a passing number.
+// **And the delay is checked in pixels.** No row may show grey before
+// `SKELETON_DELAY_MS`, at any latency; and up to `NO_GREY_UP_TO_MS`, whose own comment
+// says why, no row may show grey at all - which is the property this app has when the
+// data beats the delay, and the one the figure is there to keep. A run against a build of
+// `main` is how that premise is confirmed rather than assumed: the column is measured
+// from computed style and needs nothing from this branch to report.
 //
 // A row with no round trip is a note and not a failure - Back can be answered entirely
 // from the router's client cache, and a navigation that needs no server is the outcome
@@ -824,18 +796,18 @@ function table(rows) {
 // screen never changed is a failure, because that is the instrument and not the app.
 //
 // Under `REDUCED_MOTION=1` the grey rules invert: `motion-reduce:animate-none` drops the
-// hold along with the animation, so a boundary's frame is seen at the click, grey and
-// all. That is accepted behaviour, and asserting it is what keeps a later change from
-// altering it in silence.
+// delay along with the animation, so the frame is seen at the click, grey and all. That
+// is accepted behaviour, and asserting it is what keeps a later change from altering it
+// in silence.
 //
-// It is asserted only of a navigation that actually committed a fallback. Under the flags
-// a warm route can render itself without one - `/dives/new` does - and then there is no
-// hold to see through and no grey to expect; the run says so and moves on. Without that
-// distinction the assertion reads a route that got faster as a route that broke.
+// It is asserted only of a navigation whose destination actually draws placeholders.
+// `/dives/new` renders its real form as soon as the auth check settles and has none, so
+// there is no grey to expect; the run says so and moves on. Without that distinction the
+// assertion reads a page with nothing to wait for as a page that broke.
 function checkAcceptance(rows) {
   const failures = [];
   const notes = [];
-  for (const { label, latency, boundary, runs } of rows) {
+  for (const { label, latency, drawsFrame, runs } of rows) {
     runs.forEach((run, index) => {
       const at = `${label} at +${latency} ms${runs.length > 1 ? ` (run ${index + 1})` : ""}`;
 
@@ -848,36 +820,43 @@ function checkAcceptance(rows) {
         notes.push(`${at}: no RSC round trip - answered from the client cache`);
       }
 
-      if (boundary && !run.destinationPrefetched) {
+      if (drawsFrame && !run.destinationPrefetched) {
         notes.push(
-          `${at}: the destination was not prefetched before the click, so the router had no fallback to draw - the screen changed at ${run.dom} ms`,
+          `${at}: the destination was not prefetched before the click, so the router held no shell to draw from - the screen changed at ${run.dom} ms`,
         );
         if (run.rsc !== null && run.rsc > run.dom) {
           failures.push(
-            `${at}: the screen changed at ${run.dom} ms without a prefetched fallback, before the round trip ended at ${run.rsc} ms`,
+            `${at}: the screen changed at ${run.dom} ms without a prefetched shell, before the round trip ended at ${run.rsc} ms`,
           );
         }
-      } else if (boundary && run.dom > FRAME_BUDGET_MS) {
+      } else if (drawsFrame && run.dom > FRAME_BUDGET_MS) {
         failures.push(
-          `${at}: the screen changed at ${run.dom} ms, past the ${FRAME_BUDGET_MS} ms budget - the prefetched boundary drew nothing at the click`,
+          `${at}: the screen changed at ${run.dom} ms, past the ${FRAME_BUDGET_MS} ms budget - the prefetched destination drew nothing at the click`,
         );
-      } else if (!boundary && run.rsc !== null && run.rsc > run.dom) {
-        failures.push(
-          `${at}: the screen changed at ${run.dom} ms, before the round trip ended at ${run.rsc} ms - this navigation is behind no new boundary`,
-        );
+      } else if (!drawsFrame) {
+        if (run.rsc !== null && run.rsc > run.dom) {
+          failures.push(
+            `${at}: the screen changed at ${run.dom} ms, before the round trip ended at ${run.rsc} ms - this navigation draws no frame`,
+          );
+        }
+        if (run.placeholdersRendered) {
+          failures.push(
+            `${at}: placeholders were drawn, where this navigation keeps what is on screen`,
+          );
+        }
       }
 
       if (run.greyBreak !== null) {
         failures.push(
-          `${at}: placeholders that were visible went blank at ${run.greyBreak} ms with the same number still on the page - the hold restarted`,
+          `${at}: placeholders that were visible went blank at ${run.greyBreak} ms with the same number still on the page - the delay restarted`,
         );
       }
 
       if (REDUCED_MOTION) {
-        if (!boundary || !run.destinationPrefetched) return;
-        if (!run.fallbackRendered) {
+        if (!drawsFrame || !run.destinationPrefetched) return;
+        if (!run.placeholdersRendered) {
           notes.push(
-            `${at}: no fallback committed, so there is no hold to see through - the destination rendered itself`,
+            `${at}: the destination draws no placeholders, so there is no delay to see through`,
           );
         } else if (run.grey === null) {
           failures.push(
@@ -891,20 +870,9 @@ function checkAcceptance(rows) {
         return;
       }
 
-      // The delay actually in force, not the one this navigation was designed around.
-      // A route hold is opened by the fallback's own render, and a destination the router
-      // draws from a shell it already holds never opens one - so the reveal is judged
-      // against the in-place default there, and the run says which applied.
-      const hold = run.skeletonDelay ?? IN_PLACE_SKELETON_DELAY_MS;
-      if (boundary && run.fallbackRendered && run.skeletonDelay === null) {
-        notes.push(
-          `${at}: no route hold was opened, so the reveal is the in-place ${IN_PLACE_SKELETON_DELAY_MS} ms rather than ${ROUTE_FALLBACK_HOLD_MS} ms`,
-        );
-      }
-
-      if (run.grey !== null && run.grey < hold) {
+      if (run.grey !== null && run.grey < SKELETON_DELAY_MS) {
         failures.push(
-          `${at}: grey at ${run.grey} ms, inside the ${hold} ms delay it mounted with`,
+          `${at}: grey at ${run.grey} ms, inside the ${SKELETON_DELAY_MS} ms delay every placeholder mounts with`,
         );
       } else if (run.grey !== null && latency <= NO_GREY_UP_TO_MS) {
         failures.push(
@@ -959,7 +927,7 @@ for (const latency of latencies) {
     }
     rows.push({
       label: navigation.label,
-      boundary: Boolean(navigation.boundary),
+      drawsFrame: Boolean(navigation.drawsFrame),
       latency,
       runs,
     });
@@ -986,6 +954,6 @@ if (failures.length) {
 }
 console.log(
   REDUCED_MOTION
-    ? "Every boundary's frame paints at the click with its placeholders already visible, and no placeholder blinks."
-    : "Every boundary draws its frame before the round trip ends, no placeholder is seen inside the hold, and none blinks.",
+    ? "Every prefetched destination's frame paints at the click with its placeholders already visible, and no placeholder blinks."
+    : "Every prefetched destination draws its frame before the round trip ends, no placeholder is seen inside the delay, and none blinks.",
 );
