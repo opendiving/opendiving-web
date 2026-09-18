@@ -1,4 +1,4 @@
-import { test as base, type Page, type Route } from "@playwright/test";
+import { expect, test as base, type Page, type Route } from "@playwright/test";
 
 import type { User } from "@/lib/api/auth";
 import type {
@@ -186,7 +186,7 @@ export class ApiMock {
   #gate: Gate | null = null;
   /** Pathnames the router asked the server to prefetch, without the `/api/v1` ones. */
   readonly prefetched = new Set<string>();
-  /** Paths this mock answered 404 to — a fixture gap reads as one of these. */
+  /** Calls this mock had no fixture for; teardown fails the test on any. */
   readonly unmatched: string[] = [];
 
   /** Hold every matching `/api/v1` path until `release()`. Replaces any previous hold. */
@@ -260,6 +260,13 @@ export const test = base.extend<{ api: ApiMock }>({
     // and a route handler still awaiting it would keep the context from closing
     // tidily. Teardown always opens the gate.
     mock.release();
+    // A call with no fixture is answered 404, and a page turns that into an
+    // error state rather than into a failure — so a gap here would quietly
+    // weaken whatever the test went on to assert. Fail on it instead.
+    expect(
+      mock.unmatched,
+      "the app called an endpoint this mock has no fixture for",
+    ).toEqual([]);
   },
 });
 
