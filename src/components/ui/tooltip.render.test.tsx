@@ -1,8 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -10,6 +17,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { IconTooltip } from "@/components/ui/tooltip";
+
+// Focus only opens a hint when a keyboard is what moved it, so a test that
+// wants the open has to say how the focus got there - `fireEvent.focus` alone
+// does not say it, and the flag it reads is the page's rather than one
+// render's.
+const arriveByKeyboard = (element: HTMLElement) => {
+  fireEvent.keyDown(document, { key: "Tab" });
+  fireEvent.focus(element);
+};
 
 // The whole point of the component is that one string is both halves of the
 // label: what a screen reader announces and what a sighted pointer user reads.
@@ -39,7 +55,7 @@ describe("IconTooltip", () => {
 
     // Radix opens on focus with no delay, and on `pointermove` only after one -
     // focus is the same open, reached without leaning on timers.
-    fireEvent.focus(button);
+    arriveByKeyboard(button);
 
     const tooltip = await screen.findByRole("tooltip");
     expect(tooltip).toHaveTextContent("Delete dive #12");
@@ -49,7 +65,7 @@ describe("IconTooltip", () => {
     renderOne();
     const button = screen.getByRole("button", { name: "Delete dive #12" });
 
-    fireEvent.focus(button);
+    arriveByKeyboard(button);
     await screen.findByRole("tooltip");
 
     // Radix's default wiring points `aria-describedby` at the open tooltip,
@@ -97,7 +113,7 @@ describe("a hint inside a dialog", () => {
     );
 
     const close = screen.getByRole("button", { name: "Close" });
-    fireEvent.focus(close);
+    arriveByKeyboard(close);
     await screen.findByRole("tooltip");
 
     fireEvent.keyDown(document, { key: "Escape" });
@@ -154,10 +170,42 @@ describe("a hint on a control that focuses itself on pointer-down", () => {
       name: "Reorder Blue Hole, position 1 of 3",
     });
 
-    fireEvent.focus(handle);
+    arriveByKeyboard(handle);
 
     expect(await screen.findByRole("tooltip")).toHaveTextContent(
       "Reorder Blue Hole, position 1 of 3",
     );
+  });
+});
+
+// A menu hands focus back to its trigger when it closes, and that focus is
+// nobody's request for a hint: dismissing the account menu with the pointer
+// somewhere else entirely raised a chip under the avatar and left it there.
+describe("a hint on a menu trigger", () => {
+  const Menu = () => (
+    <DropdownMenu>
+      <IconTooltip label="Account menu">
+        <DropdownMenuTrigger asChild>
+          <button type="button">
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </DropdownMenuTrigger>
+      </IconTooltip>
+      <DropdownMenuContent>
+        <DropdownMenuItem>Sign out</DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
+  it("stays shut when the menu closes onto it", async () => {
+    const user = userEvent.setup();
+    render(<Menu />);
+    const trigger = screen.getByRole("button", { name: "Account menu" });
+
+    await user.click(trigger);
+    await user.click(await screen.findByRole("menuitem", { name: "Sign out" }));
+
+    await waitFor(() => expect(trigger).toHaveFocus());
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
   });
 });

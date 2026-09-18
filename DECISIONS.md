@@ -5783,9 +5783,12 @@ fail WCAG's Label in Name.
 `aria-describedby={undefined}` on `Tooltip.Trigger` stops the name announcing twice. It renders no
 element of its own (`asChild`).
 
-A press is not a hint request: `hooks/useDragSort.ts` focuses drag handles from `onPointerDown` and
-focus opens instantly, so `IconTooltip` sets Radix's pressed flag in the capture phase and vetoes
-the focus open with `preventDefault`; refusing from `onOpenChange` leaves the delay window open.
+Focus opens a hint instantly, which only a keyboard arrival wants: `hooks/useDragSort.ts` focuses
+drag handles from `onPointerDown`, and a menu trigger is handed focus back when its menu closes.
+`IconTooltip` tracks which input the page last saw - `pointerdown` and `keydown`, both in the
+capture phase - and vetoes the focus open with `preventDefault` when it was a pointer. That is
+`:focus-visible`, which jsdom does not implement; refusing from `onOpenChange` leaves the delay
+window open.
 
 Inside a dialog the first Escape closes the hint, not the dialog: the tooltip is the higher
 dismissable layer, and the APG gives Escape to it. `tooltip.render.test.tsx` pins both.

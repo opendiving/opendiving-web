@@ -43,6 +43,36 @@ TooltipContent.displayName = TooltipPrimitive.Content.displayName;
 // already-labelled controls rather than ones that carry the only words.
 const HINT_DELAY_MS = 300;
 
+// Radix opens a hint on focus with no delay, which is what a keyboard arrival
+// wants and what a pointer-driven focus never does. Two controls hand focus
+// around without anyone pointing at them: the multiselect drag handles focus
+// themselves from their own `onPointerDown` (`hooks/useDragSort.ts`, because the
+// `preventDefault` there suppresses the browser's own focus and the Up/Down keys
+// need it), and a menu trigger is handed focus back when its menu closes - so
+// grabbing a handle left a chip hanging over the rows for the whole drag, and
+// dismissing the account menu raised one under an avatar the pointer had left.
+// `:focus-visible` is the browser's answer to the same question and jsdom
+// implements none of it, so the modality is tracked here: one flag for the page,
+// because what somebody last reached for has one answer.
+let pointerWasTheLastInput = false;
+
+if (typeof document !== "undefined") {
+  document.addEventListener(
+    "pointerdown",
+    () => {
+      pointerWasTheLastInput = true;
+    },
+    true,
+  );
+  document.addEventListener(
+    "keydown",
+    () => {
+      pointerWasTheLastInput = false;
+    },
+    true,
+  );
+}
+
 /**
  * Gives an icon-only control both its accessible name and a hover hint that
  * says the same thing.
@@ -63,12 +93,6 @@ function IconTooltip({
   side?: React.ComponentPropsWithoutRef<typeof TooltipContent>["side"];
   align?: React.ComponentPropsWithoutRef<typeof TooltipContent>["align"];
 }) {
-  // Set in the capture phase, so it is already true by the time a child's own
-  // `onPointerDown` runs. Radix keeps the same flag and sets it in *its*
-  // `onPointerDown`, which `Slot` runs after the child's - too late for the
-  // child below.
-  const isPressed = React.useRef(false);
-
   return (
     // The provider lives here rather than once in the root layout so the
     // component is self-sufficient: Radix throws without one, and a shared
@@ -86,35 +110,18 @@ function IconTooltip({
         <TooltipTrigger
           asChild
           aria-label={label}
-          // A press is not a request for a hint. The drag handles in the
-          // multiselects focus themselves from their own `onPointerDown`
-          // (`hooks/useDragSort.ts`, because the `preventDefault` there
-          // suppresses the browser's own focus and the Up/Down keys need it),
-          // and focus opens a hint with no delay - so grabbing a handle raised
-          // the chip and left it hanging over the rows for the whole drag,
-          // anchored where the handle used to be. Radix guards this case itself
-          // and cannot win here: `Slot` runs the child's handler first, so the
-          // focus lands while Radix's own flag is still false.
-          //
-          // Vetoing Radix's focus handler is what works. `composeEventHandlers`
-          // skips its own half when the first has called `preventDefault`, and
-          // a focus event is not cancelable, so this suppresses the open and
-          // nothing else. Refusing the open from `onOpenChange` instead is what
-          // it looks like it should be, and is wrong: Radix tells the provider
-          // a tooltip opened before it asks us, so the veto leaves the delay
-          // window open and the next hover opens instantly.
+          // Vetoing Radix's own focus handler is what works, and it has to be
+          // this half: `Slot` runs the child's handler before Radix's, so
+          // Radix's identical guard is still reading a false flag. Its
+          // `composeEventHandlers` skips its own half when the first has called
+          // `preventDefault`, and a focus event is not cancelable, so this
+          // suppresses the open and nothing else. Refusing the open from
+          // `onOpenChange` instead is what it looks like it should be, and is
+          // wrong: Radix tells the provider a tooltip opened before it asks us,
+          // so the veto leaves the delay window open and the next hover opens
+          // instantly.
           onFocus={(event) => {
-            if (isPressed.current) event.preventDefault();
-          }}
-          onPointerDownCapture={() => {
-            isPressed.current = true;
-            document.addEventListener(
-              "pointerup",
-              () => {
-                isPressed.current = false;
-              },
-              { once: true },
-            );
+            if (pointerWasTheLastInput) event.preventDefault();
           }}
           // Radix points `aria-describedby` at the content whenever the tooltip
           // is open, which for a hint that repeats the name verbatim makes a
