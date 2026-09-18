@@ -24,8 +24,12 @@ import { formatPurgeDay, parsePurgeDate } from "@/lib/purge-date";
 // auth-flow screens: the header's user menu belongs to a session that no longer
 // exists, and the only way on from here is out.
 export default function GoodbyePage() {
-  // `useSearchParams` needs a Suspense boundary above it or the build fails on this
-  // page's prerender - same shape as `/signin` and `/auth/verify`.
+  // Not what makes the build pass. `useSearchParams()` is a context read on the
+  // client and suspends only while a *static* shell is being validated at build
+  // time, which `export const instant = false` on the root layout switches off for
+  // every route in this app - see `DECISIONS.md`, "The click paints the
+  // destination's frame, and the page is what paints it". Nothing under this
+  // boundary suspends, so this fallback never commits.
   return (
     <Suspense fallback={<PageSpinner />}>
       <GoodbyeWithPurgeDate />
