@@ -1,4 +1,5 @@
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { Activity } from "react";
+import { act, render, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useInfiniteResource } from "./useInfiniteResource";
 import type { PaginatedResponse } from "@/lib/api/client";
@@ -506,5 +507,320 @@ describe("useInfiniteResource", () => {
     rerender();
 
     expect(fetchFn).toHaveBeenCalledOnce();
+  });
+  // A route the diver left is kept mounted, and its effects are re-created on the
+  // way back. The list must not snap to page one - that is the diver's place in it -
+  // and must not stay as it was either, since a dive logged or deleted elsewhere
+  // never reached it. So the rows already on screen are re-read in place.
+  describe("on the way back to a kept-mounted route", () => {
+    function hosted(fetchFn: ReturnType<typeof ledger>["fetchFn"]) {
+      function List() {
+        useInfiniteResource(fetchFn, { keyOf });
+        return null;
+      }
+      return function Host({ hidden }: { hidden: boolean }) {
+        return (
+          <Activity mode={hidden ? "hidden" : "visible"}>
+            <List />
+          </Activity>
+        );
+      };
+    }
+
+    it("re-reads the rows it holds instead of reloading page one", async () => {
+      const { fetchFn } = ledger();
+      const Host = hosted(fetchFn);
+
+      const { rerender } = render(<Host hidden={false} />);
+      await waitFor(() => expect(fetchFn).toHaveBeenCalledOnce());
+      expect(fetchFn).toHaveBeenCalledWith(1, 10);
+
+      await act(async () => {
+        rerender(<Host hidden />);
+      });
+      await act(async () => {
+        rerender(<Host hidden={false} />);
+      });
+
+      // One re-read of the loaded span rather than a second page-one load. Both ask
+      // for page one here, so the count is what separates them - the span is asserted
+      // on its own below, where a deeper list makes the size legible.
+      await waitFor(() => expect(fetchFn).toHaveBeenCalledTimes(2));
+      expect(fetchFn).toHaveBeenLastCalledWith(1, 10);
+      expect(fetchFn).not.toHaveBeenCalledTimes(3);
+    });
+
+    it("comes back holding the rows it had, not the overshoot of the last batch", async () => {
+      // Only a list deeper than `REVALIDATE_PAGE_SIZE` can exercise the trim: below
+      // that the batch already asks for exactly the span on screen. 150 rows takes two
+      // requests of 100, so the second overshoots by 50 and the trim is what drops it.
+      const { fetchFn } = ledger(300, 150);
+      let latest: ReturnType<typeof useInfiniteResource<Row>> | null = null;
+
+      function List() {
+        latest = useInfiniteResource(fetchFn, { keyOf, itemsPerPage: 150 });
+        return null;
+      }
+      function Host({ hidden }: { hidden: boolean }) {
+        return (
+          <Activity mode={hidden ? "hidden" : "visible"}>
+            <List />
+          </Activity>
+        );
+      }
+
+      const { rerender } = render(<Host hidden={false} />);
+      await waitFor(() => expect(latest!.items).toHaveLength(150));
+
+      await act(async () => {
+        rerender(<Host hidden />);
+      });
+      await act(async () => {
+        rerender(<Host hidden={false} />);
+      });
+
+      // Two re-read requests of 100 beside the first load of 150.
+      await waitFor(() => expect(fetchFn).toHaveBeenCalledTimes(3));
+      expect(fetchFn).toHaveBeenLastCalledWith(2, 100);
+      expect(latest!.items).toHaveLength(150);
+    });
+
+    // The re-read must not hold `isFetching`: `loadMore` returns on that flag without
+    // moving any state, and the load-more trigger only re-fires on a state change, so
+    // a page asked for during the re-read would be dropped with nothing to retry it.
+    it("lets a `loadMore` during the re-read through", async () => {
+      let releaseReRead: (value: PaginatedResponse<Row>) => void = () => {};
+      let calls = 0;
+      const fetchFn = vi.fn(
+        async (
+          pageNumber: number,
+          size: number,
+        ): Promise<PaginatedResponse<Row>> => {
+          calls += 1;
+          // The first call is the mount's own load; the second is the re-read the
+          // return starts, and holding it open is what puts `loadMore` inside its
+          // window. They ask for the same span, so order is what tells them apart.
+          if (calls === 2) {
+            return new Promise((resolve) => {
+              releaseReRead = resolve;
+            });
+          }
+          return page(pageNumber, { total: 30, perPage: Math.min(size, 10) });
+        },
+      );
+      let latest: ReturnType<typeof useInfiniteResource<Row>> | null = null;
+
+      function List() {
+        latest = useInfiniteResource(fetchFn, { keyOf });
+        return null;
+      }
+      function Host({ hidden }: { hidden: boolean }) {
+        return (
+          <Activity mode={hidden ? "hidden" : "visible"}>
+            <List />
+          </Activity>
+        );
+      }
+
+      const { rerender } = render(<Host hidden={false} />);
+      await waitFor(() => expect(latest!.isLoading).toBe(false));
+
+      // The return starts a re-read that has not answered yet.
+      await act(async () => {
+        rerender(<Host hidden />);
+      });
+      await act(async () => {
+        rerender(<Host hidden={false} />);
+      });
+      await waitFor(() => expect(fetchFn).toHaveBeenCalledTimes(2));
+
+      const during = fetchFn.mock.calls.length;
+      act(() => {
+        void latest!.loadMore();
+      });
+
+      // Asked for, not swallowed.
+      await waitFor(() =>
+        expect(fetchFn.mock.calls.length).toBeGreaterThan(during),
+      );
+
+      await act(async () => {
+        releaseReRead(page(1, { total: 30, perPage: 10 }));
+      });
+    });
+
+    // `load` declines to clear the spinners for a superseded request, on the
+    // understanding that whoever superseded it will. The re-read has to hold up its
+    // end, or a `loadMore` caught in flight by the return strands the list.
+    it("leaves `loadMore` usable when the return superseded one in flight", async () => {
+      let hangingResolve: (value: PaginatedResponse<Row>) => void = () => {};
+      const fetchFn = vi.fn(
+        async (
+          pageNumber: number,
+          size: number,
+        ): Promise<PaginatedResponse<Row>> => {
+          if (size === 10 && pageNumber === 2) {
+            return new Promise((resolve) => {
+              hangingResolve = resolve;
+            });
+          }
+          return page(pageNumber, { total: 30, perPage: Math.min(size, 30) });
+        },
+      );
+      let latest: ReturnType<typeof useInfiniteResource<Row>> | null = null;
+
+      function List() {
+        latest = useInfiniteResource(fetchFn, { keyOf });
+        return null;
+      }
+      function Host({ hidden }: { hidden: boolean }) {
+        return (
+          <Activity mode={hidden ? "hidden" : "visible"}>
+            <List />
+          </Activity>
+        );
+      }
+
+      const { rerender } = render(<Host hidden={false} />);
+      await waitFor(() => expect(latest!.isLoading).toBe(false));
+
+      // A next page starts and does not finish before the diver leaves.
+      act(() => {
+        void latest!.loadMore();
+      });
+      await act(async () => {
+        rerender(<Host hidden />);
+      });
+      await act(async () => {
+        rerender(<Host hidden={false} />);
+      });
+      await act(async () => {
+        hangingResolve(page(2, { total: 30, perPage: 10 }));
+      });
+
+      const afterReturn = fetchFn.mock.calls.length;
+      act(() => {
+        void latest!.loadMore();
+      });
+
+      await waitFor(() =>
+        expect(fetchFn.mock.calls.length).toBeGreaterThan(afterReturn),
+      );
+    });
+
+    it("keeps the rows it had, with what changed while it was away", async () => {
+      const { fetchFn, dropServerSide } = ledger(30, 10);
+      let latest: ReturnType<typeof useInfiniteResource<Row>> | null = null;
+
+      function List() {
+        latest = useInfiniteResource(fetchFn, { keyOf });
+        return null;
+      }
+      function Host({ hidden }: { hidden: boolean }) {
+        return (
+          <Activity mode={hidden ? "hidden" : "visible"}>
+            <List />
+          </Activity>
+        );
+      }
+
+      const { rerender } = render(<Host hidden={false} />);
+      await waitFor(() => expect(latest!.items).toHaveLength(10));
+      expect(latest!.items.map(keyOf)).toContain("r3");
+
+      // Someone else removes a row this list is holding.
+      dropServerSide("r3");
+
+      await act(async () => {
+        rerender(<Host hidden />);
+      });
+      await act(async () => {
+        rerender(<Host hidden={false} />);
+      });
+
+      // Same number of rows, and the one that went is gone - the row that slid up
+      // into its place is what proves the contents were re-read rather than kept.
+      await waitFor(() => expect(latest!.items.map(keyOf)).not.toContain("r3"));
+      expect(latest!.items).toHaveLength(10);
+      expect(latest!.items.map(keyOf)).toContain("r10");
+    });
+
+    // An empty list is also what the first load looks like before it commits, so the
+    // return must not read one as the other and ask for page one twice. StrictMode's
+    // second pass is the same shape. The retry that empty list *does* earn once the
+    // load has failed is the test below.
+    it("does not re-ask for page one while the first load is still in flight", async () => {
+      let release: (value: PaginatedResponse<Row>) => void = () => {};
+      const fetchFn = vi.fn(
+        async (): Promise<PaginatedResponse<Row>> =>
+          new Promise((resolve) => {
+            release = resolve;
+          }),
+      );
+      let latest: ReturnType<typeof useInfiniteResource<Row>> | null = null;
+
+      function List() {
+        latest = useInfiniteResource(fetchFn, { keyOf });
+        return null;
+      }
+      function Host({ hidden }: { hidden: boolean }) {
+        return (
+          <Activity mode={hidden ? "hidden" : "visible"}>
+            <List />
+          </Activity>
+        );
+      }
+
+      const { rerender } = render(<Host hidden={false} />);
+      await waitFor(() => expect(fetchFn).toHaveBeenCalledOnce());
+
+      // Away and back before the first page has answered.
+      await act(async () => {
+        rerender(<Host hidden />);
+      });
+      await act(async () => {
+        rerender(<Host hidden={false} />);
+      });
+
+      expect(fetchFn).toHaveBeenCalledOnce();
+
+      await act(async () => {
+        release(page(1, { total: 30, perPage: 10 }));
+      });
+      await waitFor(() => expect(latest!.items).toHaveLength(10));
+    });
+
+    // The retry a diver used to get by leaving and coming back. The route no longer
+    // remounts, and an empty list draws no "Try again", so the return has to be it.
+    it("retries a first load that failed", async () => {
+      const { fetchFn } = ledger(30, 10);
+      fetchFn.mockRejectedValueOnce(new Error("the API is down"));
+      let latest: ReturnType<typeof useInfiniteResource<Row>> | null = null;
+
+      function List() {
+        latest = useInfiniteResource(fetchFn, { keyOf });
+        return null;
+      }
+      function Host({ hidden }: { hidden: boolean }) {
+        return (
+          <Activity mode={hidden ? "hidden" : "visible"}>
+            <List />
+          </Activity>
+        );
+      }
+
+      const { rerender } = render(<Host hidden={false} />);
+      await waitFor(() => expect(latest!.loadFailed).toBe(true));
+      expect(latest!.items).toHaveLength(0);
+
+      await act(async () => {
+        rerender(<Host hidden />);
+      });
+      await act(async () => {
+        rerender(<Host hidden={false} />);
+      });
+
+      await waitFor(() => expect(latest!.items).toHaveLength(10));
+    });
   });
 });

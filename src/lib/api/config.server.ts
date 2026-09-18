@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { resolveApiInternalUrl } from "@/lib/api-proxy";
 
 import type { InstanceConfig } from "./config";
@@ -38,6 +39,12 @@ const REQUEST_TIMEOUT_MS = 2_000;
  * operator restarts the API.
  */
 export async function projectOperatesThisInstance(): Promise<boolean> {
+  // Stops the prerender here. Under `cacheComponents` a build renders every route once,
+  // and this fetch is rejected mid-prerender - caught below and read as "not
+  // project-operated", which is the answer that would be baked in. The pages that call
+  // this cannot say it with `dynamic = "force-dynamic"`, which the flag rejects.
+  await connection();
+
   // An explicit controller rather than `AbortSignal.timeout`: this module is exercised
   // under jsdom, whose `AbortSignal` is not Node's, and a missing static would throw
   // before the fetch and be swallowed as "the API is down".
@@ -46,9 +53,9 @@ export async function projectOperatesThisInstance(): Promise<boolean> {
 
   try {
     const response = await fetch(`${resolveApiInternalUrl()}/api/v1/config`, {
-      // Never a build-time or a cached read. The pages calling this are `force-dynamic`
-      // for the same reason: the published image is built in CI with no API to ask, so
-      // anything prerendered would bake in the failed answer for the life of the image.
+      // Never a build-time or a cached read, for the reason `connection()` above gives:
+      // the published image is built in CI with no API to ask, so anything prerendered
+      // would bake in the failed answer for the life of the image.
       cache: "no-store",
       headers: { accept: "application/json" },
       signal: controller.signal,

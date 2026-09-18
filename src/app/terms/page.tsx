@@ -31,11 +31,6 @@ export const metadata: Metadata = {
 // anything — the headings separate the roles, which is the only separation the
 // liability shield needs, and it holds whether one party or two are standing in
 // them. See "The terms page has two speakers" in DECISIONS.md.
-//
-// Belt and braces, for the reason `privacy/page.tsx` gives at the same export: nothing
-// here is prerendered today, and a prerender would bake a failed read of the API into
-// the published image.
-export const dynamic = "force-dynamic";
 
 export default async function TermsPage() {
   // The one thing on this page that depends on the instance, and it adds a block

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useDialogApiError } from "@/hooks/useDialogApiError";
 import { FormApiError } from "@/components/ui/form-api-error";
 import { useForm, useWatch } from "react-hook-form";
@@ -46,6 +46,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Button } from "@/components/ui/button";
+import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 
 // The agency picker's "no agency" option. The form itself holds `null` for that
 // state and the API is sent `null`; this string exists only because a Radix
@@ -109,7 +110,7 @@ export function CourseDialog({
   // Reload the form whenever the dialog opens, so it shows the course being
   // edited rather than whatever the previous invocation left behind.
   const { reset } = form;
-  useEffect(() => {
+  useEffectOnChange(() => {
     if (!open) return;
     reset({
       name: course?.name ?? "",

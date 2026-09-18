@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useDialogApiError } from "@/hooks/useDialogApiError";
 import { FormApiError } from "@/components/ui/form-api-error";
 import { useForm, useWatch } from "react-hook-form";
@@ -49,6 +49,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
+import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 
 // The certification fields a linked course can fill in, in the shape the form
 // holds them: `null` and absent both arrive as `""`, which is this form's "not
@@ -163,7 +164,7 @@ export function CertificationDialog({
   // Reload the form whenever the dialog opens, so it shows the certification
   // being edited rather than whatever the previous invocation left behind.
   const { reset, setValue, getValues } = form;
-  useEffect(() => {
+  useEffectOnChange(() => {
     if (!open) return;
     // A create dialog opened from a course page starts on that course, with its
     // fields already filled in. An edit dialog ignores it outright: its values

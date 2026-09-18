@@ -335,6 +335,21 @@ in the container.
 
 _Rejected:_ a hash-based or SRI CSP.
 
+## A route stays mounted, so an effect that loads on mount guards on what it loaded for
+
+With Cache Components on, the router keeps the route a diver left mounted under
+`<Activity mode="hidden">`, whose effects are destroyed on hide and re-created on show. State
+survives, so an effect that loads on mount runs again and overwrites it: a list scrolled six pages
+deep snaps to page one, a half-typed form repaints, an open dialog blanks.
+
+`hooks/useEffectOnChange.ts` holds the dependencies an effect last ran for and skips a re-run
+against the same ones. The data hooks compare the same way but re-read rather than skip, since a
+dive logged elsewhere has already made what they hold wrong: `useResource` without its loading state
+or its `onLoaded` re-seed, `useInfiniteResource` over the rows on screen rather than page one, and
+reloading where it holds none, the return being the only retry a failed first load gets.
+
+_Rejected:_ counting mounts, which cannot tell a return from a genuine change.
+
 ## Unified auth flow: one passwordless `AuthForm`, no password-based `/signin`/`/signup` pair
 
 There is one auth form, `components/auth/AuthForm.tsx` (email, "Continue", "Continue with Google"),
@@ -2791,6 +2806,23 @@ carries what is left of it across the Suspense swap, so the reveal happens once.
 _Rejected:_ a boundary beside `[id]`, which mounts afresh on every pager step; and one fixed
 fallback at `dives/`, which paints a table on the way into a dive.
 
+## A Suspense fallback committed at the click holds the page behind it for ~300ms
+
+React holds a boundary's content commit until roughly 300ms after its fallback committed, so a
+`loading.tsx` drawn at the click cannot be replaced before then.
+
+What it costs depends on whether the page can fetch before committing. With Cache Components on, a
+prefetched route mounts from the shell the browser already holds, so its own request goes out at the
+click and the held commit costs nothing: the data is there when the content is. Without that, the
+page cannot mount until the response arrives and the throttle elapses, and a held commit is a held
+request — about 190ms at +100ms on every navigation whose boundary is prefetched.
+
+`ROUTE_FALLBACK_HOLD_MS` is not the lever: it is an opacity delay, and at 0 the data figures do not
+move.
+
+_Rejected:_ patching the throttle out of the vendored `react-dom`, which recovers the figures and
+owns a fork of React.
+
 ## Loading skeletons: What renders for real, and what doesn't
 
 `DetailPageSkeleton` draws the real back button rather than a bar: where it goes is known before the
@@ -3399,19 +3431,18 @@ With the flag set, `app/robots.ts` answers `Disallow: /` and `src/proxy.ts` adds
 `X-Robots-Tag: noindex, nofollow` to every page. Doing only the first is the common mistake:
 `robots.txt` asks a crawler not to fetch, which is no promise not to list. A URL learned elsewhere
 can be indexed unfetched, and a page never fetched is one whose `noindex` is never seen, so the two
-directives cover disjoint cases. `robots.ts` needs `export const dynamic = "force-dynamic"`: Next
-prerenders a route handler that reads nothing request-scoped, which would resolve `WEB_NOINDEX` on
-the build machine and freeze the answer into the image, the trap `lib/runtime-config.ts` exists to
-avoid, arriving through a file convention. The default is allow: no `robots.txt` reads as no
-restriction.
+directives cover disjoint cases. `robots.ts` needs `await connection()`: Next prerenders a route
+handler that reads nothing request-scoped, which would resolve `WEB_NOINDEX` on the build machine
+and freeze the answer into the image, the trap `lib/runtime-config.ts` exists to avoid, arriving
+through a file convention. The default is allow: no `robots.txt` reads as no restriction.
 
 ## `/healthz` is shallow on purpose
 
 The container healthcheck in `Dockerfile` asks this route, which reports only that the process
 serves HTTP. It checks neither Postgres nor Redis: the web container talks to neither, and a slow
 database it never uses must not restart a container that renders fine; the API has its own readiness
-probe. `force-dynamic`, because a handler with no request-time API is prerendered and served from
-disk, and a health endpoint running none of the app's code is a strange thing to trust. The
+probe. `await connection()`, because a handler with no request-time API is prerendered and served
+from disk, and a health endpoint running none of the app's code is a strange thing to trust. The
 `src/proxy.ts` matcher excludes it, like `api/`: a policy about scripts and styles says nothing
 about two words of text, and it keeps a fresh nonce off a path hit every thirty seconds. The check
 is a `node -e` one-liner in exec form: `node:24-alpine` ships neither `curl` nor `wget`, and with no
@@ -5299,7 +5330,9 @@ URL, `/dives/[id]/edit` included, unchanged. A step dims the grid (`opacity-50`)
 `dives/(detail)/[id]/page.render.test.tsx` pins the dim, and no test reaches the step itself.
 Rejected as the fix for this: `cacheComponents` (app-wide, and it keeps the route left, not the one
 reached) and refocusing on mount (the skeleton would still flash). The flag as a thing in its own
-right is "Cache Components asks for one opt-out, and leaves the nonce CSP alone".
+right is "Cache Components asks for one opt-out, and leaves the nonce CSP alone", and it is on for
+the reasons given there; this hoist still owns the fetch, because keeping the route left is not
+keeping the one a step reaches.
 
 The trip and course lookups outlive the dive, so each is stored with the uuid it resolved and read
 only while the dive names it — keyed on `trip_uuid`, not the dive, so a step within a trip keeps the
@@ -5560,6 +5593,10 @@ Timezones are a separate axis: run `TZ=UTC`, `TZ=Pacific/Kiritimati` and `TZ=Pac
 Offsets span −12 to +14, so no instant is the same calendar day everywhere. An asserted day is
 derived from the fixture through `localDay()` in `test/local-day.ts`, which spells out
 `toLocaleDateString("en-US", { year, month: "short", day })` rather than reusing `formatDateTime`.
+
+A bare date going the other way - typed into a field the app validates - comes from
+`isoDaysFromNow()` in the same file, built from local getters. The zone list alone does not reach
+that one: it needs an hour past local midnight and before UTC's, so pin the clock as well.
 
 ## A cylinder may record a mix with no vessel, and three fields are `number | null`
 
@@ -5999,8 +6036,9 @@ byte-identical because the block renders whole or not at all.
 
 The switch is `project_operated` from `GET /config`, nothing else. `lib/api/config.server.ts` asks
 the API at `API_INTERNAL_URL`; every outcome but `true` is `false`, with no error path, so a
-self-hosted copy with its API down renders unchanged. Both pages set `dynamic = "force-dynamic"`: a
-CI-built image has no API to ask and would bake the failed answer in.
+self-hosted copy with its API down renders unchanged. That module awaits `connection()` before the
+fetch, which covers both pages at once: a CI-built image has no API to ask and would bake the failed
+answer in.
 
 `lib/operator.ts` holds name, email and jurisdiction; no postal address, deliberately. The beta-end
 export window is 90 days and §7's deletion ceiling is 30: different things, so do not harmonise
