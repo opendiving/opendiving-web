@@ -488,9 +488,9 @@ async function pickFrontImage() {
   );
 }
 
-// The images used to upload the moment they were picked, from a dialog of their
-// own. Cancel could not undo that, and a card being created had no uuid to upload
-// against - which is why adding one was a second step after the save.
+// Picking an image sends nothing: a diver who cancels leaves the stored cards as
+// they found them, and a card being created has no uuid to upload against until
+// the save resolves.
 describe("card images ride on the form's own save", () => {
   it("sends nothing while the diver is still picking", async () => {
     open({ certification: EXISTING });

@@ -24,17 +24,14 @@ export function certificationFileVersion(
 // The shape every card is drawn in, and cropped to on the way in.
 //
 // Measured from a current PADI e-card (1013x638). A diver's cards arrive in at
-// least four shapes - old PADI 1005x660, RAID 802x519, TDI/SDI 330x207 - and the
-// app used to letterbox each of them into whatever box it had, so the same card
-// carried horizontal bars in one list and vertical ones in another. One ratio
-// everywhere is what makes a row of cards read as a row of cards; it is the
+// least four shapes - old PADI 1005x660, RAID 802x519, TDI/SDI 330x207 - so one
+// ratio everywhere is what makes a row of cards read as a row of cards. It is the
 // current PADI one rather than the ID-1 credit card's 85.6/53.98 because that is
-// what agencies actually issue, and the difference between the two is under a
-// quarter of a percent anyway.
+// what agencies actually issue, and the two differ by under a quarter of a percent.
 //
-// New uploads are cropped to it, so their stored bytes *are* this shape. Cards
-// stored before that are drawn `object-cover`, which trims at most 4% off the
-// tallest of them - the old PADI design, which carries nothing near its edges.
+// New uploads are cropped to it, so their stored bytes *are* this shape. Anything
+// stored uncropped is drawn `object-cover`, which trims at most 4% off the tallest
+// of them - the old PADI design, which carries nothing near its edges.
 export const CERTIFICATION_CARD_ASPECT = 1013 / 638;
 
 // The same ratio as a Tailwind class. Spelled out because Tailwind only generates

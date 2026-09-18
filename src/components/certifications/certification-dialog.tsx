@@ -116,12 +116,9 @@ interface CertificationDialogProps {
 // Create/edit dialog for a certification: its details and its card images, in one
 // form and one Save.
 //
-// The images used to be a second dialog reached from a second button, because the
-// API takes them on `PUT /certification/{uuid}/file/{side}` and a card being
-// created has no uuid yet. That is still true, and is now handled by ordering
-// rather than by a separate step - the details save first, then
-// `applyCertificationCardEdits` sends whatever the diver picked or struck off. The
-// visible half of the change is that Cancel now leaves the stored cards alone.
+// The details save first, because `PUT /certification/{uuid}/file/{side}` needs a
+// uuid a card being created has only once `createCertification` resolves;
+// `applyCertificationCardEdits` then sends what the diver picked or struck off.
 //
 // A dialog rather than `new`/`edit` pages, following the gear precedent: these
 // are a handful of fields typed off a card the diver is holding, not a

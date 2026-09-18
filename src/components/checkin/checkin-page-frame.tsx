@@ -53,9 +53,8 @@ const MUTED = `text-sm text-muted-foreground ${INK}`;
 // width plus the gap, for the blocks that have no image to put in it.
 //
 // Width only, deliberately: a card's height comes from the one aspect ratio the app
-// draws every c-card in (`CertificationCardFrame`). Setting a height here as well is
-// what used to leave the same card letterboxed on this sheet and cropped on the
-// certifications list.
+// draws every c-card in (`CertificationCardFrame`), and a height set here would
+// fight it.
 //
 // Each carries a `print:` twin of its `sm:` value. Tailwind's `sm:` is a min-width
 // query, and under print media the width is the paper's - so a narrow sheet, or a

@@ -881,25 +881,20 @@ way, and only the API knows which sides landed.
 
 ## Every c-card is drawn in one shape, and cropped to it on the way in
 
-`CERTIFICATION_CARD_ASPECT` is 1013/638, measured off a current PADI e-card. A diver's cards arrive
-in at least four shapes (old PADI 1005×660, RAID 802×519, TDI/SDI 330×207), and each mount used to
-pick its own box — `aspect-[85.6/53.98]` in the dialogs, a fixed `h-12 w-20` in the list, a width
-_and_ a height on the check-in sheet — so `object-contain` letterboxed the same card horizontally in
-one place and vertically in another. `CertificationCardFrame` is now the only box, and
-`ImageCropDialog` crops new uploads to the same ratio, so stored bytes need no fitting at all. Cards
-stored before that are `object-cover`: the worst case trims 4% off the old PADI design, which
-carries nothing near its edges.
+`CERTIFICATION_CARD_ASPECT` is 1013/638, measured off a current PADI e-card. Cards arrive in at
+least four shapes (old PADI 1005×660, RAID 802×519, TDI/SDI 330×207), so one ratio everywhere is
+what makes a row of them read as cards. `CertificationCardFrame` is the only box drawing one and
+`ImageCropDialog` crops uploads to that ratio, so stored bytes need no fitting; anything stored
+uncropped is `object-cover`, trimming at most 4% off the old PADI design, which carries nothing near
+its edges.
 
-`self-start` on the frame is load-bearing. `aspect-ratio` applies only where height is auto, and a
-flex or grid item stretches to its line — which is exactly how the check-in sheet drew each card at
-the height of the details column beside it. `CERTIFICATION_CARD_ASPECT_CLASS` is spelled out because
-Tailwind generates only the classes it finds written down; `certification.test.ts` holds it and the
-number in step.
+`self-start` is load-bearing: `aspect-ratio` applies only where height is auto, and a flex or grid
+item stretches to its line. `CERTIFICATION_CARD_ASPECT_CLASS` is spelled out because Tailwind
+generates only the classes it finds written down; `certification.test.ts` holds it and the number in
+step.
 
-Cropped bytes are WebP, not the avatar's PNG: this API sniffs the type and stores what it is given,
-so the encoding chosen in the browser is the one the card lives in. A browser with no WebP encoder
-falls back to PNG on its own — the canvas spec says so — which is why `croppedFilename` names the
-file from `Blob.type` rather than from what was asked for.
+Cropped bytes are WebP: this API stores what it is given. A browser with no WebP encoder falls back
+to PNG on its own, so `croppedFilename` reads `Blob.type`.
 
 ## The dive form holds the imported file in page state and uploads it after saving
 
@@ -4000,9 +3995,7 @@ paint.
 ## The crop dialog's three traps
 
 Never JPEG: `canvas.toBlob("image/jpeg")` composites transparency onto black. The avatar exports PNG
-because `PUT /user/avatar` re-encodes to WebP anyway; a certification card exports WebP because its
-endpoint does not. `ImageCropDialog` is shared by both, differing only in `aspect`, `cropShape` and
-its wording.
+because `PUT /user/avatar` re-encodes anyway; a card exports WebP because its endpoint does not.
 
 `react-easy-crop` injects its own `<style>` by default, which the nonce-based production CSP drops
 (the dev CSP allows `'unsafe-inline'`). `disableAutomaticStylesInjection` plus
@@ -4032,8 +4025,8 @@ API sniffs bytes regardless, so this is not a security surface.
 `react-easy-crop` has no failure callback: `CropperProps` carry `onMediaLoaded` and `onCropComplete`
 and nothing for the other outcome, so a source that never decodes — a Files-app HEIC walking past
 `accept` — leaves the dialog with an empty frame, `croppedAreaPixels` never arriving and Save
-disabled forever. `AvatarCard.handlePick` and `CertificationCardFiles.handleFileSelected` therefore
-decode the object URL themselves and mount `ImageCropDialog` only on success, toasting otherwise;
+disabled forever. `AvatarCard.handlePick` and `CertificationCardFiles.handlePick` therefore decode
+the object URL themselves and mount `ImageCropDialog` only on success, toasting otherwise;
 `mediaProps={{ onError }}` would catch it a frame later with a half-open dialog to unwind. The
 second decode inside `cropToBlob` hits the browser cache.
 

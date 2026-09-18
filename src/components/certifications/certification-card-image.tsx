@@ -38,8 +38,7 @@ interface CertificationCardFrameProps {
  *
  * Exported because a card is not always a picture - a stored PDF, a slot the diver
  * has not filled, a fetch that failed and the check-in sheet's own PDF note all
- * occupy the same footprint, and a frame each of them re-declared is how the app
- * ended up drawing one card in four different shapes.
+ * occupy the same footprint, and one box is what keeps them to one size.
  */
 export function CertificationCardFrame({
   compact = false,
@@ -53,9 +52,8 @@ export function CertificationCardFrame({
       className={cn(
         // `self-start` is load-bearing, not tidiness. `aspect-ratio` only applies
         // to a box whose height is auto, and a flex or grid item stretches to its
-        // line by default - so the check-in sheet, where a card sits beside a
-        // column of text, drew every card at the height of its own details block.
-        // Inert wherever the frame is an ordinary block child.
+        // line by default - which is what the check-in sheet puts a card in, beside
+        // a column of text. Inert wherever the frame is an ordinary block child.
         "flex items-center justify-center self-start overflow-hidden rounded-lg border bg-muted",
         CERTIFICATION_CARD_ASPECT_CLASS,
         compact ? "w-20" : "w-full",
@@ -191,9 +189,8 @@ export function CertificationCardImage({
         src={url}
         alt={`${side} of certification card`}
         // `cover`, not `contain`: a card cropped on upload fills this exactly, and
-        // one stored before cropping existed loses a few percent of its edge
-        // rather than sitting in a letterbox. Bars around a card are what made the
-        // same picture look like a different size on every page it appeared on.
+        // an uncropped one loses a few percent of its edge rather than sitting in a
+        // letterbox, which makes the same picture look a different size per page.
         className="h-full w-full object-cover"
       />
     </CertificationCardFrame>
