@@ -116,7 +116,7 @@ describe("the course's certifications card", () => {
     ).toEqual(["Add the first certification"]);
   });
 
-  it("shows a certification created from here without a reload, then asks for the card photos", async () => {
+  it("shows a certification created from here without a reload", async () => {
     render_();
     await screen.findByText("No certifications from this course yet");
 
@@ -133,7 +133,6 @@ describe("the course's certifications card", () => {
       ),
     );
 
-    // The card the diver is about to photograph is the one they just entered.
     getCertifications.mockImplementation(async () => page([CREATED]));
     await userEvent.type(
       screen.getByLabelText("Certification *"),
@@ -152,16 +151,8 @@ describe("the course's certifications card", () => {
       agency: "tdi",
     });
 
-    // Photographing the card is the point of the feature, so the upload step
-    // follows the save rather than waiting to be found. Asserted before the
-    // list because it is a modal: Radix marks everything behind it
-    // `aria-hidden`, which is exactly what a role query refuses to see.
-    expect(
-      await screen.findByText(`Card images — ${CREATED.name}`),
-    ).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Close" }));
-
-    // In the card's own list, with no browser reload.
+    // In the card's own list, with no browser reload. The card photos were part
+    // of that same form, so there is no second dialog to close first.
     expect(
       await screen.findByRole("button", { name: /Advanced Nitrox/ }),
     ).toBeInTheDocument();

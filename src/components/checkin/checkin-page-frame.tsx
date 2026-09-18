@@ -25,7 +25,10 @@ import {
   INSURANCE_FIELDS,
 } from "@/lib/validations/user-fields";
 import { cn } from "@/lib/utils";
-import { CertificationCardImage } from "@/components/certifications/certification-card-image";
+import {
+  CertificationCardFrame,
+  CertificationCardImage,
+} from "@/components/certifications/certification-card-image";
 import { CertificationDialog } from "@/components/certifications/certification-dialog";
 import { DivingFiguresDialog } from "@/components/checkin/diving-figures-dialog";
 import { UserFieldsDialog } from "@/components/user/user-fields-dialog";
@@ -48,6 +51,11 @@ const MUTED = `text-sm text-muted-foreground ${INK}`;
 // column - held even where there is no picture, so the text below a diver's avatar
 // and the text beside a c-card start at the same place - and `GUTTER` is the same
 // width plus the gap, for the blocks that have no image to put in it.
+//
+// Width only, deliberately: a card's height comes from the one aspect ratio the app
+// draws every c-card in (`CertificationCardFrame`). Setting a height here as well is
+// what used to leave the same card letterboxed on this sheet and cropped on the
+// certifications list.
 //
 // Each carries a `print:` twin of its `sm:` value. Tailwind's `sm:` is a min-width
 // query, and under print media the width is the paper's - so a narrow sheet, or a
@@ -575,16 +583,16 @@ function CertificationSummary({
     // last certification is cut in half, which is the one thing a desk cannot read.
     <div className={cn("flex gap-4 break-inside-avoid", NEGATIVE_GUTTER)}>
       {isPdf ? (
-        <div
+        <CertificationCardFrame
           className={cn(
             SLOT,
-            "flex h-12 flex-col items-center justify-center gap-1 rounded-md border bg-muted px-1 text-center text-muted-foreground sm:h-16 print:h-16 print:bg-white",
+            "flex-col gap-1 px-1 text-center text-muted-foreground print:bg-white",
             INK,
           )}
         >
           <FileText className="h-4 w-4" aria-hidden />
           <span className="text-[10px] leading-tight">card on file as PDF</span>
-        </div>
+        </CertificationCardFrame>
       ) : (
         front && (
           <CertificationCardImage
@@ -592,7 +600,7 @@ function CertificationSummary({
             side="front"
             file={front}
             compact
-            className={cn(SLOT, "h-12 sm:h-16 print:h-16")}
+            className={SLOT}
           />
         )
       )}

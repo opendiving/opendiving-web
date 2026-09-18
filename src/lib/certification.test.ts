@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  CERTIFICATION_CARD_ASPECT,
+  CERTIFICATION_CARD_ASPECT_CLASS,
   CERTIFICATION_EXPIRING_SOON_DAYS,
   certificationExpiryBadgeVariant,
   certificationExpiryLabel,
@@ -211,5 +213,22 @@ describe("expiry presentation", () => {
   it("reserves the loudest badge for an already-expired card", () => {
     expect(certificationExpiryBadgeVariant("expired")).toBe("destructive");
     expect(certificationExpiryBadgeVariant("expiring_soon")).toBe("coral");
+  });
+});
+
+// The number drives the cropper and the class drives every frame the app draws, so
+// the two disagreeing means a card is cropped to one shape and shown in another -
+// which is exactly the letterboxing this pair exists to remove, reintroduced where
+// nothing would look for it.
+describe("the card aspect ratio has one value in two spellings", () => {
+  it("writes the same ratio in the Tailwind class as in the number", () => {
+    const [, width, height] =
+      CERTIFICATION_CARD_ASPECT_CLASS.match(/^aspect-\[(\d+)\/(\d+)\]$/) ?? [];
+
+    expect(width).toBeDefined();
+    expect(Number(width) / Number(height)).toBeCloseTo(
+      CERTIFICATION_CARD_ASPECT,
+      10,
+    );
   });
 });

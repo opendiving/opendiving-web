@@ -159,6 +159,13 @@ export const AVATAR_ACCEPT = "image/jpeg,image/png,image/webp,image/gif";
 /** The API's own upload ceiling, mirrored so an oversize file fails before the round trip. */
 export const MAX_AVATAR_UPLOAD_SIZE = 10 * 1024 * 1024; // 10 MB
 
+/**
+ * The largest avatar the app ever sends. The API bounds what it stores to the same
+ * 512 px, so anything bigger would be uploaded only to be thrown away; the biggest
+ * mount is 80 px, so this is already x2 retina with room over.
+ */
+export const AVATAR_EXPORT_SIZE = 512;
+
 /** `PUT /user/avatar`'s body: the stored image's digest, which is also its version. */
 export interface AvatarUploadResult {
   sha256: string;

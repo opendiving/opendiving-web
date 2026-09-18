@@ -21,6 +21,33 @@ export function certificationFileVersion(
   return `${file.uuid}:${file.updated_at ?? ""}`;
 }
 
+// The shape every card is drawn in, and cropped to on the way in.
+//
+// Measured from a current PADI e-card (1013x638). A diver's cards arrive in at
+// least four shapes - old PADI 1005x660, RAID 802x519, TDI/SDI 330x207 - and the
+// app used to letterbox each of them into whatever box it had, so the same card
+// carried horizontal bars in one list and vertical ones in another. One ratio
+// everywhere is what makes a row of cards read as a row of cards; it is the
+// current PADI one rather than the ID-1 credit card's 85.6/53.98 because that is
+// what agencies actually issue, and the difference between the two is under a
+// quarter of a percent anyway.
+//
+// New uploads are cropped to it, so their stored bytes *are* this shape. Cards
+// stored before that are drawn `object-cover`, which trims at most 4% off the
+// tallest of them - the old PADI design, which carries nothing near its edges.
+export const CERTIFICATION_CARD_ASPECT = 1013 / 638;
+
+// The same ratio as a Tailwind class. Spelled out because Tailwind only generates
+// the classes it finds written down: `aspect-[${...}]` compiles to nothing.
+// `certification.test.ts` holds the two in step.
+export const CERTIFICATION_CARD_ASPECT_CLASS = "aspect-[1013/638]";
+
+// The widest a cropped card is exported at, which is about what an agency issues
+// and twice the biggest mount in the app. Unlike an avatar, the API stores these
+// bytes as they arrive - it sniffs the type and never re-encodes - so this is the
+// only thing bounding what a diver's card costs.
+export const CERTIFICATION_CARD_EXPORT_WIDTH = 1024;
+
 // How far ahead a certification counts as "expiring soon".
 //
 // Longer than gear's 30-day window on purpose: renewing a rescue or first-aid

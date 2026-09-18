@@ -14,10 +14,16 @@ import {
   certificationsAPI,
   Certification,
   CertificationAgency,
+  CertificationSide,
   CERTIFICATION_AGENCIES,
+  CERTIFICATION_SIDE_LABELS,
   DEFAULT_CERTIFICATION_AGENCY,
   certificationAgencyLabel,
 } from "@/lib/api/certifications";
+import {
+  applyCertificationCardEdits,
+  type CertificationCardEdits,
+} from "@/lib/certification-card-edits";
 import type { Course } from "@/lib/api/courses";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { dialogFormSubmit } from "@/lib/dialog-form";
@@ -49,6 +55,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
+import { useToast } from "@/components/ui/use-toast";
+import { CertificationCardFiles } from "./certification-card-files";
 import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 
 // The certification fields a linked course can fill in, in the shape the form
@@ -105,9 +113,15 @@ interface CertificationDialogProps {
   onSaved: (certification: Certification) => void;
 }
 
-// Create/edit dialog for a certification's details. Card images are managed
-// separately (see `certification-card-files.tsx`) because they are uploaded
-// against a certification that already exists.
+// Create/edit dialog for a certification: its details and its card images, in one
+// form and one Save.
+//
+// The images used to be a second dialog reached from a second button, because the
+// API takes them on `PUT /certification/{uuid}/file/{side}` and a card being
+// created has no uuid yet. That is still true, and is now handled by ordering
+// rather than by a separate step - the details save first, then
+// `applyCertificationCardEdits` sends whatever the diver picked or struck off. The
+// visible half of the change is that Cancel now leaves the stored cards alone.
 //
 // A dialog rather than `new`/`edit` pages, following the gear precedent: these
 // are a handful of fields typed off a card the diver is holding, not a
@@ -119,8 +133,12 @@ export function CertificationDialog({
   initialCourse,
   onSaved,
 }: CertificationDialogProps) {
+  const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useDialogApiError(open);
+  // What saving will do to each side's stored image, collected but not sent - see
+  // `CertificationCardFiles`.
+  const [cardEdits, setCardEdits] = useState<CertificationCardEdits>({});
   const isEdit = !!certification;
 
   const form = useForm<CertificationInput>({
@@ -188,6 +206,9 @@ export function CertificationDialog({
       agency_other: from.agency ? from.agency_other : "",
     };
     autofilledRef.current = { ...opening };
+    // Reopening the dialog must not carry a previous invocation's picked image
+    // onto whichever card is being edited now.
+    setCardEdits({});
 
     reset({
       ...opening,
@@ -252,6 +273,47 @@ export function CertificationDialog({
     onOpenChange(next);
   };
 
+  // The card images, once the details are safely stored. This is the step the API
+  // shape forces: a card being created has no uuid until `createCertification`
+  // resolves, and `PUT .../file/{side}` needs one.
+  //
+  // A failed image does not fail the save. The details are already written, and
+  // making the diver fill the form in again to retry an upload costs more than the
+  // picture does - the dive form's attach step reached the same answer. Each
+  // failure gets its own toast naming the side.
+  //
+  // The returned certification is re-read whenever anything was sent, including
+  // after a partial failure: the embedded `files` metadata the list and the
+  // check-in sheet render from is stale either way, and only the API knows which
+  // sides actually landed.
+  const saveCardImages = async (
+    saved: Certification,
+  ): Promise<Certification> => {
+    if (Object.keys(cardEdits).length === 0) return saved;
+
+    const failures = await applyCertificationCardEdits(saved.uuid, cardEdits);
+    for (const { side, error } of failures) {
+      console.error(`Failed to save the ${side} card image:`, error);
+      toast({
+        title: `Saved, but the ${CERTIFICATION_SIDE_LABELS[
+          side as CertificationSide
+        ].toLowerCase()} image did not`,
+        description: getApiErrorMessage(error, "Try picking the image again."),
+        variant: "destructive",
+      });
+    }
+
+    try {
+      return await certificationsAPI.getCertification(saved.uuid);
+    } catch (error) {
+      // Non-fatal: the card itself is saved, and the list re-reads on its next
+      // load. Returning what we have keeps the row on screen rather than
+      // unwinding a save that succeeded.
+      console.error("Failed to re-read the saved certification:", error);
+      return saved;
+    }
+  };
+
   const onSubmit = async (data: CertificationInput) => {
     setApiError(null);
     try {
@@ -284,16 +346,15 @@ export function CertificationDialog({
         course_uuid: data.course_uuid ?? null,
       };
 
+      let saved: Certification;
       if (certification) {
         await certificationsAPI.updateCertification(certification.uuid, shared);
-        onSaved({ ...certification, ...shared });
+        saved = { ...certification, ...shared };
       } else {
-        const created = await certificationsAPI.createCertification({
-          ...shared,
-        });
-        onSaved(created);
+        saved = await certificationsAPI.createCertification({ ...shared });
       }
 
+      onSaved(await saveCardImages(saved));
       onOpenChange(false);
     } catch (error) {
       setApiError(
@@ -309,7 +370,10 @@ export function CertificationDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
+      {/* Wider than the default `max-w-lg`: the card slots below sit two to a row
+          from `sm:` up, and two credit-card shapes in a `lg` dialog are thumbnails
+          rather than a look at the picture being saved. */}
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>
             {isEdit ? "Edit Certification" : "New Certification"}
@@ -540,6 +604,19 @@ export function CertificationDialog({
                 </FormItem>
               )}
             />
+
+            {/* Last, and the only part of this form not typed off the card in
+                the diver's hand. A two-column block of pictures in the middle of
+                a field stack breaks the rhythm of filling one in. */}
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Card images</p>
+              <CertificationCardFiles
+                certification={certification}
+                edits={cardEdits}
+                onChange={setCardEdits}
+                disabled={isSubmitting}
+              />
+            </div>
 
             <FormApiError error={apiError} />
 

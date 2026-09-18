@@ -17,16 +17,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ListRowsSkeleton } from "@/components/ui/skeleton";
 import { CertificationDialog } from "@/components/certifications/certification-dialog";
-import { CertificationCardFiles } from "@/components/certifications/certification-card-files";
 import { CertificationViewDialog } from "@/components/certifications/certification-view-dialog";
 
 // How many of a course's cards to show. A course issues one or two in practice
@@ -69,10 +62,6 @@ export function CourseCertificationsCard({
   const [certifications, setCertifications] = useState<Certification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [viewing, setViewing] = useState<Certification | null>(null);
-  // The certification whose card images are being managed, if any.
-  const [managingFiles, setManagingFiles] = useState<Certification | null>(
-    null,
-  );
 
   const courseUuid = course.uuid;
 
@@ -114,18 +103,6 @@ export function CourseCertificationsCard({
     const data = await fetchCertifications();
     if (data) setCertifications(data);
   }, [fetchCertifications]);
-
-  // After a card image changes, the row's embedded file metadata is stale.
-  // Refetch and re-point the open dialog at the refreshed record, so the panel
-  // the diver is looking at updates rather than showing what it loaded with -
-  // the same handoff the certifications page makes.
-  const refreshAfterFileChange = useCallback(async () => {
-    if (!managingFiles) return;
-    setManagingFiles(
-      await certificationsAPI.getCertification(managingFiles.uuid),
-    );
-    await refresh();
-  }, [managingFiles, refresh]);
 
   return (
     <>
@@ -197,39 +174,15 @@ export function CourseCertificationsCard({
         open={isAdding}
         onOpenChange={onAddingChange}
         initialCourse={course}
-        onSaved={(saved) => {
-          refresh();
-          // A brand-new certification has no card images yet, and adding them is
-          // the whole point - so go straight on to the upload step rather than
-          // making the diver find the button, exactly as the certifications page
-          // does.
-          setManagingFiles(saved);
-        }}
+        // The card images were picked in that dialog too, so a refetch is the
+        // whole of what happens here now.
+        onSaved={() => refresh()}
       />
 
       <CertificationViewDialog
         certification={viewing}
         onOpenChange={(open) => !open && setViewing(null)}
       />
-
-      {managingFiles && (
-        <Dialog
-          open
-          onOpenChange={(open) => {
-            if (!open) setManagingFiles(null);
-          }}
-        >
-          <DialogContent className="sm:max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Card images — {managingFiles.name}</DialogTitle>
-            </DialogHeader>
-            <CertificationCardFiles
-              certification={managingFiles}
-              onChanged={refreshAfterFileChange}
-            />
-          </DialogContent>
-        </Dialog>
-      )}
     </>
   );
 }

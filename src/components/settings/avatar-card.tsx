@@ -5,13 +5,14 @@ import type { Area } from "react-easy-crop";
 import { Camera, Trash2 } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
-import { authAPI, AVATAR_ACCEPT, MAX_AVATAR_UPLOAD_SIZE } from "@/lib/api/auth";
-import { getApiErrorMessage } from "@/lib/api/error";
 import {
-  AvatarImageError,
-  cropToPngBlob,
-  decodeImage,
-} from "@/lib/avatar-crop";
+  authAPI,
+  AVATAR_ACCEPT,
+  AVATAR_EXPORT_SIZE,
+  MAX_AVATAR_UPLOAD_SIZE,
+} from "@/lib/api/auth";
+import { getApiErrorMessage } from "@/lib/api/error";
+import { cropToBlob, decodeImage, ImageCropError } from "@/lib/image-crop";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -22,7 +23,7 @@ import {
 } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { UserAvatar } from "@/components/ui/user-avatar";
-import { AvatarCropDialog } from "./avatar-crop-dialog";
+import { ImageCropDialog } from "@/components/ui/image-crop-dialog";
 
 /**
  * The diver's own picture: pick a photo, adjust the crop, save.
@@ -59,7 +60,7 @@ export function AvatarCard() {
       // response for `getApiErrorMessage` to read, which would swap it for the
       // fallback. Only the API's failures go through that.
       description:
-        err instanceof AvatarImageError
+        err instanceof ImageCropError
           ? err.message
           : getApiErrorMessage(err, fallback),
       variant: "destructive",
@@ -109,10 +110,13 @@ export function AvatarCard() {
 
     setIsSaving(true);
     try {
-      // PNG rather than JPEG: `toBlob("image/jpeg")` composites transparency onto
-      // black. The server re-encodes to WebP regardless, so lossless costs nothing
-      // but the upload.
-      const blob = await cropToPngBlob(pickedUrl, area);
+      // PNG rather than WebP, unlike a card image: `PUT /user/avatar` re-encodes
+      // to WebP itself, so lossless here costs nothing but the upload and spends
+      // no quality on a picture the server is about to compress anyway.
+      const blob = await cropToBlob(pickedUrl, area, {
+        maxWidth: AVATAR_EXPORT_SIZE,
+        type: "image/png",
+      });
       await authAPI.uploadAvatar(blob, "avatar.png");
       // Re-reading the user is what changes the header: `avatar_sha256` is the new
       // picture's version, and every `UserAvatar` fetches from a URL carrying it.
@@ -214,8 +218,14 @@ export function AvatarCard() {
       </CardContent>
 
       {pickedUrl && (
-        <AvatarCropDialog
+        <ImageCropDialog
           imageSrc={pickedUrl}
+          aspect={1}
+          cropShape="round"
+          title="Adjust your photo"
+          description="Drag to move, pinch or use the slider to zoom. Only the circle is saved."
+          saveLabel="Save photo"
+          savingLabel="Saving..."
           isSaving={isSaving}
           onCancel={closeDialog}
           onSave={handleSave}
