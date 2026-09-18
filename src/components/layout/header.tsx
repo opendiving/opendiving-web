@@ -316,6 +316,18 @@ export function Header() {
                       @{user.username}
                     </div>
                     <DropdownMenuSeparator />
+                    {/* First, and above Certifications, which it is mostly made
+                        of: this is the one row opened under time pressure, at a
+                        desk with somebody waiting, and the card list is a page a
+                        diver browses. Out of the main nav for the same reason the
+                        rest of this group is - it is not a destination on every
+                        visit. */}
+                    <DropdownMenuItem asChild>
+                      <Link href="/checkin" className="flex items-center">
+                        <ClipboardList className="mr-2 h-4 w-4" />
+                        Check-in
+                      </Link>
+                    </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                       <Link
                         href="/certifications"
@@ -323,15 +335,6 @@ export function Header() {
                       >
                         <BadgeCheck className="mr-2 h-4 w-4" />
                         Certifications
-                      </Link>
-                    </DropdownMenuItem>
-                    {/* Beside Certifications because it is mostly made of them,
-                        and out of the main nav because a diver opens it at a dive
-                        shop rather than on every visit. */}
-                    <DropdownMenuItem asChild>
-                      <Link href="/checkin" className="flex items-center">
-                        <ClipboardList className="mr-2 h-4 w-4" />
-                        Check-in
                       </Link>
                     </DropdownMenuItem>
                     {/* Beside Certifications rather than in the main nav: both

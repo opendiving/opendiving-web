@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { CheckInPageFrame } from "@/components/checkin/checkin-page-frame";
@@ -27,6 +27,12 @@ export default function CheckInPage() {
   // Keyed on the uuid rather than on `user`: the auth context replaces that object
   // whenever anything on the account is saved, and a re-fetch of the whole summary
   // on each of those would be three requests for a value none of them changed.
+  //
+  // A plain effect, not `useEffectOnChange`: this one starts requests and abandons
+  // them in its cleanup, so guarding on deps would cancel on hide and skip on show
+  // and the page would never load. Re-reading when a hidden route comes back is what
+  // the data hooks do deliberately - a dive logged elsewhere has already made these
+  // three figures stale.
   const userUuid = user?.uuid;
   useEffect(() => {
     if (!userUuid) return;
@@ -74,6 +80,21 @@ export default function CheckInPage() {
     return () => controller.abort();
   }, [userUuid, attempt]);
 
+  // After a card is edited from the summary itself. Only the list is re-read - the
+  // stats and the last dive cannot have moved - and the loading flag is left alone,
+  // so the cards already on screen stay put rather than flashing back to skeletons.
+  // A re-read rather than patching the saved card in place: the order is
+  // `GET /certifications`' (`certified_on` descending, nulls last), and an edited
+  // `certified_on` has to land where that puts it.
+  const refreshCertifications = useCallback(async () => {
+    try {
+      setCertifications(await fetchAllCertifications());
+    } catch (error) {
+      console.error("Failed to re-read the certifications:", error);
+      setLoadFailed(true);
+    }
+  }, []);
+
   if (isLoading) {
     return <PageSpinner />;
   }
@@ -89,6 +110,7 @@ export default function CheckInPage() {
       lastDiveAt={lastDiveAt}
       isLoading={isSummaryLoading}
       loadFailed={loadFailed}
+      onCertificationsChanged={refreshCertifications}
       onRetry={() => {
         setIsSummaryLoading(true);
         setLoadFailed(false);

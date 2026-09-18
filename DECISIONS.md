@@ -384,13 +384,12 @@ Figma's fallback `<path>` beside the `<foreignObject>` paints solid black over t
 
 ## Changing your account email is a request/confirm flow, not a plain field edit
 
-`lib/validations/settings.ts`'s `profileSchema` has no `email` field, matching the API's
-`UserUpdate`; `app/settings/page.tsx`'s profile form touches only name/username. Email lives in
-`components/settings/EmailChangeCard.tsx`: enter a new address, submit via
-`authAPI.requestEmailChange(newEmail)`, get the same generic "check your new email" message even for
-a taken address, and the change applies only once the emailed link is confirmed.
-`POST /user/email-change/request` always acts on the caller's own account, so there is no address to
-name but the new one.
+`USER_FIELDS` in `lib/validations/user-fields.ts` has no `email`, matching the API's `UserUpdate`;
+`ProfileCard` touches only name/username. Email lives in `components/settings/EmailChangeCard.tsx`:
+enter a new address, submit via `authAPI.requestEmailChange(newEmail)`, get the same generic "check
+your new email" message even for a taken address, and the change applies only once the emailed link
+is confirmed. `POST /user/email-change/request` always acts on the caller's own account, so there is
+no address to name but the new one.
 
 The field is always visible with one full-width "Send confirmation link" button — no edit toggle, no
 cancel — matching the Profile Information card beside it. Both cards use `flex flex-col h-full` /
@@ -1218,9 +1217,9 @@ either side. `/checkin` renders it too, so the two agree about which card leads.
 There is no Gravatar line: `/settings` shows the avatar itself, with the controls that change it
 (see "Avatars are this instance's own, and there is no Gravatar fallback").
 
-The username hint under the profile form states the rule the field enforces (`profileSchema`:
-lowercase letters and numbers, unique), not "used in your profile URL and for mentions": there is no
-profile URL and mentions are not a feature.
+The username hint under the profile form states the rule the field enforces
+(`FIELD_SCHEMAS.username`: lowercase letters and numbers, unique), not "used in your profile URL and
+for mentions": there is no profile URL and mentions are not a feature.
 
 ## Dive numbering: the suggestion follows the date, and only the diver renumbers
 
@@ -6622,13 +6621,36 @@ certifications card carries no header button, so `CourseCertificationsCard` take
 
 ## The check-in summary is a list the diver hands over, and it carries no agency marks
 
-`/checkin` prints what a dive shop asks for — date of birth, phone, an emergency contact, insurance,
-the c-cards, the dive count — as a list, each card's stored front beside it as a thumbnail. No
-agency artwork or logo is drawn: those marks are licensed to members and centres rather than to
-divers, and a card-shaped tile carrying one reads as agency-issued. A card stored as a PDF prints as
-a placeholder, never rasterised.
+`/checkin` prints what a dive shop asks for: date of birth and phone, the c-cards, the dive count,
+then insurance and an emergency contact — a desk's order, what a diver may do and has done before
+what is needed only if something goes wrong. Each card's stored front sits beside it, but no agency
+artwork is drawn: those marks are licensed to members and centres rather than to divers, and a
+card-shaped tile carrying one reads as agency-issued. A PDF card prints as a placeholder, never
+rasterised.
 
 Printing is the browser's, through Tailwind's `print:` variant on the chrome and the page's own
 controls — no PDF library, no `@media print` block. Handing that print to a shop is the diver
 showing their own entries to someone, not the software doing it, so terms §5's grant ("store your
 entries, show them back to you") is unchanged by it.
+
+## The diving figures are corrected for one printout and stored nowhere
+
+`/checkin` lets a diver retype the dive count, the max depth and the last dive before printing, and
+holds the correction in component state for that visit only. The reasoning is in
+`DivingFiguresDialog`'s docstring; what it cannot hold is the consequence for the other repo — there
+is no column for this in `opendiving-api` and no request behind the dialog, deliberately, so a
+schema change is not the way to "finish" the feature.
+
+## One form module for every field of the diver's own record
+
+`UserFieldsForm` renders any subset of `USER_FIELDS`, and both surfaces are it: `/settings` shows
+them in cards, `/checkin` in a dialog per section of the sheet that prints them, so a diver at a
+desk corrects the group they were just asked for without leaving the page. Bounds, labels and the
+`"" -> null` clearing rule therefore exist once — `PATCH /user` is `extra="forbid"`, so a second
+copy of a bound is a second thing to keep in step with the column. The resolver is built from the
+fields shown, not the whole record: a dialog about insurance must not fail on a stored name it never
+displayed.
+
+The sheet keeps every section's heading and edit control on screen however little is under it, and
+drops an empty section from the print — a heading with nothing beneath it is the labelled blank this
+page refuses, in another form.

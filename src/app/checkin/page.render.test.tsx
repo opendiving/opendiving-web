@@ -120,12 +120,16 @@ describe("CheckInPage", () => {
     expect(retry()).not.toBeNull();
   });
 
-  it("keeps the dive count when the certifications fail", async () => {
+  it("keeps the dive count when the certifications fail, and claims nothing about them", async () => {
     getCertifications.mockRejectedValue(new Error("500"));
     render(<CheckInPage />);
 
     expect(await screen.findByText("142")).toBeInTheDocument();
     expect(screen.queryByText("PADI Rescue Diver")).toBeNull();
+    // A rejected list leaves the same empty array a diver with no cards has, so the
+    // page must not read one as the other: "No certifications yet." to somebody who
+    // holds six is a fact invented out of a network failure.
+    expect(screen.queryByText("No certifications yet.")).toBeNull();
   });
 
   it("asks again on Try again", async () => {
