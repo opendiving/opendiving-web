@@ -22,8 +22,12 @@ import {
 // two auth-flow pages (`/auth/verify`, `/onboarding`): a centered card with the
 // logo as the only way back out.
 export default function SignInPage() {
-  // `useSearchParams` needs a Suspense boundary above it or the build fails on
-  // this page's prerender - same shape as `/auth/verify`.
+  // Not what makes the build pass. `useSearchParams()` is a context read on the
+  // client and suspends only while a *static* shell is being validated at build
+  // time, which `export const instant = false` on the root layout switches off for
+  // every route in this app - see `DECISIONS.md`, "The click paints the
+  // destination's frame, and the page is what paints it". Nothing under this
+  // boundary suspends, so this fallback never commits.
   return (
     <Suspense fallback={<PageSpinner />}>
       <SignInContent />

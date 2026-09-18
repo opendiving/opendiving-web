@@ -25,8 +25,12 @@ import { AlertCircle, Loader2 } from "lucide-react";
 // buy nothing and cost every visitor an extra step.
 export default function GoogleCallbackPage() {
   return (
-    // `useSearchParams` needs one, or `next build` fails the route - the same
-    // shape `/auth/verify` has.
+    // Not what makes the build pass. `useSearchParams()` is a context read on the
+    // client and suspends only while a *static* shell is being validated at build
+    // time, which `export const instant = false` on the root layout switches off
+    // for every route in this app - see `DECISIONS.md`, "The click paints the
+    // destination's frame, and the page is what paints it". Nothing under this
+    // boundary suspends, so this fallback never commits.
     <Suspense fallback={<CallbackStatus />}>
       <GoogleCallbackContent />
     </Suspense>
