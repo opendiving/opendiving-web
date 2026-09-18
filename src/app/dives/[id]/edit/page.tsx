@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
@@ -25,17 +25,7 @@ import { NotFoundState } from "@/components/ui/not-found-state";
 import { useToast } from "@/components/ui/use-toast";
 import { getApiErrorMessage } from "@/lib/api/error";
 
-// `useReturnTo` reads the query string, which Next requires a Suspense boundary
-// around - same wrapper the new-dive page uses.
 export default function EditDivePage() {
-  return (
-    <Suspense fallback={<PageSpinner />}>
-      <EditDivePageContent />
-    </Suspense>
-  );
-}
-
-function EditDivePageContent() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
   const router = useRouter();
   const { toast } = useToast();

@@ -10,9 +10,9 @@ import { QuickCreateProvider } from "@/components/layout/quick-create";
 // otherwise be the app's only source of.
 //
 // Exported because it is half the definition of a *destination* - a route a
-// signed-in diver navigates to inside the chrome - which is what decides where a
-// `loading.tsx` belongs. `loading-placement.test.ts` derives that set from here
-// rather than listing it.
+// signed-in diver navigates to inside the chrome - which is what decides which
+// pages owe a pre-data frame. `app/page-frames.render.test.tsx` derives that set
+// from here rather than listing it.
 export const NO_CHROME_ROUTES = [
   "/signin",
   "/onboarding",

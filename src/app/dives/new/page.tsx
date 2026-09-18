@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -24,14 +24,6 @@ import { nowStartTime, parseFormDuration } from "@/lib/date-time";
 import { getApiErrorMessage } from "@/lib/api/error";
 
 export default function NewDivePage() {
-  return (
-    <Suspense fallback={<PageSpinner />}>
-      <NewDivePageContent />
-    </Suspense>
-  );
-}
-
-function NewDivePageContent() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
   const router = useRouter();
   const searchParams = useSearchParams();

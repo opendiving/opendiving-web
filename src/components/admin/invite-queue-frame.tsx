@@ -17,8 +17,8 @@ import { DEFAULT_ITEMS_PER_PAGE } from "@/hooks/useInfiniteResource";
  * The queue accumulates as it is scrolled, so a select-all after enough
  * scrolling can reach every row the operator has passed. The number is stated
  * here because the API publishes no endpoint that states it; if it ever moves,
- * this is the second place. It sits beside the toolbar that says it out loud so
- * the page and its loading fallback read one figure rather than two.
+ * this is the second place. It sits beside the toolbar that says it out loud, so
+ * the cap and the sentence stating it cannot drift apart.
  */
 export const MAX_SELECTED = 100;
 
@@ -40,9 +40,9 @@ export interface InviteQueueFrameProps {
   onLoadMore?: () => void;
 }
 
-// Everything /admin/invites draws before the queue exists, rendered by the page
-// and by the route fallback alike so the two cannot describe the screen
-// differently.
+// Everything /admin/invites draws before the queue exists, kept apart from the data render so
+// the page's first render is this frame. Every data-varying prop is optional,
+// and the defaults are that first render.
 export function InviteQueueFrame({
   isLoading,
   totalCount,

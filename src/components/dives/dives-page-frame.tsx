@@ -27,7 +27,7 @@ export interface DivesPageFrameProps {
   rows?: ReactNode[];
   /**
    * The numbering line above the table. It draws nothing until its own request
-   * lands, which is why the fallback can leave it out and still match.
+   * lands, so leaving it out is the page's own first render.
    */
   numbering?: ReactNode;
   isLoadingMore?: boolean;
@@ -38,10 +38,9 @@ export interface DivesPageFrameProps {
 
 const noop = () => {};
 
-// Everything /dives draws before its rows exist, so the route fallback and the
-// page render one component rather than two descriptions of the same screen.
-// The page passes its real rows; the fallback passes none and gets the
-// placeholder ones, which is exactly the page's own first render.
+// Everything /dives draws before its rows exist, kept apart from the data render so
+// the page's first render is this frame. Every data-varying prop is optional,
+// and the defaults are that first render.
 export function DivesPageFrame({
   isLoading,
   totalCount,

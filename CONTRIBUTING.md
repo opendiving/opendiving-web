@@ -157,9 +157,10 @@ _seen_, when the page's own data lands, and how much the source page prefetched 
 over a list of navigations through the app. Run it when a change is meant to alter how a navigation
 feels, so that "feels faster" has a figure behind it.
 
-The two change columns are separate because they diverge: a route fallback is inserted at the click
-and held at `opacity: 0`, so a DOM mutation is not a moment anything was visible. `REDUCED_MOTION=1`
-runs the same walk in a browser asking for reduced motion, where the hold does not exist.
+The two change columns are separate because they diverge: a placeholder takes its space at once and
+is held at `opacity: 0` for 150 ms, so a DOM mutation is not a moment anything was visible.
+`REDUCED_MOTION=1` runs the same walk in a browser asking for reduced motion, where that delay does
+not exist.
 
 It needs a _production_ build, because prefetching is only enabled in production, and that build
 wants a port of its own:

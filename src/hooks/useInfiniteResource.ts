@@ -11,9 +11,9 @@ import type { PaginatedResponse } from "@/lib/api/client";
 export type { PaginatedResponse };
 
 /**
- * Rows a list asks for when it does not say. Exported because a route loading
- * fallback has to draw the same number of placeholder rows the page is about to
- * ask for, and a second literal somewhere else is a second place to be wrong.
+ * Rows a list asks for when it does not say. Exported because a page frame draws
+ * the same number of placeholder rows the list is about to ask for, and a second
+ * literal somewhere else is a second place to be wrong.
  */
 export const DEFAULT_ITEMS_PER_PAGE = 10;
 

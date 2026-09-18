@@ -32,7 +32,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ChartSkeleton } from "@/components/dives/chart-skeleton";
-import type { ChartCardProps } from "@/components/dives/chart-card-props";
 import { ChartStat } from "@/components/dives/chart-stat";
 import { GasUseChart } from "@/components/dives/gas-use-chart";
 import { diveStatsAPI, DiveGasUsePoint } from "@/lib/api/dive-stats";
@@ -66,7 +65,7 @@ import { displayNumber, unitLabel, type UnitSystem } from "@/lib/units";
 // average depth - something the diver can act on, and won't discover otherwise.
 // `GasUseChart` owns that message, since it's the component that knows two
 // points are the minimum.
-export function GasUseCard({ pending = false }: ChartCardProps) {
+export function GasUseCard() {
   const units = useUnits();
   const [points, setPoints] = useState<DiveGasUsePoint[] | null>(null);
   // Both of these hold *this visit's* choice, and both are null until the diver
@@ -125,8 +124,8 @@ export function GasUseCard({ pending = false }: ChartCardProps) {
       }
     };
 
-    if (!pending) fetchHistory();
-  }, [pending]);
+    fetchHistory();
+  }, []);
 
   const times = useMemo(
     () => (points ?? []).map((point) => diveWallClockTime(point.start_time)),

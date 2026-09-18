@@ -26,15 +26,15 @@ export interface CertificationsPageFrameProps {
   loadFailed?: boolean;
   hasMore?: boolean;
   onLoadMore?: () => void;
-  /** Opens the new-card dialog. Absent in the fallback, which has none to open. */
+  /** Opens the new-card dialog. */
   onNew?: () => void;
 }
 
 const noop = () => {};
 
-// Everything /certifications draws before its rows exist, rendered by the page
-// and by the route fallback alike so the two cannot describe the screen
-// differently.
+// Everything /certifications draws before its rows exist, kept apart from the data render so
+// the page's first render is this frame. Every data-varying prop is optional,
+// and the defaults are that first render.
 export function CertificationsPageFrame({
   isLoading,
   totalCount,

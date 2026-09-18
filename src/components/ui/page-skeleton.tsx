@@ -1,7 +1,6 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { CardSkeleton, Skeleton } from "@/components/ui/skeleton";
-import { useSkeletonHold } from "@/hooks/useSkeletonHold";
 
 interface PageSkeletonProps {
   /** Same destination the loaded page's `PageHeader` will use. */
@@ -59,7 +58,6 @@ export function FormPageSkeleton({
   backLabel,
   fields = 6,
 }: PageSkeletonProps & { fields?: number }) {
-  const hold = useSkeletonHold();
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl" aria-busy>
       <PageHeader
@@ -68,10 +66,7 @@ export function FormPageSkeleton({
         title={<Skeleton className="h-9 w-56" />}
         subtitle={<Skeleton className="h-6 w-64" />}
       />
-      <Card
-        className="animate-skeleton-reveal motion-reduce:animate-none"
-        style={hold}
-      >
+      <Card className="animate-skeleton-reveal motion-reduce:animate-none">
         <CardHeader>
           <Skeleton className="h-6 w-40" />
         </CardHeader>

@@ -353,7 +353,7 @@ describe("before the requests land", () => {
     // jsdom lays nothing out, so what is checkable is that the placeholder carries
     // the same geometry classes as `CertificationSummary` - the gutter cancel and
     // the image slot. Without them the whole list jumps left and resizes the moment
-    // the fetch returns, and `loading.tsx` renders exactly this state.
+    // the fetch returns.
     const rows = container.querySelectorAll("[aria-hidden] .flex.gap-4");
     expect(rows.length).toBeGreaterThan(0);
     rows.forEach((row) => {

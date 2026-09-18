@@ -26,14 +26,15 @@ export interface TripsPageFrameProps {
   loadFailed?: boolean;
   hasMore?: boolean;
   onLoadMore?: () => void;
-  /** Opens the new-trip dialog. Absent in the fallback, which has none to open. */
+  /** Opens the new-trip dialog. */
   onNew?: () => void;
 }
 
 const noop = () => {};
 
-// Everything /trips draws before its rows exist, rendered by the page and by
-// the route fallback alike so the two cannot describe the screen differently.
+// Everything /trips draws before its rows exist, kept apart from the data render so
+// the page's first render is this frame. Every data-varying prop is optional,
+// and the defaults are that first render.
 export function TripsPageFrame({
   isLoading,
   totalCount,

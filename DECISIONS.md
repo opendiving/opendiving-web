@@ -325,7 +325,7 @@ data outside a boundary: every static shell is empty and the build fails.
 `export const instant = false` on the root layout allows a blocking route. The shells stay empty: a
 shell is rendered per request, and the gain is one per route rather than one prefetch per link. The
 root is the placement because the read is in it, and nothing lower covers the app. No URL hook needs
-a Suspense boundary of its own, in a page or in a route fallback.
+a Suspense boundary of its own.
 
 The nonce holds. Every document render mints its own; a prefetched shell carries the nonce of the
 request that produced it, and its scripts load under `'strict-dynamic'`.
@@ -2791,34 +2791,35 @@ fade without the pulse, goes on those containers.
 `motion-reduce:animate-none` drops both, leaving the skeleton visible from the start: no delay beats
 a delay you cannot see coming.
 
-## The click paints the destination's frame, and the boundary that does it is keyed on the child
+## The click paints the destination's frame, and the page is what paints it
 
-One `loading.tsx` per top-level segment a diver navigates to, drawing the destination's own pre-data
-frame. Every page that interleaved that frame with its data render now renders it from a shared
-component the fallback renders too, so the two cannot describe the screen differently. The router
-keys a loading boundary on the child segment it wraps, so one file covers a segment's list, its
-records and its forms, and the fallback reads the pathname to pick between them.
+No route carries a `loading.tsx`. Under Cache Components a `<Link>` prefetches the destination's App
+Shell, so the click renders the page itself, and the page's own first render is the frame — heading,
+chrome and placeholders, in a `*-page-frame` component it draws around its rows.
+`app/page-frames.render.test.tsx` derives the destination set from the route tree and holds every
+one to it.
 
-The route fallback's hold is its own: longer than the in-place 150ms above, and counted from the
-click rather than from each placeholder's insertion. `--skeleton-delay` (`lib/route-hold.ts`)
-carries what is left of it across the Suspense swap, so the reveal happens once.
+Nothing suspends on a navigation, so no Suspense fallback is committed and the throttle below is
+never armed. `useSearchParams()` needs no boundary for the same reason `instant = false` sits on the
+root layout: no route has a static shell to validate.
 
-_Rejected:_ a boundary beside `[id]`, which mounts afresh on every pager step; and one fixed
-fallback at `dives/`, which paints a table on the way into a dive.
+_Rejected:_ a `loading.tsx` per segment, which paints the same frame from a Suspense fallback and
+buys it at ~300ms to data on a cold route; and painting it from a pending-navigation state above the
+router, which costs every frame in the root layout's bundle.
 
 ## A Suspense fallback committed at the click holds the page behind it for ~300ms
 
 React holds a boundary's content commit until roughly 300ms after its fallback committed, so a
-`loading.tsx` drawn at the click cannot be replaced before then.
+fallback drawn at the click cannot be replaced before then. This is why no route draws its frame
+from one.
 
 What it costs depends on whether the page can fetch before committing. With Cache Components on, a
 prefetched route mounts from the shell the browser already holds, so its own request goes out at the
 click and the held commit costs nothing: the data is there when the content is. Without that, the
 page cannot mount until the response arrives and the throttle elapses, and a held commit is a held
-request — about 190ms at +100ms on every navigation whose boundary is prefetched.
+request — measured at about 190ms at +100ms.
 
-`ROUTE_FALLBACK_HOLD_MS` is not the lever: it is an opacity delay, and at 0 the data figures do not
-move.
+An opacity delay on the placeholders is not the lever: at 0 the data figures do not move.
 
 _Rejected:_ patching the throttle out of the vendored `react-dom`, which recovers the figures and
 owns a fork of React.
