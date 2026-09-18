@@ -32,7 +32,9 @@ lockfile-exact install.
 
 ## Before you open a PR
 
-CI runs lint, type-check, tests and a build. One command runs the same set locally:
+CI runs lint, type-check, tests and a build, plus the end-to-end suite described under
+[The instant-navigation tests](#the-instant-navigation-tests) — which is a separate command, because
+it needs a production build of its own. One command runs the rest locally:
 
 ```bash
 npx playwright install chromium   # once per machine, see below
@@ -177,6 +179,32 @@ Next writes `next dev`'s output under `.next/dev/`, so none of this disturbs a d
 running. It signs itself in the way `npm run screenshots` does, off a magic link in the API
 container's log, so it needs the same local stack. The script's header carries the rest — which
 navigations it walks, what each column means, and what to set when the defaults do not fit.
+
+## The instant-navigation tests
+
+`e2e/` holds three Playwright tests, one per navigation the app is judged on: dives → gear, dives →
+a dive, and a step of the dive pager. Each asserts what is on screen at the click — the
+destination's frame, and not its data — through `instant()` from `@next/playwright`, which scopes
+the assertions to the UI the router could commit without waiting for anything.
+
+```bash
+npx playwright install chromium   # the same browser the unit suite's Chromium project uses
+npm run test:e2e
+```
+
+**They need no API, and no `docker compose`.** The fixtures are served out of the browser by
+`page.route()`, so the app is signed in against a mocked `/api/v1` and every endpoint the three
+navigations touch answers from `e2e/support/api.ts`. That file is also where a test holds a response
+back, which is what keeps the destination's data out of the frame it is asserting on.
+
+`playwright.config.ts` builds the app and starts it on its own port, so the command above is the
+whole of it; there is nothing to start first and nothing left running afterwards. The build is a
+production one — prefetching only happens in production — and it is a build of its own rather than
+the one `npm run build` leaves behind, because `experimental.exposeTestingApiInProductionBuild` is a
+compile-time flag and `next start` cannot add it afterwards. `next.config.js` reads it from
+`NEXT_EXPOSE_TESTING_API`, which only that config sets.
+
+A failing run leaves a trace under `test-results/`; open one with `npx playwright show-trace`.
 
 ## Design expectations
 

@@ -89,3 +89,53 @@ jobs:
             .next/
             !.next/cache/
           retention-days: 5
+
+  # The instant-navigation assertions in `e2e/`: what a diver sees at the click,
+  # on the three navigations that carry the app.
+  #
+  # Its own job, and the flag is the reason. `next start` exposes Next's testing
+  # API only when the *build* set `exposeTestingApiInProductionBuild` - it is a
+  # compile-time define the client bundle branches on - so this suite cannot use
+  # the `build-files` artifact above, and a second build inside `lint-and-build`
+  # would overwrite the `.next` that artifact was taken from and add its minutes
+  # to the job every PR waits on. Here it runs beside it instead.
+  # `code-quality.yml`'s `accessibility-check` repeats `npm ci` and the build for
+  # the same shape of reason.
+  #
+  # Unlike that job it fails the build. An axe report is a list to read; these are
+  # assertions, and one going red means a navigation stopped being instant.
+  #
+  # `playwright.config.ts` owns the build and the server, so this is the same
+  # command a contributor runs locally and there is one description of how the
+  # suite starts.
+  instant-navigations:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Use Node.js 24.x
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.x
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium for Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Run the instant-navigation tests
+        run: npm run test:e2e
+
+      - name: Upload Playwright traces
+        uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 5
