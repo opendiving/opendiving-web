@@ -44,13 +44,11 @@ TooltipContent.displayName = TooltipPrimitive.Content.displayName;
 const HINT_DELAY_MS = 300;
 
 // Radix opens a hint on focus with no delay, which is what a keyboard arrival
-// wants and what a pointer-driven focus never does. Two controls hand focus
-// around without anyone pointing at them: the multiselect drag handles focus
+// wants and what a pointer-driven focus never does. Two controls take focus
+// with nobody pointing at them: the multiselect drag handles focus
 // themselves from their own `onPointerDown` (`hooks/useDragSort.ts`, because the
 // `preventDefault` there suppresses the browser's own focus and the Up/Down keys
-// need it), and a menu trigger is handed focus back when its menu closes - so
-// grabbing a handle left a chip hanging over the rows for the whole drag, and
-// dismissing the account menu raised one under an avatar the pointer had left.
+// need it), and a menu trigger is handed focus back when its menu closes.
 // `:focus-visible` is the browser's answer to the same question and jsdom
 // implements none of it, so the modality is tracked here: one flag for the page,
 // because what somebody last reached for has one answer.

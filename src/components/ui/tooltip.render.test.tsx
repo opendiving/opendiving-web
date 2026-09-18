@@ -179,8 +179,8 @@ describe("a hint on a control that focuses itself on pointer-down", () => {
 });
 
 // A menu hands focus back to its trigger when it closes, and that focus is
-// nobody's request for a hint: dismissing the account menu with the pointer
-// somewhere else entirely raised a chip under the avatar and left it there.
+// nobody's request for a hint: the pointer is wherever it dismissed the menu,
+// which is not on the trigger.
 describe("a hint on a menu trigger", () => {
   const Menu = () => (
     <DropdownMenu>
