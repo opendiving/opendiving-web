@@ -22,3 +22,17 @@ export function localDay(iso: string): string {
     day: "numeric",
   });
 }
+
+// A bare "YYYY-MM-DD" `days` from now, in the suite's own timezone.
+//
+// Built from local getters because the fields these fixtures feed are compared against
+// a local date (`todayIsoDate` in `lib/gear-service.ts`). East of UTC in the small
+// hours `toISOString().slice(0, 10)` renders tomorrow as today, and an assertion that a
+// future date is refused then never fires. Spelled out rather than calling
+// `todayIsoDate` so a bug in that one cannot cancel itself out here.
+export function isoDaysFromNow(days: number): string {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}

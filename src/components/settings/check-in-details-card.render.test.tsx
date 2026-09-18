@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CheckInDetailsCard } from "./check-in-details-card";
 import type { User } from "@/lib/api/auth";
+import { isoDaysFromNow } from "@/test/local-day";
 
 // What a render reaches here is the wiring: the body that leaves on save, that
 // clearing a group sends nulls rather than leaving the row as it was, and that a
@@ -137,11 +138,10 @@ describe("CheckInDetailsCard", () => {
   it("refuses a birth date in the future before any request", async () => {
     render(<CheckInDetailsCard />);
 
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const iso = tomorrow.toISOString().slice(0, 10);
-
-    await userEvent.type(screen.getByLabelText("Date of birth"), iso);
+    await userEvent.type(
+      screen.getByLabelText("Date of birth"),
+      isoDaysFromNow(1),
+    );
     await userEvent.click(save());
 
     expect(
