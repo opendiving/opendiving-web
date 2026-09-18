@@ -1545,6 +1545,21 @@ Coverage scopes `lib/`, `hooks/`, `contexts/`, `components/` and `app/`, excludi
 floors on `lib/`, `hooks/` and `contexts/` hold the tested layers. Raise them as coverage grows;
 never lower one.
 
+## The instant-navigation tests run against fixtures, not the API
+
+`e2e/` asserts what paints at a click on three navigations, through `instant()` from
+`@next/playwright`. `page.route()` answers every `/api/v1` call from fixtures, the auth bootstrap
+included, so the suite needs no API container and CI runs none. A test holds the destination's
+endpoints across the scope: the pages are Client Components fetching over `XMLHttpRequest`, which
+`instant()` does not gate, so without a hold the data can land fast enough to pass for a frame.
+
+`exposeTestingApiInProductionBuild` is a compile-time define, so `playwright.config.ts` makes a
+production build of its own with `NEXT_EXPOSE_TESTING_API=1`. Nothing else sets that variable and
+the `Dockerfile` has no `ARG` for it, so a published image cannot expose the API.
+
+_Rejected:_ standing an API up in CI, which is launch-sized; and reusing `ci.yml`'s build, which
+carries no testing API and so cannot be driven at all.
+
 ## The toast store is a real external store, and a lesson in measuring against a dev server
 
 `useToast` uses `useSyncExternalStore`, not the `useState` + `useEffect` subscription shadcn/ui

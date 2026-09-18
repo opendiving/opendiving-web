@@ -20,6 +20,20 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
+  experimental: {
+    // Next's instant-navigation testing API, which `e2e/` drives through
+    // `@next/playwright`'s `instant()`. It is a *build-time* define - the
+    // compiler substitutes `process.env.__NEXT_EXPOSE_TESTING_API` and the
+    // client bundle branches on it - so a build made without this flag cannot
+    // be tested by starting it with an environment variable set, and the e2e
+    // job needs a build of its own rather than the one CI uploads.
+    //
+    // `playwright.config.ts` sets `NEXT_EXPOSE_TESTING_API` for the build it
+    // starts; nothing else does, and the Dockerfile has no `ARG` for it, so a
+    // published image cannot carry the API however the container is run.
+    exposeTestingApiInProductionBuild:
+      process.env.NEXT_EXPOSE_TESTING_API === "1",
+  },
   async headers() {
     // Content-Security-Policy and Strict-Transport-Security are set per-request
     // by src/proxy.ts instead of here - the first needs a fresh, unpredictable

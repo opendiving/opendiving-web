@@ -58,6 +58,12 @@
 # Playwright MCP server scratch output (accessibility snapshots, console logs).
 .playwright-mcp/
 
+# The e2e suite's own diagnostics: traces and error context for a failed run, and
+# the HTML report a `--reporter=html` run writes. Both describe the run that
+# produced them, exactly like `/.vitest/` above.
+/test-results/
+/playwright-report/
+
 # MapLibre's worker, copied out of node_modules by scripts/copy-maplibre-worker.mjs
 # so the renderer boots it from this origin rather than from a `blob:` URL. Build
 # output that happens to live under `public/`, not repository content - the copy
