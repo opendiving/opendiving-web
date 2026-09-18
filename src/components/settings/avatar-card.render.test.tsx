@@ -42,20 +42,20 @@ vi.mock("@/lib/api/auth", async (importOriginal) => ({
 }));
 
 // jsdom has neither canvas nor an image decoder, so the two parts of the flow that
-// genuinely cannot run here stand in. `AvatarImageError` is deliberately the real
+// genuinely cannot run here stand in. `ImageCropError` is deliberately the real
 // class - the card branches on `instanceof` to decide whose message to show, and a
 // stubbed one would make that branch untestable.
-vi.mock("@/lib/avatar-crop", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/avatar-crop")>()),
-  cropToPngBlob: vi.fn(),
+vi.mock("@/lib/image-crop", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/image-crop")>()),
+  cropToBlob: vi.fn(),
   decodeImage: vi.fn(),
 }));
 
 // The cropper is a gesture surface with no meaningful behaviour under jsdom (it
 // measures itself with a ResizeObserver that reports zeroes), so it stands in as the
 // one thing the card cares about: a Save that hands back a crop rectangle.
-vi.mock("./avatar-crop-dialog", () => ({
-  AvatarCropDialog: ({
+vi.mock("@/components/ui/image-crop-dialog", () => ({
+  ImageCropDialog: ({
     isSaving,
     onCancel,
     onSave,
@@ -89,15 +89,16 @@ vi.mock("@/components/ui/use-toast", () => ({
   useToast: () => ({ toast }),
 }));
 
-const { authAPI, MAX_AVATAR_UPLOAD_SIZE } = await import("@/lib/api/auth");
-const { AvatarImageError, cropToPngBlob, decodeImage } =
-  await import("@/lib/avatar-crop");
+const { authAPI, AVATAR_EXPORT_SIZE, MAX_AVATAR_UPLOAD_SIZE } =
+  await import("@/lib/api/auth");
+const { ImageCropError, cropToBlob, decodeImage } =
+  await import("@/lib/image-crop");
 
 // The preview is a real `UserAvatar`, which fetches the current picture's bytes.
 const getAvatarBlob = vi.mocked(authAPI.getAvatarBlob);
 const uploadAvatar = vi.mocked(authAPI.uploadAvatar);
 const removeAvatar = vi.mocked(authAPI.removeAvatar);
-const crop = vi.mocked(cropToPngBlob);
+const crop = vi.mocked(cropToBlob);
 const decode = vi.mocked(decodeImage);
 
 const originalCreate = URL.createObjectURL;
@@ -147,12 +148,13 @@ describe("AvatarCard", () => {
     await userEvent.click(screen.getByRole("button", { name: "Save photo" }));
 
     await waitFor(() =>
-      expect(crop).toHaveBeenCalledWith("blob:picked", {
-        x: 10,
-        y: 20,
-        width: 300,
-        height: 300,
-      }),
+      expect(crop).toHaveBeenCalledWith(
+        "blob:picked",
+        { x: 10, y: 20, width: 300, height: 300 },
+        // PNG rather than the card's WebP: the avatar endpoint re-encodes what it
+        // is given, so lossless here is free.
+        { maxWidth: AVATAR_EXPORT_SIZE, type: "image/png" },
+      ),
     );
     expect(uploadAvatar).toHaveBeenCalledWith(croppedBlob, "avatar.png");
     // Without this the picture is stored and the header still shows initials: the
@@ -202,7 +204,7 @@ describe("AvatarCard", () => {
     // would leave the dialog with a Save button that never enables and nothing
     // said about why. The live case is a HEIC picked through the iOS Files app.
     decode.mockRejectedValue(
-      new AvatarImageError("That file could not be read."),
+      new ImageCropError("That file could not be read."),
     );
     render(<AvatarCard />);
 
@@ -224,10 +226,10 @@ describe("AvatarCard", () => {
   it("shows a local failure's own message rather than the generic fallback", async () => {
     // `getApiErrorMessage` reads an axios `detail` and returns its fallback for
     // anything else, so a plain `Error` from the canvas would be silently
-    // replaced by "Failed to save your picture". `AvatarImageError` is what keeps
+    // replaced by "Failed to save your picture". `ImageCropError` is what keeps
     // the precise message.
     crop.mockRejectedValue(
-      new AvatarImageError("This browser could not prepare the image."),
+      new ImageCropError("This browser could not prepare the image."),
     );
     render(<AvatarCard />);
 

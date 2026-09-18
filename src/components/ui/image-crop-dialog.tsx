@@ -20,39 +20,55 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 3;
 
-interface AvatarCropDialogProps {
+interface ImageCropDialogProps {
   // Object URL of the picked file. The dialog is mounted only while there is one,
   // so it is never null here.
   imageSrc: string;
+  /** Width over height of the crop, and so of the exported bytes. */
+  aspect: number;
+  /** `round` for an avatar, `rect` for anything drawn as itself. */
+  cropShape?: "rect" | "round";
+  title: string;
+  description: string;
+  saveLabel: string;
+  savingLabel: string;
   isSaving: boolean;
   onCancel: () => void;
-  // Handed the chosen square in *natural* pixels of the source image. Turning that
-  // into bytes and uploading them belongs to the card, which is what owns the
+  // Handed the chosen rectangle in *natural* pixels of the source image. Turning
+  // that into bytes and storing them belongs to the caller, which is what owns the
   // outcome - so this must not reject.
   onSave: (area: Area) => void;
 }
 
 /**
- * Pick the square of a photo that becomes the avatar.
+ * Pick the part of a picture that is kept: drag to move, zoom, save.
  *
- * Round crop shape with `aspect={1}` because that is what the result is drawn as
- * everywhere in the app - a square preview of a picture that will be shown as a
- * circle is a promise about the corners that nothing keeps.
+ * Shared by the avatar and the certification card, which differ only in the shape
+ * they crop to and the words around it. A round mask with `aspect={1}` is what an
+ * avatar is drawn as everywhere in the app; a card crops to the standard card
+ * shape, so what is saved is already the shape every mount draws it in.
  *
  * Zoom is a native `<input type="range">` rather than a Radix slider: it is one
  * value with no empty state, and the native control is keyboard- and
  * touch-accessible without adding a dependency for it.
  */
-export function AvatarCropDialog({
+export function ImageCropDialog({
   imageSrc,
+  aspect,
+  cropShape = "rect",
+  title,
+  description,
+  saveLabel,
+  savingLabel,
   isSaving,
   onCancel,
   onSave,
-}: AvatarCropDialogProps) {
+}: ImageCropDialogProps) {
   const [crop, setCrop] = useState<Point>({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(MIN_ZOOM);
   const [area, setArea] = useState<Area | null>(null);
@@ -78,22 +94,26 @@ export function AvatarCropDialog({
           does not change the reported width or height. */}
       <DialogContent className="data-[state=open]:zoom-in-100 data-[state=closed]:zoom-out-100">
         <DialogHeader>
-          <DialogTitle>Adjust your photo</DialogTitle>
-          <DialogDescription>
-            Drag to move, pinch or use the slider to zoom. Only the circle is
-            saved.
-          </DialogDescription>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
         {/* The cropper is absolutely positioned inside its container, so it needs
             one with a height of its own. */}
-        <div className="relative h-64 w-full overflow-hidden rounded-md bg-muted">
+        <div
+          className={cn(
+            "relative h-64 w-full overflow-hidden bg-muted",
+            // Matches the mask: a round crop in a square-cornered box reads as a
+            // preview of something else.
+            cropShape === "round" ? "rounded-md" : "rounded-lg",
+          )}
+        >
           <Cropper
             image={imageSrc}
             crop={crop}
             zoom={zoom}
-            aspect={1}
-            cropShape="round"
+            aspect={aspect}
+            cropShape={cropShape}
             showGrid={false}
             minZoom={MIN_ZOOM}
             maxZoom={MAX_ZOOM}
@@ -109,12 +129,12 @@ export function AvatarCropDialog({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="avatar-zoom" className="flex items-center gap-2">
+          <Label htmlFor="image-crop-zoom" className="flex items-center gap-2">
             <ZoomIn className="h-4 w-4" />
             Zoom
           </Label>
           <input
-            id="avatar-zoom"
+            id="image-crop-zoom"
             type="range"
             className="w-full accent-primary"
             min={MIN_ZOOM}
@@ -138,10 +158,10 @@ export function AvatarCropDialog({
           <Button
             type="button"
             // `area` is null until the cropper has measured itself and reported a
-            // rectangle, which is one frame *because the card has already decoded
+            // rectangle, which is one frame *because the caller has already decoded
             // this source* - `Cropper` has no failure callback, so undecodable
             // bytes would leave this null forever with nothing said. Keeping that
-            // check out of here is deliberate: the card refuses the file before
+            // check out of here is deliberate: the caller refuses the file before
             // this dialog is ever mounted.
             onClick={() => area && onSave(area)}
             disabled={isSaving || !area}
@@ -149,10 +169,10 @@ export function AvatarCropDialog({
             {isSaving ? (
               <div className="flex items-center space-x-2">
                 <ButtonSpinner />
-                <span>Saving...</span>
+                <span>{savingLabel}</span>
               </div>
             ) : (
-              <span>Save photo</span>
+              <span>{saveLabel}</span>
             )}
           </Button>
         </DialogFooter>

@@ -306,7 +306,7 @@ export const certificationsAPI = {
   },
 
   // Attach or replace one side's card image. Uploading a side that already has a
-  // file replaces it.
+  // file replaces it, so a replacement needs no delete in front of it.
   //
   // The `Content-Type` header is explicitly cleared so the browser sets
   // `multipart/form-data` *with its own boundary* - the same reason
@@ -314,10 +314,15 @@ export const certificationsAPI = {
   async uploadCertificationFile(
     certificationUuid: string,
     side: CertificationSide,
-    file: File,
+    file: Blob,
+    // Named separately rather than read off a `File`, because the common case is
+    // no longer one: an image picked here is cropped to the standard card shape
+    // first, and what comes back off the canvas is a bare `Blob` whose extension
+    // depends on which encoding the browser managed.
+    filename: string,
   ): Promise<CertificationFileInfo> {
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append("file", file, filename);
 
     const response = await apiClient.put(
       `/certification/${certificationUuid}/file/${side}`,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Edit, Images, Loader2, Trash2 } from "lucide-react";
+import { Edit, Loader2, Trash2 } from "lucide-react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
@@ -23,17 +23,10 @@ import { IconTooltip } from "@/components/ui/tooltip";
 import { CertificationsPageFrame } from "@/components/certifications/certifications-page-frame";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { PageSpinner } from "@/components/ui/page-spinner";
 import { CertificationDialog } from "@/components/certifications/certification-dialog";
 import { CertificationViewDialog } from "@/components/certifications/certification-view-dialog";
-import { CertificationCardFiles } from "@/components/certifications/certification-card-files";
 import { CertificationCardImage } from "@/components/certifications/certification-card-image";
 
 export default function CertificationsPage() {
@@ -44,10 +37,6 @@ export default function CertificationsPage() {
     null,
   );
   const [viewing, setViewing] = useState<Certification | null>(null);
-  // The certification whose card images are being managed, if any.
-  const [managingFiles, setManagingFiles] = useState<Certification | null>(
-    null,
-  );
 
   const fetchCertifications = useCallback(
     (page: number, perPage: number) =>
@@ -71,18 +60,6 @@ export default function CertificationsPage() {
     enabled: !!user,
     errorMessage: "Failed to load certifications. Please try again.",
   });
-
-  // After a card image changes, the list's embedded file metadata is stale. Refetch
-  // and re-point the open dialogs at the refreshed row, so the panel the diver is
-  // looking at updates rather than showing what it loaded with.
-  const refreshAfterFileChange = useCallback(async () => {
-    if (!managingFiles) return;
-    const updated = await certificationsAPI.getCertification(
-      managingFiles.uuid,
-    );
-    setManagingFiles(updated);
-    applySaved(updated);
-  }, [managingFiles, applySaved]);
 
   const {
     deletingId,
@@ -173,15 +150,6 @@ export default function CertificationsPage() {
                             cards may share a level - see DECISIONS.md, "Ten rows
                             of 'Edit' name nothing". */}
                 <div className="flex justify-end gap-2">
-                  <IconTooltip label={`Card images for ${label}`}>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setManagingFiles(certification)}
-                    >
-                      <Images className="h-4 w-4" />
-                    </Button>
-                  </IconTooltip>
                   <IconTooltip label={`Edit ${label}`}>
                     <Button
                       variant="ghost"
@@ -217,13 +185,9 @@ export default function CertificationsPage() {
           open={editing !== null}
           onOpenChange={(open) => !open && setEditing(null)}
           certification={editing}
-          onSaved={(saved) => {
-            applySaved(saved);
-            // A brand-new certification has no card images yet, and adding them is
-            // the whole point - so go straight on to the upload step rather than
-            // making the diver find the button.
-            if (editing === undefined) setManagingFiles(saved);
-          }}
+          // The card images ride on that dialog's own save, so the row it hands
+          // back already carries whatever landed.
+          onSaved={applySaved}
         />
       )}
 
@@ -231,25 +195,6 @@ export default function CertificationsPage() {
         certification={viewing}
         onOpenChange={(open) => !open && setViewing(null)}
       />
-
-      {managingFiles && (
-        <Dialog
-          open
-          onOpenChange={(open) => {
-            if (!open) setManagingFiles(null);
-          }}
-        >
-          <DialogContent className="sm:max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Card images — {managingFiles.name}</DialogTitle>
-            </DialogHeader>
-            <CertificationCardFiles
-              certification={managingFiles}
-              onChanged={refreshAfterFileChange}
-            />
-          </DialogContent>
-        </Dialog>
-      )}
 
       <ConfirmDialog
         open={pendingId !== null}

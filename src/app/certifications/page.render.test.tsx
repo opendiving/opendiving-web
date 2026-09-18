@@ -81,11 +81,6 @@ describe("certification row actions name their row", () => {
     await screen.findByRole("button", { name: "Advanced Nitrox" });
 
     expect(
-      screen.getByRole("button", {
-        name: "Card images for PADI Advanced Nitrox",
-      }),
-    ).toBeInTheDocument();
-    expect(
       screen.getByRole("button", { name: "Edit PADI Advanced Nitrox" }),
     ).toBeInTheDocument();
     expect(

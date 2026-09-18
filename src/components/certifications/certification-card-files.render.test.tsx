@@ -1,10 +1,39 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { CertificationCardFiles } from "./certification-card-files";
+import type { CertificationCardEdits } from "@/lib/certification-card-edits";
 import {
   CERTIFICATION_FILE_ACCEPT,
   type Certification,
+  type CertificationFileInfo,
 } from "@/lib/api/certifications";
+
+vi.mock("@/components/ui/use-toast", () => ({
+  useToast: () => ({ toast: vi.fn() }),
+}));
+
+// The card image endpoint is owner-only and fetched through the API client; a slot
+// showing a stored file would otherwise reach for it under jsdom.
+vi.mock("@/lib/api/certifications", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/lib/api/certifications")>();
+  return {
+    ...actual,
+    certificationsAPI: {
+      ...actual.certificationsAPI,
+      getCertificationFileBlob: vi.fn(() => new Promise<Blob>(() => {})),
+    },
+  };
+});
+
+const front: CertificationFileInfo = {
+  uuid: "019fe94e-c13c-7166-9dad-5af54eb08319",
+  side: "front",
+  content_type: "image/webp",
+  byte_size: 145904,
+  original_filename: "padi-divemaster.webp",
+};
 
 const certification: Certification = {
   uuid: "cert-1",
@@ -14,15 +43,26 @@ const certification: Certification = {
   created_at: "2026-01-01T00:00:00+00:00",
 };
 
-// A card with no files at all fetches nothing: `CertificationCardImage` is handed
-// the embedded metadata and renders its placeholder without touching the API.
-const renderFiles = () =>
+const renderFiles = (
+  overrides: {
+    certification?: Certification | null;
+    edits?: CertificationCardEdits;
+  } = {},
+) => {
+  const onChange = vi.fn();
   render(
     <CertificationCardFiles
-      certification={certification}
-      onChanged={() => {}}
+      certification={
+        overrides.certification === undefined
+          ? certification
+          : overrides.certification
+      }
+      edits={overrides.edits ?? {}}
+      onChange={onChange}
     />,
   );
+  return { onChange };
+};
 
 // Most modern e-cards are one-sided, so a diver who never fills the second slot
 // has a complete record. The screen has to say that, or an empty back reads as
@@ -58,5 +98,97 @@ describe("the second card slot presents itself as optional", () => {
       expect(guidance).toHaveTextContent(format);
     }
     expect(guidance).toHaveTextContent("PDF");
+  });
+});
+
+// Every slot state has to be legible as *what the save will do*, because none of
+// it has happened yet. A picture on screen that might be the stored one or might
+// be the replacement is the failure this wording exists to prevent.
+describe("a slot says what saving the form will do to it", () => {
+  it("names the stored file while nothing has been changed", () => {
+    renderFiles({ certification: { ...certification, files: [front] } });
+
+    expect(screen.getByText(/padi-divemaster\.webp/)).toBeInTheDocument();
+  });
+
+  it("marks a struck-off image as deleted on save, not deleted", () => {
+    renderFiles({
+      certification: { ...certification, files: [front] },
+      edits: { front: { kind: "remove" } },
+    });
+
+    expect(screen.getByText("Deleted when you save")).toBeInTheDocument();
+    // The stored filename is gone from the slot: it is no longer what the slot
+    // will hold.
+    expect(screen.queryByText(/padi-divemaster\.webp/)).not.toBeInTheDocument();
+  });
+
+  it("says a picked image replaces the stored one rather than adding to it", () => {
+    renderFiles({
+      certification: { ...certification, files: [front] },
+      edits: {
+        front: {
+          kind: "replace",
+          image: {
+            blob: new Blob(["x"], { type: "image/webp" }),
+            filename: "card-front.webp",
+          },
+        },
+      },
+    });
+
+    expect(
+      screen.getByText(/Replaces the stored image when you save/),
+    ).toBeInTheDocument();
+  });
+
+  it("says a picked image is added when the slot was empty", () => {
+    renderFiles({
+      edits: {
+        back: {
+          kind: "replace",
+          image: {
+            blob: new Blob(["x"], { type: "image/webp" }),
+            filename: "card-back.webp",
+          },
+        },
+      },
+    });
+
+    expect(screen.getByText(/Added when you save/)).toBeInTheDocument();
+  });
+});
+
+// Nothing this component does may reach the API: the form owns the save, and a
+// diver who cancels has to leave the stored cards untouched.
+describe("removing a stored image is a local mark", () => {
+  it("reports the removal to the form instead of deleting it", async () => {
+    const user = userEvent.setup();
+    const { onChange } = renderFiles({
+      certification: { ...certification, files: [front] },
+    });
+
+    await user.click(screen.getByRole("button", { name: /Remove the front/ }));
+
+    expect(onChange).toHaveBeenCalledWith({ front: { kind: "remove" } });
+  });
+
+  it("drops a picked image outright, there being nothing stored to mark", async () => {
+    const user = userEvent.setup();
+    const { onChange } = renderFiles({
+      edits: {
+        front: {
+          kind: "replace",
+          image: {
+            blob: new Blob(["x"], { type: "image/webp" }),
+            filename: "card-front.webp",
+          },
+        },
+      },
+    });
+
+    await user.click(screen.getByRole("button", { name: /Discard the new/ }));
+
+    expect(onChange).toHaveBeenCalledWith({});
   });
 });

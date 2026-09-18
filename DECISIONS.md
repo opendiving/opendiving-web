@@ -864,15 +864,37 @@ would bury the rows that need attention, the same reasoning as `worstServiceStat
 for untracked gear. The window is 90 days, not gear's 30: renewing a rescue or first-aid card means
 booking a course with an instructor, not dropping a regulator at a shop.
 
-## Card uploads are a separate step from creating the certification
+## Card images ride on the certification form's own save
 
 The API takes card images on `PUT /certification/{uuid}/file/{side}`, not as multipart on create, so
-the dialog creates the certification first and then opens the card-images dialog. A new
-certification hands straight off to that second dialog: adding the photo is the point of the
-feature, and making the diver find the button afterwards would bury it. After any upload or delete
-the list's embedded file metadata is stale, so the page refetches the single certification and the
-list, and re-points the open dialog at the refreshed row — otherwise the open panel keeps showing
-what it loaded with.
+a card being created has no uuid to upload against until `createCertification` resolves. That is an
+ordering constraint, not a reason for a second dialog: `CertificationCardFiles` collects
+add/replace/delete per side into `CertificationCardEdits`, and `applyCertificationCardEdits` sends
+them after the details save — serially, in `CERTIFICATION_SIDES` order, `PUT` alone for a replace
+since it overwrites. Cancel therefore leaves the stored cards untouched, which the upload-on-pick
+dialog could not.
+
+A failed image does not fail the save: the details are written, and refilling the form to retry one
+picture costs more than the picture. One toast per side, and the certification is re-read whenever
+anything was sent — the embedded `files` the list and the check-in sheet draw from is stale either
+way, and only the API knows which sides landed.
+
+## Every c-card is drawn in one shape, and cropped to it on the way in
+
+`CERTIFICATION_CARD_ASPECT` is 1013/638, measured off a current PADI e-card. Cards arrive in at
+least four shapes (old PADI 1005×660, RAID 802×519, TDI/SDI 330×207), so one ratio everywhere is
+what makes a row of them read as cards. `CertificationCardFrame` is the only box drawing one and
+`ImageCropDialog` crops uploads to that ratio, so stored bytes need no fitting; anything stored
+uncropped is `object-cover`, trimming at most 4% off the old PADI design, which carries nothing near
+its edges.
+
+`self-start` is load-bearing: `aspect-ratio` applies only where height is auto, and a flex or grid
+item stretches to its line. `CERTIFICATION_CARD_ASPECT_CLASS` is spelled out because Tailwind
+generates only the classes it finds written down; `certification.test.ts` holds it and the number in
+step.
+
+Cropped bytes are WebP: this API stores what it is given. A browser with no WebP encoder falls back
+to PNG on its own, so `croppedFilename` reads `Blob.type`.
 
 ## The dive form holds the imported file in page state and uploads it after saving
 
@@ -3972,8 +3994,8 @@ paint.
 
 ## The crop dialog's three traps
 
-Export PNG, never JPEG: `canvas.toBlob("image/jpeg")` composites transparency onto black, and the
-server re-encodes to WebP anyway, so the client hands over lossless pixels.
+Never JPEG: `canvas.toBlob("image/jpeg")` composites transparency onto black. The avatar exports PNG
+because `PUT /user/avatar` re-encodes anyway; a card exports WebP because its endpoint does not.
 
 `react-easy-crop` injects its own `<style>` by default, which the nonce-based production CSP drops
 (the dev CSP allows `'unsafe-inline'`). `disableAutomaticStylesInjection` plus
@@ -3998,18 +4020,19 @@ documented bug converting picked PNGs to HEIC. The constant lives in `lib/api/au
 reasoning attached so nobody simplifies it inline. A Files-app pick bypasses `accept` entirely; the
 API sniffs bytes regardless, so this is not a security surface.
 
-## The card decodes the file before the cropper ever sees it
+## The caller decodes the file before the cropper ever sees it
 
 `react-easy-crop` has no failure callback: `CropperProps` carry `onMediaLoaded` and `onCropComplete`
 and nothing for the other outcome, so a source that never decodes — a Files-app HEIC walking past
 `accept` — leaves the dialog with an empty frame, `croppedAreaPixels` never arriving and Save
-disabled forever. `AvatarCard.handlePick` therefore decodes the object URL itself and mounts the
-dialog only on success, toasting otherwise; `mediaProps={{ onError }}` would catch it a frame later
-with a half-open dialog to unwind. The second decode inside `cropToPngBlob` hits the browser cache.
+disabled forever. `AvatarCard.handlePick` and `CertificationCardFiles.handlePick` therefore decode
+the object URL themselves and mount `ImageCropDialog` only on success, toasting otherwise;
+`mediaProps={{ onError }}` would catch it a frame later with a half-open dialog to unwind. The
+second decode inside `cropToBlob` hits the browser cache.
 
-Failures raised in the browser are `AvatarImageError` (`lib/avatar-crop.ts`), because
+Failures raised in the browser are `ImageCropError` (`lib/image-crop.ts`), because
 `getApiErrorMessage` reads an axios response's `detail` and returns its `fallback` for everything
-else — never a plain `Error`'s `message` — so the card shows `message` for those and
+else — never a plain `Error`'s `message` — so the caller shows `message` for those and
 `getApiErrorMessage` for the rest.
 
 ## Avatars: Onboarding has no avatar step
