@@ -114,10 +114,9 @@ export interface CheckInPageFrameProps {
 
 const noop = () => {};
 
-// Everything `/checkin` draws, rendered by the page and by the route fallback alike
-// so the two cannot describe the screen differently. Every data-varying prop
-// defaults to what the page holds on its first render, which is what the fallback
-// passes: nothing.
+// Everything `/checkin` draws before its three requests answer, kept apart from the data render so
+// the page's first render is this frame. Every data-varying prop is optional,
+// and the defaults are that first render.
 export function CheckInPageFrame({
   certifications = [],
   stats = null,
@@ -175,8 +174,8 @@ export function CheckInPageFrame({
     [stats, lastDiveAt],
   );
 
-  // Read from the auth context rather than a prop, so the page and its fallback read
-  // one source and the name cannot differ between them. It is also what keeps the
+  // Read from the auth context rather than a prop, so the name is on screen at the
+  // click without waiting on anything the page fetches. It is also what keeps the
   // print date below off the server: `user` is null until the auth check settles in
   // an effect, so this component never renders server-side and there is nothing for
   // hydration to disagree about.

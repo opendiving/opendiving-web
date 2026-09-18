@@ -85,17 +85,10 @@ function Stat({
 }
 
 export interface DashboardPageFrameProps {
-  /** Null while the stats request is in flight, which is the fallback's case. */
+  /** Null while the stats request is in flight. */
   stats?: UserDiveStats | null;
   statsError?: string | null;
   onRetryStats?: () => void;
-  /**
-   * Rendered inside the route loading fallback. The cards that fetch for
-   * themselves hold their pre-data shape and ask for nothing, and the four that
-   * draw nothing until their own answer lands are left out entirely - the page
-   * mounting behind this one is what asks.
-   */
-  pending?: boolean;
 }
 
 const noop = () => {};
@@ -109,15 +102,13 @@ const noop = () => {};
  * reason: a wrapper `<div>` around them would leave its own gap behind on the
  * days they render nothing.
  *
- * The user comes from the auth context rather than from a prop, so the page and
- * its loading fallback read one source and the greeting cannot differ between
- * them.
+ * The user comes from the auth context rather than from a prop, so the greeting
+ * is on screen at the click, before the stats request has answered.
  */
 export function DashboardPageFrame({
   stats = null,
   statsError = null,
   onRetryStats = noop,
-  pending = false,
 }: DashboardPageFrameProps) {
   const { user } = useAuth();
   const units = useUnits();
@@ -164,15 +155,13 @@ export function DashboardPageFrame({
       {/* Anything needing action comes first - a regulator that is out of service or a
           rescue card that has lapsed matters more than how many dives are in the log.
           Both render nothing on a normal day. */}
-      {!pending && <ServiceDueCard />}
-      {!pending && <CertificationExpiryCard />}
-      {!pending && (
-        <SetupChecklistCard totalDives={stats?.total_dives ?? null} />
-      )}
+      <ServiceDueCard />
+      <CertificationExpiryCard />
+      <SetupChecklistCard totalDives={stats?.total_dives ?? null} />
       {/* Below the checklist rather than above it: a diver with an empty logbook
           has something better to do first, and this one keeps until they come
           back. It renders nothing at all once taken or dismissed. */}
-      {!pending && <PasskeyNudgeCard />}
+      <PasskeyNudgeCard />
 
       {statsError && (
         <Card>
@@ -263,12 +252,12 @@ export function DashboardPageFrame({
           gives it 482px even on a widened page. Both charts clip, their axis text
           halves, and the gas card's header doubles in height when its controls can no
           longer share a line with its description. See DECISIONS.md. */}
-      {hasDives && <GasUseCard pending={pending} />}
-      {hasDives && <DiveActivityCard pending={pending} />}
+      {hasDives && <GasUseCard />}
+      {hasDives && <DiveActivityCard />}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <RecentDivesCard enabled={!!user} pending={pending} />
-        <RecentTripsCard pending={pending} />
+        <RecentDivesCard enabled={!!user} />
+        <RecentTripsCard />
       </div>
     </div>
   );

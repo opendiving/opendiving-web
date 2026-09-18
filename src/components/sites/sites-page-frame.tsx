@@ -26,14 +26,15 @@ export interface SitesPageFrameProps {
   loadFailed?: boolean;
   hasMore?: boolean;
   onLoadMore?: () => void;
-  /** Opens the new-site dialog. Absent in the fallback, which has none to open. */
+  /** Opens the new-site dialog. */
   onNew?: () => void;
 }
 
 const noop = () => {};
 
-// Everything /sites draws before its rows exist, rendered by the page and by
-// the route fallback alike so the two cannot describe the screen differently.
+// Everything /sites draws before its rows exist, kept apart from the data render so
+// the page's first render is this frame. Every data-varying prop is optional,
+// and the defaults are that first render.
 export function SitesPageFrame({
   isLoading,
   totalCount,

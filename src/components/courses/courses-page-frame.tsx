@@ -28,7 +28,7 @@ export interface CoursesPageFrameProps {
   totalCount: number;
   itemsPerPage: number;
   rows?: ReactNode[];
-  /** What the search box holds. Empty on arrival, which is the fallback's case. */
+  /** What the search box holds. Empty on arrival. */
   search?: string;
   onSearchChange?: (value: string) => void;
   /** The date, agency and status the list is narrowed by, if any. */
@@ -40,14 +40,15 @@ export interface CoursesPageFrameProps {
   loadFailed?: boolean;
   hasMore?: boolean;
   onLoadMore?: () => void;
-  /** Opens the new-course dialog. Absent in the fallback, which has none to open. */
+  /** Opens the new-course dialog. */
   onNew?: () => void;
 }
 
 const noop = () => {};
 
-// Everything /courses draws before its rows exist, rendered by the page and by
-// the route fallback alike so the two cannot describe the screen differently.
+// Everything /courses draws before its rows exist, kept apart from the data render so
+// the page's first render is this frame. Every data-varying prop is optional,
+// and the defaults are that first render.
 export function CoursesPageFrame({
   isLoading,
   totalCount,

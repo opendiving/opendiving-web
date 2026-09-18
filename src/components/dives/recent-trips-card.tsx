@@ -26,25 +26,15 @@ function formatTripDisplayDate(trip: Trip) {
   return formatTripDateRange(trip.start_date, trip.end_date);
 }
 
-export interface RecentTripsCardProps {
-  /**
-   * Rendered inside a route loading fallback: hold the pre-data shape and make
-   * no request, because the page mounting behind this one makes it.
-   */
-  pending?: boolean;
-}
-
 // Shows the user's most recent trips by trip date (up to 5). Used on the
 // dashboard so divers can quickly jump back into a trip they're logging dives for.
-export function RecentTripsCard({ pending = false }: RecentTripsCardProps) {
+export function RecentTripsCard() {
   const [recentTrips, setRecentTrips] = useState<Trip[]>([]);
   const [isLoadingTrips, setIsLoadingTrips] = useState(true);
   const openCreate = useQuickCreate();
 
   useEffect(() => {
     const fetchRecentTrips = async () => {
-      if (pending) return;
-
       try {
         setIsLoadingTrips(true);
         // The trips list endpoint already sorts by start_date descending, so the
@@ -60,7 +50,7 @@ export function RecentTripsCard({ pending = false }: RecentTripsCardProps) {
     };
 
     fetchRecentTrips();
-  }, [pending]);
+  }, []);
 
   return (
     <Card>

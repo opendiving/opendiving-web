@@ -18,7 +18,7 @@ export interface SpeciesPageFrameProps {
   itemsPerPage: number;
   /** The life list's cards. Empty while the first page is in flight. */
   cards?: ReactNode[];
-  /** What the search box holds. Empty on arrival, which is the fallback's case. */
+  /** What the search box holds. Empty on arrival. */
   search?: string;
   onSearchChange?: (value: string) => void;
   /** True when the empty state is a filtered list rather than an empty life list. */
@@ -34,8 +34,8 @@ const noop = () => {};
 // A grid rather than the list pages' table, and more per page than their ten.
 // These rows are photographs, so they tile where a table would leave most of
 // each row empty, and a life list is a thing to look at rather than to scan a
-// column of. Lives here so the page and its fallback draw the same number of
-// placeholders without either one naming the figure.
+// column of. Lives here so the page reads the figure from the frame it renders
+// rather than repeating it.
 export const SPECIES_PER_PAGE = 24;
 
 // A card-shaped placeholder for one species, sized like the real one so the
@@ -63,8 +63,9 @@ function LifeListCardSkeleton() {
   );
 }
 
-// Everything /species draws before its cards exist, rendered by the page and by
-// the route fallback alike so the two cannot describe the screen differently.
+// Everything /species draws before its cards exist, kept apart from the data render so
+// the page's first render is this frame. Every data-varying prop is optional,
+// and the defaults are that first render.
 export function SpeciesPageFrame({
   isLoading,
   totalCount,
