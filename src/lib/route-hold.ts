@@ -19,6 +19,14 @@
  * Behind a boundary the data arrives later than any of those figures, and this
  * constant is not what moves it - see "A Suspense fallback committed at the
  * click holds the page behind it for ~300ms" in DECISIONS.md.
+ *
+ * **This governs only where a fallback renders on the client and opens a hold.**
+ * A destination the router draws from an App Shell it already holds does not:
+ * its placeholders mount with `--skeleton-delay` unset and take the flat 150ms
+ * from `tailwind.config.mts` instead. That is most warm navigations under Cache
+ * Components, so the figures above describe the case this constant still
+ * reaches rather than every navigation. `scripts/measure-navigations.mjs` reads
+ * the delay off the placeholder and says which applied.
  */
 export const ROUTE_FALLBACK_HOLD_MS = 330;
 

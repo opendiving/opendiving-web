@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useDialogApiError } from "@/hooks/useDialogApiError";
 import { FormApiError } from "@/components/ui/form-api-error";
 import { useForm, useWatch } from "react-hook-form";
@@ -35,6 +35,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Button } from "@/components/ui/button";
 import { TripLocationMultiSelect } from "@/components/trips/trip-location-multi-select";
 import { LocationsMap } from "@/components/map/locations-map-lazy";
+import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 
 interface TripDialogProps {
   open: boolean;
@@ -87,7 +88,7 @@ export function TripDialog({
   // edited (or a clean slate) rather than whatever the previous invocation left
   // behind.
   const { reset } = form;
-  useEffect(() => {
+  useEffectOnChange(() => {
     if (!open) return;
     reset({
       name: trip?.name ?? "",

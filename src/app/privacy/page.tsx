@@ -26,14 +26,6 @@ function StorageKey({ name }: { name: string }) {
   );
 }
 
-// Belt and braces, in the shape `app/api/v1/[...path]/route.ts` uses the same export:
-// the root layout already reads `headers()` for the CSP nonce, so nothing in this app is
-// prerendered today. What makes it worth stating here is the consequence if that ever
-// changed. `projectOperatesThisInstance` asks the API, and the published image is built
-// in CI with no API to ask, so a prerender would bake in the failed answer - a
-// project-run instance whose privacy policy names nobody - for the life of the image.
-export const dynamic = "force-dynamic";
-
 // This page is a Server Component and stays one; §10.3's switch is its only
 // client island. The island renders a stable server-side state and resolves the
 // real one after hydration, which is what every storage consumer here does.

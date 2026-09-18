@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ClipboardList, Save } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 import { authAPI } from "@/lib/api/auth";
 import { getApiErrorMessage } from "@/lib/api/error";
 import {
@@ -55,9 +56,11 @@ export function CheckInDetailsCard() {
   });
 
   // Repaints from what came back, which is what makes `refreshUser()` below the end
-  // of a save: the card shows the row rather than what was typed into it.
+  // of a save: the card shows the row rather than what was typed into it. Not on the
+  // way back to a kept-mounted route, though, where it would repaint over a
+  // half-filled card - `useEffectOnChange` says why.
   const { reset } = form;
-  useEffect(() => {
+  useEffectOnChange(() => {
     if (user) reset(checkInDetailsFromUser(user));
   }, [user, reset]);
 

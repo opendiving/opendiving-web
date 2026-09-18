@@ -1,12 +1,14 @@
 import type { MetadataRoute } from "next";
+import { connection } from "next/server";
 
 import { runtimeConfig } from "@/lib/runtime-config";
 
 // `robots.ts` is a route handler like any other, and Next prerenders one that reads
 // nothing request-scoped - which would resolve `WEB_NOINDEX` on the build machine and
 // freeze the answer into the published image, the exact trap `lib/runtime-config.ts`
-// exists to avoid. `force-dynamic` is what keeps the read in the container.
-export const dynamic = "force-dynamic";
+// exists to avoid. `connection()` is what keeps the read in the container: it is the
+// request-time API `cacheComponents` understands, where `dynamic = "force-dynamic"` is
+// rejected outright.
 
 /**
  * `robots.txt`. Open to crawlers by default; `WEB_NOINDEX=true` closes the whole site,
@@ -17,7 +19,9 @@ export const dynamic = "force-dynamic";
  * sends `X-Robots-Tag: noindex, nofollow` alongside this for that reason; the two
  * together are what "keep crawlers out" actually takes.
  */
-export default function robots(): MetadataRoute.Robots {
+export default async function robots(): Promise<MetadataRoute.Robots> {
+  await connection();
+
   return {
     rules: runtimeConfig().noindex
       ? { userAgent: "*", disallow: "/" }

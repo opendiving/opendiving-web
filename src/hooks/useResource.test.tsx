@@ -1,4 +1,5 @@
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { Activity } from "react";
+import { act, render, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useResource } from "./useResource";
 
@@ -138,5 +139,127 @@ describe("useResource", () => {
       uuid: "dive-1",
       notes: "before",
     });
+  });
+  // A route the diver left is kept mounted and its effects are re-created on the way
+  // back. Re-reading is right - an edit saved from `/dives/[id]/edit` pushes back to
+  // the detail route, and a page trusting only what it held would show the dive as it
+  // was before the save. Doing it *quietly* is what keeps the page and any form on it
+  // intact while that happens.
+  describe("on the way back to a kept-mounted route", () => {
+    function hosted(
+      fetchFn: (id: string) => Promise<unknown>,
+      onLoaded?: (resource: unknown) => void,
+      seen?: { isLoading: boolean[] },
+    ) {
+      function Detail() {
+        const { isLoading } = useResource(fetchFn, { ...OPTIONS, onLoaded });
+        seen?.isLoading.push(isLoading);
+        return null;
+      }
+      return function Host({ hidden }: { hidden: boolean }) {
+        return (
+          <Activity mode={hidden ? "hidden" : "visible"}>
+            <Detail />
+          </Activity>
+        );
+      };
+    }
+
+    it("re-reads the record", async () => {
+      const fetchFn = vi.fn().mockResolvedValue({ uuid: "dive-1" });
+      const Host = hosted(fetchFn);
+
+      const { rerender } = render(<Host hidden={false} />);
+      await waitFor(() => expect(fetchFn).toHaveBeenCalledOnce());
+
+      await act(async () => {
+        rerender(<Host hidden />);
+      });
+      await act(async () => {
+        rerender(<Host hidden={false} />);
+      });
+
+      await waitFor(() => expect(fetchFn).toHaveBeenCalledTimes(2));
+    });
+
+    it("does not blank the page into its skeleton while it does", async () => {
+      const fetchFn = vi.fn().mockResolvedValue({ uuid: "dive-1" });
+      const seen = { isLoading: [] as boolean[] };
+      const Host = hosted(fetchFn, undefined, seen);
+
+      const { rerender } = render(<Host hidden={false} />);
+      await waitFor(() => expect(fetchFn).toHaveBeenCalledOnce());
+      seen.isLoading.length = 0;
+
+      await act(async () => {
+        rerender(<Host hidden />);
+      });
+      await act(async () => {
+        rerender(<Host hidden={false} />);
+      });
+      await waitFor(() => expect(fetchFn).toHaveBeenCalledTimes(2));
+
+      expect(seen.isLoading).not.toContain(true);
+    });
+
+    // The half that loses work: `onLoaded` is the dive edit page's `form.reset`.
+    it("does not re-seed a form from what comes back", async () => {
+      const fetchFn = vi.fn().mockResolvedValue({ uuid: "dive-1" });
+      const onLoaded = vi.fn();
+      const Host = hosted(fetchFn, onLoaded);
+
+      const { rerender } = render(<Host hidden={false} />);
+      await waitFor(() => expect(onLoaded).toHaveBeenCalledOnce());
+
+      await act(async () => {
+        rerender(<Host hidden />);
+      });
+      await act(async () => {
+        rerender(<Host hidden={false} />);
+      });
+      await waitFor(() => expect(fetchFn).toHaveBeenCalledTimes(2));
+
+      expect(onLoaded).toHaveBeenCalledOnce();
+    });
+  });
+
+  // The other half of the guard, and the reason it records on settle rather than on
+  // start: hiding mid-flight abandons the request, so the work is still owed and the
+  // return has to make it properly - with its loading state, not as a quiet re-read.
+  it("loads on show when the hide interrupted the first fetch", async () => {
+    let settle: (value: unknown) => void = () => {};
+    const fetchFn = vi
+      .fn()
+      .mockImplementationOnce(
+        () => new Promise((resolve) => (settle = resolve)),
+      )
+      .mockResolvedValue({ uuid: "dive-1" });
+
+    function Detail() {
+      useResource(fetchFn, OPTIONS);
+      return null;
+    }
+    function Host({ hidden }: { hidden: boolean }) {
+      return (
+        <Activity mode={hidden ? "hidden" : "visible"}>
+          <Detail />
+        </Activity>
+      );
+    }
+
+    const { rerender } = render(<Host hidden={false} />);
+    await waitFor(() => expect(fetchFn).toHaveBeenCalledOnce());
+
+    await act(async () => {
+      rerender(<Host hidden />);
+    });
+    await act(async () => {
+      settle({ uuid: "dive-1" });
+    });
+    await act(async () => {
+      rerender(<Host hidden={false} />);
+    });
+
+    await waitFor(() => expect(fetchFn).toHaveBeenCalledTimes(2));
   });
 });

@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
+import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 import {
   Card,
   CardContent,
@@ -27,7 +28,7 @@ import { PasskeysCard } from "@/components/settings/passkeys-card";
 import { SessionsCard } from "@/components/settings/sessions-card";
 import { UnitsCard } from "@/components/settings/units-card";
 import { User, Save } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/components/ui/use-toast";
@@ -57,14 +58,15 @@ export default function SettingsPage() {
     },
   });
 
-  // Set form defaults when user data loads
-  useEffect(() => {
-    if (user) {
-      resetProfile({
-        name: user.name || "",
-        username: user.username || "",
-      });
-    }
+  // Fills the form once the account arrives, and again after a save replaces it -
+  // but not on the way back to a route that was kept mounted, where it would repaint
+  // over a half-edited name. `useEffectOnChange` says why.
+  useEffectOnChange(() => {
+    if (!user) return;
+    resetProfile({
+      name: user.name || "",
+      username: user.username || "",
+    });
   }, [user, resetProfile]);
 
   const onProfileSubmit = async (data: ProfileFormData) => {

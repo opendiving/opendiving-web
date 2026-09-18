@@ -17,6 +17,11 @@ export type { PaginatedResponse };
  */
 export const DEFAULT_ITEMS_PER_PAGE = 10;
 
+// The most `revalidate` asks for in one request; it asks for fewer when fewer are on
+// screen. Matches `fetchAllPages`' own default in `lib/api/client.ts` and the API's
+// own ceiling, so it is the largest single request that is answered whole.
+const REVALIDATE_PAGE_SIZE = 100;
+
 interface UseInfiniteResourceOptions<T> {
   itemsPerPage?: number;
   errorMessage?: string;
@@ -173,6 +178,85 @@ export function useInfiniteResource<T>(
     return load(1, false);
   }, [load]);
 
+  /**
+   * Re-read the rows already on screen, keeping their number, without the
+   * spinners or the jump back to page one that `reload` brings.
+   *
+   * For the way back to a route that was kept mounted. Keeping what the diver
+   * had is the point of not reloading there, but what they had can be wrong by
+   * then: a dive logged from `/dives/new` or deleted from a detail page never
+   * reaches this list, and a diver who returned to find their new dive missing
+   * would reasonably think it had not saved. So the rows are re-read in place -
+   * same count, same scroll, contents caught up.
+   *
+   * Asked for in one request wherever it fits - the span on screen, up to
+   * `REVALIDATE_PAGE_SIZE` - so a list six pages deep costs one round trip and the
+   * loop only runs for a diver who has scrolled past a hundred rows.
+   */
+  const revalidate = useCallback(async () => {
+    const loaded = itemsRef.current.length;
+    if (loaded === 0) return;
+
+    const requestId = latestRequest.current + 1;
+    latestRequest.current = requestId;
+    // Deliberately not `isFetching`. That flag makes `loadMore` return without
+    // starting anything and without moving any state, and the load-more trigger only
+    // re-fires on a state change - so a diver who reached the foot of the list during
+    // the re-read would have their page swallowed silently. A `loadMore` here simply
+    // takes the newer ticket and wins; this re-read's commit is the one dropped.
+    try {
+      // No larger than what is on screen: the same one request at every depth a
+      // list actually reaches, and five rows asked for where five are shown rather
+      // than a hundred to refresh the dashboard's recent dives.
+      const batch = Math.min(loaded, REVALIDATE_PAGE_SIZE);
+      const identify = keyOfRef.current;
+      const seen = new Set<string>();
+      const rows: T[] = [];
+      let response: PaginatedResponse<T> | null = null;
+
+      for (let page = 1; rows.length < loaded; page += 1) {
+        response = await fetchFn(page, batch);
+        if (latestRequest.current !== requestId) return;
+        for (const item of response.data) {
+          const key = identify(item);
+          if (seen.has(key)) continue;
+          seen.add(key);
+          rows.push(item);
+        }
+        if (!response.has_more) break;
+      }
+      if (!response) return;
+
+      // Trimmed to what was on screen, which bites only past `REVALIDATE_PAGE_SIZE`:
+      // below it the batch already asks for exactly the span, and above it the last
+      // request overshoots. A shorter answer is kept whole - that is a list someone
+      // else has shrunk.
+      const kept = rows.slice(0, loaded);
+      commitItems(kept);
+      setTotalCount(response.total_count);
+      // Derived from what is held now, not from what was fetched: `loadMore` has to
+      // ask for the page containing the boundary, which a shrunk list moved nearer.
+      nextPage.current = Math.floor(kept.length / itemsPerPage) + 1;
+      setHasMore(kept.length < response.total_count);
+    } catch (error) {
+      // The rows on screen stay: they are still the best answer available, and a
+      // re-read the diver did not ask for has no business toasting at them.
+      if (latestRequest.current === requestId) {
+        console.error(errorMessage, error);
+      }
+    } finally {
+      // Whoever holds the newest ticket owns the flags, which is what `load` assumes
+      // when it declines to clear them for a superseded request. Without this, a
+      // re-read that supersedes a `loadMore` still in flight strands `isFetching`
+      // true and `loadMore` never runs again.
+      if (latestRequest.current === requestId) {
+        isFetching.current = false;
+        setIsLoading(false);
+        setIsLoadingMore(false);
+      }
+    }
+  }, [fetchFn, itemsPerPage, errorMessage, commitItems]);
+
   const loadMore = useCallback(() => {
     if (!hasMore || isFetching.current) return;
     return load(nextPage.current, true);
@@ -259,15 +343,51 @@ export function useInfiniteResource<T>(
     [commitItems, reload, itemsPerPage],
   );
 
+  // The deps this effect last ran for. A route kept mounted has its effects destroyed
+  // on hide and re-created on show, so running on creation would reload a list the
+  // diver had already scrolled six pages into - `useEffectOnChange` states the rule
+  // this follows, and this hook applies it by hand because what to do on the way back
+  // is not "nothing".
+  const ranFor = useRef<readonly [boolean, () => void] | null>(null);
+
   useEffect(() => {
-    // Deliberate fetch-on-mount pattern (setIsLoading(true) runs synchronously
-    // before the network await). This is a known, contentious false-positive for
-    // react-hooks/set-state-in-effect - see https://github.com/facebook/react/issues/34743.
-    if (enabled) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      reload();
+    if (!enabled) {
+      // Forgotten rather than kept: a list switched off and on again owes its first
+      // page, which is what the gear sets card does once it is scrolled near.
+      ranFor.current = null;
+      return;
     }
-  }, [enabled, reload]);
+
+    const previous = ranFor.current;
+    ranFor.current = [enabled, reload];
+
+    // A list this hook has not loaded yet, or a genuinely different one: `reload`
+    // changes identity with `fetchFn`, the page size and anything they close over.
+    if (!previous || previous[0] !== enabled || previous[1] !== reload) {
+      reload();
+      return;
+    }
+
+    // Back to a route that was kept mounted, holding nothing. Either the first load
+    // failed or the list really is empty, and both want the same thing. It matters
+    // because the retry a diver used to get by leaving and returning is gone: the
+    // page no longer remounts, and `LoadMoreTrigger` draws no "Try again" while
+    // `totalCount` is 0, so an empty list would otherwise stay empty until a reload.
+    //
+    // Unless one is already running. An empty list is also what the first load looks
+    // like before it commits, and this effect is re-created on StrictMode's second
+    // pass and on a hide during that load - both of which would otherwise fire a
+    // second request for page one. A failed load clears the flag on its way out, so
+    // the retry above still gets through.
+    if (itemsRef.current.length === 0 && !isFetching.current) {
+      reload();
+      return;
+    }
+
+    // Holding rows, so keep them and the diver's place in them, and catch their
+    // contents up - see `revalidate`.
+    void revalidate();
+  }, [enabled, reload, revalidate]);
 
   return {
     items,
