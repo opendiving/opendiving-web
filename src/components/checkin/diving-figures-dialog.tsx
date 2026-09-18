@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Printer, RotateCcw } from "lucide-react";
 
+import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 import { useUnits } from "@/hooks/useUnits";
 import { type DivingFigures } from "@/lib/checkin";
 import { unitLabel } from "@/lib/units";
@@ -75,9 +75,10 @@ export function DivingFiguresDialog({
 
   // Reload on open, so the dialog shows what the summary is printing rather than
   // whatever the previous invocation left behind - the same reset-on-open as every
-  // create/edit dialog in the app.
+  // create/edit dialog in the app, and on the same hook, so a route kept mounted
+  // under `Activity` cannot blank a dialog the diver left open.
   const { reset } = form;
-  useEffect(() => {
+  useEffectOnChange(() => {
     if (open) reset(divingFiguresToForm(corrected ?? logged));
   }, [open, corrected, logged, reset]);
 

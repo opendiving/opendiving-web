@@ -27,6 +27,12 @@ export default function CheckInPage() {
   // Keyed on the uuid rather than on `user`: the auth context replaces that object
   // whenever anything on the account is saved, and a re-fetch of the whole summary
   // on each of those would be three requests for a value none of them changed.
+  //
+  // A plain effect, not `useEffectOnChange`: this one starts requests and abandons
+  // them in its cleanup, so guarding on deps would cancel on hide and skip on show
+  // and the page would never load. Re-reading when a hidden route comes back is what
+  // the data hooks do deliberately - a dive logged elsewhere has already made these
+  // three figures stale.
   const userUuid = user?.uuid;
   useEffect(() => {
     if (!userUuid) return;

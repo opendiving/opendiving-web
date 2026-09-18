@@ -141,6 +141,10 @@ export function CheckInPageFrame({
   const [editingCertification, setEditingCertification] =
     useState<Certification | null>(null);
 
+  // A plain effect on purpose, unlike every form reset in the app: this one only
+  // registers listeners, and its cleanup removes them. `useEffectOnChange` would drop
+  // them when the route is hidden and skip re-adding them when it comes back, so the
+  // filename would quietly stop working after a diver navigated away and returned.
   const printedTitle = user ? printedFileName(user.name) : null;
   useEffect(() => {
     if (!printedTitle) return;

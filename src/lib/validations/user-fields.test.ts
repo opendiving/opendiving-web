@@ -10,6 +10,7 @@ import {
 } from "./user-fields";
 import type { User } from "@/lib/api/auth";
 import { todayIsoDate } from "@/lib/gear-service";
+import { isoDaysFromNow } from "@/test/local-day";
 
 const values = (over: Partial<UserFieldValues> = {}): UserFieldValues => ({
   name: "Jane Doe",
@@ -58,9 +59,7 @@ describe("userFieldsSchema", () => {
   });
 
   it("refuses a birth date in the future, and only where the field is shown", () => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const future = tomorrow.toISOString().slice(0, 10);
+    const future = isoDaysFromNow(1);
 
     const aboutYou = userFieldsSchema(["date_of_birth", "phone"]);
     expect(aboutYou.safeParse(values({ date_of_birth: future })).success).toBe(

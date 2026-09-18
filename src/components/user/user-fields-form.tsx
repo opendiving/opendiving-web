@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useState } from "react";
 import {
   useForm,
   useFormState,
@@ -11,6 +11,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Save } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 import { authAPI } from "@/lib/api/auth";
 import { getApiErrorMessage } from "@/lib/api/error";
 import { dialogFormSubmit } from "@/lib/dialog-form";
@@ -138,9 +139,12 @@ export function UserFieldsForm({
   });
 
   // Repaints from what came back, which is what makes `refreshUser()` below the end
-  // of a save: the boxes show the row rather than what was typed into them.
+  // of a save: the boxes show the row rather than what was typed into them. Not on
+  // the way back to a kept-mounted route, though, where a plain effect re-runs
+  // against an unchanged `user` and paints over a half-filled card -
+  // `useEffectOnChange` says why.
   const { reset } = form;
-  useEffect(() => {
+  useEffectOnChange(() => {
     if (user) reset(userFieldsFromUser(user));
   }, [user, reset]);
 
