@@ -267,7 +267,10 @@ export function CertificationCardFiles({
                   onClick={() => inputRefs[side].current?.click()}
                 >
                   <Upload className="h-4 w-4 mr-2" />
-                  {stored && !isRemoved && !pending ? "Replace" : "Upload"}
+                  {/* What the button does to what the slot is showing, not to
+                      what is stored: a picked image is as replaceable as a saved
+                      one. */}
+                  {pending || (stored && !isRemoved) ? "Replace" : "Upload"}
                 </Button>
 
                 {isRemoved ? (

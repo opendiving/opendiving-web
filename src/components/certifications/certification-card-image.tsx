@@ -51,7 +51,12 @@ export function CertificationCardFrame({
   return (
     <div
       className={cn(
-        "flex items-center justify-center overflow-hidden rounded-lg border bg-muted",
+        // `self-start` is load-bearing, not tidiness. `aspect-ratio` only applies
+        // to a box whose height is auto, and a flex or grid item stretches to its
+        // line by default - so the check-in sheet, where a card sits beside a
+        // column of text, drew every card at the height of its own details block.
+        // Inert wherever the frame is an ordinary block child.
+        "flex items-center justify-center self-start overflow-hidden rounded-lg border bg-muted",
         CERTIFICATION_CARD_ASPECT_CLASS,
         compact ? "w-20" : "w-full",
         empty && "border-dashed",

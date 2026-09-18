@@ -14,7 +14,49 @@ vi.mock("@/lib/api/certifications", async (importOriginal) => ({
   certificationsAPI: {
     createCertification: vi.fn(),
     updateCertification: vi.fn(),
+    getCertification: vi.fn(),
+    uploadCertificationFile: vi.fn(),
+    deleteCertificationFile: vi.fn(),
+    getCertificationFileBlob: vi.fn(() => new Promise<Blob>(() => {})),
   },
+}));
+
+// jsdom has neither canvas nor an image decoder, so the two steps between picking
+// a file and holding its cropped bytes stand in.
+vi.mock("@/lib/image-crop", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/image-crop")>()),
+  cropToBlob: vi.fn(),
+  decodeImage: vi.fn(),
+}));
+
+// The cropper measures itself with a ResizeObserver that reports zeroes here, so
+// it stands in as the one thing the form cares about: a Save that hands back a
+// crop rectangle.
+vi.mock("@/components/ui/image-crop-dialog", () => ({
+  ImageCropDialog: ({
+    saveLabel,
+    onSave,
+  }: {
+    saveLabel: string;
+    onSave: (area: {
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    }) => void;
+  }) => (
+    <button
+      type="button"
+      onClick={() => onSave({ x: 0, y: 0, width: 1013, height: 638 })}
+    >
+      {saveLabel}
+    </button>
+  ),
+}));
+
+const toast = vi.fn();
+vi.mock("@/components/ui/use-toast", () => ({
+  useToast: () => ({ toast }),
 }));
 
 vi.mock("@/lib/api/courses", async (importOriginal) => ({
@@ -24,8 +66,15 @@ vi.mock("@/lib/api/courses", async (importOriginal) => ({
 
 const { certificationsAPI } = await import("@/lib/api/certifications");
 const { coursesAPI } = await import("@/lib/api/courses");
+const { cropToBlob, decodeImage } = await import("@/lib/image-crop");
 const createCertification = vi.mocked(certificationsAPI.createCertification);
 const updateCertification = vi.mocked(certificationsAPI.updateCertification);
+const getCertification = vi.mocked(certificationsAPI.getCertification);
+const uploadFile = vi.mocked(certificationsAPI.uploadCertificationFile);
+const deleteFile = vi.mocked(certificationsAPI.deleteCertificationFile);
+const crop = vi.mocked(cropToBlob);
+const decode = vi.mocked(decodeImage);
+const CROPPED = new Blob(["cropped"], { type: "image/webp" });
 const getCourses = vi.mocked(coursesAPI.getCourses);
 const getCourse = vi.mocked(coursesAPI.getCourse);
 
@@ -100,6 +149,17 @@ beforeEach(() => {
   vi.clearAllMocks();
   createCertification.mockResolvedValue({ ...EXISTING, uuid: "cert-new" });
   updateCertification.mockResolvedValue(undefined);
+  getCertification.mockResolvedValue(EXISTING);
+  uploadFile.mockResolvedValue({
+    uuid: "file-1",
+    side: "front",
+    content_type: "image/webp",
+    byte_size: 7,
+    original_filename: "card-front.webp",
+  });
+  deleteFile.mockResolvedValue(undefined);
+  decode.mockResolvedValue({} as HTMLImageElement);
+  crop.mockResolvedValue(CROPPED);
   // The server filters by `search`; the stub answers every query with both
   // courses, so a second pick doesn't depend on re-typing the exact name.
   getCourses.mockImplementation(async () => page([COURSE, OTHER_COURSE]));
@@ -409,5 +469,124 @@ describe("a dialog opened from a course page starts on that course", () => {
 
     await waitFor(() => expect(instructor()).toHaveValue("Sam Reef"));
     expect(trainingCenter()).toHaveValue("My Shop");
+  });
+});
+
+// A photo file, small enough to pass the size check this form makes before the
+// API's own.
+const photo = () =>
+  new File([new Uint8Array([1, 2, 3])], "card.jpg", { type: "image/jpeg" });
+
+const frontPicker = () =>
+  screen.getByLabelText("Choose a front card image") as HTMLInputElement;
+
+// Pick an image for the front slot and take the stub cropper's crop.
+async function pickFrontImage() {
+  await userEvent.upload(frontPicker(), photo());
+  await userEvent.click(
+    await screen.findByRole("button", { name: "Use this crop" }),
+  );
+}
+
+// The images used to upload the moment they were picked, from a dialog of their
+// own. Cancel could not undo that, and a card being created had no uuid to upload
+// against - which is why adding one was a second step after the save.
+describe("card images ride on the form's own save", () => {
+  it("sends nothing while the diver is still picking", async () => {
+    open({ certification: EXISTING });
+
+    await pickFrontImage();
+
+    expect(await screen.findByText(/Added when you save/)).toBeInTheDocument();
+    expect(uploadFile).not.toHaveBeenCalled();
+    expect(updateCertification).not.toHaveBeenCalled();
+  });
+
+  it("sends a struck-off image nowhere until the form is saved", async () => {
+    open({
+      certification: {
+        ...EXISTING,
+        files: [
+          {
+            uuid: "file-1",
+            side: "front",
+            content_type: "image/webp",
+            byte_size: 7,
+            original_filename: "padi-ow.webp",
+          },
+        ],
+      },
+    });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /Remove the front image/ }),
+    );
+
+    expect(screen.getByText("Deleted when you save")).toBeInTheDocument();
+    expect(deleteFile).not.toHaveBeenCalled();
+
+    await save();
+
+    await waitFor(() =>
+      expect(deleteFile).toHaveBeenCalledWith("cert-1", "front"),
+    );
+  });
+
+  it("uploads the cropped bytes after the details, against the card just created", async () => {
+    // The ordering the API forces: `PUT .../file/{side}` needs a uuid, and a card
+    // being created does not have one until `createCertification` resolves.
+    open();
+    await userEvent.type(certificationName(), "Advanced Nitrox");
+    await pickFrontImage();
+
+    await save();
+
+    await waitFor(() => expect(uploadFile).toHaveBeenCalled());
+    expect(uploadFile).toHaveBeenCalledWith(
+      "cert-new",
+      "front",
+      CROPPED,
+      "card-front.webp",
+    );
+  });
+
+  it("hands back a re-read card, the embedded file metadata being stale either way", async () => {
+    // Only the API knows which sides landed, and the list and the check-in sheet
+    // both render their thumbnails from that embedded metadata.
+    const withFile = { ...EXISTING, files: [] };
+    getCertification.mockResolvedValue(withFile);
+    const onSaved = open({ certification: EXISTING });
+
+    await pickFrontImage();
+    await save();
+
+    await waitFor(() => expect(onSaved).toHaveBeenCalledWith(withFile));
+    expect(getCertification).toHaveBeenCalledWith("cert-1");
+  });
+
+  it("re-reads nothing when no image was touched", async () => {
+    const onSaved = open({ certification: EXISTING });
+
+    await save();
+
+    await waitFor(() => expect(onSaved).toHaveBeenCalled());
+    expect(getCertification).not.toHaveBeenCalled();
+  });
+
+  it("keeps the save when an image fails, and says which side", async () => {
+    // The details are already written by then, so failing the whole save would
+    // make the diver fill the form in again to retry one picture.
+    uploadFile.mockRejectedValue(new Error("nope"));
+    const onSaved = open({ certification: EXISTING });
+
+    await pickFrontImage();
+    await save();
+
+    await waitFor(() => expect(onSaved).toHaveBeenCalled());
+    expect(toast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: expect.stringContaining("front image did not"),
+      }),
+    );
   });
 });
