@@ -2,21 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Area } from "react-easy-crop";
-import { FileText, Trash2, Undo2, Upload } from "lucide-react";
 import {
   certificationFile,
   Certification,
   CertificationSide,
-  CERTIFICATION_FILE_ACCEPT,
   CERTIFICATION_SIDES,
-  CERTIFICATION_SIDE_HEADINGS,
-  CERTIFICATION_SIDE_LABELS,
   MAX_CERTIFICATION_FILE_SIZE,
 } from "@/lib/api/certifications";
-import type {
-  CertificationCardEdits,
-  PendingCardImage,
-} from "@/lib/certification-card-edits";
+import type { CertificationCardEdits } from "@/lib/certification-card-edits";
 import {
   CERTIFICATION_CARD_ASPECT,
   CERTIFICATION_CARD_EXPORT_WIDTH,
@@ -28,17 +21,12 @@ import {
   decodeImage,
   ImageCropError,
 } from "@/lib/image-crop";
-import { formatFileSize } from "@/lib/format";
-import { Button } from "@/components/ui/button";
 import { ImageCropDialog } from "@/components/ui/image-crop-dialog";
-import { IconTooltip } from "@/components/ui/tooltip";
 import { useToast } from "@/components/ui/use-toast";
 import {
-  CertificationCardFrame,
-  CertificationCardImage,
-} from "./certification-card-image";
-
-const PDF_CONTENT_TYPE = "application/pdf";
+  CertificationCardSlot,
+  PDF_CONTENT_TYPE,
+} from "./certification-card-slot";
 
 interface CertificationCardFilesProps {
   // The certification being edited, or undefined on the create form - where there
@@ -79,11 +67,6 @@ export function CertificationCardFiles({
     side: CertificationSide;
     url: string;
   } | null>(null);
-  // One ref per side; a single shared input can't tell us which slot was clicked.
-  const inputRefs = {
-    front: useRef<HTMLInputElement>(null),
-    back: useRef<HTMLInputElement>(null),
-  };
 
   useEffect(() => {
     if (!cropping) return;
@@ -145,16 +128,7 @@ export function CertificationCardFiles({
       variant: "destructive",
     });
 
-  const handleFileSelected = async (
-    side: CertificationSide,
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const file = event.target.files?.[0];
-    // Cleared unconditionally, so picking the *same* file again after a cancelled
-    // crop still fires a change event.
-    event.target.value = "";
-    if (!file) return;
-
+  const handlePick = async (side: CertificationSide, file: File) => {
     // Checked here as well as by the API so a diver on a slow connection isn't
     // made to upload 40 MB before being told no. The API re-checks regardless,
     // and its check is the one that counts.
@@ -226,105 +200,24 @@ export function CertificationCardFiles({
     <div className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
         {CERTIFICATION_SIDES.map((side) => {
-          const stored = certification
-            ? certificationFile(certification, side)
-            : undefined;
           const edit = edits[side];
-          const isRemoved = edit?.kind === "remove";
-          const pending = edit?.kind === "replace" ? edit.image : null;
-
           return (
-            <div key={side} className="space-y-2">
-              <p className="text-sm font-medium">
-                {CERTIFICATION_SIDE_HEADINGS[side]}
-              </p>
-
-              {pending ? (
-                <PendingCardPreview image={pending} side={side} />
-              ) : (
-                <CertificationCardImage
-                  certificationUuid={certification?.uuid ?? ""}
-                  side={side}
-                  file={isRemoved ? undefined : stored}
-                />
-              )}
-
-              <input
-                ref={inputRefs[side]}
-                type="file"
-                accept={CERTIFICATION_FILE_ACCEPT}
-                className="hidden"
-                aria-label={`Choose a ${CERTIFICATION_SIDE_LABELS[side].toLowerCase()} card image`}
-                onChange={(event) => void handleFileSelected(side, event)}
-              />
-
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={disabled}
-                  onClick={() => inputRefs[side].current?.click()}
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  {/* What the button does to what the slot is showing, not to
-                      what is stored: a picked image is as replaceable as a saved
-                      one. */}
-                  {pending || (stored && !isRemoved) ? "Replace" : "Upload"}
-                </Button>
-
-                {isRemoved ? (
-                  <IconTooltip label={`Keep the ${side} image`}>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      disabled={disabled}
-                      onClick={() => clearEdit(side)}
-                    >
-                      <Undo2 className="h-4 w-4" />
-                    </Button>
-                  </IconTooltip>
-                ) : (
-                  (pending || stored) && (
-                    <IconTooltip
-                      label={
-                        pending
-                          ? `Discard the new ${side} image`
-                          : `Remove the ${side} image`
-                      }
-                    >
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        disabled={disabled}
-                        // A picked image is dropped rather than marked: there is
-                        // nothing stored yet for a save to delete, so the edit
-                        // simply goes.
-                        onClick={() =>
-                          pending
-                            ? clearEdit(side)
-                            : setEdit(side, { kind: "remove" })
-                        }
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </IconTooltip>
-                  )
-                )}
-              </div>
-
-              {/* Every deferred state says so in words. The preview alone cannot:
-                  a slot showing a new picture and a slot showing the stored one
-                  look the same until the diver is told which is which. */}
-              <SlotCaption
-                pendingBytes={pending?.blob.size ?? null}
-                isRemoved={isRemoved}
-                replacesStored={!!stored}
-                stored={stored}
-              />
-            </div>
+            <CertificationCardSlot
+              key={side}
+              side={side}
+              certificationUuid={certification?.uuid ?? ""}
+              stored={
+                certification
+                  ? certificationFile(certification, side)
+                  : undefined
+              }
+              pending={edit?.kind === "replace" ? edit.image : null}
+              isRemoved={edit?.kind === "remove"}
+              disabled={disabled}
+              onPick={(file) => void handlePick(side, file)}
+              onRemove={() => setEdit(side, { kind: "remove" })}
+              onUndo={() => clearEdit(side)}
+            />
           );
         })}
       </div>
@@ -354,82 +247,4 @@ export function CertificationCardFiles({
       )}
     </div>
   );
-}
-
-/**
- * The picked bytes, drawn in the same frame the stored card will be.
- *
- * A PDF gets the labelled box `CertificationCardImage` gives a stored one, for the
- * reason that component explains: the app's CSP has no way to render one inline.
- * It carries no `previewUrl` for the same reason.
- */
-function PendingCardPreview({
-  image,
-  side,
-}: {
-  image: PendingCardImage;
-  side: CertificationSide;
-}) {
-  if (image.blob.type === PDF_CONTENT_TYPE) {
-    return (
-      <CertificationCardFrame className="flex-col gap-1 text-muted-foreground">
-        <FileText className="h-6 w-6" />
-        <span className="text-xs">PDF</span>
-      </CertificationCardFrame>
-    );
-  }
-
-  return (
-    <CertificationCardFrame>
-      {image.previewUrl && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={image.previewUrl}
-          alt={`New ${side} of certification card`}
-          // Already cropped to the frame's own shape, so this crops nothing; it
-          // matches the stored preview beside it rather than inventing a second
-          // fit rule.
-          className="h-full w-full object-cover"
-        />
-      )}
-    </CertificationCardFrame>
-  );
-}
-
-// What this slot will hold once the form is saved, in words.
-function SlotCaption({
-  pendingBytes,
-  isRemoved,
-  replacesStored,
-  stored,
-}: {
-  pendingBytes: number | null;
-  isRemoved: boolean;
-  replacesStored: boolean;
-  stored?: { original_filename: string; byte_size: number };
-}) {
-  if (pendingBytes !== null) {
-    return (
-      <p className="text-xs text-muted-foreground">
-        {replacesStored ? "Replaces the stored image" : "Added"} when you save ·{" "}
-        {formatFileSize(pendingBytes)}
-      </p>
-    );
-  }
-
-  if (isRemoved) {
-    return (
-      <p className="text-xs text-muted-foreground">Deleted when you save</p>
-    );
-  }
-
-  if (stored) {
-    return (
-      <p className="text-xs text-muted-foreground truncate">
-        {stored.original_filename} · {formatFileSize(stored.byte_size)}
-      </p>
-    );
-  }
-
-  return null;
 }
