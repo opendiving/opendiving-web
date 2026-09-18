@@ -5595,6 +5595,10 @@ Offsets span −12 to +14, so no instant is the same calendar day everywhere. An
 derived from the fixture through `localDay()` in `test/local-day.ts`, which spells out
 `toLocaleDateString("en-US", { year, month: "short", day })` rather than reusing `formatDateTime`.
 
+A bare date going the other way - typed into a field the app validates - comes from
+`isoDaysFromNow()` in the same file, built from local getters. The zone list alone does not reach
+that one: it needs an hour past local midnight and before UTC's, so pin the clock as well.
+
 ## A cylinder may record a mix with no vessel, and three fields are `number | null`
 
 `DiveMixture.volume`, `.oxygen` and `.helium` are `?: number | null` in `lib/api/dives.ts`: a UDDF

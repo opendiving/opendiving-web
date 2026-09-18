@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { CertificationExpiryCard } from "./certification-expiry-card";
 import type { User } from "@/lib/api/auth";
 import type { CertificationExpiringResponse } from "@/lib/api/certifications";
+import { isoDaysFromNow } from "@/test/local-day";
 
 // The card is a list of things that run out, and insurance is one of them: a lapsed
 // policy stops a dive at the desk exactly as a lapsed rescue card does. What a render
@@ -35,12 +36,6 @@ const getExpiring = vi.mocked(certificationsAPI.getExpiring);
 // Inside the 90-day window `certificationExpiryStatus` flags, and well outside it.
 const soon = () => isoDaysFromNow(30);
 const later = () => isoDaysFromNow(400);
-
-function isoDaysFromNow(days: number): string {
-  const date = new Date();
-  date.setDate(date.getDate() + days);
-  return date.toISOString().slice(0, 10);
-}
 
 const noCertifications: CertificationExpiringResponse = { data: [] };
 
