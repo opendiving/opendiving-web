@@ -133,7 +133,12 @@ describe("the course's certifications card", () => {
       ),
     );
 
+    // Including the level, which the diver then corrects to what their card
+    // actually says - the course's own name is longer than the card's.
+    expect(screen.getByLabelText("Certification *")).toHaveValue(COURSE.name);
+
     getCertifications.mockImplementation(async () => page([CREATED]));
+    await userEvent.clear(screen.getByLabelText("Certification *"));
     await userEvent.type(
       screen.getByLabelText("Certification *"),
       "Advanced Nitrox",

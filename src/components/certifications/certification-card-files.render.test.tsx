@@ -64,15 +64,20 @@ const renderFiles = (
   return { onChange };
 };
 
-// Most modern e-cards are one-sided, so a diver who never fills the second slot
-// has a complete record. The screen has to say that, or an empty back reads as
-// something the diver still owes.
-describe("the second card slot presents itself as optional", () => {
-  it("heads the two slots so only the second is qualified", () => {
+// Neither slot is required - no card image reaches `certificationSchema` at all -
+// and a diver who fills neither has a complete record. The screen has to carry
+// that, or an empty slot reads as something the diver still owes. Qualifying only
+// one of them was the old mistake: it said the other was required.
+describe("neither card slot is presented as required", () => {
+  it("names what each slot takes, and marks neither required", () => {
     renderFiles();
 
-    expect(screen.getByText("Front")).toBeInTheDocument();
-    expect(screen.getByText("Back or details (optional)")).toBeInTheDocument();
+    // Bare nouns, and the test is that they stay bare: the asterisk this form puts
+    // on a required field is on neither, and so is any qualifier - one on the back
+    // alone says the front is required, which it is not.
+    for (const heading of ["Front", "Back"]) {
+      expect(screen.getByText(heading).textContent).toBe(heading);
+    }
   });
 
   it("describes an unfilled slot without calling it missing", () => {

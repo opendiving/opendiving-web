@@ -48,11 +48,12 @@ interface CertificationCardFilesProps {
  * file list, and the reason this is a section of the form rather than a dialog of
  * its own reached from a second button.
  *
- * Both slots are always shown, empty or not, but only the first is expected to be
- * filled: modern e-cards are usually one-sided, so the second slot is optional and
- * its heading says so. Keeping it on screen is what lets the diver holding a
- * two-sided card - TDI/SDI still prints one - find somewhere to put the back
- * without hunting for a control that only appears once it is needed.
+ * Both slots are always shown, empty or not, and neither is required - no card
+ * image reaches `certificationSchema` at all. The second is the one most divers
+ * leave empty, modern e-cards being usually one-sided. Keeping it on screen is what
+ * lets the diver holding a two-sided card - TDI/SDI still prints one - find
+ * somewhere to put the back without hunting for a control that only appears once it
+ * is needed.
  */
 export function CertificationCardFiles({
   certification,

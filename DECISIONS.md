@@ -5072,8 +5072,8 @@ React Hook Form's `dirtyFields` cannot say whether the diver touched a prefilled
 unrelated box marks every prefilled field dirty and the prefill silently stops replacing them:
 switching course A → B does nothing.
 
-`CertificationDialog` therefore keeps `autofilledRef`, the values it last wrote into those five
-fields, starting from the ones the dialog opened with. A field still holding that value is
+`CertificationDialog` therefore keeps `autofilledRef`, the values it last wrote into the fields a
+course fills in, starting from the ones the dialog opened with. A field still holding that value is
 untouched; anything else is the diver's and is left alone. Accepted: a field typed back to exactly
 its opening value reads as untouched and takes the next course's value.
 `certification-dialog.render.test.tsx` pins the `dirtyFields` failure mode so a later simplification
