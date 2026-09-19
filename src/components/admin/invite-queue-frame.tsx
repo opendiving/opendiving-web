@@ -71,18 +71,18 @@ export function InviteQueueFrame({
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle
-            as="h2"
-            className="flex items-center justify-between gap-4"
-          >
-            <span>Requests</span>
-            <CountBadge
-              count={totalCount}
-              isLoading={isLoading}
-              label="pending request"
-            />
+        <CardHeader className="items-start">
+          {/* Hidden, not dropped: the page's `h1` names the list, but the
+              card is still a section of it, and the empty state's `h3` below
+              would skip a level without this. */}
+          <CardTitle as="h2" className="sr-only">
+            Requests
           </CardTitle>
+          <CountBadge
+            count={totalCount}
+            isLoading={isLoading}
+            label="pending request"
+          />
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2 mb-4">

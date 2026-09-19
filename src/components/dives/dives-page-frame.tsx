@@ -70,15 +70,18 @@ export function DivesPageFrame({
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle as="h2" className="flex items-center justify-between">
-            <span>Dive Log</span>
-            <CountBadge
-              count={totalCount}
-              isLoading={isLoading}
-              label="total dive"
-            />
+        <CardHeader className="items-start">
+          {/* Hidden, not dropped: the page's `h1` names the list, but the
+              card is still a section of it, and the empty state's `h3` below
+              would skip a level without this. */}
+          <CardTitle as="h2" className="sr-only">
+            Dive Log
           </CardTitle>
+          <CountBadge
+            count={totalCount}
+            isLoading={isLoading}
+            label="total dive"
+          />
         </CardHeader>
         <CardContent>
           {numbering}

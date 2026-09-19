@@ -118,15 +118,18 @@ export function CoursesPageFrame({
 
       <Card>
         <CardHeader>
+          {/* Hidden, not dropped: the page's `h1` names the list, but the
+              card is still a section of it, and the empty state's `h3` below
+              would skip a level without this. */}
+          <CardTitle as="h2" className="sr-only">
+            Course List
+          </CardTitle>
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <CardTitle as="h2" className="flex flex-wrap items-center gap-3">
-              <span>Course List</span>
-              <CountBadge
-                count={totalCount}
-                isLoading={isLoading}
-                label="total course"
-              />
-            </CardTitle>
+            <CountBadge
+              count={totalCount}
+              isLoading={isLoading}
+              label="total course"
+            />
             {/* The button says what it opens, and the dot says the shut panel
                 is still narrowing the list - a collapsed row that silently
                 hides half the courses is the one failure this costs. */}
