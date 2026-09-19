@@ -757,9 +757,10 @@ function Section({
 // 6.5rem is the shortest floor that still does the job, and the width is doing two
 // things at once. It clears "Training centre", the longest label on the page at just
 // under 6.2rem, so no label wraps; and it clears every *other* list's longest label
-// too, which is what holds all five to one width rather than each to its own content.
-// Every rem above that is white space between a label and the value it belongs to,
-// which is a gap to read across on the six-word labels and a gulf on "Name".
+// too, which is what holds every list on the sheet to one width rather than each to
+// its own content. Every rem above that is white space between a label and the value
+// it belongs to - a gap to read across even on "Training centre", and a gulf on
+// "Name".
 //
 // The floor is also why a certification's details sit under its card rather than
 // beside it: a label track this wide in what is left of half a row leaves a value

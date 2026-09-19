@@ -888,10 +888,11 @@ what makes a row of them read as cards. `CertificationCardFrame` is the only box
 uncropped is `object-cover`, trimming at most 4% off the old PADI design, which carries nothing near
 its edges.
 
-`self-start` is load-bearing: `aspect-ratio` applies only where height is auto, and a flex or grid
-item stretches to its line. `CERTIFICATION_CARD_ASPECT_CLASS` is spelled out because Tailwind
-generates only the classes it finds written down; `certification.test.ts` holds it and the number in
-step.
+`self-start` guards that ratio rather than tidying anything: `aspect-ratio` applies only where
+height is auto, and a flex or grid item stretches to its line. It is inert while every caller
+renders the frame as an ordinary block child, and there for the one that does not.
+`CERTIFICATION_CARD_ASPECT_CLASS` is spelled out because Tailwind generates only the classes it
+finds written down; `certification.test.ts` holds it and the number in step.
 
 Cropped bytes are WebP: this API stores what it is given. A browser with no WebP encoder falls back
 to PNG on its own, so `croppedFilename` reads `Blob.type`.
