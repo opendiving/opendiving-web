@@ -7,7 +7,7 @@ import { DiveIcon } from "@/components/logo";
 import { EmptyState } from "@/components/ui/empty-state";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { CountBadge } from "@/components/ui/count-badge";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
 import {
@@ -70,15 +70,12 @@ export function DivesPageFrame({
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle as="h2" className="flex items-center justify-between">
-            <span>Dive Log</span>
-            <CountBadge
-              count={totalCount}
-              isLoading={isLoading}
-              label="total dive"
-            />
-          </CardTitle>
+        <CardHeader className="items-start">
+          <CountBadge
+            count={totalCount}
+            isLoading={isLoading}
+            label="total dive"
+          />
         </CardHeader>
         <CardContent>
           {numbering}

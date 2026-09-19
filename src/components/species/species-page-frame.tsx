@@ -6,7 +6,7 @@ import { Fish, Search } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { CountBadge } from "@/components/ui/count-badge";
 import { Input } from "@/components/ui/input";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
@@ -89,19 +89,13 @@ export function SpeciesPageFrame({
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle
-            as="h2"
-            className="flex flex-wrap items-center justify-between gap-3"
-          >
-            <span>Life List</span>
-            <CountBadge
-              count={totalCount}
-              isLoading={isLoading}
-              label="species"
-              plural="species"
-            />
-          </CardTitle>
+        <CardHeader className="items-start">
+          <CountBadge
+            count={totalCount}
+            isLoading={isLoading}
+            label="species"
+            plural="species"
+          />
         </CardHeader>
         <CardContent>
           <div className="relative mb-4">

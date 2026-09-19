@@ -5,7 +5,7 @@ import { BadgeCheck, Plus } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { CountBadge } from "@/components/ui/count-badge";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
 import {
@@ -63,18 +63,12 @@ export function CertificationsPageFrame({
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle
-            as="h2"
-            className="flex flex-wrap items-center justify-between gap-3"
-          >
-            <span>Your Certifications</span>
-            <CountBadge
-              count={totalCount}
-              isLoading={isLoading}
-              label="certification"
-            />
-          </CardTitle>
+        <CardHeader className="items-start">
+          <CountBadge
+            count={totalCount}
+            isLoading={isLoading}
+            label="certification"
+          />
         </CardHeader>
         <CardContent>
           {!isLoading && rows.length === 0 ? (

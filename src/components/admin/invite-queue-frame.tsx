@@ -4,7 +4,7 @@ import { Mail, Trash2 } from "lucide-react";
 import type { AdminInviteRequest } from "@/lib/api/admin";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { CountBadge } from "@/components/ui/count-badge";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
 import { InviteRequestsTable } from "@/components/admin/invite-requests-table";
@@ -71,18 +71,12 @@ export function InviteQueueFrame({
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle
-            as="h2"
-            className="flex items-center justify-between gap-4"
-          >
-            <span>Requests</span>
-            <CountBadge
-              count={totalCount}
-              isLoading={isLoading}
-              label="pending request"
-            />
-          </CardTitle>
+        <CardHeader className="items-start">
+          <CountBadge
+            count={totalCount}
+            isLoading={isLoading}
+            label="pending request"
+          />
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-2 mb-4">

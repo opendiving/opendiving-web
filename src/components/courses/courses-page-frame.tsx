@@ -11,7 +11,7 @@ import {
 import { EmptyState } from "@/components/ui/empty-state";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { CountBadge } from "@/components/ui/count-badge";
 import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 import { IconTooltip } from "@/components/ui/tooltip";
@@ -119,14 +119,11 @@ export function CoursesPageFrame({
       <Card>
         <CardHeader>
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <CardTitle as="h2" className="flex flex-wrap items-center gap-3">
-              <span>Course List</span>
-              <CountBadge
-                count={totalCount}
-                isLoading={isLoading}
-                label="total course"
-              />
-            </CardTitle>
+            <CountBadge
+              count={totalCount}
+              isLoading={isLoading}
+              label="total course"
+            />
             {/* The button says what it opens, and the dot says the shut panel
                 is still narrowing the list - a collapsed row that silently
                 hides half the courses is the one failure this costs. */}
