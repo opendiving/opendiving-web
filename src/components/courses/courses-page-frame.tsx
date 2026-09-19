@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ChevronDown,
   ChevronUp,
@@ -88,6 +88,15 @@ export function CoursesPageFrame({
 }: CoursesPageFrameProps) {
   const [isPanelOpen, setPanelOpen] = useState(false);
   const isNarrowed = search.length > 0 || hasCourseFilters(filters);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  // Typing is what the diver came for, and pressing a magnifier to then reach
+  // for the box is a click nobody wanted. In an effect rather than at the press,
+  // because the panel is `hidden` until this render commits and a box with no
+  // layout box cannot take focus.
+  useEffect(() => {
+    if (isPanelOpen) searchRef.current?.focus();
+  }, [isPanelOpen]);
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -169,6 +178,7 @@ export function CoursesPageFrame({
               onFiltersChange={onFiltersChange}
               agencies={agencies}
               statuses={statuses}
+              searchRef={searchRef}
             />
           </div>
 

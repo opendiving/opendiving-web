@@ -101,4 +101,16 @@ describe("CoursesPageFrame", () => {
       ),
     ).toEqual(["Any agency", "PADI"]);
   });
+
+  // Pressing a magnifier and then reaching for the box is a click nobody wanted.
+  it("puts the cursor in the search box on opening, and again on re-opening", async () => {
+    frame();
+
+    await userEvent.click(toggle());
+    expect(screen.getByLabelText("Search courses by name")).toHaveFocus();
+
+    await userEvent.click(toggle());
+    await userEvent.click(toggle());
+    expect(screen.getByLabelText("Search courses by name")).toHaveFocus();
+  });
 });

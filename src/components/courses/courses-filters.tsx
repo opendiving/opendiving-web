@@ -1,5 +1,6 @@
 "use client";
 
+import { type Ref } from "react";
 import { Search, X } from "lucide-react";
 
 import {
@@ -58,6 +59,8 @@ export interface CoursesFiltersProps {
    */
   agencies?: readonly CertificationAgency[];
   statuses?: readonly CourseStatus[];
+  /** The search box itself, for a caller that puts the cursor in it. */
+  searchRef?: Ref<HTMLInputElement>;
 }
 
 // Keeps whatever is picked on the list even once it is no longer in use - the
@@ -82,6 +85,7 @@ export function CoursesFilters({
   onFiltersChange,
   agencies = CERTIFICATION_AGENCIES,
   statuses = COURSE_STATUSES,
+  searchRef,
 }: CoursesFiltersProps) {
   const set = <K extends keyof CourseListFilters>(
     key: K,
@@ -100,6 +104,7 @@ export function CoursesFilters({
             Search courses by name
           </label>
           <Input
+            ref={searchRef}
             id="course-search"
             type="search"
             className="pl-9"
