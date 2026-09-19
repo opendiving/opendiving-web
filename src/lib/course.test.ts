@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { COURSE_STATUSES } from "@/lib/api/courses";
-import { courseStatusBadgeVariant, courseStatusLabel } from "@/lib/course";
+import { COURSE_STATUSES, type Course } from "@/lib/api/courses";
+import {
+  courseStatusBadgeVariant,
+  courseStatusLabel,
+  courseVocabulary,
+} from "@/lib/course";
 
 describe("courseStatusLabel", () => {
   it("names every status the API can send", () => {
@@ -53,5 +57,64 @@ describe("courseStatusBadgeVariant", () => {
   it("falls back to a neutral variant for an unknown status", () => {
     expect(courseStatusBadgeVariant("deferred")).toBe("outline");
     expect(courseStatusBadgeVariant(null)).toBe("outline");
+  });
+});
+
+describe("courseVocabulary", () => {
+  const course = (fields: Partial<Course>): Course =>
+    ({
+      uuid: crypto.randomUUID(),
+      name: "Nitrox",
+      status: "completed",
+      user_uuid: "diver",
+      created_at: "2025-01-01T00:00:00Z",
+      ...fields,
+    }) as Course;
+
+  it("offers only the agencies the courses carry", () => {
+    const { agencies } = courseVocabulary([
+      course({ agency: "sdi" }),
+      course({ agency: "padi" }),
+      course({ agency: "padi" }),
+    ]);
+
+    expect(agencies).toEqual(["padi", "sdi"]);
+  });
+
+  it("orders both lists canonically rather than by first appearance", () => {
+    // `padi` is declared before `sdi`, and `planned` before `completed`, so what
+    // the diver logged first does not decide what the picker offers first.
+    const { agencies, statuses } = courseVocabulary([
+      course({ agency: "sdi", status: "completed" }),
+      course({ agency: "padi", status: "planned" }),
+    ]);
+
+    expect(agencies).toEqual(["padi", "sdi"]);
+    expect(statuses).toEqual(["planned", "completed"]);
+  });
+
+  it("passes over a course that names no agency", () => {
+    const { agencies, statuses } = courseVocabulary([
+      course({ agency: null, status: "in_progress" }),
+    ]);
+
+    expect(agencies).toEqual([]);
+    expect(statuses).toEqual(["in_progress"]);
+  });
+
+  // The same tolerance `courseStatusLabel` has: the API can grow a member before
+  // this build ships a label for it, and a course wearing one is still a course
+  // the diver may want to filter to.
+  it("keeps a status this build does not know, after the ones it does", () => {
+    const { statuses } = courseVocabulary([
+      course({ status: "deferred" as Course["status"] }),
+      course({ status: "completed" }),
+    ]);
+
+    expect(statuses).toEqual(["completed", "deferred"]);
+  });
+
+  it("answers an empty logbook with empty lists", () => {
+    expect(courseVocabulary([])).toEqual({ agencies: [], statuses: [] });
   });
 });

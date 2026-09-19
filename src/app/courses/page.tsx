@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
+import { useCourseFilterOptions } from "@/hooks/useCourseFilterOptions";
 import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { coursesAPI, Course } from "@/lib/api/courses";
@@ -41,6 +42,14 @@ export default function CoursesPage() {
   // No debounce twin: each of these commits a whole value at once, so what is
   // held and what has been asked for are the same thing.
   const [filters, setFilters] = useState<CourseListFilters>(NO_COURSE_FILTERS);
+  // Latched by the filter panel's first open, since nothing before that needs
+  // to know which agencies and statuses the diver's courses use.
+  const [wantsFilterOptions, setWantsFilterOptions] = useState(false);
+  const {
+    agencies,
+    statuses,
+    reload: reloadFilterOptions,
+  } = useCourseFilterOptions(!!user && wantsFilterOptions);
 
   useEffect(() => {
     const timer = setTimeout(
@@ -98,7 +107,10 @@ export default function CoursesPage() {
     // The row goes locally rather than by re-reading the pages around it: a
     // diver who has scrolled several pages in should not have the list
     // collapse back to the first one under them.
-    onDeleted: removeItem,
+    onDeleted: (uuid: string) => {
+      removeItem(uuid);
+      reloadFilterOptions();
+    },
   });
 
   if (isAuthLoading) {
@@ -127,6 +139,9 @@ export default function CoursesPage() {
         hasMore={hasMore}
         onLoadMore={loadMore}
         onNew={() => setEditingCourse(undefined)}
+        onFiltersOpened={() => setWantsFilterOptions(true)}
+        agencies={agencies}
+        statuses={statuses}
         rows={courses.map((course) => (
           <TableRow key={course.uuid}>
             <TableCell className="font-medium">
@@ -216,7 +231,12 @@ export default function CoursesPage() {
         open={editingCourse !== null}
         onOpenChange={(open) => !open && setEditingCourse(null)}
         course={editingCourse}
-        onSaved={applySaved}
+        // The vocabulary too, not just the row: a first course with a new
+        // agency is what adds that agency to the filter.
+        onSaved={(course) => {
+          applySaved(course);
+          reloadFilterOptions();
+        }}
       />
 
       <ConfirmDialog

@@ -1,4 +1,4 @@
-import { apiClient } from "./client";
+import { apiClient, fetchAllPages } from "./client";
 import type { PaginatedResponse } from "./client";
 import type { CertificationAgency } from "./certifications";
 
@@ -175,3 +175,19 @@ export const coursesAPI = {
     return response.data;
   },
 };
+
+/**
+ * Every course the diver has, unfiltered.
+ *
+ * For the filter row, which offers only the agencies and statuses actually in
+ * use and so has to see the whole set rather than the page on screen. The API
+ * caps a page at 100 and a logbook's worth of courses is tens, so this is one
+ * request for anyone realistic. It is deliberately not narrowed by the filters
+ * themselves: picking PADI must not be what removes SDI from the list.
+ */
+export async function fetchAllCourses(signal?: AbortSignal): Promise<Course[]> {
+  return fetchAllPages(
+    (page, itemsPerPage) => coursesAPI.getCourses(page, itemsPerPage),
+    { signal, label: "courses", keyOf: (course) => course.uuid },
+  );
+}

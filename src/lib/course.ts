@@ -1,4 +1,12 @@
-import type { CourseStatus } from "@/lib/api/courses";
+import {
+  COURSE_STATUSES,
+  type Course,
+  type CourseStatus,
+} from "@/lib/api/courses";
+import {
+  CERTIFICATION_AGENCIES,
+  type CertificationAgency,
+} from "@/lib/api/certifications";
 
 // Human labels for a course's status. Derived in the browser rather than sent by
 // the API, the same way `certificationExpiryLabel` is: the wire value is a slug
@@ -50,4 +58,49 @@ export function courseStatusBadgeVariant(
     default:
       return "outline";
   }
+}
+
+/** The agency and status vocabularies a diver's own courses actually use. */
+export interface CourseVocabulary {
+  agencies: CertificationAgency[];
+  statuses: CourseStatus[];
+}
+
+// Canonical order first, then anything used that this build has no place for -
+// a member the API grew before the app did, which `courseStatusLabel` already
+// renders rather than blanking. Sorting the strays keeps the tail stable.
+function inUse<T extends string>(
+  canonical: readonly T[],
+  used: Set<string>,
+): T[] {
+  const known = canonical.filter((value) => used.has(value));
+  const strays = [...used]
+    .filter((value) => !canonical.includes(value as T))
+    .sort() as T[];
+  return [...known, ...strays];
+}
+
+/**
+ * Which agencies and statuses to offer for narrowing a course list: the ones the
+ * courses carry, not the nineteen agencies the format defines. A filter row
+ * listing agencies the diver has never trained with offers eighteen ways to
+ * empty the table.
+ *
+ * A course need not name an agency, and one that doesn't contributes nothing -
+ * there is no "no agency" filter to offer, since the API's `agency` takes a
+ * member of the set or nothing at all.
+ */
+export function courseVocabulary(courses: readonly Course[]): CourseVocabulary {
+  const agencies = new Set<string>();
+  const statuses = new Set<string>();
+
+  for (const course of courses) {
+    if (course.agency) agencies.add(course.agency);
+    if (course.status) statuses.add(course.status);
+  }
+
+  return {
+    agencies: inUse(CERTIFICATION_AGENCIES, agencies),
+    statuses: inUse(COURSE_STATUSES, statuses),
+  };
 }
