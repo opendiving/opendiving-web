@@ -4,7 +4,7 @@ import { Mail, Trash2 } from "lucide-react";
 import type { AdminInviteRequest } from "@/lib/api/admin";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CountBadge } from "@/components/ui/count-badge";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
 import { InviteRequestsTable } from "@/components/admin/invite-requests-table";
@@ -72,6 +72,12 @@ export function InviteQueueFrame({
 
       <Card>
         <CardHeader className="items-start">
+          {/* Hidden, not dropped: the page's `h1` names the list, but the
+              card is still a section of it, and the empty state's `h3` below
+              would skip a level without this. */}
+          <CardTitle as="h2" className="sr-only">
+            Requests
+          </CardTitle>
           <CountBadge
             count={totalCount}
             isLoading={isLoading}

@@ -15,7 +15,7 @@ interface CountBadgeProps {
 }
 
 /**
- * The "N total dives" badge on a list card's title.
+ * The "N total dives" badge in a list card's header.
  *
  * It exists because of the skeleton rows below it. `totalCount` is 0 until the
  * first response lands, and while the body was a spinner nobody ever read the

@@ -5,7 +5,7 @@ import { BadgeCheck, Plus } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CountBadge } from "@/components/ui/count-badge";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
 import {
@@ -64,6 +64,12 @@ export function CertificationsPageFrame({
 
       <Card>
         <CardHeader className="items-start">
+          {/* Hidden, not dropped: the page's `h1` names the list, but the
+              card is still a section of it, and the empty state's `h3` below
+              would skip a level without this. */}
+          <CardTitle as="h2" className="sr-only">
+            Your Certifications
+          </CardTitle>
           <CountBadge
             count={totalCount}
             isLoading={isLoading}

@@ -2880,7 +2880,7 @@ page 1.
 
 ## Holding the shape means the header cannot claim a count it doesn't have
 
-`totalCount` is 0 until the first response, and the list cards' title badges read straight off it;
+`totalCount` is 0 until the first response, and the list cards' count badges read straight off it;
 over ten placeholder rows a badge saying "0 total dives" states something false. `CountBadge`
 (`components/ui/count-badge.tsx`) shows a placeholder instead, keyed on `isLoading && count === 0`
 rather than `isLoading` alone, so paging through a loaded list keeps the total it knows.
