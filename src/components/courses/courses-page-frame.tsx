@@ -1,12 +1,19 @@
 "use client";
 
-import { type ReactNode } from "react";
-import { GraduationCap, Plus } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import {
+  ChevronDown,
+  ChevronUp,
+  GraduationCap,
+  Plus,
+  Search,
+} from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CountBadge } from "@/components/ui/count-badge";
+import { IconTooltip } from "@/components/ui/tooltip";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
 import {
   CoursesFilters,
@@ -14,6 +21,8 @@ import {
   NO_COURSE_FILTERS,
   type CourseListFilters,
 } from "@/components/courses/courses-filters";
+import type { CertificationAgency } from "@/lib/api/certifications";
+import type { CourseStatus } from "@/lib/api/courses";
 import {
   Table,
   TableBody,
@@ -42,6 +51,15 @@ export interface CoursesPageFrameProps {
   onLoadMore?: () => void;
   /** Opens the new-course dialog. */
   onNew?: () => void;
+  /**
+   * Fired each time the filter panel is opened. The page reads the agencies and
+   * statuses in use off the back of it - the panel is shut on arrival, so most
+   * visits need no such request at all.
+   */
+  onFiltersOpened?: () => void;
+  /** What the two selects offer; the full vocabulary when not given. */
+  agencies?: readonly CertificationAgency[];
+  statuses?: readonly CourseStatus[];
 }
 
 const noop = () => {};
@@ -64,7 +82,13 @@ export function CoursesPageFrame({
   hasMore = false,
   onLoadMore = noop,
   onNew = noop,
+  onFiltersOpened = noop,
+  agencies,
+  statuses,
 }: CoursesPageFrameProps) {
+  const [isPanelOpen, setPanelOpen] = useState(false);
+  const isNarrowed = search.length > 0 || hasCourseFilters(filters);
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex justify-between items-center mb-6">
@@ -82,25 +106,71 @@ export function CoursesPageFrame({
 
       <Card>
         <CardHeader>
-          <CardTitle
-            as="h2"
-            className="flex flex-wrap items-center justify-between gap-3"
-          >
-            <span>Course List</span>
-            <CountBadge
-              count={totalCount}
-              isLoading={isLoading}
-              label="total course"
-            />
-          </CardTitle>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <CardTitle as="h2" className="flex flex-wrap items-center gap-3">
+              <span>Course List</span>
+              <CountBadge
+                count={totalCount}
+                isLoading={isLoading}
+                label="total course"
+              />
+            </CardTitle>
+            {/* The button says what it opens, and the dot says the shut panel
+                is still narrowing the list - a collapsed row that silently
+                hides half the courses is the one failure this costs. */}
+            <IconTooltip
+              label={
+                isNarrowed
+                  ? "Search and filter courses, narrowing the list"
+                  : "Search and filter courses"
+              }
+            >
+              <Button
+                variant="ghost"
+                size="sm"
+                className="gap-1.5"
+                aria-expanded={isPanelOpen}
+                aria-controls="course-filters"
+                onClick={() => {
+                  setPanelOpen((open) => !open);
+                  if (!isPanelOpen) onFiltersOpened();
+                }}
+              >
+                {/* The chevron carries which way the panel will move, which the
+                    magnifier alone cannot say. It points at the panel: down to
+                    the row it is about to open, up to fold it back into the
+                    header. */}
+                <span className="relative flex">
+                  <Search className="h-4 w-4" />
+                  {isNarrowed && !isPanelOpen && (
+                    <span
+                      aria-hidden
+                      className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-teal"
+                    />
+                  )}
+                </span>
+                {isPanelOpen ? (
+                  <ChevronUp className="h-4 w-4" />
+                ) : (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </Button>
+            </IconTooltip>
+          </div>
         </CardHeader>
         <CardContent>
-          <CoursesFilters
-            search={search}
-            onSearchChange={onSearchChange}
-            filters={filters}
-            onFiltersChange={onFiltersChange}
-          />
+          {/* Hidden rather than unmounted, so `aria-controls` points at
+              something and a half-typed date survives a shut. */}
+          <div id="course-filters" hidden={!isPanelOpen}>
+            <CoursesFilters
+              search={search}
+              onSearchChange={onSearchChange}
+              filters={filters}
+              onFiltersChange={onFiltersChange}
+              agencies={agencies}
+              statuses={statuses}
+            />
+          </div>
 
           {!isLoading && rows.length === 0 ? (
             // A narrowed list with nothing in it is a different statement from

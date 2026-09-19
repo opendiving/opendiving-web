@@ -50,9 +50,29 @@ export interface CoursesFiltersProps {
   onSearchChange: (value: string) => void;
   filters: CourseListFilters;
   onFiltersChange: (filters: CourseListFilters) => void;
+  /**
+   * The agencies and statuses to offer, which are the ones the diver's own
+   * courses carry rather than the whole vocabulary - `useCourseFilterOptions`
+   * derives them. Default to everything, so the row is complete for a caller
+   * that has not read them yet.
+   */
+  agencies?: readonly CertificationAgency[];
+  statuses?: readonly CourseStatus[];
 }
 
-// Search and the three filters beside it, above the course table. They narrow
+// Keeps whatever is picked on the list even once it is no longer in use - the
+// last course with that agency deleted while the filter is set, say. A select
+// whose value is not among its options shows blank, which reads as a filter that
+// has quietly forgotten itself while the table stays narrowed by it.
+function withPicked<T extends string>(
+  options: readonly T[],
+  picked: T | "",
+): readonly T[] {
+  if (!picked) return options;
+  return options.includes(picked as T) ? options : [...options, picked as T];
+}
+
+// Search and the four filters beside it, above the course table. They narrow
 // the same query rather than competing: whatever is set here is AND-ed by the
 // API, so a name and a status answer the courses matching both.
 export function CoursesFilters({
@@ -60,6 +80,8 @@ export function CoursesFilters({
   onSearchChange,
   filters,
   onFiltersChange,
+  agencies = CERTIFICATION_AGENCIES,
+  statuses = COURSE_STATUSES,
 }: CoursesFiltersProps) {
   const set = <K extends keyof CourseListFilters>(
     key: K,
@@ -68,25 +90,26 @@ export function CoursesFilters({
 
   return (
     <div className="mb-4 space-y-3">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <label htmlFor="course-search" className="sr-only">
-          Search courses by name
-        </label>
-        <Input
-          id="course-search"
-          type="search"
-          className="pl-9"
-          placeholder="Search by name..."
-          value={search}
-          onChange={(event) => onSearchChange(event.target.value)}
-        />
-      </div>
+      {/* One rule for the five controls, stepping down a breakpoint at a time:
+          a row of five on a desktop, then the search on its own line above the
+          four, then two pairs under it, then one per line on a phone. */}
+      <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+        <div className="relative sm:col-span-2 lg:col-span-4 xl:col-span-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <label htmlFor="course-search" className="sr-only">
+            Search courses by name
+          </label>
+          <Input
+            id="course-search"
+            type="search"
+            className="pl-9"
+            placeholder="Search by name..."
+            value={search}
+            onChange={(event) => onSearchChange(event.target.value)}
+          />
+        </div>
 
-      {/* Wrapping rather than a fixed column count: the four sit in a row on a
-          desktop, pair up on a tablet and stack on a phone, off one rule. */}
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="min-w-[12rem] flex-1 space-y-2">
+        <div className="space-y-2">
           <Label htmlFor="course-date-from">From</Label>
           <DatePicker
             id="course-date-from"
@@ -95,7 +118,7 @@ export function CoursesFilters({
           />
         </div>
 
-        <div className="min-w-[12rem] flex-1 space-y-2">
+        <div className="space-y-2">
           <Label htmlFor="course-date-to">To</Label>
           <DatePicker
             id="course-date-to"
@@ -104,7 +127,7 @@ export function CoursesFilters({
           />
         </div>
 
-        <div className="min-w-[12rem] flex-1 space-y-2">
+        <div className="space-y-2">
           <Label htmlFor="course-agency">Agency</Label>
           {/* A plain `<select>` rather than the shadcn `Select` the course
               dialog uses, for the reason DECISIONS.md gives under "A dive-level
@@ -120,7 +143,7 @@ export function CoursesFilters({
             }
           >
             <option value="">Any agency</option>
-            {CERTIFICATION_AGENCIES.map((agency) => (
+            {withPicked(agencies, filters.agency).map((agency) => (
               <option key={agency} value={agency}>
                 {certificationAgencyLabel(agency)}
               </option>
@@ -128,7 +151,7 @@ export function CoursesFilters({
           </NativeSelect>
         </div>
 
-        <div className="min-w-[12rem] flex-1 space-y-2">
+        <div className="space-y-2">
           <Label htmlFor="course-status">Status</Label>
           <NativeSelect
             id="course-status"
@@ -138,18 +161,22 @@ export function CoursesFilters({
             }
           >
             <option value="">Any status</option>
-            {COURSE_STATUSES.map((status) => (
+            {withPicked(statuses, filters.status).map((status) => (
               <option key={status} value={status}>
                 {courseStatusLabel(status)}
               </option>
             ))}
           </NativeSelect>
         </div>
+      </div>
 
-        {/* Only once there is something to clear. A permanently-present control
-            that does nothing on most visits reads as part of the row, and a
-            disabled one reads as broken. */}
-        {hasCourseFilters(filters) && (
+      {/* Under the grid rather than in it: a fifth cell on the widest row would
+          have to come out of one of the five controls' width, and only some
+          visits have anything to clear. Which is the other half - a
+          permanently-present control that does nothing reads as part of the
+          row, and a disabled one reads as broken. */}
+      {hasCourseFilters(filters) && (
+        <div className="flex justify-end">
           <Button
             variant="ghost"
             onClick={() => onFiltersChange(NO_COURSE_FILTERS)}
@@ -157,8 +184,8 @@ export function CoursesFilters({
             <X className="mr-2 h-4 w-4" />
             Clear filters
           </Button>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -3,17 +3,26 @@ import { useState } from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { CERTIFICATION_AGENCIES } from "@/lib/api/certifications";
+import { COURSE_STATUSES } from "@/lib/api/courses";
+
 import {
   CoursesFilters,
   NO_COURSE_FILTERS,
   type CourseListFilters,
+  type CoursesFiltersProps,
 } from "./courses-filters";
 
 // The row narrows one query rather than four, so what these pin is that each
 // control reports its own field and leaves the other three where they were -
 // the failure that turns "PADI courses in 2025" into "PADI courses".
 
-function Row({ initial = NO_COURSE_FILTERS }: { initial?: CourseListFilters }) {
+function Row({
+  initial = NO_COURSE_FILTERS,
+  ...options
+}: {
+  initial?: CourseListFilters;
+} & Pick<CoursesFiltersProps, "agencies" | "statuses">) {
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState(initial);
 
@@ -24,6 +33,7 @@ function Row({ initial = NO_COURSE_FILTERS }: { initial?: CourseListFilters }) {
         onSearchChange={setSearch}
         filters={filters}
         onFiltersChange={setFilters}
+        {...options}
       />
       <output data-testid="asked">
         {JSON.stringify({ search, ...filters })}
@@ -40,6 +50,13 @@ const asked = () =>
 
 const clearButton = () =>
   screen.queryByRole("button", { name: "Clear filters" });
+
+const optionsOf = (label: string) =>
+  [...screen.getByLabelText<HTMLSelectElement>(label).options].map(
+    (option) => option.text,
+  );
+const agencyOptions = () => optionsOf("Agency");
+const statusOptions = () => optionsOf("Status");
 
 describe("CoursesFilters", () => {
   it("opens on no filter at all, with every control reachable by its label", () => {
@@ -143,5 +160,36 @@ describe("CoursesFilters", () => {
 
     expect(asked()).toEqual({ search: "nitrox", ...NO_COURSE_FILTERS });
     expect(clearButton()).not.toBeInTheDocument();
+  });
+
+  // Nineteen agencies are eighteen ways to empty a table for a diver who trained
+  // with one of them. What the selects offer is the vocabulary the courses
+  // themselves carry, which the page reads off its own list.
+  it("offers only the agencies and statuses it is given", () => {
+    render(<Row agencies={["padi", "sdi"]} statuses={["completed"]} />);
+
+    expect(agencyOptions()).toEqual(["Any agency", "PADI", "SDI"]);
+    expect(statusOptions()).toEqual(["Any status", "Completed"]);
+  });
+
+  it("falls back to the whole vocabulary when it is given none", () => {
+    render(<Row />);
+
+    expect(agencyOptions()).toHaveLength(CERTIFICATION_AGENCIES.length + 1);
+    expect(statusOptions()).toHaveLength(COURSE_STATUSES.length + 1);
+  });
+
+  // The last PADI course deleted while the filter still says PADI. Dropping the
+  // option would blank the select while the table stayed narrowed by it.
+  it("keeps a picked value that is no longer in use", () => {
+    render(
+      <Row
+        initial={{ ...NO_COURSE_FILTERS, agency: "padi" }}
+        agencies={["sdi"]}
+      />,
+    );
+
+    expect(screen.getByLabelText("Agency")).toHaveValue("padi");
+    expect(agencyOptions()).toEqual(["Any agency", "SDI", "PADI"]);
   });
 });
