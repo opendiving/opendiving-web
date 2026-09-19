@@ -1,6 +1,6 @@
 "use client";
 
-import { type Ref } from "react";
+import { useRef, type RefObject } from "react";
 import { Search, X } from "lucide-react";
 
 import {
@@ -15,6 +15,8 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
+import { IconTooltip } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 
 /**
  * What narrows the course list, as the controls hold it. `""` means "not
@@ -60,7 +62,7 @@ export interface CoursesFiltersProps {
   agencies?: readonly CertificationAgency[];
   statuses?: readonly CourseStatus[];
   /** The search box itself, for a caller that puts the cursor in it. */
-  searchRef?: Ref<HTMLInputElement>;
+  searchRef?: RefObject<HTMLInputElement | null>;
 }
 
 // Keeps whatever is picked on the list even once it is no longer in use - the
@@ -87,6 +89,11 @@ export function CoursesFilters({
   statuses = COURSE_STATUSES,
   searchRef,
 }: CoursesFiltersProps) {
+  // The caller's box when it has a use for one, otherwise its own: the clear
+  // control puts the cursor back where it was, and needs a handle either way.
+  const ownSearchRef = useRef<HTMLInputElement>(null);
+  const searchBox = searchRef ?? ownSearchRef;
+
   const set = <K extends keyof CourseListFilters>(
     key: K,
     value: CourseListFilters[K],
@@ -96,22 +103,44 @@ export function CoursesFilters({
     <div className="mb-4 space-y-3">
       {/* One rule for the five controls, stepping down a breakpoint at a time:
           a row of five on a desktop, then the search on its own line above the
-          four, then two pairs under it, then one per line on a phone. */}
-      <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+          four, then two pairs under it, then one per line on a phone. The search
+          takes a double track on the widest row: a course name is longer than a
+          date and there is room for it there. */}
+      <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-[2fr_repeat(4,1fr)]">
         <div className="relative sm:col-span-2 lg:col-span-4 xl:col-span-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <label htmlFor="course-search" className="sr-only">
             Search courses by name
           </label>
           <Input
-            ref={searchRef}
+            ref={searchBox}
             id="course-search"
             type="search"
-            className="pl-9"
+            // The browser's own clear control is suppressed for the one below,
+            // which is the X the rest of this app draws and is there on every
+            // browser rather than on WebKit alone.
+            className={cn(
+              "pl-9 [&::-webkit-search-cancel-button]:appearance-none",
+              search && "pr-9",
+            )}
             placeholder="Search by name..."
             value={search}
             onChange={(event) => onSearchChange(event.target.value)}
           />
+          {search && (
+            <IconTooltip label="Clear search">
+              <button
+                type="button"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                onClick={() => {
+                  onSearchChange("");
+                  searchBox.current?.focus();
+                }}
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </IconTooltip>
+          )}
         </div>
 
         <div className="space-y-2">

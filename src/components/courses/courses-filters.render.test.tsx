@@ -51,6 +51,9 @@ const asked = () =>
 const clearButton = () =>
   screen.queryByRole("button", { name: "Clear filters" });
 
+const clearSearchButton = () =>
+  screen.queryByRole("button", { name: "Clear search" });
+
 const optionsOf = (label: string) =>
   [...screen.getByLabelText<HTMLSelectElement>(label).options].map(
     (option) => option.text,
@@ -138,8 +141,7 @@ describe("CoursesFilters", () => {
   });
 
   // The search box is the diver's other way of narrowing the list and it has its
-  // own affordance - a `type="search"` input clears itself. Sweeping it up here
-  // would throw away a term they did not ask to lose.
+  // own X. Sweeping it up here would throw away a term they did not ask to lose.
   it("clears every filter but not the search term", async () => {
     render(
       <Row
@@ -191,5 +193,38 @@ describe("CoursesFilters", () => {
 
     expect(screen.getByLabelText("Agency")).toHaveValue("padi");
     expect(agencyOptions()).toEqual(["Any agency", "SDI", "PADI"]);
+  });
+
+  it("offers nothing to clear the search with until something is typed", async () => {
+    render(<Row />);
+
+    expect(clearSearchButton()).not.toBeInTheDocument();
+
+    await userEvent.type(
+      screen.getByLabelText("Search courses by name"),
+      "nitrox",
+    );
+
+    expect(clearSearchButton()).toBeInTheDocument();
+  });
+
+  // The cursor goes back in the box rather than onto a control that has just
+  // disappeared, since clearing a search is usually the start of another one.
+  it("clears the search term, leaves the filters, and keeps the cursor", async () => {
+    render(<Row initial={{ ...NO_COURSE_FILTERS, agency: "padi" }} />);
+    await userEvent.type(
+      screen.getByLabelText("Search courses by name"),
+      "nitrox",
+    );
+
+    await userEvent.click(clearSearchButton()!);
+
+    expect(asked()).toEqual({
+      search: "",
+      ...NO_COURSE_FILTERS,
+      agency: "padi",
+    });
+    expect(screen.getByLabelText("Search courses by name")).toHaveFocus();
+    expect(clearSearchButton()).not.toBeInTheDocument();
   });
 });
