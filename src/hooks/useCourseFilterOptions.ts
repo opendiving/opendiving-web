@@ -11,9 +11,9 @@ import { COURSE_STATUSES, fetchAllCourses } from "@/lib/api/courses";
 import { courseVocabulary, type CourseVocabulary } from "@/lib/course";
 
 // What to offer when the vocabulary is unknown - before the first fetch lands,
-// and after one that failed. The whole closed set, which is what the row offered
-// before it learned to narrow: a filter listing too much is worse than one
-// listing the wrong thing, and far better than one listing nothing.
+// and after one that failed. The whole closed set: a filter listing too much is
+// worse than one listing the wrong thing, and far better than one listing
+// nothing.
 const EVERY_OPTION: CourseVocabulary = {
   agencies: [...CERTIFICATION_AGENCIES] as CertificationAgency[],
   statuses: [...COURSE_STATUSES],
