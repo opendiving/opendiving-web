@@ -80,7 +80,7 @@ interface CertificationFieldValues {
   instructor_number: string;
 }
 
-// The same five as a course holds them. A course need not name an agency and a
+// The same set as a course holds them. A course need not name an agency and a
 // certification must, so that half is nullable here - and a course without one
 // contributes nothing to the pair rather than emptying the required field.
 type CourseFieldValues = Omit<CertificationFieldValues, "agency"> & {
@@ -163,7 +163,7 @@ export function CertificationDialog({
   // every render that can't be memoized, which the react-hooks lint rules reject.
   const agency = useWatch({ control: form.control, name: "agency" });
 
-  // What this dialog last put in the five prefillable fields itself: the values
+  // What this dialog last put in those fields itself: the values
   // it opened with, and then whatever each course selection wrote. A field still
   // holding that value is one nobody has typed into, so the next course may
   // replace it; anything else is the diver's own and is never overwritten.

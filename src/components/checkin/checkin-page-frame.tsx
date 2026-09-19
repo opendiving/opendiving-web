@@ -479,7 +479,9 @@ export function CheckInPageFrame({
               <div aria-hidden className={cn(TWO_COLUMNS, "gap-y-4")}>
                 {[0, 1].map((row) => (
                   <div key={row} className="space-y-2">
-                    <div className="flex items-center gap-4">
+                    <div
+                      className={cn("flex items-center", NAME_BESIDE_PICTURE)}
+                    >
                       <Skeleton
                         className={cn(SLOT, "h-12 sm:h-16 print:h-16")}
                       />

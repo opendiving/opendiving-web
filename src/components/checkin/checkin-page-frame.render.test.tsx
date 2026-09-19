@@ -414,6 +414,10 @@ describe("before the requests land", () => {
         "print:w-24",
         "h-12",
       );
+      // The gap beside the picture as well as the picture's own width: the two
+      // together are what put the name bar where the name lands, and a plain
+      // `gap-4` here leaves the placeholder 8px short of it from `sm` up.
+      expect(row).toHaveClass("sm:gap-6", "print:gap-6");
     });
   });
 

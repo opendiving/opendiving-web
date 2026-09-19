@@ -5043,7 +5043,7 @@ basemap is a MapLibre style, and raster is the escape hatch".
 
 ## A course fills a certification's fields in once, and never touches what the diver typed
 
-Course and certification each carry their own `training_center`, `instructor_name`,
+Course and certification each carry their own `name`, `training_center`, `instructor_name`,
 `instructor_number` and `agency`/`agency_other`, because imported history arrives
 certification-first. Picking a course in the create dialog copies those fields once.
 
@@ -5058,9 +5058,11 @@ keeps its own default. Rejected: blanking it, which would make the seeded "Add a
 one flow opening on an unset required field.
 
 The edit dialog gets no prefill: `reset(...)` from the stored card makes every value baseline.
-`name` and `notes` are not copied — a course name is not a card's level.
-`lib/api/certifications.ts`'s comment holds: nothing derives these at read time. Unlike "A dive's
-course is not inherited from the last dive", this runs only on the diver's own pick.
+`notes` is not copied — a course's notes describe the training, a card's describe the card. `name`
+is, under the same guard: a course name is often longer than the level printed on the card, so a
+diver who types over it keeps what they typed. `lib/api/certifications.ts`'s comment holds: nothing
+derives these at read time. Unlike "A dive's course is not inherited from the last dive", this runs
+only on the diver's own pick.
 
 ## A silently prefilled field is not a clean field
 
@@ -6663,12 +6665,13 @@ certifications card carries no header button, so `CourseCertificationsCard` take
 
 ## The check-in summary is a list the diver hands over, and it carries no agency marks
 
-`/checkin` prints what a dive shop asks for: date of birth and phone, the c-cards, the dive count,
-then insurance and an emergency contact — a desk's order, what a diver may do and has done before
-what is needed only if something goes wrong. Each card's stored front sits beside it, but no agency
-artwork is drawn: those marks are licensed to members and centres rather than to divers, and a
-card-shaped tile carrying one reads as agency-issued. A PDF card prints as a placeholder, never
-rasterised.
+`/checkin` prints what a dive shop asks for, two to a row: date of birth and phone beside the dive
+count, then insurance beside an emergency contact — who the diver is and what they have done before
+what is needed only if something goes wrong. The c-cards come last and across both columns, being
+the one part that runs to any length, so the fold falls in them rather than in a pair of columns
+above them. Each card's stored front sits beside it, but no agency artwork is drawn: those marks are
+licensed to members and centres rather than to divers, and a card-shaped tile carrying one reads as
+agency-issued. A PDF card prints as a placeholder, never rasterised.
 
 Printing is the browser's, through Tailwind's `print:` variant on the chrome and the page's own
 controls — no PDF library, no `@media print` block. Handing that print to a shop is the diver
