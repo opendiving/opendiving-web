@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import { InviteQueueFrame } from "@/components/admin/invite-queue-frame";
 import { drawFrame, resetFrameMocks } from "@/test/page-frame";
 
 // The invite queue's half of the page-frame check, which lives here rather than beside
@@ -71,5 +72,20 @@ describe("/admin/invites", () => {
     animated.forEach((node) =>
       expect(node.className).toContain("motion-reduce:animate-none"),
     );
+  });
+
+  // The queue's half of `app/list-card-headings.render.test.tsx`, here for the same
+  // reason as the rest of this file. That file's coverage check names this frame, so
+  // deleting this case is the one way to lose it quietly.
+  it("keeps the card's heading in an empty queue's outline", () => {
+    const { container } = render(
+      <InviteQueueFrame isLoading={false} totalCount={0} />,
+    );
+
+    const headings = [...container.querySelectorAll("h1, h2, h3, h4, h5, h6")];
+    expect(headings.map((heading) => Number(heading.tagName[1]))).toEqual([
+      1, 2, 3,
+    ]);
+    expect(headings[1]).toHaveClass("sr-only");
   });
 });
