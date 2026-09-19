@@ -205,7 +205,7 @@ const save = () =>
   );
 
 describe("picking a course fills the card's own fields in", () => {
-  it("copies the training centre, instructor and agency across", async () => {
+  it("copies the level, training centre, instructor and agency across", async () => {
     open();
 
     await pickCourse(COURSE.name);
@@ -213,6 +213,7 @@ describe("picking a course fills the card's own fields in", () => {
     await waitFor(() =>
       expect(trainingCenter()).toHaveValue("Blue Ocean, Koh Tao"),
     );
+    expect(certificationName()).toHaveValue("Advanced Nitrox + Deco");
     expect(instructor()).toHaveValue("Alex Diver");
     expect(instructorNumber()).toHaveValue("123");
     // Despite `padi` being the create form's default rather than an empty box,
@@ -220,11 +221,10 @@ describe("picking a course fills the card's own fields in", () => {
     expect(agency()).toHaveTextContent("TDI");
   });
 
-  it("leaves the level and the notes for the diver to read off the card", async () => {
-    // A course name is not the level printed on a card, and one course can
-    // issue two differently-named ones; a course's notes describe the training,
-    // a card's describe the card. A plausible-but-wrong value here would be
-    // saved unread.
+  it("leaves the notes for the diver to write about the card", async () => {
+    // A course's notes describe the training and a card's describe the card, so
+    // a course value here would be plausible-but-wrong and saved unread. The
+    // level is prefilled and the notes are not, which is the whole difference.
     open();
 
     await pickCourse(COURSE.name);
@@ -232,8 +232,22 @@ describe("picking a course fills the card's own fields in", () => {
     await waitFor(() =>
       expect(trainingCenter()).toHaveValue("Blue Ocean, Koh Tao"),
     );
-    expect(certificationName()).toHaveValue("");
     expect(screen.getByLabelText("Notes")).toHaveValue("");
+  });
+
+  it("keeps a level the diver typed off the card in their hand", async () => {
+    // The course name is often longer than what the card says, and one course
+    // can issue two differently-named cards - so this is the field the
+    // typed-into guard matters most for.
+    open();
+
+    await userEvent.type(certificationName(), "Advanced Nitrox");
+    await pickCourse(COURSE.name);
+
+    await waitFor(() =>
+      expect(trainingCenter()).toHaveValue("Blue Ocean, Koh Tao"),
+    );
+    expect(certificationName()).toHaveValue("Advanced Nitrox");
   });
 
   it("never overwrites a field the diver has typed into", async () => {
@@ -424,8 +438,11 @@ describe("a dialog opened from a course page starts on that course", () => {
     expect(instructor()).toHaveValue("Alex Diver");
     expect(instructorNumber()).toHaveValue("123");
     expect(agency()).toHaveTextContent("TDI");
-    expect(certificationName()).toHaveValue("");
+    expect(certificationName()).toHaveValue("Advanced Nitrox + Deco");
 
+    // The seeded level is a starting point, not an answer: this course issues a
+    // card whose printed name is shorter than the course's own.
+    await userEvent.clear(certificationName());
     await userEvent.type(certificationName(), "Advanced Nitrox");
     await save();
 
@@ -445,6 +462,7 @@ describe("a dialog opened from a course page starts on that course", () => {
     await waitFor(() => expect(trainingCenter()).toHaveValue("No shop"));
     expect(agency()).toHaveTextContent("PADI");
 
+    await userEvent.clear(certificationName());
     await userEvent.type(certificationName(), "Sidemount Diver");
     await save();
 

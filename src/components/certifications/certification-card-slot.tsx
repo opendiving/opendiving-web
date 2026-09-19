@@ -6,7 +6,6 @@ import {
   CertificationSide,
   CertificationFileInfo,
   CERTIFICATION_FILE_ACCEPT,
-  CERTIFICATION_SIDE_HEADINGS,
   CERTIFICATION_SIDE_LABELS,
 } from "@/lib/api/certifications";
 import type { PendingCardImage } from "@/lib/certification-card-edits";
@@ -65,7 +64,7 @@ export function CertificationCardSlot({
 
   return (
     <div className="space-y-2">
-      <p className="text-sm font-medium">{CERTIFICATION_SIDE_HEADINGS[side]}</p>
+      <p className="text-sm font-medium">{CERTIFICATION_SIDE_LABELS[side]}</p>
 
       {pending ? (
         <PendingCardPreview image={pending} side={side} />

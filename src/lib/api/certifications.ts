@@ -122,27 +122,13 @@ export type CertificationSide = (typeof CERTIFICATION_SIDES)[number];
 
 /**
  * Display names for each card side, so the UI never renders the raw enum value.
- * Bare nouns, because these are interpolated into sentences - a slot's heading
- * wants `CERTIFICATION_SIDE_HEADINGS` instead.
+ * Bare nouns: these head a slot and are read into the upload and removal toasts,
+ * and anything qualifying one of them says the other is required - which neither
+ * is, no card image reaching `certificationSchema` at all.
  */
 export const CERTIFICATION_SIDE_LABELS: Record<CertificationSide, string> = {
   front: "Front",
   back: "Back",
-};
-
-/**
- * How each slot is headed above its own upload control and preview.
- *
- * The second slot says it is optional because most modern e-cards are one-sided:
- * PADI issues a single card image alongside a details web page, RAID prints a
- * decorative back, and only TDI/SDI still carries anything on it. An empty back
- * is the normal state rather than a gap, and the heading is where a diver finds
- * that out. Kept apart from the labels above, which the upload and removal
- * toasts read into a sentence the parenthetical would not survive.
- */
-export const CERTIFICATION_SIDE_HEADINGS: Record<CertificationSide, string> = {
-  front: "Front",
-  back: "Back or details (optional)",
 };
 
 /**

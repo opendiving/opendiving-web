@@ -31,6 +31,7 @@ import {
 } from "@/components/certifications/certification-card-image";
 import { CertificationDialog } from "@/components/certifications/certification-dialog";
 import { DivingFiguresDialog } from "@/components/checkin/diving-figures-dialog";
+import { Logo } from "@/components/logo";
 import { UserFieldsDialog } from "@/components/user/user-fields-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -46,31 +47,38 @@ import { UserAvatar } from "@/components/ui/user-avatar";
 const INK = "print:text-black";
 const MUTED = `text-sm text-muted-foreground ${INK}`;
 
-// A card image is the only thing on this sheet that is not a line of text, so it gets
-// a column of its own on the left and every line starts clear of it. `SLOT` is that
-// column - held even where there is no picture, so the text below a diver's avatar
-// and the text beside a c-card start at the same place - and `GUTTER` is the same
-// width plus the gap, for the blocks that have no image to put in it.
+// The column a c-card's picture sits in, beside the lines that describe it.
 //
 // Width only, deliberately: a card's height comes from the one aspect ratio the app
 // draws every c-card in (`CertificationCardFrame`), and a height set here would
 // fight it.
 //
-// Each carries a `print:` twin of its `sm:` value. Tailwind's `sm:` is a min-width
-// query, and under print media the width is the paper's - so a narrow sheet, or a
-// browser scaling one down, would otherwise drop the whole column to its phone size
-// on paper alone, and only half of what has to line up would move.
+// Its `print:` twin repeats its `sm:` value. Tailwind's `sm:` is a min-width query,
+// and under print media the width is the paper's - so a sheet printed from a phone,
+// or a browser scaling one down, would otherwise drop the picture to its phone size
+// on paper alone.
 const SLOT = "w-16 shrink-0 sm:w-24 print:w-24";
-const GUTTER = "ml-20 sm:ml-28 print:ml-28";
-// A card row lives inside a section that already carries `GUTTER`, and hangs its own
-// image back out into it.
-const NEGATIVE_GUTTER = "-ml-20 sm:-ml-28 print:-ml-28";
 
-// The page header is outside the card, so on paper - where it is the only thing above
-// the sheet that still prints - landing on the sheet's own left edge means clearing
-// `CardContent`'s `p-6` as well as `GUTTER`: 1.5rem + 7rem. On screen it stays where
-// every other page's heading is, at the page's edge.
-const PRINTED_HEADER_GUTTER = "print:ml-[8.5rem]";
+// What separates a picture from the name beside it, and it is a derived number
+// rather than a chosen one: `SLOT` plus this has to come to `DetailList`'s label
+// track plus that list's own column gap, or a certification's name and the values
+// underneath it start eight pixels apart and the eye catches it. 96 + 24 = 104 + 16.
+//
+// Below `sm` the label track is sized by its content and there is no fixed edge to
+// meet, so the plain gap stands.
+const NAME_BESIDE_PICTURE = "gap-4 sm:gap-6 print:gap-6";
+
+// Every pairing on this page: the diver beside their diving, the policy beside the
+// person to ring, and the c-cards two to a row. One column on a phone, where two of
+// these lists side by side would each be too narrow to hold a value on its label's
+// line.
+//
+// `print:` for the same reason `SLOT` has one - `md:` under print media is a query
+// against the paper, so a sheet printed from a phone would come off as one long
+// column on paper with room for two, and a summary that fits on one sheet is the
+// whole point of the page.
+const TWO_COLUMNS =
+  "grid gap-x-8 lg:gap-x-12 md:grid-cols-2 print:gap-x-12 print:grid-cols-2";
 
 // What a page break may not fall inside. Each of these is read as one thing - an
 // emergency contact split over a fold is a name on one sheet and the number to ring
@@ -206,17 +214,13 @@ export function CheckInPageFrame({
     setEditing("certification");
   };
 
-  // `print:pb-0` on the wrapper: the bottom padding is breathing room on a screen and
-  // dead space on paper, where the printer's own margin already sits below it - and
-  // 32px of it is enough to push a sheet that fits onto a second page.
+  // The page's own padding is breathing room on a screen and dead space on paper,
+  // where the printer's margin already sits outside all four edges - and it is not
+  // free: 32px at the foot is enough to push a sheet that fits onto a second page,
+  // and what comes off the sides is width the two columns get back.
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 print:pb-0">
-      <div
-        className={cn(
-          "flex flex-wrap items-start justify-between gap-4",
-          PRINTED_HEADER_GUTTER,
-        )}
-      >
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 print:px-0 print:pb-0">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           {/* "Diver" earns its place on the printed sheet rather than on screen:
               the line under this one is `print:hidden`, so the heading is the only
@@ -266,37 +270,43 @@ export function CheckInPageFrame({
       <Card
         className={`print:border-0 print:shadow-none print:bg-white ${INK}`}
       >
-        <CardContent className="pt-6 space-y-6">
-          {/* The same shape a certification row has: the picture in the image
-              column, and the name and its two rows in one column beside it. That is
-              what makes the name read as this block's heading and puts the gap under
-              it on the sheet's own rhythm - the name centred against a 64px avatar
-              instead would sit 8px further off its rows than any section heading
-              does. */}
-          <div className={cn("flex gap-4", KEEP_TOGETHER)}>
-            {/* Only a picture the diver actually stored. The initials Radix falls
-                back to are a placeholder for a face on screen; printed at the top of
-                a sheet handed to a stranger they are a monogram nobody chose, and a
-                bare name reads better than a circle with "SR" in it. The slot stays
-                either way, so the name sits over the c-cards' own column - centred in
-                it, the avatar being narrower than a card and everything else in that
-                column being one. */}
-            <div className={cn(SLOT, "flex justify-center")}>
-              {user.avatar_sha256 && (
-                <UserAvatar
-                  name={user.name}
-                  avatarSha={user.avatar_sha256}
-                  size={64}
-                />
-              )}
-            </div>
-            <div className="min-w-0 flex-1 space-y-4">
+        {/* `print:p-0` for the same reason, and it is what lets the heading above the
+            card sit on the sheet's own left edge without an offset of its own. */}
+        <CardContent className="pt-6 space-y-6 print:p-0">
+          <div className={cn(TWO_COLUMNS, "gap-y-6")}>
+            {/* Headed by the diver's own name rather than by a label: the name is
+                what the sheet is about, and "Personal information" written above
+                somebody's name tells a desk nothing the name did not. */}
+            <section className={cn("space-y-2", KEEP_TOGETHER)}>
               {/* `-my-1` pulls the control's margin box inside the name's line, as a
                   certification row does with its own: left to set the row height the
                   button is taller than the text, and the gap under the name would
                   come out short of every section's by those two pixels. */}
-              <div className="flex items-center gap-2">
-                <h2 className={`flex-1 text-2xl font-semibold ${INK}`}>
+              <div
+                className={cn(
+                  "flex items-center break-after-avoid",
+                  NAME_BESIDE_PICTURE,
+                )}
+              >
+                {/* Only a picture the diver actually stored. The initials Radix falls
+                    back to are a placeholder for a face on screen; printed at the top
+                    of a sheet handed to a stranger they are a monogram nobody chose,
+                    and a bare name reads better than a circle with "SR" in it.
+
+                    The column stays either way, so the name meets the same edge as
+                    every certification's - and its own two values, which is what
+                    would give it away. The avatar is centred in it, being round and
+                    narrower than a card. */}
+                <div className={cn(SLOT, "flex justify-center")}>
+                  {user.avatar_sha256 && (
+                    <UserAvatar
+                      name={user.name}
+                      avatarSha={user.avatar_sha256}
+                      size={64}
+                    />
+                  )}
+                </div>
+                <h2 className={`min-w-0 flex-1 text-2xl font-semibold ${INK}`}>
                   {user.name}
                 </h2>
                 <EditControl
@@ -324,29 +334,162 @@ export function CheckInPageFrame({
                   <EmptyNote>Not filled in yet.</EmptyNote>
                 )}
               </div>
-            </div>
+            </section>
+
+            <Section
+              title="Diving"
+              busy={isLoading}
+              // A diver who cleared every figure has said to leave the diving off the
+              // sheet, and the sheet obeys - heading and all. The section stays on
+              // screen regardless, because the control that emptied it is the only
+              // way back to "Use logged figures", and a section that removed itself
+              // would leave a correction in force with nothing on screen saying so.
+              className={cn(KEEP_TOGETHER, !hasFigures && "print:hidden")}
+              action={
+                <EditControl
+                  label="Correct these figures"
+                  onClick={() => setEditing("diving")}
+                />
+              }
+            >
+              {hasFigures && (
+                <DetailList>
+                  <Detail
+                    label="Dives logged"
+                    value={
+                      diving.totalDives !== null
+                        ? String(diving.totalDives)
+                        : null
+                    }
+                    pending={isLoading && !stats}
+                  />
+                  <Detail
+                    label="Max depth"
+                    value={
+                      diving.maxDepth !== null
+                        ? formatDepth(diving.maxDepth, units)
+                        : null
+                    }
+                    pending={isLoading && !stats}
+                  />
+                  <Detail
+                    label="Last dive"
+                    value={
+                      diving.lastDiveOn && formatDateOnly(diving.lastDiveOn)
+                    }
+                    pending={isLoading && !lastDiveAt}
+                  />
+                </DetailList>
+              )}
+              {/* Two states are empty here without being unfilled, and neither is
+                  visible from `hasFigures` alone: a rejected `/user/dive-stats` leaves
+                  `stats` null, and a diver who cleared all three boxes leaves a
+                  `corrected` whose every field is null. The second would otherwise
+                  read "Not filled in yet." directly above "Corrected for this
+                  summary", which is the page contradicting itself to the one diver who
+                  knows better. */}
+              {!hasFigures && !loadFailed && !corrected && (
+                <EmptyNote>Not filled in yet.</EmptyNote>
+              )}
+              {corrected && (
+                <p className="text-xs text-muted-foreground print:hidden">
+                  Corrected for this summary. Nothing was saved to your log.
+                </p>
+              )}
+            </Section>
+
+            {/* Insurance and the emergency contact make the second row rather than
+                the first: a desk works down who the diver is and what they have
+                actually dived, and reaches for the policy to quote and the person to
+                call only if something goes wrong. */}
+            <Section
+              title="Dive insurance"
+              className={cn(KEEP_TOGETHER, !hasInsurance && "print:hidden")}
+              action={
+                <EditControl
+                  label="Edit your dive insurance"
+                  onClick={() => setEditing("insurance")}
+                />
+              }
+            >
+              {hasInsurance ? (
+                <DetailList>
+                  <Detail label="Provider" value={user.insurance_provider} />
+                  <Detail
+                    label="Policy number"
+                    value={user.insurance_policy_number}
+                  />
+                  <Detail
+                    label="Expires"
+                    value={
+                      user.insurance_expires_on &&
+                      formatDateOnly(user.insurance_expires_on)
+                    }
+                  />
+                </DetailList>
+              ) : (
+                <EmptyNote>Not filled in yet.</EmptyNote>
+              )}
+            </Section>
+
+            <Section
+              title="Emergency contact"
+              className={cn(
+                KEEP_TOGETHER,
+                !hasEmergencyContact && "print:hidden",
+              )}
+              action={
+                <EditControl
+                  label="Edit your emergency contact"
+                  onClick={() => setEditing("emergency")}
+                />
+              }
+            >
+              {hasEmergencyContact ? (
+                <DetailList>
+                  <Detail label="Name" value={user.emergency_contact_name} />
+                  <Detail label="Phone" value={user.emergency_contact_phone} />
+                  <Detail
+                    label="Relationship"
+                    value={user.emergency_contact_relationship}
+                  />
+                </DetailList>
+              ) : (
+                <EmptyNote>Not filled in yet.</EmptyNote>
+              )}
+            </Section>
           </div>
 
+          {/* Last, and across the full width: a diver holds any number of cards, and
+              a list that can run to a second page has to be the thing the fold falls
+              in rather than something a fixed-height pair of columns above it pushes
+              there. */}
           <Section
             title="Certifications"
             busy={isLoading}
             className={cn(
-              GUTTER,
               !isLoading && certifications.length === 0 && "print:hidden",
             )}
           >
             {isLoading ? (
-              // Same geometry as `CertificationSummary`, down to the `SLOT` and the
-              // `NEGATIVE_GUTTER` that hangs the image back out of the section's
-              // indent: a placeholder that sits where its row will not is a list that
-              // jumps left and resizes the moment the fetch lands.
-              <div aria-hidden className="space-y-4">
+              // Same geometry as `CertificationSummary`, down to the two-column
+              // grid, the image slot and the list under it: a placeholder that sits
+              // where its row will not is a list that jumps and resizes the moment
+              // the fetch lands.
+              <div aria-hidden className={cn(TWO_COLUMNS, "gap-y-4")}>
                 {[0, 1].map((row) => (
-                  <div key={row} className={cn("flex gap-4", NEGATIVE_GUTTER)}>
-                    <Skeleton className={cn(SLOT, "h-12 sm:h-16 print:h-16")} />
-                    <div className="flex-1 space-y-2">
+                  <div key={row} className="space-y-2">
+                    <div
+                      className={cn("flex items-center", NAME_BESIDE_PICTURE)}
+                    >
+                      <Skeleton
+                        className={cn(SLOT, "h-12 sm:h-16 print:h-16")}
+                      />
                       <Skeleton className="h-5 w-48" />
-                      <Skeleton className="h-4 w-32" />
+                    </div>
+                    <div className="space-y-1">
+                      <Skeleton className="h-4 w-56" />
+                      <Skeleton className="h-4 w-48" />
                     </div>
                   </div>
                 ))}
@@ -359,7 +502,7 @@ export function CheckInPageFrame({
               // The banner above already says what happened and offers the retry.
               !loadFailed && <EmptyNote>No certifications yet.</EmptyNote>
             ) : (
-              <div className="space-y-4">
+              <div className={cn(TWO_COLUMNS, "gap-y-4")}>
                 {/* The list endpoint's own order, taken as it arrives rather
                     than re-imposed here: `GET /certifications` sorts by
                     `certified_on` descending with nulls last, tie-broken by
@@ -377,143 +520,22 @@ export function CheckInPageFrame({
             )}
           </Section>
 
-          <Section
-            title="Diving"
-            busy={isLoading}
-            // A diver who cleared every figure has said to leave the diving off the
-            // sheet, and the sheet obeys - heading and all. The section stays on
-            // screen regardless, because the control that emptied it is the only
-            // way back to "Use logged figures", and a section that removed itself
-            // would leave a correction in force with nothing on screen saying so.
-            className={cn(GUTTER, KEEP_TOGETHER, !hasFigures && "print:hidden")}
-            action={
-              <EditControl
-                label="Correct these figures"
-                onClick={() => setEditing("diving")}
-              />
-            }
-          >
-            {hasFigures && (
-              <DetailList>
-                <Detail
-                  label="Dives logged"
-                  value={
-                    diving.totalDives !== null
-                      ? String(diving.totalDives)
-                      : null
-                  }
-                  pending={isLoading && !stats}
-                />
-                <Detail
-                  label="Max depth"
-                  value={
-                    diving.maxDepth !== null
-                      ? formatDepth(diving.maxDepth, units)
-                      : null
-                  }
-                  pending={isLoading && !stats}
-                />
-                <Detail
-                  label="Last dive"
-                  value={diving.lastDiveOn && formatDateOnly(diving.lastDiveOn)}
-                  pending={isLoading && !lastDiveAt}
-                />
-              </DetailList>
-            )}
-            {/* Two states are empty here without being unfilled, and neither is
-                visible from `hasFigures` alone: a rejected `/user/dive-stats` leaves
-                `stats` null, and a diver who cleared all three boxes leaves a
-                `corrected` whose every field is null. The second would otherwise
-                read "Not filled in yet." directly above "Corrected for this
-                summary", which is the page contradicting itself to the one diver who
-                knows better. */}
-            {!hasFigures && !loadFailed && !corrected && (
-              <EmptyNote>Not filled in yet.</EmptyNote>
-            )}
-            {corrected && (
-              <p className="text-xs text-muted-foreground print:hidden">
-                Corrected for this summary. Nothing was saved to your log.
-              </p>
-            )}
-          </Section>
-
-          {/* Insurance and the emergency contact come after the diving rather than
-              before it: a desk works down what the diver is certified to do and what
-              they have actually dived, and reaches for the policy to quote and the
-              person to call only if something goes wrong. */}
-          <Section
-            title="Dive insurance"
-            className={cn(
-              GUTTER,
-              KEEP_TOGETHER,
-              !hasInsurance && "print:hidden",
-            )}
-            action={
-              <EditControl
-                label="Edit your dive insurance"
-                onClick={() => setEditing("insurance")}
-              />
-            }
-          >
-            {hasInsurance ? (
-              <DetailList>
-                <Detail label="Provider" value={user.insurance_provider} />
-                <Detail
-                  label="Policy number"
-                  value={user.insurance_policy_number}
-                />
-                <Detail
-                  label="Expires"
-                  value={
-                    user.insurance_expires_on &&
-                    formatDateOnly(user.insurance_expires_on)
-                  }
-                />
-              </DetailList>
-            ) : (
-              <EmptyNote>Not filled in yet.</EmptyNote>
-            )}
-          </Section>
-
-          <Section
-            title="Emergency contact"
-            className={cn(
-              GUTTER,
-              KEEP_TOGETHER,
-              !hasEmergencyContact && "print:hidden",
-            )}
-            action={
-              <EditControl
-                label="Edit your emergency contact"
-                onClick={() => setEditing("emergency")}
-              />
-            }
-          >
-            {hasEmergencyContact ? (
-              <DetailList>
-                <Detail label="Name" value={user.emergency_contact_name} />
-                <Detail label="Phone" value={user.emergency_contact_phone} />
-                <Detail
-                  label="Relationship"
-                  value={user.emergency_contact_relationship}
-                />
-              </DetailList>
-            ) : (
-              <EmptyNote>Not filled in yet.</EmptyNote>
-            )}
-          </Section>
-
+          {/* The mark rides the footnote at the footnote's own size, rather than
+              heading the sheet. The sentence it sits in front of says this page
+              verifies nothing, and a logo set above a stranger's card numbers says
+              the opposite - that something vouches for them. What it is here for is
+              provenance: this is the one page of the app that leaves it on paper,
+              and a desk handed it twice should recognise the format. No address
+              beside it, deliberately - a self-hosted instance would have to print
+              its own, and `siteUrl` is server-side. */}
           <p
-            className={cn(
-              "text-xs text-muted-foreground",
-              INK,
-              GUTTER,
-              KEEP_TOGETHER,
-            )}
+            className={cn("text-xs text-muted-foreground", INK, KEEP_TOGETHER)}
           >
-            Printed {formatDateOnly(todayIsoDate())} from {user.name}&rsquo;s
-            own dive log. These are entries this diver made; a certification is
-            verified with the agency that issued it, not here.
+            <Logo className="mr-1 inline h-3.5 w-3.5 align-[-0.2em]" />
+            <span className="font-medium">OpenDiving</span> &middot; Printed{" "}
+            {formatDateOnly(todayIsoDate())} from {user.name}&rsquo;s own dive
+            log. These are entries this diver made; a certification is verified
+            with the agency that issued it, not here.
           </p>
         </CardContent>
       </Card>
@@ -580,63 +602,73 @@ function CertificationSummary({
   return (
     // Keeps a card off a page boundary: the alternative is a printed summary whose
     // last certification is cut in half, which is the one thing a desk cannot read.
-    <div className={cn("flex gap-4 break-inside-avoid", NEGATIVE_GUTTER)}>
-      {isPdf ? (
-        <CertificationCardFrame
-          className={cn(
-            SLOT,
-            "flex-col gap-1 px-1 text-center text-muted-foreground print:bg-white",
-            INK,
+    <div className="space-y-2 break-inside-avoid">
+      {/* The shape the diver's own block has at the top of the sheet: the picture
+          and the name on one line, and the list under it at the cell's full width -
+          which is what lines these values up with the ones in the sections above,
+          and what keeps a date off a second line in half a row of A4. */}
+      <div
+        className={cn(
+          "flex items-center break-after-avoid",
+          NAME_BESIDE_PICTURE,
+        )}
+      >
+        {/* The column stands even for a card whose picture the diver never stored,
+            for the same reason it stands over a missing avatar: the name beside it
+            has to meet the same edge as the values underneath it. */}
+        <div className={SLOT}>
+          {isPdf ? (
+            <CertificationCardFrame
+              className={cn(
+                "w-full",
+                "flex-col gap-1 px-1 text-center text-muted-foreground print:bg-white",
+                INK,
+              )}
+            >
+              <FileText className="h-4 w-4" aria-hidden />
+              <span className="text-[10px] leading-tight">
+                card on file as PDF
+              </span>
+            </CertificationCardFrame>
+          ) : (
+            front && (
+              <CertificationCardImage
+                certificationUuid={certification.uuid}
+                side="front"
+                file={front}
+                compact
+                className="w-full"
+              />
+            )
           )}
-        >
-          <FileText className="h-4 w-4" aria-hidden />
-          <span className="text-[10px] leading-tight">card on file as PDF</span>
-        </CertificationCardFrame>
-      ) : (
-        front && (
-          <CertificationCardImage
-            certificationUuid={certification.uuid}
-            side="front"
-            file={front}
-            compact
-            className={SLOT}
-          />
-        )
-      )}
-      <div className="min-w-0 flex-1 space-y-1">
-        <div className="flex items-start gap-2">
-          <div className={`flex-1 font-medium ${INK}`}>
-            {agency ? `${agency} ${certification.name}` : certification.name}
-          </div>
-          <EditControl
-            label={`Edit ${certification.name}`}
-            className="-my-1"
-            onClick={onEdit}
-          />
         </div>
-        <DetailList>
-          <Detail label="Number" value={certification.certification_number} />
-          <Detail
-            label="Certified"
-            value={
-              certification.certified_on &&
-              formatDateOnly(certification.certified_on)
-            }
-          />
-          <Detail
-            label="Expires"
-            value={
-              certification.expires_on &&
-              formatDateOnly(certification.expires_on)
-            }
-          />
-          <Detail label="Instructor" value={certification.instructor_name} />
-          <Detail
-            label="Training centre"
-            value={certification.training_center}
-          />
-        </DetailList>
+        <div className={`min-w-0 flex-1 font-medium ${INK}`}>
+          {agency ? `${agency} ${certification.name}` : certification.name}
+        </div>
+        <EditControl
+          label={`Edit ${certification.name}`}
+          className="-my-1"
+          onClick={onEdit}
+        />
       </div>
+      <DetailList>
+        <Detail label="Number" value={certification.certification_number} />
+        <Detail
+          label="Certified"
+          value={
+            certification.certified_on &&
+            formatDateOnly(certification.certified_on)
+          }
+        />
+        <Detail
+          label="Expires"
+          value={
+            certification.expires_on && formatDateOnly(certification.expires_on)
+          }
+        />
+        <Detail label="Instructor" value={certification.instructor_name} />
+        <Detail label="Training centre" value={certification.training_center} />
+      </DetailList>
     </div>
   );
 }
@@ -715,18 +747,31 @@ function Section({
 // inline: a desk reads this by scanning for the value it was asked for, and a ragged
 // left edge on the values is what makes that a search rather than a glance.
 //
-// The floor on the label track is what lines the *sections* up too, each being a list
-// of its own: a track sized purely by content puts "Provider" and "Name" in columns
-// 14px apart. It lifts from `sm` because the narrowest case is a card's details beside
-// its 96px thumbnail on a phone, where a fixed 8rem of label would leave the training
-// centre wrapping in what is left.
+// The floor on the label track is what lines every list on the page up with every
+// other, each being a list of its own: a track sized purely by content puts
+// "Provider" and "Name" in columns 14px apart, and those two sit a grid row apart.
+// It lifts from `sm` because on a phone a fixed track of that width leaves a training
+// centre wrapping in what is left, and the `print:` twin is the paper's case of the
+// same - `sm:` under print media is a query against the sheet.
+//
+// 6.5rem is the shortest floor that still does the job, and the width is doing two
+// things at once. It clears "Training centre", the longest label on the page at just
+// under 6.2rem, so no label wraps; and it clears every *other* list's longest label
+// too, which is what holds every list on the sheet to one width rather than each to
+// its own content. Every rem above that is white space between a label and the value
+// it belongs to - a gap to read across even on "Training centre", and a gulf on
+// "Name".
+//
+// The floor is also why a certification's details sit under its card rather than
+// beside it: a label track this wide in what is left of half a row leaves a value
+// column too narrow to hold a date.
 //
 // `Detail` renders its `<dt>` and `<dd>` as a fragment so both are direct children of
 // this grid; wrapping each pair in a `<div>` would put the pair in one cell and take
 // the alignment back.
 function DetailList({ children }: { children: ReactNode }) {
   return (
-    <dl className="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-1 sm:grid-cols-[minmax(8rem,auto)_1fr] print:grid-cols-[minmax(8rem,auto)_1fr]">
+    <dl className="grid grid-cols-[auto_1fr] items-baseline gap-x-4 gap-y-1 sm:grid-cols-[minmax(6.5rem,auto)_1fr] print:grid-cols-[minmax(6.5rem,auto)_1fr]">
       {children}
     </dl>
   );

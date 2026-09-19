@@ -125,7 +125,7 @@ beforeEach(() => {
 });
 
 describe("what the summary prints", () => {
-  it("runs from the diver down to the diving, in the order a desk reads it", () => {
+  it("runs from the diver down to the cards, in the order a desk reads it", () => {
     Object.assign(auth.user, {
       date_of_birth: "1988-04-02",
       phone: "+44 7700 900000",
@@ -140,19 +140,45 @@ describe("what the summary prints", () => {
       }),
     );
 
+    // Two to a row on anything wider than a phone, so this is the order the cells
+    // are filled in: the diver beside their diving, then the policy beside the
+    // person to ring, and the cards under both.
     const text = container.textContent ?? "";
     const order = [
       "Sam Reef",
       "Date of birth",
       "Phone",
-      "Certifications",
       "Diving",
       "Dive insurance",
       "Emergency contact",
+      "Certifications",
     ].map((label) => text.indexOf(label));
 
     expect(order.every((at) => at >= 0)).toBe(true);
     expect([...order].sort((a, b) => a - b)).toEqual(order);
+  });
+
+  it("pairs the sections up on paper, however narrow the sheet", () => {
+    Object.assign(auth.user, COMPLETE);
+    const { container } = render(
+      loaded({ certifications: [certification(), certification()] }),
+    );
+
+    // jsdom lays nothing out, so what is checkable is the pair of queries the
+    // columns come from. The `print:` half is the one worth pinning: `md:` under
+    // print media asks the paper's width, so without its twin a sheet printed from
+    // a phone comes off as one long column on paper with room for two.
+    const grids = [...container.querySelectorAll("div")].filter((el) =>
+      el.classList.contains("grid"),
+    );
+    expect(grids.length).toBeGreaterThanOrEqual(2);
+    for (const grid of grids) {
+      expect(grid).toHaveClass("md:grid-cols-2", "print:grid-cols-2");
+    }
+
+    // The four that pair up, and then the cards two to a row under them.
+    expect(grids[0].children).toHaveLength(4);
+    expect(grids[grids.length - 1].children).toHaveLength(2);
   });
 
   it("leaves out a field the diver never filled in, rather than labelling a blank", () => {
@@ -312,6 +338,31 @@ describe("what the print leaves behind", () => {
     expect(document.title).toBe(tabTitle);
   });
 
+  it("marks the sheet without vouching for it", () => {
+    Object.assign(auth.user, COMPLETE);
+    const { container } = render(loaded({ certifications: [certification()] }));
+
+    // The one page of this app that leaves it on paper, so it says where it came
+    // from. In the footnote and nowhere else: a mark above a stranger's card
+    // numbers reads as an attestation, and the sentence it shares a line with is
+    // the page disclaiming exactly that.
+    // Matched on the footnote's own text: the wordmark sits in a `<span>`, and
+    // testing-library's text matcher reads a node's direct text nodes only.
+    const footnote = screen.getByText(/own dive log/);
+    expect(footnote.tagName).toBe("P");
+    expect(footnote).toHaveTextContent(/^OpenDiving · Printed /);
+    expect(footnote?.querySelector("svg")).not.toBeNull();
+    expect(footnote).toHaveTextContent(
+      /verified with the agency that issued it, not here\.$/,
+    );
+
+    // Not in a heading, and not repeated anywhere else on the sheet.
+    expect(container.querySelectorAll("h1, h2, h3").length).toBeGreaterThan(0);
+    for (const heading of container.querySelectorAll("h1, h2, h3")) {
+      expect(heading.textContent).not.toContain("OpenDiving");
+    }
+  });
+
   it("hides its own controls, keeping the summary", () => {
     render(loaded());
 
@@ -331,11 +382,11 @@ describe("what the print leaves behind", () => {
         "break-inside-avoid",
       );
     }
+    expect(screen.getByText(/own dive log/)).toHaveClass("break-inside-avoid");
+    // The card is its own unit, and the list under it travels with it.
     expect(
-      screen.getByText(/^Printed /).closest("p") ??
-        screen.getByText(/^Printed /),
-    ).toHaveClass("break-inside-avoid");
-    expect(container.querySelector(".flex.break-inside-avoid")).not.toBeNull();
+      container.querySelector(".space-y-2.break-inside-avoid"),
+    ).not.toBeNull();
 
     // Not the certifications section itself: a diver with a handful of cards is
     // taller than a page, and refusing to break something that cannot fit only moves
@@ -351,14 +402,22 @@ describe("before the requests land", () => {
     const { container } = render(<CheckInPageFrame />);
 
     // jsdom lays nothing out, so what is checkable is that the placeholder carries
-    // the same geometry classes as `CertificationSummary` - the gutter cancel and
-    // the image slot. Without them the whole list jumps left and resizes the moment
-    // the fetch returns.
+    // the same geometry as `CertificationSummary` - the image slot, on a line of its
+    // own above the list. Without it the whole list jumps and resizes the moment the
+    // fetch returns.
     const rows = container.querySelectorAll("[aria-hidden] .flex.gap-4");
     expect(rows.length).toBeGreaterThan(0);
     rows.forEach((row) => {
-      expect(row).toHaveClass("-ml-20", "sm:-ml-28");
-      expect(row.firstElementChild).toHaveClass("w-16", "sm:w-24", "h-12");
+      expect(row.firstElementChild).toHaveClass(
+        "w-16",
+        "sm:w-24",
+        "print:w-24",
+        "h-12",
+      );
+      // The gap beside the picture as well as the picture's own width: the two
+      // together are what put the name bar where the name lands, and a plain
+      // `gap-4` here leaves the placeholder 8px short of it from `sm` up.
+      expect(row).toHaveClass("sm:gap-6", "print:gap-6");
     });
   });
 
@@ -422,6 +481,55 @@ describe("labels and values line up", () => {
         expect(cell.parentElement).toBe(list);
       }
     }
+  });
+  it("starts a name and the values under it on one edge", () => {
+    Object.assign(auth.user, { ...COMPLETE, avatar_sha256: "abc123" });
+    const { container } = render(
+      loaded({
+        certifications: [certification({ certification_number: "1" })],
+      }),
+    );
+
+    // jsdom lays nothing out, so what is checkable is the arithmetic these classes
+    // encode, and it is arithmetic rather than taste: the picture's column plus the
+    // gap beside it has to come to the label track plus the list's own column gap,
+    // or every name on the sheet starts eight pixels off the values under it.
+    // 6rem + 1.5rem = 6.5rem + 1rem. Change one of the three and this is what says
+    // the other two have to move.
+    // The picture's own column is what identifies a name row: a section heading
+    // carries `break-after-avoid` too and has nothing beside it.
+    const pictures = [...container.querySelectorAll("div")].filter((el) =>
+      el.classList.contains("sm:w-24"),
+    );
+    // The diver's own block and the certification.
+    expect(pictures).toHaveLength(2);
+    for (const picture of pictures) {
+      expect(picture).toHaveClass("print:w-24");
+      expect(picture.parentElement).toHaveClass("sm:gap-6", "print:gap-6");
+      expect(picture.parentElement?.firstElementChild).toBe(picture);
+    }
+
+    for (const list of container.querySelectorAll("dl")) {
+      expect(list.className).toContain(
+        "sm:grid-cols-[minmax(6.5rem,auto)_1fr]",
+      );
+      expect(list.className).toContain(
+        "print:grid-cols-[minmax(6.5rem,auto)_1fr]",
+      );
+      expect(list).toHaveClass("gap-x-4");
+    }
+  });
+
+  it("holds the picture's column for a diver who stored none", () => {
+    Object.assign(auth.user, COMPLETE);
+    const { container } = render(loaded({ certifications: [certification()] }));
+
+    // No monogram on a sheet handed to a stranger, but the column stays - the name
+    // meets the same edge as its own two values either way.
+    expect(screen.queryByText("SR")).toBeNull();
+    const diverName = screen.getByRole("heading", { name: "Sam Reef" });
+    expect(diverName.previousElementSibling).toHaveClass("sm:w-24");
+    expect(diverName.previousElementSibling?.children).toHaveLength(0);
   });
 });
 

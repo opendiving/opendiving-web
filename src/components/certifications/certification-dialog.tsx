@@ -63,14 +63,16 @@ import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 // holds them: `null` and absent both arrive as `""`, which is this form's "not
 // set" everywhere else.
 //
-// `name` and `notes` are deliberately not among them. A course name ("TDI
-// Advanced Nitrox + Decompression Procedures") is not the level printed on a
-// card, and one course can issue two differently-named cards; a course's notes
-// describe the training, a card's describe the card. Both would be
-// plausible-but-wrong values saved without being read - and `name` is the
-// required, identity-bearing field, so an empty box is what makes the diver
-// look at their card.
+// `notes` is deliberately not among them: a course's notes describe the
+// training and a card's describe the card, so it is the one field here whose
+// course value would be plausible-but-wrong saved unread.
+//
+// `name` is among them, and it is the field the guard below matters most for -
+// a course name ("TDI Advanced Nitrox + Decompression Procedures") is often
+// longer than the level printed on the card, and one course can issue two
+// differently-named cards. A diver who types over it keeps what they typed.
 interface CertificationFieldValues {
+  name: string;
   agency: CertificationAgency;
   agency_other: string;
   training_center: string;
@@ -78,7 +80,7 @@ interface CertificationFieldValues {
   instructor_number: string;
 }
 
-// The same five as a course holds them. A course need not name an agency and a
+// The same set as a course holds them. A course need not name an agency and a
 // certification must, so that half is nullable here - and a course without one
 // contributes nothing to the pair rather than emptying the required field.
 type CourseFieldValues = Omit<CertificationFieldValues, "agency"> & {
@@ -88,6 +90,7 @@ type CourseFieldValues = Omit<CertificationFieldValues, "agency"> & {
 // What a course puts in those fields.
 function courseFieldValues(course: Course): CourseFieldValues {
   return {
+    name: course.name,
     agency: course.agency ?? null,
     agency_other: course.agency_other ?? "",
     training_center: course.training_center ?? "",
@@ -160,7 +163,7 @@ export function CertificationDialog({
   // every render that can't be memoized, which the react-hooks lint rules reject.
   const agency = useWatch({ control: form.control, name: "agency" });
 
-  // What this dialog last put in the five prefillable fields itself: the values
+  // What this dialog last put in those fields itself: the values
   // it opened with, and then whatever each course selection wrote. A field still
   // holding that value is one nobody has typed into, so the next course may
   // replace it; anything else is the diver's own and is never overwritten.
@@ -169,6 +172,7 @@ export function CertificationDialog({
   // mechanism and does not survive contact with this form - see DECISIONS.md,
   // "A silently prefilled field is not a clean field".
   const autofilledRef = useRef<CertificationFieldValues>({
+    name: "",
     agency: DEFAULT_CERTIFICATION_AGENCY,
     agency_other: "",
     training_center: "",
@@ -188,6 +192,7 @@ export function CertificationDialog({
     const from: CourseFieldValues = seed
       ? courseFieldValues(seed)
       : {
+          name: certification?.name ?? "",
           agency: certification?.agency ?? DEFAULT_CERTIFICATION_AGENCY,
           agency_other: certification?.agency_other ?? "",
           training_center: certification?.training_center ?? "",
@@ -209,7 +214,6 @@ export function CertificationDialog({
 
     reset({
       ...opening,
-      name: certification?.name ?? "",
       certification_number: certification?.certification_number ?? "",
       certified_on: certification?.certified_on ?? "",
       expires_on: certification?.expires_on ?? "",
@@ -221,8 +225,8 @@ export function CertificationDialog({
     // case this rule can't distinguish from a cascading render.
   }, [open, certification, initialCourse, reset]);
 
-  // Picking a course copies its agency, training center and instructor across,
-  // so the diver types them once rather than twice. Create only: the edit dialog
+  // Picking a course copies its name, agency, training center and instructor
+  // across, so the diver types them once. Create only: the edit dialog
   // seeds itself from the stored card, which would make every settled field look
   // untouched and hand the whole card over to whichever course was picked.
   // Relinking on edit corrects the link, not the card.
@@ -231,6 +235,11 @@ export function CertificationDialog({
       if (isEdit) return;
       const autofilled = autofilledRef.current;
       const next = courseFieldValues(course);
+
+      if (getValues("name") === autofilled.name) {
+        setValue("name", next.name, AUTOFILL);
+        autofilled.name = next.name;
+      }
 
       // The agency pair is considered together and written together: the API
       // rejects a named agency carrying an `agency_other`, and "other" without
@@ -409,38 +418,85 @@ export function CertificationDialog({
                     {/* Only true of a create dialog - relinking an existing
                         card changes the link and nothing else. */}
                     {!isEdit &&
-                      " Picking one fills in the training center and instructor below, and the agency if the course names one."}
+                      " Picking one fills in the certification, training center and instructor below, and the agency if the course names one."}
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
+            {/* What the card is called leads, the course above it aside: it is the
+                line a diver reads off the card first, and the one thing here that
+                a course cannot fill in for them. */}
             <FormField
               control={form.control}
-              name="agency"
+              name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Agency *</FormLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {CERTIFICATION_AGENCIES.map((value) => (
-                        <SelectItem key={value} value={value}>
-                          {certificationAgencyLabel(value)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FormLabel>Certification *</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="e.g. Advanced Open Water Diver"
+                      autoFocus
+                      {...field}
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
+            {/* Who issued it and what they numbered it: the pair a desk quotes
+                together, and two short values that would each waste a row alone. */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="agency"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Agency *</FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {CERTIFICATION_AGENCIES.map((value) => (
+                          <SelectItem key={value} value={value}>
+                            {certificationAgencyLabel(value)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="certification_number"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Certification number</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="As printed on the card"
+                        {...field}
+                        value={field.value ?? ""}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* Under the row rather than inside it: it belongs to the agency box
+                above and appears only for one of its values, so a third box
+                arriving in the middle of a filled row is a worse surprise than a
+                fourth line. */}
             {agency === "other" && (
               <FormField
                 control={form.control}
@@ -460,42 +516,6 @@ export function CertificationDialog({
                 )}
               />
             )}
-
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Certification *</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="e.g. Advanced Open Water Diver"
-                      autoFocus
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="certification_number"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Certification number</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="As printed on the card"
-                      {...field}
-                      value={field.value ?? ""}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField
@@ -583,6 +603,22 @@ export function CertificationDialog({
               />
             </div>
 
+            {/* After every field typed off the card in the diver's hand: a
+                two-column block of pictures in the middle of a field stack breaks
+                the rhythm of filling one in. */}
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Card images</p>
+              <CertificationCardFiles
+                certification={certification}
+                edits={cardEdits}
+                onChange={setCardEdits}
+                disabled={isSubmitting}
+              />
+            </div>
+
+            {/* Last, being the only thing here the card does not say: everything
+                above is read off it or photographed from it, and this is what the
+                diver has to add. */}
             <FormField
               control={form.control}
               name="notes"
@@ -601,19 +637,6 @@ export function CertificationDialog({
                 </FormItem>
               )}
             />
-
-            {/* Last, and the only part of this form not typed off the card in
-                the diver's hand. A two-column block of pictures in the middle of
-                a field stack breaks the rhythm of filling one in. */}
-            <div className="space-y-2">
-              <p className="text-sm font-medium">Card images</p>
-              <CertificationCardFiles
-                certification={certification}
-                edits={cardEdits}
-                onChange={setCardEdits}
-                disabled={isSubmitting}
-              />
-            </div>
 
             <FormApiError error={apiError} />
 
