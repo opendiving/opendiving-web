@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import {
   ChevronDown,
   ChevronUp,
@@ -13,6 +13,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CountBadge } from "@/components/ui/count-badge";
+import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
 import {
@@ -93,8 +94,10 @@ export function CoursesPageFrame({
   // Typing is what the diver came for, and pressing a magnifier to then reach
   // for the box is a click nobody wanted. In an effect rather than at the press,
   // because the panel is `hidden` until this render commits and a box with no
-  // layout box cannot take focus.
-  useEffect(() => {
+  // layout box cannot take focus - and `useEffectOnChange`, because coming back
+  // to a route left with the panel open re-creates the effect without anybody
+  // having pressed anything, and a phone answers that with its keyboard.
+  useEffectOnChange(() => {
     if (isPanelOpen) searchRef.current?.focus();
   }, [isPanelOpen]);
 
