@@ -7,8 +7,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CountBadge } from "@/components/ui/count-badge";
+import { ListSearch } from "@/components/ui/list-search";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
-import { SearchInput } from "@/components/ui/search-input";
 import {
   Table,
   TableBody,
@@ -78,22 +78,23 @@ export function TripsPageFrame({
           <CardTitle as="h2" className="sr-only">
             Trip List
           </CardTitle>
-          {/* The count and the box that changes it, on one line. Wrapping is
-              what a phone gets: the box takes the width and drops under the
-              badge rather than squeezing it. */}
+          {/* The count and the box that changes it, on one line - and under
+              `sm`, where they do not both fit, the count and the button the box
+              folds behind. `flex-wrap` is what gives the opened box its own
+              line. */}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <CountBadge
               count={totalCount}
               isLoading={isLoading}
               label="total trip"
             />
-            <SearchInput
+            <ListSearch
               id="trip-search"
               label="Search trips by name or location"
+              toggleLabel="Search trips"
               placeholder="Search by name or location..."
               value={search}
               onChange={onSearchChange}
-              className="w-full sm:w-64"
             />
           </div>
         </CardHeader>

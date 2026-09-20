@@ -8,8 +8,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CountBadge } from "@/components/ui/count-badge";
+import { ListSearch } from "@/components/ui/list-search";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
-import { SearchInput } from "@/components/ui/search-input";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export interface SpeciesPageFrameProps {
@@ -97,9 +97,9 @@ export function SpeciesPageFrame({
             Life List
           </CardTitle>
           {/* The count and the box that changes it, on one line, as every
-              other list card draws them. Wrapping is what a phone gets: the box
-              takes the width and drops under the badge rather than squeezing
-              it. */}
+              other list card draws them - and under `sm`, where they do not
+              both fit, the count and the button the box folds behind.
+              `flex-wrap` is what gives the opened box its own line. */}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <CountBadge
               count={totalCount}
@@ -107,13 +107,13 @@ export function SpeciesPageFrame({
               label="species"
               plural="species"
             />
-            <SearchInput
+            <ListSearch
               id="species-search"
               label="Search your species by name"
+              toggleLabel="Search your species"
               placeholder="Search by name..."
               value={search}
               onChange={onSearchChange}
-              className="w-full sm:w-64"
             />
           </div>
         </CardHeader>
