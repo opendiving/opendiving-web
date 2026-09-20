@@ -42,8 +42,8 @@ numeric/date field with a non-empty-string default.
 
 Use the empty string `""` as the live "cleared" sentinel, never `undefined`, and convert
 `"" -> undefined` only in a normalize helper called right before the API call.
-`diveMixtureSchema.start_pressure/end_pressure` (numeric) and `tripCreateSchema.start_date/end_date`
-(date-string) are the reference call sites.
+`diveMixtureSchema.start_pressure/end_pressure` (numeric) and a trip part's `start_date`/`end_date`
+in `tripFormSchema` (date-string) are the reference call sites.
 
 ## Explicit field construction beats spread-then-override for generics
 
@@ -56,11 +56,11 @@ the `""` placeholder type leaks into the inferred return type and breaks assigna
 ## Bare `YYYY-MM-DD` dates must not go through `new Date(dateString)`
 
 `new Date("2024-06-01")` parses as UTC midnight, which a negative-UTC-offset timezone (most of the
-Americas) displays as the previous day. Every date-only field (trip `start_date`/`end_date`) is
-formatted via `formatDateOnly()`/`formatTripDateRange()` in `lib/date-time.ts`, which split the
-string and construct a local `Date(year, month-1, day)`. `Dive.start_time` is a full ISO datetime
-and has no off-by-one-day problem, but displaying and editing it still cannot go through
-`new Date(dateString)` and local getters — see the next section.
+Americas) displays as the previous day. Every date-only field (a trip part's
+`start_date`/`end_date`, a course's) is formatted via `formatDateOnly()`/`formatTripDateRange()` in
+`lib/date-time.ts`, which split the string and construct a local `Date(year, month-1, day)`.
+`Dive.start_time` is a full ISO datetime and has no off-by-one-day problem, but displaying and
+editing it still cannot go through `new Date(dateString)` and local getters — see the next section.
 
 ## A dive's `start_time` displays/edits in its own timezone, never the browser's
 
@@ -541,12 +541,13 @@ items, since the picker would not offer them either.
 
 ## Gear is created and edited in dialogs, not on `new`/`edit` pages
 
-Trips and dive sites get `/x/new` and `/x/[id]/edit` pages; gear does not. `GearItemDialog` and
-`GearSetDialog` handle both create and edit — passing an existing record edits it in place, omitting
-one creates — and `/gear` is one page listing items and sets together. A gear item is four fields
-(name, brand, rented, notes), and the flow that matters most is adding one from inside a half-filled
-dive form, where navigating away would lose the form or need draft persistence. `/gear/[id]` remains
-as a detail page because it hosts the "Dives with this Gear" list.
+A dive gets `/dives/new` and `/dives/[id]/edit` pages; nothing else does — trips and dive sites are
+dialogs for the reason below, and so is gear. `GearItemDialog` and `GearSetDialog` handle both
+create and edit — passing an existing record edits it in place, omitting one creates — and `/gear`
+is one page listing items and sets together. A gear item is four fields (name, brand, rented,
+notes), and the flow that matters most is adding one from inside a half-filled dive form, where
+navigating away would lose the form or need draft persistence. `/gear/[id]` remains as a detail page
+because it hosts the "Dives with this Gear" list.
 
 ## The gear delete dialog offers "Archive instead", and its wording is pinned by a test
 
@@ -2619,19 +2620,21 @@ Gesture rules are MapLibre configuration ("The picker's contract is its own, and
 configured to meet it"). The basemap host sees divers' IPs and tile areas (`/privacy` §4.4); the CSP
 follows `NEXT_PUBLIC_MAP_TILE_URL` to a self-hosted server.
 
-## A trip's locations are self-describing objects, so nothing has to be resolved
+## A trip part's place is self-describing, so nothing has to be resolved
 
-`TripLocationMultiSelect` is built on the same `CreatableCombobox` as `DiveSiteMultiSelect` but
-holds `{name, display_name, latitude, longitude, bbox_*}` objects, the snapshot the API stores,
-rather than uuids, so a row renders from its own content with nothing to fetch and no loading state.
+`TripPartsField` is built on the same `CreatableCombobox` as `DiveSiteMultiSelect` but holds
+`{name, display_name, latitude, longitude, bbox_*}` objects, the snapshot the API stores, rather
+than uuids, so a row renders from its own content with nothing to fetch and no loading state.
 
-Rows therefore have no id. `locationKey` derives one from content: `geo:{lat}:{lon}:{display_name}`
-for a geocoded place, `txt:{name}` lowercased and trimmed for a typed one. `mapSearchResults`
-collapses results sharing a key, since Nominatim can return the same place twice. Selected rows are
-keyed by position, because the API lets a trip hold the same place twice and a saved trip can arrive
-holding it; two rows sharing a key would remove as one. Position-keyed rows swap content under a
-focused drag handle, so `useDragSort` moves focus to the destination handle (`data-drag-handle`) a
-frame after a keyboard reorder; for id-keyed lists that is a no-op.
+Places therefore have no id. `locationKey` derives one from content:
+`geo:{lat}:{lon}:{display_name}` for a geocoded place, `txt:{name}` lowercased and trimmed for a
+typed one. `mapSearchResults` collapses results sharing a key, since Nominatim can return the same
+place twice, and the row's `value`/`selectedItem` pair is keyed by it. Nothing compares keys across
+parts: two parts may name the same place — Dahab, then Sharm, then back to Dahab — so there is no
+`excludeIds` and no "already in the list" refusal. Rows are keyed and removed by position, or a
+repeat would go as a pair. Position-keyed rows swap content under a focused drag handle, so
+`useDragSort` moves focus to the destination handle (`data-drag-handle`) a frame after a keyboard
+reorder; for id-keyed lists that is a no-op.
 
 ## An unmatched query is addable as text, and that is an outage hatch as much as a long tail
 
@@ -3263,7 +3266,7 @@ converting; depth and deco ceiling share one `CHANNEL_DIMENSION`. Not converted:
 column), relabelled only; see "Cylinder presets are named AL/HP/LP, and every one of them is offered
 in both systems".
 
-## The trip form's map is always on screen, and its fields run name, dates, place, notes
+## The trip form's map is always on screen, and its fields run name, parts, notes
 
 `TripDialog` renders `LocationsMap` unconditionally; `showWhenEmpty`, an opt-in prop, draws the
 whole world until the first place is picked. A frame appearing with the first place shoves the lower
@@ -3277,8 +3280,24 @@ phrase.
 
 The empty view is `WORLD_CENTER` at `MIN_ZOOM` (0) from `lib/basemap.ts`, read by both maps.
 
-Field order: name, dates, place and map, notes — dates are known without thinking, the place's
-search answers with the map, and the growing block sits last-but-one. `/privacy` names both forms.
+Field order: name, parts and map, notes — a part carries its own dates, so there is no trip-level
+date row, the place search answers with the map, and the growing block sits last. `/privacy` names
+both forms.
+
+## A trip part is added empty, and filled in where it sits
+
+`TripPartsField`'s Add button appends a part with no place and no dates, and the row is where all
+three are set. The place search is per row rather than once at the foot of the field: the half a
+diver has is not always the place (a travel day is dates alone), and a wrong pick is then corrected
+in place instead of removed and re-added at the end of an ordered list.
+
+A per-row single-select wants the append-only field's Enter-only rule without its cleared input and
+open menu, so `CreatableCombobox` takes `commitOnEnterOnly` — `keepOpenOnSelect` implies it. Without
+it, typing "phil" and clicking Save files a place called "phil".
+
+Each row's controls are 44px on the shorter side: the two icon buttons carry their own box, and
+`[&_input]:h-11` on the row raises the three text inputs off the app-wide 40px without a size prop
+threaded through three shared primitives.
 
 ## A location's full label is trimmed of the name it sits beside, at render time
 
@@ -3299,8 +3318,8 @@ location keeps is the API's short form, chosen on the way in".
 ## The label a trip location keeps is the API's short form, chosen on the way in
 
 `geocodeResultToLocation` stores `GeocodeResult.location` — the API's `_short_location`, place plus
-country from the provider's structured address — as `trip_location.display_name`, not Nominatim's
-`display_name`; a dive log records "Dahab, Egypt", as the dive site form does
+country from the provider's structured address — as a trip part's `location.display_name`, not
+Nominatim's `display_name`; a dive log records "Dahab, Egypt", as the dive site form does
 (`dive_site.location`).
 
 It is received, not derived: the flat string cannot say whether the name is the settlement ("Dahab"
@@ -3309,7 +3328,7 @@ address can.
 
 Costs: old rows keep the provider's label until re-picked. `locationKey` (`geo:{lat}:{lon}:{label}`)
 lets one old row duplicate on re-pick. A trip stops matching its region in search:
-`_search_conditions` in `trips.py` ORs the term against `TripLocation.display_name`, and
+`search_conditions` in `crud_trips.py` ORs the term against a part's `display_name`, and
 `_short_location` composes place or region, never both; `test_the_display_name_matches_too`
 hand-writes its fixture and misses this. Neither repair (a second stored field, a geocoder-backed
 search) is worth it.
@@ -4481,15 +4500,15 @@ rows per list, since a constant name satisfies a one-row test.
 ## Row-action names: The same rule holds for chips in a form field
 
 `DiveSiteMultiSelect`, `SpeciesMultiSelect` and `GearItemMultiSelect` name each chip's remove button
-`Remove <label>`, as `TripLocationMultiSelect` does. The field's own label reaches neither the flat
-page-wide controls list nor the focus announcement, so bare `Remove` buttons collide like bare
-`Edit` rows; the drag handles beside them (`Reorder Blue Hole, position 1 of 2 (primary site). ...`)
-already reject the field-label argument. The name is the display label alone, not the muted suffix
-(a site's location, a species' binomial, a gear item's type and badges): the suffix is what a diver
-does not say, and where two records share a label they share the suffix too. Species are the one
-case a binomial would disambiguate; the collision there is incidental, not structural. The gear
-handle omits the `position N of M` the site and species handles announce; that asymmetry is
-unresolved. Render tests assert both buttons of two rows; `GearItemMultiSelect` has one.
+`Remove <label>`, as `TripPartsField` does. The field's own label reaches neither the flat page-wide
+controls list nor the focus announcement, so bare `Remove` buttons collide like bare `Edit` rows;
+the drag handles beside them (`Reorder Blue Hole, position 1 of 2 (primary site). ...`) already
+reject the field-label argument. The name is the display label alone, not the muted suffix (a site's
+location, a species' binomial, a gear item's type and badges): the suffix is what a diver does not
+say, and where two records share a label they share the suffix too. Species are the one case a
+binomial would disambiguate; the collision there is incidental, not structural. The gear handle
+omits the `position N of M` the site and species handles announce; that asymmetry is unresolved.
+Render tests assert both buttons of two rows; `GearItemMultiSelect` has one.
 
 ## `role="combobox"` is not allowed on a number input, and fixing that needs a draft string
 

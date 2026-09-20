@@ -239,9 +239,7 @@ describe("TripPartsField", () => {
     await userEvent.paste("Uncle Bob's House Reef");
     await userEvent.keyboard("{Enter}");
 
-    await waitFor(() =>
-      expect(places()).toEqual(["Uncle Bob's House Reef"]),
-    );
+    await waitFor(() => expect(places()).toEqual(["Uncle Bob's House Reef"]));
   });
 
   it("truncates a typed name to what the API will take", async () => {
@@ -426,7 +424,9 @@ describe("TripPartsField", () => {
 
     expect(screen.getByRole("button", { name: "Add a part" })).toBeDisabled();
     expect(
-      screen.getByText(`${MAX_TRIP_PARTS} parts maximum - remove one to add another.`),
+      screen.getByText(
+        `${MAX_TRIP_PARTS} parts maximum - remove one to add another.`,
+      ),
     ).toBeInTheDocument();
 
     // And it reopens as soon as there is room, since a trip that arrived over

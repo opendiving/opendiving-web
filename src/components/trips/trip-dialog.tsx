@@ -126,7 +126,11 @@ export function TripDialog({
       if (trip) {
         // The API answers a PATCH with just a status message, so the updated
         // trip is assembled here for the caller.
-        await tripsAPI.updateTrip(trip.uuid, { name: data.name, parts, notes: data.notes });
+        await tripsAPI.updateTrip(trip.uuid, {
+          name: data.name,
+          parts,
+          notes: data.notes,
+        });
         onSaved({ ...trip, name: data.name, parts, notes: data.notes });
       } else {
         const created = await tripsAPI.createTrip({

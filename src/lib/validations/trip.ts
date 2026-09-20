@@ -4,7 +4,7 @@ import { z } from "zod";
 // `<input type="date">`) rather than the "" placeholder trick used for
 // numeric fields elsewhere, but the same rule applies: we keep "" as the
 // live "empty" value (never `undefined`) so react-hook-form doesn't fall
-// back to re-displaying the field's default value. `normalizeTripDates`
+// back to re-displaying the field's default value. `normalizeTripParts`
 // converts "" to `undefined` right before sending data to the API.
 
 // Coordinates here are plain numbers, not the regex-validated strings the dive
@@ -84,10 +84,7 @@ export const tripFormSchema = z.object({
   // itself carries no dates: its span is the span of these.
   parts: z
     .array(tripPartSchema)
-    .max(
-      MAX_TRIP_PARTS,
-      `A trip cannot have more than ${MAX_TRIP_PARTS} parts`,
-    )
+    .max(MAX_TRIP_PARTS, `A trip cannot have more than ${MAX_TRIP_PARTS} parts`)
     .optional(),
   notes: z
     .string()

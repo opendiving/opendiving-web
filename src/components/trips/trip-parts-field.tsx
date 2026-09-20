@@ -1,6 +1,13 @@
 "use client";
 
-import { Fragment, useCallback, useEffect, useId, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from "react";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { GripVertical, Plus, X } from "lucide-react";
 import {
@@ -154,8 +161,10 @@ export function describeTripPart(
   const name = part.location?.name?.trim();
   if (name) return name;
   return (
-    formatTripDateRange(part.start_date || undefined, part.end_date || undefined) ??
-    `part ${index + 1}`
+    formatTripDateRange(
+      part.start_date || undefined,
+      part.end_date || undefined,
+    ) ?? `part ${index + 1}`
   );
 }
 
@@ -497,7 +506,9 @@ function TripPartRow({
       )}
       // The dragged row is translated to follow the pointer; the rest stay put
       // and are simply re-ordered around it by React.
-      style={isDragging ? { transform: `translateY(${dragOffset}px)` } : undefined}
+      style={
+        isDragging ? { transform: `translateY(${dragOffset}px)` } : undefined
+      }
     >
       <div className="flex items-center gap-1">
         {/* The gesture's keyboard equivalent lives on this button (Up/Down), so
