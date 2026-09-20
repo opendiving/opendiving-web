@@ -16,15 +16,15 @@ export interface IsEmptyListInput {
 
 /**
  * Whether a list card has nothing to head: no rows, nothing loading, and nothing
- * narrowing it now or earlier in this visit.
+ * narrowing it - which a search cleared a moment ago still counts as, until the
+ * rows catch up with it.
  *
- * That last clause is sticky on purpose. A term and the rows it selects do not
- * change in the same commit - the page's debounce clears the term, and the fetch
- * that refills the list only starts in the effect after that render. For that one
- * render a search cleared after matching nothing looks exactly like a list that
- * was always empty, and dropping the header there pulls the box out from under
- * the diver mid-clear, taking the cursor with it and, under `sm`, folding the box
- * shut. So a card searched once keeps its header until the diver leaves the page.
+ * A term and the rows it selects do not change in the same commit: the page's
+ * debounce clears the term, and the fetch that refills the list only starts in
+ * the effect after that render. For that one render a search cleared after
+ * matching nothing looks exactly like a list that was always empty, and dropping
+ * the header there pulls the box out from under the diver mid-clear, taking the
+ * cursor with it and, under `sm`, folding the box shut.
  */
 export function useIsEmptyList({
   isLoading,
