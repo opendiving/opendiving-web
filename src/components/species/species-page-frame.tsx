@@ -8,7 +8,10 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { CountBadge } from "@/components/ui/count-badge";
-import { ListCardHeader } from "@/components/ui/list-card-header";
+import {
+  ListCardHeader,
+  useIsEmptyList,
+} from "@/components/ui/list-card-header";
 import { ListSearch } from "@/components/ui/list-search";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -80,11 +83,15 @@ export function SpeciesPageFrame({
   hasMore = false,
   onLoadMore = noop,
 }: SpeciesPageFrameProps) {
-  // Nothing to count and nothing to search: no cards, and nothing narrowing
-  // them - neither a term in flight nor one sitting in the box waiting for the
-  // debounce that will make it one.
-  const isEmptyList =
-    !isLoading && cards.length === 0 && !isSearching && !search;
+  // Nothing to count and nothing to search. A term in flight and one still in the
+  // box waiting for the debounce both count as narrowing, and `useIsEmptyList`
+  // holds that reading across the commit where neither is true yet the cards are
+  // still the search's.
+  const isEmptyList = useIsEmptyList({
+    isLoading,
+    count: cards.length,
+    isNarrowed: isSearching || search.length > 0,
+  });
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

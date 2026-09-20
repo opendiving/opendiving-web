@@ -13,7 +13,10 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { CountBadge } from "@/components/ui/count-badge";
-import { ListCardHeader } from "@/components/ui/list-card-header";
+import {
+  ListCardHeader,
+  useIsEmptyList,
+} from "@/components/ui/list-card-header";
 import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
@@ -93,8 +96,14 @@ export function CoursesPageFrame({
   // make it one, or a filter: any of the three is narrowing the list.
   const isNarrowed =
     isSearching || search.length > 0 || hasCourseFilters(filters);
-  // Nothing to count, and nothing the panel could usefully narrow.
-  const isEmptyList = !isLoading && rows.length === 0 && !isNarrowed;
+  // Nothing to count, and nothing the panel could usefully narrow. Sticky across
+  // the commit in which a cleared term or filter has been dropped but the rows
+  // it selected are still on screen - see `useIsEmptyList`.
+  const isEmptyList = useIsEmptyList({
+    isLoading,
+    count: rows.length,
+    isNarrowed,
+  });
   const searchRef = useRef<HTMLInputElement>(null);
 
   // Typing is what the diver came for, and pressing a magnifier to then reach

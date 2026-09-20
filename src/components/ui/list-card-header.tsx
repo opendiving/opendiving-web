@@ -1,7 +1,44 @@
-import { type ReactNode } from "react";
+"use client";
+
+import { useState, type ReactNode } from "react";
 
 import { CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+
+export interface IsEmptyListInput {
+  /** Whether the first page of the list is still in flight. */
+  isLoading: boolean;
+  /** How many rows - or cards - are on screen. */
+  count: number;
+  /** Whether a search term or a filter is selecting what the list shows. */
+  isNarrowed: boolean;
+}
+
+/**
+ * Whether a list card has nothing to head: no rows, nothing loading, and nothing
+ * narrowing it now or earlier in this visit.
+ *
+ * That last clause is sticky on purpose. A term and the rows it selects do not
+ * change in the same commit - the page's debounce clears the term, and the fetch
+ * that refills the list only starts in the effect after that render. For that one
+ * render a search cleared after matching nothing looks exactly like a list that
+ * was always empty, and dropping the header there pulls the box out from under
+ * the diver mid-clear, taking the cursor with it and, under `sm`, folding the box
+ * shut. So a card searched once keeps its header until the diver leaves the page.
+ */
+export function useIsEmptyList({
+  isLoading,
+  count,
+  isNarrowed,
+}: IsEmptyListInput): boolean {
+  // Set while rendering rather than in an effect: React re-runs this component
+  // before it commits, so the latch is already closed in the render that first
+  // sees the narrowing, and no second paint is charged for it.
+  const [wasNarrowed, setWasNarrowed] = useState(isNarrowed);
+  if (isNarrowed && !wasNarrowed) setWasNarrowed(true);
+
+  return !isLoading && count === 0 && !isNarrowed && !wasNarrowed;
+}
 
 export interface ListCardHeaderProps {
   /** The card's own heading, e.g. "Trip List". Never on screen. */

@@ -82,4 +82,26 @@ describe("SpeciesPageFrame", () => {
       within(header()).getByLabelText("Search your species by name"),
     ).toBeInTheDocument();
   });
+
+  // Emptying the box is the way out of a search that matched nothing, and for
+  // one commit it leaves the term gone and the search's own (empty) cards still
+  // on screen. Dropping the box there would take the diver's cursor with it.
+  it("keeps them through the commit where a cleared term outruns its cards", () => {
+    const { rerender } = frame({ search: "nudi", isSearching: true });
+
+    rerender(
+      <SpeciesPageFrame
+        isLoading={false}
+        totalCount={0}
+        itemsPerPage={24}
+        cards={[]}
+        search=""
+        isSearching={false}
+      />,
+    );
+
+    expect(
+      within(header()).getByLabelText("Search your species by name"),
+    ).toBeInTheDocument();
+  });
 });

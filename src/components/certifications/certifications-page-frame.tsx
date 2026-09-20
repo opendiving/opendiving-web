@@ -7,7 +7,10 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { CountBadge } from "@/components/ui/count-badge";
-import { ListCardHeader } from "@/components/ui/list-card-header";
+import {
+  ListCardHeader,
+  useIsEmptyList,
+} from "@/components/ui/list-card-header";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
 import {
   Table,
@@ -49,7 +52,11 @@ export function CertificationsPageFrame({
 }: CertificationsPageFrameProps) {
   // An unstarted wallet. Nothing narrows this list, so an empty one is the
   // whole story.
-  const isEmptyList = !isLoading && rows.length === 0;
+  const isEmptyList = useIsEmptyList({
+    isLoading,
+    count: rows.length,
+    isNarrowed: false,
+  });
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">

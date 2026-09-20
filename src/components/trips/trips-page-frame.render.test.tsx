@@ -93,4 +93,26 @@ describe("TripsPageFrame", () => {
       within(header()).getByLabelText("Search trips by name or location"),
     ).toBeInTheDocument();
   });
+
+  // Emptying the box is the way out of a search that matched nothing, and for
+  // one commit it leaves the term gone and the search's own (empty) rows still
+  // on screen. Dropping the box there would take the diver's cursor with it.
+  it("keeps them through the commit where a cleared term outruns its rows", () => {
+    const { rerender } = frame({ search: "dahab", isSearching: true });
+
+    rerender(
+      <TripsPageFrame
+        isLoading={false}
+        totalCount={0}
+        itemsPerPage={10}
+        rows={[]}
+        search=""
+        isSearching={false}
+      />,
+    );
+
+    expect(
+      within(header()).getByLabelText("Search trips by name or location"),
+    ).toBeInTheDocument();
+  });
 });

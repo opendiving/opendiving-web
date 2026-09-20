@@ -131,6 +131,30 @@ describe("CoursesPageFrame", () => {
     expect(toggle()).toBeInTheDocument();
   });
 
+  // Emptying the box is the way out of a search that matched nothing, and for
+  // one commit it leaves the term gone and the search's own (empty) rows still
+  // on screen. Dropping the panel there would take the diver's cursor with it.
+  it("keeps them through the commit where a cleared term outruns its rows", () => {
+    const { rerender } = frame({
+      rows: [],
+      search: "nitrox",
+      isSearching: true,
+    });
+
+    rerender(
+      <CoursesPageFrame
+        isLoading={false}
+        totalCount={0}
+        itemsPerPage={10}
+        rows={[]}
+        search=""
+        isSearching={false}
+      />,
+    );
+
+    expect(toggle()).toBeInTheDocument();
+  });
+
   // Pressing a magnifier and then reaching for the box is a click nobody wanted.
   it("puts the cursor in the search box on opening, and again on re-opening", async () => {
     frame();
