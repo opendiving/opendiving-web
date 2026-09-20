@@ -269,8 +269,8 @@ export function useDragSort({
         // Move focus to where the row went. Where rows are keyed by their id the
         // DOM node travels with the item and this is already the focused
         // element, so it costs nothing - but a list keyed by *position*
-        // (`TripLocationMultiSelect`, whose rows are value objects that may
-        // legally repeat) reuses this button in place, leaving focus on a handle
+        // (`TripPartsField`, whose rows are parts that may legally repeat a
+        // place) reuses this button in place, leaving focus on a handle
         // that now belongs to the neighbour. The next press would move that one
         // back, and the row being moved could never travel more than one step.
         //

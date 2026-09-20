@@ -5,7 +5,7 @@ import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { tripsAPI, Trip } from "@/lib/api/trips";
-import { formatTripDateRange } from "@/lib/date-time";
+import { formatTripSpan, tripPartLocations } from "@/lib/trip-parts";
 import { Button } from "@/components/ui/button";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { TripsPageFrame } from "@/components/trips/trips-page-frame";
@@ -118,10 +118,16 @@ export default function TripsPage() {
               </Link>
             </TableCell>
             <TableCell>
-              {formatTripDateRange(trip.start_date, trip.end_date) ?? "-"}
+              {/* The span of the trip's parts, which is the only date a trip
+                  has: a trip whose parts carry none shows "-" rather than an
+                  error, and the API sorts it after every trip that has one. */}
+              {formatTripSpan(trip.parts) ?? "-"}
             </TableCell>
             <TableCell>
-              <TripLocationsLabel locations={trip.locations} fallback="-" />
+              <TripLocationsLabel
+                locations={tripPartLocations(trip.parts)}
+                fallback="-"
+              />
             </TableCell>
             <TableCell className="text-right">
               {/* Named per row, not per action: ten identical "Edit"s tell a

@@ -166,8 +166,8 @@ describe("LocationsMap", () => {
     );
   });
 
-  // A place typed in by hand has a name and nothing else. The picker's row says
-  // "not on the map"; here it simply is not one.
+  // A place typed in by hand has a name and nothing else. The trip form's part
+  // row says "Not on the map"; here it simply is not one.
   it("skips a place with no position", async () => {
     render(
       withConfig(

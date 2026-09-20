@@ -11,6 +11,7 @@ import {
   formatLocationContext,
   formatTripLocationNames,
 } from "@/lib/trip-locations";
+import { formatTripSpan, tripPartLocations } from "@/lib/trip-parts";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,6 +28,13 @@ import { PageSpinner } from "@/components/ui/page-spinner";
 // The plain-delete toast, and the first half of the one a move gets - "moved to
 // Cebu 2026" is an addition to what happened, not a replacement for it.
 const DELETED_MESSAGE = "Trip deleted successfully.";
+
+// This page has room for the month spelled out, unlike the trips table.
+const LONG_DATE: Intl.DateTimeFormatOptions = {
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+};
 
 export default function TripDetailPage() {
   const router = useRouter();
@@ -51,23 +59,14 @@ export default function TripDetailPage() {
   const isDeleting = del.deletingId !== null;
 
   const formatDate = (dateString: string) =>
-    formatDateTime(dateString, {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
+    formatDateTime(dateString, LONG_DATE);
 
-  const tripDateRange = trip
-    ? formatTripDateRange(trip.start_date, trip.end_date, {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })
-    : undefined;
+  const tripParts = trip?.parts ?? [];
+  const tripDateRange = formatTripSpan(tripParts, LONG_DATE);
 
-  const tripLocations = trip?.locations ?? [];
+  const tripLocations = tripPartLocations(tripParts);
   const tripLocationNames = formatTripLocationNames(tripLocations);
-  // Only places the geocoder gave a position to can be drawn; the rows below
+  // Only places the geocoder gave a position to can be drawn; the parts below
   // list all of them either way, so a typed-in place isn't silently dropped.
   const mappedLocations = tripLocations.filter(
     (location) => location.latitude != null && location.longitude != null,
@@ -157,7 +156,9 @@ export default function TripDetailPage() {
             enabled={!!user}
             tripId={trip.uuid}
             title="Dives in this Trip"
-            description="All dives logged as part of this trip"
+            // Not "logged as part of this trip": a part is a noun here now, and
+            // that sentence reads as a claim about which stretch a dive was on.
+            description="Every dive logged on this trip"
             viewAllHref={null}
             emptyTitle="No dives logged for this trip yet"
             emptyDescription="Log a dive and assign it to this trip to see it here."
@@ -175,32 +176,51 @@ export default function TripDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {tripLocations.length > 0 && (
+              {tripParts.length > 0 && (
                 <div>
                   <div className="text-sm font-medium text-muted-foreground mb-1">
-                    {tripLocations.length > 1 ? "Locations" : "Location"}
+                    {tripParts.length > 1 ? "Parts" : "Part"}
                   </div>
-                  {/* One row per place, in the order the diver arranged them,
+                  {/* One row per part, in the order the diver arranged them,
                       rather than the joined line the header and the trips table
                       show: this is the one surface with room to put the country
-                      under the name as well. */}
+                      under the name and the part's own dates beneath that. A
+                      part with no place is still a row - it is a stretch of the
+                      trip, and dropping it would renumber the rest. */}
                   <ul className="space-y-1.5">
-                    {tripLocations.map((location, index) => {
+                    {tripParts.map((part, index) => {
                       // The label with the name above it trimmed off its front,
                       // so the two lines don't read "Dahab" over "Dahab,
                       // Egypt".
-                      const context = formatLocationContext(location);
+                      const context = part.location
+                        ? formatLocationContext(part.location)
+                        : undefined;
+                      const dates = formatTripDateRange(
+                        part.start_date ?? undefined,
+                        part.end_date ?? undefined,
+                      );
                       return (
                         <li
-                          key={`${location.name}-${index}`}
+                          key={index}
                           className="flex items-start gap-2 text-sm"
                         >
                           <MapPin className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
                           <span className="min-w-0">
-                            <span className="block">{location.name}</span>
+                            <span className="block">
+                              {part.location?.name ?? (
+                                <span className="text-muted-foreground">
+                                  No place recorded
+                                </span>
+                              )}
+                            </span>
                             {context && (
                               <span className="block text-xs text-muted-foreground">
                                 {context}
+                              </span>
+                            )}
+                            {dates && (
+                              <span className="block text-xs text-muted-foreground">
+                                {dates}
                               </span>
                             )}
                           </span>

@@ -10,6 +10,7 @@ import { formatCoordinates } from "@/lib/validations/dive-site";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DiveSitesLabel } from "@/components/dives/dive-sites-label";
 import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
+import { tripPartLocations } from "@/lib/trip-parts";
 import { DiveRecordingsCard } from "@/components/dives/dive-recordings-card";
 import { LocationsMap } from "@/components/map/locations-map-lazy";
 import type { MappableLocation } from "@/components/map/locations-map";
@@ -140,7 +141,7 @@ export function DiveDetailSidebar({
                       {trip.name}
                     </Link>
                     <TripLocationsLabel
-                      locations={trip.locations}
+                      locations={tripPartLocations(trip.parts)}
                       className="block text-muted-foreground"
                     />
                   </div>

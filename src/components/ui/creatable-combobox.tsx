@@ -165,6 +165,20 @@ export function commitAction({
   );
   if (exactMatch) return { type: "select", item: exactMatch };
 
+  // The text still reads as whatever is selected. Nothing was edited, so there
+  // is nothing to commit - and definitely nothing to clear or to re-create.
+  //
+  // **Before the unanswered-query branch, not after**, or a field that may
+  // create from an unanswered query rebuilds its own loaded value out of the
+  // text. Focusing a filled single-select opens the menu and fires the
+  // empty-query search, which the geocode client answers `[]` locally, so a
+  // bare Enter arrives with `searchedQuery` at `""` while the text is still the
+  // selected name: the branch below then reads "unanswered" and creates, and a
+  // geocoded place comes back as a name with no coordinates.
+  if (selectedName && trimmed.toLowerCase() === selectedName.toLowerCase()) {
+    return { type: "keep" };
+  }
+
   // Nothing matched - but in remote mode "nothing matched" is only *evidence* of
   // anything once the server has answered this exact query. Before that,
   // `availableItems` is an empty list that means "we haven't asked yet", and
@@ -181,12 +195,6 @@ export function commitAction({
     // this, because it is only safe for a field that appends.
     if (!(createWithoutSearch && canCreate)) return { type: "keep" };
     return { type: "create", name: trimmed };
-  }
-
-  // The text still reads as whatever is selected. Nothing was edited, so there is
-  // nothing to commit - and definitely nothing to clear.
-  if (selectedName && trimmed.toLowerCase() === selectedName.toLowerCase()) {
-    return { type: "keep" };
   }
 
   // Genuinely unmatched text. With an inline creator that means a new item; without
@@ -320,9 +328,24 @@ export interface CreatableComboboxProps extends FormControlSlotProps {
   // Single-value callers leave this off - once they have their one value, the
   // menu closing and the input showing the chosen name is the right outcome.
   //
-  // It also decides how `onCreate` is reached: an append-only field creates from
-  // typed text on Enter only, never on blur. See `commit`.
+  // It implies `commitOnEnterOnly`, which used to be part of it.
   keepOpenOnSelect?: boolean;
+  // Typed text becomes a value only from a deliberate Enter, never from focus
+  // leaving and never from a keystroke that happens to spell an option exactly.
+  // Picking a row from the menu still works, and abandoning a half-typed query
+  // restores whatever was selected before it.
+  //
+  // For a single-select whose `onCreate` files free text: a diver who types
+  // "phil", sees Philippines in the menu and clicks Save would otherwise commit
+  // a place called "phil" in the gesture that closed the dialog. Append-only
+  // fields want the same rule and get it from `keepOpenOnSelect`; this is the
+  // half of it that a field showing its chosen value can take on its own.
+  commitOnEnterOnly?: boolean;
+  // For a combobox that repeats down a list and so cannot be named by one
+  // `FormLabel`: twenty identically-named comboboxes tell a screen reader's
+  // controls list nothing about which row they belong to. Same rule as the
+  // per-row Remove buttons in `DECISIONS.md`, "Row-action names".
+  "aria-label"?: string;
 }
 
 // A generic combobox that lets the user pick an existing item by typing to
@@ -351,11 +374,13 @@ export function CreatableCombobox({
   queryTooLongLabel,
   searchErrorLabel = "Search is unavailable right now.",
   keepOpenOnSelect = false,
+  commitOnEnterOnly = false,
   // Forwarded to the text input rather than the wrapper, so `FormLabel`'s
   // `htmlFor` lands on the thing that actually takes focus.
   id,
   "aria-describedby": ariaDescribedBy,
   "aria-invalid": ariaInvalid,
+  "aria-label": ariaLabel,
 }: CreatableComboboxProps) {
   const [inputValue, setInputValue] = useState("");
   // Whether the text in the field is the diver's own rather than something this
@@ -392,6 +417,9 @@ export function CreatableCombobox({
   const lastSelectedRef = useRef<ComboboxItem | null>(null);
   const listId = useId();
   const optionId = (index: number) => `${listId}-option-${index}`;
+
+  // An append-only field has always worked this way; a single-select opts in.
+  const enterOnly = commitOnEnterOnly || keepOpenOnSelect;
 
   const availableItems = onSearch ? remoteResult.items : items;
 
@@ -585,13 +613,15 @@ export function CreatableCombobox({
     // Typing re-filters the list, so a held-over index would point at a
     // different row than the one the user was looking at.
     setActiveIndex(-1);
-    // Typing is not choosing. In a single-select this is how you pick without a
-    // mouse - the match fills the one field, and an edit that no longer matches
-    // clears it - but in an append-only field `onChange` *appends a row*, so the
-    // same line files a place the diver was still typing past: "Bohol" on the
-    // way to "Bohol Sea" is added the moment the "l" lands, and stays. Rows here
-    // come from a click or Enter, and from nothing else.
-    if (keepOpenOnSelect) return;
+    // Typing is not choosing. In an ordinary single-select this is how you pick
+    // without a mouse - the match fills the one field, and an edit that no
+    // longer matches clears it - but under `enterOnly` the same line commits a
+    // place the diver was still typing past: "Bohol" on the way to "Bohol Sea"
+    // lands the moment the "l" does. Worse there than here, since nothing
+    // afterwards takes it back: leaving the field commits nothing either, so the
+    // value would be whatever the last exact match happened to be. A value comes
+    // from a click or Enter, and from nothing else.
+    if (enterOnly) return;
     const exactMatch = findExactMatch(text);
     onChange(exactMatch?.id);
   };
@@ -629,10 +659,30 @@ export function CreatableCombobox({
   // reach `commit` at all - and without this the diver who typed one location
   // ends up with focus on `<body>`, a closed menu, and a click needed before
   // they can type the second. Tab from there restarts at the top of the dialog.
+  //
+  // A single-select under `commitOnEnterOnly` travels that same road and loses
+  // focus the same way, but has nothing further to add: the field is filled, so
+  // the cursor goes back into it and the menu stays shut. Gated on the flag
+  // rather than run unconditionally, because an ordinary single-select reaches
+  // `commit` from the blur itself, and refocusing there would trap the caret in
+  // the field the diver was leaving.
+  //
+  // Closing *after* the focus is the whole trick, and the order is load-bearing:
+  // focusing a blurred input runs `onFocus`, which opens the menu, so a close
+  // written first would be undone by it and every commit would leave the
+  // dropdown painted over whatever sits below the field. Both updates land in
+  // one batch and the last one wins - the same order `date-picker.tsx` uses when
+  // a picked date returns focus to its box.
   const readyForNext = () => {
-    if (!keepOpenOnSelect) return;
-    setIsOpen(true);
-    inputRef.current?.focus();
+    if (keepOpenOnSelect) {
+      setIsOpen(true);
+      inputRef.current?.focus();
+      return;
+    }
+    if (commitOnEnterOnly) {
+      inputRef.current?.focus();
+      setIsOpen(false);
+    }
   };
 
   // Only ever reached from a blur that is allowed to commit - which for an
@@ -645,10 +695,10 @@ export function CreatableCombobox({
       searchedQuery,
       selectedName: findSelected()?.name,
       canCreate: Boolean(onCreate),
-      // An append-only field only gets here on a deliberate Enter, and that is
-      // answer enough on its own: whether the query failed or is still in
-      // flight, the alternative is silently discarding what the diver typed.
-      createWithoutSearch: keepOpenOnSelect,
+      // Under `enterOnly` this is only ever reached from a deliberate Enter, and
+      // that is answer enough on its own: whether the query failed or is still
+      // in flight, the alternative is silently discarding what the diver typed.
+      createWithoutSearch: enterOnly,
     });
 
     if (action.type === "keep") return;
@@ -702,6 +752,7 @@ export function CreatableCombobox({
         id={id}
         aria-describedby={ariaDescribedBy}
         aria-invalid={ariaInvalid}
+        aria-label={ariaLabel}
         type="text"
         role="combobox"
         aria-expanded={isOpen}
@@ -747,14 +798,14 @@ export function CreatableCombobox({
           const byEnter = committedByEnterRef.current;
           committedByEnterRef.current = false;
           closeMenu();
-          // For an append-only field, leaving the field does nothing but close
-          // the menu - no create, and no exact-match select either. Blur
-          // committing suits a single-select, where the typed text *is* the
-          // value and dropping it would lose the edit; here every row is added
-          // by a deliberate act (a click, or Enter), so a diver who clicks Save
-          // with a half-typed query gets what they can see, not a place they
-          // never chose. `handleSelect` and Enter are the only ways in.
-          if (keepOpenOnSelect && !byEnter) return;
+          // Under `enterOnly`, leaving the field does nothing but close the menu
+          // - no create, and no exact-match select either. Blur committing suits
+          // a single-select whose typed text *is* the value, where dropping it
+          // would lose the edit; a field that files free text wants the opposite,
+          // so that a diver who clicks Save with a half-typed query gets what
+          // they can see rather than a place they never chose. `handleSelect`
+          // and Enter are the only ways in.
+          if (enterOnly && !byEnter) return;
           commit();
         }}
         onKeyDown={(e) => {

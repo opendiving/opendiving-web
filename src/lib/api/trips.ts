@@ -2,10 +2,10 @@ import { apiClient } from "./client";
 import type { PaginatedResponse } from "./client";
 
 /**
- * One place a trip went, as the API stores it.
+ * The place half of a trip part, as the API stores it.
  *
  * A value object, not a resource: it has no uuid, it belongs to exactly one
- * trip, and it is a snapshot of what the geocoder said at the time rather than a
+ * part, and it is a snapshot of what the geocoder said at the time rather than a
  * row in a shared gazetteer. `name` is the only field that is always there - a
  * place typed in by hand, because the geocoder had nothing for it, has a name
  * and nothing else.
@@ -21,38 +21,50 @@ export interface TripLocation {
   bbox_east?: number | null;
 }
 
-// What a write sends. Identical in shape to `TripLocation` - locations are
-// replaced wholesale rather than patched, so there is nothing extra to send and
-// nothing read-only to strip.
-export type TripLocationInput = TripLocation;
+/**
+ * One stretch of a trip: an optional date range and an optional place.
+ *
+ * Both halves are optional and each absence means something. Dates and no place
+ * is a transit day or a week nobody geocoded; a place and no dates is a stop
+ * whose timing has not been filled in. A part carries no name of its own -
+ * `location.name` is the place's name, and a part without one is identified by
+ * its dates, or by its ordinal when it has neither.
+ */
+export interface TripPart {
+  start_date?: string | null;
+  end_date?: string | null;
+  location?: TripLocation | null;
+}
+
+// What a write sends. Identical in shape to `TripPart` - parts are replaced
+// wholesale rather than patched, so there is nothing extra to send and nothing
+// read-only to strip.
+export type TripPartInput = TripPart;
 
 export interface Trip {
   uuid: string;
   name: string;
-  // Ordered as the diver arranged them; first is the one a compact surface shows.
-  locations: TripLocation[];
-  start_date?: string;
-  end_date?: string;
+  // Ordered as the diver arranged them, not by date: a part with no dates has no
+  // place in a date ordering, and the drag handle is what sets this.
+  parts: TripPart[];
   notes?: string;
   user_uuid: string;
   created_at: string;
 }
 
+// A trip stores no dates of its own. Its span is derived from its parts -
+// `tripSpan` in `lib/trip-parts.ts` - so nothing here carries `start_date`.
 export interface TripCreate {
   name: string;
-  locations?: TripLocationInput[];
-  start_date: string;
-  end_date?: string;
+  parts?: TripPartInput[];
   notes?: string;
 }
 
 export interface TripUpdate {
   name?: string;
-  // Omitted leaves the trip's locations untouched; any array - `[]` included -
+  // Omitted leaves the trip's parts untouched; any array - `[]` included -
   // replaces them wholesale.
-  locations?: TripLocationInput[];
-  start_date?: string;
-  end_date?: string;
+  parts?: TripPartInput[];
   notes?: string;
 }
 

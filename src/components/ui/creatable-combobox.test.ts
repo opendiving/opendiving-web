@@ -364,6 +364,25 @@ describe("commitAction", () => {
       ).toEqual({ type: "keep" });
     });
 
+    it("never re-creates the value it already holds", () => {
+      // The opt-in above lets an unanswered query become a new item, and a
+      // single-select that takes it carries a loaded value the append-only
+      // fields do not. Focusing one fires the empty-query search, which the
+      // geocode client answers `[]` locally - so a bare Enter arrives here
+      // unanswered, with the text still the selected name. Creating from that
+      // rebuilds a geocoded place as a bare name and drops its coordinates.
+      expect(
+        commitAction({
+          ...remote,
+          text: "Dahab",
+          selectedName: "Dahab",
+          canCreate: true,
+          createWithoutSearch: true,
+          searchedQuery: "",
+        }),
+      ).toEqual({ type: "keep" });
+    });
+
     it("clears once the server has answered this exact query with nothing", () => {
       // The guard must not become "never clear in remote mode" - deleting the text
       // and typing a name that really doesn't exist still has to take effect.

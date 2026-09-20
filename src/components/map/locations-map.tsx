@@ -60,8 +60,9 @@ interface PlacedLocation {
 /**
  * The places that can actually be drawn, with the extent each one asks for.
  *
- * A place typed in by hand has no position and is skipped - the picker's rows
- * say so ("not on the map") rather than leaving its absence here unexplained.
+ * A place typed in by hand has no position and is skipped - the trip form's
+ * part rows say so ("Not on the map") rather than leaving its absence here
+ * unexplained.
  * A place the geocoder gave a footprint for is fitted by that footprint, which
  * is what keeps a country from opening at the zoom of its centroid; anything
  * else is fitted as the degenerate box of its own point.
