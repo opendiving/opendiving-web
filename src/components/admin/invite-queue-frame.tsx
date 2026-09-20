@@ -4,8 +4,12 @@ import { Mail, Trash2 } from "lucide-react";
 import type { AdminInviteRequest } from "@/lib/api/admin";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { CountBadge } from "@/components/ui/count-badge";
+import {
+  ListCardHeader,
+  useIsEmptyList,
+} from "@/components/ui/list-card-header";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
 import { InviteRequestsTable } from "@/components/admin/invite-requests-table";
 import { DEFAULT_ITEMS_PER_PAGE } from "@/hooks/useInfiniteResource";
@@ -60,6 +64,13 @@ export function InviteQueueFrame({
 }: InviteQueueFrameProps) {
   const count = selected.length;
   const addresses = `${count} ${count === 1 ? "address" : "addresses"}`;
+  // Nobody is waiting. Nothing narrows this queue, so an empty one is the whole
+  // story - and the two actions act on a selection of rows that do not exist.
+  const isEmptyList = useIsEmptyList({
+    isLoading,
+    count: requests.length,
+    isNarrowed: false,
+  });
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -71,53 +82,52 @@ export function InviteQueueFrame({
       </div>
 
       <Card>
-        <CardHeader className="items-start">
-          {/* Hidden, not dropped: the page's `h1` names the list, but the
-              card is still a section of it, and the empty state's `h3` below
-              would skip a level without this. */}
-          <CardTitle as="h2" className="sr-only">
-            Requests
-          </CardTitle>
+        <ListCardHeader title="Requests" isEmpty={isEmptyList}>
           <CountBadge
             count={totalCount}
             isLoading={isLoading}
             label="pending request"
           />
-        </CardHeader>
+        </ListCardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-2 mb-4">
-            <Button
-              onClick={() => onAct("invite")}
-              disabled={count === 0 || isActing}
-            >
-              <Mail className="h-4 w-4 mr-2" />
-              Send invitations
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => onAct("remove")}
-              disabled={count === 0 || isActing}
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Remove
-            </Button>
-            <span
-              className="text-sm text-muted-foreground self-center"
-              // Ticking a row is a pointer gesture with no announcement of its
-              // own, so the running total is spoken as it changes. The select-all's
-              // `indeterminate` dash carries the same news, and a screen reader does
-              // read it - a native checkbox exposes the mixed state - but only to
-              // someone who goes back to the header box for it. This region is the
-              // half that arrives unasked.
-              aria-live="polite"
-            >
-              {count === 0
-                ? "Nothing selected"
-                : count >= MAX_SELECTED
-                  ? `${addresses} selected - the most one batch can hold`
-                  : `${addresses} selected`}
-            </span>
-          </div>
+          {/* Goes with the count: a Send and a Remove that can only ever be
+              disabled are furniture over "Nobody is waiting", and the live
+              region has nothing left to announce. */}
+          {!isEmptyList && (
+            <div className="flex flex-wrap gap-2 mb-4">
+              <Button
+                onClick={() => onAct("invite")}
+                disabled={count === 0 || isActing}
+              >
+                <Mail className="h-4 w-4 mr-2" />
+                Send invitations
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => onAct("remove")}
+                disabled={count === 0 || isActing}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Remove
+              </Button>
+              <span
+                className="text-sm text-muted-foreground self-center"
+                // Ticking a row is a pointer gesture with no announcement of its
+                // own, so the running total is spoken as it changes. The select-all's
+                // `indeterminate` dash carries the same news, and a screen reader does
+                // read it - a native checkbox exposes the mixed state - but only to
+                // someone who goes back to the header box for it. This region is the
+                // half that arrives unasked.
+                aria-live="polite"
+              >
+                {count === 0
+                  ? "Nothing selected"
+                  : count >= MAX_SELECTED
+                    ? `${addresses} selected - the most one batch can hold`
+                    : `${addresses} selected`}
+              </span>
+            </div>
+          )}
 
           <InviteRequestsTable
             requests={requests}

@@ -88,4 +88,52 @@ describe("/admin/invites", () => {
     ]);
     expect(headings[1]).toHaveClass("sr-only");
   });
+
+  it("keeps nothing else: no count, and no actions with nothing to act on", () => {
+    const { container } = render(
+      <InviteQueueFrame isLoading={false} totalCount={0} />,
+    );
+
+    const heading = container.querySelector("h2")!;
+    expect([...heading.parentElement!.children]).toEqual([heading]);
+    expect(
+      screen.queryByRole("button", { name: /Send invitations/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Remove/ }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Nothing selected")).not.toBeInTheDocument();
+  });
+
+  // A queue still in flight is not an empty one: dropping the toolbar on the first
+  // render and putting it back a moment later is the jump the frame exists to avoid.
+  it("draws the count and the actions while the queue is loading", () => {
+    render(<InviteQueueFrame isLoading={true} totalCount={0} />);
+
+    expect(
+      screen.getByRole("button", { name: /Send invitations/ }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Nothing selected")).toBeInTheDocument();
+  });
+
+  it("draws them for a queue that holds something", () => {
+    render(
+      <InviteQueueFrame
+        isLoading={false}
+        totalCount={1}
+        requests={[
+          {
+            email: "diver@example.com",
+            created_at: "2026-09-01T10:00:00Z",
+            has_account: false,
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText("1 pending request")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Send invitations/ }),
+    ).toBeInTheDocument();
+  });
 });
