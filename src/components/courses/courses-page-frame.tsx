@@ -175,9 +175,9 @@ export function CoursesPageFrame({
         </ListCardHeader>
         <CardContent>
           {/* Hidden rather than unmounted, so `aria-controls` points at
-              something and a half-typed date survives a shut - but it goes
-              entirely with the button that opens it, since an empty list
-              leaves nothing to open it with. */}
+              something - nothing in here has to survive a shut, which is what
+              empties it. But it goes entirely with the button that opens it,
+              since an empty list leaves nothing to open it with. */}
           {!isEmptyList && (
             <div id="course-filters" hidden={!isPanelOpen}>
               <CoursesFilters
