@@ -1281,13 +1281,9 @@ back-filling, reconciled later with Renumber, so nothing about them may block a 
 ## The numbering card describes; it doesn't scold
 
 `describeDiveNumbering` never says "should" and never phrases a gap as a problem: a diver continuing
-a paper logbook has deliberate gaps forever, so the card sits above their list forever too, and its
-wording has to be one they can read past. Unused numbers, shared numbers and dives out of date order
-are the whole of what it has to say, and it returns null when a log has none of them — so
-`DiveNumberingCard`, the only way in to Renumber, is gone entirely once a log is tidy. That costs a
-tidy log running #47–#212 any way to restart at #1, bought against a card every settled log would
-carry forever. Its own card rather than a line inside the list's, because it comes and goes and the
-list does not.
+a paper logbook has deliberate gaps forever, and the card sits above their list forever too. It says
+nothing about a tidy log, so Renumber has no entry point on one — #47–#212 cannot restart at #1,
+bought against a card every settled log would carry forever.
 
 `RenumberDivesDialog` mounts its form as a child rendered only while open, so each visit starts from
 clean defaults without a `setState` in an effect. Its preview is tagged with the inputs that
