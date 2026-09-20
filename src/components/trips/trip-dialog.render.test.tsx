@@ -59,10 +59,34 @@ describe("TripDialog", () => {
     expect(labels).toEqual([
       "Name *",
       "Parts",
-      "From part 1",
-      "To part 1",
+      "From part 1 of 1",
+      "To part 1 of 1",
       "Notes",
     ]);
+  });
+
+  // The whole of the error path, through the resolver rather than around it:
+  // the schema reports a reversed range at `parts.1.end_date`, which makes
+  // react-hook-form's `errors.parts` an array with no message of its own. A
+  // `FormMessage` over the list renders that as the word "undefined" and
+  // refuses the save with nothing a diver can act on.
+  it("says which part's dates are the wrong way round", async () => {
+    renderDialog();
+
+    await userEvent.type(screen.getByLabelText("Name *"), "Egypt, spring");
+    await userEvent.click(screen.getByRole("button", { name: "Add a part" }));
+    await userEvent.click(screen.getByRole("button", { name: "Add a part" }));
+
+    await userEvent.click(screen.getByLabelText("From part 2 of 2"));
+    await userEvent.paste("2026-04-22");
+    await userEvent.click(screen.getByLabelText("To part 2 of 2"));
+    await userEvent.paste("2026-04-18");
+    await userEvent.click(screen.getByRole("button", { name: /Create trip/ }));
+
+    expect(
+      await screen.findByText("End date must be on or after start date"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("undefined")).not.toBeInTheDocument();
   });
 
   it("shows the map before any place has been picked", () => {

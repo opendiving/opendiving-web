@@ -5,6 +5,7 @@ import {
   geocodeResultToLocation,
   locationKey,
   mapSearchResults,
+  tripPartErrors,
 } from "./trip-parts-field";
 
 const MOALBOAL: GeocodeResult = {
@@ -208,5 +209,44 @@ describe("describeTripPart", () => {
 
   it("does not take a blank place name for a name", () => {
     expect(describeTripPart({ location: { name: "  " } }, 0)).toBe("part 1");
+  });
+});
+
+describe("tripPartErrors", () => {
+  // React Hook Form reports a failing part at `parts.N.end_date`, which makes
+  // `errors.parts` an array whose own `message` is undefined - so the single
+  // `FormMessage` this field would otherwise get renders the word "undefined"
+  // and names no row. These are what the rows render instead.
+  it("puts a part's message on that part's position", () => {
+    expect(
+      tripPartErrors([
+        undefined,
+        { end_date: { message: "End date must be on or after start date" } },
+      ]),
+    ).toEqual({
+      parts: [undefined, "End date must be on or after start date"],
+    });
+  });
+
+  it("finds a message however deep the schema put it", () => {
+    // Both dates and the place sit on one row, so whichever of them was
+    // objected to, the row is what has to say so - and a message nobody
+    // renders is a save that refuses in silence.
+    expect(
+      tripPartErrors([
+        { location: { name: { message: "Location name is required" } } },
+      ]).parts,
+    ).toEqual(["Location name is required"]);
+  });
+
+  it("reads a message about the list as a message about the list", () => {
+    expect(
+      tripPartErrors({ message: "A trip cannot have more than 20 parts" }),
+    ).toEqual({ list: "A trip cannot have more than 20 parts" });
+  });
+
+  it("has nothing to say when nothing is wrong", () => {
+    expect(tripPartErrors(undefined)).toEqual({});
+    expect(tripPartErrors({})).toEqual({});
   });
 });

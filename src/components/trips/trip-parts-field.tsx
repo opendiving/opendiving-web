@@ -150,9 +150,11 @@ export function mapSearchResults(results: GeocodeResult[]): MappedPlaces {
  * What to call a part, in the order a diver would: its place, then its dates,
  * then its position in the list.
  *
- * A part has no name of its own, so every control that has to name one - the
- * drag handle, the Remove button, the date fields' screen-reader suffix - asks
- * here rather than each settling on a different answer for the same row.
+ * A part has no name of its own, so the two controls that have to name one -
+ * the drag handle and the Remove button - ask here rather than each settling on
+ * a different answer for the same row. The date fields do not: they are what
+ * names an undated part, so naming them after its dates would rename the
+ * control under the diver as they filled it in.
  */
 export function describeTripPart(
   part: TripPartFormValue,
@@ -168,10 +170,50 @@ export function describeTripPart(
   );
 }
 
+export interface TripPartsFieldErrors {
+  // What the schema said about the list as a whole - the cap.
+  list?: string;
+  // What it said about each part, by position.
+  parts?: (string | undefined)[];
+}
+
+/**
+ * React Hook Form's error for `parts`, taken apart into something renderable.
+ *
+ * A failing *part* makes `errors.parts` an array whose own `message` is
+ * `undefined`, so the single `FormMessage` this field would otherwise get
+ * renders the string "undefined" in red and says nothing about which row is
+ * wrong. The field shows them itself instead, one per row.
+ *
+ * `firstMessage` walks rather than reading a known key: both dates and the
+ * place sit on one row, so whichever of them the schema objected to, the row is
+ * what has to say so - and a message nobody renders is a save that refuses in
+ * silence.
+ */
+export function tripPartErrors(error: unknown): TripPartsFieldErrors {
+  if (Array.isArray(error)) return { parts: error.map(firstMessage) };
+  const list = firstMessage(error);
+  return list ? { list } : {};
+}
+
+function firstMessage(node: unknown): string | undefined {
+  if (!node || typeof node !== "object") return undefined;
+  const { message } = node as { message?: unknown };
+  if (typeof message === "string") return message;
+  for (const value of Object.values(node)) {
+    const found = firstMessage(value);
+    if (found) return found;
+  }
+  return undefined;
+}
+
 export interface TripPartsFieldProps extends FormControlSlotProps {
   // The trip's parts, in the order the diver arranged them.
   value: TripPartFormValue[];
   onChange: (parts: TripPartFormValue[]) => void;
+  // What the schema objected to, from `tripPartErrors`. Passed in rather than
+  // read off the form, so this stays a plain controlled component.
+  errors?: TripPartsFieldErrors;
   disabled?: boolean;
 }
 
@@ -198,6 +240,7 @@ export interface TripPartsFieldProps extends FormControlSlotProps {
 export function TripPartsField({
   value,
   onChange,
+  errors,
   disabled,
   // Forwarded to the Add button, which is the field's one control that exists
   // whatever the list holds - a row's own controls come and go with the row, and
@@ -298,6 +341,7 @@ export function TripPartsField({
               part={part}
               index={index}
               total={value.length}
+              error={errors?.parts?.[index]}
               disabled={disabled}
               isDragging={draggingIndex === index}
               dragOffset={dragOffset}
@@ -340,6 +384,14 @@ export function TripPartsField({
         <p className="text-xs text-muted-foreground">
           {MAX_TRIP_PARTS} parts maximum - remove one to add another.
         </p>
+      )}
+
+      {/* The cap again, as the schema sees it. Unreachable while the Add button
+          is the only thing that grows the list, and rendered anyway: a save
+          that refuses with nothing on screen is the failure this field's whole
+          error path exists to avoid. */}
+      {errors?.list && (
+        <p className="text-sm font-medium text-destructive">{errors.list}</p>
       )}
 
       {/* `status`, not an error: nothing has gone wrong, and a screen reader
@@ -396,6 +448,7 @@ interface TripPartRowProps {
   part: TripPartFormValue;
   index: number;
   total: number;
+  error?: string;
   disabled?: boolean;
   isDragging: boolean;
   dragOffset: number;
@@ -415,6 +468,7 @@ function TripPartRow({
   part,
   index,
   total,
+  error,
   disabled,
   isDragging,
   dragOffset,
@@ -431,8 +485,16 @@ function TripPartRow({
   // what turns that id back into the object it came from.
   const resultsRef = useRef<Map<string, TripLocationFormValue>>(new Map());
 
+  const errorId = `${fieldId}-error`;
   const location = part.location ?? null;
   const name = describeTripPart(part, index);
+  const position = `part ${index + 1} of ${total}`;
+  // A place typed in by hand has no position, and `LocationsMap` draws only
+  // what has one. Said out loud on the row, because the map below simply omits
+  // it and an absence nobody explains reads as the map having missed a place.
+  const isUnmapped =
+    location != null &&
+    (location.latitude == null || location.longitude == null);
 
   const searchPlaces = useCallback(
     async (query: string): Promise<ComboboxSearchResult> => {
@@ -541,7 +603,7 @@ function TripPartRow({
             // Named per row: with up to twenty of them, a screen reader would
             // otherwise announce twenty identical comboboxes in a list whose
             // order is the point.
-            aria-label={`Place, part ${index + 1} of ${total}`}
+            aria-label={`Place, ${position}`}
             onSearch={searchPlaces}
             searchDebounceMs={PLACE_SEARCH_DEBOUNCE_MS}
             // No `excludeIds`, deliberately: a trip that goes Dahab, then Sharm,
@@ -584,6 +646,14 @@ function TripPartRow({
             searchErrorLabel="Couldn't reach the place search - press Enter to add as text."
             commitOnEnterOnly
           />
+          {/* Not a warning - a typed-in place is a perfectly good answer - but
+              the map below the field only draws what has a position, and its
+              absence should be explained rather than read as the map having
+              missed one. `LocationsMap` says this is where that explanation
+              lives. */}
+          {isUnmapped && (
+            <p className="mt-1 text-xs text-muted-foreground">Not on the map</p>
+          )}
         </div>
 
         {/* Named per row, as in the sibling multiselects: bare "Remove" buttons
@@ -608,20 +678,33 @@ function TripPartRow({
         <PartDateField
           id={`${fieldId}-start`}
           label="From"
-          partName={name}
+          position={position}
           value={part.start_date ?? ""}
           onChange={(start_date) => onChange(index, { start_date })}
+          describedBy={error ? errorId : undefined}
+          invalid={!!error}
           disabled={disabled}
         />
         <PartDateField
           id={`${fieldId}-end`}
           label="To"
-          partName={name}
+          position={position}
           value={part.end_date ?? ""}
           onChange={(end_date) => onChange(index, { end_date })}
+          describedBy={error ? errorId : undefined}
+          invalid={!!error}
           disabled={disabled}
         />
       </div>
+
+      {/* On the row rather than once above the list. What the schema objects
+          to is a part - a To before its From - and twenty rows under one
+          message is a diver hunting for which. */}
+      {error && (
+        <p id={errorId} className="text-sm font-medium text-destructive">
+          {error}
+        </p>
+      )}
     </li>
   );
 }
@@ -629,9 +712,12 @@ function TripPartRow({
 interface PartDateFieldProps {
   id: string;
   label: string;
-  partName: string;
+  // How the part is announced after the visible word, e.g. "part 2 of 3".
+  position: string;
   value: string;
   onChange: (value: string) => void;
+  describedBy?: string;
+  invalid?: boolean;
   disabled?: boolean;
 }
 
@@ -639,16 +725,21 @@ interface PartDateFieldProps {
 // block a reader's eye can take in whether it has a place, only dates, or
 // neither: the label and its control share a line and a baseline in all three.
 //
-// The part's own name follows the visible word for a screen reader only. Twenty
+// The part's position follows the visible word for a screen reader only. Twenty
 // controls all called "From" tell a controls list nothing about which stretch of
 // the trip they set, and the visible text stays the start of the accessible
-// name, so the two still agree for anyone speaking what they can see.
+// name, so the two still agree for anyone speaking what they can see. The
+// position rather than `describeTripPart`, unlike the row's buttons: this
+// field is what names an undated part, so naming it after its own dates would
+// rename the control under the diver as they filled it in.
 function PartDateField({
   id,
   label,
-  partName,
+  position,
   value,
   onChange,
+  describedBy,
+  invalid,
   disabled,
 }: PartDateFieldProps) {
   return (
@@ -658,13 +749,15 @@ function PartDateField({
         className="w-10 shrink-0 text-xs font-medium text-muted-foreground"
       >
         {label}
-        <span className="sr-only"> {partName}</span>
+        <span className="sr-only"> {position}</span>
       </label>
       <div className="min-w-0 flex-1">
         <DatePicker
           id={id}
           value={value}
           onChange={onChange}
+          aria-describedby={describedBy}
+          aria-invalid={invalid}
           disabled={disabled}
         />
       </div>

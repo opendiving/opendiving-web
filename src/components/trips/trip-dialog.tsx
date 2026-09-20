@@ -32,7 +32,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { TripPartsField } from "@/components/trips/trip-parts-field";
+import {
+  TripPartsField,
+  tripPartErrors,
+} from "@/components/trips/trip-parts-field";
 import { LocationsMap } from "@/components/map/locations-map-lazy";
 import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 
@@ -200,16 +203,22 @@ export function TripDialog({
             <FormField
               control={form.control}
               name="parts"
-              render={({ field }) => (
+              render={({ field, fieldState }) => (
                 <FormItem>
                   <FormLabel>Parts</FormLabel>
                   <FormControl>
+                    {/* No `FormMessage` here, and the field renders the
+                        messages instead. A schema error on a part makes
+                        `errors.parts` an array with no `message` of its own,
+                        which `FormMessage` would print as the word
+                        "undefined" - and one line above twenty rows could not
+                        say which of them was wrong anyway. */}
                     <TripPartsField
                       value={field.value ?? []}
                       onChange={field.onChange}
+                      errors={tripPartErrors(fieldState.error)}
                     />
                   </FormControl>
-                  <FormMessage />
                 </FormItem>
               )}
             />

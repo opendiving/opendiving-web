@@ -30,7 +30,7 @@ name exist, but they are unrelated" errors — and only during a full `next buil
 
 Keep each schema's input and output types identical (`z.union([z.literal(""), z.number()])`, no
 `.transform()`) and do real conversion (`"" -> undefined`) in a plain TS helper called right before
-the API call (`normalizeMixtures`, `normalizeTripDates` in `lib/validations/*.ts`). Always run
+the API call (`normalizeMixtures`, `normalizeTripParts` in `lib/validations/*.ts`). Always run
 `npm run build` after touching a form-bound Zod schema; `diagnostics` alone misses this class of
 bug.
 
@@ -3309,11 +3309,10 @@ It aligns whole comma-separated parts, never substrings: "Dahab" is a duplicate 
 Sinai" and context in "Blue Hole, Dahab, South Sinai", and whole parts stop "Ko Tao" eating "Ko Tao
 Island".
 
-It runs at render, not in `geocodeResultToLocation`: `display_name` is stored on the location rows,
-so saved trips would stay untrimmed, and `locationKey` derives identity from position plus label, so
-an old place re-picked would duplicate. The row's `title` keeps "name, context": an ellipsis hides
-exactly what tells two places apart. The stored label is the short form; see "The label a trip
-location keeps is the API's short form, chosen on the way in".
+It runs at render, not in `geocodeResultToLocation`: `display_name` is stored on the part's place,
+so saved trips would stay untrimmed. It is what the menu's `hint` shows, so the row the diver reads
+is the one that lands in the field a click later. The stored label is the short form; see "The label
+a trip location keeps is the API's short form, chosen on the way in".
 
 ## The label a trip location keeps is the API's short form, chosen on the way in
 
@@ -3326,12 +3325,12 @@ It is received, not derived: the flat string cannot say whether the name is the 
 → "Dahab, Egypt") or sits inside one ("Blue Hole" → "Blue Hole, Dahab, Egypt"); the structured
 address can.
 
-Costs: old rows keep the provider's label until re-picked. `locationKey` (`geo:{lat}:{lon}:{label}`)
-lets one old row duplicate on re-pick. A trip stops matching its region in search:
-`search_conditions` in `crud_trips.py` ORs the term against a part's `display_name`, and
-`_short_location` composes place or region, never both; `test_the_display_name_matches_too`
-hand-writes its fixture and misses this. Neither repair (a second stored field, a geocoder-backed
-search) is worth it.
+Costs: a place saved before this keeps the provider's label until re-picked, and `locationKey`
+(`geo:{lat}:{lon}:{label}`) keys it differently from a fresh pick of the same place. A trip stops
+matching its region in search: `search_conditions` in `crud_trips.py` ORs the term against a part's
+`display_name`, and `_short_location` composes place or region, never both;
+`test_the_display_name_matches_too` hand-writes its fixture and misses this. Neither repair (a
+second stored field, a geocoder-backed search) is worth it.
 
 Menu hints show it too; `ComboboxItem` has only `id`, `name`, `hint`. `placeKey` in
 `place-search.tsx` keys on the provider's label.

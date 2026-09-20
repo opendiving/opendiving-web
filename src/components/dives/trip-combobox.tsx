@@ -69,8 +69,9 @@ export function TripCombobox({
       const response = await tripsAPI.getTrips(1, TRIPS_PER_SEARCH, query);
       response.data.forEach(remember);
       return {
-        // Trips have `locations` too, but unlike dive sites they aren't shown
-        // here - mapped to a bare `{id, name}` so the hint slot stays empty.
+        // Trips carry the places their parts went to, but unlike dive sites
+        // those aren't shown here - mapped to a bare `{id, name}` so the hint
+        // slot stays empty.
         items: response.data.map((trip) => ({
           id: trip.uuid,
           name: trip.name,

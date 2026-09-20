@@ -91,19 +91,69 @@ describe("TripPartsField", () => {
     );
 
     expect(places()).toEqual(["Dahab"]);
-    expect(screen.getByLabelText("From Dahab")).toHaveValue("2026-04-18");
-    expect(screen.getByLabelText("To Dahab")).toHaveValue("2026-04-22");
+    expect(screen.getByLabelText("From part 1 of 1")).toHaveValue("2026-04-18");
+    expect(screen.getByLabelText("To part 1 of 1")).toHaveValue("2026-04-22");
   });
 
   it("edits a date without leaving the row", async () => {
     render(<Field initial={[placed("Dahab")]} />);
 
-    const from = screen.getByLabelText("From Dahab");
+    const from = screen.getByLabelText("From part 1 of 1");
     await userEvent.click(from);
     await userEvent.paste("2026-04-18");
     await userEvent.tab();
 
     await waitFor(() => expect(from).toHaveValue("2026-04-18"));
+  });
+
+  it("says a typed-in place will not be on the map", async () => {
+    // The map below the field draws only what has a position. Its absence has
+    // to be explained on the row, or it reads as the map having missed one.
+    render(<Field initial={[{ location: { name: "Uncle Bob's reef" } }]} />);
+
+    expect(screen.getByText("Not on the map")).toBeInTheDocument();
+  });
+
+  it("says nothing of the sort about a place the geocoder placed", () => {
+    render(
+      <Field
+        initial={[
+          {
+            location: { name: "Dahab", latitude: 28.4954, longitude: 34.5197 },
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.queryByText("Not on the map")).not.toBeInTheDocument();
+  });
+
+  it("puts a part's error on that part's row, in words", () => {
+    // `FormMessage` above the list would render the array-shaped error react-
+    // hook-form builds as the word "undefined", and could not have said which
+    // of twenty rows was wrong even if it had a message.
+    render(
+      <TripPartsField
+        value={[{ location: null }, { location: null }]}
+        onChange={() => {}}
+        errors={{
+          parts: [undefined, "End date must be on or after start date"],
+        }}
+      />,
+    );
+
+    const message = screen.getByText("End date must be on or after start date");
+    expect(message).toBeInTheDocument();
+    expect(screen.queryByText("undefined")).not.toBeInTheDocument();
+    // And the two dates it is about point at it.
+    expect(screen.getByLabelText("From part 2 of 2")).toHaveAttribute(
+      "aria-describedby",
+      message.id,
+    );
+    expect(screen.getByLabelText("To part 2 of 2")).toHaveAttribute(
+      "aria-describedby",
+      message.id,
+    );
   });
 
   it("names a part with no place by its dates, and one with neither by its ordinal", () => {
