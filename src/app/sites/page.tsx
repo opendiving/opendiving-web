@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
@@ -19,6 +19,11 @@ import { PageSpinner } from "@/components/ui/page-spinner";
 // Blue Hole" is an addition to what happened, not a replacement for it.
 const DELETED_MESSAGE = "Dive site deleted successfully.";
 
+// How long to wait after the last keystroke before asking the server, matching
+// the courses list and the pickers: long enough that typing a site name is one
+// request rather than ten, short enough not to feel laggy.
+const SEARCH_DEBOUNCE_MS = 250;
+
 export default function SitesPage() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
   // `null` = the dialog is closed; a site = editing it; `undefined` = creating.
@@ -26,11 +31,31 @@ export default function SitesPage() {
     null,
   );
 
+  // What the box holds, and what has actually been asked for. Splitting them is
+  // what keeps the debounce off the input's own responsiveness.
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(
+      () => setSearch(searchInput.trim()),
+      SEARCH_DEBOUNCE_MS,
+    );
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  // One term against both columns: the API matches it on the site's name and on
+  // its location, which is the same query the dive form's site picker runs.
   const fetchDiveSites = useCallback(
-    (page: number, perPage: number) => diveSitesAPI.getDiveSites(page, perPage),
-    [],
+    (page: number, perPage: number) =>
+      diveSitesAPI.getDiveSites(page, perPage, search || undefined),
+    [search],
   );
 
+  // Changing the search term changes this callback's identity, which is what
+  // makes `useInfiniteResource` throw away every page it has loaded and read the
+  // new query from the first - rows of the unsearched list are not rows of the
+  // searched one, however many of them are already on screen.
   const {
     items: diveSites,
     isLoading: isLoadingDiveSites,
@@ -81,6 +106,9 @@ export default function SitesPage() {
         loadFailed={loadFailed}
         hasMore={hasMore}
         onLoadMore={loadMore}
+        search={searchInput}
+        onSearchChange={setSearchInput}
+        isSearching={search.length > 0}
         onNew={() => setEditingSite(undefined)}
         rows={diveSites.map((diveSite) => (
           <TableRow key={diveSite.uuid}>

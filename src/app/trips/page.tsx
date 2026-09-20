@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
@@ -21,16 +21,41 @@ import { PageSpinner } from "@/components/ui/page-spinner";
 // Cebu 2026" is an addition to what happened, not a replacement for it.
 const DELETED_MESSAGE = "Trip deleted successfully.";
 
+// How long to wait after the last keystroke before asking the server, matching
+// the courses list and the pickers: long enough that typing a trip name is one
+// request rather than ten, short enough not to feel laggy.
+const SEARCH_DEBOUNCE_MS = 250;
+
 export default function TripsPage() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
   // `null` = the dialog is closed; a trip = editing it; `undefined` = creating.
   const [editingTrip, setEditingTrip] = useState<Trip | null | undefined>(null);
+  // What the box holds, and what has actually been asked for. Splitting them is
+  // what keeps the debounce off the input's own responsiveness.
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
 
+  useEffect(() => {
+    const timer = setTimeout(
+      () => setSearch(searchInput.trim()),
+      SEARCH_DEBOUNCE_MS,
+    );
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  // One term against both columns: the API matches it on the trip's name and on
+  // the names of the places it went, so "Egypt" answers a trip called
+  // `Liveaboard` that went there.
   const fetchTrips = useCallback(
-    (page: number, perPage: number) => tripsAPI.getTrips(page, perPage),
-    [],
+    (page: number, perPage: number) =>
+      tripsAPI.getTrips(page, perPage, search || undefined),
+    [search],
   );
 
+  // Changing the search term changes this callback's identity, which is what
+  // makes `useInfiniteResource` throw away every page it has loaded and read the
+  // new query from the first - rows of the unsearched list are not rows of the
+  // searched one, however many of them are already on screen.
   const {
     items: trips,
     isLoading: isLoadingTrips,
@@ -81,6 +106,9 @@ export default function TripsPage() {
         loadFailed={loadFailed}
         hasMore={hasMore}
         onLoadMore={loadMore}
+        search={searchInput}
+        onSearchChange={setSearchInput}
+        isSearching={search.length > 0}
         onNew={() => setEditingTrip(undefined)}
         rows={trips.map((trip) => (
           <TableRow key={trip.uuid}>
