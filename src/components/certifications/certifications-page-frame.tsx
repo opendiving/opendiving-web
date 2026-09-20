@@ -5,8 +5,12 @@ import { BadgeCheck, Plus } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { CountBadge } from "@/components/ui/count-badge";
+import {
+  ListCardHeader,
+  useIsEmptyList,
+} from "@/components/ui/list-card-header";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
 import {
   Table,
@@ -46,6 +50,14 @@ export function CertificationsPageFrame({
   onLoadMore = noop,
   onNew = noop,
 }: CertificationsPageFrameProps) {
+  // An unstarted wallet. Nothing narrows this list, so an empty one is the
+  // whole story.
+  const isEmptyList = useIsEmptyList({
+    isLoading,
+    count: rows.length,
+    isNarrowed: false,
+  });
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       <div className="flex justify-between items-center">
@@ -63,19 +75,13 @@ export function CertificationsPageFrame({
       </div>
 
       <Card>
-        <CardHeader className="items-start">
-          {/* Hidden, not dropped: the page's `h1` names the list, but the
-              card is still a section of it, and the empty state's `h3` below
-              would skip a level without this. */}
-          <CardTitle as="h2" className="sr-only">
-            Your Certifications
-          </CardTitle>
+        <ListCardHeader title="Your Certifications" isEmpty={isEmptyList}>
           <CountBadge
             count={totalCount}
             isLoading={isLoading}
             label="certification"
           />
-        </CardHeader>
+        </ListCardHeader>
         <CardContent>
           {!isLoading && rows.length === 0 ? (
             <EmptyState

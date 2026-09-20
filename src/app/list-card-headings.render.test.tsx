@@ -71,4 +71,17 @@ describe("a one-list page's card keeps a heading nobody sees", () => {
     ]);
     expect(headings[1]).toHaveClass("sr-only");
   });
+
+  // And that heading is all it keeps. "0 total dives" over "No dives logged
+  // yet" counts the thing the sentence below has just said there is none of,
+  // and a search box that would search nothing sits beside it. Each frame's own
+  // tests cover the list *narrowed* to nothing, which keeps both.
+  it.each(Object.entries(FRAMES))("%s, and nothing else", (_name, Frame) => {
+    const { container } = render(
+      <Frame isLoading={false} totalCount={0} itemsPerPage={10} />,
+    );
+
+    const heading = container.querySelector("h2")!;
+    expect([...heading.parentElement!.children]).toEqual([heading]);
+  });
 });

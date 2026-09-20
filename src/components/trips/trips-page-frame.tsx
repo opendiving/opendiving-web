@@ -5,8 +5,12 @@ import { Luggage, Plus } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { CountBadge } from "@/components/ui/count-badge";
+import {
+  ListCardHeader,
+  useIsEmptyList,
+} from "@/components/ui/list-card-header";
 import { ListSearch } from "@/components/ui/list-search";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
 import {
@@ -55,6 +59,16 @@ export function TripsPageFrame({
   onLoadMore = noop,
   onNew = noop,
 }: TripsPageFrameProps) {
+  // Nothing to count and nothing to search. A term in flight and one still in the
+  // box waiting for the debounce both count as narrowing, and `useIsEmptyList`
+  // holds that reading across the commit where neither is true yet the rows are
+  // still the search's.
+  const isEmptyList = useIsEmptyList({
+    isLoading,
+    count: rows.length,
+    isNarrowed: isSearching || search.length > 0,
+  });
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex justify-between items-center mb-6">
@@ -71,33 +85,24 @@ export function TripsPageFrame({
       </div>
 
       <Card>
-        <CardHeader>
-          {/* Hidden, not dropped: the page's `h1` names the list, but the
-              card is still a section of it, and the empty state's `h3` below
-              would skip a level without this. */}
-          <CardTitle as="h2" className="sr-only">
-            Trip List
-          </CardTitle>
-          {/* The count and the box that changes it, on one line - and under
-              `sm`, where they do not both fit, the count and the button the box
-              folds behind. `flex-wrap` is what gives the opened box its own
-              line. */}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <CountBadge
-              count={totalCount}
-              isLoading={isLoading}
-              label="total trip"
-            />
-            <ListSearch
-              id="trip-search"
-              label="Search trips by name or location"
-              toggleLabel="Search trips"
-              placeholder="Search by name or location..."
-              value={search}
-              onChange={onSearchChange}
-            />
-          </div>
-        </CardHeader>
+        {/* The count and the box that changes it, on one line - and under
+            `sm`, where they do not both fit, the count and the button the box
+            folds behind. */}
+        <ListCardHeader title="Trip List" isEmpty={isEmptyList}>
+          <CountBadge
+            count={totalCount}
+            isLoading={isLoading}
+            label="total trip"
+          />
+          <ListSearch
+            id="trip-search"
+            label="Search trips by name or location"
+            toggleLabel="Search trips"
+            placeholder="Search by name or location..."
+            value={search}
+            onChange={onSearchChange}
+          />
+        </ListCardHeader>
         <CardContent>
           {!isLoading && rows.length === 0 ? (
             // A searched list with nothing in it is a different statement from

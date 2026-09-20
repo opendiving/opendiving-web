@@ -6,8 +6,12 @@ import { Fish } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { CountBadge } from "@/components/ui/count-badge";
+import {
+  ListCardHeader,
+  useIsEmptyList,
+} from "@/components/ui/list-card-header";
 import { ListSearch } from "@/components/ui/list-search";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -79,6 +83,16 @@ export function SpeciesPageFrame({
   hasMore = false,
   onLoadMore = noop,
 }: SpeciesPageFrameProps) {
+  // Nothing to count and nothing to search. A term in flight and one still in the
+  // box waiting for the debounce both count as narrowing, and `useIsEmptyList`
+  // holds that reading across the commit where neither is true yet the cards are
+  // still the search's.
+  const isEmptyList = useIsEmptyList({
+    isLoading,
+    count: cards.length,
+    isNarrowed: isSearching || search.length > 0,
+  });
+
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="mb-6">
@@ -89,34 +103,25 @@ export function SpeciesPageFrame({
       </div>
 
       <Card>
-        <CardHeader>
-          {/* Hidden, not dropped: the page's `h1` names the list, but the
-              card is still a section of it, and the empty state's `h3` below
-              would skip a level without this. */}
-          <CardTitle as="h2" className="sr-only">
-            Life List
-          </CardTitle>
-          {/* The count and the box that changes it, on one line, as every
-              other list card draws them - and under `sm`, where they do not
-              both fit, the count and the button the box folds behind.
-              `flex-wrap` is what gives the opened box its own line. */}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <CountBadge
-              count={totalCount}
-              isLoading={isLoading}
-              label="species"
-              plural="species"
-            />
-            <ListSearch
-              id="species-search"
-              label="Search your species by name"
-              toggleLabel="Search your species"
-              placeholder="Search by name..."
-              value={search}
-              onChange={onSearchChange}
-            />
-          </div>
-        </CardHeader>
+        {/* The count and the box that changes it, on one line, as every other
+            list card draws them - and under `sm`, where they do not both fit,
+            the count and the button the box folds behind. */}
+        <ListCardHeader title="Life List" isEmpty={isEmptyList}>
+          <CountBadge
+            count={totalCount}
+            isLoading={isLoading}
+            label="species"
+            plural="species"
+          />
+          <ListSearch
+            id="species-search"
+            label="Search your species by name"
+            toggleLabel="Search your species"
+            placeholder="Search by name..."
+            value={search}
+            onChange={onSearchChange}
+          />
+        </ListCardHeader>
         <CardContent>
           {!isLoading && cards.length === 0 ? (
             // A filtered list with nothing in it is a different statement from

@@ -4,8 +4,9 @@ import userEvent from "@testing-library/user-event";
 
 import { TripsPageFrame } from "./trips-page-frame";
 
-// Two things the search costs the frame: the box shares the card's header row
-// with the count, and a list searched down to nothing is not an empty logbook.
+// Three things the search costs the frame: the box shares the card's header row
+// with the count, a list searched down to nothing is not an empty logbook, and a
+// list that is empty has neither to show.
 
 const frame = (props: Partial<Parameters<typeof TripsPageFrame>[0]> = {}) =>
   render(
@@ -34,7 +35,7 @@ describe("TripsPageFrame", () => {
 
   it("reports what is typed into it", async () => {
     const onSearchChange = vi.fn();
-    frame({ onSearchChange });
+    frame({ onSearchChange, rows: [<tr key="t" />] });
 
     await userEvent.type(
       screen.getByLabelText("Search trips by name or location"),
@@ -61,6 +62,57 @@ describe("TripsPageFrame", () => {
     expect(screen.getByText("No trips yet")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /Add your first trip/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("drops the count and the box for a list that is simply empty", () => {
+    frame();
+
+    expect(screen.queryByText("0 total trips")).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Search trips by name or location"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps them for a search that matched nothing", () => {
+    frame({ search: "dahab", isSearching: true });
+
+    expect(within(header()).getByText("0 total trips")).toBeInTheDocument();
+    expect(
+      within(header()).getByLabelText("Search trips by name or location"),
+    ).toBeInTheDocument();
+  });
+
+  // The term is only asked for once the typing stops, so for a quarter second
+  // the box holds one and `isSearching` does not. Reading the box as well is
+  // what keeps it from vanishing under the diver mid-word.
+  it("keeps them for a term still waiting on the debounce", () => {
+    frame({ search: "dahab" });
+
+    expect(
+      within(header()).getByLabelText("Search trips by name or location"),
+    ).toBeInTheDocument();
+  });
+
+  // Emptying the box is the way out of a search that matched nothing, and for
+  // one commit it leaves the term gone and the search's own (empty) rows still
+  // on screen. Dropping the box there would take the diver's cursor with it.
+  it("keeps them through the commit where a cleared term outruns its rows", () => {
+    const { rerender } = frame({ search: "dahab", isSearching: true });
+
+    rerender(
+      <TripsPageFrame
+        isLoading={false}
+        totalCount={0}
+        itemsPerPage={10}
+        rows={[]}
+        search=""
+        isSearching={false}
+      />,
+    );
+
+    expect(
+      within(header()).getByLabelText("Search trips by name or location"),
     ).toBeInTheDocument();
   });
 });
