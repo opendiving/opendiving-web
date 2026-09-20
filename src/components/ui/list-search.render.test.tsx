@@ -20,7 +20,12 @@ const control = (props: Partial<Parameters<typeof ListSearch>[0]> = {}) =>
     />,
   );
 
-const toggle = () => screen.getByRole("button", { name: /^Search things/ });
+// One button under two names: it opens the box, and once open it is the control
+// that folds it away and empties it.
+const toggle = () =>
+  screen.getByRole("button", {
+    name: /^(Search things|Close the search box)/,
+  });
 
 describe("ListSearch", () => {
   it("opens and shuts the box it folds away", async () => {
@@ -49,7 +54,10 @@ describe("ListSearch", () => {
   });
 
   // A folded box still narrowing the list is the failure the button's own words
-  // exist for: it is the only thing left on screen saying so.
+  // exist for: it is the only thing left on screen saying so. From `sm` up the
+  // box stands on its own, so a term typed there survives into a narrowed
+  // window with the button shut - the one such state folding it away cannot
+  // itself produce.
   it("says so when a folded box is still narrowing the list", () => {
     control({ value: "wreck" });
 
@@ -65,6 +73,43 @@ describe("ListSearch", () => {
 
     expect(
       screen.getByRole("button", { name: "Search things" }),
+    ).toBeInTheDocument();
+  });
+
+  it("empties the box as it folds it away", async () => {
+    const onChange = vi.fn();
+    control({ value: "wreck", onChange });
+
+    await userEvent.click(toggle());
+    expect(onChange).not.toHaveBeenCalled();
+
+    await userEvent.click(toggle());
+    expect(onChange).toHaveBeenCalledWith("");
+  });
+
+  // The name is the only warning the diver gets that the press throws the term
+  // away, so it says so exactly when there is something to lose.
+  it("says it clears, and only while there is something to clear", async () => {
+    const { rerender } = control({ value: "wreck" });
+
+    await userEvent.click(toggle());
+    expect(
+      screen.getByRole("button", {
+        name: "Close the search box, clearing the term",
+      }),
+    ).toBeInTheDocument();
+
+    rerender(
+      <ListSearch
+        id="thing-search"
+        label="Search things by name"
+        toggleLabel="Search things"
+        value=""
+        onChange={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: "Close the search box" }),
     ).toBeInTheDocument();
   });
 });

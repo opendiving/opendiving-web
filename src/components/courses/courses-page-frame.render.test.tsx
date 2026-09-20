@@ -6,8 +6,9 @@ import { CoursesPageFrame } from "./courses-page-frame";
 import { NO_COURSE_FILTERS } from "./courses-filters";
 
 // The row is behind a button now, so what these pin is that it is reachable,
-// that shutting it never hides the fact that the list is narrowed, and that a
-// list with nothing in it to narrow draws neither the button nor the count.
+// that shutting it takes the search and the filters with it rather than
+// leaving a folded row narrowing the list unannounced, and that a list with
+// nothing in it to narrow draws neither the button nor the count.
 
 const frame = (props: Partial<Parameters<typeof CoursesPageFrame>[0]> = {}) =>
   render(
@@ -20,8 +21,12 @@ const frame = (props: Partial<Parameters<typeof CoursesPageFrame>[0]> = {}) =>
     />,
   );
 
+// One button under two names: it opens the panel, and once open it is the
+// control that shuts it and empties what is in it.
 const toggle = () =>
-  screen.getByRole("button", { name: /^Search and filter courses/ });
+  screen.getByRole("button", {
+    name: /^(Search and filter courses|Close search and filters)/,
+  });
 
 describe("CoursesPageFrame", () => {
   it("keeps the search and filters shut until the button is pressed", async () => {
@@ -46,30 +51,55 @@ describe("CoursesPageFrame", () => {
     expect(screen.getByLabelText("Agency")).not.toBeVisible();
   });
 
-  // A shut panel that is still narrowing the list is the failure the dot and
-  // this name exist for: the button is the only thing left on screen saying so.
-  it("says so when a shut panel is still narrowing the list", () => {
-    frame({ filters: { ...NO_COURSE_FILTERS, agency: "padi" } });
+  // A shut panel that is still narrowing the list is the failure this costs, and
+  // emptying it on the way out is what rules the state out rather than a badge
+  // on the button.
+  it("clears the search and every filter as it shuts", async () => {
+    const onSearchChange = vi.fn();
+    const onFiltersChange = vi.fn();
+    frame({
+      search: "nitrox",
+      filters: { ...NO_COURSE_FILTERS, agency: "padi" },
+      onSearchChange,
+      onFiltersChange,
+    });
 
+    await userEvent.click(toggle());
+    expect(onSearchChange).not.toHaveBeenCalled();
+    expect(onFiltersChange).not.toHaveBeenCalled();
+
+    await userEvent.click(toggle());
+    expect(onSearchChange).toHaveBeenCalledWith("");
+    expect(onFiltersChange).toHaveBeenCalledWith(NO_COURSE_FILTERS);
+  });
+
+  // The name is the only warning the diver gets that the press throws a term and
+  // four filters away, so it says so exactly when there is something to lose.
+  it("says it clears, and only while there is something to clear", async () => {
+    const { rerender } = frame({ search: "nitrox" });
+
+    await userEvent.click(toggle());
     expect(
       screen.getByRole("button", {
-        name: "Search and filter courses, narrowing the list",
+        name: "Close search and filters, clearing them",
       }),
+    ).toBeInTheDocument();
+
+    rerender(
+      <CoursesPageFrame
+        isLoading={false}
+        totalCount={0}
+        itemsPerPage={10}
+        rows={[<tr key="t" />]}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: "Close search and filters" }),
     ).toBeInTheDocument();
   });
 
-  it("says so for a search term as well as a filter", () => {
+  it("says what it opens while it is shut", () => {
     frame({ search: "nitrox" });
-
-    expect(
-      screen.getByRole("button", {
-        name: "Search and filter courses, narrowing the list",
-      }),
-    ).toBeInTheDocument();
-  });
-
-  it("does not claim narrowing on an untouched list", () => {
-    frame();
 
     expect(
       screen.getByRole("button", { name: "Search and filter courses" }),

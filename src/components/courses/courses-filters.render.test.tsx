@@ -48,9 +48,6 @@ const asked = () =>
     string
   >;
 
-const clearButton = () =>
-  screen.queryByRole("button", { name: "Clear filters" });
-
 const clearSearchButton = () =>
   screen.queryByRole("button", { name: "Clear search" });
 
@@ -134,34 +131,14 @@ describe("CoursesFilters", () => {
     expect(asked()).toMatchObject({ search: "nitrox", agency: "padi" });
   });
 
-  it("offers nothing to clear until something is set", () => {
-    render(<Row />);
+  // Clearing the lot in one go belongs to the button that shuts the panel
+  // (`CoursesPageFrame`), so the row itself offers only per-control clears.
+  it("carries no control that clears the row", () => {
+    render(<Row initial={{ ...NO_COURSE_FILTERS, agency: "padi" }} />);
 
-    expect(clearButton()).not.toBeInTheDocument();
-  });
-
-  // The search box is the diver's other way of narrowing the list and it has its
-  // own X. Sweeping it up here would throw away a term they did not ask to lose.
-  it("clears every filter but not the search term", async () => {
-    render(
-      <Row
-        initial={{
-          dateFrom: "2025-01-01",
-          dateTo: "2025-12-31",
-          agency: "padi",
-          status: "completed",
-        }}
-      />,
-    );
-    await userEvent.type(
-      screen.getByLabelText("Search courses by name"),
-      "nitrox",
-    );
-
-    await userEvent.click(clearButton()!);
-
-    expect(asked()).toEqual({ search: "nitrox", ...NO_COURSE_FILTERS });
-    expect(clearButton()).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /^Clear filters/ }),
+    ).not.toBeInTheDocument();
   });
 
   // Nineteen agencies are eighteen ways to empty a table for a diver who trained
