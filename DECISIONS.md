@@ -2743,17 +2743,17 @@ someone to pass it.
 
 ## Locations are always sent on edit, never omitted
 
-The API's PATCH treats an omitted `locations` key as "leave them alone" and any list as a wholesale
+The API's PATCH treats an omitted `parts` key as "leave them alone" and any list as a wholesale
 replace. `TripDialog` always sends the list: the form shows the whole set every time it opens, and
 omitting the key when nothing changed would make "remove them all" inexpressible. The same rule
 covers every list field the app edits (a dive's sites, gear and cylinders, a gear set's members)
 because each form knows the whole set; see "The edit form submits the whole dive, because the read
 is the whole dive".
 
-The map beneath the picker is driven by `useWatch`, not `form.watch()`, which re-renders the whole
-dialog on every keystroke in the notes. The map is a `next/dynamic` import with `ssr: false`, since
-it measures its element and reads the theme; the wrapper lives in its own file so the skeleton's
-height cannot drift from the map's.
+The map beneath the parts field is driven by `useWatch`, not `form.watch()`, which re-renders the
+whole dialog on every keystroke in the notes. The map is a `next/dynamic` import with `ssr: false`,
+since it measures its element and reads the theme; the wrapper lives in its own file so the
+skeleton's height cannot drift from the map's.
 
 ## A "+N" is a promise that hovering will say what N was
 
@@ -3186,8 +3186,8 @@ key on all three flows — edit, create, and saving a dive's gear over an existi
 
 Echoing the picker back is safe because a set read carries every member: gear items are hard-deleted
 and `gear_set_item.gear_item_id` is `ON DELETE CASCADE`, so a rename can destroy no hidden row.
-`TripDialog` sends locations on the same rule ("Locations are always sent on edit, never omitted"):
-the form knows the whole set, and `[]` means the diver emptied the picker.
+`TripDialog` sends a trip's parts on the same rule ("Locations are always sent on edit, never
+omitted"): the form knows the whole set, and `[]` means the diver emptied the field.
 
 Rejected: omitting `gear_item_uuids` unless `dirtyFields` marks the picker touched. `dirtyFields`
 answers for one flow only; the two seeded via `reset` (`initialItemUuids`, the set's own read) would
