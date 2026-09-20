@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ChevronDown, ChevronUp, Search } from "lucide-react";
+import { ChevronDown, Search, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { SearchInput } from "@/components/ui/search-input";
@@ -55,11 +55,21 @@ export function ListSearch({
 
   return (
     <>
-      {/* The hint says the shut box is still narrowing the list, and the dot
-          says it at a glance - a folded control that silently hides half the
-          rows is the one failure this costs. */}
+      {/* Folding the box away empties it, so the open button says so. The dot
+          and the hint's other half are still needed for the one shut-and-
+          narrowing state this button cannot produce: a term typed from `sm` up,
+          where the box stands on its own, and the window then narrowed under
+          it. */}
       <IconTooltip
-        label={value ? `${toggleLabel}, narrowing the list` : toggleLabel}
+        label={
+          !isOpen
+            ? value
+              ? `${toggleLabel}, narrowing the list`
+              : toggleLabel
+            : value
+              ? "Close the search box, clearing the term"
+              : "Close the search box"
+        }
       >
         <Button
           variant="ghost"
@@ -67,11 +77,11 @@ export function ListSearch({
           className="gap-1.5 sm:hidden"
           aria-expanded={isOpen}
           aria-controls={id}
-          onClick={() => setOpen((open) => !open)}
+          onClick={() => {
+            if (isOpen) onChange("");
+            setOpen((open) => !open);
+          }}
         >
-          {/* The chevron carries which way the box will move, which the
-              magnifier alone cannot say. It points at the box: down to the line
-              it is about to open on, up to fold it back into the header. */}
           <span className="relative flex">
             <Search className="h-4 w-4" />
             {value && !isOpen && (
@@ -81,8 +91,11 @@ export function ListSearch({
               />
             )}
           </span>
+          {/* Which way the box will move, which the magnifier alone cannot say:
+              a chevron pointing down at the line it is about to open on, an X
+              because folding it back is also what empties it. */}
           {isOpen ? (
-            <ChevronUp className="h-4 w-4" />
+            <X className="h-4 w-4" />
           ) : (
             <ChevronDown className="h-4 w-4" />
           )}

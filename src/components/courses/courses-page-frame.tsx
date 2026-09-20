@@ -1,13 +1,7 @@
 "use client";
 
 import { useRef, useState, type ReactNode } from "react";
-import {
-  ChevronDown,
-  ChevronUp,
-  GraduationCap,
-  Plus,
-  Search,
-} from "lucide-react";
+import { ChevronDown, GraduationCap, Plus, Search, X } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 
 import { Button } from "@/components/ui/button";
@@ -138,14 +132,17 @@ export function CoursesPageFrame({
             isLoading={isLoading}
             label="total course"
           />
-          {/* The button says what it opens, and the dot says the shut panel
-              is still narrowing the list - a collapsed row that silently
-              hides half the courses is the one failure this costs. */}
+          {/* Shutting the panel takes the search and the filters with it, so
+              the button says so once it is open - a collapsed row that
+              silently kept narrowing the list would be the one failure this
+              costs, and clearing is what rules it out rather than a dot. */}
           <IconTooltip
             label={
-              isNarrowed
-                ? "Search and filter courses, narrowing the list"
-                : "Search and filter courses"
+              !isPanelOpen
+                ? "Search and filter courses"
+                : isNarrowed
+                  ? "Close search and filters, clearing them"
+                  : "Close search and filters"
             }
           >
             <Button
@@ -155,25 +152,21 @@ export function CoursesPageFrame({
               aria-expanded={isPanelOpen}
               aria-controls="course-filters"
               onClick={() => {
+                if (isPanelOpen) {
+                  onSearchChange("");
+                  onFiltersChange(NO_COURSE_FILTERS);
+                } else {
+                  onFiltersOpened();
+                }
                 setPanelOpen((open) => !open);
-                if (!isPanelOpen) onFiltersOpened();
               }}
             >
-              {/* The chevron carries which way the panel will move, which the
-                  magnifier alone cannot say. It points at the panel: down to
-                  the row it is about to open, up to fold it back into the
-                  header. */}
-              <span className="relative flex">
-                <Search className="h-4 w-4" />
-                {isNarrowed && !isPanelOpen && (
-                  <span
-                    aria-hidden
-                    className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-teal"
-                  />
-                )}
-              </span>
+              <Search className="h-4 w-4" />
+              {/* Which way the panel will move, which the magnifier alone
+                  cannot say: a chevron pointing down at the row it is about to
+                  open, an X because shutting it is also what empties it. */}
               {isPanelOpen ? (
-                <ChevronUp className="h-4 w-4" />
+                <X className="h-4 w-4" />
               ) : (
                 <ChevronDown className="h-4 w-4" />
               )}

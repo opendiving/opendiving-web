@@ -1,7 +1,6 @@
 "use client";
 
 import { type RefObject } from "react";
-import { X } from "lucide-react";
 
 import {
   CERTIFICATION_AGENCIES,
@@ -10,7 +9,6 @@ import {
 } from "@/lib/api/certifications";
 import { COURSE_STATUSES, type CourseStatus } from "@/lib/api/courses";
 import { courseStatusLabel } from "@/lib/course";
-import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
@@ -19,8 +17,8 @@ import { SearchInput } from "@/components/ui/search-input";
 /**
  * What narrows the course list, as the controls hold it. `""` means "not
  * filtering on this" throughout - the state the row opens in and the one every
- * control has to be able to return to, which is what `Clear filters` restores
- * and what the page drops rather than sending to the API.
+ * control has to be able to return to, and what the page drops rather than
+ * sending to the API.
  */
 export interface CourseListFilters {
   /**
@@ -93,100 +91,81 @@ export function CoursesFilters({
   ) => onFiltersChange({ ...filters, [key]: value });
 
   return (
-    <div className="mb-4 space-y-3">
-      {/* One rule for the five controls, stepping down a breakpoint at a time:
-          a row of five on a desktop, then the search on its own line above the
-          four, then two pairs under it, then one per line on a phone. The search
-          takes a double track on the widest row: a course name is longer than a
-          date and there is room for it there. */}
-      <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-[2fr_repeat(4,1fr)]">
-        <SearchInput
-          id="course-search"
-          label="Search courses by name"
-          placeholder="Search by name..."
-          value={search}
-          onChange={onSearchChange}
-          inputRef={searchRef}
-          className="sm:col-span-2 lg:col-span-4 xl:col-span-1"
+    // One rule for the five controls, stepping down a breakpoint at a time:
+    // a row of five on a desktop, then the search on its own line above the
+    // four, then two pairs under it, then one per line on a phone. The search
+    // takes a double track on the widest row: a course name is longer than a
+    // date and there is room for it there.
+    <div className="mb-4 grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-[2fr_repeat(4,1fr)]">
+      <SearchInput
+        id="course-search"
+        label="Search courses by name"
+        placeholder="Search by name..."
+        value={search}
+        onChange={onSearchChange}
+        inputRef={searchRef}
+        className="sm:col-span-2 lg:col-span-4 xl:col-span-1"
+      />
+
+      <div className="space-y-2">
+        <Label htmlFor="course-date-from">From</Label>
+        <DatePicker
+          id="course-date-from"
+          value={filters.dateFrom}
+          onChange={(value) => set("dateFrom", value)}
         />
+      </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="course-date-from">From</Label>
-          <DatePicker
-            id="course-date-from"
-            value={filters.dateFrom}
-            onChange={(value) => set("dateFrom", value)}
-          />
-        </div>
+      <div className="space-y-2">
+        <Label htmlFor="course-date-to">To</Label>
+        <DatePicker
+          id="course-date-to"
+          value={filters.dateTo}
+          onChange={(value) => set("dateTo", value)}
+        />
+      </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="course-date-to">To</Label>
-          <DatePicker
-            id="course-date-to"
-            value={filters.dateTo}
-            onChange={(value) => set("dateTo", value)}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="course-agency">Agency</Label>
-          {/* A plain `<select>` rather than the shadcn `Select` the course
+      <div className="space-y-2">
+        <Label htmlFor="course-agency">Agency</Label>
+        {/* A plain `<select>` rather than the shadcn `Select` the course
               dialog uses, for the reason DECISIONS.md gives under "A dive-level
               select carries the same three states": "Any agency" *is* `""`, and
               Radix reserves that value for clearing. The dialog reaches for a
               sentinel instead because there `null` is a stored fact - a course
               run by a private instructor - rather than an absent filter. */}
-          <NativeSelect
-            id="course-agency"
-            value={filters.agency}
-            onChange={(event) =>
-              set("agency", event.target.value as CertificationAgency | "")
-            }
-          >
-            <option value="">Any agency</option>
-            {withPicked(agencies, filters.agency).map((agency) => (
-              <option key={agency} value={agency}>
-                {certificationAgencyLabel(agency)}
-              </option>
-            ))}
-          </NativeSelect>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="course-status">Status</Label>
-          <NativeSelect
-            id="course-status"
-            value={filters.status}
-            onChange={(event) =>
-              set("status", event.target.value as CourseStatus | "")
-            }
-          >
-            <option value="">Any status</option>
-            {withPicked(statuses, filters.status).map((status) => (
-              <option key={status} value={status}>
-                {courseStatusLabel(status)}
-              </option>
-            ))}
-          </NativeSelect>
-        </div>
+        <NativeSelect
+          id="course-agency"
+          value={filters.agency}
+          onChange={(event) =>
+            set("agency", event.target.value as CertificationAgency | "")
+          }
+        >
+          <option value="">Any agency</option>
+          {withPicked(agencies, filters.agency).map((agency) => (
+            <option key={agency} value={agency}>
+              {certificationAgencyLabel(agency)}
+            </option>
+          ))}
+        </NativeSelect>
       </div>
 
-      {/* Under the grid rather than in it: a fifth cell on the widest row would
-          have to come out of one of the five controls' width, and only some
-          visits have anything to clear. Which is the other half - a
-          permanently-present control that does nothing reads as part of the
-          row, and a disabled one reads as broken. */}
-      {hasCourseFilters(filters) && (
-        <div className="flex justify-end">
-          <Button
-            variant="ghost"
-            onClick={() => onFiltersChange(NO_COURSE_FILTERS)}
-          >
-            <X className="mr-2 h-4 w-4" />
-            Clear filters
-          </Button>
-        </div>
-      )}
+      <div className="space-y-2">
+        <Label htmlFor="course-status">Status</Label>
+        <NativeSelect
+          id="course-status"
+          value={filters.status}
+          onChange={(event) =>
+            set("status", event.target.value as CourseStatus | "")
+          }
+        >
+          <option value="">Any status</option>
+          {withPicked(statuses, filters.status).map((status) => (
+            <option key={status} value={status}>
+              {courseStatusLabel(status)}
+            </option>
+          ))}
+        </NativeSelect>
+      </div>
     </div>
   );
 }
