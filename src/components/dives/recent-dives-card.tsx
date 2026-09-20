@@ -197,8 +197,8 @@ export function RecentDivesCard({
                         day: "numeric",
                       })}
                     </span>
-                    {/* The name is in the title now; what is left here is
-                        where that site is. */}
+                    {/* The title names the site; this line says where it
+                        is. */}
                     {dive.dive_sites[0]?.location && (
                       <span className="block sm:inline">
                         <span className="hidden sm:inline">{" \u00b7 "}</span>
