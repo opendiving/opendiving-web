@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef, type RefObject } from "react";
-import { Search, X } from "lucide-react";
+import { type RefObject } from "react";
+import { X } from "lucide-react";
 
 import {
   CERTIFICATION_AGENCIES,
@@ -12,11 +12,9 @@ import { COURSE_STATUSES, type CourseStatus } from "@/lib/api/courses";
 import { courseStatusLabel } from "@/lib/course";
 import { Button } from "@/components/ui/button";
 import { DatePicker } from "@/components/ui/date-picker";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
-import { IconTooltip } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
+import { SearchInput } from "@/components/ui/search-input";
 
 /**
  * What narrows the course list, as the controls hold it. `""` means "not
@@ -89,11 +87,6 @@ export function CoursesFilters({
   statuses = COURSE_STATUSES,
   searchRef,
 }: CoursesFiltersProps) {
-  // The caller's box when it has a use for one, otherwise its own: the clear
-  // control puts the cursor back where it was, and needs a handle either way.
-  const ownSearchRef = useRef<HTMLInputElement>(null);
-  const searchBox = searchRef ?? ownSearchRef;
-
   const set = <K extends keyof CourseListFilters>(
     key: K,
     value: CourseListFilters[K],
@@ -107,41 +100,15 @@ export function CoursesFilters({
           takes a double track on the widest row: a course name is longer than a
           date and there is room for it there. */}
       <div className="grid grid-cols-1 items-end gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-[2fr_repeat(4,1fr)]">
-        <div className="relative sm:col-span-2 lg:col-span-4 xl:col-span-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <label htmlFor="course-search" className="sr-only">
-            Search courses by name
-          </label>
-          <Input
-            ref={searchBox}
-            id="course-search"
-            type="search"
-            // The browser's own clear control is suppressed for the one below,
-            // which is the X the rest of this app draws and is there on every
-            // browser rather than on WebKit alone.
-            className={cn(
-              "pl-9 [&::-webkit-search-cancel-button]:appearance-none",
-              search && "pr-9",
-            )}
-            placeholder="Search by name..."
-            value={search}
-            onChange={(event) => onSearchChange(event.target.value)}
-          />
-          {search && (
-            <IconTooltip label="Clear search">
-              <button
-                type="button"
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                onClick={() => {
-                  onSearchChange("");
-                  searchBox.current?.focus();
-                }}
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </IconTooltip>
-          )}
-        </div>
+        <SearchInput
+          id="course-search"
+          label="Search courses by name"
+          placeholder="Search by name..."
+          value={search}
+          onChange={onSearchChange}
+          inputRef={searchRef}
+          className="sm:col-span-2 lg:col-span-4 xl:col-span-1"
+        />
 
         <div className="space-y-2">
           <Label htmlFor="course-date-from">From</Label>

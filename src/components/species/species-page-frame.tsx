@@ -2,13 +2,13 @@
 
 import { type ReactNode } from "react";
 import Link from "next/link";
-import { Fish, Search } from "lucide-react";
+import { Fish } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CountBadge } from "@/components/ui/count-badge";
-import { Input } from "@/components/ui/input";
+import { ListSearch } from "@/components/ui/list-search";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -89,36 +89,35 @@ export function SpeciesPageFrame({
       </div>
 
       <Card>
-        <CardHeader className="items-start">
+        <CardHeader>
           {/* Hidden, not dropped: the page's `h1` names the list, but the
               card is still a section of it, and the empty state's `h3` below
               would skip a level without this. */}
           <CardTitle as="h2" className="sr-only">
             Life List
           </CardTitle>
-          <CountBadge
-            count={totalCount}
-            isLoading={isLoading}
-            label="species"
-            plural="species"
-          />
-        </CardHeader>
-        <CardContent>
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <label htmlFor="species-search" className="sr-only">
-              Search your species by name
-            </label>
-            <Input
+          {/* The count and the box that changes it, on one line, as every
+              other list card draws them - and under `sm`, where they do not
+              both fit, the count and the button the box folds behind.
+              `flex-wrap` is what gives the opened box its own line. */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <CountBadge
+              count={totalCount}
+              isLoading={isLoading}
+              label="species"
+              plural="species"
+            />
+            <ListSearch
               id="species-search"
-              type="search"
-              className="pl-9"
+              label="Search your species by name"
+              toggleLabel="Search your species"
               placeholder="Search by name..."
               value={search}
-              onChange={(event) => onSearchChange(event.target.value)}
+              onChange={onSearchChange}
             />
           </div>
-
+        </CardHeader>
+        <CardContent>
           {!isLoading && cards.length === 0 ? (
             // A filtered list with nothing in it is a different statement from
             // an empty life list, so it keeps its one line: no icon, no
