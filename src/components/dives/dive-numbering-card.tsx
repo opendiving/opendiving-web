@@ -26,10 +26,11 @@ export interface DiveNumberingCardProps {
 // to doing it.
 //
 // Muted and factual: see `describeDiveNumbering` for why this never phrases a
-// gap as a problem, and why it says nothing at all about a log a renumber
-// would leave alone - which is what keeps this card off most pages most of the
-// time. Its own card rather than a line inside the list's, because it is about
-// the log rather than part of it, and it comes and goes.
+// gap as a problem, and why it says nothing at all about a log already
+// numbered consecutively in date order - which is what keeps this card off
+// most pages most of the time. Its own card rather than a line inside the
+// list's, because it is about the log rather than part of it, and it comes and
+// goes.
 //
 // Renumber sits here rather than in settings because this is where a diver is
 // when the question occurs to them.

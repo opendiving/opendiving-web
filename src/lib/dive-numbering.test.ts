@@ -26,7 +26,7 @@ describe("describeDiveNumbering", () => {
     ).toBeNull();
   });
 
-  it("says nothing about a log a renumber would leave alone", () => {
+  it("says nothing about a log numbered consecutively in date order", () => {
     expect(describeDiveNumbering(summary())).toBeNull();
   });
 

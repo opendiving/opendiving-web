@@ -31,8 +31,8 @@ export interface DivesPageFrameProps {
   rows?: ReactNode[];
   /**
    * The numbering card above the list card. It draws nothing until its own
-   * request lands, and nothing at all for a log a renumber would leave alone,
-   * so leaving it out is the page's own first render.
+   * request lands, and nothing at all for a log already numbered consecutively
+   * in date order, so leaving it out is the page's own first render.
    */
   numbering?: ReactNode;
   /**
