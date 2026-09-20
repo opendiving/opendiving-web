@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
@@ -35,6 +35,11 @@ export default function DivesPage() {
     () => setNumberingToken((n) => n + 1),
     [],
   );
+
+  // Where focus goes when the numbering card removes itself from under it: the
+  // card holds the button the renumber dialog just handed focus back to.
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const focusHeading = useCallback(() => headingRef.current?.focus(), []);
 
   const fetchDives = useCallback(
     (page: number, perPage: number) => divesAPI.getDives(page, perPage),
@@ -97,11 +102,13 @@ export default function DivesPage() {
         loadFailed={loadFailed}
         hasMore={hasMore}
         onLoadMore={loadMore}
+        headingRef={headingRef}
         numbering={
           <DiveNumberingCard
             enabled={!!user}
             reloadToken={numberingToken}
             onRenumbered={reload}
+            onVanished={focusHeading}
           />
         }
         rows={dives.map((dive) => (

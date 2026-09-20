@@ -17,6 +17,9 @@ export interface DiveNumberingCardProps {
   reloadToken?: number;
   // Called after a renumber writes, so the page can refetch the dive list.
   onRenumbered: () => void;
+  // Called when a renumber leaves the log with nothing to renumber, just
+  // before this card goes. The page owes focus somewhere that survives.
+  onVanished?: () => void;
 }
 
 // A card above the dive list saying what a renumber would tidy, and the way in
@@ -34,19 +37,25 @@ export function DiveNumberingCard({
   enabled,
   reloadToken,
   onRenumbered,
+  onVanished,
 }: DiveNumberingCardProps) {
   const [summary, setSummary] = useState<DiveNumberingSummary | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
+  // Returns what it read as well as storing it, so the renumber path below can
+  // tell whether this card is about to remove itself.
   const load = useCallback(async () => {
     try {
-      setSummary(await divesAPI.getDiveNumbering());
+      const next = await divesAPI.getDiveNumbering();
+      setSummary(next);
+      return next;
     } catch (error) {
       // Silent, and the card simply doesn't render. This is a description of
       // the log, not part of it - nothing here is worth a toast over the dive
       // list the diver actually came for.
       console.error("Failed to load dive numbering:", error);
       setSummary(null);
+      return null;
     }
   }, []);
 
@@ -94,7 +103,15 @@ export function DiveNumberingCard({
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         onRenumbered={() => {
-          load();
+          // The dialog hands focus back to the Renumber button as it closes,
+          // and a renumber that tidies the log takes that button off the page
+          // a moment later - dropping focus to `<body>`, where nothing says
+          // what happened. `onVanished` runs on the summary that decided it,
+          // before the render that removes the button, so the page can move
+          // focus while there is still focus to move.
+          void load().then((next) => {
+            if (next && describeDiveNumbering(next) === null) onVanished?.();
+          });
           onRenumbered();
         }}
       />
