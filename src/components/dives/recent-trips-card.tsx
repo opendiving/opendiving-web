@@ -14,16 +14,16 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ListRowsSkeleton } from "@/components/ui/skeleton";
 import { useQuickCreate } from "@/components/layout/quick-create";
-import { formatTripDateRange } from "@/lib/date-time";
+import { formatTripSpan, tripPartLocations } from "@/lib/trip-parts";
 import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
 import { Luggage, Plus, Calendar } from "lucide-react";
 
 const RECENT_TRIPS_COUNT = 5;
 
-// Only show a date when the trip has an explicit start/end date set; we
-// deliberately don't fall back to the trip's creation date here.
+// Only show a date when some part of the trip carries one; we deliberately
+// don't fall back to the trip's creation date here.
 function formatTripDisplayDate(trip: Trip) {
-  return formatTripDateRange(trip.start_date, trip.end_date);
+  return formatTripSpan(trip.parts);
 }
 
 // Shows the user's most recent trips by trip date (up to 5). Used on the
@@ -37,9 +37,9 @@ export function RecentTripsCard() {
     const fetchRecentTrips = async () => {
       try {
         setIsLoadingTrips(true);
-        // The trips list endpoint already sorts by start_date descending, so the
-        // first page is exactly the most recent trips - no client-side sorting
-        // (which would disagree with the ordering on /trips).
+        // The trips list endpoint already sorts by each trip's earliest part
+        // start, descending, so the first page is exactly the most recent trips
+        // - no client-side sorting (which would disagree with /trips).
         const response = await tripsAPI.getTrips(1, RECENT_TRIPS_COUNT);
         setRecentTrips(response.data);
       } catch (error) {
@@ -96,7 +96,7 @@ export function RecentTripsCard() {
                 <div className="min-w-0">
                   <div className="font-medium text-foreground">{trip.name}</div>
                   <TripLocationsLabel
-                    locations={trip.locations}
+                    locations={tripPartLocations(trip.parts)}
                     className="block text-sm text-muted-foreground"
                   />
                 </div>

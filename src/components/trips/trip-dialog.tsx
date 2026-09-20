@@ -9,7 +9,7 @@ import { Loader2, Plus, Save } from "lucide-react";
 import {
   tripFormSchema,
   TripFormInput,
-  normalizeTripDates,
+  normalizeTripParts,
 } from "@/lib/validations/trip";
 import { tripsAPI, Trip } from "@/lib/api/trips";
 import { getApiErrorMessage } from "@/lib/api/error";
@@ -31,9 +31,8 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { DatePicker } from "@/components/ui/date-picker";
 import { Button } from "@/components/ui/button";
-import { TripLocationMultiSelect } from "@/components/trips/trip-location-multi-select";
+import { TripPartsField } from "@/components/trips/trip-parts-field";
 import { LocationsMap } from "@/components/map/locations-map-lazy";
 import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 
@@ -48,10 +47,10 @@ interface TripDialogProps {
 }
 
 // The one create/edit form for a trip, used by the trips list and detail pages,
-// the header's quick-create menu and the dive form's trip picker. A trip is five
-// fields, so a dialog beats navigating away from wherever the diver was - which
-// matters most in the dive form, where a page would mean abandoning a
-// half-filled dive.
+// the header's quick-create menu and the dive form's trip picker. A trip is a
+// name, a list of parts and some notes, so a dialog beats navigating away from
+// wherever the diver was - which matters most in the dive form, where a page
+// would mean abandoning a half-filled dive.
 export function TripDialog({
   open,
   onOpenChange,
@@ -66,23 +65,28 @@ export function TripDialog({
     resolver: zodResolver(tripFormSchema),
     defaultValues: {
       name: "",
-      locations: [],
-      start_date: "",
-      end_date: "",
+      parts: [],
       notes: "",
     },
   });
 
-  // `useWatch` rather than `form.watch()`: the map below the picker is the only
-  // thing that re-renders when a place is added or dragged, and `watch()` would
-  // re-render the whole dialog - every keystroke in the notes field included.
-  const locations = useWatch({ control: form.control, name: "locations" });
+  // `useWatch` rather than `form.watch()`: the map below the field is the only
+  // thing that re-renders when a place is picked or a row dragged, and `watch()`
+  // would re-render the whole dialog - every keystroke in the notes field
+  // included.
+  const parts = useWatch({ control: form.control, name: "parts" });
 
-  // Places typed in by hand have no position, so only the geocoded ones reach
-  // the map - the picker's own rows say "not on the map" about the rest.
-  const mappedLocations = (locations ?? []).filter(
-    (location) => location.latitude != null && location.longitude != null,
-  );
+  // A part need not have a place at all, and a place typed in by hand has no
+  // position, so only the geocoded ones reach the map - the rows themselves are
+  // what account for the rest.
+  const mappedLocations = (parts ?? [])
+    .map((part) => part.location)
+    .filter(
+      (location): location is NonNullable<typeof location> =>
+        location != null &&
+        location.latitude != null &&
+        location.longitude != null,
+    );
 
   // Reload the form whenever the dialog is opened, so it shows the trip being
   // edited (or a clean slate) rather than whatever the previous invocation left
@@ -92,9 +96,14 @@ export function TripDialog({
     if (!open) return;
     reset({
       name: trip?.name ?? "",
-      locations: trip?.locations ?? [],
-      start_date: trip?.start_date ?? "",
-      end_date: trip?.end_date ?? "",
+      // "" rather than `undefined` for a date a part does not carry: that is the
+      // live "cleared" sentinel react-hook-form needs, and `normalizeTripParts`
+      // is what turns it back into an absent member (DECISIONS.md).
+      parts: (trip?.parts ?? []).map((part) => ({
+        location: part.location ?? null,
+        start_date: part.start_date ?? "",
+        end_date: part.end_date ?? "",
+      })),
       notes: trip?.notes ?? "",
     });
   }, [open, trip, reset]);
@@ -109,33 +118,20 @@ export function TripDialog({
     try {
       setIsSubmitting(true);
 
+      // Parts are always sent, never omitted: the form shows the whole list and
+      // the API replaces it wholesale, so an unchanged list costs a re-insert
+      // while a missing key would make "remove them all" impossible to express.
+      const parts = normalizeTripParts(data.parts);
+
       if (trip) {
         // The API answers a PATCH with just a status message, so the updated
         // trip is assembled here for the caller.
-        //
-        // Locations are always sent, never omitted: the form shows the whole
-        // list and the API replaces it wholesale, so an unchanged list costs a
-        // re-insert while a missing key would make "remove them all" impossible
-        // to express.
-        const changes = {
-          ...normalizeTripDates(data),
-          locations: data.locations ?? [],
-        };
-        await tripsAPI.updateTrip(trip.uuid, changes);
-        onSaved({
-          ...trip,
-          name: data.name,
-          locations: changes.locations,
-          start_date: changes.start_date,
-          end_date: changes.end_date,
-          notes: data.notes,
-        });
+        await tripsAPI.updateTrip(trip.uuid, { name: data.name, parts, notes: data.notes });
+        onSaved({ ...trip, name: data.name, parts, notes: data.notes });
       } else {
         const created = await tripsAPI.createTrip({
           name: data.name,
-          locations: data.locations ?? [],
-          start_date: data.start_date,
-          end_date: data.end_date || undefined,
+          parts,
           notes: data.notes || undefined,
         });
         onSaved(created);
@@ -195,52 +191,16 @@ export function TripDialog({
               )}
             />
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="start_date"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Start date *</FormLabel>
-                    <FormControl>
-                      <DatePicker
-                        value={field.value}
-                        onChange={field.onChange}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="end_date"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>End date</FormLabel>
-                    <FormControl>
-                      <DatePicker
-                        value={field.value}
-                        onChange={field.onChange}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
+            {/* The dates live on the parts now, so there is no trip-level date
+                row above this: a trip's span is the span of what is in here. */}
             <FormField
               control={form.control}
-              name="locations"
+              name="parts"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>
-                    {(field.value?.length ?? 0) > 1 ? "Locations" : "Location"}
-                  </FormLabel>
+                  <FormLabel>Parts</FormLabel>
                   <FormControl>
-                    <TripLocationMultiSelect
+                    <TripPartsField
                       value={field.value ?? []}
                       onChange={field.onChange}
                     />
@@ -250,14 +210,14 @@ export function TripDialog({
               )}
             />
 
-            {/* Confirmation only, and deliberately below the picker: the diver
+            {/* Confirmation only, and deliberately below the parts: the diver
                 searched for a name, and this answers "yes, that is the place I
                 meant" without asking them to do anything with it.
 
                 On screen from the moment the dialog opens, empty world and all,
                 like the dive site form's own map. A frame that appeared with
                 the first place would shove the Notes field down the dialog
-                mid-edit, and an empty one is what makes it obvious the picker
+                mid-edit, and an empty one is what makes it obvious the field
                 above it is asking for somewhere on a map. */}
             <LocationsMap
               locations={mappedLocations}

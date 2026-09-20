@@ -1,10 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { GeocodeResult } from "@/lib/api/geocoding";
 import {
+  describeTripPart,
   geocodeResultToLocation,
   locationKey,
   mapSearchResults,
-} from "./trip-location-multi-select";
+} from "./trip-parts-field";
 
 const MOALBOAL: GeocodeResult = {
   latitude: 9.9366,
@@ -30,17 +31,17 @@ const BOHOL: GeocodeResult = {
 
 describe("locationKey", () => {
   it("identifies a picked place by position and label", () => {
-    // Locations are value objects with no id of their own, so identity has to
-    // come from the content.
+    // Places are value objects with no id of their own, so a menu row's id has
+    // to come from the content.
     expect(locationKey(geocodeResultToLocation(MOALBOAL))).toBe(
       "geo:9.9366:123.3986:Moalboal, Philippines",
     );
   });
 
   it("separates two places of the same name", () => {
-    // Both compose to "Moalboal, Philippines" now the short form is what the
-    // row keeps, so the position is the whole of what separates them - which is
-    // the thing that actually differs between two places of one name.
+    // Both compose to "Moalboal, Philippines" now the short form is what a part
+    // keeps, so the position is the whole of what separates them - which is the
+    // thing that actually differs between two places of one name.
     const negros = geocodeResultToLocation({
       ...MOALBOAL,
       latitude: 9.33,
@@ -54,8 +55,8 @@ describe("locationKey", () => {
   });
 
   it("keys a typed-in place by its name alone", () => {
-    // Nothing else to key it by, and the same name typed twice is one place -
-    // otherwise blur re-committing the text would stack duplicate rows.
+    // Nothing else to key it by, and the same name typed twice into one part is
+    // one place.
     expect(locationKey({ name: "  The Boat  " })).toBe("txt:the boat");
     expect(locationKey({ name: "the boat" })).toBe("txt:the boat");
   });
@@ -89,13 +90,13 @@ describe("geocodeResultToLocation", () => {
   });
 
   it("keeps the composed location as the label, not the provider's", () => {
-    // The whole of this change: Nominatim's label carries an administrative
-    // level and a postcode ("Dahab, South Sinai, 45214, Egypt") that no diver
-    // writes down, and the API already composes the place-plus-country form
-    // beside it. Chosen here rather than at render because the short form
-    // cannot be recovered from the long one - "Dahab" is the settlement in
-    // "Dahab, South Sinai, Egypt" and a dive site in "Blue Hole, Dahab, South
-    // Sinai, Egypt", and nothing in the flat string says which.
+    // Nominatim's label carries an administrative level and a postcode ("Dahab,
+    // South Sinai, 45214, Egypt") that no diver writes down, and the API already
+    // composes the place-plus-country form beside it. Chosen here rather than at
+    // render because the short form cannot be recovered from the long one -
+    // "Dahab" is the settlement in "Dahab, South Sinai, Egypt" and a dive site
+    // in "Blue Hole, Dahab, South Sinai, Egypt", and nothing in the flat string
+    // says which.
     expect(geocodeResultToLocation(MOALBOAL).display_name).toBe(
       "Moalboal, Philippines",
     );
@@ -111,7 +112,7 @@ describe("geocodeResultToLocation", () => {
 });
 
 describe("mapSearchResults", () => {
-  it("builds menu rows that resolve back to what they append", () => {
+  it("builds menu rows that resolve back to what they set", () => {
     const { items, locations } = mapSearchResults([MOALBOAL, BOHOL]);
 
     // The hint is the label minus the name the row already shows, so the menu
@@ -141,7 +142,8 @@ describe("mapSearchResults", () => {
 
   it("collapses results that key identically", () => {
     // Nominatim occasionally returns the same place twice. Two rows sharing an
-    // id is a React key warning and a row that can't be excluded once picked.
+    // id is a React key warning and an id that resolves back to whichever of
+    // them was written last.
     const { items } = mapSearchResults([MOALBOAL, { ...MOALBOAL }]);
 
     expect(items).toHaveLength(1);
@@ -168,5 +170,43 @@ describe("mapSearchResults", () => {
     expect(items).toEqual([]);
     expect(locations.size).toBe(0);
     expect(attributions).toEqual([]);
+  });
+});
+
+describe("describeTripPart", () => {
+  // A part has no name of its own, so the drag handle, the Remove button and
+  // the date fields all ask this - and a row whose three controls disagreed
+  // about which stretch they belonged to would look right on screen.
+  it("names a part by its place", () => {
+    expect(
+      describeTripPart(
+        { location: { name: "Dahab" }, start_date: "2026-04-18" },
+        0,
+      ),
+    ).toBe("Dahab");
+  });
+
+  it("names a part with no place by its dates", () => {
+    expect(
+      describeTripPart({ start_date: "2026-04-18", end_date: "2026-04-22" }, 1),
+    ).toBe("Apr 18 - Apr 22, 2026");
+  });
+
+  it("names a part with one date by that date", () => {
+    expect(describeTripPart({ end_date: "2026-04-22" }, 1)).toBe(
+      "Apr 22, 2026",
+    );
+  });
+
+  it("falls back to the ordinal when a part has neither", () => {
+    // Which is what a part looks like the moment it is added.
+    expect(describeTripPart({ location: null }, 2)).toBe("part 3");
+    expect(describeTripPart({ start_date: "", end_date: "" }, 0)).toBe(
+      "part 1",
+    );
+  });
+
+  it("does not take a blank place name for a name", () => {
+    expect(describeTripPart({ location: { name: "  " } }, 0)).toBe("part 1");
   });
 });
