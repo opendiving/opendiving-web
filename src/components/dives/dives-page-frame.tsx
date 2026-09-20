@@ -129,9 +129,9 @@ export function DivesPageFrame({
             >
               <TableHeader>
                 <TableRow>
-                  <TableHead>#</TableHead>
+                  <TableHead>Dive</TableHead>
                   <TableHead>Date & Time</TableHead>
-                  <TableHead>Dive Site</TableHead>
+                  <TableHead>Location</TableHead>
                   <TableHead>Duration</TableHead>
                   <TableHead>Max Depth</TableHead>
                   <TableHead className="text-right">Actions</TableHead>

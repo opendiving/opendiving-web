@@ -11,6 +11,7 @@ import { coursesAPI, Course } from "@/lib/api/courses";
 import { DELETE_DIVE_CONFIRMATION } from "@/lib/dive-recordings";
 import { DiveNeighborNav } from "@/components/dives/dive-neighbor-nav";
 import { DiveMergeAction } from "@/components/dives/dive-merge-action";
+import { DiveTitle } from "@/components/dives/dive-title";
 import { DiveDetailProvider } from "@/components/dives/dive-detail-context";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -198,7 +199,9 @@ export default function DiveDetailLayout({
       <PageHeader
         backHref="/dives"
         backLabel="Back to dives"
-        title={`Dive #${dive.dive_number}`}
+        title={
+          <DiveTitle diveNumber={dive.dive_number} sites={dive.dive_sites} />
+        }
         // The time of day sits here with the date rather than in a card of its
         // own below: the two are one fact, and splitting them put the dive's
         // date in the header and the clock it was on two scroll positions away.

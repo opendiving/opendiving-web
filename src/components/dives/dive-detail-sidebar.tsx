@@ -9,6 +9,7 @@ import { formatDistance, GeoPoint, haversineMeters } from "@/lib/geo-distance";
 import { formatCoordinates } from "@/lib/validations/dive-site";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DiveSitesLabel } from "@/components/dives/dive-sites-label";
+import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
 import { DiveRecordingsCard } from "@/components/dives/dive-recordings-card";
 import { LocationsMap } from "@/components/map/locations-map-lazy";
 import type { MappableLocation } from "@/components/map/locations-map";
@@ -126,13 +127,24 @@ export function DiveDetailSidebar({
                 <div className="text-sm font-medium text-muted-foreground mb-1">
                   Trip
                 </div>
-                <Link
-                  href={`/trips/${trip.uuid}`}
-                  className="flex items-center gap-2 text-sm font-medium hover:underline"
-                >
-                  <Luggage className="h-4 w-4 text-muted-foreground" />
-                  {trip.name}
-                </Link>
+                {/* Only the name links - where a trip went is not a second
+                    way to reach it - and the icon sits against that first line
+                    rather than the middle of two. */}
+                <div className="flex items-start gap-2 text-sm">
+                  <Luggage className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
+                  <div className="min-w-0">
+                    <Link
+                      href={`/trips/${trip.uuid}`}
+                      className="font-medium hover:underline"
+                    >
+                      {trip.name}
+                    </Link>
+                    <TripLocationsLabel
+                      locations={trip.locations}
+                      className="block text-muted-foreground"
+                    />
+                  </div>
+                </div>
               </div>
             )}
             {dive.dive_sites.length > 0 && (
@@ -140,9 +152,20 @@ export function DiveDetailSidebar({
                 <div className="text-sm font-medium text-muted-foreground mb-1">
                   Dive Site
                 </div>
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
-                  <DiveSitesLabel sites={dive.dive_sites} linked />
+                <div className="flex items-start gap-2 text-sm">
+                  <MapPin className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
+                  <div className="min-w-0">
+                    <DiveSitesLabel
+                      sites={dive.dive_sites}
+                      linked
+                      className="font-medium"
+                    />
+                    {dive.dive_sites[0]?.location && (
+                      <span className="block text-muted-foreground">
+                        {dive.dive_sites[0].location}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
             )}

@@ -5,8 +5,6 @@ export interface DiveSitesLabelProps {
   sites: DiveSiteSummary[];
   // Wrap the primary site's name in a link to its detail page.
   linked?: boolean;
-  // Append the primary site's location (", Koh Tao, Thailand") after its name.
-  showLocation?: boolean;
   className?: string;
 }
 
@@ -17,7 +15,6 @@ export interface DiveSitesLabelProps {
 export function DiveSitesLabel({
   sites,
   linked = false,
-  showLocation = false,
   className,
 }: DiveSitesLabelProps) {
   if (sites.length === 0) {
@@ -50,7 +47,6 @@ export function DiveSitesLabel({
       ) : (
         primary.name
       )}
-      {showLocation && primary.location && `, ${primary.location}`}
       {extra.length > 0 && (
         <span className="text-muted-foreground"> +{extra.length}</span>
       )}
