@@ -165,6 +165,20 @@ export function commitAction({
   );
   if (exactMatch) return { type: "select", item: exactMatch };
 
+  // The text still reads as whatever is selected. Nothing was edited, so there
+  // is nothing to commit - and definitely nothing to clear or to re-create.
+  //
+  // **Before the unanswered-query branch, not after**, or a field that may
+  // create from an unanswered query rebuilds its own loaded value out of the
+  // text. Focusing a filled single-select opens the menu and fires the
+  // empty-query search, which the geocode client answers `[]` locally, so a
+  // bare Enter arrives with `searchedQuery` at `""` while the text is still the
+  // selected name: the branch below then reads "unanswered" and creates, and a
+  // geocoded place comes back as a name with no coordinates.
+  if (selectedName && trimmed.toLowerCase() === selectedName.toLowerCase()) {
+    return { type: "keep" };
+  }
+
   // Nothing matched - but in remote mode "nothing matched" is only *evidence* of
   // anything once the server has answered this exact query. Before that,
   // `availableItems` is an empty list that means "we haven't asked yet", and
@@ -181,12 +195,6 @@ export function commitAction({
     // this, because it is only safe for a field that appends.
     if (!(createWithoutSearch && canCreate)) return { type: "keep" };
     return { type: "create", name: trimmed };
-  }
-
-  // The text still reads as whatever is selected. Nothing was edited, so there is
-  // nothing to commit - and definitely nothing to clear.
-  if (selectedName && trimmed.toLowerCase() === selectedName.toLowerCase()) {
-    return { type: "keep" };
   }
 
   // Genuinely unmatched text. With an inline creator that means a new item; without
@@ -658,13 +666,23 @@ export function CreatableCombobox({
   // rather than run unconditionally, because an ordinary single-select reaches
   // `commit` from the blur itself, and refocusing there would trap the caret in
   // the field the diver was leaving.
+  //
+  // Closing *after* the focus is the whole trick, and the order is load-bearing:
+  // focusing a blurred input runs `onFocus`, which opens the menu, so a close
+  // written first would be undone by it and every commit would leave the
+  // dropdown painted over whatever sits below the field. Both updates land in
+  // one batch and the last one wins - the same order `date-picker.tsx` uses when
+  // a picked date returns focus to its box.
   const readyForNext = () => {
     if (keepOpenOnSelect) {
       setIsOpen(true);
       inputRef.current?.focus();
       return;
     }
-    if (commitOnEnterOnly) inputRef.current?.focus();
+    if (commitOnEnterOnly) {
+      inputRef.current?.focus();
+      setIsOpen(false);
+    }
   };
 
   // Only ever reached from a blur that is allowed to commit - which for an

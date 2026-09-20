@@ -3281,8 +3281,8 @@ phrase.
 The empty view is `WORLD_CENTER` at `MIN_ZOOM` (0) from `lib/basemap.ts`, read by both maps.
 
 Field order: name, parts and map, notes — a part carries its own dates, so there is no trip-level
-date row, the place search answers with the map, and the growing block sits last. `/privacy` names
-both forms.
+date row, the place search answers with the map, and the growing block sits last-but-one. `/privacy`
+names both forms.
 
 ## A trip part is added empty, and filled in where it sits
 

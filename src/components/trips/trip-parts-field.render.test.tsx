@@ -278,6 +278,50 @@ describe("TripPartsField", () => {
     );
   });
 
+  it("leaves a geocoded place alone when Enter is pressed over it", async () => {
+    // Focusing a filled row opens the menu and fires the empty-query search,
+    // which is answered `[]` without a request - so a bare Enter arrives with
+    // the search "unanswered" and the text still the place's own name. Taken
+    // as a create, it would rebuild Dahab as a bare name: no coordinates, no
+    // label, gone from the map, and nothing said about any of it.
+    render(
+      <Field
+        initial={[
+          {
+            location: {
+              name: "Dahab",
+              display_name: "Dahab, Egypt",
+              latitude: 28.4954,
+              longitude: 34.5197,
+            },
+          },
+        ]}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("combobox"));
+    await waitFor(() => expect(searchPlaces).toHaveBeenCalledWith(""));
+    await userEvent.keyboard("{Enter}");
+
+    await waitFor(() => expect(places()).toEqual(["Dahab"]));
+    expect(screen.queryByText("Not on the map")).not.toBeInTheDocument();
+  });
+
+  it("does not leave the menu open over the dates after a commit", async () => {
+    // The commit gets back to the input the long way round - Enter blurs to
+    // reach it - and re-focusing an input reopens its menu. Left open, the
+    // dropdown paints over the row's own date fields.
+    render(<Field initial={[{ location: null }]} />);
+
+    await userEvent.click(screen.getByRole("combobox"));
+    await userEvent.paste("Uncle Bob's House Reef");
+    await userEvent.keyboard("{Enter}");
+
+    await waitFor(() => expect(places()).toEqual(["Uncle Bob's House Reef"]));
+    expect(document.activeElement).toBe(screen.getByRole("combobox"));
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+  });
+
   it("adds typed text on Enter before the search has answered", async () => {
     // A diver typing a place they know is not in any gazetteer presses Enter
     // well inside the 450 ms debounce. The blur that Enter triggers cancels the
