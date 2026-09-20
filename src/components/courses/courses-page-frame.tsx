@@ -11,8 +11,9 @@ import {
 import { EmptyState } from "@/components/ui/empty-state";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { CountBadge } from "@/components/ui/count-badge";
+import { ListCardHeader } from "@/components/ui/list-card-header";
 import { useEffectOnChange } from "@/hooks/useEffectOnChange";
 import { IconTooltip } from "@/components/ui/tooltip";
 import { LoadMoreTrigger } from "@/components/ui/load-more-trigger";
@@ -88,7 +89,12 @@ export function CoursesPageFrame({
   statuses,
 }: CoursesPageFrameProps) {
   const [isPanelOpen, setPanelOpen] = useState(false);
-  const isNarrowed = search.length > 0 || hasCourseFilters(filters);
+  // A term in flight, one still in the box waiting for the debounce that will
+  // make it one, or a filter: any of the three is narrowing the list.
+  const isNarrowed =
+    isSearching || search.length > 0 || hasCourseFilters(filters);
+  // Nothing to count, and nothing the panel could usefully narrow.
+  const isEmptyList = !isLoading && rows.length === 0 && !isNarrowed;
   const searchRef = useRef<HTMLInputElement>(null);
 
   // Typing is what the diver came for, and pressing a magnifier to then reach
@@ -117,76 +123,72 @@ export function CoursesPageFrame({
       </div>
 
       <Card>
-        <CardHeader>
-          {/* Hidden, not dropped: the page's `h1` names the list, but the
-              card is still a section of it, and the empty state's `h3` below
-              would skip a level without this. */}
-          <CardTitle as="h2" className="sr-only">
-            Course List
-          </CardTitle>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <CountBadge
-              count={totalCount}
-              isLoading={isLoading}
-              label="total course"
-            />
-            {/* The button says what it opens, and the dot says the shut panel
-                is still narrowing the list - a collapsed row that silently
-                hides half the courses is the one failure this costs. */}
-            <IconTooltip
-              label={
-                isNarrowed
-                  ? "Search and filter courses, narrowing the list"
-                  : "Search and filter courses"
-              }
+        <ListCardHeader title="Course List" isEmpty={isEmptyList}>
+          <CountBadge
+            count={totalCount}
+            isLoading={isLoading}
+            label="total course"
+          />
+          {/* The button says what it opens, and the dot says the shut panel
+              is still narrowing the list - a collapsed row that silently
+              hides half the courses is the one failure this costs. */}
+          <IconTooltip
+            label={
+              isNarrowed
+                ? "Search and filter courses, narrowing the list"
+                : "Search and filter courses"
+            }
+          >
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5"
+              aria-expanded={isPanelOpen}
+              aria-controls="course-filters"
+              onClick={() => {
+                setPanelOpen((open) => !open);
+                if (!isPanelOpen) onFiltersOpened();
+              }}
             >
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-1.5"
-                aria-expanded={isPanelOpen}
-                aria-controls="course-filters"
-                onClick={() => {
-                  setPanelOpen((open) => !open);
-                  if (!isPanelOpen) onFiltersOpened();
-                }}
-              >
-                {/* The chevron carries which way the panel will move, which the
-                    magnifier alone cannot say. It points at the panel: down to
-                    the row it is about to open, up to fold it back into the
-                    header. */}
-                <span className="relative flex">
-                  <Search className="h-4 w-4" />
-                  {isNarrowed && !isPanelOpen && (
-                    <span
-                      aria-hidden
-                      className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-teal"
-                    />
-                  )}
-                </span>
-                {isPanelOpen ? (
-                  <ChevronUp className="h-4 w-4" />
-                ) : (
-                  <ChevronDown className="h-4 w-4" />
+              {/* The chevron carries which way the panel will move, which the
+                  magnifier alone cannot say. It points at the panel: down to
+                  the row it is about to open, up to fold it back into the
+                  header. */}
+              <span className="relative flex">
+                <Search className="h-4 w-4" />
+                {isNarrowed && !isPanelOpen && (
+                  <span
+                    aria-hidden
+                    className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-teal"
+                  />
                 )}
-              </Button>
-            </IconTooltip>
-          </div>
-        </CardHeader>
+              </span>
+              {isPanelOpen ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+            </Button>
+          </IconTooltip>
+        </ListCardHeader>
         <CardContent>
           {/* Hidden rather than unmounted, so `aria-controls` points at
-              something and a half-typed date survives a shut. */}
-          <div id="course-filters" hidden={!isPanelOpen}>
-            <CoursesFilters
-              search={search}
-              onSearchChange={onSearchChange}
-              filters={filters}
-              onFiltersChange={onFiltersChange}
-              agencies={agencies}
-              statuses={statuses}
-              searchRef={searchRef}
-            />
-          </div>
+              something and a half-typed date survives a shut - but it goes
+              entirely with the button that opens it, since an empty list
+              leaves nothing to open it with. */}
+          {!isEmptyList && (
+            <div id="course-filters" hidden={!isPanelOpen}>
+              <CoursesFilters
+                search={search}
+                onSearchChange={onSearchChange}
+                filters={filters}
+                onFiltersChange={onFiltersChange}
+                agencies={agencies}
+                statuses={statuses}
+                searchRef={searchRef}
+              />
+            </div>
+          )}
 
           {!isLoading && rows.length === 0 ? (
             // A narrowed list with nothing in it is a different statement from
