@@ -26,24 +26,34 @@ describe("describeDiveNumbering", () => {
     ).toBeNull();
   });
 
-  it("describes a clean log as in order", () => {
-    expect(describeDiveNumbering(summary())).toBe("Numbered #1–#3, in order.");
+  it("says nothing about a log a renumber would leave alone", () => {
+    expect(describeDiveNumbering(summary())).toBeNull();
   });
 
-  it("describes a clean log that starts above one without complaint", () => {
-    // The first 46 dives are in a paper logbook. Nothing is wrong here, and the
-    // line must not imply otherwise.
-    expect(describeDiveNumbering(summary({ lowest: 47, highest: 49 }))).toBe(
-      "Numbered #47–#49, in order.",
-    );
+  it("says nothing about a clean log that starts above one", () => {
+    // The first 46 dives are in a paper logbook. Nothing is wrong here, and a
+    // card offering to renumber would imply otherwise.
+    expect(
+      describeDiveNumbering(summary({ lowest: 47, highest: 49 })),
+    ).toBeNull();
   });
 
-  it("gives a single dive one number rather than a range", () => {
+  it("says nothing about a single dive, which is always tidy", () => {
     expect(
       describeDiveNumbering(
         summary({ total_dives: 1, lowest: 12, highest: 12 }),
       ),
-    ).toBe("Numbered #12, in order.");
+    ).toBeNull();
+  });
+
+  it("gives a log collapsed onto one number that number rather than a range", () => {
+    // Three dives all carrying #12: the range has no width, but there is still
+    // something for a renumber to do.
+    expect(
+      describeDiveNumbering(
+        summary({ lowest: 12, highest: 12, duplicate_count: 2 }),
+      ),
+    ).toBe("Numbered #12 — 2 dives share a number.");
   });
 
   it("counts unused numbers", () => {

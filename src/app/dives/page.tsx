@@ -7,7 +7,7 @@ import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { divesAPI, Dive } from "@/lib/api/dives";
 import { DELETE_DIVE_CONFIRMATION } from "@/lib/dive-recordings";
 import { DiveSitesLabel } from "@/components/dives/dive-sites-label";
-import { DiveNumberingStatus } from "@/components/dives/dive-numbering-status";
+import { DiveNumberingCard } from "@/components/dives/dive-numbering-card";
 import { DivesPageFrame } from "@/components/dives/dives-page-frame";
 import {
   formatDiveDateTime,
@@ -28,8 +28,8 @@ export default function DivesPage() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
   const units = useUnits();
   // Bumped whenever the log changes, to re-describe its numbering: deleting a
-  // dive leaves the number it held unused, which the line above the table says
-  // out loud.
+  // dive leaves the number it held unused, which brings out the card above the
+  // list to say so.
   const [numberingToken, setNumberingToken] = useState(0);
   const reloadNumbering = useCallback(
     () => setNumberingToken((n) => n + 1),
@@ -71,8 +71,8 @@ export default function DivesPage() {
     errorMessage: "Failed to delete dive. Please try again.",
     // The row goes locally rather than by re-reading: a diver who has scrolled
     // several pages in should not have the list collapse back to the first one
-    // under them. The numbering line above the table is re-read, because the
-    // number the deleted dive held is now a gap and that line says so.
+    // under them. The numbering above the list is re-read, because the number
+    // the deleted dive held is now a gap and that card says so.
     onDeleted: (id) => {
       removeItem(id);
       reloadNumbering();
@@ -98,7 +98,7 @@ export default function DivesPage() {
         hasMore={hasMore}
         onLoadMore={loadMore}
         numbering={
-          <DiveNumberingStatus
+          <DiveNumberingCard
             enabled={!!user}
             reloadToken={numberingToken}
             onRenumbered={reload}
