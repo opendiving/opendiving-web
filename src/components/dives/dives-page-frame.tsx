@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode } from "react";
+import { type ReactNode, type Ref } from "react";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { DiveIcon } from "@/components/logo";
@@ -30,10 +30,16 @@ export interface DivesPageFrameProps {
   /** The log's rows. Empty while the first page is in flight. */
   rows?: ReactNode[];
   /**
-   * The numbering line above the table. It draws nothing until its own request
-   * lands, so leaving it out is the page's own first render.
+   * The numbering card above the list card. It draws nothing until its own
+   * request lands, and nothing at all for a log already numbered consecutively
+   * in date order, so leaving it out is the page's own first render.
    */
   numbering?: ReactNode;
+  /**
+   * Attached to the page's `h1`, which is `tabIndex={-1}` so it can be given
+   * focus when something between it and the list removes itself.
+   */
+  headingRef?: Ref<HTMLHeadingElement>;
   isLoadingMore?: boolean;
   loadFailed?: boolean;
   hasMore?: boolean;
@@ -51,6 +57,7 @@ export function DivesPageFrame({
   itemsPerPage,
   rows = [],
   numbering,
+  headingRef,
   isLoadingMore = false,
   loadFailed = false,
   hasMore = false,
@@ -64,11 +71,16 @@ export function DivesPageFrame({
     isNarrowed: false,
   });
 
+  // Spaced by the container rather than by a margin on each block: the
+  // numbering card is absent more often than not, and a gap it carried itself
+  // would be left behind on the pages where it draws nothing.
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="flex justify-between items-center mb-6">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Dives</h1>
+          <h1 ref={headingRef} tabIndex={-1} className="text-3xl font-bold">
+            Dives
+          </h1>
           <p className="text-muted-foreground mt-2">
             Manage and track your diving activities
           </p>
@@ -81,6 +93,8 @@ export function DivesPageFrame({
         </Button>
       </div>
 
+      {numbering}
+
       <Card>
         <ListCardHeader title="Dive Log" isEmpty={isEmptyList}>
           <CountBadge
@@ -90,8 +104,6 @@ export function DivesPageFrame({
           />
         </ListCardHeader>
         <CardContent>
-          {numbering}
-
           {!isLoading && rows.length === 0 ? (
             <EmptyState
               icon={DiveIcon}

@@ -1,13 +1,13 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useAuthGuard } from "@/hooks/useAuthGuard";
 import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { divesAPI, Dive } from "@/lib/api/dives";
 import { DELETE_DIVE_CONFIRMATION } from "@/lib/dive-recordings";
 import { DiveSitesLabel } from "@/components/dives/dive-sites-label";
-import { DiveNumberingStatus } from "@/components/dives/dive-numbering-status";
+import { DiveNumberingCard } from "@/components/dives/dive-numbering-card";
 import { DivesPageFrame } from "@/components/dives/dives-page-frame";
 import {
   formatDiveDateTime,
@@ -28,13 +28,18 @@ export default function DivesPage() {
   const { user, isAuthenticated, isLoading: isAuthLoading } = useAuthGuard();
   const units = useUnits();
   // Bumped whenever the log changes, to re-describe its numbering: deleting a
-  // dive leaves the number it held unused, which the line above the table says
-  // out loud.
+  // dive leaves the number it held unused, which brings out the card above the
+  // list to say so.
   const [numberingToken, setNumberingToken] = useState(0);
   const reloadNumbering = useCallback(
     () => setNumberingToken((n) => n + 1),
     [],
   );
+
+  // Where focus goes when the numbering card removes itself from under it: the
+  // card holds the button the renumber dialog just handed focus back to.
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const focusHeading = useCallback(() => headingRef.current?.focus(), []);
 
   const fetchDives = useCallback(
     (page: number, perPage: number) => divesAPI.getDives(page, perPage),
@@ -71,8 +76,8 @@ export default function DivesPage() {
     errorMessage: "Failed to delete dive. Please try again.",
     // The row goes locally rather than by re-reading: a diver who has scrolled
     // several pages in should not have the list collapse back to the first one
-    // under them. The numbering line above the table is re-read, because the
-    // number the deleted dive held is now a gap and that line says so.
+    // under them. The numbering above the list is re-read, because the number
+    // the deleted dive held is now a gap and that card says so.
     onDeleted: (id) => {
       removeItem(id);
       reloadNumbering();
@@ -97,11 +102,13 @@ export default function DivesPage() {
         loadFailed={loadFailed}
         hasMore={hasMore}
         onLoadMore={loadMore}
+        headingRef={headingRef}
         numbering={
-          <DiveNumberingStatus
+          <DiveNumberingCard
             enabled={!!user}
             reloadToken={numberingToken}
             onRenumbered={reload}
+            onVanished={focusHeading}
           />
         }
         rows={dives.map((dive) => (

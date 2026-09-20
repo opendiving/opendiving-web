@@ -1278,12 +1278,12 @@ has the current value.
 It is a `FormDescription`, never a validation error: duplicate numbers are a normal state while
 back-filling, reconciled later with Renumber, so nothing about them may block a save.
 
-## The numbering line describes; it doesn't scold
+## The numbering card describes; it doesn't scold
 
-`describeDiveNumbering` never says "should" and never phrases a gap as a problem. A diver continuing
-a paper logbook has deliberate gaps forever, and a line that nags on every page load is one they
-stop reading. There is no dismiss control for the same reason: the line is muted enough not to need
-one, and hiding it would hide the way in to Renumber.
+`describeDiveNumbering` never says "should" and never phrases a gap as a problem: a diver continuing
+a paper logbook has deliberate gaps forever, and the card sits above their list forever too. It says
+nothing about a tidy log, so Renumber has no entry point on one — #47–#212 cannot restart at #1,
+bought against a card every settled log would carry forever.
 
 `RenumberDivesDialog` mounts its form as a child rendered only while open, so each visit starts from
 clean defaults without a `setState` in an effect. Its preview is tagged with the inputs that
@@ -2543,7 +2543,7 @@ displayed `diveUuid`, not `params.id`, so arrows and date agree.
 Each arrow is one `<a>` swapping its `href`, not `next/link`: alternating element types replaces the
 node and drops keyboard focus. Unavailable is `aria-disabled` plus `pointer-events-none` with
 `role="link"`; a plain click calls `router.push`. The log's end leaves its arrow dead, not removed;
-`aria-busy` marks not-yet-known. A failed fetch is silent, as in `DiveNumberingStatus`.
+`aria-busy` marks not-yet-known. A failed fetch is silent, as in `DiveNumberingCard`.
 `dive-neighbor-nav.render.test.tsx` pins node identity across the `href` swap.
 
 ## The gas tables scroll inside shadcn's own wrapper, and no card adds another
