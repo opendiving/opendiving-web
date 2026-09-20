@@ -6,7 +6,7 @@ import { useInfiniteResource } from "@/hooks/useInfiniteResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { divesAPI, Dive } from "@/lib/api/dives";
 import { DELETE_DIVE_CONFIRMATION } from "@/lib/dive-recordings";
-import { DiveSitesLabel } from "@/components/dives/dive-sites-label";
+import { DiveTitle } from "@/components/dives/dive-title";
 import { DiveNumberingCard } from "@/components/dives/dive-numbering-card";
 import { DivesPageFrame } from "@/components/dives/dives-page-frame";
 import {
@@ -113,17 +113,18 @@ export default function DivesPage() {
         }
         rows={dives.map((dive) => (
           <TableRow key={dive.uuid}>
-            <TableCell className="font-medium">#{dive.dive_number}</TableCell>
-            <TableCell>
-              <Link
-                href={`/dives/${dive.uuid}`}
-                className="text-sm font-medium hover:underline"
-              >
-                {formatDiveDateTime(dive.start_time)}
+            <TableCell className="font-medium">
+              <Link href={`/dives/${dive.uuid}`} className="hover:underline">
+                <DiveTitle
+                  diveNumber={dive.dive_number}
+                  sites={dive.dive_sites}
+                />
               </Link>
             </TableCell>
+            <TableCell>{formatDiveDateTime(dive.start_time)}</TableCell>
+            {/* The primary site's location - the site the first column names. */}
             <TableCell className="text-muted-foreground">
-              <DiveSitesLabel sites={dive.dive_sites} />
+              {dive.dive_sites[0]?.location ?? "-"}
             </TableCell>
             <TableCell>{formatDurationHoursMinutes(dive.duration)}</TableCell>
             <TableCell>

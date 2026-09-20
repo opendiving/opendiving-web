@@ -52,15 +52,4 @@ describe("DiveSitesLabel", () => {
 
     expect(screen.getByText("-")).toBeInTheDocument();
   });
-
-  it("appends the primary site's location when asked, and hints names only", () => {
-    // The hint is the list the "+N" compacted, so the location that only the
-    // primary site carries has no place in it.
-    render(<DiveSitesLabel sites={sites} showLocation />);
-
-    const hinted = screen.getByTitle(
-      "Pescador Island, Panagsama Wall, Tongo Point",
-    );
-    expect(hinted).toHaveTextContent("Moalboal, Philippines");
-  });
 });

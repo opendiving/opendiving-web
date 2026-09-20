@@ -1,5 +1,6 @@
 import { instant } from "@next/playwright";
 
+import type { Dive } from "@/lib/api/dives";
 import {
   DIVE_A,
   DIVE_B,
@@ -53,6 +54,11 @@ declare global {
  * router happened to fetch it under.
  */
 const DIVE_ROUTE = /^\/dives\/[0-9a-f-]{36}$/;
+
+/** What the `<h1>` says for a dive: its number and where it was. */
+function diveTitle(dive: Dive) {
+  return `#${dive.dive_number} ${dive.dive_sites[0].name}`;
+}
 
 async function prefetched(api: ApiMock, route: RegExp) {
   await expect
@@ -142,7 +148,7 @@ test.describe("instant navigations", () => {
 
     api.release();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-      `Dive #${DIVE_A.dive_number}`,
+      diveTitle(DIVE_A),
     );
   });
 
@@ -156,7 +162,7 @@ test.describe("instant navigations", () => {
       .getByRole("link", { name: `View dive #${DIVE_A.dive_number}` })
       .click();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-      `Dive #${DIVE_A.dive_number}`,
+      diveTitle(DIVE_A),
     );
 
     const pager = page.getByRole("navigation", { name: "Adjacent dives" });
@@ -206,17 +212,17 @@ test.describe("instant navigations", () => {
       // dive being stepped away from is still on screen in the same `<h1>`, the
       // node the diver pressed still holds the keyboard, and no skeleton bar is
       // drawn anywhere.
-      await expect(heading).toHaveText(`Dive #${DIVE_A.dive_number}`);
+      await expect(heading).toHaveText(diveTitle(DIVE_A));
       await expect(pressed).toBeFocused();
       await expect(page.locator("main .animate-skeleton")).toHaveCount(0);
     });
 
     api.release();
-    await expect(heading).toHaveText(`Dive #${DIVE_B.dive_number}`);
+    await expect(heading).toHaveText(diveTitle(DIVE_B));
     await expect(pressed).toBeFocused();
     expect(await page.evaluate(() => window.__h1Texts)).toEqual([
-      `Dive #${DIVE_A.dive_number}`,
-      `Dive #${DIVE_B.dive_number}`,
+      diveTitle(DIVE_A),
+      diveTitle(DIVE_B),
     ]);
   });
 });

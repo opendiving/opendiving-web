@@ -4,7 +4,7 @@ import { useCallback } from "react";
 import Link from "next/link";
 import { divesAPI, Dive } from "@/lib/api/dives";
 import { useInfiniteResource } from "@/hooks/useInfiniteResource";
-import { DiveSitesLabel } from "@/components/dives/dive-sites-label";
+import { DiveTitle } from "@/components/dives/dive-title";
 import {
   formatDiveDateTime,
   formatDurationHoursMinutes,
@@ -184,7 +184,10 @@ export function RecentDivesCard({
                     row wide on the dashboard. */}
                 <div className="min-w-0">
                   <div className="font-medium text-foreground">
-                    Dive #{dive.dive_number}
+                    <DiveTitle
+                      diveNumber={dive.dive_number}
+                      sites={dive.dive_sites}
+                    />
                   </div>
                   <div className="text-sm text-muted-foreground">
                     <span className="block sm:inline">
@@ -194,10 +197,12 @@ export function RecentDivesCard({
                         day: "numeric",
                       })}
                     </span>
-                    {dive.dive_sites.length > 0 && (
+                    {/* The title names the site; this line says where it
+                        is. */}
+                    {dive.dive_sites[0]?.location && (
                       <span className="block sm:inline">
                         <span className="hidden sm:inline">{" \u00b7 "}</span>
-                        <DiveSitesLabel sites={dive.dive_sites} showLocation />
+                        {dive.dive_sites[0].location}
                       </span>
                     )}
                   </div>
