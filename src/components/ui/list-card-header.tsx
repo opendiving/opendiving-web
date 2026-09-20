@@ -31,13 +31,19 @@ export function useIsEmptyList({
   count,
   isNarrowed,
 }: IsEmptyListInput): boolean {
-  // Set while rendering rather than in an effect: React re-runs this component
-  // before it commits, so the latch is already closed in the render that first
-  // sees the narrowing, and no second paint is charged for it.
+  // Latched while rendering rather than in an effect: React re-runs this
+  // component before it commits, so the latch is closed in the render that first
+  // sees the narrowing and no second paint is charged for it.
+  //
+  // It opens again the moment the list itself moves - the refetch a cleared term
+  // starts raises `isLoading`, and any row arriving says the list is not empty -
+  // so it spans the one stale render and not the rest of the visit. Deleting the
+  // last row later still drops the header, search or no search.
   const [wasNarrowed, setWasNarrowed] = useState(isNarrowed);
-  if (isNarrowed && !wasNarrowed) setWasNarrowed(true);
+  const narrowed = isNarrowed || (wasNarrowed && !isLoading && count === 0);
+  if (narrowed !== wasNarrowed) setWasNarrowed(narrowed);
 
-  return !isLoading && count === 0 && !isNarrowed && !wasNarrowed;
+  return !isLoading && count === 0 && !narrowed;
 }
 
 export interface ListCardHeaderProps {
