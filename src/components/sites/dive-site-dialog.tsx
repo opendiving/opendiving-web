@@ -16,7 +16,10 @@ import {
 import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
 import { GeocodeResult } from "@/lib/api/geocoding";
 import { geocodeResultToLocation } from "@/lib/locations";
-import type { LocationFormValue } from "@/lib/validations/location";
+import {
+  MAX_LOCATION_NAME_LENGTH,
+  type LocationFormValue,
+} from "@/lib/validations/location";
 import {
   diveSitePlaceContext,
   DiveSiteSuggestion,
@@ -341,6 +344,17 @@ export function DiveSiteDialog({
                   <FormControl>
                     <Input
                       placeholder="e.g. Dahab, Egypt"
+                      // The cap is enforced by the control, not left to the
+                      // resolver: an over-long name fails at `location.name`,
+                      // and `FormMessage` reads `errors.location`, which for a
+                      // nested failure is a container with no `message` of its
+                      // own - so the diver would get the word "undefined" in
+                      // red and a save that stopped. The trip row's place field
+                      // closes the same hole by truncating what it commits.
+                      // Nothing else can overrun it: every place written here
+                      // programmatically comes from the API, which bounds both
+                      // names to these widths and truncates rather than raising.
+                      maxLength={MAX_LOCATION_NAME_LENGTH}
                       name={field.name}
                       ref={field.ref}
                       onBlur={field.onBlur}

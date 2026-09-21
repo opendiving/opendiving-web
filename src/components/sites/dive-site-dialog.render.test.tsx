@@ -475,6 +475,24 @@ describe("DiveSiteDialog location writes", () => {
     expect(updateDiveSite.mock.calls[0][1].location).toBeNull();
   });
 
+  it("stops a typed name at the width the API stores", async () => {
+    // Not left to the resolver: the failure would land at `location.name`,
+    // where `FormMessage` reads `errors.location` and finds a container with
+    // no message - the word "undefined" in red, over a save that stopped.
+    renderEdit();
+    const location = screen.getByLabelText("Location") as HTMLInputElement;
+    expect(location.maxLength).toBe(255);
+
+    await userEvent.clear(location);
+    await userEvent.paste("a".repeat(300));
+    await save();
+
+    await waitFor(() => expect(updateDiveSite).toHaveBeenCalled());
+    expect(updateDiveSite.mock.calls[0][1].location).toEqual({
+      name: "a".repeat(255),
+    });
+  });
+
   it("replaces the place outright when a new name is typed over it", async () => {
     // A full name, a centre and an extent resolved for Dahab say nothing true
     // about Moalboal, so they go with the name they belonged to rather than
