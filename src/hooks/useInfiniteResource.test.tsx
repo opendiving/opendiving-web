@@ -42,7 +42,8 @@ function ledger(total = 30, perPage = 10) {
     /**
      * Simulates an edit that changes the column the server sorts by, moving the
      * row to `to` in the order. Every list here is sorted by something an edit
-     * dialog can change - a dive site's name, a trip's start date.
+     * dialog can change - a dive site's name, the earliest date across a trip's
+     * parts.
      */
     moveServerSide: (uuid: string, to: number) => {
       const row = rows.find((one) => one.uuid === uuid)!;

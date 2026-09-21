@@ -311,9 +311,9 @@ export function formatDiveStartTime(startTime: string): string {
   return `${date} at ${formatDiveTimeOnly(startTime)}${zone}`;
 }
 
-// Formats a plain "YYYY-MM-DD" date (no time component, e.g. a trip's start
-// or end date) without going through timezone-sensitive UTC parsing - using
-// `new Date(dateString)` directly can shift the displayed day by one in
+// Formats a plain "YYYY-MM-DD" date (no time component, e.g. a trip part's
+// start or end date) without going through timezone-sensitive UTC parsing -
+// using `new Date(dateString)` directly can shift the displayed day by one in
 // negative-UTC-offset timezones since bare date strings parse as UTC midnight.
 export function formatDateOnly(
   dateString: string,
@@ -410,7 +410,8 @@ export function formatDurationHoursMinutes(durationSeconds: number): string {
   return minutes > 0 ? `${hours}h ${minutes}min` : `${hours}h`;
 }
 
-// Formats a trip's start/end date range for display, e.g. "Jun 1 - Jun 8, 2024".
+// Formats a date range - a trip's span, a course's dates - for display, e.g.
+// "Jun 1 - Jun 8, 2024".
 // Returns `undefined` if neither date is set.
 export function formatTripDateRange(
   startDate?: string,

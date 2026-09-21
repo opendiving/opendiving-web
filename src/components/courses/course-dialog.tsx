@@ -329,8 +329,8 @@ export function CourseDialog({
                 name="end_date"
                 render={({ field }) => (
                   <FormItem>
-                    {/* Neither date is required, unlike a trip's start date: a
-                        course that is only booked has no dates yet. */}
+                    {/* Neither date is required: a course that is only
+                        booked has no dates yet. */}
                     <FormLabel>End date</FormLabel>
                     <FormControl>
                       <DatePicker

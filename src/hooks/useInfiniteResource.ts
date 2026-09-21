@@ -304,11 +304,12 @@ export function useInfiniteResource<T>(
    * The cursor steps back a page for the same reason `removeItem` re-derives
    * it, and is re-derived rather than decremented for the same reason too.
    * Every list here is ordered by a column the edit dialog can change - dive
-   * sites by name, trips and courses by start date, certifications by the date
-   * certified - so a rename or a re-dated trip *moves* the row in the server's
-   * order. Move it later than the loaded window and everything after its old
-   * slot shifts up one offset, so asking for the page after the last one fetched
-   * skips whichever row slid across the boundary, permanently. Re-reading the
+   * sites by name, courses by start date, trips by the earliest date across
+   * their parts, certifications by the date certified - so a rename or a
+   * re-dated trip *moves* the row in the server's order. Move it later than the
+   * loaded window and everything after its old slot shifts up one offset, so
+   * asking for the page after the last one fetched skips whichever row slid
+   * across the boundary, permanently. Re-reading the
    * previous page covers a shift of one row in either direction and the dedup in
    * `load` absorbs the repeats; the cost is one overlapping request on the next
    * scroll, however many edits it follows.
