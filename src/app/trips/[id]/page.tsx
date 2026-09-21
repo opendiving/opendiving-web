@@ -8,10 +8,7 @@ import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { tripsAPI, Trip } from "@/lib/api/trips";
 import { formatDateTime, formatTripDateRange } from "@/lib/date-time";
 import { formatTripLocationNames } from "@/lib/trip-locations";
-import {
-  SHOWN_LOCATIONS,
-  TripLocationsLabel,
-} from "@/components/trips/trip-locations-label";
+import { TripLocationsLabel } from "@/components/trips/trip-locations-label";
 import { formatTripSpan, tripPartLocations } from "@/lib/trip-parts";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { Button } from "@/components/ui/button";
@@ -66,13 +63,11 @@ export default function TripDetailPage() {
   const tripDateRange = formatTripSpan(tripParts, LONG_DATE);
 
   const tripLocations = tripPartLocations(tripParts);
-  // Only whether there is a place to name; the text and its hover hint are
-  // `TripLocationsLabel`'s, under the same cap the trips table and the
-  // dashboard card use. A subtitle that joined every name would turn a
-  // three-place trip into six comma-separated segments.
-  const tripLocationNames = formatTripLocationNames(tripLocations, {
-    max: SHOWN_LOCATIONS,
-  });
+  // Only whether there is a place to name, which is what decides the separator
+  // below. The subtitle's own text and hover hint come from rendering
+  // `TripLocationsLabel`, so the cap lives there with the trips table's and the
+  // dashboard card's rather than being passed a second time from here.
+  const tripLocationNames = formatTripLocationNames(tripLocations);
   // Only places the geocoder gave a position to can be drawn; the parts below
   // list all of them either way, so a typed-in place isn't silently dropped.
   const mappedLocations = tripLocations.filter(

@@ -6,14 +6,13 @@ import {
 } from "@/lib/trip-locations";
 
 // How many names a compact surface shows before the rest become "+N". One,
-// because a place's own name carries its country now - two of "Dahab, Egypt"
-// do not fit a table cell, and the hover hint is what keeps the count honest.
+// because a place's own name carries its country - two of "Dahab, Egypt" do not
+// fit a table cell, and the hover hint is what keeps the count honest.
 //
-// Exported because the trip page's subtitle joins the same names without
-// rendering this component, and the two agreeing is the invariant: every
-// surface that joins a trip's places for a reader shows the same number of
-// them.
-export const SHOWN_LOCATIONS = 1;
+// Private, as the limit for every surface that joins a trip's places for a
+// reader: each of them renders this component rather than joining the names
+// itself, so there is one number and nothing for a second one to disagree with.
+const SHOWN_LOCATIONS = 1;
 
 export interface TripLocationsLabelProps {
   locations?: Location[] | null;

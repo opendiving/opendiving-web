@@ -2773,12 +2773,13 @@ same blank-dropping rule: `["Moalboal", " "]` under `max: 1` shows no "+N" and g
 `TripLocationsLabel` calls both, as `DiveSitesLabel` does for dives; the trips table and the
 dashboard card pass locations and a fallback only.
 
-`SHOWN_LOCATIONS` is **one**, and exported rather than private. One because a place's name carries
-its country now, so two of "Dahab, Egypt" do not fit a table cell; exported because the trip page's
-subtitle joins the same names without rendering this component, and a surface capping differently
-would contradict a "+N" beside it. Every such list separates with `; ` — a comma is
-indistinguishable from the commas inside each name. `LocationsMap`'s accessible label takes the
-separator and not the cap: a cap withholds names from the one reader who cannot count the pins.
+`SHOWN_LOCATIONS` is **one**: a place's name carries its country, so two of "Dahab, Egypt" do not
+fit a table cell. It stays private because every surface that joins a trip's places for a reader —
+the trips table, the dashboard card, the dive sidebar and the trip page's own subtitle — renders
+this component, so there is one number and nothing for a second one to disagree with. Every such
+list separates with `; `, a comma being indistinguishable from the commas inside each name.
+`LocationsMap`'s accessible label takes the separator and not the cap: a cap withholds names from
+the one reader who cannot count the pins.
 
 `title` answers a mouse and nobody else: no hover on touch, unreachable by keyboard on a `<span>`.
 The alternative is a `Popover` trigger nested in a link; hover-only stands until the app has a
@@ -3342,11 +3343,10 @@ Costs: a place saved before this keeps the provider's label as its name until re
 `locationKey` (`geo:{lat}:{lon}:{full_name}`) keys it differently from a fresh pick of the same
 place.
 
-The provider's whole label is now stored beside it as `full_name` — the second stored field this
-entry used to reject, which DiveJSON asks for. It is written and rendered nowhere, so the choice
-above is unchanged for every reader; what it settles is the search cost this entry recorded, the API
-matching a term against both text columns and `full_name` carrying the region `_short_location`
-omits.
+The provider's whole label is stored beside it as `full_name`, because the format asks for the
+fullest form the source held. It is written on every geocoded pick and read by `locationKey`, and no
+surface renders it, so the choice above decides everything a diver sees. It also carries the region
+`_short_location` omits, which is what the API matches a search term against alongside the name.
 
 The dive site place search's menu hint shows the short form too; `ComboboxItem` has only `id`,
 `name`, `hint`. `placeKey` in `place-search.tsx` keys on the provider's label.
