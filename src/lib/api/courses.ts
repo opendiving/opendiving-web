@@ -35,10 +35,10 @@ export const DEFAULT_COURSE_STATUS: CourseStatus = "completed";
 /**
  * A training course: a group of dives and the certifications they produced.
  *
- * Works like a trip without a location. The instructor/training-center trio
- * duplicates the same fields on `Certification` deliberately - a certification
- * has to stand alone, because imported history arrives certification-first with
- * no course to hang them on.
+ * Works like a trip, but with dates of its own and no place. The
+ * instructor/training-center trio duplicates the same fields on `Certification`
+ * deliberately - a certification has to stand alone, because imported history
+ * arrives certification-first with no course to hang them on.
  */
 export interface Course {
   uuid: string;
@@ -50,8 +50,8 @@ export interface Course {
   // Only set when `agency` is `other` - the name of the training body.
   agency_other?: string | null;
   status: CourseStatus;
-  // Both nullable, unlike a trip's start date: a `planned` course has no dates
-  // yet, and a referral spans months with fuzzy edges. Bare "YYYY-MM-DD".
+  // Both nullable: a `planned` course has no dates yet, and a referral spans
+  // months with fuzzy edges. Bare "YYYY-MM-DD".
   start_date?: string | null;
   end_date?: string | null;
   instructor_name?: string | null;

@@ -51,7 +51,8 @@ one.
   one.
 - **Air consumption** — SAC and RMV are derived automatically, including a **per-tank breakdown**
   across recorded gas switches on multi-tank dives, with a consumption trend chart on the dashboard.
-- **Trips** — group dives into a liveaboard or a holiday week, with location and dates.
+- **Trips** — group dives into a liveaboard or a holiday week, a part at a time: each part carries
+  its own place and its own dates, and the trip spans them all.
 - **Dive sites** — your personal site list, with every dive you've logged at each site.
 - **Gear tracking** — your equipment with per-item dive counts, groupable into gear sets you can
   attach to a dive in one click, plus **service schedules** (annual service, visual inspection,
