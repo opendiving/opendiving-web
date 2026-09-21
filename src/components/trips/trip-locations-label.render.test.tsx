@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { TripLocationsLabel } from "./trip-locations-label";
-import type { TripLocation } from "@/lib/api/trips";
+import type { Location } from "@/lib/api/location";
 
 // The joining and the "+N" are `lib/trip-locations.ts`'s and are tested there. What a
 // render adds is the wiring the two surfaces share: that the hint lands on the element
@@ -9,7 +9,7 @@ import type { TripLocation } from "@/lib/api/trips";
 // the "+N" - the drift this component exists to make impossible - and that a trip with
 // nothing to say falls back rather than rendering an empty label.
 
-const at = (name: string) => ({ name }) as TripLocation;
+const at = (name: string) => ({ name }) as Location;
 
 describe("TripLocationsLabel", () => {
   it("hints every name when the label compacted some away", () => {
@@ -19,18 +19,20 @@ describe("TripLocationsLabel", () => {
       />,
     );
 
-    const hinted = screen.getByTitle("Moalboal, Panglao, Malapascua");
-    expect(hinted).toHaveTextContent("Moalboal, Panglao +1");
+    const hinted = screen.getByTitle("Moalboal; Panglao; Malapascua");
+    expect(hinted).toHaveTextContent("Moalboal +2");
   });
 
   it("leaves a fully shown label untitled", () => {
     // A tooltip repeating the text under the cursor is worse than no tooltip.
+    // One place is the whole of a fully shown label now: a place's own name
+    // carries its country, so two of them do not fit a table cell.
     const { container } = render(
-      <TripLocationsLabel locations={[at("Moalboal"), at("Panglao")]} />,
+      <TripLocationsLabel locations={[at("Dahab, Egypt")]} />,
     );
 
     expect(container.querySelector("[title]")).toBeNull();
-    expect(screen.getByText("Moalboal, Panglao")).toBeInTheDocument();
+    expect(screen.getByText("Dahab, Egypt")).toBeInTheDocument();
   });
 
   it("renders the fallback for a trip with no usable locations", () => {
@@ -58,7 +60,7 @@ describe("TripLocationsLabel", () => {
       />,
     );
 
-    expect(screen.getByTitle("Moalboal, Panglao, Malapascua")).toHaveClass(
+    expect(screen.getByTitle("Moalboal; Panglao; Malapascua")).toHaveClass(
       "block",
       "text-sm",
     );

@@ -27,11 +27,10 @@ import {
 import { moveItem, useDragSort } from "@/hooks/useDragSort";
 import {
   MAX_LOCATION_NAME_LENGTH,
-  MAX_TRIP_PARTS,
-  type TripLocationFormValue,
-  type TripPartFormValue,
-} from "@/lib/validations/trip";
-import { formatLocationContext } from "@/lib/trip-locations";
+  type LocationFormValue,
+} from "@/lib/validations/location";
+import { MAX_TRIP_PARTS, type TripPartFormValue } from "@/lib/validations/trip";
+import { geocodeResultToLocation } from "@/lib/locations";
 import { formatTripDateRange } from "@/lib/date-time";
 import { Attribution } from "@/components/attribution";
 import { cn } from "@/lib/utils";
@@ -61,51 +60,19 @@ const PLACE_SEARCH_DEBOUNCE_MS = 450;
  * back to Dahab - so nothing compares these keys *across* parts. They identify a
  * place within one part's menu, and rows are keyed and removed by position.
  */
-export function locationKey(location: TripLocationFormValue): string {
+export function locationKey(location: LocationFormValue): string {
   const { latitude, longitude } = location;
   if (latitude == null || longitude == null) {
     return `txt:${location.name.trim().toLowerCase()}`;
   }
-  return `geo:${latitude}:${longitude}:${location.display_name ?? location.name}`;
-}
-
-/**
- * A geocoder result as the form holds it.
- *
- * `name` falls back to `location` (the short composed form, "Dahab, Egypt")
- * because a result that matched an address rather than a named place has no name
- * of its own, and a row has to say something.
- *
- * `display_name` is that same short form rather than the provider's own label,
- * which is the one place the two `display_name`s in this app diverge:
- * `GeocodeResult.display_name` is what the provider said, and a trip place's
- * `display_name` is what a diver reads under the name. Nominatim's is "Dahab,
- * South Sinai, 45214, Egypt" - a postcode and an administrative level nobody
- * writes in a dive log - while `location` is the place-plus-country the API
- * composes from the structured address for exactly this purpose. It cannot be
- * recovered from the label later, which is why the choice happens here rather
- * than at render (DECISIONS.md).
- */
-export function geocodeResultToLocation(
-  result: GeocodeResult,
-): TripLocationFormValue {
-  return {
-    name: result.name ?? result.location,
-    display_name: result.location,
-    latitude: result.latitude,
-    longitude: result.longitude,
-    bbox_south: result.bbox_south,
-    bbox_north: result.bbox_north,
-    bbox_west: result.bbox_west,
-    bbox_east: result.bbox_east,
-  };
+  return `geo:${latitude}:${longitude}:${location.full_name ?? location.name}`;
 }
 
 export interface MappedPlaces {
   // Menu rows, in the order the provider ranked them.
   items: ComboboxItem[];
   // What to set the part's place to when one of those rows is picked, by row id.
-  locations: Map<string, TripLocationFormValue>;
+  locations: Map<string, LocationFormValue>;
   // The licence notices carried by these results, deduplicated.
   attributions: string[];
 }
@@ -121,7 +88,7 @@ export interface MappedPlaces {
  */
 export function mapSearchResults(results: GeocodeResult[]): MappedPlaces {
   const items: ComboboxItem[] = [];
-  const locations = new Map<string, TripLocationFormValue>();
+  const locations = new Map<string, LocationFormValue>();
   const attributions: string[] = [];
 
   for (const result of results) {
@@ -129,14 +96,10 @@ export function mapSearchResults(results: GeocodeResult[]): MappedPlaces {
     const id = locationKey(location);
     if (!locations.has(id)) {
       locations.set(id, location);
-      items.push({
-        id,
-        name: location.name,
-        // The place-plus-country the row would be set to, minus the part of it
-        // the row's own name already shows. What the diver reads in the menu is
-        // then exactly what lands in the field a click later.
-        hint: formatLocationContext(location),
-      });
+      // No hint: a place's name carries its country now, so the row already
+      // says what a second line would have, and the only string left to put
+      // there is the provider's postal chain - which nothing renders.
+      items.push({ id, name: location.name });
     }
     if (result.attribution && !attributions.includes(result.attribution)) {
       attributions.push(result.attribution);
@@ -483,7 +446,7 @@ function TripPartRow({
   // What each menu row would set the place to. Held in a ref rather than state
   // because nothing renders from it - the combobox hands back an id, and this is
   // what turns that id back into the object it came from.
-  const resultsRef = useRef<Map<string, TripLocationFormValue>>(new Map());
+  const resultsRef = useRef<Map<string, LocationFormValue>>(new Map());
 
   const errorId = `${fieldId}-error`;
   const location = part.location ?? null;
@@ -615,11 +578,7 @@ function TripPartRow({
             // it and the field would sit empty without this.
             selectedItem={
               location
-                ? {
-                    id: locationKey(location),
-                    name: location.name,
-                    hint: formatLocationContext(location),
-                  }
+                ? { id: locationKey(location), name: location.name }
                 : undefined
             }
             onChange={setPickedPlace}

@@ -280,6 +280,11 @@ export function LocationsMap({
   // " reads as a bug to anyone hearing it - hence the caller's `subject` as the
   // fallback. `formatTripLocationNames` is the same joining rule the trip's own
   // header uses, and it drops the blanks.
+  //
+  // Uncapped, unlike every surface that is looked at: a cap withholds names
+  // from a reader who cannot see the pins, which is the one reader this label
+  // exists for. The separator is shared with those surfaces, because it is
+  // about telling one place from the next and withholds nothing.
   const names = formatTripLocationNames(placed);
   // The empty frame says what it is rather than borrowing the label of the
   // places it doesn't have: "Map of the trip's locations" over a blank world is

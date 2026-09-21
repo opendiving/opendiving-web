@@ -1,24 +1,29 @@
 import { ReactNode } from "react";
-import { TripLocation } from "@/lib/api/trips";
+import { Location } from "@/lib/api/location";
 import {
   formatTripLocationNames,
   formatTripLocationNamesHint,
 } from "@/lib/trip-locations";
 
-// How many names a compact surface shows before the rest become "+N". Two fits a
-// table cell and still names more than one place, which is the whole reason a trip
-// carries a list.
-const SHOWN_LOCATIONS = 2;
+// How many names a compact surface shows before the rest become "+N". One,
+// because a place's own name carries its country now - two of "Dahab, Egypt"
+// do not fit a table cell, and the hover hint is what keeps the count honest.
+//
+// Exported because the trip page's subtitle joins the same names without
+// rendering this component, and the two agreeing is the invariant: every
+// surface that joins a trip's places for a reader shows the same number of
+// them.
+export const SHOWN_LOCATIONS = 1;
 
 export interface TripLocationsLabelProps {
-  locations?: TripLocation[] | null;
+  locations?: Location[] | null;
   className?: string;
   // What to render for a trip with no usable locations. A table wants "-"; a
   // dashboard subtitle wants to disappear, which is the default.
   fallback?: ReactNode;
 }
 
-// Renders a trip's locations as "Moalboal, Bohol +2", with every name in full as a
+// Renders a trip's locations as "Dahab, Egypt +2", with every name in full as a
 // hover hint whenever the "+N" is holding some of them back.
 //
 // One component rather than the same three lines at each call site, because the label

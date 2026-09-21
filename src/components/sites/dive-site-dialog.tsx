@@ -15,6 +15,8 @@ import {
 } from "@/lib/validations/dive-site";
 import { diveSitesAPI, DiveSite } from "@/lib/api/dive-sites";
 import { GeocodeResult } from "@/lib/api/geocoding";
+import { geocodeResultToLocation } from "@/lib/locations";
+import type { LocationFormValue } from "@/lib/validations/location";
 import {
   diveSitePlaceContext,
   DiveSiteSuggestion,
@@ -77,7 +79,7 @@ export function DiveSiteDialog({
     resolver: zodResolver(diveSiteFormSchema),
     defaultValues: {
       name: "",
-      location: "",
+      location: null,
       latitude: "",
       longitude: "",
       notes: "",
@@ -92,7 +94,9 @@ export function DiveSiteDialog({
     if (!open) return;
     reset({
       name: diveSite?.name ?? "",
-      location: diveSite?.location ?? "",
+      // The whole place, so that saving an edit that never touched this field
+      // sends back the full name, the centre and the box it was seeded with.
+      location: diveSite?.location ?? null,
       latitude: formatCoordinateForForm(diveSite?.latitude),
       longitude: formatCoordinateForForm(diveSite?.longitude),
       notes: diveSite?.notes ?? "",
@@ -118,9 +122,9 @@ export function DiveSiteDialog({
 
   // Owned here rather than by the map, because all three ways of placing a
   // position have to reach the same lookup and only one of them comes through
-  // the map. The geocoded place name is written straight into the Location
-  // field; it stays an ordinary text input, so a diver who wants something else
-  // types over it.
+  // the map. The place it answers with is written straight into the Location
+  // field; the field's visible half stays an ordinary text input, so a diver who
+  // wants something else types over it.
   const geocoded = useGeocodedLocation({
     open,
     latitude: watchedLatitude,
@@ -129,6 +133,17 @@ export function DiveSiteDialog({
     onUseLocation: (value) =>
       setValue("location", value, { shouldValidate: true, shouldDirty: true }),
   });
+
+  // What the diver types is a place's name and nothing more, so it replaces
+  // whatever was there rather than renaming it: a full name, a centre and a box
+  // picked for "Dahab, Egypt" say nothing true about the "Moalboal" now in the
+  // box. Emptying the field clears the place outright, which is how a site
+  // entered with the wrong locality is corrected back to "not recorded".
+  const typeLocationName = (text: string) =>
+    setValue("location", text.trim() ? { name: text } : null, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
 
   // The map, the search and the paste handler all write into the same two
   // fields rather than holding a position of their own, so there is one source
@@ -156,13 +171,21 @@ export function DiveSiteDialog({
   // A geocoded place fills the coordinate pair and the Location beside it. It
   // has nothing to say about what the *site* is called - the geocoder knows
   // where Dahab is, not that there is a Blue Hole in it - so Name is left alone.
+  //
+  // The whole place goes into Location, centre and box included: a forward
+  // search answered about the place itself, so its coordinates are the
+  // locality's own and not the pin this pick is about to drop. The pin lands on
+  // the same point here only because there is nothing better to put it on yet.
   const placeResult = (result: GeocodeResult) => {
     const position = {
       latitude: formatCoordinateForForm(result.latitude),
       longitude: formatCoordinateForForm(result.longitude),
     };
     setPosition(position);
-    geocoded.adopt(position, result);
+    geocoded.adopt(position, {
+      location: geocodeResultToLocation(result),
+      attribution: result.attribution,
+    });
   };
 
   // A catalog dive site fills Name as well, and always - a diver who wanted
@@ -177,6 +200,10 @@ export function DiveSiteDialog({
   // untouched - a site with no place context is not an answer about where the
   // site is, and clearing what a diver typed on the strength of one would be the
   // mistake `useGeocodedLocation` already refuses for an `unknown` lookup.
+  //
+  // A name and nothing else, because that is all the record holds: its
+  // coordinates are the *site's*, and the catalog never resolved a centre or an
+  // extent for the region it names.
   const placeCatalogSite = (site: DiveSiteSuggestion) => {
     const position = {
       latitude: formatCoordinateForForm(site.latitude),
@@ -184,10 +211,12 @@ export function DiveSiteDialog({
     };
     setValue("name", site.name, { shouldValidate: true, shouldDirty: true });
     setPosition(position);
-    const location = diveSitePlaceContext(site);
+    const place = diveSitePlaceContext(site);
     geocoded.adopt(
       position,
-      location ? { location, attribution: site.attribution } : null,
+      place
+        ? { location: { name: place }, attribution: site.attribution }
+        : null,
     );
   };
 
@@ -226,12 +255,18 @@ export function DiveSiteDialog({
       const latitude = parseFormCoordinate(data.latitude);
       const longitude = parseFormCoordinate(data.longitude);
 
+      // The whole place, or an explicit null. Naming it replaces the stored one
+      // wholesale, which is why the field carries the object it was seeded with
+      // rather than a text box over its name; null is what clears a locality
+      // that was entered wrongly.
+      const location = data.location ?? null;
+
       if (diveSite) {
         // The API answers a PATCH with just a status message, so the updated
         // dive site is assembled here for the caller.
         const update = {
           name: data.name,
-          location: data.location,
+          location,
           latitude,
           longitude,
           notes: data.notes,
@@ -241,7 +276,7 @@ export function DiveSiteDialog({
       } else {
         const created = await diveSitesAPI.createDiveSite({
           name: data.name,
-          location: data.location || undefined,
+          location,
           latitude,
           longitude,
           notes: data.notes || undefined,
@@ -292,6 +327,11 @@ export function DiveSiteDialog({
               )}
             />
 
+            {/* The field holds the whole place; the input is a view of its
+                name. What a pick brought with it - the fuller form the lookup
+                returned, the locality's own centre, its extent - rides along
+                unseen and is sent back on every save, so editing a site's name
+                does not quietly strip the place off it. */}
             <FormField
               control={form.control}
               name="location"
@@ -299,7 +339,15 @@ export function DiveSiteDialog({
                 <FormItem>
                   <FormLabel>Location</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. Dahab, Egypt" {...field} />
+                    <Input
+                      placeholder="e.g. Dahab, Egypt"
+                      name={field.name}
+                      ref={field.ref}
+                      onBlur={field.onBlur}
+                      disabled={field.disabled}
+                      value={field.value?.name ?? ""}
+                      onChange={(event) => typeLocationName(event.target.value)}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

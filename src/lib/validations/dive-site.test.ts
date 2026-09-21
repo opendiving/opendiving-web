@@ -31,7 +31,7 @@ describe("diveSiteFormSchema", () => {
   it("accepts optional location/notes", () => {
     const result = diveSiteFormSchema.safeParse({
       name: "Blue Hole",
-      location: "Dahab, Egypt",
+      location: { name: "Dahab, Egypt" },
       notes: "Famous for its arch",
     });
     expect(result.success).toBe(true);

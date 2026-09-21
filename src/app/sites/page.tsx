@@ -120,7 +120,7 @@ export default function SitesPage() {
                 {diveSite.name}
               </Link>
             </TableCell>
-            <TableCell>{diveSite.location || "-"}</TableCell>
+            <TableCell>{diveSite.location?.name || "-"}</TableCell>
             <TableCell className="text-right">
               {/* Named per row, not per action: ten identical "Edit"s tell a
                           screen reader's controls list nothing about which site.

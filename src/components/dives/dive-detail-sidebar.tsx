@@ -161,9 +161,9 @@ export function DiveDetailSidebar({
                       linked
                       className="font-medium"
                     />
-                    {dive.dive_sites[0]?.location && (
+                    {dive.dive_sites[0]?.location?.name && (
                       <span className="block text-muted-foreground">
-                        {dive.dive_sites[0].location}
+                        {dive.dive_sites[0].location.name}
                       </span>
                     )}
                   </div>

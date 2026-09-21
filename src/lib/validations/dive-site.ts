@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { locationSchema } from "./location";
 
 // Latitude/longitude are edited as free-typed, regex-validated strings and
 // converted to numbers right before the API call, exactly like the dive form's
@@ -31,10 +32,12 @@ export const diveSiteFormSchema = z
       .string()
       .min(1, "Dive site name is required")
       .max(255, "Dive site name cannot exceed 255 characters"),
-    location: z
-      .string()
-      .max(255, "Location cannot exceed 255 characters")
-      .optional(),
+    // The whole place, not a text box over its name. The dialog seeds this from
+    // the site it was handed and PATCHes it back, so a field holding only the
+    // name would drop a picked locality's full name, its centre and its box on
+    // every edit of an existing site. `null` is a site with no locality
+    // recorded, and sending it explicitly is how a wrong one is corrected.
+    location: locationSchema.nullish(),
     latitude: coordinateField(90, "Latitude", "27.8506"),
     longitude: coordinateField(180, "Longitude", "34.3136"),
     notes: z

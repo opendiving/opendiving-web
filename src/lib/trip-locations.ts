@@ -1,12 +1,18 @@
 // Where a trip went, as text. Every compact surface - the trips table, the
 // dashboard's recent-trips card, a detail page subtitle - shows the same joined
-// line, and every surface with room for one place's full label trims the same
-// repeat out of it, so both are composed once here rather than slightly
-// differently in each of them.
+// line, so it is composed once here rather than slightly differently in each of
+// them.
 
 interface NamedLocation {
   name: string;
 }
+
+// What separates one place from the next. A semicolon rather than a comma
+// because a place's own name carries its country now ("Dahab, Egypt"), so a
+// comma join would read as one list of five things instead of two places:
+// "Dahab, Egypt, Sharm El Sheikh, Egypt". The same reason the CSV export joins
+// a trip's places this way.
+const PLACE_SEPARATOR = "; ";
 
 export interface FormatTripLocationNamesOptions {
   // Show at most this many names, and count the rest as "+N". Omit to show all.
@@ -14,7 +20,7 @@ export interface FormatTripLocationNamesOptions {
 }
 
 /**
- * The trip's locations as "Moalboal, Bohol +2", or `undefined` when there are
+ * The trip's locations as "Dahab, Egypt +2", or `undefined` when there are
  * none.
  *
  * `undefined` rather than "" so callers can pick their own placeholder - the
@@ -29,7 +35,7 @@ export function formatTripLocationNames(
   if (names.length === 0) return undefined;
 
   const limit = resolveLimit(names.length, max);
-  const shown = names.slice(0, limit).join(", ");
+  const shown = names.slice(0, limit).join(PLACE_SEPARATOR);
   const hidden = names.length - Math.min(limit, names.length);
   return hidden > 0 ? `${shown} +${hidden}` : shown;
 }
@@ -49,7 +55,7 @@ export function formatTripLocationNamesHint(
   const names = usableNames(locations);
   const limit = resolveLimit(names.length, max);
   if (names.length <= limit) return undefined;
-  return names.join(", ");
+  return names.join(PLACE_SEPARATOR);
 }
 
 // How many names are on screen. Shared rather than repeated in both functions:
@@ -57,64 +63,6 @@ export function formatTripLocationNamesHint(
 // `undefined` exists to avoid, and it would look right at either call site.
 function resolveLimit(count: number, max?: number): number {
   return max !== undefined && max > 0 ? max : count;
-}
-
-interface LabelledLocation {
-  name?: string | null;
-  // The label kept beside the name: "Dahab, Egypt" for a place picked since the
-  // picker started storing the API's short composed form, and the geocoder's
-  // own "Dahab, South Sinai, 45214, Egypt" for one saved before it.
-  display_name?: string | null;
-}
-
-/**
- * A location's label with the leading repeat of the place's own name taken off,
- * or `undefined` when that leaves nothing.
- *
- * Every surface that has room for the label shows the name first and the label
- * after it, and the label starts with the name: "Dahab" and "Dahab, Egypt" read
- * together as "Dahab, Dahab, Egypt". Only the leading parts the name itself
- * repeats are dropped, so a site named "Blue Hole" keeps every word of "Dahab,
- * Egypt" - what goes is a duplicate, not context, and the context is the whole
- * reason the label is on screen.
- *
- * How short the label is, is not this function's business: it trims a repeat,
- * and both the short form and a provider label saved before the picker switched
- * to it go through unchanged otherwise.
- *
- * `undefined` rather than "" so a caller can drop the element entirely with
- * `&&` - a place whose label says no more than its name gets no second line
- * rather than an empty one.
- */
-export function formatLocationContext(
-  location: LabelledLocation,
-): string | undefined {
-  const label = labelParts(location.display_name);
-  const name = labelParts(location.name);
-
-  // Aligned part by part, not "does the label contain the name": "Dahab" is a
-  // repeat at the front of "Dahab, South Sinai" and a genuine part of "Blue
-  // Hole, Dahab, South Sinai".
-  let repeated = 0;
-  while (
-    repeated < name.length &&
-    repeated < label.length &&
-    label[repeated].toLowerCase() === name[repeated].toLowerCase()
-  ) {
-    repeated++;
-  }
-
-  const rest = label.slice(repeated);
-  return rest.length > 0 ? rest.join(", ") : undefined;
-}
-
-// A comma-separated label as its parts, blanks dropped - which is also what
-// makes a missing label an empty list rather than [""].
-function labelParts(label?: string | null): string[] {
-  return (label ?? "")
-    .split(",")
-    .map((part) => part.trim())
-    .filter(Boolean);
 }
 
 // A name is all a location is guaranteed to have, so a blank one is unusable

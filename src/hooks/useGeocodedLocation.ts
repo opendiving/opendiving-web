@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { geocodingAPI } from "@/lib/api/geocoding";
+import type { LocationFormValue } from "@/lib/validations/location";
 
 // A whole position, as the form holds it.
 export interface GeocodedPosition {
@@ -13,35 +14,37 @@ export interface UseGeocodedLocationOptions {
   // Whether the dialog this belongs to is open, so a reopen starts clean - see
   // the reset below.
   open: boolean;
-  // The live form values, as strings.
+  // The live coordinate fields, as strings.
   latitude?: string;
   longitude?: string;
-  location?: string;
-  onUseLocation: (location: string) => void;
+  // The live Location field, which holds the whole place rather than its name.
+  location?: LocationFormValue | null;
+  onUseLocation: (location: LocationFormValue | null) => void;
 }
 
 /**
- * The parts of a picked row this hook uses: what to write into the Location
- * field, and who to credit for it.
+ * The parts of a picked row this hook uses: the place to write into the
+ * Location field, and who to credit for it.
  *
  * Structural rather than `GeocodeResult`, because two things are picked from the
  * search now - a geocoded place and a dive site out of the catalog - and neither
  * one's whole shape is any of this hook's business.
  */
 export interface AdoptedPlace {
-  location: string;
+  location: LocationFormValue;
   attribution: string;
 }
 
 export interface GeocodedLocation {
   /**
-   * Name the position that was just placed, and write the answer into the
-   * location field a round trip later. For a position that arrived without a
-   * name of its own: a pin on the map, or a pair pasted into the coordinates.
+   * Name the position that was just placed, and write a place carrying that
+   * name - and nothing else - into the location field a round trip later. For a
+   * position that arrived without a name of its own: a pin on the map, or a
+   * pair pasted into the coordinates.
    */
   lookup: (position: GeocodedPosition) => void;
   /**
-   * Take the name a picked row already came with, which needs no lookup - and
+   * Take the place a picked row already came with, which needs no lookup - and
    * cancel any that is still in the air, since it is about the old pin.
    *
    * Pass `null` for a row that carries no place context at all. That is not the
@@ -61,6 +64,11 @@ export interface GeocodedLocation {
 /**
  * The dive site form's Location field, in so far as anything but the diver fills
  * it in - the geocoder by lookup, a picked row by `adopt`.
+ *
+ * The field holds a whole place, so what is written into it is one too. How much
+ * of a place each way in supplies is the interesting part: a forward search
+ * answers about the place itself and fills all of it, while a reverse geocode
+ * answers about the host's own pin and fills the name alone.
  *
  * Owned by `DiveSiteDialog` rather than by the map beneath it, because three
  * separate things now place a position - the map, the place search above it, and
@@ -132,9 +140,12 @@ export function useGeocodedLocation({
 
   const lookup = (placed: GeocodedPosition) => {
     const request = ++requestRef.current;
-    // What the Location field held when the position was placed. A reply is only
-    // allowed to write over *this*, never over something typed since.
-    const locationAtPick = location;
+    // What the Location field named when the position was placed. A reply is
+    // only allowed to write over *this*, never over something typed since. The
+    // name rather than the object, because that is the half the diver can edit
+    // while a reply is in the air - the rest of a place only ever arrives with
+    // a pick, and a pick bumps the counter above.
+    const nameAtPick = location?.name;
     setGeocoded(null);
     geocodingAPI
       .reverseGeocode(Number(placed.latitude), Number(placed.longitude))
@@ -153,7 +164,7 @@ export function useGeocodedLocation({
         // cost; "typing after placing the pin gets overwritten anyway" is not,
         // and it is the very thing the `unknown`-does-not-clear rule below
         // protects.
-        if (live.location !== locationAtPick) return;
+        if (live.location?.name !== nameAtPick) return;
         // An `unknown` outcome is not an answer about the position - geocoding
         // switched off, the instance over its provider cap (one request a
         // second, counted across everybody), or the provider timing out. None of
@@ -167,7 +178,8 @@ export function useGeocodedLocation({
         // the way `isSet` in `lib/validations/dive-site.ts` treats every other
         // field here: a stray space is not something a diver typed on purpose,
         // and emptying it looks identical on screen to emptying nothing.
-        if (outcome.status === "nameless" && !live.location?.trim()) return;
+        if (outcome.status === "nameless" && !live.location?.name?.trim())
+          return;
         // Whereas `nameless` *is* an answer: the API looked the position up and
         // there is no name there, so whatever is in the field describes where
         // the pin used to be and goes. Both branches write straight into the
@@ -176,17 +188,31 @@ export function useGeocodedLocation({
         // the trade being that moving the pin afterwards writes over whatever
         // they typed, since a placement is what this is answering.
         const result = outcome.status === "named" ? outcome.result : null;
+        // A reverse-geocoded place is a name and nothing else. The coordinates
+        // that came back describe where the *site* is - it is the pin the diver
+        // just dropped that was looked up - so writing them into the locality's
+        // centre would claim the town sits exactly on the wreck. The two are
+        // different facts, and this is the one path where they are guaranteed
+        // to be the same point, so nothing on screen would show the mistake.
+        // The provider's full label is left behind for the same reason: this
+        // answered "what is here", not "where is that place".
+        const place: AdoptedPlace | null = result
+          ? {
+              location: { name: result.location },
+              attribution: result.attribution,
+            }
+          : null;
         setGeocoded({
           ...placed,
-          place: result,
+          place,
           // Said out loud because the Location field writes itself a round trip
           // after the position was placed, and nobody is looking at it when it
           // happens - least of all when what it did was empty the field.
-          announcement: result
-            ? `Location set to ${result.location}.`
+          announcement: place
+            ? `Location set to ${place.location.name}.`
             : "This position has no name, so the location was cleared.",
         });
-        onUseLocation(result?.location ?? "");
+        onUseLocation(place?.location ?? null);
       })
       // A failure is not an answer, so the location is left exactly as it is.
       // Geocoding is optional on the API - it can be switched off, the provider
@@ -210,10 +236,10 @@ export function useGeocodedLocation({
       // announces the placement alone - saying the location was set would be
       // describing something that did not happen.
       announcement: place
-        ? `Placed at ${placed.latitude}, ${placed.longitude}. Location set to ${place.location}.`
+        ? `Placed at ${placed.latitude}, ${placed.longitude}. Location set to ${place.location.name}.`
         : `Placed at ${placed.latitude}, ${placed.longitude}.`,
     });
-    // Deliberately not called with `""` for a row that named nowhere. Emptying
+    // Deliberately not called with `null` for a row that named nowhere. Emptying
     // the field would be claiming the pick answered a question it never asked -
     // the same distinction `lookup` draws between a `nameless` position and an
     // `unknown` one, and only the first is grounds to clear what a diver typed.

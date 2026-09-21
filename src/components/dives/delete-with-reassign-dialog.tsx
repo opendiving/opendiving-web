@@ -82,7 +82,7 @@ const COPY: Record<DeleteTargetKind, KindCopy> = {
         items: response.data.map((site) => ({
           id: site.uuid,
           name: site.name,
-          hint: site.location,
+          hint: site.location?.name,
         })),
         hasMore: response.has_more,
       };

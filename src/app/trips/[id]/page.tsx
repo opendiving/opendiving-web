@@ -7,10 +7,11 @@ import { useResource } from "@/hooks/useResource";
 import { useDeleteResource } from "@/hooks/useDeleteResource";
 import { tripsAPI, Trip } from "@/lib/api/trips";
 import { formatDateTime, formatTripDateRange } from "@/lib/date-time";
+import { formatTripLocationNames } from "@/lib/trip-locations";
 import {
-  formatLocationContext,
-  formatTripLocationNames,
-} from "@/lib/trip-locations";
+  SHOWN_LOCATIONS,
+  TripLocationsLabel,
+} from "@/components/trips/trip-locations-label";
 import { formatTripSpan, tripPartLocations } from "@/lib/trip-parts";
 import { RecentDivesCard } from "@/components/dives/recent-dives-card";
 import { Button } from "@/components/ui/button";
@@ -65,7 +66,13 @@ export default function TripDetailPage() {
   const tripDateRange = formatTripSpan(tripParts, LONG_DATE);
 
   const tripLocations = tripPartLocations(tripParts);
-  const tripLocationNames = formatTripLocationNames(tripLocations);
+  // Only whether there is a place to name; the text and its hover hint are
+  // `TripLocationsLabel`'s, under the same cap the trips table and the
+  // dashboard card use. A subtitle that joined every name would turn a
+  // three-place trip into six comma-separated segments.
+  const tripLocationNames = formatTripLocationNames(tripLocations, {
+    max: SHOWN_LOCATIONS,
+  });
   // Only places the geocoder gave a position to can be drawn; the parts below
   // list all of them either way, so a typed-in place isn't silently dropped.
   const mappedLocations = tripLocations.filter(
@@ -103,9 +110,13 @@ export default function TripDetailPage() {
         backLabel="Back to trips"
         title={trip.name}
         subtitle={
-          tripLocationNames && tripDateRange
-            ? `${tripDateRange} · ${tripLocationNames}`
-            : (tripLocationNames ?? tripDateRange ?? undefined)
+          tripLocationNames || tripDateRange ? (
+            <>
+              {tripDateRange}
+              {tripDateRange && tripLocationNames ? " · " : null}
+              <TripLocationsLabel locations={tripLocations} />
+            </>
+          ) : undefined
         }
         actions={
           <>
@@ -182,19 +193,13 @@ export default function TripDetailPage() {
                     {tripParts.length > 1 ? "Parts" : "Part"}
                   </div>
                   {/* One row per part, in the order the diver arranged them,
-                      rather than the joined line the header and the trips table
-                      show: this is the one surface with room to put the country
-                      under the name and the part's own dates beneath that. A
-                      part with no place is still a row - it is a stretch of the
-                      trip, and dropping it would renumber the rest. */}
+                      rather than the capped joined line the header and the trips
+                      table show: this is the one surface with room to name every
+                      place and put the part's own dates beneath each. A part
+                      with no place is still a row - it is a stretch of the trip,
+                      and dropping it would renumber the rest. */}
                   <ul className="space-y-1.5">
                     {tripParts.map((part, index) => {
-                      // The label with the name above it trimmed off its front,
-                      // so the two lines don't read "Dahab" over "Dahab,
-                      // Egypt".
-                      const context = part.location
-                        ? formatLocationContext(part.location)
-                        : undefined;
                       const dates = formatTripDateRange(
                         part.start_date ?? undefined,
                         part.end_date ?? undefined,
@@ -213,11 +218,6 @@ export default function TripDetailPage() {
                                 </span>
                               )}
                             </span>
-                            {context && (
-                              <span className="block text-xs text-muted-foreground">
-                                {context}
-                              </span>
-                            )}
                             {dates && (
                               <span className="block text-xs text-muted-foreground">
                                 {dates}

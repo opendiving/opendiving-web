@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { GeocodeResult } from "@/lib/api/geocoding";
+import { geocodeResultToLocation } from "@/lib/locations";
 import {
   describeTripPart,
-  geocodeResultToLocation,
   locationKey,
   mapSearchResults,
   tripPartErrors,
@@ -31,18 +31,18 @@ const BOHOL: GeocodeResult = {
 };
 
 describe("locationKey", () => {
-  it("identifies a picked place by position and label", () => {
+  it("identifies a picked place by position and fuller name", () => {
     // Places are value objects with no id of their own, so a menu row's id has
     // to come from the content.
     expect(locationKey(geocodeResultToLocation(MOALBOAL))).toBe(
-      "geo:9.9366:123.3986:Moalboal, Philippines",
+      "geo:9.9366:123.3986:Moalboal, Cebu, Central Visayas, Philippines",
     );
   });
 
   it("separates two places of the same name", () => {
-    // Both compose to "Moalboal, Philippines" now the short form is what a part
-    // keeps, so the position is the whole of what separates them - which is the
-    // thing that actually differs between two places of one name.
+    // Both compose to "Moalboal, Philippines" now the short form is what a
+    // place is called, so the position and the provider's own fuller label are
+    // what separate them.
     const negros = geocodeResultToLocation({
       ...MOALBOAL,
       latitude: 9.33,
@@ -74,62 +74,21 @@ describe("locationKey", () => {
   });
 });
 
-describe("geocodeResultToLocation", () => {
-  it("carries the place's position and extent through", () => {
-    // The bbox is what lets the confirmation map frame an island rather than
-    // put one pin in the middle of it.
-    expect(geocodeResultToLocation(BOHOL)).toEqual({
-      name: "Bohol",
-      display_name: "Bohol, Philippines",
-      latitude: 9.85,
-      longitude: 124.14,
-      bbox_south: 9.48,
-      bbox_north: 10.29,
-      bbox_west: 123.7,
-      bbox_east: 124.66,
-    });
-  });
-
-  it("keeps the composed location as the label, not the provider's", () => {
-    // Nominatim's label carries an administrative level and a postcode ("Dahab,
-    // South Sinai, 45214, Egypt") that no diver writes down, and the API already
-    // composes the place-plus-country form beside it. Chosen here rather than at
-    // render because the short form cannot be recovered from the long one -
-    // "Dahab" is the settlement in "Dahab, South Sinai, Egypt" and a dive site
-    // in "Blue Hole, Dahab, South Sinai, Egypt", and nothing in the flat string
-    // says which.
-    expect(geocodeResultToLocation(MOALBOAL).display_name).toBe(
-      "Moalboal, Philippines",
-    );
-  });
-
-  it("falls back to the composed location when the result has no name", () => {
-    // An address-only match ("12 Corniche Road") has no name of its own, and a
-    // row has to say something.
-    const address = { ...MOALBOAL, name: null };
-
-    expect(geocodeResultToLocation(address).name).toBe("Moalboal, Philippines");
-  });
-});
-
 describe("mapSearchResults", () => {
   it("builds menu rows that resolve back to what they set", () => {
     const { items, locations } = mapSearchResults([MOALBOAL, BOHOL]);
 
-    // The hint is the label minus the name the row already shows, so the menu
-    // reads "Moalboal, Philippines" rather than naming Moalboal twice - and the
-    // provider's "Moalboal, Cebu, Central Visayas, Philippines" never reaches a
-    // menu row at all.
+    // No hint: a place's name carries its country now, so the row says what a
+    // second line would have said, and the only string left to put there is the
+    // provider's own chain - which nothing in this app renders.
     expect(items).toEqual([
       {
         id: locationKey(geocodeResultToLocation(MOALBOAL)),
-        name: "Moalboal",
-        hint: "Philippines",
+        name: "Moalboal, Philippines",
       },
       {
         id: locationKey(geocodeResultToLocation(BOHOL)),
-        name: "Bohol",
-        hint: "Philippines",
+        name: "Bohol, Philippines",
       },
     ]);
     expect(locations.get(items[1].id)).toEqual(geocodeResultToLocation(BOHOL));
@@ -138,7 +97,10 @@ describe("mapSearchResults", () => {
   it("keeps the provider's ranking", () => {
     const { items } = mapSearchResults([BOHOL, MOALBOAL]);
 
-    expect(items.map((item) => item.name)).toEqual(["Bohol", "Moalboal"]);
+    expect(items.map((item) => item.name)).toEqual([
+      "Bohol, Philippines",
+      "Moalboal, Philippines",
+    ]);
   });
 
   it("collapses results that key identically", () => {
@@ -156,7 +118,13 @@ describe("mapSearchResults", () => {
     const { attributions } = mapSearchResults([
       MOALBOAL,
       BOHOL,
-      { ...MOALBOAL, name: "Panagsama", attribution: "Natural Earth" },
+      {
+        ...MOALBOAL,
+        latitude: 9.9,
+        location: "Panagsama, Philippines",
+        display_name: "Panagsama Beach, Cebu, Philippines",
+        attribution: "Natural Earth",
+      },
     ]);
 
     expect(attributions).toEqual([

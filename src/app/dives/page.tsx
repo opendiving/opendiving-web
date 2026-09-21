@@ -124,7 +124,7 @@ export default function DivesPage() {
             <TableCell>{formatDiveDateTime(dive.start_time)}</TableCell>
             {/* The primary site's location - the site the first column names. */}
             <TableCell className="text-muted-foreground">
-              {dive.dive_sites[0]?.location ?? "-"}
+              {dive.dive_sites[0]?.location?.name ?? "-"}
             </TableCell>
             <TableCell>{formatDurationHoursMinutes(dive.duration)}</TableCell>
             <TableCell>

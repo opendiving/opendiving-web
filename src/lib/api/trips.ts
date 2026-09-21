@@ -1,25 +1,6 @@
 import { apiClient } from "./client";
 import type { PaginatedResponse } from "./client";
-
-/**
- * The place half of a trip part, as the API stores it.
- *
- * A value object, not a resource: it has no uuid, it belongs to exactly one
- * part, and it is a snapshot of what the geocoder said at the time rather than a
- * row in a shared gazetteer. `name` is the only field that is always there - a
- * place typed in by hand, because the geocoder had nothing for it, has a name
- * and nothing else.
- */
-export interface TripLocation {
-  name: string;
-  display_name?: string | null;
-  latitude?: number | null;
-  longitude?: number | null;
-  bbox_south?: number | null;
-  bbox_north?: number | null;
-  bbox_west?: number | null;
-  bbox_east?: number | null;
-}
+import type { Location } from "./location";
 
 /**
  * One stretch of a trip: an optional date range and an optional place.
@@ -33,7 +14,7 @@ export interface TripLocation {
 export interface TripPart {
   start_date?: string | null;
   end_date?: string | null;
-  location?: TripLocation | null;
+  location?: Location | null;
 }
 
 // What a write sends. Identical in shape to `TripPart` - parts are replaced

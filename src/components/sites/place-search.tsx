@@ -21,7 +21,7 @@ import {
   MAX_SITE_QUERY_LENGTH,
   MIN_SITE_QUERY_LENGTH,
 } from "@/lib/api/dive-site-catalog";
-import { formatLocationContext } from "@/lib/trip-locations";
+import { formatLocationContext } from "@/lib/locations";
 import { formatDistance, GeoPoint, haversineMeters } from "@/lib/geo-distance";
 import { useUnits } from "@/hooks/useUnits";
 import type { UnitSystem } from "@/lib/units";
@@ -234,7 +234,7 @@ export function PlaceSearch({ onPick, position, disabled }: PlaceSearchProps) {
             // and the form say the same thing.
             hint: formatLocationContext({
               name,
-              display_name: result.location,
+              full_name: result.location,
             }),
           },
         );
