@@ -199,10 +199,10 @@ export function RecentDivesCard({
                     </span>
                     {/* The title names the site; this line says where it
                         is. */}
-                    {dive.dive_sites[0]?.location && (
+                    {dive.dive_sites[0]?.location?.name && (
                       <span className="block sm:inline">
                         <span className="hidden sm:inline">{" \u00b7 "}</span>
-                        {dive.dive_sites[0].location}
+                        {dive.dive_sites[0].location.name}
                       </span>
                     )}
                   </div>

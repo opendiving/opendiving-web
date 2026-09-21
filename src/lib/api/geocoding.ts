@@ -14,9 +14,10 @@ export const MAX_PLACE_QUERY_LENGTH = 200;
  * One place, normalized by the API away from whichever provider answered.
  *
  * `location` and `display_name` answer different questions. `location` is the
- * short, composed form that goes onto `dive_site.location` - divers write
- * "Dahab, Egypt", not a seven-part postal address. `display_name` is the
- * provider's full label, which is what tells two similar results apart.
+ * short, composed form that becomes a place's `name` - divers write "Dahab,
+ * Egypt", not a seven-part postal address. `display_name` is the provider's
+ * full label, which is what tells two similar results apart in a menu and what
+ * becomes the place's `full_name`, stored for the export and rendered nowhere.
  *
  * `attribution` rides on each result rather than in an envelope because it is a
  * licence condition of the data itself, and it must be rendered wherever the

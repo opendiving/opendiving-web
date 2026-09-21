@@ -2623,18 +2623,20 @@ follows `NEXT_PUBLIC_MAP_TILE_URL` to a self-hosted server.
 ## A trip part's place is self-describing, so nothing has to be resolved
 
 `TripPartsField` is built on the same `CreatableCombobox` as `DiveSiteMultiSelect` but holds
-`{name, display_name, latitude, longitude, bbox_*}` objects, the snapshot the API stores, rather
-than uuids, so a row renders from its own content with nothing to fetch and no loading state.
+`{name, full_name, latitude, longitude, bbox_*}` objects, the snapshot the API stores, rather than
+uuids, so a row renders from its own content with nothing to fetch and no loading state. A row shows
+the name alone: `name` carries the place's country, and the only string a second line could add is
+the provider's postal chain, which nothing renders.
 
-Places therefore have no id. `locationKey` derives one from content:
-`geo:{lat}:{lon}:{display_name}` for a geocoded place, `txt:{name}` lowercased and trimmed for a
-typed one. `mapSearchResults` collapses results sharing a key, since Nominatim can return the same
-place twice, and the row's `value`/`selectedItem` pair is keyed by it. Nothing compares keys across
-parts: two parts may name the same place — Dahab, then Sharm, then back to Dahab — so there is no
-`excludeIds` and no "already in the list" refusal. Rows are keyed and removed by position, or a
-repeat would go as a pair. Position-keyed rows swap content under a focused drag handle, so
-`useDragSort` moves focus to the destination handle (`data-drag-handle`) a frame after a keyboard
-reorder; for id-keyed lists that is a no-op.
+Places therefore have no id. `locationKey` derives one from content: `geo:{lat}:{lon}:{full_name}`
+for a geocoded place, `txt:{name}` lowercased and trimmed for a typed one. `mapSearchResults`
+collapses results sharing a key, since Nominatim can return the same place twice, and the row's
+`value`/`selectedItem` pair is keyed by it. Nothing compares keys across parts: two parts may name
+the same place — Dahab, then Sharm, then back to Dahab — so there is no `excludeIds` and no "already
+in the list" refusal. Rows are keyed and removed by position, or a repeat would go as a pair.
+Position-keyed rows swap content under a focused drag handle, so `useDragSort` moves focus to the
+destination handle (`data-drag-handle`) a frame after a keyboard reorder; for id-keyed lists that is
+a no-op.
 
 ## An unmatched query is addable as text, and that is an outage hatch as much as a long tail
 
@@ -2673,12 +2675,14 @@ otherwise write the stale name back.
 
 ## Coordinates that were picked, not typed, are numbers
 
-`lib/validations/dive-site.ts` validates coordinates as strings against a regex because a diver
-typing a latitude passes through "-" and "-17." on the way to "-17.9". A trip location's coordinates
+`lib/validations/dive-site.ts` validates a _site's own pin_ as strings against a regex because a
+diver typing a latitude passes through "-" and "-17." on the way to "-17.9". A place's coordinates
 arrive whole inside an object picked from a menu, or are absent for a typed-in place; there is no
-half-entered state. So `tripLocationSchema` uses plain `z.number()` with the API's bounds, catching
-a nonsense object before the round trip. It carries no `z.preprocess` or `.transform`, which keeps
-`z.input<>` inference working and `TripLocationFormValue` usable as the form's own type.
+half-entered state, and no field for one. So `locationSchema` in `lib/validations/location.ts` uses
+plain `z.number()` with the API's bounds, catching a nonsense object before the round trip. It
+carries no `z.preprocess` or `.transform`, which keeps `z.input<>` inference working and
+`LocationFormValue` usable as either form's own type — one schema, because a dive site's locality
+and a trip part's are one object.
 
 ## The confirmation map is not `MapPicker`, and that is most of why it is short
 
@@ -2757,17 +2761,25 @@ skeleton's height cannot drift from the map's.
 
 ## A "+N" is a promise that hovering will say what N was
 
-`Moalboal, Bohol +2` compacts a list the payload already holds, so both surfaces carry the full list
-as a `title`.
+`Dahab, Egypt +2` compacts a list the payload already holds, so every surface showing it carries the
+full list as a `title`.
 
 The hint sits on the whole label, not the "+N": a two-character badge is a small hover target and
 splits the answer in two.
 
 A hint that repeats the label is worse than none, so `formatTripLocationNamesHint` sits beside
 `formatTripLocationNames`, answers `undefined` when nothing is hidden, and decides that under the
-same blank-dropping rule: `["Moalboal", " ", "Bohol"]` under `max: 2` shows no "+N" and gets no
-tooltip. `TripLocationsLabel` owns the limit and calls both, as `DiveSitesLabel` does for dives; the
-trips table and the dashboard card pass locations and a fallback only.
+same blank-dropping rule: `["Moalboal", " "]` under `max: 1` shows no "+N" and gets no tooltip.
+`TripLocationsLabel` calls both, as `DiveSitesLabel` does for dives; the trips table and the
+dashboard card pass locations and a fallback only.
+
+`SHOWN_LOCATIONS` is **one**: a place's name carries its country, so two of "Dahab, Egypt" do not
+fit a table cell. It stays private because every surface that joins a trip's places for a reader —
+the trips table, the dashboard card, the dive sidebar and the trip page's own subtitle — renders
+this component, so there is one number and nothing for a second one to disagree with. Every such
+list separates with `; `, a comma being indistinguishable from the commas inside each name.
+`LocationsMap`'s accessible label takes the separator and not the cap: a cap withholds names from
+the one reader who cannot count the pins.
 
 `title` answers a mouse and nobody else: no hover on touch, unreachable by keyboard on a `<span>`.
 The alternative is a `Popover` trigger nested in a link; hover-only stands until the app has a
@@ -3301,39 +3313,43 @@ threaded through three shared primitives.
 
 ## A location's full label is trimmed of the name it sits beside, at render time
 
-Nominatim's `display_name` opens with the name it matched, and surfaces show the name first.
-`formatLocationContext` in `lib/trip-locations.ts` drops the leading parts of the label the name
-repeats, returning `undefined` when nothing is left so callers drop the element with `&&`.
+Nominatim's label opens with the name it matched, and the surface shows the name first.
+`formatLocationContext` in `lib/locations.ts` drops the leading parts of the label the name repeats,
+returning `undefined` when nothing is left so callers drop the element with `&&`.
 
 It aligns whole comma-separated parts, never substrings: "Dahab" is a duplicate in "Dahab, South
 Sinai" and context in "Blue Hole, Dahab, South Sinai", and whole parts stop "Ko Tao" eating "Ko Tao
 Island".
 
-It runs at render, not in `geocodeResultToLocation`: `display_name` is stored on the part's place,
-so saved trips would stay untrimmed. It is what the menu's `hint` shows, so the row the diver reads
-is the one that lands in the field a click later. The stored label is the short form; see "The label
-a trip location keeps is the API's short form, chosen on the way in".
+Its one caller is the dive site place search, and both arguments come from a `GeocodeResult`: the
+row's own bare name against the API's composed form, so a row reading "Dahab" carries "Egypt" beside
+it and two same-named results come apart. Nothing renders a _stored_ place's `full_name`, so there
+is no saved shape left to trim — a place's `name` carries its country, and a line under it would be
+the provider's postal chain. See "The label a trip location keeps is the API's short form, chosen on
+the way in".
 
 ## The label a trip location keeps is the API's short form, chosen on the way in
 
-`geocodeResultToLocation` stores `GeocodeResult.location` — the API's `_short_location`, place plus
-country from the provider's structured address — as a trip part's `location.display_name`, not
-Nominatim's `display_name`; a dive log records "Dahab, Egypt", as the dive site form does
-(`dive_site.location`).
+`geocodeResultToLocation` (`lib/locations.ts`) stores `GeocodeResult.location` — the API's
+`_short_location`, place plus country from the provider's structured address — as a place's `name`,
+on a dive site and a trip part alike, rather than Nominatim's `display_name`; a dive log records
+"Dahab, Egypt".
 
 It is received, not derived: the flat string cannot say whether the name is the settlement ("Dahab"
 → "Dahab, Egypt") or sits inside one ("Blue Hole" → "Blue Hole, Dahab, Egypt"); the structured
 address can.
 
-Costs: a place saved before this keeps the provider's label until re-picked, and `locationKey`
-(`geo:{lat}:{lon}:{label}`) keys it differently from a fresh pick of the same place. A trip stops
-matching its region in search: `search_conditions` in `crud_trips.py` ORs the term against a part's
-`display_name`, and `_short_location` composes place or region, never both;
-`test_the_display_name_matches_too` hand-writes its fixture and misses this. Neither repair (a
-second stored field, a geocoder-backed search) is worth it.
+Costs: a place saved before this keeps the provider's label as its name until re-picked, and
+`locationKey` (`geo:{lat}:{lon}:{full_name}`) keys it differently from a fresh pick of the same
+place.
 
-Menu hints show it too; `ComboboxItem` has only `id`, `name`, `hint`. `placeKey` in
-`place-search.tsx` keys on the provider's label.
+The provider's whole label is stored beside it as `full_name`, because the format asks for the
+fullest form the source held. It is written on every geocoded pick and read by `locationKey`, and no
+surface renders it, so the choice above decides everything a diver sees. It also carries the region
+`_short_location` omits, which is what the API matches a search term against alongside the name.
+
+The dive site place search's menu hint shows the short form too; `ComboboxItem` has only `id`,
+`name`, `hint`. `placeKey` in `place-search.tsx` keys on the provider's label.
 
 ## The geocoder's attribution is a wire format, not display copy
 
@@ -3370,6 +3386,14 @@ the API's `GEOCODER_URL`, and a self-hoster may run two providers.
 A position arrives three ways — pin, place search, pasted latitude/longitude pair — and only
 `DiveSiteDialog` sees all three, so the reverse geocode and its guards live in
 `hooks/useGeocodedLocation.ts`; `DiveSiteMapField` renders search, map and credit.
+
+**A reverse-geocoded place is a name and nothing else**, where a forward search fills the whole
+place. The coordinates that come back are the _site's_ — it is the pin the diver just dropped that
+was looked up — so taking them would file the wreck as the centre of the town around it, on the one
+path where the two points are identical and nothing on screen could show it. The Location field
+holds the whole object and shows its name, so a save sends back the fuller name, the centre and the
+extent a pick brought with it; typing a name replaces the place outright, and clearing the box sends
+an explicit `null`.
 
 The guards — newest request wins, the reply checked against the fields as they stand on arrival,
 `unknown` never clearing a field while `nameless` does, a nameless answer silent with nothing to
@@ -5171,12 +5195,13 @@ come first; the `hint` slot, not a new `CreatableCombobox` prop, marks which is 
 
 A pick is `{ kind: "catalog", site }` or `{ kind: "geocode", result }`, and `DiveSiteDialog` forks
 on the tag, not on the namespaced row id. A catalog pick always fills Name; a geocoded one does not.
-Location is `region, country`, never an ISO code; where neither resolved the field stays as typed,
-so `adopt` takes `AdoptedPlace | null`. `suggestDiveSites` guards its own query length because the
-combobox calls `onSearch` with `""` on open. Distance is computed here (`haversineMeters`,
-`formatDistance`) so the unit preference holds. Catalog `attribution` joins the search credit, never
-the map's. `DiveSiteMapField` passes the form's position whole or not at all; the endpoint answers
-422 to half.
+Location is a place named `region, country`, never an ISO code, and nothing else — the record's
+coordinates are the site's, and the catalog resolved no centre or extent for the region it names.
+Where neither resolved, the field stays as it was, so `adopt` takes `AdoptedPlace | null`.
+`suggestDiveSites` guards its own query length because the combobox calls `onSearch` with `""` on
+open. Distance is computed here (`haversineMeters`, `formatDistance`) so the unit preference holds.
+Catalog `attribution` joins the search credit, never the map's. `DiveSiteMapField` passes the form's
+position whole or not at all; the endpoint answers 422 to half.
 
 ## A refused save has to be announced, and `role="alert"` alone does not do it
 

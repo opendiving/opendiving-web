@@ -88,7 +88,7 @@ export default function DiveSiteDetailPage() {
         backHref="/sites"
         backLabel="Back to dive sites"
         title={diveSite.name}
-        subtitle={diveSite.location ? diveSite.location : undefined}
+        subtitle={diveSite.location?.name ?? undefined}
         actions={
           <>
             <Button variant="outline" onClick={() => setIsEditOpen(true)}>
@@ -156,12 +156,12 @@ export default function DiveSiteDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {diveSite.location && (
+              {diveSite.location?.name && (
                 <div>
                   <div className="text-sm font-medium text-muted-foreground mb-1">
                     Location
                   </div>
-                  <div className="text-sm">{diveSite.location}</div>
+                  <div className="text-sm">{diveSite.location.name}</div>
                 </div>
               )}
               {coordinates && (

@@ -1,6 +1,7 @@
 import { apiClient } from "./client";
 import type { PaginatedResponse } from "./client";
 import { GearItemSummary } from "./gear";
+import type { Location } from "./location";
 import { SpeciesSummary } from "./species";
 
 // A single gas mixture / scuba tank used during a dive.
@@ -100,7 +101,10 @@ export interface DiveMixture {
 export interface DiveSiteSummary {
   uuid: string;
   name: string;
-  location?: string;
+  // The whole place, not a trimmed copy of it: one shape named `location` on
+  // the wire wherever it appears. Its own coordinates are the locality's
+  // centre, a different fact from the site's pin below.
+  location?: Location | null;
   // Where the site is, so a dive can be mapped from its own response instead of
   // fetching every linked site separately. The API kept these off the embedded
   // summary while no map view existed (see its DECISIONS.md); the dive page's

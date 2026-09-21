@@ -82,7 +82,10 @@ describe("TripPartsField", () => {
       <Field
         initial={[
           {
-            location: { name: "Dahab", display_name: "Dahab, Egypt" },
+            location: {
+              name: "Dahab, Egypt",
+              full_name: "Dahab, South Sinai, Egypt",
+            },
             start_date: "2026-04-18",
             end_date: "2026-04-22",
           },
@@ -90,7 +93,7 @@ describe("TripPartsField", () => {
       />,
     );
 
-    expect(places()).toEqual(["Dahab"]);
+    expect(places()).toEqual(["Dahab, Egypt"]);
     expect(screen.getByLabelText("From part 1 of 1")).toHaveValue("2026-04-18");
     expect(screen.getByLabelText("To part 1 of 1")).toHaveValue("2026-04-22");
   });
@@ -218,7 +221,7 @@ describe("TripPartsField", () => {
     });
     await userEvent.click(await screen.findByRole("option", { name: /Dahab/ }));
 
-    await waitFor(() => expect(places()).toEqual(["Sharm", "Dahab"]));
+    await waitFor(() => expect(places()).toEqual(["Sharm", "Dahab, Egypt"]));
   });
 
   it("adds typed text on Enter, and does nothing at all on leaving the field", async () => {
@@ -289,8 +292,8 @@ describe("TripPartsField", () => {
         initial={[
           {
             location: {
-              name: "Dahab",
-              display_name: "Dahab, Egypt",
+              name: "Dahab, Egypt",
+              full_name: "Dahab, South Sinai, Egypt",
               latitude: 28.4954,
               longitude: 34.5197,
             },
@@ -303,7 +306,7 @@ describe("TripPartsField", () => {
     await waitFor(() => expect(searchPlaces).toHaveBeenCalledWith(""));
     await userEvent.keyboard("{Enter}");
 
-    await waitFor(() => expect(places()).toEqual(["Dahab"]));
+    await waitFor(() => expect(places()).toEqual(["Dahab, Egypt"]));
     expect(screen.queryByText("Not on the map")).not.toBeInTheDocument();
   });
 

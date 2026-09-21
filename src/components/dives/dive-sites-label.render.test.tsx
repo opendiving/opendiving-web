@@ -8,7 +8,11 @@ import { DiveSitesLabel } from "./dive-sites-label";
 // shows.
 
 const sites = [
-  { uuid: "a", name: "Pescador Island", location: "Moalboal, Philippines" },
+  {
+    uuid: "a",
+    name: "Pescador Island",
+    location: { name: "Moalboal, Philippines" },
+  },
   { uuid: "b", name: "Panagsama Wall" },
   { uuid: "c", name: "Tongo Point" },
 ];

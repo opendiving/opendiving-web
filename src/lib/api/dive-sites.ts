@@ -1,6 +1,12 @@
 import { apiClient } from "./client";
 import type { PaginatedResponse } from "./client";
+import type { Location } from "./location";
 
+// A site carries two positions that mean different things: `latitude`/
+// `longitude` are the pin a diver dropped, and `location.latitude`/
+// `location.longitude` are the centre of the town the geocoder resolved.
+// Nothing fills either from the other.
+//
 // `latitude`/`longitude` are both-or-neither on the API, and the rule is about
 // the request body rather than the resulting row: naming one without the other
 // is a 422, so is naming both with only one value, and the stored row is never
@@ -10,7 +16,7 @@ import type { PaginatedResponse } from "./client";
 export interface DiveSite {
   uuid: string;
   name: string;
-  location?: string;
+  location?: Location | null;
   latitude?: number | null;
   longitude?: number | null;
   notes?: string;
@@ -20,15 +26,24 @@ export interface DiveSite {
 
 export interface DiveSiteCreate {
   name: string;
-  location?: string;
+  location?: Location | null;
   latitude?: number | null;
   longitude?: number | null;
   notes?: string;
 }
 
+// The `PATCH /dive-site/{uuid}` body, which is the API's nested
+// `DiveSiteUpdateRequest` rather than the flat `DiveSiteUpdate` beside it -
+// that one is the admin panel's form and is swept against the table's columns,
+// so it spells the locality as eight `location_*` fields and cannot nest.
+//
+// Naming `location` **replaces** the stored place wholesale: it is a value
+// object with nothing to merge into, and a partial update would leave a cleared
+// locality's centre and box behind. An explicit `null` clears it, which is how
+// a site entered with the wrong place is corrected back to "not recorded".
 export interface DiveSiteUpdate {
   name?: string;
-  location?: string;
+  location?: Location | null;
   latitude?: number | null;
   longitude?: number | null;
   notes?: string;
@@ -38,8 +53,8 @@ export type PaginatedDiveSitesResponse = PaginatedResponse<DiveSite>;
 
 /**
  * Dive-site CRUD. `getDiveSites` takes a `search` the API matches server-side against
- * name and location, which is what lets the dive form's picker narrow as you type instead
- * of loading a diver's whole site list.
+ * the site's name and both of its locality's names, which is what lets the dive form's
+ * picker narrow as you type instead of loading a diver's whole site list.
  */
 export const diveSitesAPI = {
   // Create a new dive site, owned by the signed-in user.
@@ -49,8 +64,9 @@ export const diveSitesAPI = {
   },
 
   // Get a user's dive sites (paginated, name-ascending). `search` narrows to sites
-  // whose name *or* location contains it, case-insensitively - the API caps
-  // `items_per_page` at 100, so this is a page of matches, never the whole set.
+  // whose name *or* either of their locality's names contains it, case-insensitively -
+  // the API caps `items_per_page` at 100, so this is a page of matches, never the whole
+  // set.
   async getDiveSites(
     page: number = 1,
     items_per_page: number = 10,

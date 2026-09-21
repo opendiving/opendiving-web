@@ -20,7 +20,7 @@ const OTHER_TRIP = { uuid: "trip-2", name: "Cebu 2026" };
 const OTHER_SITE = {
   uuid: "site-2",
   name: "Blue Hole",
-  location: "Dahab, Egypt",
+  location: { name: "Dahab, Egypt" },
 };
 
 const onePageOf = (data: unknown[]) =>

@@ -4,7 +4,8 @@
 // dashboard card disagreeing about where a trip was is invisible until someone
 // holds two of them side by side.
 
-import type { TripLocation, TripPart } from "@/lib/api/trips";
+import type { Location } from "@/lib/api/location";
+import type { TripPart } from "@/lib/api/trips";
 import { formatTripDateRange } from "@/lib/date-time";
 
 export interface TripSpan {
@@ -68,8 +69,8 @@ export function formatTripSpan(
  * `components/map/locations-map.tsx`). A placeless part contributes nothing
  * here rather than an unnamed gap.
  */
-export function tripPartLocations(parts?: TripPart[] | null): TripLocation[] {
+export function tripPartLocations(parts?: TripPart[] | null): Location[] {
   return (parts ?? [])
     .map((part) => part.location)
-    .filter((location): location is TripLocation => !!location);
+    .filter((location): location is Location => !!location);
 }

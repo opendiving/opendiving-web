@@ -89,8 +89,8 @@ describe("tripFormSchema", () => {
       parts: [
         {
           location: {
-            name: "Moalboal",
-            display_name: "Moalboal, Cebu, Central Visayas, Philippines",
+            name: "Moalboal, Philippines",
+            full_name: "Moalboal, Cebu, Central Visayas, Philippines",
             latitude: 9.9366,
             longitude: 123.396,
             bbox_south: 9.87,
@@ -102,6 +102,11 @@ describe("tripFormSchema", () => {
       ],
     });
     expect(result.success).toBe(true);
+    // Named, because an unknown member is stripped rather than refused: a
+    // fixture spelling this wrong would pass while covering nothing.
+    expect(result.data?.parts?.[0].location?.full_name).toBe(
+      "Moalboal, Cebu, Central Visayas, Philippines",
+    );
   });
 
   it("accepts the nulls the API sends for an unknown position", () => {
@@ -113,7 +118,7 @@ describe("tripFormSchema", () => {
         {
           location: {
             name: "Somewhere",
-            display_name: null,
+            full_name: null,
             latitude: null,
             longitude: null,
             bbox_south: null,
@@ -125,6 +130,16 @@ describe("tripFormSchema", () => {
       ],
     });
     expect(result.success).toBe(true);
+  });
+
+  it("rejects a fuller name past the API's ceiling", () => {
+    const result = tripFormSchema.safeParse({
+      ...validTrip,
+      parts: [
+        { location: { name: "Dahab, Egypt", full_name: "a".repeat(513) } },
+      ],
+    });
+    expect(result.success).toBe(false);
   });
 
   it("rejects a place with no name", () => {
@@ -178,7 +193,10 @@ describe("normalizeTripParts", () => {
   });
 
   it("carries a place through untouched", () => {
-    const location = { name: "Dahab", display_name: "Dahab, Egypt" };
+    const location = {
+      name: "Dahab, Egypt",
+      full_name: "Dahab, South Sinai, Egypt",
+    };
     expect(normalizeTripParts([{ location }])[0].location).toEqual(location);
   });
 

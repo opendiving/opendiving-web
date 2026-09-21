@@ -107,7 +107,7 @@ describe("LocationsMap", () => {
     );
     await waitFor(() => expect(markers().length).toBe(2));
     expect(screen.getByRole("img").getAttribute("aria-label")).toBe(
-      "Map of Moalboal, Bohol",
+      "Map of Moalboal; Bohol",
     );
   });
 
@@ -145,7 +145,7 @@ describe("LocationsMap", () => {
 
     // And its name is a name like any other, so it reaches the label.
     expect(screen.getByRole("img").getAttribute("aria-label")).toBe(
-      "Map of Blue Hole, Exit",
+      "Map of Blue Hole; Exit",
     );
   });
 

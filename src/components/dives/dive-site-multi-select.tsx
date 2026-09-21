@@ -117,7 +117,7 @@ export function DiveSiteMultiSelect({
         items: response.data.map((site) => ({
           id: site.uuid,
           name: site.name,
-          hint: site.location,
+          hint: site.location?.name,
         })),
         hasMore: response.has_more,
       };
@@ -202,9 +202,9 @@ export function DiveSiteMultiSelect({
                 )}
                 <span className="flex-1 truncate">
                   {label}
-                  {site?.location && (
+                  {site?.location?.name && (
                     <span className="text-muted-foreground">
-                      , {site.location}
+                      , {site.location.name}
                     </span>
                   )}
                 </span>

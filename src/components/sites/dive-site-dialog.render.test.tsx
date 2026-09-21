@@ -40,6 +40,7 @@ const { geocodingAPI } = await import("@/lib/api/geocoding");
 const reverseGeocode = vi.mocked(geocodingAPI.reverseGeocode);
 const { diveSitesAPI } = await import("@/lib/api/dive-sites");
 const createDiveSite = vi.mocked(diveSitesAPI.createDiveSite);
+const updateDiveSite = vi.mocked(diveSitesAPI.updateDiveSite);
 const { diveSiteCatalogAPI } = await import("@/lib/api/dive-site-catalog");
 const suggestDiveSites = vi.mocked(diveSiteCatalogAPI.suggestDiveSites);
 
@@ -398,5 +399,113 @@ describe("DiveSiteDialog API refusal", () => {
     await userEvent.clear(name);
     await userEvent.type(name, "Diving Spot (west)");
     expect(name.value).toBe("Diving Spot (west)");
+  });
+});
+
+// The Location field holds a whole place and shows only its name, so what the
+// field looks like says nothing about what a save sends. Only a save does, and
+// there is no way back from one: the migration that made the member an object
+// does not run twice.
+describe("DiveSiteDialog location writes", () => {
+  const PICKED = {
+    uuid: "site-1",
+    name: "Blue Hole",
+    location: {
+      name: "Dahab, Egypt",
+      full_name: "Dahab, South Sinai, 45214, Egypt",
+      latitude: 28.4949,
+      longitude: 34.5136,
+      bbox_south: 28.45,
+      bbox_north: 28.54,
+      bbox_west: 34.47,
+      bbox_east: 34.55,
+    },
+    latitude: 28.5717,
+    longitude: 34.5372,
+    notes: "",
+    user_uuid: "user-1",
+    created_at: "2026-01-01T00:00:00Z",
+  };
+
+  const renderEdit = () =>
+    render(
+      <DiveSiteDialog
+        open
+        onOpenChange={() => {}}
+        diveSite={PICKED}
+        onSaved={() => {}}
+      />,
+    );
+
+  const save = () =>
+    userEvent.click(screen.getByRole("button", { name: /Save changes/ }));
+
+  beforeEach(() => {
+    updateDiveSite.mockReset();
+    updateDiveSite.mockResolvedValue({ message: "ok" });
+  });
+
+  it("sends the whole place back when only the site's name changed", async () => {
+    // The field shows "Dahab, Egypt" and nothing else, so a control bound to
+    // that string alone would post a place carrying only a name - silently
+    // dropping the full name, the locality's centre and its extent on every
+    // edit of every site anyone has ever picked a place for.
+    renderEdit();
+    const name = screen.getByLabelText("Name *") as HTMLInputElement;
+    await userEvent.clear(name);
+    await userEvent.type(name, "Blue Hole (north entry)");
+    await save();
+
+    await waitFor(() => expect(updateDiveSite).toHaveBeenCalled());
+    expect(updateDiveSite.mock.calls[0][1]).toMatchObject({
+      name: "Blue Hole (north entry)",
+      location: PICKED.location,
+    });
+  });
+
+  it("clears the place with an explicit null, not an empty name", async () => {
+    // How a site entered with the wrong locality is corrected back to "not
+    // recorded". An omitted member would leave the old one in place, and a
+    // place named "" is a place whose name is not one.
+    renderEdit();
+    await userEvent.clear(screen.getByLabelText("Location"));
+    await save();
+
+    await waitFor(() => expect(updateDiveSite).toHaveBeenCalled());
+    expect(updateDiveSite.mock.calls[0][1].location).toBeNull();
+  });
+
+  it("stops a typed name at the width the API stores", async () => {
+    // Not left to the resolver: the failure would land at `location.name`,
+    // where `FormMessage` reads `errors.location` and finds a container with
+    // no message - the word "undefined" in red, over a save that stopped.
+    renderEdit();
+    const location = screen.getByLabelText("Location") as HTMLInputElement;
+    expect(location.maxLength).toBe(255);
+
+    await userEvent.clear(location);
+    await userEvent.paste("a".repeat(300));
+    await save();
+
+    await waitFor(() => expect(updateDiveSite).toHaveBeenCalled());
+    expect(updateDiveSite.mock.calls[0][1].location).toEqual({
+      name: "a".repeat(255),
+    });
+  });
+
+  it("replaces the place outright when a new name is typed over it", async () => {
+    // A full name, a centre and an extent resolved for Dahab say nothing true
+    // about Moalboal, so they go with the name they belonged to rather than
+    // being carried over onto it.
+    renderEdit();
+    const location = screen.getByLabelText("Location");
+    await userEvent.clear(location);
+    await userEvent.type(location, "Moalboal, Philippines");
+    await save();
+
+    await waitFor(() => expect(updateDiveSite).toHaveBeenCalled());
+    expect(updateDiveSite.mock.calls[0][1].location).toEqual({
+      name: "Moalboal, Philippines",
+    });
   });
 });

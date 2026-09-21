@@ -8,6 +8,8 @@ import {
   ReverseGeocode,
 } from "@/lib/api/geocoding";
 import { Attribution } from "@/components/attribution";
+import { geocodeResultToLocation } from "@/lib/locations";
+import type { LocationFormValue } from "@/lib/validations/location";
 
 vi.mock("@/lib/api/geocoding", () => ({
   geocodingAPI: { reverseGeocode: vi.fn() },
@@ -45,16 +47,18 @@ beforeEach(() => {
 // the form is what makes staleness real rather than simulated.
 function Harness({
   onUseLocation = vi.fn(),
-  initialLocation = "",
+  initialLocation = null,
 }: {
-  onUseLocation?: (value: string) => void;
-  // Stands in for a location the diver typed *before* placing the position,
-  // which is the only thing a nameless position has to clear.
-  initialLocation?: string;
+  onUseLocation?: (value: LocationFormValue | null) => void;
+  // Stands in for a place the diver typed *before* placing the position, which
+  // is the only thing a nameless position has to clear.
+  initialLocation?: LocationFormValue | null;
 }) {
   const [open, setOpen] = useState(true);
   const [position, setPosition] = useState({ latitude: "", longitude: "" });
-  const [location, setLocation] = useState(initialLocation);
+  const [location, setLocation] = useState<LocationFormValue | null>(
+    initialLocation,
+  );
 
   const geocoded = useGeocodedLocation({
     open,
@@ -90,7 +94,10 @@ function Harness({
         onClick={() => {
           const picked = { latitude: "28.5011", longitude: "34.5136" };
           setPosition(picked);
-          geocoded.adopt(picked, RESULT);
+          geocoded.adopt(picked, {
+            location: geocodeResultToLocation(RESULT),
+            attribution: RESULT.attribution,
+          });
         }}
       >
         pick a place
@@ -110,7 +117,7 @@ function Harness({
       </button>
       <button
         type="button"
-        onClick={() => setLocation("Blue Hole (north entry)")}
+        onClick={() => setLocation({ name: "Blue Hole (north entry)" })}
       >
         type a location
       </button>
@@ -146,12 +153,27 @@ describe("useGeocodedLocation", () => {
     render(<Harness onUseLocation={onUseLocation} />);
     placePin().click();
 
-    // No confirmation step. The Location field stays an ordinary text input, so
-    // a diver who wants something else types over it.
+    // No confirmation step. The Location field's visible half stays an ordinary
+    // text input, so a diver who wants something else types over it.
     await waitFor(() =>
-      expect(onUseLocation).toHaveBeenCalledWith("Dahab, Egypt"),
+      expect(onUseLocation).toHaveBeenCalledWith({ name: "Dahab, Egypt" }),
     );
     expect(reverseGeocode).toHaveBeenCalledWith(28.5717, 34.5372);
+  });
+
+  it("fills the place's name and nothing else, the pin being the site's own", async () => {
+    // The position a reverse geocode answers with is the *host's* - it is the
+    // pin the diver just dropped that was looked up - so adopting it would file
+    // the wreck's coordinates as the centre of the town around it. Nothing on
+    // screen shows either number, so this is the only place the rule is visible.
+    const onUseLocation = vi.fn();
+    render(<Harness onUseLocation={onUseLocation} />);
+    placePin().click();
+
+    await waitFor(() => expect(onUseLocation).toHaveBeenCalled());
+    // Exact equality, not a per-key check: a new member arriving from the
+    // result by accident is precisely what this guards against.
+    expect(onUseLocation).toHaveBeenCalledWith({ name: "Dahab, Egypt" });
   });
 
   it("credits the place name, which is a licence condition of the data", async () => {
@@ -219,7 +241,7 @@ describe("useGeocodedLocation", () => {
     render(
       <Harness
         onUseLocation={onUseLocation}
-        initialLocation="Blue Hole (north entry)"
+        initialLocation={{ name: "Blue Hole (north entry)" }}
       />,
     );
     placePin().click();
@@ -237,12 +259,12 @@ describe("useGeocodedLocation", () => {
     render(
       <Harness
         onUseLocation={onUseLocation}
-        initialLocation="Blue Hole (north entry)"
+        initialLocation={{ name: "Blue Hole (north entry)" }}
       />,
     );
     placePin().click();
 
-    await waitFor(() => expect(onUseLocation).toHaveBeenCalledWith(""));
+    await waitFor(() => expect(onUseLocation).toHaveBeenCalledWith(null));
     // Nothing was named, so there is nothing to credit.
     expect(credit()).not.toBeInTheDocument();
   });
@@ -268,7 +290,12 @@ describe("useGeocodedLocation", () => {
     // of this form.
     reverseGeocode.mockResolvedValue({ status: "nameless" });
     const onUseLocation = vi.fn();
-    render(<Harness onUseLocation={onUseLocation} initialLocation="   " />);
+    render(
+      <Harness
+        onUseLocation={onUseLocation}
+        initialLocation={{ name: "   " }}
+      />,
+    );
     placePin().click();
 
     await waitFor(() => expect(reverseGeocode).toHaveBeenCalled());
@@ -278,7 +305,7 @@ describe("useGeocodedLocation", () => {
 
   it("announces a clearing, which is otherwise entirely silent", async () => {
     reverseGeocode.mockResolvedValue({ status: "nameless" });
-    render(<Harness initialLocation="Blue Hole (north entry)" />);
+    render(<Harness initialLocation={{ name: "Blue Hole (north entry)" }} />);
     placePin().click();
 
     await waitFor(() =>
@@ -356,7 +383,7 @@ describe("useGeocodedLocation", () => {
 
     resolve(named(RESULT));
     await waitFor(() => expect(reverseGeocode).toHaveBeenCalled());
-    expect(onUseLocation).not.toHaveBeenCalledWith("Dahab, Egypt");
+    expect(onUseLocation).not.toHaveBeenCalledWith({ name: "Dahab, Egypt" });
     expect(credit()).not.toBeInTheDocument();
   });
 
@@ -379,11 +406,11 @@ describe("useGeocodedLocation", () => {
     placePin().click();
 
     await waitFor(() =>
-      expect(onUseLocation).toHaveBeenCalledWith("Newer, Egypt"),
+      expect(onUseLocation).toHaveBeenCalledWith({ name: "Newer, Egypt" }),
     );
     resolveFirst(named({ ...RESULT, location: "Staler, Egypt" }));
     await waitFor(() => expect(reverseGeocode).toHaveBeenCalledTimes(2));
-    expect(onUseLocation).not.toHaveBeenCalledWith("Staler, Egypt");
+    expect(onUseLocation).not.toHaveBeenCalledWith({ name: "Staler, Egypt" });
   });
 });
 
@@ -393,8 +420,12 @@ describe("useGeocodedLocation, adopting a searched place", () => {
     render(<Harness onUseLocation={onUseLocation} />);
     screen.getByRole("button", { name: "pick a place" }).click();
 
+    // The whole place, not just its name: a forward search answered about the
+    // place itself, so its centre and its extent are the locality's own.
     await waitFor(() =>
-      expect(onUseLocation).toHaveBeenCalledWith("Dahab, Egypt"),
+      expect(onUseLocation).toHaveBeenCalledWith(
+        geocodeResultToLocation(RESULT),
+      ),
     );
     expect(reverseGeocode).not.toHaveBeenCalled();
     expect(credit()).toBeInTheDocument();
@@ -429,8 +460,8 @@ describe("useGeocodedLocation, adopting a searched place", () => {
 
     resolve(named({ ...RESULT, location: "Staler, Egypt" }));
     await waitFor(() => expect(reverseGeocode).toHaveBeenCalled());
-    expect(onUseLocation).not.toHaveBeenCalledWith("Staler, Egypt");
-    expect(onUseLocation).toHaveBeenCalledWith("Dahab, Egypt");
+    expect(onUseLocation).not.toHaveBeenCalledWith({ name: "Staler, Egypt" });
+    expect(onUseLocation).toHaveBeenCalledWith(geocodeResultToLocation(RESULT));
   });
 });
 
@@ -449,7 +480,7 @@ describe("useGeocodedLocation, adopting a row that named nowhere", () => {
     render(
       <Harness
         onUseLocation={onUseLocation}
-        initialLocation="Somewhere in the Red Sea"
+        initialLocation={{ name: "Somewhere in the Red Sea" }}
       />,
     );
     pickNowhere();

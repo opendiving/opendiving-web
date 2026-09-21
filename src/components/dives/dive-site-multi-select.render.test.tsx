@@ -18,11 +18,15 @@ vi.mock("@/lib/api/dive-sites", () => ({
 const { diveSitesAPI } = await import("@/lib/api/dive-sites");
 const getDiveSites = vi.mocked(diveSitesAPI.getDiveSites);
 
-const SITE = { uuid: "site-1", name: "Blue Hole", location: "Dahab, Egypt" };
+const SITE = {
+  uuid: "site-1",
+  name: "Blue Hole",
+  location: { name: "Dahab, Egypt" },
+};
 const SECOND_SITE = {
   uuid: "site-2",
   name: "Thistlegorm",
-  location: "Red Sea, Egypt",
+  location: { name: "Red Sea, Egypt" },
 };
 
 beforeEach(() => {
