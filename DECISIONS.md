@@ -6583,9 +6583,10 @@ else reads them.
 
 Every preset is offered in both unit systems; `showIn` and `volumeOptionsFor` do not exist, because
 a named preset serves the traveller handed an unfamiliar tank, whom a units filter hides it from.
-`volumeGroupsFor` keeps the rows browsable under four headings (Metric singles, Twin sets, US
-aluminium, US steel), the reader's own two first; headings are `aria-hidden` labels on a
-`role="group"` wrapper with no index, so `nextActiveIndex` skips them.
+`volumeGroupsFor` keeps the rows browsable under four headings (Metric singles, US aluminium, US
+steel, Twin sets), the reader's own singles first. Twin sets carries no `system` and so trails both
+families: it is asked for by its total either way, and it is the rarer pick. Headings are
+`aria-hidden` labels on a `role="group"` wrapper with no index, so `nextActiveIndex` skips them.
 
 HP117 and LP95 are both 15.0 L, so the list is keyed by label. The mixture must not record working
 pressure: a preset is only a litre hint.
