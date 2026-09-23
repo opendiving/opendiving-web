@@ -196,12 +196,18 @@ export function UserFieldsForm({
   );
 }
 
-function UserField({
+/**
+ * One field as every form over the diver's record writes it. `hideLabel` keeps the
+ * label for a screen reader only, for a host whose legend already says it.
+ */
+export function UserField({
   name,
   control,
+  hideLabel = false,
 }: {
   name: UserFieldKey;
   control: Control<UserFieldValues>;
+  hideLabel?: boolean;
 }) {
   const spec = FIELD_SPECS[name];
 
@@ -211,7 +217,9 @@ function UserField({
       name={name}
       render={({ field }) => (
         <FormItem>
-          <FormLabel>{spec.label}</FormLabel>
+          <FormLabel className={hideLabel ? "sr-only" : undefined}>
+            {spec.label}
+          </FormLabel>
           <FormControl>
             {spec.kind === "date" ? (
               <DatePicker value={field.value} onChange={field.onChange} />

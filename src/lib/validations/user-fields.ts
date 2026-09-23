@@ -65,20 +65,20 @@ const FIELD_SCHEMAS: Record<UserFieldKey, z.ZodTypeAny> = {
   phone: z.string().max(32, "Phone number cannot exceed 32 characters"),
   insurance_provider: z
     .string()
-    .max(100, "Provider cannot exceed 100 characters"),
+    .max(255, "Provider cannot exceed 255 characters"),
   insurance_policy_number: z
     .string()
     .max(64, "Policy number cannot exceed 64 characters"),
   insurance_expires_on: optionalDate("Use a valid date"),
   emergency_contact_name: z
     .string()
-    .max(100, "Name cannot exceed 100 characters"),
+    .max(255, "Name cannot exceed 255 characters"),
   emergency_contact_phone: z
     .string()
     .max(32, "Phone number cannot exceed 32 characters"),
   emergency_contact_relationship: z
     .string()
-    .max(50, "Relationship cannot exceed 50 characters"),
+    .max(64, "Relationship cannot exceed 64 characters"),
 };
 
 /**
@@ -99,6 +99,24 @@ export const EMERGENCY_CONTACT_FIELDS = [
   "emergency_contact_relationship",
 ] as const;
 
+/**
+ * The member each group is named by, first in its list, and what `PATCH /user` says
+ * when a group holds anything else without it - the API's own sentences, so the
+ * field reads the same whether the form or the server caught it.
+ */
+const ANCHORED_GROUPS = [
+  {
+    fields: EMERGENCY_CONTACT_FIELDS,
+    message:
+      "Required while the emergency contact has a phone or a relationship",
+  },
+  {
+    fields: INSURANCE_FIELDS,
+    message:
+      "Required while the insurance has a policy number or an expiry date",
+  },
+] as const;
+
 /** Which fields are required, and so cannot be cleared. */
 const REQUIRED: ReadonlySet<UserFieldKey> = new Set(["name", "username"]);
 
@@ -114,22 +132,38 @@ export function userFieldsSchema(fields: readonly UserFieldKey[]) {
   const shape = Object.fromEntries(
     fields.map((field) => [field, FIELD_SCHEMAS[field]]),
   );
-  const schema = z.object(shape);
+  const text = (data: Record<string, unknown>, field: UserFieldKey) =>
+    String(data[field] ?? "").trim();
 
-  // Mirrors the API's own `field_validator`, so a slipped digit is caught in the
-  // field rather than coming back as a 422. Today itself is accepted, as it is
-  // there. An object-level refine, unlike a field-level transform, leaves what
-  // `z.input<>` infers untouched.
-  return fields.includes("date_of_birth")
-    ? schema.refine(
-        (data) =>
-          !data.date_of_birth || String(data.date_of_birth) <= todayIsoDate(),
-        {
-          message: "Date of birth cannot be in the future",
-          path: ["date_of_birth"],
-        },
-      )
-    : schema;
+  // Both rules mirror the API's, so each is caught in the field rather than coming
+  // back as a 422. An object-level refine, unlike a field-level transform, leaves
+  // what `z.input<>` infers untouched.
+  return z.object(shape).superRefine((data, ctx) => {
+    // Today itself is accepted, as it is there.
+    if (
+      fields.includes("date_of_birth") &&
+      text(data, "date_of_birth") > todayIsoDate()
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Date of birth cannot be in the future",
+        path: ["date_of_birth"],
+      });
+    }
+    // Every host shows a group whole, so the fields shown are the row after the save.
+    for (const {
+      fields: [anchor, ...members],
+      message,
+    } of ANCHORED_GROUPS) {
+      if (
+        fields.includes(anchor) &&
+        !text(data, anchor) &&
+        members.some((member) => text(data, member))
+      ) {
+        ctx.addIssue({ code: "custom", message, path: [anchor] });
+      }
+    }
+  });
 }
 
 /** The stored record as a form holds it: `null` and absent both become `""`. */

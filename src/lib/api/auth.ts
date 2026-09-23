@@ -129,8 +129,9 @@ export interface UpdateProfileData {
   // `dive_form_hidden_fields` above, and a form sends every field it showed on
   // every save - so a group the diver emptied arrives as nulls rather than being
   // left behind. The string bounds are the columns' own, and `PATCH /user` is
-  // `extra="forbid"`, so an over-long value is a 422;
-  // `validations/user-fields.ts` mirrors them.
+  // `extra="forbid"`, so an over-long value is a 422, as is a contact with no name
+  // or an insurance with no provider while anything else of it is set;
+  // `validations/user-fields.ts` mirrors both.
   date_of_birth?: string | null;
   phone?: string | null;
   emergency_contact_name?: string | null;

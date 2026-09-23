@@ -75,6 +75,80 @@ describe("userFieldsSchema", () => {
       ).success,
     ).toBe(true);
   });
+
+  it("takes the columns' bounds", () => {
+    const contact = userFieldsSchema([...EMERGENCY_CONTACT_FIELDS]);
+    const insurance = userFieldsSchema([...INSURANCE_FIELDS]);
+    expect(
+      contact.safeParse(values({ emergency_contact_name: "a".repeat(255) }))
+        .success,
+    ).toBe(true);
+    expect(
+      contact.safeParse(values({ emergency_contact_name: "a".repeat(256) }))
+        .success,
+    ).toBe(false);
+    expect(
+      contact.safeParse(
+        values({
+          emergency_contact_name: "Alex",
+          emergency_contact_relationship: "a".repeat(64),
+        }),
+      ).success,
+    ).toBe(true);
+    expect(
+      contact.safeParse(
+        values({
+          emergency_contact_name: "Alex",
+          emergency_contact_relationship: "a".repeat(65),
+        }),
+      ).success,
+    ).toBe(false);
+    expect(
+      insurance.safeParse(values({ insurance_provider: "a".repeat(255) }))
+        .success,
+    ).toBe(true);
+    expect(
+      insurance.safeParse(values({ insurance_provider: "a".repeat(256) }))
+        .success,
+    ).toBe(false);
+  });
+
+  it("requires a contact's name and an insurance's provider once anything else of it is set", () => {
+    const contact = userFieldsSchema([...EMERGENCY_CONTACT_FIELDS]);
+    const insurance = userFieldsSchema([...INSURANCE_FIELDS]);
+
+    const noName = contact.safeParse(
+      values({ emergency_contact_name: "  ", emergency_contact_phone: "0456" }),
+    );
+    expect(noName.success).toBe(false);
+    // The API's own sentence, on the field it names.
+    expect(noName.error?.issues).toEqual([
+      expect.objectContaining({
+        path: ["emergency_contact_name"],
+        message:
+          "Required while the emergency contact has a phone or a relationship",
+      }),
+    ]);
+
+    const noProvider = insurance.safeParse(
+      values({ insurance_expires_on: "2027-03-01" }),
+    );
+    expect(noProvider.error?.issues).toEqual([
+      expect.objectContaining({
+        path: ["insurance_provider"],
+        message:
+          "Required while the insurance has a policy number or an expiry date",
+      }),
+    ]);
+
+    // An empty group is not a contact at all, and one with its anchor is whole.
+    expect(contact.safeParse(values()).success).toBe(true);
+    expect(
+      insurance.safeParse(
+        values({ insurance_provider: "DAN", insurance_policy_number: "P-1" }),
+      ).success,
+    ).toBe(true);
+  });
 });
 
 describe("userFieldsUpdate", () => {
