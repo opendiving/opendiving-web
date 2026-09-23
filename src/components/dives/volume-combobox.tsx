@@ -29,12 +29,13 @@ export interface VolumeOptionGroup {
    * Whose divers this group is *for*, which decides only where it sits.
    *
    * Never whether it is shown: every group is offered to every diver, and
-   * `volumeGroupsFor` moves the reader's own two to the front rather than
-   * dropping the other two. See DECISIONS.md - a list that hides the unfamiliar
-   * half is a list that fails the traveller, who is the one person a named
-   * preset is for.
+   * `volumeGroupsFor` moves the reader's own to the front rather than dropping
+   * the rest. See DECISIONS.md - a list that hides the unfamiliar half is a list
+   * that fails the traveller, who is the one person a named preset is for.
+   *
+   * Absent where a group belongs to neither family, which sinks it below both.
    */
-  system: UnitSystem;
+  system?: UnitSystem;
   options: VolumeOption[];
 }
 
@@ -75,10 +76,11 @@ export const VOLUME_GROUPS: VolumeOptionGroup[] = [
   },
   {
     label: "Twin sets",
-    // Filed metric because three of the four are metric compositions, and a twin
-    // set is asked for by its total either way. The 2x AL80 rides along rather
-    // than splitting the group by material.
-    system: "metric",
+    // No `system`, so this sits under both families whichever way the diver
+    // reads: a twin set is asked for by its total either way, and it is the
+    // rarer pick, so the singles a diver reaches for most are the rows nearest
+    // the box. The 2x AL80 rides along rather than splitting the group by
+    // material.
     options: [
       { value: 14, label: "14 L (2x7 L)" },
       { value: 22.2, label: "22.2 L (2x AL80)", imperialName: "2x AL80" },
@@ -138,21 +140,24 @@ export const VOLUME_GROUPS: VolumeOptionGroup[] = [
 /**
  * The groups in the order a diver reading in `units` sees them.
  *
- * The reader's own two lead and the other two follow; nothing is dropped. That
- * is the whole of the difference, and it is deliberate that membership is not
- * part of it. A preset list filtered by unit system reads sensible and fails the
- * one diver it exists for: hand a metric diver an AL80 on a boat in Florida and
- * the very preset that tells them it holds 11.1 L is the one that has been
- * hidden, and an imperial diver handed a 12 L in Croatia is stuck the same way.
- * The unfamiliar half is the half worth showing - see DECISIONS.md.
+ * The reader's own singles lead, the other family's follow, and the groups
+ * belonging to neither sit at the bottom; nothing is dropped. That is the whole
+ * of the difference, and it is deliberate that membership is not part of it. A
+ * preset list filtered by unit system reads sensible and fails the one diver it
+ * exists for: hand a metric diver an AL80 on a boat in Florida and the very
+ * preset that tells them it holds 11.1 L is the one that has been hidden, and an
+ * imperial diver handed a 12 L in Croatia is stuck the same way. The unfamiliar
+ * half is the half worth showing - see DECISIONS.md.
  *
  * Grouping is what keeps the full list browsable, which is the job the split was
  * wrongly doing.
  */
 export function volumeGroupsFor(units: UnitSystem): VolumeOptionGroup[] {
+  const families = VOLUME_GROUPS.filter((group) => group.system !== undefined);
   return [
-    ...VOLUME_GROUPS.filter((group) => group.system === units),
-    ...VOLUME_GROUPS.filter((group) => group.system !== units),
+    ...families.filter((group) => group.system === units),
+    ...families.filter((group) => group.system !== units),
+    ...VOLUME_GROUPS.filter((group) => group.system === undefined),
   ];
 }
 

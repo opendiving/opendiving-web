@@ -139,7 +139,7 @@ describe("VolumeCombobox", () => {
   // the groups come in. They are written out rather than derived from
   // `VOLUME_GROUPS` so that a preset filed in the wrong group fails here instead
   // of agreeing with itself.
-  it("offers every preset in metric, with the metric groups first", async () => {
+  it("offers every preset in metric, with the metric singles first", async () => {
     const user = userEvent.setup();
     render(<Harness />);
 
@@ -147,9 +147,9 @@ describe("VolumeCombobox", () => {
 
     expect(groupNames()).toEqual([
       "Metric singles",
-      "Twin sets",
       "US aluminium",
       "US steel",
+      "Twin sets",
     ]);
     expect(optionNames()).toEqual([
       "3 L",
@@ -160,10 +160,6 @@ describe("VolumeCombobox", () => {
       "15 L",
       "18 L",
       "20 L",
-      "14 L (2x7 L)",
-      "22.2 L (2x AL80)",
-      "24 L (2x12 L)",
-      "30 L (2x15 L)",
       "5.7 L (AL40)",
       "7.1 L (AL50)",
       "9 L (AL63)",
@@ -179,11 +175,17 @@ describe("VolumeCombobox", () => {
       "15 L (LP95)",
       "17 L (LP108)",
       "19 L (LP121)",
+      "14 L (2x7 L)",
+      "22.2 L (2x AL80)",
+      "24 L (2x12 L)",
+      "30 L (2x15 L)",
     ]);
   });
 
   it("offers every preset in imperial, with the US groups first", async () => {
-    // Same set, different order, each US row led by its name. The two 15 L steels
+    // Same set, each US row led by its name, and the twin sets last in both
+    // systems - they belong to neither family, so neither reader's own groups
+    // sit under them. The two 15 L steels
     // are the case a value-keyed list could not render: the HP117 and the LP95
     // differ by a working pressure the mixture does not record, so they share a
     // litre figure and nothing else.
@@ -261,8 +263,8 @@ describe("VolumeCombobox", () => {
 
   it("steps the arrow keys over a group heading rather than onto it", async () => {
     // Headings are not options and hold no index, so the ninth press has to clear
-    // the eight Metric singles and land on the first Twin set. A heading that took
-    // an index of its own would leave the highlight one row short.
+    // the eight Metric singles and land on the first US aluminium row. A heading
+    // that took an index of its own would leave the highlight one row short.
     const user = userEvent.setup();
     render(<Harness />);
 
@@ -272,7 +274,7 @@ describe("VolumeCombobox", () => {
     }
 
     expect(screen.getByRole("option", { selected: true })).toHaveTextContent(
-      "14 L (2x7 L)",
+      "5.7 L (AL40)",
     );
   });
 });
